@@ -11,9 +11,12 @@ const beVietnamPro = Be_Vietnam_Pro({
 });
 
 export const metadata: Metadata = {
-  title: "InterviewAI – Question Generator",
+  title: "HireGen AI – Interview Question Generator",
   description:
     "Generate tailored, role-specific interview questions from job descriptions using AI.",
+  icons: {
+    icon: "/images/logo.png",
+  },
 };
 
 export default function RootLayout({
