@@ -1,19 +1,23 @@
+"use client";
+
 import { AppShell } from "@/components/layout/app-shell";
 import { HistoryStats } from "@/components/history/history-stats";
 import { HistoryFilters } from "@/components/history/history-filters";
 import { HistoryTable } from "@/components/history/history-table";
+import { useLanguage } from "@/context/language-context";
 
 export default function HistoryPage() {
+  const { t } = useLanguage();
+  const hp = t.historyPage;
+
   return (
     <AppShell
-      pageTitle="History"
-      breadcrumb={[{ label: "Home", href: "/" }, { label: "History" }]}
+      pageTitle={hp.heading}
+      breadcrumb={[{ label: "Home", href: "/" }, { label: hp.heading }]}
     >
       <div className="mb-6 animate-fade-up">
-        <h2 className="text-2xl font-bold text-gray-900">History</h2>
-        <p className="text-sm text-gray-500 mt-1">
-          Browse and manage your past question generation sessions.
-        </p>
+        <h2 className="text-2xl font-bold text-gray-900">{hp.heading}</h2>
+        <p className="text-sm text-gray-500 mt-1">{hp.subtext}</p>
       </div>
 
       <div className="animate-fade-up" style={{ animationDelay: "80ms" }}>

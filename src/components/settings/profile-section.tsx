@@ -3,8 +3,11 @@
 import { useState } from "react";
 import { Save } from "lucide-react";
 import { FormField } from "@/components/ui/form-field";
+import { useLanguage } from "@/context/language-context";
 
 export function ProfileSection() {
+  const { t } = useLanguage();
+  const sp = t.settingsPage.profile;
   const [firstName, setFirstName] = useState("HR");
   const [lastName, setLastName] = useState("Manager");
   const [email, setEmail] = useState("hr@company.com");
@@ -15,30 +18,28 @@ export function ProfileSection() {
   );
 
   const inputCls =
-    "w-full px-3.5 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#6c47ff]/20 focus:border-[#6c47ff] transition-colors bg-white";
+    "w-full px-3.5 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#6c47ff]/20 focus:border-[#6c47ff] transition-colors bg-white";
 
   return (
     <div>
-      <h3 className="text-base font-semibold text-gray-900 mb-5">
-        Profile Information
-      </h3>
+      <h3 className="text-base font-semibold text-gray-900 mb-5">{sp.title}</h3>
 
       <div className="flex items-start gap-4 mb-6">
-        <div className="w-14 h-14 rounded-xl bg-[#6c47ff] flex items-center justify-center shrink-0">
+        <div className="w-14 h-14 rounded-lg bg-[#6c47ff] flex items-center justify-center shrink-0">
           <span className="text-white text-lg font-bold">HR</span>
         </div>
         <div>
-          <p className="text-sm font-medium text-gray-700">Profile Photo</p>
-          <p className="text-xs text-gray-400 mt-0.5">JPG, PNG, GIF up to 2MB</p>
+          <p className="text-sm font-medium text-gray-700">{sp.photo}</p>
+          <p className="text-xs text-gray-400 mt-0.5">{sp.photoFormats}</p>
           <button className="mt-2 text-xs font-medium text-[#6c47ff] border border-[#6c47ff]/30 hover:bg-indigo-50 rounded-lg px-3 py-1 transition-colors">
-            Upload Photo
+            {sp.uploadPhoto}
           </button>
         </div>
       </div>
 
       <div className="space-y-4">
         <div className="grid grid-cols-2 gap-4">
-          <FormField label="First Name" htmlFor="first-name">
+          <FormField label={sp.firstName} htmlFor="first-name">
             <input
               id="first-name"
               value={firstName}
@@ -46,7 +47,7 @@ export function ProfileSection() {
               className={inputCls}
             />
           </FormField>
-          <FormField label="Last Name" htmlFor="last-name">
+          <FormField label={sp.lastName} htmlFor="last-name">
             <input
               id="last-name"
               value={lastName}
@@ -56,7 +57,7 @@ export function ProfileSection() {
           </FormField>
         </div>
 
-        <FormField label="Email Address" htmlFor="email">
+        <FormField label={sp.email} htmlFor="email">
           <input
             id="email"
             type="email"
@@ -67,7 +68,7 @@ export function ProfileSection() {
         </FormField>
 
         <div className="grid grid-cols-2 gap-4">
-          <FormField label="Company" htmlFor="company">
+          <FormField label={sp.company} htmlFor="company">
             <input
               id="company"
               value={company}
@@ -75,7 +76,7 @@ export function ProfileSection() {
               className={inputCls}
             />
           </FormField>
-          <FormField label="Job Title" htmlFor="job-title">
+          <FormField label={sp.jobTitle} htmlFor="job-title">
             <input
               id="job-title"
               value={jobTitle}
@@ -85,7 +86,7 @@ export function ProfileSection() {
           </FormField>
         </div>
 
-        <FormField label="Bio" htmlFor="bio">
+        <FormField label={sp.bio} htmlFor="bio">
           <textarea
             id="bio"
             value={bio}
@@ -96,9 +97,9 @@ export function ProfileSection() {
         </FormField>
       </div>
 
-      <button className="mt-6 w-full flex items-center justify-center gap-2 bg-[#6c47ff] hover:bg-[#5535dd] text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors">
+      <button className="mt-6 w-full flex items-center justify-center gap-2 bg-[#6c47ff] hover:bg-[#5535dd] text-white text-sm font-semibold px-5 py-2.5 rounded-lg transition-colors">
         <Save size={14} />
-        Save Changes
+        {sp.save}
       </button>
     </div>
   );

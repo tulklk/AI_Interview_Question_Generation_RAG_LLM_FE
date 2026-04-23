@@ -1,18 +1,22 @@
+"use client";
+
 import { Tag } from "lucide-react";
+import { useLanguage } from "@/context/language-context";
 
 interface KeywordsCardProps {
   keywords: string[];
 }
 
 export function KeywordsCard({ keywords }: KeywordsCardProps) {
+  const { t } = useLanguage();
+  const kw = t.resultsPage.keywords;
+
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-5 animate-fade-up" style={{ animationDelay: "80ms" }}>
+    <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 mb-5 animate-fade-up" style={{ animationDelay: "80ms" }}>
       <div className="flex items-center gap-2 mb-3">
         <Tag size={15} className="text-[#6c47ff]" />
-        <h3 className="text-sm font-semibold text-gray-800">
-          Extracted Keywords from JD
-        </h3>
-        <span className="text-xs text-gray-400 ml-1">{keywords.length} found</span>
+        <h3 className="text-sm font-semibold text-gray-800">{kw.title}</h3>
+        <span className="text-xs text-gray-400 ml-1">{keywords.length} {kw.found}</span>
       </div>
       <div className="flex flex-wrap gap-2">
         {keywords.map((keyword, i) => (

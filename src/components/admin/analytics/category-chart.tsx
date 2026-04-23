@@ -10,15 +10,19 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { adminCategoryStats } from "@/data/admin";
+import { useLanguage } from "@/context/language-context";
 
 export function CategoryChart() {
+  const { t } = useLanguage();
+  const cc = t.adminPages.analytics.categoryChart;
+
   const max = Math.max(...adminCategoryStats.map((c) => c.count));
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 flex flex-col animate-fade-up">
+    <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 flex flex-col animate-fade-up">
       <div className="mb-1">
-        <h3 className="text-base font-semibold text-gray-900">Question Categories</h3>
-        <p className="text-xs text-gray-400 mt-0.5">Distribution across all sessions</p>
+        <h3 className="text-base font-semibold text-gray-900">{cc.title}</h3>
+        <p className="text-xs text-gray-400 mt-0.5">{cc.subtitle}</p>
       </div>
 
       <div className="mt-4">
@@ -49,7 +53,7 @@ export function CategoryChart() {
               }}
               cursor={{ fill: "#f5f3ff" }}
             />
-            <Bar dataKey="count" name="Questions" fill="#6c47ff" radius={[4, 4, 0, 0]} />
+            <Bar dataKey="count" name={cc.questions} fill="#6c47ff" radius={[4, 4, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
       </div>

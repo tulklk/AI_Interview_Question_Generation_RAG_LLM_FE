@@ -8,21 +8,26 @@ import { UserTable } from "@/components/admin/users/user-table";
 import { UserModal } from "@/components/admin/users/user-modal";
 import { adminUsers } from "@/data/admin";
 import type { AdminUser } from "@/types/admin";
+import { useLanguage } from "@/context/language-context";
 
 export default function UserManagementPage() {
+  const { t } = useLanguage();
+  const u = t.adminPages.users;
+  const f = u.filters;
+
   const [search, setSearch] = useState("");
-  const [role, setRole] = useState("All Roles");
-  const [status, setStatus] = useState("All Status");
+  const [role, setRole] = useState(f.allRoles);
+  const [status, setStatus] = useState(f.allStatus);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
 
-  const filtered = adminUsers.filter((u) => {
+  const filtered = adminUsers.filter((usr) => {
     const matchSearch =
       search === "" ||
-      u.name.toLowerCase().includes(search.toLowerCase()) ||
-      u.email.toLowerCase().includes(search.toLowerCase());
-    const matchRole = role === "All Roles" || u.role === role;
-    const matchStatus = status === "All Status" || u.status === status;
+      usr.name.toLowerCase().includes(search.toLowerCase()) ||
+      usr.email.toLowerCase().includes(search.toLowerCase());
+    const matchRole = role === f.allRoles || usr.role === role;
+    const matchStatus = status === f.allStatus || usr.status === status;
     return matchSearch && matchRole && matchStatus;
   });
 
@@ -38,14 +43,12 @@ export default function UserManagementPage() {
 
   return (
     <AdminAppShell
-      pageTitle="User Management"
-      breadcrumb={[{ label: "Admin", href: "/admin/dashboard" }, { label: "Users" }]}
+      pageTitle={u.heading}
+      breadcrumb={[{ label: "Admin", href: "/admin/dashboard" }, { label: u.heading }]}
     >
       <div className="mb-6 animate-fade-up">
-        <h2 className="text-2xl font-bold text-gray-900">User Management</h2>
-        <p className="text-sm text-gray-500 mt-1">
-          Manage all platform accounts, roles, and access.
-        </p>
+        <h2 className="text-2xl font-bold text-gray-900">{u.heading}</h2>
+        <p className="text-sm text-gray-500 mt-1">{u.subtext}</p>
       </div>
 
       <div className="animate-fade-up" style={{ animationDelay: "80ms" }}>

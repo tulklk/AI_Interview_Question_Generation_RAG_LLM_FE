@@ -10,27 +10,27 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { weeklyActivity } from "@/data/dashboard";
+import { useLanguage } from "@/context/language-context";
 
 export function WeeklyActivityCard() {
+  const { t } = useLanguage();
+  const wa = t.dashboardPage.weeklyActivity;
+
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 flex flex-col animate-fade-up">
+    <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 flex flex-col animate-fade-up">
       <div className="flex items-center justify-between mb-1">
         <div>
-          <h3 className="text-base font-semibold text-gray-900">
-            Weekly Activity
-          </h3>
-          <p className="text-xs text-gray-400 mt-0.5">
-            Questions generated this week
-          </p>
+          <h3 className="text-base font-semibold text-gray-900">{wa.title}</h3>
+          <p className="text-xs text-gray-400 mt-0.5">{wa.subtitle}</p>
         </div>
         <div className="flex items-center gap-4 text-xs text-gray-500">
           <span className="flex items-center gap-1.5">
             <span className="w-2.5 h-2.5 rounded-full bg-[#6c47ff] inline-block" />
-            Questions
+            {wa.questions}
           </span>
           <span className="flex items-center gap-1.5">
             <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 inline-block" />
-            JDs
+            {wa.jds}
           </span>
         </div>
       </div>
@@ -77,7 +77,7 @@ export function WeeklyActivityCard() {
             <Area
               type="monotone"
               dataKey="questions"
-              name="Questions"
+              name={wa.questions}
               stroke="#6c47ff"
               strokeWidth={2.5}
               fill="url(#gradQuestions)"
@@ -87,7 +87,7 @@ export function WeeklyActivityCard() {
             <Area
               type="monotone"
               dataKey="jds"
-              name="JDs"
+              name={wa.jds}
               stroke="#34d399"
               strokeWidth={2.5}
               fill="url(#gradJDs)"

@@ -13,11 +13,11 @@ export function AnalyticsStats() {
         return (
           <div
             key={stat.id}
-            className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 animate-fade-up"
+            className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 animate-fade-up"
             style={{ animationDelay: `${i * 70}ms` }}
           >
             <div className="flex items-start justify-between mb-4">
-              <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${iconBgs[i]}`}>
+              <div className={`w-11 h-11 rounded-lg flex items-center justify-center shrink-0 ${iconBgs[i]}`}>
                 <Icon size={20} className={iconColors[i]} />
               </div>
             </div>

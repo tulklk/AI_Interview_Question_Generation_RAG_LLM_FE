@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { Zap } from "lucide-react";
 import { useLanguage } from "@/context/language-context";
+import { BrandLogo } from "@/components/shared/brand-logo";
+import { ScrollReveal } from "@/components/shared/scroll-reveal";
 
 export function GuestFooter() {
   const { t } = useLanguage();
@@ -24,15 +25,10 @@ export function GuestFooter() {
 
   return (
     <footer id="contact" className="bg-white border-t border-gray-100">
-      <div className="max-w-6xl mx-auto px-6 py-14">
+      <ScrollReveal animation="fade-up" className="max-w-6xl mx-auto px-6 py-14">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
           <div>
-            <Link href="/" className="flex items-center gap-2.5 mb-4">
-              <div className="w-8 h-8 rounded-xl bg-[#6c47ff] flex items-center justify-center">
-                <Zap size={15} className="text-white" />
-              </div>
-              <span className="text-gray-900 font-bold text-[15px]">InterviewAI</span>
-            </Link>
+            <BrandLogo className="mb-4" logoClassName="w-9 h-9" />
             <p className="text-sm text-gray-500 leading-relaxed max-w-xs">{f.tagline}</p>
           </div>
 
@@ -75,11 +71,11 @@ export function GuestFooter() {
 
         <div className="mt-12 pt-6 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-3">
           <p className="text-xs text-gray-400">
-            © {new Date().getFullYear()} InterviewAI. {f.copyright}
+            © {new Date().getFullYear()} HireGen AI. {f.copyright}
           </p>
           <p className="text-xs text-gray-400">{f.builtWith}</p>
         </div>
-      </div>
+      </ScrollReveal>
     </footer>
   );
 }

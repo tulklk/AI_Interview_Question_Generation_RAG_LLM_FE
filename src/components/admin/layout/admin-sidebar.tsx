@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { LogOut, Zap, ShieldCheck } from "lucide-react";
+import { LogOut, ShieldCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { adminNavItems } from "@/data/admin";
 import { clearAuth } from "@/lib/auth";
 import { useLanguage } from "@/context/language-context";
+import { BrandLogo } from "@/components/shared/brand-logo";
 
 export function AdminSidebar() {
   const pathname = usePathname();
@@ -22,15 +23,10 @@ export function AdminSidebar() {
   return (
     <aside className="flex flex-col w-[250px] shrink-0 h-screen bg-white border-r border-gray-100 overflow-y-auto">
       <div className="px-5 pt-6 pb-2">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-[#6c47ff] flex items-center justify-center shrink-0">
-            <Zap size={18} className="text-white" />
-          </div>
-          <div>
-            <p className="text-gray-900 font-bold text-[15px] leading-tight">InterviewAI</p>
-            <p className="text-gray-400 text-[11px] leading-tight">{s.subtitle}</p>
-          </div>
-        </div>
+        <BrandLogo
+          logoClassName="w-9 h-9"
+          subtitleClassName="text-gray-400 text-[11px]"
+        />
       </div>
 
       <nav className="flex-1 px-4 mt-6">
@@ -75,7 +71,7 @@ export function AdminSidebar() {
       </nav>
 
       <div className="px-4 mb-4">
-        <div className="bg-[#f0edff] rounded-2xl p-4">
+        <div className="bg-[#f0edff] rounded-xl p-4">
           <div className="w-8 h-8 rounded-lg bg-[#6c47ff]/15 flex items-center justify-center mb-3">
             <ShieldCheck size={15} className="text-[#6c47ff]" />
           </div>

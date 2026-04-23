@@ -5,6 +5,7 @@ import { CheckCircle2, XCircle } from "lucide-react";
 import { useLanguage } from "@/context/language-context";
 import { pricingPlans } from "@/data/guest";
 import { cn } from "@/lib/utils";
+import { ScrollReveal } from "@/components/shared/scroll-reveal";
 
 export function PricingSection() {
   const { t } = useLanguage();
@@ -13,7 +14,7 @@ export function PricingSection() {
   return (
     <section id="pricing" className="bg-white py-20 px-6">
       <div className="max-w-6xl mx-auto">
-        <div className="text-center mb-14 animate-fade-up">
+        <ScrollReveal animation="fade-up" className="text-center mb-14">
           <p className="text-sm font-semibold text-[#6c47ff] uppercase tracking-widest mb-3">
             {p.sectionLabel}
           </p>
@@ -21,21 +22,25 @@ export function PricingSection() {
           <p className="text-gray-500 mt-3 max-w-lg mx-auto text-base leading-relaxed">
             {p.subtext}
           </p>
-        </div>
+        </ScrollReveal>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
           {pricingPlans.map((plan, i) => {
             const planT = p.plans[i];
+            const animation = plan.highlighted ? "scale-in" : "fade-up";
+            const delay = i * 80;
+
             return (
-              <div
+              <ScrollReveal
                 key={plan.id}
+                animation={animation}
+                delay={delay}
                 className={cn(
-                  "relative rounded-2xl border p-7 flex flex-col gap-6 animate-fade-up",
+                  "relative rounded-xl border p-7 flex flex-col gap-6",
                   plan.highlighted
                     ? "bg-gradient-to-b from-[#6c47ff] to-[#7c5cff] border-[#6c47ff] shadow-xl shadow-[#6c47ff]/20 text-white"
                     : "bg-white border-gray-200 shadow-sm"
                 )}
-                style={{ animationDelay: `${i * 80}ms` }}
               >
                 {plan.highlighted && (
                   <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
@@ -123,7 +128,7 @@ export function PricingSection() {
                 <Link
                   href="/login"
                   className={cn(
-                    "block text-center text-sm font-semibold py-3 rounded-xl transition-colors",
+                    "block text-center text-sm font-semibold py-3 rounded-lg transition-colors",
                     plan.highlighted
                       ? "bg-white text-[#6c47ff] hover:bg-white/90"
                       : plan.id === "enterprise"
@@ -133,7 +138,7 @@ export function PricingSection() {
                 >
                   {planT.cta}
                 </Link>
-              </div>
+              </ScrollReveal>
             );
           })}
         </div>

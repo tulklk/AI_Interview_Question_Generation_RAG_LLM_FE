@@ -1,6 +1,9 @@
+"use client";
+
 import { Eye, Pencil, Ban, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { AdminUser } from "@/types/admin";
+import { useLanguage } from "@/context/language-context";
 
 const roleConfig: Record<AdminUser["role"], { bg: string; color: string }> = {
   Admin: { bg: "bg-violet-50", color: "text-violet-600" },
@@ -20,18 +23,24 @@ interface UserTableProps {
 }
 
 export function UserTable({ users, onEdit }: UserTableProps) {
+  const { t } = useLanguage();
+  const tbl = t.adminPages.users.table;
+  const actions = t.adminPages.users.actions;
+  const roleLabels = t.adminPages.users.roles;
+  const statusLabels = t.adminPages.users.statusLabels;
+
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden animate-fade-up">
+    <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden animate-fade-up">
       <table className="w-full text-sm">
         <thead className="border-b border-gray-100 bg-gray-50">
           <tr>
-            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Name</th>
-            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Email</th>
-            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Role</th>
-            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Status</th>
-            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Created</th>
-            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Last Active</th>
-            <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Actions</th>
+            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">{tbl.name}</th>
+            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">{tbl.email}</th>
+            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">{tbl.role}</th>
+            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">{tbl.status}</th>
+            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">{tbl.created}</th>
+            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">{tbl.lastActive}</th>
+            <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">{tbl.actions}</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-50">
@@ -57,32 +66,32 @@ export function UserTable({ users, onEdit }: UserTableProps) {
                 <td className="px-4 py-3.5 text-gray-500">{user.email}</td>
                 <td className="px-4 py-3.5">
                   <span className={cn("text-xs font-semibold px-2.5 py-0.5 rounded-full", role.bg, role.color)}>
-                    {user.role}
+                    {roleLabels[user.role]}
                   </span>
                 </td>
                 <td className="px-4 py-3.5">
                   <span className={cn("text-xs font-semibold px-2.5 py-0.5 rounded-full", status.bg, status.color)}>
-                    {user.status}
+                    {statusLabels[user.status]}
                   </span>
                 </td>
                 <td className="px-4 py-3.5 text-gray-500 text-xs">{user.createdDate}</td>
                 <td className="px-4 py-3.5 text-gray-500 text-xs">{user.lastActive}</td>
                 <td className="px-4 py-3.5">
                   <div className="flex items-center justify-end gap-1">
-                    <button className="p-1.5 text-gray-400 hover:text-[#6c47ff] hover:bg-indigo-50 rounded-lg transition-colors" title="View">
+                    <button className="p-1.5 text-gray-400 hover:text-[#6c47ff] hover:bg-indigo-50 rounded-lg transition-colors" title={actions.view}>
                       <Eye size={14} />
                     </button>
                     <button
                       onClick={() => onEdit(user)}
                       className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-                      title="Edit"
+                      title={actions.edit}
                     >
                       <Pencil size={14} />
                     </button>
-                    <button className="p-1.5 text-gray-400 hover:text-amber-500 hover:bg-amber-50 rounded-lg transition-colors" title="Disable">
+                    <button className="p-1.5 text-gray-400 hover:text-amber-500 hover:bg-amber-50 rounded-lg transition-colors" title={actions.disable}>
                       <Ban size={14} />
                     </button>
-                    <button className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors" title="Delete">
+                    <button className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors" title={actions.delete}>
                       <Trash2 size={14} />
                     </button>
                   </div>

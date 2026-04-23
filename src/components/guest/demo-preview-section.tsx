@@ -5,6 +5,7 @@ import { Sparkles, ChevronDown, Tag } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { demoKeywords, demoQuestions } from "@/data/guest";
 import { useLanguage } from "@/context/language-context";
+import { ScrollReveal } from "@/components/shared/scroll-reveal";
 import type { DemoQuestion } from "@/types/guest";
 
 type Category = "Technical" | "Behavioral" | "Situational";
@@ -19,18 +20,20 @@ const difficultyConfig: Record<string, { bg: string; color: string }> = {
 function QuestionCard({
   question,
   index,
+  delay,
 }: {
   question: DemoQuestion;
   index: number;
+  delay: number;
 }) {
   const { t } = useLanguage();
   const d = t.demo;
-  const [open, setOpen] = useState(index === 1);
+  const [open, setOpen] = useState(index === 2);
   const diff = difficultyConfig[question.difficulty];
   const qT = d.questions[question.id as keyof typeof d.questions];
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+    <ScrollReveal animation="fade-up" delay={delay} className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
       <div className="flex items-start gap-4">
         <div className="w-7 h-7 rounded-full bg-gray-100 text-gray-600 text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">
           {index}
@@ -57,7 +60,7 @@ function QuestionCard({
             {open ? d.hideAnswer : d.showAnswer}
           </button>
           {open && (
-            <div className="mt-3 rounded-xl bg-[#f5f3ff] border border-[#6c47ff]/15 p-4 animate-fade-up">
+            <div className="mt-3 rounded-lg bg-[#f5f3ff] border border-[#6c47ff]/15 p-4 animate-fade-up">
               <div className="flex items-center gap-1.5 mb-2">
                 <Sparkles size={12} className="text-[#6c47ff]" />
                 <span className="text-xs font-semibold text-[#6c47ff]">{d.aiAnswerLabel}</span>
@@ -69,7 +72,7 @@ function QuestionCard({
           )}
         </div>
       </div>
-    </div>
+    </ScrollReveal>
   );
 }
 
@@ -82,7 +85,7 @@ export function DemoPreviewSection() {
   return (
     <section className="bg-white py-20 px-6">
       <div className="max-w-4xl mx-auto">
-        <div className="text-center mb-12 animate-fade-up">
+        <ScrollReveal animation="fade-up" className="text-center mb-12">
           <p className="text-sm font-semibold text-[#6c47ff] uppercase tracking-widest mb-3">
             {d.sectionLabel}
           </p>
@@ -90,10 +93,10 @@ export function DemoPreviewSection() {
           <p className="text-gray-500 mt-3 max-w-lg mx-auto text-base leading-relaxed">
             {d.subtext}
           </p>
-        </div>
+        </ScrollReveal>
 
-        <div className="animate-fade-up" style={{ animationDelay: "80ms" }}>
-          <div className="bg-white rounded-2xl border border-gray-200 shadow-lg overflow-hidden">
+        <ScrollReveal animation="fade-up" delay={80}>
+          <div className="bg-white rounded-xl border border-gray-200 shadow-lg overflow-hidden">
             <div className="border-b border-gray-100 bg-[#f5f7fb] px-6 py-4">
               <div className="flex items-start justify-between">
                 <div>
@@ -123,7 +126,7 @@ export function DemoPreviewSection() {
             </div>
 
             <div className="p-4 border-b border-gray-100">
-              <div className="flex bg-gray-50 border border-gray-200 rounded-xl p-1 gap-1">
+              <div className="flex bg-gray-50 border border-gray-200 rounded-lg p-1 gap-1">
                 {CATEGORIES.map((cat) => {
                   const count = demoQuestions.filter((q) => q.category === cat).length;
                   const isActive = activeTab === cat;
@@ -155,11 +158,11 @@ export function DemoPreviewSection() {
 
             <div className="p-4 space-y-3">
               {filtered.map((q, idx) => (
-                <QuestionCard key={q.id} question={q} index={idx + 1} />
+                <QuestionCard key={q.id} question={q} index={idx + 1} delay={idx * 100} />
               ))}
             </div>
           </div>
-        </div>
+        </ScrollReveal>
       </div>
     </section>
   );

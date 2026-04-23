@@ -1,14 +1,15 @@
+"use client";
+
 import { UserPlus, LogIn, Zap, Download } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { systemActivity } from "@/data/admin";
 import type { SystemActivityEvent } from "@/types/admin";
+import { useLanguage } from "@/context/language-context";
 
-const eventConfig: Record<
-  SystemActivityEvent["type"],
-  { label: string; icon: typeof UserPlus; iconBg: string; iconColor: string; badgeBg: string; badgeColor: string }
-> = {
+const eventIcons: Record<SystemActivityEvent["type"], {
+  icon: typeof UserPlus; iconBg: string; iconColor: string; badgeBg: string; badgeColor: string;
+}> = {
   user_created: {
-    label: "User Created",
     icon: UserPlus,
     iconBg: "bg-blue-50",
     iconColor: "text-blue-500",
@@ -16,7 +17,6 @@ const eventConfig: Record<
     badgeColor: "text-blue-600",
   },
   recruiter_login: {
-    label: "Login",
     icon: LogIn,
     iconBg: "bg-gray-50",
     iconColor: "text-gray-400",
@@ -24,7 +24,6 @@ const eventConfig: Record<
     badgeColor: "text-gray-500",
   },
   jd_generation: {
-    label: "Generation",
     icon: Zap,
     iconBg: "bg-violet-50",
     iconColor: "text-violet-500",
@@ -32,7 +31,6 @@ const eventConfig: Record<
     badgeColor: "text-violet-600",
   },
   export: {
-    label: "Export",
     icon: Download,
     iconBg: "bg-emerald-50",
     iconColor: "text-emerald-500",
@@ -42,29 +40,33 @@ const eventConfig: Record<
 };
 
 export function SystemActivityTable() {
+  const { t } = useLanguage();
+  const ra = t.adminPages.dashboard.recentActivity;
+
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 animate-fade-up">
+    <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 animate-fade-up">
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h3 className="text-base font-semibold text-gray-900">Recent System Activity</h3>
-          <p className="text-xs text-gray-400 mt-0.5">Latest platform events</p>
+          <h3 className="text-base font-semibold text-gray-900">{ra.title}</h3>
+          <p className="text-xs text-gray-400 mt-0.5">{ra.subtitle}</p>
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-xl border border-gray-100">
+      <div className="overflow-hidden rounded-lg border border-gray-100">
         <table className="w-full text-sm">
           <thead className="bg-gray-50 border-b border-gray-100">
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Event</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Actor</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Details</th>
-              <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Time</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">{ra.event}</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">{ra.actor}</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">{ra.details}</th>
+              <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">{ra.time}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50">
             {systemActivity.map((event, i) => {
-              const cfg = eventConfig[event.type];
+              const cfg = eventIcons[event.type];
               const Icon = cfg.icon;
+              const label = ra.eventLabels[event.type];
               return (
                 <tr
                   key={event.id}
@@ -77,7 +79,7 @@ export function SystemActivityTable() {
                         <Icon size={13} className={cfg.iconColor} />
                       </div>
                       <span className={cn("text-xs font-semibold px-2 py-0.5 rounded-md", cfg.badgeBg, cfg.badgeColor)}>
-                        {cfg.label}
+                        {label}
                       </span>
                     </div>
                   </td>

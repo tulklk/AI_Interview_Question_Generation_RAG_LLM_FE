@@ -3,8 +3,11 @@
 import { useRef, useState } from "react";
 import { Upload, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useLanguage } from "@/context/language-context";
 
 export function FileUploadArea() {
+  const { t } = useLanguage();
+  const fu = t.generatePage.fileUpload;
   const inputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [file, setFile] = useState<File | null>(null);
@@ -28,7 +31,7 @@ export function FileUploadArea() {
       onDragLeave={() => setIsDragging(false)}
       onDrop={handleDrop}
       className={cn(
-        "flex items-center gap-3 px-5 py-4 rounded-xl border-2 border-dashed cursor-pointer transition-colors",
+        "flex items-center gap-3 px-5 py-4 rounded-lg border-2 border-dashed cursor-pointer transition-colors",
         isDragging
           ? "border-[#6c47ff] bg-[#6c47ff]/5"
           : "border-gray-200 hover:border-gray-300 bg-white"
@@ -50,12 +53,8 @@ export function FileUploadArea() {
         </div>
       ) : (
         <div>
-          <p className="text-sm font-medium text-gray-700">
-            Drag & drop a file, or click to browse
-          </p>
-          <p className="text-xs text-gray-400 mt-0.5">
-            Supports PDF, DOCX, DOC (max 10MB)
-          </p>
+          <p className="text-sm font-medium text-gray-700">{fu.label}</p>
+          <p className="text-xs text-gray-400 mt-0.5">{fu.support}</p>
         </div>
       )}
       <input

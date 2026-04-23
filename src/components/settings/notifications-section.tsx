@@ -5,8 +5,11 @@ import { Save } from "lucide-react";
 import { Toggle } from "@/components/ui/toggle";
 import { defaultNotificationPrefs } from "@/data/settings";
 import type { NotificationPref } from "@/types/settings";
+import { useLanguage } from "@/context/language-context";
 
 export function NotificationsSection() {
+  const { t } = useLanguage();
+  const notif = t.settingsPage.notifications;
   const [prefs, setPrefs] = useState<NotificationPref[]>(defaultNotificationPrefs);
 
   function toggle(id: string) {
@@ -17,9 +20,7 @@ export function NotificationsSection() {
 
   return (
     <div>
-      <h3 className="text-base font-semibold text-gray-900 mb-5">
-        Notification Preferences
-      </h3>
+      <h3 className="text-base font-semibold text-gray-900 mb-5">{notif.title}</h3>
 
       <div className="space-y-4">
         {prefs.map((pref) => (
@@ -36,9 +37,9 @@ export function NotificationsSection() {
         ))}
       </div>
 
-      <button className="mt-6 w-full flex items-center justify-center gap-2 bg-[#6c47ff] hover:bg-[#5535dd] text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors">
+      <button className="mt-6 w-full flex items-center justify-center gap-2 bg-[#6c47ff] hover:bg-[#5535dd] text-white text-sm font-semibold px-5 py-2.5 rounded-lg transition-colors">
         <Save size={14} />
-        Save Changes
+        {notif.save}
       </button>
     </div>
   );

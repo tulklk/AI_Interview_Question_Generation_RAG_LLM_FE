@@ -1,25 +1,32 @@
+"use client";
+
 import { Eye, Trash2, FileText } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import type { ContentSession } from "@/types/admin";
+import { useLanguage } from "@/context/language-context";
 
 interface ContentTableProps {
   sessions: ContentSession[];
 }
 
 export function ContentTable({ sessions }: ContentTableProps) {
+  const { t } = useLanguage();
+  const tbl = t.adminPages.content.table;
+  const c = t.adminPages.content;
+
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden animate-fade-up">
+    <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden animate-fade-up">
       <table className="w-full text-sm">
         <thead className="border-b border-gray-100 bg-gray-50">
           <tr>
-            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Job Title</th>
-            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Recruiter</th>
-            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Role</th>
-            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Date</th>
-            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Questions</th>
-            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Exported</th>
-            <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Actions</th>
+            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">{tbl.jobTitle}</th>
+            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">{tbl.recruiter}</th>
+            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">{tbl.role}</th>
+            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">{tbl.date}</th>
+            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">{tbl.questions}</th>
+            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">{tbl.exported}</th>
+            <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">{tbl.actions}</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-50">
@@ -61,11 +68,11 @@ export function ContentTable({ sessions }: ContentTableProps) {
               <td className="px-4 py-3.5">
                 {session.exported ? (
                   <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600">
-                    Exported
+                    {c.exportedLabel}
                   </span>
                 ) : (
                   <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-400">
-                    Not exported
+                    {c.notExported}
                   </span>
                 )}
               </td>

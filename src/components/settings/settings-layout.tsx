@@ -15,18 +15,7 @@ import { NotificationsSection } from "./notifications-section";
 import { SecuritySection } from "./security-section";
 import { BillingSection } from "./billing-section";
 import type { SettingsTab } from "@/types/settings";
-
-const tabs: {
-  id: SettingsTab;
-  label: string;
-  Icon: typeof User;
-}[] = [
-  { id: "profile", label: "Profile", Icon: User },
-  { id: "preferences", label: "Preferences", Icon: SlidersHorizontal },
-  { id: "notifications", label: "Notifications", Icon: Bell },
-  { id: "security", label: "Security", Icon: ShieldCheck },
-  { id: "billing", label: "Billing", Icon: CreditCard },
-];
+import { useLanguage } from "@/context/language-context";
 
 function TabContent({ tab }: { tab: SettingsTab }) {
   switch (tab) {
@@ -44,19 +33,29 @@ function TabContent({ tab }: { tab: SettingsTab }) {
 }
 
 export function SettingsLayout() {
+  const { t } = useLanguage();
+  const tabs = t.settingsPage.tabs;
   const [activeTab, setActiveTab] = useState<SettingsTab>("profile");
+
+  const tabItems: { id: SettingsTab; label: string; Icon: typeof User }[] = [
+    { id: "profile", label: tabs.profile, Icon: User },
+    { id: "preferences", label: tabs.preferences, Icon: SlidersHorizontal },
+    { id: "notifications", label: tabs.notifications, Icon: Bell },
+    { id: "security", label: tabs.security, Icon: ShieldCheck },
+    { id: "billing", label: tabs.billing, Icon: CreditCard },
+  ];
 
   return (
     <div className="grid grid-cols-[220px_1fr] gap-6 items-start">
-      <nav className="bg-white rounded-2xl border border-gray-100 shadow-sm p-2 sticky top-4 animate-slide-left">
+      <nav className="bg-white rounded-xl border border-gray-100 shadow-sm p-2 sticky top-4 animate-slide-left">
         <ul className="space-y-0.5">
-          {tabs.map(({ id, label, Icon }) => (
+          {tabItems.map(({ id, label, Icon }) => (
             <li key={id}>
               <button
                 type="button"
                 onClick={() => setActiveTab(id)}
                 className={cn(
-                  "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors text-left",
+                  "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors text-left",
                   activeTab === id
                     ? "bg-[#6c47ff] text-white"
                     : "text-gray-600 hover:bg-gray-50 hover:text-gray-800"
@@ -70,7 +69,7 @@ export function SettingsLayout() {
         </ul>
       </nav>
 
-      <div key={activeTab} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 animate-scale-in">
+      <div key={activeTab} className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 animate-scale-in">
         <TabContent tab={activeTab} />
       </div>
     </div>

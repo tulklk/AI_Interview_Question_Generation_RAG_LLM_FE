@@ -25,7 +25,7 @@ export function LanguageSwitcher({ variant = "ghost" }: LanguageSwitcherProps) {
       <button
         onClick={() => setOpen((v) => !v)}
         className={cn(
-          "flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-sm font-medium transition-colors",
+          "flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-sm font-medium transition-colors",
           variant === "ghost"
             ? "text-gray-500 hover:text-gray-700 hover:bg-gray-100"
             : "text-gray-600 hover:text-gray-800 bg-white border border-gray-200 hover:border-gray-300 shadow-sm"
@@ -45,7 +45,7 @@ export function LanguageSwitcher({ variant = "ghost" }: LanguageSwitcherProps) {
       {open && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 top-full mt-1.5 z-50 w-44 bg-white rounded-xl border border-gray-200 shadow-lg py-1 animate-fade-up">
+          <div className="absolute right-0 top-full mt-1.5 z-50 w-44 bg-white rounded-lg border border-gray-200 shadow-lg py-1 animate-fade-up">
             {LANGUAGES.map((language) => (
               <button
                 key={language.code}

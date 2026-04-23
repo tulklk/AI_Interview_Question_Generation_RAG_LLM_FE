@@ -3,15 +3,16 @@ import type { StatItem } from "@/types/dashboard";
 
 interface StatCardProps {
   stat: StatItem;
+  labelOverride?: string;
 }
 
-export function StatCard({ stat }: StatCardProps) {
+export function StatCard({ stat, labelOverride }: StatCardProps) {
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex flex-col gap-4">
+    <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 flex flex-col gap-4">
       <div className="flex items-start justify-between">
         <div
           className={cn(
-            "w-11 h-11 rounded-xl flex items-center justify-center shrink-0",
+            "w-11 h-11 rounded-lg flex items-center justify-center shrink-0",
             stat.iconBg
           )}
         >
@@ -32,7 +33,7 @@ export function StatCard({ stat }: StatCardProps) {
         <p className="text-[26px] font-bold text-gray-900 leading-none">
           {stat.value}
         </p>
-        <p className="text-sm text-gray-500 mt-1">{stat.label}</p>
+        <p className="text-sm text-gray-500 mt-1">{labelOverride ?? stat.label}</p>
       </div>
     </div>
   );

@@ -13,13 +13,21 @@ export function HeroSection() {
   return (
     <section id="home" className="bg-white py-20 px-6 overflow-hidden">
       <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
-        <div className="animate-fade-up">
-          <div className="inline-flex items-center gap-2 bg-[#6c47ff]/8 text-[#6c47ff] text-xs font-semibold px-3.5 py-1.5 rounded-full mb-6">
+
+        {/* Left column — staggered per-element */}
+        <div>
+          <div
+            className="inline-flex items-center gap-2 bg-[#6c47ff]/8 text-[#6c47ff] text-xs font-semibold px-3.5 py-1.5 rounded-full mb-6 animate-fade-up"
+            style={{ animationDelay: "0ms" }}
+          >
             <Sparkles size={13} />
             {h.badge}
           </div>
 
-          <h1 className="text-5xl font-extrabold text-gray-900 leading-[1.1] tracking-tight mb-5">
+          <h1
+            className="text-5xl font-extrabold text-gray-900 leading-[1.1] tracking-tight mb-5 animate-fade-up"
+            style={{ animationDelay: "80ms" }}
+          >
             {h.headline1}
             <br />
             {h.headline2}{" "}
@@ -30,9 +38,17 @@ export function HeroSection() {
             {h.headline3}
           </h1>
 
-          <p className="text-lg text-gray-500 leading-relaxed mb-8 max-w-md">{h.subtext}</p>
+          <p
+            className="text-lg text-gray-500 leading-relaxed mb-8 max-w-md animate-fade-up"
+            style={{ animationDelay: "180ms" }}
+          >
+            {h.subtext}
+          </p>
 
-          <div className="flex flex-wrap items-center gap-3 mb-10">
+          <div
+            className="flex flex-wrap items-center gap-3 mb-10 animate-fade-up"
+            style={{ animationDelay: "280ms" }}
+          >
             {[h.point1, h.point2, h.point3].map((point) => (
               <span key={point} className="flex items-center gap-1.5 text-sm text-gray-600">
                 <CheckCircle2 size={15} className="text-emerald-500 shrink-0" />
@@ -41,17 +57,20 @@ export function HeroSection() {
             ))}
           </div>
 
-          <div className="flex items-center gap-3">
+          <div
+            className="flex items-center gap-3 animate-fade-up"
+            style={{ animationDelay: "370ms" }}
+          >
             <Link
               href="/login"
-              className="inline-flex items-center gap-2 bg-[#6c47ff] hover:bg-[#5535dd] text-white font-semibold text-sm px-6 py-3 rounded-xl transition-colors"
+              className="inline-flex items-center gap-2 bg-[#6c47ff] hover:bg-[#5535dd] text-white font-semibold text-sm px-6 py-3 rounded-lg transition-colors"
             >
               <Sparkles size={15} />
               {h.ctaPrimary}
             </Link>
             <Link
               href="/login"
-              className="inline-flex items-center gap-2 text-sm font-semibold text-gray-700 border border-gray-200 hover:border-gray-300 hover:bg-gray-50 px-6 py-3 rounded-xl transition-colors"
+              className="inline-flex items-center gap-2 text-sm font-semibold text-gray-700 border border-gray-200 hover:border-gray-300 hover:bg-gray-50 px-6 py-3 rounded-lg transition-colors"
             >
               {h.ctaSecondary}
               <ArrowRight size={15} />
@@ -59,11 +78,13 @@ export function HeroSection() {
           </div>
         </div>
 
+        {/* Right column — slide-in wrapper + inner float */}
         <div
-          className="animate-fade-up lg:animate-slide-right"
-          style={{ animationDelay: "120ms" }}
+          className="animate-slide-right"
+          style={{ animationDelay: "200ms" }}
         >
-          <div className="bg-white rounded-2xl border border-gray-200 shadow-xl overflow-hidden">
+        <div className="animate-float">
+          <div className="bg-white rounded-xl border border-gray-200 shadow-xl overflow-hidden">
             <div className="bg-[#f5f7fb] border-b border-gray-100 px-5 py-3.5 flex items-center gap-3">
               <div className="flex gap-1.5">
                 <span className="w-3 h-3 rounded-full bg-red-400" />
@@ -74,7 +95,7 @@ export function HeroSection() {
             </div>
 
             <div className="p-5 space-y-4">
-              <div className="rounded-xl border border-gray-200 bg-white p-4">
+              <div className="rounded-lg border border-gray-200 bg-white p-4">
                 <div className="flex items-center gap-2 mb-3">
                   <div className="w-5 h-5 rounded-md bg-gray-100 flex items-center justify-center">
                     <span className="text-gray-400 text-[10px]">📄</span>
@@ -86,7 +107,7 @@ export function HeroSection() {
                 </div>
               </div>
 
-              <div className="rounded-xl border border-gray-100 bg-white p-4">
+              <div className="rounded-lg border border-gray-100 bg-white p-4">
                 <div className="flex items-center gap-2 mb-2.5">
                   <Tag size={13} className="text-[#6c47ff]" />
                   <span className="text-xs font-semibold text-gray-700">{h.mockupKeywordsLabel}</span>
@@ -103,7 +124,7 @@ export function HeroSection() {
                 </div>
               </div>
 
-              <div className="rounded-xl border border-gray-100 bg-white p-4">
+              <div className="rounded-lg border border-gray-100 bg-white p-4">
                 <div className="flex items-center gap-2 mb-3">
                   <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-700">
                     Medium
@@ -127,6 +148,7 @@ export function HeroSection() {
               </div>
             </div>
           </div>
+        </div>
         </div>
       </div>
     </section>

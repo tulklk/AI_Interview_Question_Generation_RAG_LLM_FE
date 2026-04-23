@@ -1,11 +1,17 @@
+"use client";
+
 import { roleDistribution } from "@/data/admin";
+import { useLanguage } from "@/context/language-context";
 
 export function RoleDistribution() {
+  const { t } = useLanguage();
+  const rd = t.adminPages.analytics.roleDistribution;
+
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 flex flex-col animate-fade-up">
+    <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 flex flex-col animate-fade-up">
       <div className="mb-5">
-        <h3 className="text-base font-semibold text-gray-900">User Role Distribution</h3>
-        <p className="text-xs text-gray-400 mt-0.5">Breakdown by account type</p>
+        <h3 className="text-base font-semibold text-gray-900">{rd.title}</h3>
+        <p className="text-xs text-gray-400 mt-0.5">{rd.subtitle}</p>
       </div>
 
       <div className="space-y-5">
@@ -19,7 +25,7 @@ export function RoleDistribution() {
                   <span className="text-sm font-medium text-gray-700">{item.label}</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-xs text-gray-400">{item.count} users</span>
+                  <span className="text-xs text-gray-400">{item.count} {rd.users}</span>
                   <span className="text-sm font-bold text-gray-700">{pct}%</span>
                 </div>
               </div>
@@ -35,7 +41,7 @@ export function RoleDistribution() {
       </div>
 
       <div className="mt-6 pt-5 border-t border-gray-100 flex items-center justify-between">
-        <span className="text-sm text-gray-500">Total registered users</span>
+        <span className="text-sm text-gray-500">{rd.total}</span>
         <span className="text-xl font-bold text-gray-900">142</span>
       </div>
     </div>

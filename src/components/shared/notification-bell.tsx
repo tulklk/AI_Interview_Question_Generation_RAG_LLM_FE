@@ -71,7 +71,7 @@ export function NotificationBell({ count = 0 }: NotificationBellProps) {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-10 w-80 bg-white rounded-2xl border border-gray-100 shadow-xl z-50">
+        <div className="absolute right-0 top-10 w-80 bg-white rounded-xl border border-gray-100 shadow-xl z-50">
           <div className="flex items-center justify-between px-4 pt-4 pb-3 border-b border-gray-100">
             <span className="text-sm font-bold text-gray-900">Notifications</span>
             <button

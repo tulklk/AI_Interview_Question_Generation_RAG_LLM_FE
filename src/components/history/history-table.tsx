@@ -1,7 +1,10 @@
+"use client";
+
 import Link from "next/link";
 import { FileText, Calendar, ArrowUpDown, Eye, Download, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { historySessions } from "@/data/history";
+import { useLanguage } from "@/context/language-context";
 
 function ColumnHeader({ label }: { label: string }) {
   return (
@@ -15,17 +18,20 @@ function ColumnHeader({ label }: { label: string }) {
 }
 
 export function HistoryTable() {
+  const { t } = useLanguage();
+  const ht = t.historyPage.table;
+
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden animate-fade-up">
+    <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden animate-fade-up">
       <table className="w-full text-sm">
         <thead className="border-b border-gray-100">
           <tr>
-            <ColumnHeader label="Job Title" />
-            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Role</th>
-            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Level</th>
-            <ColumnHeader label="Date" />
-            <ColumnHeader label="Questions" />
-            <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Actions</th>
+            <ColumnHeader label={ht.jobTitle} />
+            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">{ht.role}</th>
+            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">{ht.level}</th>
+            <ColumnHeader label={ht.date} />
+            <ColumnHeader label={ht.questions} />
+            <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">{ht.actions}</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-50">

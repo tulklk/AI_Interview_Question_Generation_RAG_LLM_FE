@@ -10,13 +10,17 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { questionsTrendData } from "@/data/admin";
+import { useLanguage } from "@/context/language-context";
 
 export function QuestionsTrendChart() {
+  const { t } = useLanguage();
+  const qt = t.adminPages.dashboard.questionsTrend;
+
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 flex flex-col animate-fade-up">
+    <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 flex flex-col animate-fade-up">
       <div className="mb-1">
-        <h3 className="text-base font-semibold text-gray-900">Questions Generated</h3>
-        <p className="text-xs text-gray-400 mt-0.5">Daily generation volume this week</p>
+        <h3 className="text-base font-semibold text-gray-900">{qt.title}</h3>
+        <p className="text-xs text-gray-400 mt-0.5">{qt.subtitle}</p>
       </div>
 
       <div className="mt-4">
@@ -49,7 +53,7 @@ export function QuestionsTrendChart() {
             />
             <Bar
               dataKey="count"
-              name="Questions"
+              name={qt.questions}
               fill="#6c47ff"
               radius={[4, 4, 0, 0]}
             />

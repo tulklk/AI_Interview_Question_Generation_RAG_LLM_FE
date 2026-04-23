@@ -1,12 +1,13 @@
 "use client";
 
-import { createContext, useContext, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { en } from "@/lib/i18n/en";
 import { vi } from "@/lib/i18n/vi";
 import type { Translations } from "@/lib/i18n/en";
 
 export type Lang = "en" | "vi";
 
+const STORAGE_KEY = "hiregena-lang";
 const dictionaries: Record<Lang, Translations> = { en, vi };
 
 interface LanguageContextValue {
@@ -22,7 +23,19 @@ const LanguageContext = createContext<LanguageContextValue>({
 });
 
 export function LanguageProvider({ children }: { children: ReactNode }) {
-  const [lang, setLang] = useState<Lang>("en");
+  const [lang, setLangState] = useState<Lang>("en");
+  useEffect(() => {
+    const saved = localStorage.getItem(STORAGE_KEY) as Lang | null;
+    if (saved === "en" || saved === "vi") {
+      setLangState(saved);
+    }
+  }, []);
+
+  function setLang(l: Lang) {
+    setLangState(l);
+    localStorage.setItem(STORAGE_KEY, l);
+  }
+
   const t = dictionaries[lang];
 
   return (

@@ -8,6 +8,7 @@ import { DemoPreviewSection } from "@/components/guest/demo-preview-section";
 import { TestimonialsSection } from "@/components/guest/testimonials-section";
 import { FinalCtaSection } from "@/components/guest/final-cta-section";
 import { GuestFooter } from "@/components/guest/guest-footer";
+import { FloatingWidgets } from "@/components/guest/floating-widgets";
 
 export default function RootPage() {
   return (
@@ -22,6 +23,7 @@ export default function RootPage() {
       <TestimonialsSection />
       <FinalCtaSection />
       <GuestFooter />
+      <FloatingWidgets />
     </main>
   );
 }

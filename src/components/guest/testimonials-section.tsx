@@ -3,6 +3,9 @@
 import { Quote } from "lucide-react";
 import { useLanguage } from "@/context/language-context";
 import { testimonials } from "@/data/guest";
+import { ScrollReveal } from "@/components/shared/scroll-reveal";
+
+const cardAnimations = ["slide-left", "fade-up", "slide-right"] as const;
 
 export function TestimonialsSection() {
   const { t } = useLanguage();
@@ -11,7 +14,7 @@ export function TestimonialsSection() {
   return (
     <section className="bg-[#f5f7fb] py-20 px-6">
       <div className="max-w-6xl mx-auto">
-        <div className="text-center mb-14 animate-fade-up">
+        <ScrollReveal animation="fade-up" className="text-center mb-14">
           <p className="text-sm font-semibold text-[#6c47ff] uppercase tracking-widest mb-3">
             {tm.sectionLabel}
           </p>
@@ -19,16 +22,17 @@ export function TestimonialsSection() {
           <p className="text-gray-500 mt-3 max-w-lg mx-auto text-base leading-relaxed">
             {tm.subtext}
           </p>
-        </div>
+        </ScrollReveal>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {testimonials.map((person, i) => {
             const item = tm.items[i];
             return (
-              <div
+              <ScrollReveal
                 key={person.id}
-                className="bg-white rounded-2xl border border-gray-100 shadow-sm p-7 flex flex-col gap-5 animate-fade-up"
-                style={{ animationDelay: `${i * 80}ms` }}
+                animation={cardAnimations[i % 3]}
+                delay={i * 80}
+                className="bg-white rounded-xl border border-gray-100 shadow-sm p-7 flex flex-col gap-5"
               >
                 <Quote size={22} className="text-[#6c47ff]/30 shrink-0" />
                 <p className="text-sm text-gray-700 leading-relaxed flex-1 italic">
@@ -47,7 +51,7 @@ export function TestimonialsSection() {
                     </p>
                   </div>
                 </div>
-              </div>
+              </ScrollReveal>
             );
           })}
         </div>

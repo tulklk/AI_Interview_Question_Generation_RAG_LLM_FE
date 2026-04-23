@@ -5,31 +5,34 @@ import { AdminAppShell } from "@/components/admin/layout/admin-app-shell";
 import { ContentFilters } from "@/components/admin/content/content-filters";
 import { ContentTable } from "@/components/admin/content/content-table";
 import { contentSessions } from "@/data/admin";
+import { useLanguage } from "@/context/language-context";
 
 export default function GeneratedContentPage() {
+  const { t } = useLanguage();
+  const c = t.adminPages.content;
+  const f = c.filters;
+
   const [search, setSearch] = useState("");
-  const [role, setRole] = useState("All Roles");
-  const [dateRange, setDateRange] = useState("All Time");
+  const [role, setRole] = useState(f.allRoles);
+  const [dateRange, setDateRange] = useState(f.allTime);
 
   const filtered = contentSessions.filter((s) => {
     const matchSearch =
       search === "" ||
       s.jobTitle.toLowerCase().includes(search.toLowerCase()) ||
       s.recruiter.toLowerCase().includes(search.toLowerCase());
-    const matchRole = role === "All Roles" || s.role === role;
+    const matchRole = role === f.allRoles || s.role === role;
     return matchSearch && matchRole;
   });
 
   return (
     <AdminAppShell
-      pageTitle="Generated Content"
-      breadcrumb={[{ label: "Admin", href: "/admin/dashboard" }, { label: "Content" }]}
+      pageTitle={c.heading}
+      breadcrumb={[{ label: "Admin", href: "/admin/dashboard" }, { label: c.heading }]}
     >
       <div className="mb-6 animate-fade-up">
-        <h2 className="text-2xl font-bold text-gray-900">Generated Content</h2>
-        <p className="text-sm text-gray-500 mt-1">
-          Browse all interview question sessions generated across the platform.
-        </p>
+        <h2 className="text-2xl font-bold text-gray-900">{c.heading}</h2>
+        <p className="text-sm text-gray-500 mt-1">{c.subtext}</p>
       </div>
 
       <div className="animate-fade-up" style={{ animationDelay: "80ms" }}>

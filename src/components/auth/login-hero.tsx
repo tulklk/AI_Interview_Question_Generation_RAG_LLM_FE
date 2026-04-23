@@ -1,4 +1,4 @@
-import { Zap, Bot, Timer, BarChart3 } from "lucide-react";
+import { Bot, Timer, BarChart3 } from "lucide-react";
 
 const features = [
   {
@@ -35,22 +35,8 @@ const testimonials = [
 
 export function LoginHero() {
   return (
-    <div className="flex flex-col justify-between h-full px-10 py-10 overflow-y-auto">
+    <div className="flex flex-col h-full px-10 py-10 overflow-y-auto">
       <div>
-        <div className="flex items-center gap-3 mb-10 animate-fade-up">
-          <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
-            <Zap size={18} className="text-white" fill="white" />
-          </div>
-          <div>
-            <p className="text-white font-bold text-[15px] leading-tight">
-              InterviewAI
-            </p>
-            <p className="text-white/60 text-[11px] leading-tight">
-              Powered by GPT-4 + RAG
-            </p>
-          </div>
-        </div>
-
         <h1
           className="text-4xl font-extrabold text-white leading-tight mb-3 animate-fade-up"
           style={{ animationDelay: "80ms" }}
@@ -75,7 +61,7 @@ export function LoginHero() {
           {features.map((f, i) => (
             <div
               key={f.title}
-              className="flex items-start gap-3.5 bg-white/10 hover:bg-white/15 transition-colors rounded-xl px-4 py-3.5 animate-fade-up"
+              className="flex items-start gap-3.5 bg-white/10 hover:bg-white/15 transition-colors rounded-lg px-4 py-3.5 animate-fade-up"
               style={{ animationDelay: `${240 + i * 80}ms` }}
             >
               <div className="w-8 h-8 rounded-lg bg-white/15 flex items-center justify-center shrink-0 mt-0.5">
@@ -92,11 +78,11 @@ export function LoginHero() {
         </div>
       </div>
 
-      <div className="mt-8 space-y-3">
+      <div className="mt-6 space-y-3">
         {testimonials.map((t, i) => (
           <div
             key={t.name}
-            className="bg-white/10 rounded-xl px-4 py-3.5 animate-fade-up"
+            className="bg-white/10 rounded-lg px-4 py-3.5 animate-fade-up"
             style={{ animationDelay: `${480 + i * 80}ms` }}
           >
             <p className="text-white/85 text-sm leading-relaxed">

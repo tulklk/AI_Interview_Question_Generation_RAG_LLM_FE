@@ -2,9 +2,10 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Zap, Menu, X } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import { LanguageSwitcher } from "@/components/shared/language-switcher";
 import { useLanguage } from "@/context/language-context";
+import { BrandLogo } from "@/components/shared/brand-logo";
 
 export function GuestNavbar() {
   const { t } = useLanguage();
@@ -28,17 +29,17 @@ export function GuestNavbar() {
 
   return (
     <header
-      className={`sticky top-0 z-50 bg-white transition-shadow duration-200 ${
+      className={`sticky top-0 z-50 bg-white transition-shadow duration-200 animate-slide-down ${
         scrolled ? "shadow-sm border-b border-gray-100" : "border-b border-transparent"
       }`}
     >
-      <div className="max-w-6xl mx-auto px-6 h-16 flex items-center gap-8">
-        <Link href="/" className="flex items-center gap-2.5 shrink-0">
-          <div className="w-8 h-8 rounded-xl bg-[#6c47ff] flex items-center justify-center">
-            <Zap size={16} className="text-white" />
-          </div>
-          <span className="text-gray-900 font-bold text-[15px]">InterviewAI</span>
-        </Link>
+      <div className="max-w-6xl mx-auto px-6 h-[72px] flex items-center gap-8">
+        <BrandLogo
+          className="shrink-0"
+          logoClassName="w-11 h-11"
+          titleClassName="text-[16px]"
+          subtitleClassName="hidden"
+        />
 
         <nav className="hidden md:flex items-center gap-1 flex-1">
           {navLinks.map((link) => (
@@ -57,13 +58,13 @@ export function GuestNavbar() {
           <div className="w-px h-5 bg-gray-200" />
           <Link
             href="/login"
-            className="px-4 py-2 text-sm font-semibold text-gray-700 hover:text-[#6c47ff] hover:bg-[#6c47ff]/5 rounded-xl transition-colors"
+            className="px-4 py-2 text-sm font-semibold text-gray-700 hover:text-[#6c47ff] hover:bg-[#6c47ff]/5 rounded-lg transition-colors"
           >
             {t.common.login}
           </Link>
           <Link
             href="/login"
-            className="px-4 py-2 text-sm font-semibold text-white bg-[#6c47ff] hover:bg-[#5535dd] rounded-xl transition-colors"
+            className="px-4 py-2 text-sm font-semibold text-white bg-[#6c47ff] hover:bg-[#5535dd] rounded-lg transition-colors"
           >
             {t.common.getStarted}
           </Link>
@@ -95,13 +96,13 @@ export function GuestNavbar() {
             </div>
             <Link
               href="/login"
-              className="block px-3 py-2.5 text-sm font-semibold text-center text-gray-700 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors"
+              className="block px-3 py-2.5 text-sm font-semibold text-center text-gray-700 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
             >
               {t.common.login}
             </Link>
             <Link
               href="/login"
-              className="block px-3 py-2.5 text-sm font-semibold text-center text-white bg-[#6c47ff] hover:bg-[#5535dd] rounded-xl transition-colors"
+              className="block px-3 py-2.5 text-sm font-semibold text-center text-white bg-[#6c47ff] hover:bg-[#5535dd] rounded-lg transition-colors"
             >
               {t.common.getStarted}
             </Link>

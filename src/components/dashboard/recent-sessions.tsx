@@ -1,25 +1,27 @@
+"use client";
+
 import Link from "next/link";
 import { FileText, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { recentSessions } from "@/data/dashboard";
+import { useLanguage } from "@/context/language-context";
 
 export function RecentSessions() {
+  const { t } = useLanguage();
+  const rs = t.dashboardPage.recentSessions;
+
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 animate-fade-up">
+    <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 animate-fade-up">
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h3 className="text-base font-semibold text-gray-900">
-            Recent Sessions
-          </h3>
-          <p className="text-xs text-gray-400 mt-0.5">
-            Your latest question generation sessions
-          </p>
+          <h3 className="text-base font-semibold text-gray-900">{rs.title}</h3>
+          <p className="text-xs text-gray-400 mt-0.5">{rs.subtitle}</p>
         </div>
         <Link
           href="/history"
           className="text-xs font-semibold text-[#6c47ff] hover:underline flex items-center gap-0.5"
         >
-          View all <ChevronRight size={12} />
+          {rs.viewAll} <ChevronRight size={12} />
         </Link>
       </div>
 
@@ -49,7 +51,7 @@ export function RecentSessions() {
                   {session.role}
                 </span>
                 <span className="text-xs font-semibold text-[#6c47ff] flex items-center gap-0.5">
-                  {session.questionsCount} Qs
+                  {session.questionsCount} {rs.qs}
                   <ChevronRight size={12} />
                 </span>
               </div>
