@@ -5,7 +5,7 @@ import { recentSessions } from "@/data/dashboard";
 
 export function RecentSessions() {
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 animate-fade-up">
       <div className="flex items-center justify-between mb-4">
         <div>
           <h3 className="text-base font-semibold text-gray-900">
@@ -24,8 +24,8 @@ export function RecentSessions() {
       </div>
 
       <ul className="space-y-3">
-        {recentSessions.map((session) => (
-          <li key={session.id}>
+        {recentSessions.map((session, i) => (
+          <li key={session.id} className="animate-fade-up" style={{ animationDelay: `${i * 60}ms` }}>
             <div className="flex items-center gap-3 group">
               <div className="w-8 h-8 rounded-lg bg-gray-50 border border-gray-100 flex items-center justify-center shrink-0">
                 <FileText size={14} className="text-gray-400" />

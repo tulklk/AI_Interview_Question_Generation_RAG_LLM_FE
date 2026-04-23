@@ -15,7 +15,7 @@ export function CategoryBreakdownCard() {
   const maxCount = Math.max(...categoryStats.map((c) => c.count));
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 flex flex-col">
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 flex flex-col animate-fade-up">
       <div className="mb-1">
         <h3 className="text-base font-semibold text-gray-900">By Category</h3>
         <p className="text-xs text-gray-400 mt-0.5">Question type breakdown</p>

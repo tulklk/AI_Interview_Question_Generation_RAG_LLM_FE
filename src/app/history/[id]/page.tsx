@@ -17,7 +17,7 @@ export default function ResultsPage() {
       ]}
       pageTitle="Results"
     >
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-4xl mx-auto animate-fade-up">
         <ResultsHeader
           jobTitle={session.jobTitle}
           totalQuestions={session.questions.length}

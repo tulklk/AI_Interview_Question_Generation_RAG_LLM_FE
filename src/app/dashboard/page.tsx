@@ -12,16 +12,26 @@ export default function DashboardPage() {
       pageTitle="Dashboard"
       breadcrumb={[{ label: "Home", href: "/" }, { label: "Dashboard" }]}
     >
-      <WelcomeSection />
+      <div className="animate-fade-up">
+        <WelcomeSection />
+      </div>
 
-      <StatsGrid />
+      <div className="animate-fade-up" style={{ animationDelay: "80ms" }}>
+        <StatsGrid />
+      </div>
 
-      <div className="grid grid-cols-[1fr_420px] gap-4 mt-5">
+      <div
+        className="grid grid-cols-[1fr_420px] gap-4 mt-5 animate-fade-up"
+        style={{ animationDelay: "160ms" }}
+      >
         <WeeklyActivityCard />
         <CategoryBreakdownCard />
       </div>
 
-      <div className="grid grid-cols-[1fr_420px] gap-4 mt-4">
+      <div
+        className="grid grid-cols-[1fr_420px] gap-4 mt-4 animate-fade-up"
+        style={{ animationDelay: "240ms" }}
+      >
         <QuickGenerateCard />
         <RecentSessions />
       </div>

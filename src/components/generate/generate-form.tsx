@@ -21,20 +21,26 @@ export function GenerateForm() {
   return (
     <div className="max-w-3xl space-y-4">
       <div className="space-y-3">
-        <JdInputCard value={jdText} onChange={setJdText} />
-        <FileUploadArea />
+        <div className="animate-fade-up">
+          <JdInputCard value={jdText} onChange={setJdText} />
+        </div>
+        <div className="animate-fade-up" style={{ animationDelay: "80ms" }}>
+          <FileUploadArea />
+        </div>
       </div>
 
-      <ConfigurationSection
-        role={role}
-        level={level}
-        questionCount={questionCount}
-        jdText={jdText}
-        onRoleChange={setRole}
-        onLevelChange={setLevel}
-        onCountChange={setQuestionCount}
-        onSubmit={() => setView("generating")}
-      />
+      <div className="animate-fade-up" style={{ animationDelay: "160ms" }}>
+        <ConfigurationSection
+          role={role}
+          level={level}
+          questionCount={questionCount}
+          jdText={jdText}
+          onRoleChange={setRole}
+          onLevelChange={setLevel}
+          onCountChange={setQuestionCount}
+          onSubmit={() => setView("generating")}
+        />
+      </div>
     </div>
   );
 }

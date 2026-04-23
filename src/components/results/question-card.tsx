@@ -62,7 +62,7 @@ export function QuestionCard({ question, index, defaultOpen = false }: QuestionC
           </button>
 
           {isAnswerOpen && (
-            <div className="mt-3 rounded-xl bg-[#f5f3ff] border border-[#6c47ff]/15 p-4">
+            <div className="mt-3 rounded-xl bg-[#f5f3ff] border border-[#6c47ff]/15 p-4 animate-fade-up">
               <div className="flex items-center gap-1.5 mb-2">
                 <Sparkles size={13} className="text-[#6c47ff]" />
                 <span className="text-xs font-semibold text-[#6c47ff]">

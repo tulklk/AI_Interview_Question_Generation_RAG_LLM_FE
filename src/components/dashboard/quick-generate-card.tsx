@@ -3,7 +3,7 @@ import { Sparkles } from "lucide-react";
 
 export function QuickGenerateCard() {
   return (
-    <div className="rounded-2xl bg-gradient-to-br from-[#6c47ff] to-[#8b65ff] p-6 flex flex-col gap-4 relative overflow-hidden">
+    <div className="rounded-2xl bg-gradient-to-br from-[#6c47ff] to-[#8b65ff] p-6 flex flex-col gap-4 relative overflow-hidden animate-fade-up">
       <div className="absolute top-0 right-0 w-28 h-28 rounded-full bg-white/5 translate-x-8 -translate-y-8" />
       <div className="absolute bottom-0 left-0 w-20 h-20 rounded-full bg-white/5 -translate-x-6 translate-y-6" />
 

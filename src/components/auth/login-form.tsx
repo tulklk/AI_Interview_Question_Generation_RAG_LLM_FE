@@ -26,7 +26,7 @@ export function LoginForm() {
     "w-full pl-10 pr-4 py-2.5 text-sm border border-gray-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-[#6c47ff]/20 focus:border-[#6c47ff] transition-colors placeholder:text-gray-400";
 
   return (
-    <div className="w-full max-w-sm mx-auto">
+    <div className="w-full max-w-sm mx-auto animate-fade-up">
       <h2 className="text-2xl font-bold text-gray-900 mb-1">Welcome back</h2>
       <p className="text-sm text-gray-500 mb-7">Sign in to your account to continue</p>
 

@@ -12,7 +12,7 @@ export function HistoryFilters() {
   const [level, setLevel] = useState("All Levels");
 
   return (
-    <div className="flex items-center gap-3 mb-4">
+    <div className="flex items-center gap-3 mb-4 animate-fade-up">
       <div className="relative flex-1 max-w-xs">
         <Search
           size={14}

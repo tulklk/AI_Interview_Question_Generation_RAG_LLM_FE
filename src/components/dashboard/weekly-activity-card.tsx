@@ -13,7 +13,7 @@ import { weeklyActivity } from "@/data/dashboard";
 
 export function WeeklyActivityCard() {
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 flex flex-col">
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 flex flex-col animate-fade-up">
       <div className="flex items-center justify-between mb-1">
         <div>
           <h3 className="text-base font-semibold text-gray-900">

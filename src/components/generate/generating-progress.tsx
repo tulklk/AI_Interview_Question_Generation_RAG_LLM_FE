@@ -24,7 +24,7 @@ export function GeneratingProgress() {
   const progress = Math.round((completedSteps / generatingSteps.length) * 100);
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-8 py-12 flex flex-col items-center max-w-xl mx-auto w-full">
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-8 py-12 flex flex-col items-center max-w-xl mx-auto w-full animate-scale-in">
       <div className="w-16 h-16 rounded-2xl bg-indigo-50 flex items-center justify-center mb-5">
         <Sparkles size={28} className="text-[#6c47ff]" />
       </div>

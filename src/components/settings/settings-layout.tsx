@@ -48,7 +48,7 @@ export function SettingsLayout() {
 
   return (
     <div className="grid grid-cols-[220px_1fr] gap-6 items-start">
-      <nav className="bg-white rounded-2xl border border-gray-100 shadow-sm p-2 sticky top-4">
+      <nav className="bg-white rounded-2xl border border-gray-100 shadow-sm p-2 sticky top-4 animate-slide-left">
         <ul className="space-y-0.5">
           {tabs.map(({ id, label, Icon }) => (
             <li key={id}>
@@ -70,7 +70,7 @@ export function SettingsLayout() {
         </ul>
       </nav>
 
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+      <div key={activeTab} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 animate-scale-in">
         <TabContent tab={activeTab} />
       </div>
     </div>

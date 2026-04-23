@@ -37,7 +37,7 @@ export function LoginHero() {
   return (
     <div className="flex flex-col justify-between h-full px-10 py-10 overflow-y-auto">
       <div>
-        <div className="flex items-center gap-3 mb-10">
+        <div className="flex items-center gap-3 mb-10 animate-fade-up">
           <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
             <Zap size={18} className="text-white" fill="white" />
           </div>
@@ -51,7 +51,10 @@ export function LoginHero() {
           </div>
         </div>
 
-        <h1 className="text-4xl font-extrabold text-white leading-tight mb-3">
+        <h1
+          className="text-4xl font-extrabold text-white leading-tight mb-3 animate-fade-up"
+          style={{ animationDelay: "80ms" }}
+        >
           Transform Job Descriptions
           <br />
           Into{" "}
@@ -60,16 +63,20 @@ export function LoginHero() {
           </span>
         </h1>
 
-        <p className="text-white/70 text-sm leading-relaxed mb-8 max-w-sm">
+        <p
+          className="text-white/70 text-sm leading-relaxed mb-8 max-w-sm animate-fade-up"
+          style={{ animationDelay: "160ms" }}
+        >
           Use AI to generate tailored, role-specific interview questions in seconds
           — from any job description.
         </p>
 
         <div className="space-y-3">
-          {features.map((f) => (
+          {features.map((f, i) => (
             <div
               key={f.title}
-              className="flex items-start gap-3.5 bg-white/10 hover:bg-white/15 transition-colors rounded-xl px-4 py-3.5"
+              className="flex items-start gap-3.5 bg-white/10 hover:bg-white/15 transition-colors rounded-xl px-4 py-3.5 animate-fade-up"
+              style={{ animationDelay: `${240 + i * 80}ms` }}
             >
               <div className="w-8 h-8 rounded-lg bg-white/15 flex items-center justify-center shrink-0 mt-0.5">
                 <f.icon size={15} className="text-white" />
@@ -86,8 +93,12 @@ export function LoginHero() {
       </div>
 
       <div className="mt-8 space-y-3">
-        {testimonials.map((t) => (
-          <div key={t.name} className="bg-white/10 rounded-xl px-4 py-3.5">
+        {testimonials.map((t, i) => (
+          <div
+            key={t.name}
+            className="bg-white/10 rounded-xl px-4 py-3.5 animate-fade-up"
+            style={{ animationDelay: `${480 + i * 80}ms` }}
+          >
             <p className="text-white/85 text-sm leading-relaxed">
               &ldquo;{t.quote}&rdquo;
             </p>

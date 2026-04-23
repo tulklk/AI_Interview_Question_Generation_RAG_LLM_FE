@@ -3,7 +3,7 @@ import { Sparkles } from "lucide-react";
 
 export function WelcomeSection() {
   return (
-    <div className="flex items-start justify-between mb-6">
+    <div className="flex items-start justify-between mb-6 animate-fade-up">
       <div>
         <h2 className="text-2xl font-bold text-gray-900">
           Good morning, HR Manager 👋

@@ -16,7 +16,7 @@ function ColumnHeader({ label }: { label: string }) {
 
 export function HistoryTable() {
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden animate-fade-up">
       <table className="w-full text-sm">
         <thead className="border-b border-gray-100">
           <tr>

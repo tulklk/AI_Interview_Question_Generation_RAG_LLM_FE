@@ -13,7 +13,7 @@ export function ResultsHeader({
   totalCategories,
 }: ResultsHeaderProps) {
   return (
-    <div className="flex items-start justify-between mb-6">
+    <div className="flex items-start justify-between mb-6 animate-fade-up">
       <div>
         <Link
           href="/history"

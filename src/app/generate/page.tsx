@@ -7,7 +7,7 @@ export default function GeneratePage() {
       pageTitle="Generate Questions"
       breadcrumb={[{ label: "Home", href: "/" }, { label: "Generate" }]}
     >
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-4xl mx-auto animate-fade-up">
         <div className="mb-6">
           <h2 className="text-2xl font-bold text-gray-900">
             Generate Interview Questions
