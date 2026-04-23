@@ -9,12 +9,25 @@ interface BreadcrumbItem {
   href?: string;
 }
 
+interface TopHeaderUser {
+  initials: string;
+  name: string;
+  plan?: string;
+}
+
 interface TopHeaderProps {
   breadcrumb?: BreadcrumbItem[];
   pageTitle: string;
+  user?: TopHeaderUser;
 }
 
-export function TopHeader({ breadcrumb, pageTitle }: TopHeaderProps) {
+const DEFAULT_USER: TopHeaderUser = {
+  initials: "HR",
+  name: "HR Manager",
+  plan: "Pro Plan",
+};
+
+export function TopHeader({ breadcrumb, pageTitle, user = DEFAULT_USER }: TopHeaderProps) {
   return (
     <header className="h-14 shrink-0 bg-[#f5f7fb] flex items-center px-8 gap-4 border-b border-gray-100">
       <div className="flex-1 min-w-0">
@@ -45,7 +58,7 @@ export function TopHeader({ breadcrumb, pageTitle }: TopHeaderProps) {
       <div className="flex items-center gap-3">
         <SearchInput />
         <NotificationBell count={2} />
-        <UserAvatar initials="HR" name="HR Manager" plan="Pro Plan" />
+        <UserAvatar initials={user.initials} name={user.name} plan={user.plan} />
       </div>
     </header>
   );
