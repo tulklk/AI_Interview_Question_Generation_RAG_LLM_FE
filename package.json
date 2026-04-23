@@ -5,7 +5,9 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "pages:build": "next build",
+    "preview": "npx wrangler pages dev ./out"
   },
   "dependencies": {
     "class-variance-authority": "^0.7.1",

@@ -1,8 +1,13 @@
+import { historySessions } from "@/data/history";
 import { AppShell } from "@/components/layout/app-shell";
 import { ResultsHeader } from "@/components/results/results-header";
 import { KeywordsCard } from "@/components/results/keywords-card";
 import { QuestionsTabs } from "@/components/results/questions-tabs";
 import { mockResultSession } from "@/data/results";
+
+export function generateStaticParams() {
+  return historySessions.map((s) => ({ id: s.id }));
+}
 
 export default function ResultsPage() {
   const session = mockResultSession;
