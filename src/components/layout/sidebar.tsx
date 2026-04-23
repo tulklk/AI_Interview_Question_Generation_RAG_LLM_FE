@@ -6,10 +6,13 @@ import { Sparkles, LogOut, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { navItems } from "@/data/dashboard";
 import { clearAuth } from "@/lib/auth";
+import { useLanguage } from "@/context/language-context";
 
 export function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
+  const { t } = useLanguage();
+  const s = t.sidebar;
 
   function handleLogout() {
     clearAuth();
@@ -18,31 +21,26 @@ export function Sidebar() {
 
   return (
     <aside className="flex flex-col w-[250px] shrink-0 h-screen bg-white border-r border-gray-100 overflow-y-auto">
-      {/* Logo */}
       <div className="px-5 pt-6 pb-2">
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-xl bg-[#6c47ff] flex items-center justify-center shrink-0">
             <Zap size={18} className="text-white" />
           </div>
           <div>
-            <p className="text-gray-900 font-bold text-[15px] leading-tight">
-              InterviewAI
-            </p>
-            <p className="text-gray-400 text-[11px] leading-tight">
-              Question Generator
-            </p>
+            <p className="text-gray-900 font-bold text-[15px] leading-tight">InterviewAI</p>
+            <p className="text-gray-400 text-[11px] leading-tight">{s.subtitle}</p>
           </div>
         </div>
       </div>
 
-      {/* Nav */}
       <nav className="flex-1 px-4 mt-6">
         <p className="text-gray-400 text-[10px] font-semibold uppercase tracking-widest px-2 mb-2">
-          Main Menu
+          {s.sectionLabel}
         </p>
         <ul className="space-y-0.5">
           {navItems.map((item) => {
             const isActive = pathname === item.href;
+            const label = s.nav[item.href as keyof typeof s.nav] ?? item.label;
             return (
               <li key={item.href}>
                 <Link
@@ -56,12 +54,9 @@ export function Sidebar() {
                 >
                   <item.icon
                     size={18}
-                    className={cn(
-                      "shrink-0",
-                      isActive ? "text-white" : "text-gray-400"
-                    )}
+                    className={cn("shrink-0", isActive ? "text-white" : "text-gray-400")}
                   />
-                  <span className="text-sm font-medium flex-1">{item.label}</span>
+                  <span className="text-sm font-medium flex-1">{label}</span>
                   {item.badge !== undefined && (
                     <span
                       className={cn(
@@ -83,47 +78,39 @@ export function Sidebar() {
         </ul>
       </nav>
 
-      {/* Quick Generate card */}
       <div className="px-4 mb-4">
         <div className="bg-[#f0edff] rounded-2xl p-4">
           <div className="w-8 h-8 rounded-lg bg-[#6c47ff]/15 flex items-center justify-center mb-3">
             <Sparkles size={15} className="text-[#6c47ff]" />
           </div>
           <p className="text-gray-800 font-semibold text-sm leading-snug">
-            Quick Generate
+            {s.quickGenerate.title}
           </p>
-          <p className="text-gray-500 text-xs mt-1 leading-relaxed">
-            Paste a JD and get questions in 30 seconds
-          </p>
+          <p className="text-gray-500 text-xs mt-1 leading-relaxed">{s.quickGenerate.desc}</p>
           <Link
             href="/generate"
             className="mt-3 inline-block text-xs font-semibold text-white bg-[#6c47ff] hover:bg-[#5535dd] px-4 py-2 rounded-xl transition-colors w-full text-center"
           >
-            Start Now →
+            {s.quickGenerate.btn}
           </Link>
         </div>
       </div>
 
-      {/* User profile */}
       <div className="px-4 py-4 border-t border-gray-100">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-full bg-[#6c47ff] flex items-center justify-center shrink-0">
             <span className="text-white text-xs font-bold">HR</span>
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-gray-800 text-sm font-semibold leading-tight truncate">
-              HR Manager
-            </p>
-            <p className="text-gray-400 text-[11px] leading-tight truncate">
-              hr@company.com
-            </p>
+            <p className="text-gray-800 text-sm font-semibold leading-tight truncate">HR Manager</p>
+            <p className="text-gray-400 text-[11px] leading-tight truncate">hr@company.com</p>
           </div>
           <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full shrink-0">
             Pro
           </span>
           <button
             onClick={handleLogout}
-            title="Log out"
+            title={s.logoutTitle}
             className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors shrink-0"
           >
             <LogOut size={14} />

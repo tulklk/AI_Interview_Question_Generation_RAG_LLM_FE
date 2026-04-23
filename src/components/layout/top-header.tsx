@@ -1,8 +1,12 @@
+"use client";
+
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import { SearchInput } from "@/components/shared/search-input";
 import { NotificationBell } from "@/components/shared/notification-bell";
 import { UserAvatar } from "@/components/shared/user-avatar";
+import { LanguageSwitcher } from "@/components/shared/language-switcher";
+import { useLanguage } from "@/context/language-context";
 
 interface BreadcrumbItem {
   label: string;
@@ -28,6 +32,8 @@ const DEFAULT_USER: TopHeaderUser = {
 };
 
 export function TopHeader({ breadcrumb, pageTitle, user = DEFAULT_USER }: TopHeaderProps) {
+  const { t } = useLanguage();
+
   return (
     <header className="h-14 shrink-0 bg-[#f5f7fb] flex items-center px-8 gap-4 border-b border-gray-100">
       <div className="flex-1 min-w-0">
@@ -37,10 +43,7 @@ export function TopHeader({ breadcrumb, pageTitle, user = DEFAULT_USER }: TopHea
               <span key={i} className="flex items-center gap-1">
                 {i > 0 && <ChevronRight size={12} />}
                 {crumb.href ? (
-                  <Link
-                    href={crumb.href}
-                    className="hover:text-gray-600 transition-colors"
-                  >
+                  <Link href={crumb.href} className="hover:text-gray-600 transition-colors">
                     {crumb.label}
                   </Link>
                 ) : (
@@ -50,13 +53,13 @@ export function TopHeader({ breadcrumb, pageTitle, user = DEFAULT_USER }: TopHea
             ))}
           </nav>
         )}
-        <h1 className="text-sm font-semibold text-gray-800 leading-tight">
-          {pageTitle}
-        </h1>
+        <h1 className="text-sm font-semibold text-gray-800 leading-tight">{pageTitle}</h1>
       </div>
 
       <div className="flex items-center gap-3">
-        <SearchInput />
+        <SearchInput placeholder={t.topHeader.searchPlaceholder} />
+        <LanguageSwitcher />
+        <div className="w-px h-5 bg-gray-200" />
         <NotificationBell count={2} />
         <UserAvatar initials={user.initials} name={user.name} plan={user.plan} />
       </div>
