@@ -66,6 +66,10 @@ $RECYCLE.BIN/
 # Cursor AI editor
 .cursor/
 
+# AI agent instruction files (local only)
+AGENTS.md
+CLAUDE.md
+
 # Turborepo / build cache
 .turbo/
 .cache/
