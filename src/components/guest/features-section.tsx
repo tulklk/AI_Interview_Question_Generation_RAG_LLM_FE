@@ -9,7 +9,7 @@ export function FeaturesSection() {
   const f = t.features;
 
   return (
-    <section id="features" className="bg-white py-20 px-6">
+    <section id="features" className="relative bg-white/60 backdrop-blur-sm py-20 px-6">
       <div className="max-w-6xl mx-auto">
         <ScrollReveal animation="fade-up" className="text-center mb-14">
           <p className="text-sm font-semibold text-[#6c47ff] uppercase tracking-widest mb-3">

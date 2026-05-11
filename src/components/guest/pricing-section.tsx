@@ -12,7 +12,7 @@ export function PricingSection() {
   const p = t.pricing;
 
   return (
-    <section id="pricing" className="bg-white py-20 px-6">
+    <section id="pricing" className="relative bg-white/60 backdrop-blur-sm py-20 px-6">
       <div className="max-w-6xl mx-auto">
         <ScrollReveal animation="fade-up" className="text-center mb-14">
           <p className="text-sm font-semibold text-[#6c47ff] uppercase tracking-widest mb-3">
