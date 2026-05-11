@@ -35,6 +35,37 @@
   to   { opacity: 1; transform: translateY(0); }
 }
 
+/* ── Animated color-shifting background ── */
+@keyframes bgShift {
+  0%   { background-position: 0% 50%; }
+  25%  { background-position: 50% 0%; }
+  50%  { background-position: 100% 50%; }
+  75%  { background-position: 50% 100%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes holoPulse {
+  0%, 100% { opacity: 0.5; }
+  50%      { opacity: 0.85; }
+}
+
+@keyframes orbFloat1 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33%  { transform: translate(40px, -30px) scale(1.08); }
+  66%  { transform: translate(-25px, 35px) scale(0.95); }
+}
+
+@keyframes orbFloat2 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33%  { transform: translate(-45px, 25px) scale(1.1); }
+  66%  { transform: translate(30px, -50px) scale(0.92); }
+}
+
+@keyframes orbFloat3 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50%  { transform: translate(35px, 30px) scale(1.12); }
+}
+
 @theme {
   --color-primary: #6c47ff;
   --color-primary-hover: #5535dd;
@@ -69,4 +100,56 @@ body {
   background-color: #f5f7fb;
   color: #111827;
   font-family: var(--font-be-vietnam-pro), "Be Vietnam Pro", system-ui, -apple-system, sans-serif;
+}
+
+/* ── Continuously color-shifting animated background ── */
+.animated-bg {
+  background: linear-gradient(
+    135deg,
+    #e8e0ff,
+    #dbeafe,
+    #fce7f3,
+    #cffafe,
+    #ede9fe,
+    #ddd6fe,
+    #bfdbfe,
+    #fbcfe8,
+    #e8e0ff
+  );
+  background-size: 400% 400%;
+  animation: bgShift 12s ease infinite;
+}
+
+/* ── Floating glow orbs ── */
+.holo-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(90px);
+  pointer-events: none;
+  will-change: transform, opacity;
+}
+
+.holo-orb--purple {
+  background: radial-gradient(circle, rgba(108, 71, 255, 0.5) 0%, rgba(108, 71, 255, 0) 70%);
+  animation: orbFloat1 16s ease-in-out infinite, holoPulse 5s ease-in-out infinite;
+}
+
+.holo-orb--blue {
+  background: radial-gradient(circle, rgba(59, 130, 246, 0.45) 0%, rgba(59, 130, 246, 0) 70%);
+  animation: orbFloat2 20s ease-in-out infinite, holoPulse 7s ease-in-out infinite;
+}
+
+.holo-orb--pink {
+  background: radial-gradient(circle, rgba(236, 72, 153, 0.4) 0%, rgba(236, 72, 153, 0) 70%);
+  animation: orbFloat3 18s ease-in-out infinite, holoPulse 6s ease-in-out infinite;
+}
+
+.holo-orb--cyan {
+  background: radial-gradient(circle, rgba(34, 211, 238, 0.35) 0%, rgba(34, 211, 238, 0) 70%);
+  animation: orbFloat1 22s ease-in-out infinite reverse, holoPulse 8s ease-in-out infinite;
+}
+
+.holo-orb--indigo {
+  background: radial-gradient(circle, rgba(99, 102, 241, 0.42) 0%, rgba(99, 102, 241, 0) 70%);
+  animation: orbFloat2 17s ease-in-out infinite reverse, holoPulse 6s ease-in-out infinite;
 }
