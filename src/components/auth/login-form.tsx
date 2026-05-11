@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Mail, Lock, Eye, EyeOff, ArrowRight } from "lucide-react";
 import { setAuth } from "@/lib/auth";
@@ -171,9 +172,9 @@ export function LoginForm() {
 
       <p className="text-center text-sm text-gray-500 mt-6">
         {lp.noAccount}{" "}
-        <button className="text-[#6c47ff] font-semibold hover:underline">
+        <Link href="/register" className="text-[#6c47ff] font-semibold hover:underline">
           {lp.signUpFree}
-        </button>
+        </Link>
       </p>
 
       <p className="text-center text-[11px] text-gray-400 mt-3 leading-relaxed">
