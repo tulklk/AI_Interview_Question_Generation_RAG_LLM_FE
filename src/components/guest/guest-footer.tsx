@@ -24,7 +24,7 @@ export function GuestFooter() {
   ];
 
   return (
-    <footer id="contact" className="bg-white border-t border-gray-100">
+    <footer id="contact" className="relative bg-white/70 backdrop-blur-sm border-t border-gray-100">
       <ScrollReveal animation="fade-up" className="max-w-6xl mx-auto px-6 py-14">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
           <div>
