@@ -9,7 +9,7 @@ export function BenefitsSection() {
   const b = t.benefits;
 
   return (
-    <section className="bg-[#f5f7fb] py-20 px-6">
+    <section className="relative bg-[#f5f7fb]/70 backdrop-blur-sm py-20 px-6">
       <div className="max-w-6xl mx-auto">
         <ScrollReveal animation="fade-up" className="text-center mb-12">
           <p className="text-sm font-semibold text-[#6c47ff] uppercase tracking-widest mb-3">

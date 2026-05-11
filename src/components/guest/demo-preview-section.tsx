@@ -83,7 +83,7 @@ export function DemoPreviewSection() {
   const filtered = demoQuestions.filter((q) => q.category === activeTab);
 
   return (
-    <section className="bg-white py-20 px-6">
+    <section className="relative bg-white/60 backdrop-blur-sm py-20 px-6">
       <div className="max-w-4xl mx-auto">
         <ScrollReveal animation="fade-up" className="text-center mb-12">
           <p className="text-sm font-semibold text-[#6c47ff] uppercase tracking-widest mb-3">
