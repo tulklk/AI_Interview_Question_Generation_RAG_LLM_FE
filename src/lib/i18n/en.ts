@@ -432,10 +432,10 @@ export const en = {
     subtitle: "Question Generator",
     sectionLabel: "Main Menu",
     nav: {
-      "/dashboard": "Dashboard",
-      "/generate": "Generate Questions",
-      "/history": "History",
-      "/settings": "Settings",
+      "/hr/dashboard": "Dashboard",
+      "/hr/generate": "Generate Questions",
+      "/hr/history": "History",
+      "/hr/settings": "Settings",
     },
     quickGenerate: {
       title: "Quick Generate",
@@ -470,10 +470,10 @@ export const en = {
 
   appShell: {
     routes: {
-      "/dashboard": "Dashboard",
-      "/generate": "Generate Questions",
-      "/history": "Session History",
-      "/settings": "Settings",
+      "/hr/dashboard": "Dashboard",
+      "/hr/generate": "Generate Questions",
+      "/hr/history": "Session History",
+      "/hr/settings": "Settings",
       "/admin/dashboard": "Admin Dashboard",
       "/admin/users": "User Management",
       "/admin/analytics": "System Analytics",
@@ -488,6 +488,7 @@ export const en = {
       results: "Results",
       settings: "Settings",
       admin: "Admin",
+      hr: "HR",
       users: "Users",
       analytics: "Analytics",
       content: "Content",

@@ -19,26 +19,26 @@ import type {
 export const navItems: NavItem[] = [
   {
     label: "Dashboard",
-    href: "/dashboard",
+    href: "/hr/dashboard",
     icon: LayoutDashboard,
   },
   {
     label: "Generate Questions",
-    href: "/generate",
+    href: "/hr/generate",
     icon: Sparkles,
     badge: "New",
     badgeVariant: "new",
   },
   {
     label: "History",
-    href: "/history",
+    href: "/hr/history",
     icon: History,
     badge: 7,
     badgeVariant: "count",
   },
   {
     label: "Settings",
-    href: "/settings",
+    href: "/hr/settings",
     icon: Settings,
   },
 ];

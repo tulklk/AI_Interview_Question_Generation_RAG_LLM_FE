@@ -3,10 +3,12 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 
-export default function LegacyGenerateRedirect() {
+export function LegacyHistoryIdRedirect({ id }: { id: string }) {
   const router = useRouter();
+
   useEffect(() => {
-    router.replace("/hr/generate");
-  }, [router]);
+    if (id) router.replace(`/hr/history/${id}`);
+  }, [router, id]);
+
   return null;
 }

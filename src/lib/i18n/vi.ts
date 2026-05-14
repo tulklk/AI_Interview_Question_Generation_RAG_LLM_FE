@@ -434,10 +434,10 @@ export const vi: Translations = {
     subtitle: "Trình tạo câu hỏi",
     sectionLabel: "Menu chính",
     nav: {
-      "/dashboard": "Bảng điều khiển",
-      "/generate": "Tạo câu hỏi",
-      "/history": "Lịch sử",
-      "/settings": "Cài đặt",
+      "/hr/dashboard": "Bảng điều khiển",
+      "/hr/generate": "Tạo câu hỏi",
+      "/hr/history": "Lịch sử",
+      "/hr/settings": "Cài đặt",
     },
     quickGenerate: {
       title: "Tạo nhanh",
@@ -472,10 +472,10 @@ export const vi: Translations = {
 
   appShell: {
     routes: {
-      "/dashboard": "Bảng điều khiển",
-      "/generate": "Tạo câu hỏi",
-      "/history": "Lịch sử phiên làm việc",
-      "/settings": "Cài đặt",
+      "/hr/dashboard": "Bảng điều khiển",
+      "/hr/generate": "Tạo câu hỏi",
+      "/hr/history": "Lịch sử phiên làm việc",
+      "/hr/settings": "Cài đặt",
       "/admin/dashboard": "Bảng điều khiển Admin",
       "/admin/users": "Quản lý người dùng",
       "/admin/analytics": "Phân tích hệ thống",
@@ -490,6 +490,7 @@ export const vi: Translations = {
       results: "Kết quả",
       settings: "Cài đặt",
       admin: "Admin",
+      hr: "HR",
       users: "Người dùng",
       analytics: "Phân tích",
       content: "Nội dung",
