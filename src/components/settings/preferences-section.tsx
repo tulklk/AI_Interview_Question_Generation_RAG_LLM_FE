@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Sun, Moon, Monitor, Save, Sparkles } from "lucide-react";
 import { Toggle } from "@/components/ui/toggle";
 import { SelectField } from "@/components/ui/select-field";
 import { cn } from "@/lib/utils";
 import { useLanguage } from "@/context/language-context";
+import { useHrSubscription } from "@/context/hr-subscription-context";
 
 type ThemeMode = "light" | "dark" | "system";
 
@@ -37,6 +38,8 @@ const tones = [
 export function PreferencesSection() {
   const { t } = useLanguage();
   const pref = t.settingsPage.preferences;
+  const { hasFeature } = useHrSubscription();
+  const advancedOk = hasFeature("advancedModels");
 
   const themeOptions: { id: ThemeMode; label: string; Icon: typeof Sun }[] = [
     { id: "light", label: pref.light, Icon: Sun },
@@ -51,6 +54,16 @@ export function PreferencesSection() {
   const [tone, setTone] = useState("professional");
   const [showDifficulty, setShowDifficulty] = useState(true);
   const [includeSuggestedAnswers, setIncludeSuggestedAnswers] = useState(true);
+
+  const modelOptions = advancedOk
+    ? aiModels
+    : aiModels.filter((m) => m.value === "gpt35");
+
+  useEffect(() => {
+    if (!advancedOk && (aiModel === "gpt4" || aiModel === "claude3")) {
+      setAiModel("gpt35");
+    }
+  }, [advancedOk, aiModel]);
 
   return (
     <div>
@@ -105,12 +118,17 @@ export function PreferencesSection() {
             <p className="text-sm font-semibold text-gray-700">{pref.aiSettings}</p>
           </div>
           <div className="grid grid-cols-2 gap-4 mb-4">
-            <SelectField
-              label={pref.aiModel}
-              value={aiModel}
-              onChange={setAiModel}
-              options={aiModels}
-            />
+            <div>
+              <SelectField
+                label={pref.aiModel}
+                value={aiModel}
+                onChange={setAiModel}
+                options={modelOptions}
+              />
+              {!advancedOk && (
+                <p className="text-[11px] text-amber-700 mt-1.5">{t.hrSubscription.lockedAdvancedModel}</p>
+              )}
+            </div>
             <SelectField
               label={pref.outputLanguage}
               value={language}
