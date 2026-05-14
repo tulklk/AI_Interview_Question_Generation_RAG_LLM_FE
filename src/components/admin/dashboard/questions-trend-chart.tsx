@@ -17,10 +17,10 @@ export function QuestionsTrendChart() {
   const qt = t.adminPages.dashboard.questionsTrend;
 
   return (
-    <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 flex flex-col animate-fade-up">
+    <div className="flex flex-col rounded-xl border border-[#e5e7eb] bg-white p-6 shadow-[0_4px_6px_-1px_rgba(0,0,0,0.1),0_2px_4px_-2px_rgba(0,0,0,0.1)] animate-fade-up">
       <div className="mb-1">
-        <h3 className="text-base font-semibold text-gray-900">{qt.title}</h3>
-        <p className="text-xs text-gray-400 mt-0.5">{qt.subtitle}</p>
+        <h3 className="text-base font-bold text-[#111827]">{qt.title}</h3>
+        <p className="mt-0.5 text-xs text-[#6b7280]">{qt.subtitle}</p>
       </div>
 
       <div className="mt-4">
@@ -30,7 +30,7 @@ export function QuestionsTrendChart() {
             margin={{ top: 4, right: 4, bottom: 0, left: -20 }}
             barSize={32}
           >
-            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
+            <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" vertical={false} />
             <XAxis
               dataKey="day"
               tick={{ fontSize: 11, fill: "#9ca3af" }}

@@ -18,7 +18,7 @@ export function RecentSessions() {
           <p className="text-xs text-gray-400 mt-0.5">{rs.subtitle}</p>
         </div>
         <Link
-          href="/history"
+          href="/hr/history"
           className="text-xs font-semibold text-[#6c47ff] hover:underline flex items-center gap-0.5"
         >
           {rs.viewAll} <ChevronRight size={12} />

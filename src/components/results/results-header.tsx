@@ -22,7 +22,7 @@ export function ResultsHeader({
     <div className="flex items-start justify-between mb-6 animate-fade-up">
       <div>
         <Link
-          href="/history"
+          href="/hr/history"
           className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 transition-colors mb-3"
         >
           <ArrowLeft size={14} />

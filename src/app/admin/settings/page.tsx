@@ -13,9 +13,9 @@ export default function AdminSettingsPage() {
       pageTitle={s.heading}
       breadcrumb={[{ label: "Admin", href: "/admin/dashboard" }, { label: s.heading }]}
     >
-      <div className="mb-6 animate-fade-up">
-        <h2 className="text-2xl font-bold text-gray-900">{s.heading}</h2>
-        <p className="text-sm text-gray-500 mt-1">{s.subtext}</p>
+      <div className="mb-8 animate-fade-up">
+        <h2 className="text-[30px] font-bold leading-9 text-[#111827]">{s.heading}</h2>
+        <p className="text-base text-[#6b7280] leading-6 mt-2">{s.subtext}</p>
       </div>
 
       <div className="animate-fade-up" style={{ animationDelay: "80ms" }}>
