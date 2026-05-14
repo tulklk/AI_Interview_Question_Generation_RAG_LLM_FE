@@ -6,23 +6,25 @@ import type { AdminUser } from "@/types/admin";
 import { useLanguage } from "@/context/language-context";
 
 const roleConfig: Record<AdminUser["role"], { bg: string; color: string }> = {
-  Admin: { bg: "bg-violet-50", color: "text-violet-600" },
-  Recruiter: { bg: "bg-blue-50", color: "text-blue-600" },
-  Guest: { bg: "bg-gray-100", color: "text-gray-500" },
+  Admin: { bg: "bg-[#f5f3ff]", color: "text-[#6c47ff]" },
+  Recruiter: { bg: "bg-[#f5f7fb]", color: "text-[#111827]" },
+  Guest: { bg: "bg-[#f5f7fb]", color: "text-[#6b7280]" },
 };
 
 const statusConfig: Record<AdminUser["status"], { bg: string; color: string }> = {
-  Active: { bg: "bg-emerald-50", color: "text-emerald-600" },
-  Pending: { bg: "bg-amber-50", color: "text-amber-600" },
+  Active: { bg: "bg-[#f5f3ff]", color: "text-[#6c47ff]" },
+  Pending: { bg: "bg-[#fef3c7]", color: "text-[#92400e]" },
   Suspended: { bg: "bg-red-50", color: "text-red-600" },
 };
 
 interface UserTableProps {
   users: AdminUser[];
   onEdit: (user: AdminUser) => void;
+  onSuspend: (user: AdminUser) => void;
+  onDelete: (user: AdminUser) => void;
 }
 
-export function UserTable({ users, onEdit }: UserTableProps) {
+export function UserTable({ users, onEdit, onSuspend, onDelete }: UserTableProps) {
   const { t } = useLanguage();
   const tbl = t.adminPages.users.table;
   const actions = t.adminPages.users.actions;
@@ -30,77 +32,125 @@ export function UserTable({ users, onEdit }: UserTableProps) {
   const statusLabels = t.adminPages.users.statusLabels;
 
   return (
-    <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden animate-fade-up">
-      <table className="w-full text-sm">
-        <thead className="border-b border-gray-100 bg-gray-50">
-          <tr>
-            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">{tbl.name}</th>
-            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">{tbl.email}</th>
-            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">{tbl.role}</th>
-            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">{tbl.status}</th>
-            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">{tbl.created}</th>
-            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">{tbl.lastActive}</th>
-            <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">{tbl.actions}</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-gray-50">
-          {users.map((user, i) => {
-            const role = roleConfig[user.role];
-            const status = statusConfig[user.status];
-            return (
-              <tr
-                key={user.id}
-                className="hover:bg-gray-50/50 transition-colors animate-fade-up"
-                style={{ animationDelay: `${i * 40}ms` }}
-              >
-                <td className="px-4 py-3.5">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-[#6c47ff]/10 flex items-center justify-center shrink-0">
-                      <span className="text-[#6c47ff] text-xs font-bold">
-                        {user.name.split(" ").map((n) => n[0]).join("").slice(0, 2)}
-                      </span>
+    <div className="overflow-hidden rounded-xl border border-[#e5e7eb] bg-white shadow-[0_4px_6px_-1px_rgba(0,0,0,0.1),0_2px_4px_-2px_rgba(0,0,0,0.1)] animate-fade-up">
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[720px] text-sm">
+          <thead className="border-b border-[#e5e7eb] bg-[#f9fafb]">
+            <tr>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-[#6b7280]">
+                {tbl.name}
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-[#6b7280]">
+                {tbl.email}
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-[#6b7280]">
+                {tbl.role}
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-[#6b7280]">
+                {tbl.status}
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-[#6b7280]">
+                {tbl.created}
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-[#6b7280]">
+                {tbl.lastActive}
+              </th>
+              <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-[#6b7280]">
+                {tbl.actions}
+              </th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-[#f3f4f6]">
+            {users.map((user, i) => {
+              const role = roleConfig[user.role];
+              const status = statusConfig[user.status];
+              return (
+                <tr
+                  key={user.id}
+                  className="transition-colors hover:bg-[#f9fafb]/80 animate-fade-up"
+                  style={{ animationDelay: `${i * 40}ms` }}
+                >
+                  <td className="px-4 py-3.5">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[rgba(108,71,255,0.1)]">
+                        <span className="text-xs font-bold text-[#6c47ff]">
+                          {user.name
+                            .split(" ")
+                            .map((n) => n[0])
+                            .join("")
+                            .slice(0, 2)}
+                        </span>
+                      </div>
+                      <span className="font-medium text-[#111827]">{user.name}</span>
                     </div>
-                    <span className="font-medium text-gray-800">{user.name}</span>
-                  </div>
-                </td>
-                <td className="px-4 py-3.5 text-gray-500">{user.email}</td>
-                <td className="px-4 py-3.5">
-                  <span className={cn("text-xs font-semibold px-2.5 py-0.5 rounded-full", role.bg, role.color)}>
-                    {roleLabels[user.role]}
-                  </span>
-                </td>
-                <td className="px-4 py-3.5">
-                  <span className={cn("text-xs font-semibold px-2.5 py-0.5 rounded-full", status.bg, status.color)}>
-                    {statusLabels[user.status]}
-                  </span>
-                </td>
-                <td className="px-4 py-3.5 text-gray-500 text-xs">{user.createdDate}</td>
-                <td className="px-4 py-3.5 text-gray-500 text-xs">{user.lastActive}</td>
-                <td className="px-4 py-3.5">
-                  <div className="flex items-center justify-end gap-1">
-                    <button className="p-1.5 text-gray-400 hover:text-[#6c47ff] hover:bg-indigo-50 rounded-lg transition-colors" title={actions.view}>
-                      <Eye size={14} />
-                    </button>
-                    <button
-                      onClick={() => onEdit(user)}
-                      className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-                      title={actions.edit}
+                  </td>
+                  <td className="px-4 py-3.5 text-[#6b7280]">{user.email}</td>
+                  <td className="px-4 py-3.5">
+                    <span
+                      className={cn(
+                        "rounded-full px-2.5 py-0.5 text-xs font-semibold",
+                        role.bg,
+                        role.color
+                      )}
                     >
-                      <Pencil size={14} />
-                    </button>
-                    <button className="p-1.5 text-gray-400 hover:text-amber-500 hover:bg-amber-50 rounded-lg transition-colors" title={actions.disable}>
-                      <Ban size={14} />
-                    </button>
-                    <button className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors" title={actions.delete}>
-                      <Trash2 size={14} />
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+                      {roleLabels[user.role]}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3.5">
+                    <span
+                      className={cn(
+                        "rounded-full px-2.5 py-0.5 text-xs font-semibold",
+                        status.bg,
+                        status.color
+                      )}
+                    >
+                      {statusLabels[user.status]}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3.5 text-xs text-[#6b7280]">{user.createdDate}</td>
+                  <td className="px-4 py-3.5 text-xs text-[#6b7280]">{user.lastActive}</td>
+                  <td className="px-4 py-3.5">
+                    <div className="flex items-center justify-end gap-1">
+                      <button
+                        type="button"
+                        className="rounded-lg p-1.5 text-[#9ca3af] transition-colors hover:bg-[rgba(108,71,255,0.1)] hover:text-[#6c47ff]"
+                        title={actions.view}
+                      >
+                        <Eye size={14} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => onEdit(user)}
+                        className="rounded-lg p-1.5 text-[#9ca3af] transition-colors hover:bg-[#f5f7fb] hover:text-[#111827]"
+                        title={actions.edit}
+                      >
+                        <Pencil size={14} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => onSuspend(user)}
+                        disabled={user.status === "Suspended"}
+                        className="rounded-lg p-1.5 text-[#9ca3af] transition-colors hover:bg-[#fef3c7] hover:text-[#92400e] disabled:pointer-events-none disabled:opacity-40"
+                        title={actions.disable}
+                      >
+                        <Ban size={14} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => onDelete(user)}
+                        className="rounded-lg p-1.5 text-[#9ca3af] transition-colors hover:bg-red-50 hover:text-red-600"
+                        title={actions.delete}
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

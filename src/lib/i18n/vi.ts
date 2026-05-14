@@ -22,7 +22,7 @@ export const vi: Translations = {
     headlineGradient: "Mô Tả Công Việc",
     headline3: "bằng AI",
     subtext:
-      "Dán bất kỳ mô tả công việc nào và nhận câu hỏi phỏng vấn Kỹ thuật, Hành vi và Tình huống phù hợp trong vài giây — được hỗ trợ bởi RAG và GPT-4.",
+      "Dán bất kỳ mô tả công việc nào và nhận câu hỏi phỏng vấn Kỹ thuật, Hành vi và Tình huống phù hợp trong vài giây — được hỗ trợ bởi RAG và mô hình ngôn ngữ lớn.",
     point1: "Tiết kiệm thời gian tuyển dụng",
     point2: "Câu hỏi theo ngữ cảnh",
     point3: "Xuất PDF sẵn sàng",
@@ -140,61 +140,182 @@ export const vi: Translations = {
   pricing: {
     sectionLabel: "Bảng giá",
     headline: "Bảng giá đơn giản, minh bạch",
-    subtext:
-      "Bắt đầu miễn phí. Nâng cấp khi bạn sẵn sàng. Hủy bất cứ lúc nào.",
+    introSubtext:
+      "Chọn gói phù hợp cách bạn dùng HireGen AI — ứng viên bắt đầu miễn phí hoặc nâng cấp Plus; doanh nghiệp mở khóa bộ công cụ tuyển dụng đầy đủ.",
     mostPopular: "Phổ biến nhất",
-    plans: [
-      {
-        name: "Miễn phí",
-        period: "/ tháng",
-        description: "Dành cho sinh viên và khám phá cơ bản nền tảng.",
-        cta: "Bắt đầu miễn phí",
-        features: [
-          "5 lần tạo câu hỏi mỗi tháng",
-          "Tạo câu hỏi cơ bản",
-          "Chỉ câu hỏi kỹ thuật",
-          "Xuất file giới hạn (3 lần/tháng)",
-          "Hỗ trợ cộng đồng",
-          "Câu hỏi hành vi & tình huống",
-          "Gợi ý câu trả lời",
-          "Theo dõi lịch sử",
+    jobSeeker: {
+      title: "Dành cho ứng viên & người học",
+      subtext:
+        "Luyện với câu hỏi gắn với JD thật, nhận phản hồi từ AI và chuẩn bị phỏng vấn hiệu quả hơn.",
+      comparisonNote:
+        "Bắt đầu miễn phí, nâng cấp Plus khi bạn sẵn sàng ôn phỏng vấn nghiêm túc.",
+      plans: [
+        {
+          name: "Miễn phí",
+          period: "/ tháng",
+          description:
+            "Dành cho sinh viên và người mới muốn khám phá nền tảng.",
+          cta: "Bắt đầu miễn phí",
+          features: [
+            "5 lần tạo từ JD mỗi tháng — đủ để làm quen trước khi đầu tư",
+            "Tạo câu hỏi cơ bản từ nội dung JD thật",
+            "Chỉ câu hỏi phỏng vấn kỹ thuật",
+            "Xuất PDF giới hạn: 3 lần tải mỗi tháng",
+            "Phản hồi AI tiêu chuẩn cho buổi luyện tập",
+            "Hỗ trợ cộng đồng",
+            "Câu hỏi hành vi & tình huống",
+            "Gợi ý câu trả lời do AI sinh",
+            "Lịch sử đầy đủ & bộ luyện đã lưu",
+            "Đánh giá AI nâng cao theo tiêu chí gần với HR",
+          ],
+        },
+        {
+          name: "Plus",
+          period: "/ tháng",
+          priceFootnote:
+            "Chưa bằng vài ly cà phê — nhưng giúp bạn chuẩn bị cho phỏng vấn thật.",
+          description:
+            "Dành cho ứng viên nghiêm túc: ôn đúng trọng tâm và củng cố cách trả lời.",
+          cta: "Đăng ký Plus",
+          features: [
+            "50 lần tạo từ JD mỗi tháng — bao quát mọi vị trí bạn nhắm tới",
+            "Đầy đủ câu hỏi kỹ thuật, hành vi và tình huống",
+            "Gợi ý câu trả lời từ AI để bạn biết “chuẩn hay” là gì",
+            "Đánh giá AI nâng cao theo tiêu chí gắn với từng vai trò",
+            "Xuất PDF không giới hạn cho gói ôn cá nhân & mock interview",
+            "Lịch sử đầy đủ & bộ luyện đã lưu — xem lại điểm yếu bất cứ lúc nào",
+            "Mẹo chuẩn bị theo từng vị trí, bám sát JD mục tiêu",
+            "Hỗ trợ email, phản hồi trong vòng 48 giờ",
+            "Công cụ nhóm & quản trị dành cho nhà tuyển dụng",
+          ],
+        },
+      ],
+    },
+    recruiter: {
+      title: "Gói đăng ký dành cho HR",
+      subtext:
+        "Tạo câu hỏi phỏng vấn đúng vai, đúng JD nhanh hơn với AI, kiểm chứng kỹ thuật RAG và thông tin hiệu suất ứng viên.",
+      valueMessage:
+        "Dành cho nhóm HR cần bộ công cụ ôn phỏng vấn nhất quán, bám JD và độ chính xác kỹ thuật cao.",
+      highlights: [
+        "Biến mọi JD thành bộ câu hỏi phỏng vấn có cấu trúc.",
+        "Sinh câu hỏi kỹ thuật chính xác hơn nhờ RAG và nguồn tri thức đáng tin.",
+        "Chuẩn hóa tài liệu đánh giá cho mọi ứng viên.",
+        "Xuất bản bộ câu hỏi thương hiệu doanh nghiệp cho ứng viên luyện tập.",
+        "Dùng insight ứng viên để cải thiện quyết định tuyển dụng.",
+      ],
+      upgradeWhy: {
+        title: "Vì sao nhóm HR nâng cấp",
+        footnote:
+          "Tính năng sinh câu hỏi bằng AI là gói cao cấp vì dùng xử lý nền, LLM và kiểm chứng kỹ thuật RAG.",
+        points: [
+          {
+            title: "Tiết kiệm thời gian",
+            body: "Sinh bộ câu hỏi có cấu trúc từ JD thay vì soạn thủ công từ đầu.",
+          },
+          {
+            title: "Tăng độ chính xác",
+            body: "Dùng AI có RAG và nguồn tri thức tin cậy thay vì prompt chung chung.",
+          },
+          {
+            title: "Chuẩn hóa đánh giá",
+            body: "Bộ câu hỏi thống nhất theo vai trò, mức độ khó và loại câu hỏi.",
+          },
+          {
+            title: "Hiểu ứng viên hơn",
+            body: "Xem kết quả luyện tập, xu hướng hiệu suất và phản hồi được chia sẻ.",
+          },
+          {
+            title: "Thương hiệu tuyển dụng",
+            body: "Xuất bản bộ câu hỏi mang thương hiệu công ty để ứng viên khám phá và luyện tập.",
+          },
         ],
       },
-      {
-        name: "Chuyên nghiệp",
-        period: "/ tháng",
-        description:
-          "Dành cho nhà tuyển dụng và nhóm nhỏ cần đầy đủ tính năng.",
-        cta: "Đăng ký gói Pro",
-        features: [
-          "100 lần tạo câu hỏi mỗi tháng",
-          "Kỹ thuật, Hành vi & Tình huống",
-          "Gợi ý câu trả lời từ AI",
-          "Xuất PDF không giới hạn",
-          "Toàn bộ lịch sử phiên làm việc",
-          "Hỗ trợ email ưu tiên",
-          "Quản lý nhóm",
-          "Bảng phân tích Admin",
-        ],
-      },
-      {
-        name: "Doanh nghiệp",
-        period: "Liên hệ",
-        description:
-          "Dành cho tổ chức cần quy mô lớn, kiểm soát và hỗ trợ tận tình.",
-        cta: "Liên hệ tư vấn",
-        features: [
-          "Tạo câu hỏi không giới hạn",
-          "Bao gồm tất cả tính năng Pro",
-          "Quản lý nhóm & vai trò",
-          "Bảng phân tích Admin",
-          "Kiểm soát truy cập theo vai trò",
-          "Quản lý tài khoản chuyên dụng",
-          "Cấu hình mô hình AI tùy chỉnh",
-          "Tùy chọn triển khai tại chỗ",
-        ],
-      },
-    ],
+      plans: [
+        {
+          name: "Basic",
+          period: "/ tháng · dùng thử miễn phí",
+          description:
+            "Dành cho HR muốn làm quen công cụ quản lý tuyển dụng cơ bản trước khi dùng AI.",
+          cta: "Bắt đầu miễn phí",
+          features: [
+            "Tạo và quản lý JD cơ bản",
+            "Tải lên hoặc nhập nội dung JD thủ công",
+            "Tạo bộ câu hỏi phỏng vấn thủ công",
+            "Phân loại câu hỏi theo danh mục",
+            "Gắn thẻ Kỹ thuật / Hành vi / Tình huống",
+            "Thiết lập mức độ khó cho câu hỏi",
+            "Hộp thư liên hệ ứng viên cơ bản",
+            "Truy cập giới hạn vào tổng quan dashboard",
+            "Số bộ câu hỏi lưu bị giới hạn",
+            "Không có sinh câu hỏi bằng AI",
+            "Không có kiểm chứng kỹ thuật RAG",
+            "Không có phân tích ứng viên nâng cao",
+            "Không xuất bản công khai bộ câu hỏi thương hiệu công ty",
+          ],
+        },
+        {
+          name: "Professional",
+          badge: "Đề xuất",
+          period: "/ tháng",
+          description:
+            "Dành cho nhóm HR muốn tiết kiệm thời gian và sinh câu hỏi chính xác trực tiếp từ JD.",
+          cta: "Dùng gói Professional",
+          features: [
+            "Toàn bộ tính năng Basic — JD, bộ câu thủ công, thẻ, mức khó, inbox",
+            "Sinh câu hỏi phỏng vấn bằng AI từ Job Description",
+            "Sinh câu hỏi có cấu trúc từ JD dạng text, PDF hoặc DOCX",
+            "Sinh câu có RAG, dựa trên nguồn tri thức kỹ thuật đáng tin",
+            "Sinh câu Kỹ thuật, Hành vi và Tình huống",
+            "Kiểm soát mức độ khó cho bộ câu do AI sinh",
+            "Lưu và quản lý bộ câu hỏi do AI sinh",
+            "Xuất bản bộ câu hỏi dưới thương hiệu công ty",
+            "Hộp thư kết quả luyện tập được ứng viên chia sẻ",
+            "Thông tin hiệu suất ứng viên cơ bản",
+            "Xuất bộ câu hỏi ra PDF",
+            "Hỗ trợ qua email",
+            "Hạn mức: 50 lần sinh AI từ JD / tháng · tối đa 20 bộ công khai có thương hiệu · tối đa 3 thành viên HR",
+          ],
+        },
+        {
+          name: "Business",
+          period: "/ tháng",
+          description:
+            "Dành cho nhóm HR đang mở rộng: phân tích sâu hơn, hạn mức cao và insight ứng viên mạnh hơn.",
+          cta: "Nâng cấp Business",
+          features: [
+            "Toàn bộ tính năng Professional",
+            "200 lần sinh AI từ JD mỗi tháng",
+            "Không giới hạn bộ câu hỏi đã lưu",
+            "Xuất bản không giới hạn bộ câu hỏi thương hiệu công ty",
+            "Phân tích hiệu suất ứng viên nâng cao",
+            "Báo cáo so sánh ứng viên",
+            "Dashboard xu hướng hiệu suất",
+            "Phân tích mức sử dụng của nhóm",
+            "Tùy chọn xuất dữ liệu nâng cao",
+            "Hỗ trợ email ưu tiên",
+            "Tối đa 10 thành viên HR",
+          ],
+        },
+        {
+          name: "Enterprise",
+          period: "· Giá theo yêu cầu",
+          description:
+            "Dành cho đội tuyển dụng lớn cần hạn mức tùy chỉnh, kiểm soát nâng cao và hỗ trợ riêng.",
+          cta: "Liên hệ kinh doanh",
+          features: [
+            "Hạn mức sinh AI tùy chỉnh",
+            "Quy mô nhóm tùy chỉnh",
+            "Không gian làm việc riêng cho doanh nghiệp",
+            "Bảng quản trị nâng cao",
+            "Báo cáo phân tích tùy chỉnh",
+            "API / tích hợp (nếu triển khai)",
+            "Hỗ trợ chuyên trách",
+            "Onboarding tùy chỉnh",
+          ],
+        },
+      ],
+    },
   },
 
   demo: {
@@ -313,10 +434,10 @@ export const vi: Translations = {
     subtitle: "Trình tạo câu hỏi",
     sectionLabel: "Menu chính",
     nav: {
-      "/dashboard": "Bảng điều khiển",
-      "/generate": "Tạo câu hỏi",
-      "/history": "Lịch sử",
-      "/settings": "Cài đặt",
+      "/hr/dashboard": "Bảng điều khiển",
+      "/hr/generate": "Tạo câu hỏi",
+      "/hr/history": "Lịch sử",
+      "/hr/settings": "Cài đặt",
     },
     quickGenerate: {
       title: "Tạo nhanh",
@@ -334,6 +455,7 @@ export const vi: Translations = {
       "/admin/users": "Quản lý người dùng",
       "/admin/analytics": "Phân tích",
       "/admin/content": "Nội dung đã tạo",
+      "/admin/audit": "Nhật ký kiểm tra",
       "/admin/settings": "Cài đặt",
     },
     systemStatus: {
@@ -350,14 +472,15 @@ export const vi: Translations = {
 
   appShell: {
     routes: {
-      "/dashboard": "Bảng điều khiển",
-      "/generate": "Tạo câu hỏi",
-      "/history": "Lịch sử phiên làm việc",
-      "/settings": "Cài đặt",
+      "/hr/dashboard": "Bảng điều khiển",
+      "/hr/generate": "Tạo câu hỏi",
+      "/hr/history": "Lịch sử phiên làm việc",
+      "/hr/settings": "Cài đặt",
       "/admin/dashboard": "Bảng điều khiển Admin",
       "/admin/users": "Quản lý người dùng",
       "/admin/analytics": "Phân tích hệ thống",
       "/admin/content": "Nội dung đã tạo",
+      "/admin/audit": "Nhật ký kiểm tra",
       "/admin/settings": "Cài đặt Admin",
     },
     breadcrumb: {
@@ -367,9 +490,11 @@ export const vi: Translations = {
       results: "Kết quả",
       settings: "Cài đặt",
       admin: "Admin",
+      hr: "HR",
       users: "Người dùng",
       analytics: "Phân tích",
       content: "Nội dung",
+      audit: "Nhật ký",
     },
   },
 
@@ -661,9 +786,9 @@ export const vi: Translations = {
     ],
     responses: {
       pricing:
-        "Chúng tôi có 3 gói dịch vụ:\n• Miễn phí — 10 lần tạo/tháng\n• Pro (19$/tháng) — không giới hạn + xuất PDF\n• Enterprise — giá theo yêu cầu cho nhóm\n\nBắt đầu miễn phí, không cần thẻ tín dụng!",
+        "Gói được chia theo đối tượng:\n\nỨng viên & người học\n• Miễn phí — khám phá với giới hạn luyện tập có AI\n• Plus (9$/tháng) — ôn sâu: đủ loại câu hỏi, gợi ý trả lời, xuất file\n\nHR & IQGS (nhóm)\n• Basic (0$) — JD & bộ câu thủ công, chưa có sinh câu bằng AI\n• Professional (29$/tháng) — AI + RAG từ JD/PDF/DOCX, xuất bản thương hiệu, insight (50 lần AI/tháng, có giới hạn kèm theo)\n• Business (79$/tháng) — hạn mức cao hơn, phân tích & xuất nâng cao\n• Enterprise — hạn mức tùy chỉnh, tích hợp, hỗ trợ riêng\n\nBắt đầu miễn phí — nâng cấp khi cần AI và phân tích.",
       features:
-        "HireGen AI trích xuất kỹ năng chính từ Mô tả Công việc, sau đó tạo ra các câu hỏi Kỹ thuật, Hành vi và Tình huống phù hợp — được hỗ trợ bởi RAG + GPT-4. Bạn cũng có thể xuất toàn bộ dưới dạng PDF.",
+        "HireGen AI trích xuất kỹ năng chính từ Mô tả Công việc, sau đó tạo ra các câu hỏi Kỹ thuật, Hành vi và Tình huống phù hợp — được hỗ trợ bởi RAG và mô hình ngôn ngữ lớn. Bạn cũng có thể xuất toàn bộ dưới dạng PDF.",
       howItWorks:
         "Rất đơn giản:\n1. Dán mô tả công việc của bạn\n2. AI trích xuất từ khóa & ngữ cảnh vai trò\n3. Câu hỏi được tạo trong vòng 30 giây\n4. Xuất hoặc sao chép bộ câu hỏi",
       export:
@@ -686,9 +811,39 @@ export const vi: Translations = {
         "JD đã xử lý",
         "Câu hỏi đã tạo",
       ],
+      secondaryStats: {
+        title: "Tín hiệu hôm nay",
+        subtitle: "Chỉ số vận hành chính (dữ liệu mô phỏng).",
+        cards: [
+          { label: "Người dùng hoạt động theo tháng", value: "312", sub: "+18 so với tháng trước" },
+          { label: "Đăng ký mới (7 ngày)", value: "26", sub: "nhà tuyển dụng + khách" },
+          { label: "Thời gian tạo trung bình", value: "28s", sub: "p95: 41s" },
+          { label: "Tỷ lệ xuất thành công", value: "99,6%", sub: "PDF · 7 ngày qua" },
+        ],
+      },
+      weeklyOverview: {
+        title: "Người hoạt động vs lượt nộp JD",
+        subtitle: "Tuần lịch hiện tại (UTC)",
+        usersLegend: "Người dùng hoạt động",
+        jdLegend: "Lượt nộp JD",
+      },
+      categoryMix: {
+        title: "Tỷ lệ danh mục câu hỏi",
+        subtitle: "Phân bổ câu hỏi đã tạo trên mọi phiên",
+        countLabel: "Câu hỏi",
+      },
+      topRecruiters: {
+        title: "Nhà tuyển dụng dẫn đầu",
+        subtitle: "Theo tổng câu hỏi đã tạo trong 30 ngày (mô phỏng)",
+        rank: "Hạng",
+        recruiter: "Nhà tuyển dụng",
+        sessions: "Phiên",
+        questions: "Câu hỏi",
+      },
       userGrowth: {
         title: "Tăng trưởng người dùng",
         subtitle: "Đăng ký mới mỗi tuần",
+        admins: "Quản trị viên",
         recruiters: "Nhà tuyển dụng",
         guests: "Khách",
       },
@@ -715,6 +870,7 @@ export const vi: Translations = {
     users: {
       heading: "Quản lý người dùng",
       subtext: "Quản lý tất cả tài khoản, vai trò và quyền truy cập.",
+      deleteConfirm: "Xóa người dùng {name}? Hành động này không thể hoàn tác.",
       addUser: "Thêm người dùng",
       stats: {
         totalUsers: "Tổng người dùng",
@@ -798,6 +954,30 @@ export const vi: Translations = {
       exportedLabel: "Đã xuất",
       notExported: "Chưa xuất",
     },
+    audit: {
+      heading: "Nhật ký kiểm tra",
+      subtext: "Luồng sự kiện nền tảng phục vụ bảo mật và tuân thủ.",
+      filters: {
+        searchPlaceholder: "Tìm theo người thực hiện, tóm tắt hoặc IP…",
+        allTypes: "Tất cả loại sự kiện",
+      },
+      table: {
+        type: "Loại",
+        summary: "Tóm tắt",
+        actor: "Người thực hiện",
+        ip: "Địa chỉ IP",
+        detail: "Chi tiết",
+        time: "Thời gian",
+      },
+      eventLabels: {
+        user_created: "Tạo người dùng",
+        recruiter_login: "Đăng nhập",
+        jd_generation: "Tạo câu hỏi",
+        export: "Xuất",
+        settings_change: "Cài đặt",
+        admin_action: "Hành động admin",
+      },
+    },
     settings: {
       heading: "Cài đặt quản trị",
       subtext: "Cấu hình hành vi nền tảng, mô hình AI, quyền truy cập và thông báo.",
@@ -818,6 +998,7 @@ export const vi: Translations = {
         resetDesc: "Xóa tất cả phiên và phân tích đã tạo. Không thể hoàn tác.",
         resetBtn: "Đặt lại",
         saveBtn: "Lưu thay đổi",
+        saveSuccess: "Đã lưu cài đặt trên trình duyệt.",
       },
       aiConfig: {
         title: "Cấu hình AI",
@@ -864,5 +1045,196 @@ export const vi: Translations = {
         ],
       },
     },
+  },
+
+  // ─── NỀN TẢNG LUYỆN PHỎNG VẤN ────────────────────────────────────────────
+
+  jobseekerSidebar: {
+    sectionLabel: "Ứng Viên",
+    nav: {
+      "/jobseeker/dashboard": "Trang chủ",
+      "/jobseeker": "Luyện Tập Ngay",
+      "/jobseeker/history": "Lịch sử",
+      "/jobseeker/profile": "Hồ sơ",
+      "/jobseeker/settings": "Cài đặt",
+    },
+    practiceNow: {
+      title: "Sẵn sàng luyện tập?",
+      desc: "Chọn bộ câu hỏi và bắt đầu phỏng vấn thử",
+      btn: "Xem bộ câu hỏi →",
+    },
+    logoutTitle: "Đăng xuất",
+  },
+
+  jobseekerAppShell: {
+    routes: {
+      "/jobseeker/dashboard": "Trang chủ",
+      "/jobseeker": "Luyện Tập Ngay",
+      "/jobseeker/history": "Lịch Sử Luyện Tập",
+      "/jobseeker/profile": "Hồ Sơ",
+      "/jobseeker/settings": "Cài đặt",
+    },
+    breadcrumb: {
+      jobseeker: "Ứng viên",
+      dashboard: "Trang chủ",
+      practice: "Luyện tập",
+      history: "Lịch sử",
+      profile: "Hồ sơ",
+      settings: "Cài đặt",
+      sets: "Bộ câu hỏi",
+    },
+  },
+
+  jobseekerMarketplacePage: {
+    heroBadge: "Luyện Phỏng Vấn Hỗ Trợ AI",
+    heroTitle: "Chinh Phục",
+    heroTitleAccent: "Phỏng Vấn Kỹ Thuật",
+    heroSub:
+      "Luyện tập với câu hỏi thực từ các công ty hàng đầu. Nhận phản hồi AI tức thì và theo dõi tiến độ của bạn.",
+    heroCta: "Bắt Đầu Luyện Tập Miễn Phí",
+    heroCtaSub: "Không cần thẻ tín dụng",
+    searchPlaceholder: "Tìm theo vai trò, công ty hoặc kỹ năng...",
+    allCategories: "Tất cả danh mục",
+    allDifficulties: "Tất cả cấp độ",
+    easy: "Dễ",
+    medium: "Trung bình",
+    hard: "Khó",
+    questions: "câu hỏi",
+    estimatedTime: "~",
+    attempts: "lượt thực hành",
+    startPractice: "Bắt Đầu Luyện Tập",
+    noResults: "Không tìm thấy bộ câu hỏi. Hãy thử tìm kiếm khác.",
+    setsFound: "bộ câu hỏi tìm thấy",
+    rating: "Đánh giá",
+  },
+
+  jobseekerSetDetailPage: {
+    backToSets: "← Quay lại bộ câu hỏi",
+    by: "bởi",
+    questions: "câu hỏi",
+    estimatedTime: "Thời gian ước tính",
+    difficulty: "Độ khó",
+    skills: "Kỹ năng được đề cập",
+    startPractice: "Bắt Đầu Phiên Luyện Tập",
+    preview: "Xem Trước Câu Hỏi",
+    categories: {
+      Technical: "Kỹ thuật",
+      Behavioral: "Hành vi",
+      Situational: "Tình huống",
+    },
+    summaryCard: {
+      title: "Tổng Quan Phiên",
+      totalQuestions: "Tổng câu hỏi",
+      estimatedTime: "Thời gian ước tính",
+      difficulty: "Độ khó",
+      targetScore: "Điểm mục tiêu",
+      startBtn: "Bắt Đầu Luyện Tập",
+    },
+  },
+
+  jobseekerPracticePage: {
+    question: "Câu hỏi",
+    of: "trong",
+    timeRemaining: "Thời gian còn lại",
+    answerPlaceholder:
+      "Nhập câu trả lời của bạn tại đây. Hãy cụ thể và dùng ví dụ thực tế khi có thể...",
+    characters: "ký tự",
+    minRecommended: "Nên ít nhất 150 ký tự",
+    prevBtn: "Câu trước",
+    nextBtn: "Câu tiếp",
+    submitBtn: "Gửi câu trả lời",
+    finishBtn: "Hoàn thành & Xem phản hồi",
+    aiThinking: "AI đang đánh giá câu trả lời của bạn...",
+    exitConfirm: "Bạn có chắc muốn thoát? Tiến trình sẽ bị mất.",
+  },
+
+  jobseekerFeedbackPage: {
+    backToHistory: "← Quay lại lịch sử",
+    overallScore: "Điểm tổng",
+    scoreOutOf: "trên 100",
+    performanceSummary: "Tóm tắt hiệu suất",
+    aiInsight: "Nhận xét AI",
+    skillBreakdown: "Phân tích theo kỹ năng",
+    questionReviews: "Đánh giá từng câu hỏi",
+    yourAnswer: "Câu trả lời của bạn",
+    aiEvaluation: "Đánh giá AI",
+    strengths: "Điểm mạnh",
+    improvements: "Cần cải thiện",
+    suggestion: "Gợi ý từ AI",
+    retryBtn: "Luyện tập lại",
+    shareBtn: "Chia sẻ kết quả",
+    scoreLabels: {
+      Technical: "Kỹ thuật",
+      Behavioral: "Hành vi",
+      Situational: "Tình huống",
+      Communication: "Giao tiếp",
+      ProblemSolving: "Giải quyết vấn đề",
+    },
+  },
+
+  jobseekerHistoryPage: {
+    heading: "Lịch Sử Luyện Tập",
+    subtext: "Theo dõi tiến trình của bạn qua tất cả các phiên luyện tập.",
+    statLabels: ["Tổng phiên", "Điểm TB", "Điểm cao nhất", "Thời gian"],
+    filters: {
+      searchPlaceholder: "Tìm theo công ty hoặc vai trò...",
+      allTime: "Tất cả",
+      thisWeek: "Tuần này",
+      thisMonth: "Tháng này",
+    },
+    table: {
+      session: "Phiên",
+      company: "Công ty",
+      date: "Ngày",
+      score: "Điểm",
+      duration: "Thời gian",
+      skills: "Kỹ năng",
+      actions: "Thao tác",
+    },
+    retryBtn: "Luyện lại",
+    viewBtn: "Xem",
+    noHistory: "Chưa có phiên luyện tập nào. Hãy bắt đầu ngay!",
+  },
+
+  jobseekerDashboardPage: {
+    welcome: "Chào buổi sáng, Alex 👋",
+    welcomeSub: "Bạn có 3 bộ câu hỏi được đề xuất và chuỗi 7 ngày luyện tập. Tiếp tục phát huy!",
+    statLabels: ["Phiên luyện tập", "Điểm trung bình", "Chuỗi luyện tập", "Sẵn sàng phỏng vấn"],
+    recentTitle: "Luyện tập gần đây",
+    recentSubtitle: "Các phiên gần nhất của bạn",
+    recommendedTitle: "Đề Xuất Cho Bạn",
+    recommendedSubtitle: "Bộ câu hỏi được AI chọn lọc theo vai trò mục tiêu",
+    analyticsTitle: "Phân tích hiệu suất",
+    strongSkillsTitle: "Kỹ năng mạnh nhất",
+    weakSkillsTitle: "Cần cải thiện",
+    aiRecommendationTitle: "Khuyến nghị AI",
+    aiRecommendation:
+      "Dựa trên các phiên gần đây, hãy tập trung vào câu hỏi Tình huống — điểm của bạn thấp hơn 12% so với điểm Kỹ thuật. Hãy thử bộ câu hỏi Google PM để luyện tư duy có cấu trúc.",
+    viewAllHistory: "Xem tất cả →",
+    viewAllSets: "Xem thêm →",
+    startPractice: "Bắt đầu luyện tập",
+  },
+
+  jobseekerProfilePage: {
+    heading: "Hồ Sơ Của Tôi",
+    editBtn: "Chỉnh sửa",
+    saveBtn: "Lưu thay đổi",
+    cancelBtn: "Hủy",
+    targetRole: "Vị trí mục tiêu",
+    bio: "Giới thiệu",
+    skills: "Kỹ năng",
+    stats: {
+      sessions: "Phiên",
+      avgScore: "Điểm TB",
+      bestScore: "Điểm cao nhất",
+      streak: "Chuỗi ngày",
+    },
+    achievements: "Thành tích",
+    earned: "Đã đạt được",
+    locked: "Chưa mở khóa",
+    bioPlaceholder: "Giới thiệu về bản thân và mục tiêu nghề nghiệp...",
+    targetRolePlaceholder: "vd. Senior Frontend Developer",
+    addSkill: "Thêm kỹ năng",
+    skillPlaceholder: "vd. React, Python",
   },
 };

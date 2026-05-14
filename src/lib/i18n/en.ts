@@ -20,7 +20,7 @@ export const en = {
     headlineGradient: "Job Descriptions",
     headline3: "with AI",
     subtext:
-      "Paste any job description and get tailored Technical, Behavioral, and Situational interview questions in seconds — powered by RAG and GPT-4.",
+      "Paste any job description and get tailored Technical, Behavioral, and Situational interview questions in seconds — powered by RAG and large language models.",
     point1: "Saves recruiter time",
     point2: "Context-aware questions",
     point3: "Export-ready PDF",
@@ -138,60 +138,182 @@ export const en = {
   pricing: {
     sectionLabel: "Pricing",
     headline: "Simple, transparent pricing",
-    subtext: "Start free. Upgrade when you're ready. Cancel anytime.",
+    introSubtext:
+      "Choose the plan that matches how you use HireGen AI — job seekers start free or upgrade to Plus; teams unlock the full hiring toolkit.",
     mostPopular: "Most Popular",
-    plans: [
-      {
-        name: "Free",
-        period: "/ month",
-        description: "For students and basic exploration of the platform.",
-        cta: "Get Started Free",
-        features: [
-          "5 JD generations per month",
-          "Basic question generation",
-          "Technical questions only",
-          "Limited export (3 per month)",
-          "Community support",
-          "Behavioral & Situational questions",
-          "Suggested answers",
-          "History tracking",
+    jobSeeker: {
+      title: "For job seekers & learners",
+      subtext:
+        "Practice with real job-description-based questions, get AI feedback, and prepare smarter for interviews.",
+      comparisonNote:
+        "Start free, then upgrade when you are ready for serious interview preparation.",
+      plans: [
+        {
+          name: "Free",
+          period: "/ month",
+          description:
+            "For students and first-time users who want to explore the platform.",
+          cta: "Get Started Free",
+          features: [
+            "5 JD generations per month — enough to learn the flow before you invest",
+            "Basic question generation from real job-description text",
+            "Technical interview questions only",
+            "Limited PDF export: 3 downloads per month",
+            "Standard AI feedback on your practice sessions",
+            "Community support",
+            "Behavioral & situational questions",
+            "AI-generated suggested answers",
+            "Full history & saved practice sets",
+            "Advanced HR-aligned evaluation",
+          ],
+        },
+        {
+          name: "Plus",
+          period: "/ month",
+          priceFootnote:
+            "Less than the cost of a few coffees — built to help you prepare for real interviews.",
+          description:
+            "For serious job seekers who want targeted interview preparation and stronger answers.",
+          cta: "Get Plus",
+          features: [
+            "50 JD generations per month — cover every role you are targeting",
+            "Full access to technical, behavioral, and situational questions",
+            "AI-generated suggested answers so you know what “good” sounds like",
+            "Advanced AI evaluation based on role-specific criteria",
+            "Unlimited PDF export for personal study packs and mock interviews",
+            "Full history and saved practice sets — revisit weak spots anytime",
+            "Role-specific interview preparation tips tied to your target jobs",
+            "Email support with a human reply within 48 hours",
+            "Recruiter team & admin tools",
+          ],
+        },
+      ],
+    },
+    recruiter: {
+      title: "HR Subscription Plans",
+      subtext:
+        "Create accurate, role-specific interview questions faster with AI-powered generation, RAG-enhanced validation, and candidate performance insights.",
+      valueMessage:
+        "Designed for HR teams that need consistent, technically accurate, and job-description-based interview preparation tools.",
+      highlights: [
+        "Turn any Job Description into a structured interview question set.",
+        "Generate technically accurate questions with RAG-enhanced validation.",
+        "Create consistent evaluation materials for every candidate.",
+        "Publish branded question sets for job seekers.",
+        "Use candidate insights to improve hiring decisions.",
+      ],
+      upgradeWhy: {
+        title: "Why HR teams upgrade",
+        footnote:
+          "AI-powered generation is a premium feature because it uses background processing, LLM generation, and RAG-based technical validation.",
+        points: [
+          {
+            title: "Save time",
+            body: "Generate structured interview questions from Job Descriptions instead of creating them manually.",
+          },
+          {
+            title: "Improve accuracy",
+            body: "Use RAG-enhanced AI generation based on trusted knowledge sources instead of generic AI prompts.",
+          },
+          {
+            title: "Standardize evaluation",
+            body: "Create consistent question sets by role, difficulty level, and question type.",
+          },
+          {
+            title: "Understand candidates better",
+            body: "Review candidate practice results, performance trends, and shared feedback.",
+          },
+          {
+            title: "Strengthen employer branding",
+            body: "Publish company-branded question sets that job seekers can discover and practice with.",
+          },
         ],
       },
-      {
-        name: "Pro",
-        period: "/ month",
-        description:
-          "For recruiters and small teams who need full capabilities.",
-        cta: "Start Pro Plan",
-        features: [
-          "100 JD generations per month",
-          "Technical, Behavioral & Situational",
-          "AI-generated suggested answers",
-          "Unlimited PDF export",
-          "Full session history",
-          "Priority email support",
-          "Team management",
-          "Admin analytics dashboard",
-        ],
-      },
-      {
-        name: "Enterprise",
-        period: "pricing",
-        description:
-          "For organizations that need scale, control, and dedicated support.",
-        cta: "Contact Sales",
-        features: [
-          "Unlimited JD generations",
-          "All Pro features included",
-          "Team & role management",
-          "Admin analytics dashboard",
-          "Role-based access control",
-          "Dedicated account manager",
-          "Custom AI model configuration",
-          "On-premise deployment option",
-        ],
-      },
-    ],
+      plans: [
+        {
+          name: "Basic",
+          period: "/ month · free trial",
+          description:
+            "For HR users who want to explore basic recruitment management tools before using AI-powered features.",
+          cta: "Start Free",
+          features: [
+            "Create and manage basic Job Descriptions",
+            "Upload or input JD text manually",
+            "Create interview question sets manually",
+            "Organize questions by category",
+            "Tag questions as Technical, Behavioral, or Situational",
+            "Set difficulty levels for questions",
+            "Basic candidate contact inbox",
+            "Limited access to dashboard overview",
+            "Limited saved question sets",
+            "No AI-powered question generation",
+            "No RAG-enhanced technical validation",
+            "No advanced candidate analytics",
+            "No company-branded public publishing",
+          ],
+        },
+        {
+          name: "Professional",
+          badge: "Recommended",
+          period: "/ month",
+          description:
+            "For HR teams that want to save time and generate accurate interview questions directly from Job Descriptions.",
+          cta: "Start Professional",
+          features: [
+            "Everything in Basic — JD workspace, manual sets, tagging, difficulty, inbox",
+            "AI-powered interview question generation from Job Descriptions",
+            "Generate structured questions from JD text, PDF, or DOCX upload",
+            "RAG-enhanced generation using trusted technical knowledge sources",
+            "Technical, Behavioral, and Situational question generation",
+            "Difficulty-level control for AI-generated sets",
+            "Save and manage AI-generated question sets",
+            "Publish question sets under your company brand",
+            "Candidate shared practice result inbox",
+            "Basic candidate performance insights",
+            "Export question sets to PDF",
+            "Email support",
+            "Usage: 50 AI JD generations / month · up to 20 published branded sets · up to 3 HR team members",
+          ],
+        },
+        {
+          name: "Business",
+          period: "/ month",
+          description:
+            "For growing HR teams that need deeper analytics, higher usage limits, and stronger candidate insight.",
+          cta: "Upgrade to Business",
+          features: [
+            "Everything in Professional",
+            "200 AI JD generations per month",
+            "Unlimited saved question sets",
+            "Unlimited company-branded question set publishing",
+            "Advanced candidate performance analytics",
+            "Candidate comparison reports",
+            "Performance trend dashboard",
+            "Team usage analytics",
+            "Advanced export options",
+            "Priority email support",
+            "Up to 10 HR team members",
+          ],
+        },
+        {
+          name: "Enterprise",
+          period: "",
+          description:
+            "For large hiring teams that need custom limits, advanced control, and dedicated support.",
+          cta: "Contact Sales",
+          features: [
+            "Custom AI generation volume",
+            "Custom team size",
+            "Dedicated company workspace",
+            "Advanced admin dashboard",
+            "Custom analytics reports",
+            "API or integration support where available",
+            "Dedicated support",
+            "Custom onboarding",
+          ],
+        },
+      ],
+    },
   },
 
   demo: {
@@ -310,10 +432,10 @@ export const en = {
     subtitle: "Question Generator",
     sectionLabel: "Main Menu",
     nav: {
-      "/dashboard": "Dashboard",
-      "/generate": "Generate Questions",
-      "/history": "History",
-      "/settings": "Settings",
+      "/hr/dashboard": "Dashboard",
+      "/hr/generate": "Generate Questions",
+      "/hr/history": "History",
+      "/hr/settings": "Settings",
     },
     quickGenerate: {
       title: "Quick Generate",
@@ -331,6 +453,7 @@ export const en = {
       "/admin/users": "User Management",
       "/admin/analytics": "Analytics",
       "/admin/content": "Generated Content",
+      "/admin/audit": "Audit Log",
       "/admin/settings": "Settings",
     },
     systemStatus: {
@@ -347,14 +470,15 @@ export const en = {
 
   appShell: {
     routes: {
-      "/dashboard": "Dashboard",
-      "/generate": "Generate Questions",
-      "/history": "Session History",
-      "/settings": "Settings",
+      "/hr/dashboard": "Dashboard",
+      "/hr/generate": "Generate Questions",
+      "/hr/history": "Session History",
+      "/hr/settings": "Settings",
       "/admin/dashboard": "Admin Dashboard",
       "/admin/users": "User Management",
       "/admin/analytics": "System Analytics",
       "/admin/content": "Generated Content",
+      "/admin/audit": "Audit Log",
       "/admin/settings": "Admin Settings",
     },
     breadcrumb: {
@@ -364,9 +488,11 @@ export const en = {
       results: "Results",
       settings: "Settings",
       admin: "Admin",
+      hr: "HR",
       users: "Users",
       analytics: "Analytics",
       content: "Content",
+      audit: "Audit Log",
     },
   },
 
@@ -658,9 +784,9 @@ export const en = {
     ],
     responses: {
       pricing:
-        "We offer 3 plans:\n• Free — 10 generations/month\n• Pro ($19/mo) — unlimited generations + PDF export\n• Enterprise — custom pricing for teams\n\nStart free, no credit card required!",
+        "Plans are split by audience:\n\nJob seekers & learners\n• Free — explore with limited AI-powered practice\n• Plus ($9/mo) — deeper interview prep with full question types, suggested answers, and exports\n\nHR & IQGS (teams)\n• Basic ($0) — manual JDs & question sets, no AI generation\n• Professional ($29/mo) — AI + RAG from JDs/PDF/DOCX, branded publishing, insights (50 AI runs/mo, caps apply)\n• Business ($79/mo) — higher limits, advanced analytics & exports\n• Enterprise — custom volume, integrations, dedicated support\n\nStart free — upgrade when you need AI generation and analytics.",
       features:
-        "HireGen AI extracts key skills from your Job Description, then generates tailored Technical, Behavioral, and Situational questions — all powered by RAG + GPT-4. You can also export the full set as a PDF.",
+        "HireGen AI extracts key skills from your Job Description, then generates tailored Technical, Behavioral, and Situational questions — all powered by RAG and large language models. You can also export the full set as a PDF.",
       howItWorks:
         "It's simple:\n1. Paste your Job Description\n2. AI extracts keywords & role context\n3. Questions are generated in under 30 seconds\n4. Export or copy your question set",
       export:
@@ -683,9 +809,39 @@ export const en = {
         "JDs Processed",
         "Questions Generated",
       ],
+      secondaryStats: {
+        title: "Today's signals",
+        subtitle: "Key operational metrics (mock data, refreshed hourly in a real deployment).",
+        cards: [
+          { label: "Monthly Active Users", value: "312", sub: "+18 vs last month" },
+          { label: "New sign-ups (7 days)", value: "26", sub: "recruiters + guests" },
+          { label: "Avg. generation time", value: "28s", sub: "p95 latency: 41s" },
+          { label: "Export success rate", value: "99.6%", sub: "PDF pipeline · last 7 days" },
+        ],
+      },
+      weeklyOverview: {
+        title: "Active users vs JD submissions",
+        subtitle: "This calendar week (UTC)",
+        usersLegend: "Active users",
+        jdLegend: "JD submissions",
+      },
+      categoryMix: {
+        title: "Question category mix",
+        subtitle: "Share of generated questions across all sessions",
+        countLabel: "Questions",
+      },
+      topRecruiters: {
+        title: "Top recruiters",
+        subtitle: "By total generated questions in the last 30 days (mock)",
+        rank: "Rank",
+        recruiter: "Recruiter",
+        sessions: "Sessions",
+        questions: "Questions",
+      },
       userGrowth: {
         title: "User Growth",
         subtitle: "New registrations per week",
+        admins: "Admins",
         recruiters: "Recruiters",
         guests: "Guests",
       },
@@ -712,6 +868,7 @@ export const en = {
     users: {
       heading: "User Management",
       subtext: "Manage all platform accounts, roles, and access.",
+      deleteConfirm: "Delete user {name}? This cannot be undone.",
       addUser: "Add User",
       stats: {
         totalUsers: "Total Users",
@@ -795,6 +952,30 @@ export const en = {
       exportedLabel: "Exported",
       notExported: "Not exported",
     },
+    audit: {
+      heading: "Audit Log",
+      subtext: "Security and compliance trail of platform events.",
+      filters: {
+        searchPlaceholder: "Search by actor, summary, or IP…",
+        allTypes: "All event types",
+      },
+      table: {
+        type: "Type",
+        summary: "Summary",
+        actor: "Actor",
+        ip: "IP address",
+        detail: "Detail",
+        time: "Time",
+      },
+      eventLabels: {
+        user_created: "User Created",
+        recruiter_login: "Login",
+        jd_generation: "Generation",
+        export: "Export",
+        settings_change: "Settings",
+        admin_action: "Admin action",
+      },
+    },
     settings: {
       heading: "Admin Settings",
       subtext: "Configure platform behavior, AI model, access permissions, and notifications.",
@@ -815,6 +996,7 @@ export const en = {
         resetDesc: "Clear all generated sessions and analytics. This cannot be undone.",
         resetBtn: "Reset",
         saveBtn: "Save Changes",
+        saveSuccess: "Settings saved locally.",
       },
       aiConfig: {
         title: "AI Configuration",
@@ -861,6 +1043,197 @@ export const en = {
         ],
       },
     },
+  },
+
+  // ─── JOBSEEKER PRACTICE PLATFORM ──────────────────────────────────────────
+
+  jobseekerSidebar: {
+    sectionLabel: "Candidate",
+    nav: {
+      "/jobseeker/dashboard": "Dashboard",
+      "/jobseeker": "Practice Now",
+      "/jobseeker/history": "History",
+      "/jobseeker/profile": "Profile",
+      "/jobseeker/settings": "Settings",
+    },
+    practiceNow: {
+      title: "Ready to Practice?",
+      desc: "Pick a question set and start a mock interview",
+      btn: "Browse Sets →",
+    },
+    logoutTitle: "Log out",
+  },
+
+  jobseekerAppShell: {
+    routes: {
+      "/jobseeker/dashboard": "Dashboard",
+      "/jobseeker": "Practice Now",
+      "/jobseeker/history": "Practice History",
+      "/jobseeker/profile": "My Profile",
+      "/jobseeker/settings": "Settings",
+    },
+    breadcrumb: {
+      jobseeker: "Candidate",
+      dashboard: "Dashboard",
+      practice: "Practice",
+      history: "History",
+      profile: "Profile",
+      settings: "Settings",
+      sets: "Question Sets",
+    },
+  },
+
+  jobseekerMarketplacePage: {
+    heroBadge: "AI-Powered Interview Practice",
+    heroTitle: "Ace Your Next",
+    heroTitleAccent: "Tech Interview",
+    heroSub:
+      "Practice with real interview questions from top companies. Get instant AI feedback on your answers and track your progress.",
+    heroCta: "Start Practicing Free",
+    heroCtaSub: "No credit card required",
+    searchPlaceholder: "Search by role, company, or skill...",
+    allCategories: "All Categories",
+    allDifficulties: "All Levels",
+    easy: "Easy",
+    medium: "Medium",
+    hard: "Hard",
+    questions: "questions",
+    estimatedTime: "~",
+    attempts: "attempts",
+    startPractice: "Start Practice",
+    noResults: "No question sets found. Try a different search.",
+    setsFound: "question sets found",
+    rating: "Rating",
+  },
+
+  jobseekerSetDetailPage: {
+    backToSets: "← Back to Question Sets",
+    by: "by",
+    questions: "questions",
+    estimatedTime: "Estimated time",
+    difficulty: "Difficulty",
+    skills: "Skills covered",
+    startPractice: "Start Practice Session",
+    preview: "Question Preview",
+    categories: {
+      Technical: "Technical",
+      Behavioral: "Behavioral",
+      Situational: "Situational",
+    },
+    summaryCard: {
+      title: "Session Overview",
+      totalQuestions: "Total Questions",
+      estimatedTime: "Estimated Time",
+      difficulty: "Difficulty",
+      targetScore: "Target Score",
+      startBtn: "Start Practice",
+    },
+  },
+
+  jobseekerPracticePage: {
+    question: "Question",
+    of: "of",
+    timeRemaining: "Time Remaining",
+    answerPlaceholder:
+      "Type your answer here. Be specific and use concrete examples where possible...",
+    characters: "characters",
+    minRecommended: "150+ recommended",
+    prevBtn: "Previous",
+    nextBtn: "Next",
+    submitBtn: "Submit Answer",
+    finishBtn: "Finish & Get Feedback",
+    aiThinking: "AI is evaluating your answer...",
+    exitConfirm: "Are you sure you want to exit? Your progress will be lost.",
+  },
+
+  jobseekerFeedbackPage: {
+    backToHistory: "← Back to History",
+    overallScore: "Overall Score",
+    scoreOutOf: "out of 100",
+    performanceSummary: "Performance Summary",
+    aiInsight: "AI Insight",
+    skillBreakdown: "Skill Breakdown",
+    questionReviews: "Question-by-Question Review",
+    yourAnswer: "Your Answer",
+    aiEvaluation: "AI Evaluation",
+    strengths: "Strengths",
+    improvements: "Areas to Improve",
+    suggestion: "AI Suggestion",
+    retryBtn: "Practice Again",
+    shareBtn: "Share Result",
+    scoreLabels: {
+      Technical: "Technical",
+      Behavioral: "Behavioral",
+      Situational: "Situational",
+      Communication: "Communication",
+      ProblemSolving: "Problem Solving",
+    },
+  },
+
+  jobseekerHistoryPage: {
+    heading: "Practice History",
+    subtext: "Track your progress across all practice sessions.",
+    statLabels: ["Total Sessions", "Avg Score", "Best Score", "Time Practiced"],
+    filters: {
+      searchPlaceholder: "Search by company or role...",
+      allTime: "All Time",
+      thisWeek: "This Week",
+      thisMonth: "This Month",
+    },
+    table: {
+      session: "Session",
+      company: "Company",
+      date: "Date",
+      score: "Score",
+      duration: "Duration",
+      skills: "Skills",
+      actions: "Actions",
+    },
+    retryBtn: "Retry",
+    viewBtn: "View",
+    noHistory: "No practice sessions yet. Start practicing now!",
+  },
+
+  jobseekerDashboardPage: {
+    welcome: "Good morning, Alex 👋",
+    welcomeSub: "You have 3 recommended sets and a 7-day practice streak. Keep it up!",
+    statLabels: ["Practice Sessions", "Average Score", "Practice Streak", "Interview Readiness"],
+    recentTitle: "Recent Practice",
+    recentSubtitle: "Your latest sessions",
+    recommendedTitle: "Recommended for You",
+    recommendedSubtitle: "AI-curated sets based on your target role",
+    analyticsTitle: "Performance Analytics",
+    strongSkillsTitle: "Strongest Skills",
+    weakSkillsTitle: "Areas to Improve",
+    aiRecommendationTitle: "AI Recommendation",
+    aiRecommendation:
+      "Based on your recent sessions, focus on Situational questions — your score in this category is 12% below your Technical average. Try the Google PM set to practice structured thinking.",
+    viewAllHistory: "View all →",
+    viewAllSets: "Browse all →",
+    startPractice: "Start Practice",
+  },
+
+  jobseekerProfilePage: {
+    heading: "My Profile",
+    editBtn: "Edit Profile",
+    saveBtn: "Save Changes",
+    cancelBtn: "Cancel",
+    targetRole: "Target Role",
+    bio: "Bio",
+    skills: "Skills",
+    stats: {
+      sessions: "Sessions",
+      avgScore: "Avg Score",
+      bestScore: "Best Score",
+      streak: "Streak",
+    },
+    achievements: "Achievements",
+    earned: "Earned",
+    locked: "Locked",
+    bioPlaceholder: "Tell us about your background and career goals...",
+    targetRolePlaceholder: "e.g. Senior Frontend Developer",
+    addSkill: "Add skill",
+    skillPlaceholder: "e.g. React, Python",
   },
 };
 

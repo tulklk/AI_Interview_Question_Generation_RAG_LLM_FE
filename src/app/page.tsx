@@ -12,39 +12,31 @@ import { FloatingWidgets } from "@/components/guest/floating-widgets";
 
 export default function RootPage() {
   return (
-    <main className="relative overflow-hidden">
-      {/* ── Continuously color-shifting background (fixed, full viewport) ── */}
+    <main className="relative overflow-x-hidden">
+      {/* ── Soft dual-gradient background (slow crossfade) + orbs ── */}
       <div
-        className="animated-bg fixed inset-0 z-0 pointer-events-none"
+        className="animated-bg-stack fixed inset-0 z-0 pointer-events-none isolate"
         aria-hidden="true"
-      />
+      >
+        <div className="animated-bg-layer animated-bg-layer--a" />
+        <div className="animated-bg-layer animated-bg-layer--b" />
+      </div>
 
-      {/* ── Floating glow orbs layered on top of the gradient ── */}
-      <div className="fixed inset-0 pointer-events-none z-0" aria-hidden="true">
-        {/* Large purple orb — top-left */}
+      <div
+        className="fixed inset-0 z-0 pointer-events-none isolate"
+        aria-hidden="true"
+      >
         <div
           className="holo-orb holo-orb--purple"
-          style={{ width: 700, height: 700, top: "-8%", left: "-10%" }}
+          style={{ width: 560, height: 560, top: "-6%", left: "-8%" }}
         />
-        {/* Blue orb — mid-right */}
         <div
           className="holo-orb holo-orb--blue"
-          style={{ width: 550, height: 550, top: "28%", right: "-8%" }}
+          style={{ width: 480, height: 480, top: "32%", right: "-6%" }}
         />
-        {/* Pink orb — bottom-left */}
         <div
           className="holo-orb holo-orb--pink"
-          style={{ width: 500, height: 500, top: "58%", left: "3%" }}
-        />
-        {/* Cyan orb — bottom-right */}
-        <div
-          className="holo-orb holo-orb--cyan"
-          style={{ width: 450, height: 450, top: "72%", right: "8%" }}
-        />
-        {/* Indigo orb — center */}
-        <div
-          className="holo-orb holo-orb--indigo"
-          style={{ width: 400, height: 400, top: "12%", left: "42%" }}
+          style={{ width: 420, height: 420, top: "62%", left: "5%" }}
         />
       </div>
 

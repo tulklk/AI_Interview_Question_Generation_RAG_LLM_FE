@@ -30,25 +30,25 @@ export function UserFilters({
   const statuses = [f.allStatus, "Active", "Pending", "Suspended"];
 
   return (
-    <div className="flex items-center gap-3 mb-4 animate-fade-up">
-      <div className="relative flex-1 max-w-xs">
+    <div className="mb-4 flex flex-wrap items-center gap-3 animate-fade-up">
+      <div className="relative min-w-0 w-full sm:max-w-xs sm:flex-1">
         <Search
           size={14}
-          className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
+          className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#9ca3af]"
         />
         <input
           type="text"
           value={search}
           onChange={(e) => onSearchChange(e.target.value)}
           placeholder={f.searchPlaceholder}
-          className="w-full pl-9 pr-4 py-2 text-sm bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#6c47ff]/20 focus:border-[#6c47ff] transition-colors"
+          className="min-h-[38px] w-full rounded-lg border border-[#e5e7eb] bg-white py-2 pl-9 pr-4 text-xs text-[#111827] transition-colors focus:border-[#6c47ff] focus:outline-none focus:ring-[3px] focus:ring-[rgba(108,71,255,0.1)]"
         />
       </div>
 
       <select
         value={role}
         onChange={(e) => onRoleChange(e.target.value)}
-        className="bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#6c47ff]/20 focus:border-[#6c47ff] transition-colors"
+        className="min-h-[38px] rounded-lg border border-[#e5e7eb] bg-white px-3 py-2 text-xs text-[#111827] focus:border-[#6c47ff] focus:outline-none focus:ring-[3px] focus:ring-[rgba(108,71,255,0.1)]"
       >
         {roles.map((r) => (
           <option key={r}>{r}</option>
@@ -58,7 +58,7 @@ export function UserFilters({
       <select
         value={status}
         onChange={(e) => onStatusChange(e.target.value)}
-        className="bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#6c47ff]/20 focus:border-[#6c47ff] transition-colors"
+        className="min-h-[38px] rounded-lg border border-[#e5e7eb] bg-white px-3 py-2 text-xs text-[#111827] focus:border-[#6c47ff] focus:outline-none focus:ring-[3px] focus:ring-[rgba(108,71,255,0.1)]"
       >
         {statuses.map((s) => (
           <option key={s}>{s}</option>
@@ -66,8 +66,9 @@ export function UserFilters({
       </select>
 
       <button
+        type="button"
         onClick={onAddUser}
-        className="ml-auto flex items-center gap-2 bg-[#6c47ff] hover:bg-[#5535dd] text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors"
+        className="ml-0 inline-flex min-h-9 w-full items-center justify-center gap-2 rounded-lg bg-[#6c47ff] px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#5a3dd9] active:bg-[#4b2fbf] sm:ml-auto sm:w-auto"
       >
         <UserPlus size={15} />
         {u.addUser}
