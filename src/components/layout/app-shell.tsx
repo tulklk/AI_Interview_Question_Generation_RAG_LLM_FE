@@ -5,6 +5,8 @@ import { usePathname } from "next/navigation";
 import { Sidebar } from "./sidebar";
 import { TopHeader } from "./top-header";
 import { useLanguage } from "@/context/language-context";
+import { useHrSubscription } from "@/context/hr-subscription-context";
+import type { HrPlanId } from "@/types/hr-subscription";
 
 interface AppShellProps {
   children: ReactNode;
@@ -15,6 +17,12 @@ interface AppShellProps {
 export function AppShell({ children, breadcrumb, pageTitle }: AppShellProps) {
   const { t } = useLanguage();
   const pathname = usePathname();
+  const { planId } = useHrSubscription();
+  const planNames = t.settingsPage.subscription.planNames as Record<HrPlanId, string>;
+  const planDisplay = t.settingsPage.subscription.userPlanTemplate.replace(
+    "{{plan}}",
+    planNames[planId]
+  );
 
   const routes = t.appShell.routes;
   const translatedTitle =
@@ -34,6 +42,11 @@ export function AppShell({ children, breadcrumb, pageTitle }: AppShellProps) {
         <TopHeader
           breadcrumb={translatedBreadcrumb}
           pageTitle={translatedTitle}
+          user={{
+            initials: "HR",
+            name: "HR Manager",
+            plan: planDisplay,
+          }}
         />
         <main className="flex-1 overflow-y-auto bg-[#f5f7fb]">
           <div className="max-w-[1400px] mx-auto px-8 py-7">{children}</div>
