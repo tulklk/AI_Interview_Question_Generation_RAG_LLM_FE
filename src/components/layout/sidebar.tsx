@@ -3,16 +3,21 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Sparkles, LogOut } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, isHrNavActive } from "@/lib/utils";
 import { navItems } from "@/data/dashboard";
 import { clearAuth } from "@/lib/auth";
 import { useLanguage } from "@/context/language-context";
+import { useHrSubscription } from "@/context/hr-subscription-context";
 import { BrandLogo } from "@/components/shared/brand-logo";
+import type { HrPlanId } from "@/types/hr-subscription";
 
 export function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const { t } = useLanguage();
+  const { planId } = useHrSubscription();
+  const planShortBadge = t.settingsPage.subscription.planShortBadge as Record<HrPlanId, string>;
+  const short = planShortBadge[planId]?.trim();
   const s = t.sidebar;
 
   function handleLogout() {
@@ -21,7 +26,7 @@ export function Sidebar() {
   }
 
   return (
-    <aside className="flex flex-col w-[250px] shrink-0 h-screen bg-white border-r border-gray-100 overflow-y-auto">
+    <aside className="flex flex-col w-[250px] shrink-0 h-screen bg-white border-r border-[#e5e7eb] overflow-y-auto">
       <div className="px-5 pt-6 pb-2">
         <BrandLogo
           logoClassName="w-9 h-9"
@@ -35,40 +40,32 @@ export function Sidebar() {
         </p>
         <ul className="space-y-0.5">
           {navItems.map((item) => {
-            const isActive =
-              item.href === "/hr/dashboard"
-                ? ["/hr", "/hr/", "/hr/dashboard", "/hr/dashboard/"].includes(pathname)
-                : item.href === "/hr/settings"
-                  ? pathname === "/hr/settings" || pathname === "/hr/settings/"
-                  : pathname === item.href ||
-                    pathname === `${item.href}/` ||
-                    pathname.startsWith(`${item.href}/`);
+            const isActive = isHrNavActive(item.href, pathname);
             const label = s.nav[item.href as keyof typeof s.nav] ?? item.label;
             return (
               <li key={item.href}>
                 <Link
                   href={item.href}
                   className={cn(
-                    "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors",
+                    "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors text-base font-normal",
                     isActive
-                      ? "bg-[#6c47ff] text-white"
-                      : "text-gray-500 hover:bg-gray-50 hover:text-gray-800"
+                      ? "bg-[rgba(108,71,255,0.1)] text-[#6c47ff] font-medium"
+                      : "text-[#6b7280] hover:bg-[rgba(108,71,255,0.05)] hover:text-[#111827]"
                   )}
                 >
                   <item.icon
                     size={18}
-                    className={cn("shrink-0", isActive ? "text-white" : "text-gray-400")}
+                    className={cn(
+                      "shrink-0",
+                      isActive ? "text-[#6c47ff]" : "text-[#9ca3af]"
+                    )}
                   />
                   <span className="text-sm font-medium flex-1">{label}</span>
                   {item.badge !== undefined && (
                     <span
                       className={cn(
                         "text-[10px] font-semibold px-1.5 py-0.5 rounded-md leading-none",
-                        isActive
-                          ? "bg-white/20 text-white"
-                          : item.badgeVariant === "new"
-                          ? "bg-[#6c47ff]/10 text-[#6c47ff]"
-                          : "bg-gray-100 text-gray-500"
+                        isActive ? "bg-[#6c47ff]/15 text-[#6c47ff]" : "bg-[#f5f7fb] text-[#6b7280]"
                       )}
                     >
                       {item.badge}
@@ -82,7 +79,7 @@ export function Sidebar() {
       </nav>
 
       <div className="px-4 mb-4">
-        <div className="bg-[#f0edff] rounded-xl p-4">
+        <div className="bg-[#f5f3ff] rounded-xl p-4 border border-[#e5e7eb]/80">
           <div className="w-8 h-8 rounded-lg bg-[#6c47ff]/15 flex items-center justify-center mb-3">
             <Sparkles size={15} className="text-[#6c47ff]" />
           </div>
@@ -99,7 +96,7 @@ export function Sidebar() {
         </div>
       </div>
 
-      <div className="px-4 py-4 border-t border-gray-100">
+      <div className="px-4 py-4 border-t border-[#e5e7eb]">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-full bg-[#6c47ff] flex items-center justify-center shrink-0">
             <span className="text-white text-xs font-bold">HR</span>
@@ -108,9 +105,19 @@ export function Sidebar() {
             <p className="text-gray-800 text-sm font-semibold leading-tight truncate">HR Manager</p>
             <p className="text-gray-400 text-[11px] leading-tight truncate">hr@company.com</p>
           </div>
-          <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full shrink-0">
-            Pro
-          </span>
+          {short ? (
+            <span
+              className={cn(
+                "text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0",
+                planId === "basic" && "text-gray-600 bg-gray-100",
+                planId === "professional" && "text-emerald-700 bg-emerald-50",
+                planId === "business" && "text-blue-700 bg-blue-50",
+                planId === "enterprise" && "text-violet-700 bg-violet-50"
+              )}
+            >
+              {short}
+            </span>
+          ) : null}
           <button
             onClick={handleLogout}
             title={s.logoutTitle}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   User,
   SlidersHorizontal,
@@ -37,6 +37,18 @@ export function SettingsLayout() {
   const tabs = t.settingsPage.tabs;
   const [activeTab, setActiveTab] = useState<SettingsTab>("profile");
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const syncFromHash = () => {
+      if (window.location.hash === "#billing") {
+        setActiveTab("billing");
+      }
+    };
+    syncFromHash();
+    window.addEventListener("hashchange", syncFromHash);
+    return () => window.removeEventListener("hashchange", syncFromHash);
+  }, []);
+
   const tabItems: { id: SettingsTab; label: string; Icon: typeof User }[] = [
     { id: "profile", label: tabs.profile, Icon: User },
     { id: "preferences", label: tabs.preferences, Icon: SlidersHorizontal },
@@ -53,7 +65,16 @@ export function SettingsLayout() {
             <li key={id}>
               <button
                 type="button"
-                onClick={() => setActiveTab(id)}
+                onClick={() => {
+                  setActiveTab(id);
+                  if (typeof window === "undefined") return;
+                  const base = `${window.location.pathname}${window.location.search}`;
+                  if (id === "billing") {
+                    window.history.replaceState(null, "", `${base}#billing`);
+                  } else {
+                    window.history.replaceState(null, "", base);
+                  }
+                }}
                 className={cn(
                   "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors text-left",
                   activeTab === id
