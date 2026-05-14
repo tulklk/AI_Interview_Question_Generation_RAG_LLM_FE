@@ -41,7 +41,7 @@ export function HeroSection() {
           </div>
 
           <h1
-            className="text-5xl font-extrabold text-gray-900 leading-[1.1] tracking-tight mb-5 animate-fade-up"
+            className="text-4xl sm:text-[2.5rem] lg:text-[2.75rem] font-extrabold text-gray-900 leading-[1.1] tracking-tight mb-5 animate-fade-up"
             style={{ animationDelay: "80ms" }}
           >
             {h.headline1}
