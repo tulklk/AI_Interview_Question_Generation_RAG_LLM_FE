@@ -10,6 +10,8 @@ interface ConfigurationSectionProps {
   level: string;
   questionCount: string;
   jdText: string;
+  maxQuestionsPerRun: number;
+  generateDisabled?: boolean;
   onRoleChange: (v: string) => void;
   onLevelChange: (v: string) => void;
   onCountChange: (v: string) => void;
@@ -21,6 +23,8 @@ export function ConfigurationSection({
   level,
   questionCount,
   jdText,
+  maxQuestionsPerRun,
+  generateDisabled = false,
   onRoleChange,
   onLevelChange,
   onCountChange,
@@ -28,11 +32,16 @@ export function ConfigurationSection({
 }: ConfigurationSectionProps) {
   const { t } = useLanguage();
   const cfg = t.generatePage.config;
+  const hs = t.hrSubscription;
 
   const isReady = jdText.trim().length >= 30 && role !== "" && level !== "";
 
   const selectedRole = jobRoles.find((r) => r.id === role);
   const selectedLevel = experienceLevels.find((l) => l.id === level);
+
+  const countOptions = questionCounts
+    .filter((q) => q.value <= maxQuestionsPerRun)
+    .map((q) => ({ value: String(q.value), label: q.label }));
 
   return (
     <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 space-y-5">
@@ -40,6 +49,12 @@ export function ConfigurationSection({
         <Sparkles size={16} className="text-[#6c47ff]" />
         <h2 className="text-base font-semibold text-gray-900">{cfg.title}</h2>
       </div>
+
+      {maxQuestionsPerRun < 20 && (
+        <p className="text-xs text-amber-800 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
+          {hs.lockedBatch.replace("{max}", String(maxQuestionsPerRun))}
+        </p>
+      )}
 
       <div className="grid grid-cols-3 gap-4">
         <SelectField
@@ -73,7 +88,7 @@ export function ConfigurationSection({
             <SelectField
               value={questionCount}
               onChange={onCountChange}
-              options={questionCounts.map((q) => ({ value: String(q.value), label: q.label }))}
+              options={countOptions}
               id="question-count"
             />
           </div>
@@ -101,7 +116,7 @@ export function ConfigurationSection({
       <button
         type="button"
         onClick={onSubmit}
-        disabled={!isReady}
+        disabled={!isReady || generateDisabled}
         className="w-full flex items-center justify-center gap-2 bg-[#6c47ff] hover:bg-[#5535dd] disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed text-white font-semibold text-sm px-6 py-3.5 rounded-lg transition-colors"
       >
         <Sparkles size={15} />
