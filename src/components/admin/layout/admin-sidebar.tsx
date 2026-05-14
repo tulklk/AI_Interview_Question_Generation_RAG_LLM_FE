@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { LogOut, ShieldCheck } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, isAdminNavActive } from "@/lib/utils";
 import { adminNavItems } from "@/data/admin";
 import { clearAuth } from "@/lib/auth";
 import { useLanguage } from "@/context/language-context";
@@ -35,7 +35,7 @@ export function AdminSidebar() {
         </p>
         <ul className="space-y-0.5">
           {adminNavItems.map((item) => {
-            const isActive = pathname === item.href;
+            const isActive = isAdminNavActive(item.href, pathname);
             const label = s.nav[item.href as keyof typeof s.nav] ?? item.label;
             return (
               <li key={item.href}>
