@@ -35,20 +35,6 @@
   to   { opacity: 1; transform: translateY(0); }
 }
 
-/* ── Animated color-shifting background ── */
-@keyframes bgShift {
-  0%   { background-position: 0% 50%; }
-  25%  { background-position: 50% 0%; }
-  50%  { background-position: 100% 50%; }
-  75%  { background-position: 50% 100%; }
-  100% { background-position: 0% 50%; }
-}
-
-@keyframes holoPulse {
-  0%, 100% { opacity: 0.5; }
-  50%      { opacity: 0.85; }
-}
-
 @keyframes orbFloat1 {
   0%, 100% { transform: translate(0, 0) scale(1); }
   33%  { transform: translate(40px, -30px) scale(1.08); }
@@ -66,10 +52,29 @@
   50%  { transform: translate(35px, 30px) scale(1.12); }
 }
 
+/* Gentle landing background: crossfade two gradients via opacity (lighter than shifting bg-position) */
+@keyframes landingBgSoft {
+  0%,
+  100% {
+    opacity: 0.28;
+  }
+  50% {
+    opacity: 0.52;
+  }
+}
+
 @theme {
+  /* Design system — see .cursor/skills/design-system/DESIGN.md */
   --color-primary: #6c47ff;
-  --color-primary-hover: #5535dd;
+  --color-primary-hover: #5a3dd9;
+  --color-primary-active: #4b2fbf;
+  --color-charcoal: #111827;
+  --color-lavender: #f5f3ff;
+  --color-border: #e5e7eb;
   --color-page-bg: #f5f7fb;
+  --shadow-elevation-sm: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  --shadow-elevation-card: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-elevation-prominent: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
   --font-sans: var(--font-be-vietnam-pro), "Be Vietnam Pro", system-ui, -apple-system, sans-serif;
   --animate-fade-in: fadeIn 0.4s ease-out both;
   --animate-fade-up: fadeUp 0.5s ease-out both;
@@ -102,54 +107,78 @@ body {
   font-family: var(--font-be-vietnam-pro), "Be Vietnam Pro", system-ui, -apple-system, sans-serif;
 }
 
-/* ── Continuously color-shifting animated background ── */
-.animated-bg {
-  background: linear-gradient(
-    135deg,
-    #e8e0ff,
-    #dbeafe,
-    #fce7f3,
-    #cffafe,
-    #ede9fe,
-    #ddd6fe,
-    #bfdbfe,
-    #fbcfe8,
-    #e8e0ff
-  );
-  background-size: 400% 400%;
-  animation: bgShift 12s ease infinite;
+/* ── Landing background: two gradients, soft crossfade (slow opacity = subtle color drift) ── */
+.animated-bg-stack {
+  transform: translateZ(0);
+  backface-visibility: hidden;
 }
 
-/* ── Floating glow orbs ── */
+.animated-bg-layer {
+  position: absolute;
+  inset: 0;
+  background-size: 100% 100%;
+}
+
+.animated-bg-layer--a {
+  background: linear-gradient(
+    145deg,
+    #ede9fe 0%,
+    #e0e7ff 28%,
+    #dbeafe 52%,
+    #eef2ff 100%
+  );
+}
+
+.animated-bg-layer--b {
+  background: linear-gradient(
+    168deg,
+    #fce7f3 0%,
+    #f5f3ff 38%,
+    #cffafe 62%,
+    #ede9fe 100%
+  );
+  opacity: 0.4;
+  animation: landingBgSoft 26s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animated-bg-layer--b {
+    animation: none;
+    opacity: 0.36;
+  }
+
+  .holo-orb {
+    animation: none !important;
+    filter: blur(40px);
+    opacity: 0.65;
+  }
+}
+
 .holo-orb {
   position: absolute;
   border-radius: 50%;
-  filter: blur(90px);
+  filter: blur(56px);
   pointer-events: none;
-  will-change: transform, opacity;
+  transform: translateZ(0);
+  backface-visibility: hidden;
 }
 
 .holo-orb--purple {
-  background: radial-gradient(circle, rgba(108, 71, 255, 0.5) 0%, rgba(108, 71, 255, 0) 70%);
-  animation: orbFloat1 16s ease-in-out infinite, holoPulse 5s ease-in-out infinite;
+  background: radial-gradient(circle, rgba(108, 71, 255, 0.45) 0%, rgba(108, 71, 255, 0) 70%);
+  animation: orbFloat1 22s ease-in-out infinite;
 }
 
 .holo-orb--blue {
-  background: radial-gradient(circle, rgba(59, 130, 246, 0.45) 0%, rgba(59, 130, 246, 0) 70%);
-  animation: orbFloat2 20s ease-in-out infinite, holoPulse 7s ease-in-out infinite;
+  background: radial-gradient(circle, rgba(59, 130, 246, 0.38) 0%, rgba(59, 130, 246, 0) 70%);
+  animation: orbFloat2 26s ease-in-out infinite;
 }
 
 .holo-orb--pink {
-  background: radial-gradient(circle, rgba(236, 72, 153, 0.4) 0%, rgba(236, 72, 153, 0) 70%);
-  animation: orbFloat3 18s ease-in-out infinite, holoPulse 6s ease-in-out infinite;
+  background: radial-gradient(circle, rgba(236, 72, 153, 0.32) 0%, rgba(236, 72, 153, 0) 70%);
+  animation: orbFloat3 24s ease-in-out infinite;
 }
 
-.holo-orb--cyan {
-  background: radial-gradient(circle, rgba(34, 211, 238, 0.35) 0%, rgba(34, 211, 238, 0) 70%);
-  animation: orbFloat1 22s ease-in-out infinite reverse, holoPulse 8s ease-in-out infinite;
-}
-
-.holo-orb--indigo {
-  background: radial-gradient(circle, rgba(99, 102, 241, 0.42) 0%, rgba(99, 102, 241, 0) 70%);
-  animation: orbFloat2 17s ease-in-out infinite reverse, holoPulse 6s ease-in-out infinite;
+/* Orbs inside scrolling sections — cheaper than full-page blur */
+.holo-orb--hero {
+  filter: blur(38px);
 }

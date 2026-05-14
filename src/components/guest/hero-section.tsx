@@ -11,19 +11,19 @@ export function HeroSection() {
   const h = t.hero;
 
   return (
-    <section id="home" className="relative py-20 px-6 overflow-hidden bg-white/60 backdrop-blur-sm">
+    <section id="home" className="relative py-20 px-6 overflow-hidden bg-white/92">
       {/* ── Hero holographic accents ── */}
       <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
         <div
-          className="holo-orb holo-orb--purple"
+          className="holo-orb holo-orb--hero holo-orb--purple"
           style={{ width: 500, height: 500, top: "-20%", left: "-10%", opacity: 0.5 }}
         />
         <div
-          className="holo-orb holo-orb--blue"
+          className="holo-orb holo-orb--hero holo-orb--blue"
           style={{ width: 400, height: 400, bottom: "-15%", right: "-8%", opacity: 0.4 }}
         />
         <div
-          className="holo-orb holo-orb--pink"
+          className="holo-orb holo-orb--hero holo-orb--pink"
           style={{ width: 300, height: 300, top: "20%", right: "20%", opacity: 0.25 }}
         />
       </div>
@@ -41,7 +41,7 @@ export function HeroSection() {
           </div>
 
           <h1
-            className="text-5xl font-extrabold text-gray-900 leading-[1.1] tracking-tight mb-5 animate-fade-up"
+            className="text-4xl sm:text-[2.5rem] lg:text-[2.75rem] font-extrabold text-gray-900 leading-[1.1] tracking-tight mb-5 animate-fade-up"
             style={{ animationDelay: "80ms" }}
           >
             {h.headline1}

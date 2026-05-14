@@ -29,7 +29,7 @@ export function GuestNavbar() {
 
   return (
     <header
-      className={`sticky top-0 z-50 bg-white/80 backdrop-blur-md transition-shadow duration-200 animate-slide-down ${
+      className={`sticky top-0 z-50 bg-white/95 transition-shadow duration-200 animate-slide-down ${
         scrolled ? "shadow-sm border-b border-gray-200/60" : "border-b border-transparent"
       }`}
     >
