@@ -37,6 +37,20 @@ export function ScrollReveal({
     const el = ref.current;
     if (!el) return;
 
+    /** If already in view (or observer is flaky, e.g. some embedded browsers), show immediately */
+    function alreadyVisible(element: HTMLElement) {
+      const rect = element.getBoundingClientRect();
+      const vh = window.innerHeight || document.documentElement.clientHeight;
+      const visible = Math.min(rect.bottom, vh) - Math.max(rect.top, 0);
+      const ratio = rect.height > 0 ? visible / rect.height : 1;
+      return ratio >= threshold;
+    }
+
+    if (alreadyVisible(el)) {
+      setVisible(true);
+      return;
+    }
+
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
@@ -44,7 +58,7 @@ export function ScrollReveal({
           observer.disconnect();
         }
       },
-      { threshold }
+      { threshold, rootMargin: "0px 0px 12% 0px" }
     );
 
     observer.observe(el);

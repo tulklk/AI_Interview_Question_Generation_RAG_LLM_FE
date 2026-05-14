@@ -80,7 +80,7 @@ export function ContentTable({ sessions }: ContentTableProps) {
               <td className="px-4 py-3.5">
                 <div className="flex items-center justify-end gap-1">
                   <Link
-                    href={`/history/${session.id}`}
+                    href={`/hr/history/${session.id}`}
                     className="inline-flex rounded-lg p-1.5 text-[#9ca3af] transition-colors hover:bg-[rgba(108,71,255,0.1)] hover:text-[#6c47ff]"
                   >
                     <Eye size={14} />

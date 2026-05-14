@@ -5,8 +5,9 @@ import { Providers } from "./providers";
 
 const beVietnamPro = Be_Vietnam_Pro({
   subsets: ["latin", "vietnamese"],
-  weight: ["300", "400", "500", "600", "700", "800"],
+  weight: ["400", "500", "600", "700"],
   display: "swap",
+  adjustFontFallback: true,
   variable: "--font-be-vietnam-pro",
 });
 
