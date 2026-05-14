@@ -40,8 +40,8 @@ export function AdminSettingsLayout() {
   ];
 
   return (
-    <div className="grid grid-cols-[220px_1fr] gap-6 items-start">
-      <nav className="bg-white rounded-xl border border-gray-100 shadow-sm p-2 sticky top-4 animate-slide-left">
+    <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[220px_1fr]">
+      <nav className="sticky top-4 animate-slide-left rounded-xl border border-[#e5e7eb] bg-white p-2 shadow-[0_4px_6px_-1px_rgba(0,0,0,0.1),0_2px_4px_-2px_rgba(0,0,0,0.1)]">
         <ul className="space-y-0.5">
           {tabList.map(({ id, label }) => {
             const Icon = tabIcons[id];
@@ -66,7 +66,7 @@ export function AdminSettingsLayout() {
         </ul>
       </nav>
 
-      <div key={activeTab} className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 animate-scale-in">
+      <div key={activeTab} className="animate-scale-in rounded-xl border border-[#e5e7eb] bg-white p-6 shadow-[0_4px_6px_-1px_rgba(0,0,0,0.1),0_2px_4px_-2px_rgba(0,0,0,0.1)]">
         <TabContent tab={activeTab} />
       </div>
     </div>

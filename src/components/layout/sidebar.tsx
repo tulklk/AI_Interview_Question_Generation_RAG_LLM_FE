@@ -35,7 +35,14 @@ export function Sidebar() {
         </p>
         <ul className="space-y-0.5">
           {navItems.map((item) => {
-            const isActive = pathname === item.href;
+            const isActive =
+              item.href === "/hr/dashboard"
+                ? ["/hr", "/hr/", "/hr/dashboard", "/hr/dashboard/"].includes(pathname)
+                : item.href === "/hr/settings"
+                  ? pathname === "/hr/settings" || pathname === "/hr/settings/"
+                  : pathname === item.href ||
+                    pathname === `${item.href}/` ||
+                    pathname.startsWith(`${item.href}/`);
             const label = s.nav[item.href as keyof typeof s.nav] ?? item.label;
             return (
               <li key={item.href}>
@@ -84,7 +91,7 @@ export function Sidebar() {
           </p>
           <p className="text-gray-500 text-xs mt-1 leading-relaxed">{s.quickGenerate.desc}</p>
           <Link
-            href="/generate"
+            href="/hr/generate"
             className="mt-3 inline-block text-xs font-semibold text-white bg-[#6c47ff] hover:bg-[#5535dd] px-4 py-2 rounded-lg transition-colors w-full text-center"
           >
             {s.quickGenerate.btn}

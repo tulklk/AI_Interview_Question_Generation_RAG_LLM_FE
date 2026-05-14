@@ -9,14 +9,14 @@ export function AdminWelcomeSection() {
   const d = t.adminPages.dashboard;
 
   return (
-    <div className="flex items-start justify-between mb-6 animate-fade-up">
+    <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between mb-8 animate-fade-up rounded-xl border border-[#e5e7eb] bg-[#f5f3ff] p-6 md:p-8">
       <div>
-        <h2 className="text-2xl font-bold text-gray-900">{d.welcome}</h2>
-        <p className="text-sm text-gray-500 mt-1">{d.welcomeSub}</p>
+        <h2 className="text-[30px] font-bold leading-9 text-[#111827]">{d.welcome}</h2>
+        <p className="text-base text-[#6b7280] leading-6 mt-2">{d.welcomeSub}</p>
       </div>
       <Link
         href="/admin/users"
-        className="flex items-center gap-2 bg-[#6c47ff] hover:bg-[#5535dd] text-white text-sm font-semibold px-5 py-2.5 rounded-lg transition-colors shrink-0"
+        className="inline-flex h-9 min-h-9 items-center justify-center gap-2 rounded-lg bg-[#6c47ff] px-3 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#5a3dd9] active:bg-[#4b2fbf] shrink-0 sm:self-start"
       >
         <UserPlus size={15} />
         {d.addUser}

@@ -22,7 +22,7 @@ export function StatCard({ stat, labelOverride }: StatCardProps) {
           className={cn(
             "text-[11px] font-semibold px-2 py-0.5 rounded-full",
             stat.trendPositive
-              ? "bg-emerald-50 text-emerald-600"
+              ? "bg-[#f5f3ff] text-[#6c47ff]"
               : "bg-red-50 text-red-600"
           )}
         >

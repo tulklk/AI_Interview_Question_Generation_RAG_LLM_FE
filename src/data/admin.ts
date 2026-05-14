@@ -4,6 +4,7 @@ import {
   BarChart3,
   FileText,
   Settings,
+  ScrollText,
   Users2,
   Zap,
 } from "lucide-react";
@@ -17,6 +18,8 @@ import type {
   AnalyticsStat,
   WeeklyUsagePoint,
   ContentSession,
+  AuditLogEntry,
+  DashboardTopRecruiter,
 } from "@/types/admin";
 
 export const adminNavItems: AdminNavItem[] = [
@@ -24,6 +27,7 @@ export const adminNavItems: AdminNavItem[] = [
   { label: "User Management", href: "/admin/users", icon: Users, badge: 3 },
   { label: "System Analytics", href: "/admin/analytics", icon: BarChart3 },
   { label: "Generated Content", href: "/admin/content", icon: FileText },
+  { label: "Audit Log", href: "/admin/audit", icon: ScrollText },
   { label: "Settings", href: "/admin/settings", icon: Settings },
 ];
 
@@ -35,8 +39,8 @@ export const adminStats: AdminStat[] = [
     trend: "+8%",
     trendPositive: true,
     icon: Users2,
-    iconBg: "bg-blue-50",
-    iconColor: "text-blue-500",
+    iconBg: "bg-[#f5f3ff]",
+    iconColor: "text-[#6c47ff]",
   },
   {
     id: "total-recruiters",
@@ -45,8 +49,8 @@ export const adminStats: AdminStat[] = [
     trend: "+12%",
     trendPositive: true,
     icon: Users,
-    iconBg: "bg-violet-50",
-    iconColor: "text-violet-500",
+    iconBg: "bg-[#f5f3ff]",
+    iconColor: "text-[#6c47ff]",
   },
   {
     id: "jds-processed",
@@ -55,8 +59,8 @@ export const adminStats: AdminStat[] = [
     trend: "+23%",
     trendPositive: true,
     icon: FileText,
-    iconBg: "bg-emerald-50",
-    iconColor: "text-emerald-500",
+    iconBg: "bg-[#f5f3ff]",
+    iconColor: "text-[#6c47ff]",
   },
   {
     id: "questions-generated",
@@ -65,8 +69,8 @@ export const adminStats: AdminStat[] = [
     trend: "+31%",
     trendPositive: true,
     icon: Zap,
-    iconBg: "bg-orange-50",
-    iconColor: "text-orange-500",
+    iconBg: "bg-[#f5f3ff]",
+    iconColor: "text-[#6c47ff]",
   },
 ];
 
@@ -89,6 +93,14 @@ export const questionsTrendData: QuestionsTrendPoint[] = [
   { day: "Fri", count: 2100 },
   { day: "Sat", count: 1380 },
   { day: "Sun", count: 960 },
+];
+
+export const adminDashboardTopRecruiters: DashboardTopRecruiter[] = [
+  { rank: 1, name: "Sarah Kim", email: "sarah.k@techcorp.com", sessions: 84, questions: 1240 },
+  { rank: 2, name: "James Liu", email: "james.l@stripe.com", sessions: 71, questions: 1088 },
+  { rank: 3, name: "Lisa Martinez", email: "lisa.m@meta.com", sessions: 64, questions: 982 },
+  { rank: 4, name: "Emily Rodriguez", email: "emily.r@google.com", sessions: 58, questions: 876 },
+  { rank: 5, name: "Anna Park", email: "anna.p@airbnb.com", sessions: 52, questions: 801 },
 ];
 
 export const systemActivity: SystemActivityEvent[] = [
@@ -243,8 +255,8 @@ export const adminCategoryStats = [
 
 export const roleDistribution = [
   { label: "Recruiter", count: 98, total: 142, color: "bg-[#6c47ff]" },
-  { label: "Guest", count: 38, total: 142, color: "bg-blue-400" },
-  { label: "Admin", count: 6, total: 142, color: "bg-emerald-400" },
+  { label: "Guest", count: 38, total: 142, color: "bg-[#a78bfa]" },
+  { label: "Admin", count: 6, total: 142, color: "bg-[#c7b9ff]" },
 ];
 
 export const contentSessions: ContentSession[] = [
@@ -254,11 +266,12 @@ export const contentSessions: ContentSession[] = [
     recruiter: "Sarah Kim",
     recruiterEmail: "sarah.k@techcorp.com",
     date: "Today, 09:14",
+    daysAgo: 0,
     questionsCount: 15,
     exported: true,
     role: "Frontend",
-    roleColor: "text-blue-600",
-    roleBg: "bg-blue-50",
+    roleColor: "text-[#6c47ff]",
+    roleBg: "bg-[#f5f3ff]",
   },
   {
     id: "2",
@@ -266,11 +279,12 @@ export const contentSessions: ContentSession[] = [
     recruiter: "James Liu",
     recruiterEmail: "james.l@stripe.com",
     date: "Today, 08:42",
+    daysAgo: 0,
     questionsCount: 12,
     exported: false,
     role: "Product",
-    roleColor: "text-purple-600",
-    roleBg: "bg-purple-50",
+    roleColor: "text-[#6c47ff]",
+    roleBg: "bg-[#f5f3ff]",
   },
   {
     id: "3",
@@ -278,11 +292,12 @@ export const contentSessions: ContentSession[] = [
     recruiter: "Lisa Martinez",
     recruiterEmail: "lisa.m@meta.com",
     date: "Yesterday",
+    daysAgo: 1,
     questionsCount: 18,
     exported: true,
     role: "Data",
-    roleColor: "text-amber-600",
-    roleBg: "bg-amber-50",
+    roleColor: "text-[#6b7280]",
+    roleBg: "bg-[#f5f7fb]",
   },
   {
     id: "4",
@@ -290,11 +305,12 @@ export const contentSessions: ContentSession[] = [
     recruiter: "Emily Rodriguez",
     recruiterEmail: "emily.r@google.com",
     date: "Yesterday",
+    daysAgo: 1,
     questionsCount: 14,
     exported: false,
     role: "Backend",
-    roleColor: "text-emerald-600",
-    roleBg: "bg-emerald-50",
+    roleColor: "text-[#6b7280]",
+    roleBg: "bg-[#f5f7fb]",
   },
   {
     id: "5",
@@ -302,11 +318,12 @@ export const contentSessions: ContentSession[] = [
     recruiter: "Anna Park",
     recruiterEmail: "anna.p@airbnb.com",
     date: "2 days ago",
+    daysAgo: 2,
     questionsCount: 16,
     exported: true,
     role: "DevOps",
-    roleColor: "text-cyan-600",
-    roleBg: "bg-cyan-50",
+    roleColor: "text-[#6b7280]",
+    roleBg: "bg-[#f5f7fb]",
   },
   {
     id: "6",
@@ -314,11 +331,118 @@ export const contentSessions: ContentSession[] = [
     recruiter: "Michael Chen",
     recruiterEmail: "michael.c@amazon.com",
     date: "3 days ago",
+    daysAgo: 3,
     questionsCount: 20,
     exported: false,
     role: "ML",
-    roleColor: "text-pink-600",
-    roleBg: "bg-pink-50",
+    roleColor: "text-[#6b7280]",
+    roleBg: "bg-[#f5f7fb]",
+  },
+  {
+    id: "7",
+    jobTitle: "Security Engineer",
+    recruiter: "David Wilson",
+    recruiterEmail: "david.w@uber.com",
+    date: "80 days ago",
+    daysAgo: 80,
+    questionsCount: 11,
+    exported: true,
+    role: "Backend",
+    roleColor: "text-[#6b7280]",
+    roleBg: "bg-[#f5f7fb]",
+  },
+];
+
+export const auditLogEntries: AuditLogEntry[] = [
+  {
+    id: "a1",
+    type: "user_created",
+    summary: "New recruiter account registered",
+    actor: "sarah.k@techcorp.com",
+    ip: "198.51.100.12",
+    detail: "Role: Recruiter · Verified email",
+    timeLabel: "2 min ago",
+  },
+  {
+    id: "a2",
+    type: "jd_generation",
+    summary: "Interview questions generated",
+    actor: "james.l@stripe.com",
+    ip: "203.0.113.42",
+    detail: "Senior Backend Developer · 15 questions",
+    timeLabel: "14 min ago",
+  },
+  {
+    id: "a3",
+    type: "recruiter_login",
+    summary: "Recruiter signed in",
+    actor: "emily.r@google.com",
+    ip: "203.0.113.88",
+    detail: "Session: web · MFA satisfied",
+    timeLabel: "31 min ago",
+  },
+  {
+    id: "a4",
+    type: "export",
+    summary: "Session exported to PDF",
+    actor: "michael.c@amazon.com",
+    ip: "192.0.2.10",
+    detail: "Product Manager · 12 questions",
+    timeLabel: "1 hour ago",
+  },
+  {
+    id: "a5",
+    type: "settings_change",
+    summary: "General platform settings updated",
+    actor: "admin@interviewai.io",
+    ip: "10.0.0.1",
+    detail: "Default question count, max JDs per day",
+    timeLabel: "2 hours ago",
+  },
+  {
+    id: "a6",
+    type: "admin_action",
+    summary: "User suspended from admin panel",
+    actor: "admin@interviewai.io",
+    ip: "10.0.0.1",
+    detail: "Target: guest_4821@mail.com",
+    timeLabel: "3 hours ago",
+  },
+  {
+    id: "a7",
+    type: "jd_generation",
+    summary: "Interview questions generated",
+    actor: "lisa.m@meta.com",
+    ip: "198.51.100.55",
+    detail: "Data Scientist · 18 questions",
+    timeLabel: "5 hours ago",
+  },
+  {
+    id: "a8",
+    type: "user_created",
+    summary: "New guest account registered",
+    actor: "guest_4821@mail.com",
+    ip: "203.0.113.201",
+    detail: "Role: Guest",
+    timeLabel: "Yesterday",
+  },
+  {
+    id: "a9",
+    type: "recruiter_login",
+    summary: "Recruiter signed in",
+    actor: "anna.p@airbnb.com",
+    ip: "192.0.2.44",
+    detail: "New device · Email challenge",
+    timeLabel: "Yesterday",
+  },
+  {
+    id: "a10",
+    type: "export",
+    summary: "Bulk CSV export (sessions)",
+    actor: "admin@interviewai.io",
+    ip: "10.0.0.1",
+    detail: "Rows: 214 · Filter: last 7 days",
+    timeLabel: "2 days ago",
   },
 ];
 

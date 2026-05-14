@@ -72,7 +72,7 @@ export function RegisterForm() {
     setLoading(true);
     setTimeout(() => {
       setAuth();
-      router.push("/dashboard");
+      router.push("/hr/dashboard");
     }, 700);
   }
 

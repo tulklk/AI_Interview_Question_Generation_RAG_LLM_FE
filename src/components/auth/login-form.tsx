@@ -22,7 +22,7 @@ export function LoginForm() {
     setLoading(true);
     setTimeout(() => {
       setAuth();
-      router.push("/dashboard");
+      router.push("/hr/dashboard");
     }, 600);
   }
 

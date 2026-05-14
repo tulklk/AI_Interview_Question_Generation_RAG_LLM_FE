@@ -38,12 +38,13 @@ export function AdminAppShell({ children, breadcrumb, pageTitle }: AdminAppShell
       <AdminSidebar />
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
         <TopHeader
+          variant="admin"
           breadcrumb={translatedBreadcrumb}
           pageTitle={translatedTitle}
           user={ADMIN_USER}
         />
         <main className="flex-1 overflow-y-auto bg-[#f5f7fb]">
-          <div className="max-w-[1400px] mx-auto px-8 py-7">{children}</div>
+          <div className="max-w-[1440px] mx-auto px-6 md:px-10 py-8">{children}</div>
         </main>
       </div>
     </div>

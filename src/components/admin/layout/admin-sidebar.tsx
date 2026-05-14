@@ -21,7 +21,7 @@ export function AdminSidebar() {
   }
 
   return (
-    <aside className="flex flex-col w-[250px] shrink-0 h-screen bg-white border-r border-gray-100 overflow-y-auto">
+    <aside className="flex flex-col w-[250px] shrink-0 h-screen bg-white border-r border-[#e5e7eb] overflow-y-auto">
       <div className="px-5 pt-6 pb-2">
         <BrandLogo
           logoClassName="w-9 h-9"
@@ -42,22 +42,25 @@ export function AdminSidebar() {
                 <Link
                   href={item.href}
                   className={cn(
-                    "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors",
+                    "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors text-base font-normal",
                     isActive
-                      ? "bg-[#6c47ff] text-white"
-                      : "text-gray-500 hover:bg-gray-50 hover:text-gray-800"
+                      ? "bg-[rgba(108,71,255,0.1)] text-[#6c47ff] font-medium"
+                      : "text-[#6b7280] hover:bg-[rgba(108,71,255,0.05)] hover:text-[#111827]"
                   )}
                 >
                   <item.icon
                     size={18}
-                    className={cn("shrink-0", isActive ? "text-white" : "text-gray-400")}
+                    className={cn(
+                      "shrink-0",
+                      isActive ? "text-[#6c47ff]" : "text-[#9ca3af]"
+                    )}
                   />
                   <span className="text-sm font-medium flex-1">{label}</span>
                   {item.badge !== undefined && (
                     <span
                       className={cn(
                         "text-[10px] font-semibold px-1.5 py-0.5 rounded-md leading-none",
-                        isActive ? "bg-white/20 text-white" : "bg-gray-100 text-gray-500"
+                        isActive ? "bg-[#6c47ff]/15 text-[#6c47ff]" : "bg-[#f5f7fb] text-[#6b7280]"
                       )}
                     >
                       {item.badge}
@@ -71,7 +74,7 @@ export function AdminSidebar() {
       </nav>
 
       <div className="px-4 mb-4">
-        <div className="bg-[#f0edff] rounded-xl p-4">
+        <div className="bg-[#f5f3ff] rounded-xl p-4 border border-[#e5e7eb]/80">
           <div className="w-8 h-8 rounded-lg bg-[#6c47ff]/15 flex items-center justify-center mb-3">
             <ShieldCheck size={15} className="text-[#6c47ff]" />
           </div>
@@ -86,7 +89,7 @@ export function AdminSidebar() {
         </div>
       </div>
 
-      <div className="px-4 py-4 border-t border-gray-100">
+      <div className="px-4 py-4 border-t border-[#e5e7eb]">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-full bg-[#6c47ff] flex items-center justify-center shrink-0">
             <span className="text-white text-xs font-bold">AD</span>
