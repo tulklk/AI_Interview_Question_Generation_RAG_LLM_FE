@@ -331,6 +331,7 @@ export const en = {
       "/admin/users": "User Management",
       "/admin/analytics": "Analytics",
       "/admin/content": "Generated Content",
+      "/admin/audit": "Audit Log",
       "/admin/settings": "Settings",
     },
     systemStatus: {
@@ -355,6 +356,7 @@ export const en = {
       "/admin/users": "User Management",
       "/admin/analytics": "System Analytics",
       "/admin/content": "Generated Content",
+      "/admin/audit": "Audit Log",
       "/admin/settings": "Admin Settings",
     },
     breadcrumb: {
@@ -367,6 +369,7 @@ export const en = {
       users: "Users",
       analytics: "Analytics",
       content: "Content",
+      audit: "Audit Log",
     },
   },
 
@@ -683,9 +686,39 @@ export const en = {
         "JDs Processed",
         "Questions Generated",
       ],
+      secondaryStats: {
+        title: "Today's signals",
+        subtitle: "Key operational metrics (mock data, refreshed hourly in a real deployment).",
+        cards: [
+          { label: "Monthly Active Users", value: "312", sub: "+18 vs last month" },
+          { label: "New sign-ups (7 days)", value: "26", sub: "recruiters + guests" },
+          { label: "Avg. generation time", value: "28s", sub: "p95 latency: 41s" },
+          { label: "Export success rate", value: "99.6%", sub: "PDF pipeline · last 7 days" },
+        ],
+      },
+      weeklyOverview: {
+        title: "Active users vs JD submissions",
+        subtitle: "This calendar week (UTC)",
+        usersLegend: "Active users",
+        jdLegend: "JD submissions",
+      },
+      categoryMix: {
+        title: "Question category mix",
+        subtitle: "Share of generated questions across all sessions",
+        countLabel: "Questions",
+      },
+      topRecruiters: {
+        title: "Top recruiters",
+        subtitle: "By total generated questions in the last 30 days (mock)",
+        rank: "Rank",
+        recruiter: "Recruiter",
+        sessions: "Sessions",
+        questions: "Questions",
+      },
       userGrowth: {
         title: "User Growth",
         subtitle: "New registrations per week",
+        admins: "Admins",
         recruiters: "Recruiters",
         guests: "Guests",
       },
@@ -712,6 +745,7 @@ export const en = {
     users: {
       heading: "User Management",
       subtext: "Manage all platform accounts, roles, and access.",
+      deleteConfirm: "Delete user {name}? This cannot be undone.",
       addUser: "Add User",
       stats: {
         totalUsers: "Total Users",
@@ -795,6 +829,30 @@ export const en = {
       exportedLabel: "Exported",
       notExported: "Not exported",
     },
+    audit: {
+      heading: "Audit Log",
+      subtext: "Security and compliance trail of platform events.",
+      filters: {
+        searchPlaceholder: "Search by actor, summary, or IP…",
+        allTypes: "All event types",
+      },
+      table: {
+        type: "Type",
+        summary: "Summary",
+        actor: "Actor",
+        ip: "IP address",
+        detail: "Detail",
+        time: "Time",
+      },
+      eventLabels: {
+        user_created: "User Created",
+        recruiter_login: "Login",
+        jd_generation: "Generation",
+        export: "Export",
+        settings_change: "Settings",
+        admin_action: "Admin action",
+      },
+    },
     settings: {
       heading: "Admin Settings",
       subtext: "Configure platform behavior, AI model, access permissions, and notifications.",
@@ -815,6 +873,7 @@ export const en = {
         resetDesc: "Clear all generated sessions and analytics. This cannot be undone.",
         resetBtn: "Reset",
         saveBtn: "Save Changes",
+        saveSuccess: "Settings saved locally.",
       },
       aiConfig: {
         title: "AI Configuration",
