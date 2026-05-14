@@ -5,6 +5,7 @@ import { FileText, Calendar, ArrowUpDown, Eye, Download, Trash2 } from "lucide-r
 import { cn } from "@/lib/utils";
 import { historySessions } from "@/data/history";
 import { useLanguage } from "@/context/language-context";
+import { useHrSubscription } from "@/context/hr-subscription-context";
 
 function ColumnHeader({ label }: { label: string }) {
   return (
@@ -19,7 +20,10 @@ function ColumnHeader({ label }: { label: string }) {
 
 export function HistoryTable() {
   const { t } = useLanguage();
+  const { hasFeature } = useHrSubscription();
   const ht = t.historyPage.table;
+  const hs = t.hrSubscription;
+  const canExport = hasFeature("pdfExport");
 
   return (
     <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden animate-fade-up">
@@ -96,7 +100,17 @@ export function HistoryTable() {
                   >
                     <Eye size={14} />
                   </Link>
-                  <button className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
+                  <button
+                    type="button"
+                    disabled={!canExport}
+                    title={!canExport ? hs.lockedExport : undefined}
+                    className={cn(
+                      "p-1.5 rounded-lg transition-colors",
+                      canExport
+                        ? "text-gray-400 hover:text-gray-600 hover:bg-gray-100"
+                        : "text-gray-200 cursor-not-allowed"
+                    )}
+                  >
                     <Download size={14} />
                   </button>
                   <button className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors">

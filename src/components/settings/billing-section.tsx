@@ -1,49 +1,25 @@
 "use client";
 
-import { Check, Zap, Download } from "lucide-react";
+import { Zap, Download } from "lucide-react";
 import { billingHistory, usageStats } from "@/data/settings";
+import { getUsageCaps } from "@/data/hr-subscription";
 import { useLanguage } from "@/context/language-context";
+import { useHrSubscription } from "@/context/hr-subscription-context";
+import { HrBillingSubscription } from "./hr-billing-subscription";
 
 export function BillingSection() {
   const { t } = useLanguage();
   const bill = t.settingsPage.billing;
+  const usageLabels = bill.usageStatLabels;
+  const { planId } = useHrSubscription();
+  const caps = getUsageCaps(planId);
 
   return (
     <div>
       <h3 className="text-base font-semibold text-gray-900 mb-5">{bill.title}</h3>
 
-      <div className="bg-gradient-to-br from-[#6c47ff] to-[#8b65ff] rounded-xl p-5 mb-5 relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-32 h-32 rounded-full bg-white/5 translate-x-10 -translate-y-10" />
-        <div className="relative z-10">
-          <div className="flex items-start justify-between mb-3">
-            <div>
-              <p className="text-white/70 text-xs font-medium mb-0.5">{bill.currentPlan}</p>
-              <p className="text-white text-2xl font-bold leading-none">{bill.planName}</p>
-            </div>
-            <span className="text-[10px] font-bold text-white bg-white/20 px-2.5 py-1 rounded-full">
-              {bill.active}
-            </span>
-          </div>
-          <p className="text-white text-xl font-bold mb-3">
-            $49<span className="text-white/70 text-sm font-normal">{bill.perMonth}</span>
-          </p>
-          <ul className="space-y-1 mb-4">
-            {bill.planFeatures.map((f) => (
-              <li key={f} className="flex items-center gap-2 text-white/85 text-xs">
-                <Check size={12} className="text-white shrink-0" />
-                {f}
-              </li>
-            ))}
-          </ul>
-          <div className="flex gap-2">
-            <button className="flex-1 bg-white text-[#6c47ff] text-sm font-semibold py-2 rounded-lg hover:bg-white/90 transition-colors">
-              {bill.upgradeBtn}
-            </button>
-            <button className="flex-1 bg-white/20 text-white text-sm font-semibold py-2 rounded-lg hover:bg-white/30 transition-colors">
-              {bill.manageBtn}
-            </button>
-          </div>
-        </div>
+      <div className="mb-8">
+        <HrBillingSubscription />
       </div>
 
       <div className="mb-5">
@@ -52,22 +28,36 @@ export function BillingSection() {
           <p className="text-sm font-semibold text-gray-700">{bill.monthlyUsage}</p>
         </div>
         <div className="space-y-3">
-          {usageStats.map((stat) => (
-            <div key={stat.id}>
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-xs text-gray-600">{stat.label}</span>
-                <span className="text-xs font-medium text-gray-700">
-                  {stat.current} / {stat.max}
-                </span>
+          {usageStats.map((stat) => {
+            const max = caps[stat.id] ?? stat.max;
+            const label =
+              usageLabels[stat.id as keyof typeof usageLabels] ?? stat.label;
+            if (max <= 0) {
+              return (
+                <div key={stat.id}>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs text-gray-600">{label}</span>
+                    <span className="text-xs font-medium text-gray-400">{bill.usageNotOnPlan}</span>
+                  </div>
+                  <div className="h-2 bg-gray-100 rounded-full overflow-hidden" />
+                </div>
+              );
+            }
+            const pct = Math.min(100, (stat.current / max) * 100);
+            return (
+              <div key={stat.id}>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs text-gray-600">{label}</span>
+                  <span className="text-xs font-medium text-gray-700">
+                    {stat.current} / {max}
+                  </span>
+                </div>
+                <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                  <div className="h-full bg-[#6c47ff] rounded-full" style={{ width: `${pct}%` }} />
+                </div>
               </div>
-              <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-[#6c47ff] rounded-full"
-                  style={{ width: `${(stat.current / stat.max) * 100}%` }}
-                />
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
@@ -84,13 +74,14 @@ export function BillingSection() {
                 <p className="text-xs text-gray-400">{record.invoiceNumber}</p>
               </div>
               <div className="flex items-center gap-3">
-                <span className="text-sm font-semibold text-gray-700">
-                  {record.amount}
-                </span>
+                <span className="text-sm font-semibold text-gray-700">{record.amount}</span>
                 <span className="text-[11px] font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md">
                   {bill.paid}
                 </span>
-                <button className="text-xs font-medium text-[#6c47ff] hover:underline flex items-center gap-1">
+                <button
+                  type="button"
+                  className="text-xs font-medium text-[#6c47ff] hover:underline flex items-center gap-1"
+                >
                   <Download size={11} />
                   {bill.download}
                 </button>
