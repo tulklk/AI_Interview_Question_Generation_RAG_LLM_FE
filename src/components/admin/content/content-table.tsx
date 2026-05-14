@@ -16,8 +16,9 @@ export function ContentTable({ sessions }: ContentTableProps) {
   const c = t.adminPages.content;
 
   return (
-    <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden animate-fade-up">
-      <table className="w-full text-sm">
+    <div className="overflow-hidden rounded-xl border border-[#e5e7eb] bg-white shadow-[0_4px_6px_-1px_rgba(0,0,0,0.1),0_2px_4px_-2px_rgba(0,0,0,0.1)] animate-fade-up">
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[720px] text-sm">
         <thead className="border-b border-gray-100 bg-gray-50">
           <tr>
             <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">{tbl.jobTitle}</th>
@@ -67,11 +68,11 @@ export function ContentTable({ sessions }: ContentTableProps) {
               </td>
               <td className="px-4 py-3.5">
                 {session.exported ? (
-                  <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600">
+                  <span className="rounded-full bg-[#f5f3ff] px-2 py-0.5 text-xs font-semibold text-[#6c47ff]">
                     {c.exportedLabel}
                   </span>
                 ) : (
-                  <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-400">
+                  <span className="rounded-full bg-[#f5f7fb] px-2 py-0.5 text-xs font-semibold text-[#9ca3af]">
                     {c.notExported}
                   </span>
                 )}
@@ -80,7 +81,7 @@ export function ContentTable({ sessions }: ContentTableProps) {
                 <div className="flex items-center justify-end gap-1">
                   <Link
                     href={`/history/${session.id}`}
-                    className="p-1.5 text-gray-400 hover:text-[#6c47ff] hover:bg-indigo-50 rounded-lg transition-colors inline-flex"
+                    className="inline-flex rounded-lg p-1.5 text-[#9ca3af] transition-colors hover:bg-[rgba(108,71,255,0.1)] hover:text-[#6c47ff]"
                   >
                     <Eye size={14} />
                   </Link>
@@ -93,6 +94,7 @@ export function ContentTable({ sessions }: ContentTableProps) {
           ))}
         </tbody>
       </table>
+      </div>
     </div>
   );
 }

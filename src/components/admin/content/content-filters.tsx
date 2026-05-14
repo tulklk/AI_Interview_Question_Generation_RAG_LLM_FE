@@ -10,6 +10,7 @@ interface ContentFiltersProps {
   onSearchChange: (v: string) => void;
   onRoleChange: (v: string) => void;
   onDateRangeChange: (v: string) => void;
+  onExportAll: () => void;
 }
 
 export function ContentFilters({
@@ -19,6 +20,7 @@ export function ContentFilters({
   onSearchChange,
   onRoleChange,
   onDateRangeChange,
+  onExportAll,
 }: ContentFiltersProps) {
   const { t } = useLanguage();
   const f = t.adminPages.content.filters;
@@ -28,25 +30,25 @@ export function ContentFilters({
   const dateRanges = [f.allTime, f.today, f.thisWeek, f.thisMonth, f.last3Months];
 
   return (
-    <div className="flex items-center gap-3 mb-4 animate-fade-up">
-      <div className="relative flex-1 max-w-xs">
+    <div className="mb-4 flex flex-wrap items-center gap-3 animate-fade-up">
+      <div className="relative min-w-0 w-full sm:max-w-xs sm:flex-1">
         <Search
           size={14}
-          className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
+          className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#9ca3af]"
         />
         <input
           type="text"
           value={search}
           onChange={(e) => onSearchChange(e.target.value)}
           placeholder={f.searchPlaceholder}
-          className="w-full pl-9 pr-4 py-2 text-sm bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#6c47ff]/20 focus:border-[#6c47ff] transition-colors"
+          className="min-h-[38px] w-full rounded-lg border border-[#e5e7eb] bg-white py-2 pl-9 pr-4 text-xs text-[#111827] transition-colors placeholder:text-[#9ca3af] focus:border-[#6c47ff] focus:outline-none focus:ring-[3px] focus:ring-[rgba(108,71,255,0.1)]"
         />
       </div>
 
       <select
         value={role}
         onChange={(e) => onRoleChange(e.target.value)}
-        className="bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#6c47ff]/20 focus:border-[#6c47ff] transition-colors"
+        className="min-h-[38px] rounded-lg border border-[#e5e7eb] bg-white px-3 py-2 text-xs text-[#111827] transition-colors focus:border-[#6c47ff] focus:outline-none focus:ring-[3px] focus:ring-[rgba(108,71,255,0.1)]"
       >
         {roles.map((r) => (
           <option key={r}>{r}</option>
@@ -56,14 +58,18 @@ export function ContentFilters({
       <select
         value={dateRange}
         onChange={(e) => onDateRangeChange(e.target.value)}
-        className="bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#6c47ff]/20 focus:border-[#6c47ff] transition-colors"
+        className="min-h-[38px] rounded-lg border border-[#e5e7eb] bg-white px-3 py-2 text-xs text-[#111827] transition-colors focus:border-[#6c47ff] focus:outline-none focus:ring-[3px] focus:ring-[rgba(108,71,255,0.1)]"
       >
         {dateRanges.map((d) => (
           <option key={d}>{d}</option>
         ))}
       </select>
 
-      <button className="ml-auto flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-gray-800 border border-gray-200 bg-white rounded-lg px-4 py-2 transition-colors hover:border-gray-300">
+      <button
+        type="button"
+        onClick={onExportAll}
+        className="ml-0 inline-flex min-h-[38px] w-full items-center justify-center gap-2 rounded-lg border border-[#e5e7eb] bg-white px-4 py-2 text-sm font-semibold text-[#111827] transition-colors hover:border-[#d1d5db] hover:bg-[#f9fafb] sm:ml-auto sm:w-auto"
+      >
         <Download size={14} />
         {c.exportAll}
       </button>

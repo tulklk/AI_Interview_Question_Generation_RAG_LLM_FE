@@ -68,6 +68,8 @@ export interface ContentSession {
   recruiter: string;
   recruiterEmail: string;
   date: string;
+  /** Days since creation (0 = today); used for date-range filter mock. */
+  daysAgo: number;
   questionsCount: number;
   exported: boolean;
   role: string;
@@ -76,3 +78,30 @@ export interface ContentSession {
 }
 
 export type AdminSettingsTab = "general" | "ai-config" | "permissions" | "notifications";
+
+export type AuditEventType =
+  | "user_created"
+  | "recruiter_login"
+  | "jd_generation"
+  | "export"
+  | "settings_change"
+  | "admin_action";
+
+export interface AuditLogEntry {
+  id: string;
+  type: AuditEventType;
+  summary: string;
+  actor: string;
+  ip: string;
+  detail: string;
+  timeLabel: string;
+}
+
+/** Leaderboard row for admin dashboard (mock). */
+export interface DashboardTopRecruiter {
+  rank: number;
+  name: string;
+  email: string;
+  sessions: number;
+  questions: number;
+}

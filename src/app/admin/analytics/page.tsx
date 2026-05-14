@@ -16,9 +16,9 @@ export default function SystemAnalyticsPage() {
       pageTitle={a.heading}
       breadcrumb={[{ label: "Admin", href: "/admin/dashboard" }, { label: a.heading }]}
     >
-      <div className="mb-6 animate-fade-up">
-        <h2 className="text-2xl font-bold text-gray-900">{a.heading}</h2>
-        <p className="text-sm text-gray-500 mt-1">{a.subtext}</p>
+      <div className="mb-8 animate-fade-up">
+        <h2 className="text-[30px] font-bold leading-9 text-[#111827]">{a.heading}</h2>
+        <p className="text-base text-[#6b7280] leading-6 mt-2">{a.subtext}</p>
       </div>
 
       <div className="animate-fade-up" style={{ animationDelay: "80ms" }}>
@@ -30,7 +30,7 @@ export default function SystemAnalyticsPage() {
       </div>
 
       <div
-        className="grid grid-cols-[1fr_380px] gap-4 mt-4 animate-fade-up"
+        className="mt-4 grid grid-cols-1 gap-4 animate-fade-up lg:grid-cols-[1fr_380px] lg:gap-6"
         style={{ animationDelay: "240ms" }}
       >
         <CategoryChart />

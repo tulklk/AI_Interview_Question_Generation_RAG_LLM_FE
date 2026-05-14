@@ -334,6 +334,7 @@ export const vi: Translations = {
       "/admin/users": "Quản lý người dùng",
       "/admin/analytics": "Phân tích",
       "/admin/content": "Nội dung đã tạo",
+      "/admin/audit": "Nhật ký kiểm tra",
       "/admin/settings": "Cài đặt",
     },
     systemStatus: {
@@ -358,6 +359,7 @@ export const vi: Translations = {
       "/admin/users": "Quản lý người dùng",
       "/admin/analytics": "Phân tích hệ thống",
       "/admin/content": "Nội dung đã tạo",
+      "/admin/audit": "Nhật ký kiểm tra",
       "/admin/settings": "Cài đặt Admin",
     },
     breadcrumb: {
@@ -370,6 +372,7 @@ export const vi: Translations = {
       users: "Người dùng",
       analytics: "Phân tích",
       content: "Nội dung",
+      audit: "Nhật ký",
     },
   },
 
@@ -686,9 +689,39 @@ export const vi: Translations = {
         "JD đã xử lý",
         "Câu hỏi đã tạo",
       ],
+      secondaryStats: {
+        title: "Tín hiệu hôm nay",
+        subtitle: "Chỉ số vận hành chính (dữ liệu mô phỏng).",
+        cards: [
+          { label: "Người dùng hoạt động theo tháng", value: "312", sub: "+18 so với tháng trước" },
+          { label: "Đăng ký mới (7 ngày)", value: "26", sub: "nhà tuyển dụng + khách" },
+          { label: "Thời gian tạo trung bình", value: "28s", sub: "p95: 41s" },
+          { label: "Tỷ lệ xuất thành công", value: "99,6%", sub: "PDF · 7 ngày qua" },
+        ],
+      },
+      weeklyOverview: {
+        title: "Người hoạt động vs lượt nộp JD",
+        subtitle: "Tuần lịch hiện tại (UTC)",
+        usersLegend: "Người dùng hoạt động",
+        jdLegend: "Lượt nộp JD",
+      },
+      categoryMix: {
+        title: "Tỷ lệ danh mục câu hỏi",
+        subtitle: "Phân bổ câu hỏi đã tạo trên mọi phiên",
+        countLabel: "Câu hỏi",
+      },
+      topRecruiters: {
+        title: "Nhà tuyển dụng dẫn đầu",
+        subtitle: "Theo tổng câu hỏi đã tạo trong 30 ngày (mô phỏng)",
+        rank: "Hạng",
+        recruiter: "Nhà tuyển dụng",
+        sessions: "Phiên",
+        questions: "Câu hỏi",
+      },
       userGrowth: {
         title: "Tăng trưởng người dùng",
         subtitle: "Đăng ký mới mỗi tuần",
+        admins: "Quản trị viên",
         recruiters: "Nhà tuyển dụng",
         guests: "Khách",
       },
@@ -715,6 +748,7 @@ export const vi: Translations = {
     users: {
       heading: "Quản lý người dùng",
       subtext: "Quản lý tất cả tài khoản, vai trò và quyền truy cập.",
+      deleteConfirm: "Xóa người dùng {name}? Hành động này không thể hoàn tác.",
       addUser: "Thêm người dùng",
       stats: {
         totalUsers: "Tổng người dùng",
@@ -798,6 +832,30 @@ export const vi: Translations = {
       exportedLabel: "Đã xuất",
       notExported: "Chưa xuất",
     },
+    audit: {
+      heading: "Nhật ký kiểm tra",
+      subtext: "Luồng sự kiện nền tảng phục vụ bảo mật và tuân thủ.",
+      filters: {
+        searchPlaceholder: "Tìm theo người thực hiện, tóm tắt hoặc IP…",
+        allTypes: "Tất cả loại sự kiện",
+      },
+      table: {
+        type: "Loại",
+        summary: "Tóm tắt",
+        actor: "Người thực hiện",
+        ip: "Địa chỉ IP",
+        detail: "Chi tiết",
+        time: "Thời gian",
+      },
+      eventLabels: {
+        user_created: "Tạo người dùng",
+        recruiter_login: "Đăng nhập",
+        jd_generation: "Tạo câu hỏi",
+        export: "Xuất",
+        settings_change: "Cài đặt",
+        admin_action: "Hành động admin",
+      },
+    },
     settings: {
       heading: "Cài đặt quản trị",
       subtext: "Cấu hình hành vi nền tảng, mô hình AI, quyền truy cập và thông báo.",
@@ -818,6 +876,7 @@ export const vi: Translations = {
         resetDesc: "Xóa tất cả phiên và phân tích đã tạo. Không thể hoàn tác.",
         resetBtn: "Đặt lại",
         saveBtn: "Lưu thay đổi",
+        saveSuccess: "Đã lưu cài đặt trên trình duyệt.",
       },
       aiConfig: {
         title: "Cấu hình AI",
