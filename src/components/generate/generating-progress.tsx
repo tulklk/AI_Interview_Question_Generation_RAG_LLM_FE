@@ -16,7 +16,7 @@ export function GeneratingProgress() {
 
   useEffect(() => {
     if (completedSteps >= steps.length) {
-      const timeout = setTimeout(() => router.push("/history"), 800);
+      const timeout = setTimeout(() => router.push("/hr/history"), 800);
       return () => clearTimeout(timeout);
     }
     const timer = setTimeout(() => {

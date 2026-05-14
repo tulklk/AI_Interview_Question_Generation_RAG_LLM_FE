@@ -15,7 +15,7 @@ export function WelcomeSection() {
         <p className="text-sm text-gray-500 mt-1">{dp.welcomeSub}</p>
       </div>
       <Link
-        href="/generate"
+        href="/hr/generate"
         className="flex items-center gap-2 bg-[#6c47ff] hover:bg-[#5535dd] text-white text-sm font-semibold px-5 py-2.5 rounded-lg transition-colors shrink-0"
       >
         <Sparkles size={15} />

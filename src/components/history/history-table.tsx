@@ -91,7 +91,7 @@ export function HistoryTable() {
               <td className="px-4 py-3.5">
                 <div className="flex items-center justify-end gap-1">
                   <Link
-                    href={`/history/${session.id}`}
+                    href={`/hr/history/${session.id}`}
                     className="p-1.5 text-gray-400 hover:text-[#6c47ff] hover:bg-indigo-50 rounded-lg transition-colors inline-flex"
                   >
                     <Eye size={14} />

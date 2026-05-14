@@ -7,6 +7,7 @@ import { NotificationBell } from "@/components/shared/notification-bell";
 import { UserAvatar } from "@/components/shared/user-avatar";
 import { LanguageSwitcher } from "@/components/shared/language-switcher";
 import { useLanguage } from "@/context/language-context";
+import { cn } from "@/lib/utils";
 
 interface BreadcrumbItem {
   label: string;
@@ -23,6 +24,7 @@ interface TopHeaderProps {
   breadcrumb?: BreadcrumbItem[];
   pageTitle: string;
   user?: TopHeaderUser;
+  variant?: "default" | "admin";
 }
 
 const DEFAULT_USER: TopHeaderUser = {
@@ -31,29 +33,62 @@ const DEFAULT_USER: TopHeaderUser = {
   plan: "Pro Plan",
 };
 
-export function TopHeader({ breadcrumb, pageTitle, user = DEFAULT_USER }: TopHeaderProps) {
+export function TopHeader({
+  breadcrumb,
+  pageTitle,
+  user = DEFAULT_USER,
+  variant = "default",
+}: TopHeaderProps) {
   const { t } = useLanguage();
+  const isAdmin = variant === "admin";
 
   return (
-    <header className="h-14 shrink-0 bg-[#f5f7fb] flex items-center px-8 gap-4 border-b border-gray-100">
+    <header
+      className={cn(
+        "shrink-0 flex items-center gap-4 border-b border-[#e5e7eb] bg-[#f5f7fb]",
+        isAdmin ? "h-16 min-h-[64px] px-6 md:px-10" : "h-14 px-8"
+      )}
+    >
       <div className="flex-1 min-w-0">
         {breadcrumb && breadcrumb.length > 0 && (
-          <nav className="flex items-center gap-1 text-xs text-gray-400 mb-0.5">
+          <nav
+            className={cn(
+              "flex items-center gap-1 mb-0.5",
+              isAdmin ? "text-sm font-medium text-[#6b7280]" : "text-xs text-gray-400"
+            )}
+          >
             {breadcrumb.map((crumb, i) => (
               <span key={i} className="flex items-center gap-1">
-                {i > 0 && <ChevronRight size={12} />}
+                {i > 0 && <ChevronRight size={isAdmin ? 14 : 12} className="text-[#9ca3af]" />}
                 {crumb.href ? (
-                  <Link href={crumb.href} className="hover:text-gray-600 transition-colors">
+                  <Link
+                    href={crumb.href}
+                    className={cn(
+                      "transition-colors no-underline",
+                      isAdmin
+                        ? "text-[#111827] hover:text-[#6c47ff]"
+                        : "hover:text-gray-600 text-gray-400"
+                    )}
+                  >
                     {crumb.label}
                   </Link>
                 ) : (
-                  <span className="text-gray-500">{crumb.label}</span>
+                  <span className={isAdmin ? "text-[#6b7280]" : "text-gray-500"}>{crumb.label}</span>
                 )}
               </span>
             ))}
           </nav>
         )}
-        <h1 className="text-sm font-semibold text-gray-800 leading-tight">{pageTitle}</h1>
+        <h1
+          className={cn(
+            "leading-tight text-[#111827]",
+            isAdmin
+              ? "text-[26px] md:text-[30px] font-bold leading-9 tracking-tight"
+              : "text-sm font-semibold text-gray-800"
+          )}
+        >
+          {pageTitle}
+        </h1>
       </div>
 
       <div className="flex items-center gap-3">
