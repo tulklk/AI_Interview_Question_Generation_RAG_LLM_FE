@@ -541,6 +541,17 @@ export const en = {
     passwordMismatch: "Passwords do not match",
     passwordTooShort: "Password must be at least 8 characters",
     mustAgree: "You must agree to the terms",
+    companyNameLabel: "Company Name",
+    companyNamePlaceholder: "Acme Corp",
+    fullNameLabel: "Full Name",
+    fullNamePlaceholder: "John Doe",
+    emailAlreadyUsed: "This email is already registered.",
+    registrationFailed: "Registration failed. Please try again.",
+    jobSeekerLink: "Job Seeker? Register here",
+    jobTitleLabel: "Job Title",
+    jobTitlePlaceholder: "e.g. HR Manager",
+    companySearchHint: "Type to search your company",
+    companyNotSelected: "No company selected — a new company will be created.",
   },
 
   dashboardPage: {
