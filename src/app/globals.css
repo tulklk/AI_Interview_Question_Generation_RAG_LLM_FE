@@ -35,6 +35,16 @@
   to   { opacity: 1; transform: translateY(0); }
 }
 
+@keyframes toastSlideIn {
+  from { opacity: 0; transform: translateX(calc(100% + 24px)); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes toastSlideOut {
+  from { opacity: 1; transform: translateX(0); }
+  to   { opacity: 0; transform: translateX(calc(100% + 24px)); }
+}
+
 @keyframes orbFloat1 {
   0%, 100% { transform: translate(0, 0) scale(1); }
   33%  { transform: translate(40px, -30px) scale(1.08); }
@@ -83,6 +93,8 @@
   --animate-scale-in: scaleIn 0.35s ease-out both;
   --animate-float: float 4s ease-in-out infinite;
   --animate-slide-down: slideDown 0.45s ease-out both;
+  --animate-toast-in: toastSlideIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-toast-out: toastSlideOut 0.25s ease-in both;
 }
 
 :root {
