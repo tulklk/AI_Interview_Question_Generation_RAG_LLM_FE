@@ -593,6 +593,26 @@ export const vi: Translations = {
     backButton: "Quay lại",
   },
 
+  verifyEmailPage: {
+    title: "Xác minh email của bạn",
+    subtitle: "Chúng tôi đã gửi liên kết xác minh đến",
+    checkSpam: "Không nhận được? Kiểm tra thư mục spam.",
+    resendButton: "Gửi lại email xác minh",
+    resendSuccess: "Đã gửi lại email xác minh.",
+    backToLogin: "Quay lại đăng nhập",
+    verifyingTitle: "Đang xác minh email...",
+    verifyingSubtitle: "Vui lòng chờ trong giây lát.",
+    successTitle: "Email đã được xác minh!",
+    successSubtitle: "Tài khoản của bạn đã được kích hoạt. Đang chuyển đến trang đăng nhập...",
+    goToLogin: "Đến trang đăng nhập",
+    tokenInvalid: "Liên kết xác minh không hợp lệ hoặc đã được sử dụng.",
+    tokenExpired: "Liên kết xác minh đã hết hạn. Nhập email để yêu cầu liên kết mới.",
+    missingToken: "Không tìm thấy token xác minh. Vui lòng dùng liên kết trong email.",
+    resendEmailLabel: "Địa chỉ email của bạn",
+    resendEmailPlaceholder: "ban@congty.com",
+    resendCooldown: "Gửi lại sau {{seconds}}s",
+  },
+
   dashboardPage: {
     welcome: "Chào buổi sáng, HR Manager 👋",
     welcomeSub: "Đây là những gì đang xảy ra với bộ công cụ tuyển dụng của bạn hôm nay.",
