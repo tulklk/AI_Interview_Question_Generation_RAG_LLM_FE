@@ -543,6 +543,17 @@ export const vi: Translations = {
     passwordMismatch: "Mật khẩu không khớp",
     passwordTooShort: "Mật khẩu phải có ít nhất 8 ký tự",
     mustAgree: "Bạn phải đồng ý với điều khoản",
+    companyNameLabel: "Tên công ty",
+    companyNamePlaceholder: "Tên công ty của bạn",
+    fullNameLabel: "Họ tên người đại diện",
+    fullNamePlaceholder: "Nguyễn Văn A",
+    emailAlreadyUsed: "Email đã được sử dụng.",
+    registrationFailed: "Đăng ký thất bại. Vui lòng thử lại.",
+    jobSeekerLink: "Ứng viên? Đăng ký tại đây",
+    jobTitleLabel: "Chức danh",
+    jobTitlePlaceholder: "vd: HR Manager",
+    companySearchHint: "Gõ để tìm công ty của bạn",
+    companyNotSelected: "Chưa chọn công ty — hệ thống sẽ tạo công ty mới.",
   },
 
   dashboardPage: {
