@@ -1,5 +1,5 @@
 import { LoginHero } from "@/components/auth/login-hero";
-import { RegisterForm } from "@/components/auth/register-form";
+import { RegisterRoleTabs } from "@/components/auth/register-role-tabs";
 import { BrandLogo } from "@/components/shared/brand-logo";
 
 export const metadata = {
@@ -16,17 +16,21 @@ export default function RegisterPage() {
         <LoginHero />
       </div>
 
-      {/* Right panel — register form */}
-      <div className="relative flex-1 flex flex-col items-center justify-center px-8 py-10 overflow-y-auto animate-slide-right">
-        <div className="absolute top-6 right-8 animate-fade-in">
+      {/* Right panel — logo in header row, form scrolls below */}
+      <div className="relative flex-1 flex flex-col min-h-0 animate-slide-right">
+        <div className="shrink-0 flex justify-end px-6 sm:px-8 pt-6 pb-4 animate-fade-in">
           <BrandLogo
-            className="justify-end"
+            className="justify-end max-w-[min(100%,280px)]"
             logoClassName="w-10 h-10"
             titleClassName="text-[16px]"
             subtitleClassName="text-[11px]"
           />
         </div>
-        <RegisterForm />
+        <div className="flex-1 overflow-y-auto px-6 sm:px-8 pb-10">
+          <div className="w-full max-w-sm mx-auto pt-2 sm:pt-4">
+            <RegisterRoleTabs />
+          </div>
+        </div>
       </div>
     </div>
   );
