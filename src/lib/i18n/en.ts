@@ -517,6 +517,14 @@ export const en = {
     privacyPolicy: "Privacy Policy",
     roleHr: "HR Manager",
     roleJobSeeker: "Job Seeker",
+    invalidCredentials: "Email or password is incorrect. Please try again.",
+    unverifiedEmail: "Please verify your email before logging in.",
+    accountDisabled: "Your account has been disabled. Please contact support.",
+    loginFailed: "Login failed. Please try again.",
+    selectRoleTitle: "Sign in as",
+    continueWithGoogle: "Continue with Google",
+    emailRequired: "Email is required",
+    passwordRequired: "Password is required",
   },
 
   registerPage: {

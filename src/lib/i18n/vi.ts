@@ -519,6 +519,14 @@ export const vi: Translations = {
     privacyPolicy: "Chính sách bảo mật",
     roleHr: "HR Manager",
     roleJobSeeker: "Ứng viên",
+    invalidCredentials: "Email hoặc mật khẩu không đúng. Vui lòng thử lại.",
+    unverifiedEmail: "Vui lòng xác minh email trước khi đăng nhập.",
+    accountDisabled: "Tài khoản của bạn đã bị vô hiệu hóa. Vui lòng liên hệ hỗ trợ.",
+    loginFailed: "Đăng nhập thất bại. Vui lòng thử lại.",
+    selectRoleTitle: "Đăng nhập với vai trò",
+    continueWithGoogle: "Tiếp tục với Google",
+    emailRequired: "Email là bắt buộc",
+    passwordRequired: "Mật khẩu là bắt buộc",
   },
 
   registerPage: {
