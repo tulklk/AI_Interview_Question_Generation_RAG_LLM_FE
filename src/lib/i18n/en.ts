@@ -591,6 +591,26 @@ export const en = {
     backButton: "Back",
   },
 
+  verifyEmailPage: {
+    title: "Verify your email",
+    subtitle: "We've sent a verification link to",
+    checkSpam: "Didn't receive it? Check your spam folder.",
+    resendButton: "Resend verification email",
+    resendSuccess: "Verification email resent.",
+    backToLogin: "Back to login",
+    verifyingTitle: "Verifying your email...",
+    verifyingSubtitle: "Please wait a moment.",
+    successTitle: "Email verified!",
+    successSubtitle: "Your account has been activated. Redirecting to login...",
+    goToLogin: "Go to login",
+    tokenInvalid: "This verification link is invalid or has already been used.",
+    tokenExpired: "This verification link has expired. Enter your email to request a new one.",
+    missingToken: "No verification token found. Please use the link from your email.",
+    resendEmailLabel: "Your email address",
+    resendEmailPlaceholder: "you@company.com",
+    resendCooldown: "Resend in {{seconds}}s",
+  },
+
   dashboardPage: {
     welcome: "Good morning, HR Manager 👋",
     welcomeSub: "Here's what's happening with your recruitment toolkit today.",
