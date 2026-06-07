@@ -1,10 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Mail, Lock, Eye, EyeOff, ArrowRight } from "lucide-react";
-import { GoogleLogin } from "@react-oauth/google";
 import type { AxiosError } from "axios";
 import { login, loginWithGoogle } from "@/lib/api/auth";
 import {
@@ -22,13 +21,22 @@ import { setCachedUserProfile } from "@/lib/user-profile-cache";
 import { parseGoogleIdToken } from "@/lib/google-id-token";
 import { syncGoogleAvatarIfNeeded } from "@/lib/sync-google-avatar";
 import { resolveAvatarUrl } from "@/lib/user-display";
+import { SocialOAuthRow } from "@/components/auth/social-oauth-buttons";
 
 export function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { t } = useLanguage();
   const lp = t.loginPage;
   const { addToast } = useToast();
   const { refreshUser } = useUser();
+
+  useEffect(() => {
+    if (searchParams.get("reset") === "success") {
+      addToast("success", lp.passwordResetSuccess);
+      router.replace("/login");
+    }
+  }, [searchParams, addToast, lp.passwordResetSuccess, router]);
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -277,23 +285,13 @@ export function LoginForm() {
         <div className="flex-1 h-px bg-gray-200" />
       </div>
 
-      {/* Google login button */}
-      <div className="relative">
-        {googleLoading && (
-          <div className="absolute inset-0 flex items-center justify-center bg-white/70 rounded-lg z-10">
-            <span className="w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
-          </div>
-        )}
-        <GoogleLogin
-          onSuccess={(credentialResponse) =>
-            handleGoogleSuccess(credentialResponse.credential)
-          }
-          onError={() => addToast("error", lp.loginFailed)}
-          useOneTap={false}
-          text="signin_with"
-          width="100%"
-        />
-      </div>
+      {/* Google + GitHub */}
+      <SocialOAuthRow
+        googleLoading={googleLoading}
+        googleMode="signin"
+        onGoogleSuccess={handleGoogleSuccess}
+        onGoogleError={() => addToast("error", lp.loginFailed)}
+      />
 
       {/* Register link */}
       <p className="text-center text-sm text-gray-500 mt-6">
