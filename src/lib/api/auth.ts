@@ -48,3 +48,5 @@ export async function registerCandidate(
 ): Promise<void> {
   await apiClient.post("/api/auth/register/candidate", data);
 }
+
+export { updateCandidateProfile } from "@/lib/api/user";
