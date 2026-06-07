@@ -1,24 +1,19 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { LogOut, ShieldCheck } from "lucide-react";
 import { cn, isAdminNavActive } from "@/lib/utils";
 import { adminNavItems } from "@/data/admin";
-import { clearAuth } from "@/lib/auth";
 import { useLanguage } from "@/context/language-context";
+import { useLogout } from "@/hooks/use-logout";
 import { BrandLogo } from "@/components/shared/brand-logo";
 
 export function AdminSidebar() {
   const pathname = usePathname();
-  const router = useRouter();
   const { t } = useLanguage();
+  const { logout, loggingOut } = useLogout();
   const s = t.adminSidebar;
-
-  function handleLogout() {
-    clearAuth();
-    router.push("/login");
-  }
 
   return (
     <aside className="flex flex-col w-[250px] shrink-0 h-screen bg-white border-r border-[#e5e7eb] overflow-y-auto">
@@ -102,11 +97,17 @@ export function AdminSidebar() {
             Admin
           </span>
           <button
-            onClick={handleLogout}
+            type="button"
+            onClick={() => void logout()}
+            disabled={loggingOut}
             title={s.logoutTitle}
-            className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors shrink-0"
+            className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <LogOut size={14} />
+            {loggingOut ? (
+              <span className="w-3.5 h-3.5 border-2 border-gray-300 border-t-gray-500 rounded-full animate-spin" />
+            ) : (
+              <LogOut size={14} />
+            )}
           </button>
         </div>
       </div>
