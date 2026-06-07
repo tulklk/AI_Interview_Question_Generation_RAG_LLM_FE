@@ -1,4 +1,5 @@
 import { clearTokenStorage, getAccessToken } from "@/lib/auth-tokens";
+import { clearCachedUserProfile } from "@/lib/user-profile-cache";
 
 export { getAccessToken, getRefreshToken, setAuthTokens } from "@/lib/auth-tokens";
 
@@ -14,6 +15,7 @@ export const clearAuth = () => {
   localStorage.removeItem(KEY);
   localStorage.removeItem(ROLE_KEY);
   clearTokenStorage();
+  clearCachedUserProfile();
 };
 
 /** True if legacy mock flag is set or a JWT access token exists. */
