@@ -3,6 +3,7 @@
 import { GoogleOAuthProvider } from "@react-oauth/google";
 import { LanguageProvider } from "@/context/language-context";
 import { ToastProvider } from "@/context/toast-context";
+import { UserProvider } from "@/context/user-context";
 import { ToastContainer } from "@/components/ui/toast-container";
 import type { ReactNode } from "react";
 
@@ -12,8 +13,10 @@ export function Providers({ children }: { children: ReactNode }) {
     <GoogleOAuthProvider clientId={clientId}>
       <LanguageProvider>
         <ToastProvider>
-          {children}
-          <ToastContainer />
+          <UserProvider>
+            {children}
+            <ToastContainer />
+          </UserProvider>
         </ToastProvider>
       </LanguageProvider>
     </GoogleOAuthProvider>
