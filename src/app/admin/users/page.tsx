@@ -1,100 +1,153 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { AdminAppShell } from "@/components/admin/layout/admin-app-shell";
+import { AdminRouteGuard } from "@/components/admin/guards/admin-route-guard";
 import { UserStats } from "@/components/admin/users/user-stats";
-import { UserFilters } from "@/components/admin/users/user-filters";
+import { UserFilters, type RoleFilterValue, type StatusFilterValue } from "@/components/admin/users/user-filters";
 import { UserTable } from "@/components/admin/users/user-table";
-import { UserModal } from "@/components/admin/users/user-modal";
-import { adminUsers } from "@/data/admin";
-import type { AdminUser } from "@/types/admin";
+import { UserDetailPanel } from "@/components/admin/users/user-detail-panel";
+import { UserPagination } from "@/components/admin/users/user-pagination";
+import { getAdminUserStatus } from "@/lib/admin-user-display";
+import { getUserById, listUsers, updateUserStatus } from "@/lib/api/admin-users";
 import { useLanguage } from "@/context/language-context";
+import { useToast } from "@/context/toast-context";
+import type { AdminUserDetail, AdminUserListItem } from "@/types/admin-user";
+
+const SEARCH_DEBOUNCE_MS = 300;
 
 export default function UserManagementPage() {
   const { t } = useLanguage();
+  const { addToast } = useToast();
   const u = t.adminPages.users;
-  const f = u.filters;
 
-  const [users, setUsers] = useState<AdminUser[]>(adminUsers);
-  const [search, setSearch] = useState("");
-  const [role, setRole] = useState(f.allRoles);
-  const [status, setStatus] = useState(f.allStatus);
-  const [modalOpen, setModalOpen] = useState(false);
-  const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [searchInput, setSearchInput] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [roleFilter, setRoleFilter] = useState<RoleFilterValue>("all");
+  const [statusFilter, setStatusFilter] = useState<StatusFilterValue>("all");
 
-  const filtered = useMemo(
-    () =>
-      users.filter((usr) => {
-        const matchSearch =
-          search === "" ||
-          usr.name.toLowerCase().includes(search.toLowerCase()) ||
-          usr.email.toLowerCase().includes(search.toLowerCase());
-        const matchRole = role === f.allRoles || usr.role === role;
-        const matchStatus = status === f.allStatus || usr.status === status;
-        return matchSearch && matchRole && matchStatus;
-      }),
-    [users, search, role, status, f.allRoles, f.allStatus]
+  const [users, setUsers] = useState<AdminUserListItem[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [detail, setDetail] = useState<AdminUserDetail | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailError, setDetailError] = useState<string | null>(null);
+  const [statusUpdating, setStatusUpdating] = useState(false);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setDebouncedSearch(searchInput.trim());
+      setPage(1);
+    }, SEARCH_DEBOUNCE_MS);
+    return () => window.clearTimeout(timer);
+  }, [searchInput]);
+
+  const apiStatusFilter = useMemo(() => {
+    if (statusFilter === "Active") return true;
+    if (statusFilter === "Suspended") return false;
+    return undefined;
+  }, [statusFilter]);
+
+  const fetchUsers = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const result = await listUsers({
+        page,
+        pageSize,
+        search: debouncedSearch || undefined,
+        role: roleFilter === "all" ? undefined : roleFilter,
+        isActive: apiStatusFilter,
+      });
+
+      let items = result.items;
+
+      if (statusFilter === "Pending") {
+        items = items.filter((item) => getAdminUserStatus(item) === "Pending");
+      }
+
+      setUsers(items);
+      setTotalCount(
+        statusFilter === "Pending" ? items.length : result.totalCount
+      );
+    } catch {
+      setUsers([]);
+      setTotalCount(0);
+      setError(u.loadError);
+    } finally {
+      setLoading(false);
+    }
+  }, [page, pageSize, debouncedSearch, roleFilter, apiStatusFilter, statusFilter, u.loadError]);
+
+  useEffect(() => {
+    void fetchUsers();
+  }, [fetchUsers]);
+
+  const fetchDetail = useCallback(
+    async (userId: string) => {
+      setDetailLoading(true);
+      setDetailError(null);
+      try {
+        const data = await getUserById(userId);
+        setDetail(data);
+      } catch {
+        setDetail(null);
+        setDetailError(u.detailLoadError);
+      } finally {
+        setDetailLoading(false);
+      }
+    },
+    [u.detailLoadError]
   );
 
-  function openAdd() {
-    setEditingUser(null);
-    setModalOpen(true);
+  function handleSelectUser(user: AdminUserListItem) {
+    setSelectedUserId(user.id);
+    setDetailOpen(true);
+    setDetail(null);
+    void fetchDetail(user.id);
   }
 
-  function openEdit(user: AdminUser) {
-    setEditingUser(user);
-    setModalOpen(true);
+  function handleCloseDetail() {
+    setDetailOpen(false);
+    setSelectedUserId(null);
+    setDetail(null);
+    setDetailError(null);
   }
 
-  function handleSaveUser(data: {
-    id?: string;
-    name: string;
-    email: string;
-    role: AdminUser["role"];
-    status: AdminUser["status"];
-  }) {
-    if (data.id) {
-      setUsers((prev) =>
-        prev.map((urow) =>
-          urow.id === data.id
-            ? {
-                ...urow,
-                name: data.name,
-                email: data.email,
-                role: data.role,
-                status: data.status,
-              }
-            : urow
-        )
-      );
-    } else {
-      const newUser: AdminUser = {
-        id: `u-${Date.now()}`,
-        name: data.name,
-        email: data.email,
-        role: data.role,
-        status: data.status,
-        createdDate: new Intl.DateTimeFormat(undefined, {
-          month: "short",
-          day: "numeric",
-          year: "numeric",
-        }).format(new Date()),
-        lastActive: "Never",
-      };
-      setUsers((prev) => [...prev, newUser]);
+  async function handleToggleStatus(user: AdminUserDetail, nextActive: boolean) {
+    setStatusUpdating(true);
+    try {
+      await updateUserStatus(user.id, nextActive);
+      addToast("success", u.statusUpdateSuccess);
+      await fetchUsers();
+      await fetchDetail(user.id);
+    } catch {
+      addToast("error", u.statusUpdateError);
+    } finally {
+      setStatusUpdating(false);
     }
   }
 
-  function handleSuspend(user: AdminUser) {
-    setUsers((prev) =>
-      prev.map((urow) => (urow.id === user.id ? { ...urow, status: "Suspended" as const } : urow))
-    );
+  function handleRoleChange(value: RoleFilterValue) {
+    setRoleFilter(value);
+    setPage(1);
   }
 
-  function handleDelete(user: AdminUser) {
-    const msg = u.deleteConfirm.replace("{name}", user.name);
-    if (typeof window !== "undefined" && !window.confirm(msg)) return;
-    setUsers((prev) => prev.filter((urow) => urow.id !== user.id));
+  function handleStatusChange(value: StatusFilterValue) {
+    setStatusFilter(value);
+    setPage(1);
+  }
+
+  function handlePageSizeChange(size: number) {
+    setPageSize(size);
+    setPage(1);
   }
 
   return (
@@ -102,42 +155,59 @@ export default function UserManagementPage() {
       pageTitle={u.heading}
       breadcrumb={[{ label: "Admin", href: "/admin/dashboard" }, { label: u.heading }]}
     >
-      <div className="mb-8 animate-fade-up">
-        <h2 className="text-[30px] font-bold leading-9 text-[#111827]">{u.heading}</h2>
-        <p className="text-base text-[#6b7280] leading-6 mt-2">{u.subtext}</p>
-      </div>
+      <AdminRouteGuard>
+        <div className="mb-8 animate-fade-up">
+          <h2 className="text-[30px] font-bold leading-9 text-[#111827]">{u.heading}</h2>
+          <p className="text-base text-[#6b7280] leading-6 mt-2">{u.subtext}</p>
+        </div>
 
-      <div className="animate-fade-up" style={{ animationDelay: "80ms" }}>
-        <UserStats users={users} />
-      </div>
+        <div className="animate-fade-up" style={{ animationDelay: "80ms" }}>
+          <UserStats users={users} totalCount={totalCount} loading={loading} />
+        </div>
 
-      <div className="animate-fade-up" style={{ animationDelay: "160ms" }}>
-        <UserFilters
-          search={search}
-          role={role}
-          status={status}
-          onSearchChange={setSearch}
-          onRoleChange={setRole}
-          onStatusChange={setStatus}
-          onAddUser={openAdd}
+        <div className="animate-fade-up" style={{ animationDelay: "160ms" }}>
+          <UserFilters
+            search={searchInput}
+            role={roleFilter}
+            status={statusFilter}
+            onSearchChange={setSearchInput}
+            onRoleChange={handleRoleChange}
+            onStatusChange={handleStatusChange}
+          />
+        </div>
+
+        <div className="animate-fade-up" style={{ animationDelay: "240ms" }}>
+          <UserTable
+            users={users}
+            loading={loading}
+            error={error}
+            selectedUserId={selectedUserId}
+            onSelectUser={handleSelectUser}
+            onRetry={() => void fetchUsers()}
+          />
+          {!error && (
+            <UserPagination
+              page={page}
+              pageSize={pageSize}
+              totalCount={totalCount}
+              loading={loading}
+              onPageChange={setPage}
+              onPageSizeChange={handlePageSizeChange}
+            />
+          )}
+        </div>
+
+        <UserDetailPanel
+          open={detailOpen}
+          user={detail}
+          loading={detailLoading}
+          error={detailError}
+          statusUpdating={statusUpdating}
+          onClose={handleCloseDetail}
+          onToggleStatus={(userRow, nextActive) => void handleToggleStatus(userRow, nextActive)}
+          onRetry={() => selectedUserId && void fetchDetail(selectedUserId)}
         />
-      </div>
-
-      <div className="animate-fade-up" style={{ animationDelay: "240ms" }}>
-        <UserTable
-          users={filtered}
-          onEdit={openEdit}
-          onSuspend={handleSuspend}
-          onDelete={handleDelete}
-        />
-      </div>
-
-      <UserModal
-        open={modalOpen}
-        user={editingUser}
-        onClose={() => setModalOpen(false)}
-        onSave={handleSaveUser}
-      />
+      </AdminRouteGuard>
     </AdminAppShell>
   );
 }
