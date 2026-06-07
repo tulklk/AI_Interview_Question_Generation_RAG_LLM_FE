@@ -40,10 +40,36 @@
   to   { opacity: 1; transform: translateX(0); }
 }
 
+@keyframes fadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes slideOutRight {
+  from { opacity: 1; transform: translateX(0); }
+  to { opacity: 0; transform: translateX(100%); }
+}
+
+@keyframes slideOutLeft {
+  from { opacity: 1; transform: translateX(0); }
+  to { opacity: 0; transform: translateX(-28px); }
+}
+
+@keyframes scaleOut {
+  from { opacity: 1; transform: scale(1); }
+  to { opacity: 0; transform: scale(0.97); }
+}
+
+@keyframes fadeUpOut {
+  from { opacity: 1; transform: translateY(0); }
+  to { opacity: 0; transform: translateY(8px); }
+}
+
 @keyframes toastSlideOut {
   from { opacity: 1; transform: translateX(0); }
   to   { opacity: 0; transform: translateX(calc(100% + 24px)); }
 }
+
 
 @keyframes orbFloat1 {
   0%, 100% { transform: translate(0, 0) scale(1); }
@@ -94,6 +120,11 @@
   --animate-float: float 4s ease-in-out infinite;
   --animate-slide-down: slideDown 0.45s ease-out both;
   --animate-toast-in: toastSlideIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-fade-out: fadeOut 0.28s ease-in both;
+  --animate-slide-out-right: slideOutRight 0.3s cubic-bezier(0.4, 0, 1, 1) both;
+  --animate-slide-out-left: slideOutLeft 0.28s ease-in both;
+  --animate-scale-out: scaleOut 0.25s ease-in both;
+  --animate-fade-up-out: fadeUpOut 0.28s ease-in both;
   --animate-toast-out: toastSlideOut 0.25s ease-in both;
 }
 
