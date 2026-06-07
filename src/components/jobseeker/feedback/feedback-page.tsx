@@ -1,10 +1,11 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, RefreshCw, Share2, CheckCircle2,
-  AlertCircle, Lightbulb, Sparkles,
+  AlertCircle, Lightbulb, Sparkles, ChevronDown,
 } from "lucide-react";
 import {
   RadarChart, PolarGrid, PolarAngleAxis, Radar,
@@ -13,19 +14,15 @@ import {
 import { cn } from "@/lib/utils";
 import { skillRadarData } from "@/data/jobseeker";
 import { useLanguage } from "@/context/language-context";
-import type { PracticeSession, QuestionCategory } from "@/types/jobseeker";
-
-const CATEGORY_COLORS: Record<QuestionCategory, string> = {
-  Technical:   "bg-blue-50 text-blue-700",
-  Behavioral:  "bg-violet-50 text-violet-700",
-  Situational: "bg-amber-50 text-amber-700",
-};
+import type { PracticeSession } from "@/types/jobseeker";
+import { Pill, getCategoryBadgeClass, getScoreLevel } from "@/components/jobseeker/ui/pill";
+import { CARD_SHADOW } from "@/components/jobseeker/ui/constants";
 
 function ScoreRing({ score }: { score: number }) {
   const radius = 52;
   const circ = 2 * Math.PI * radius;
   const offset = circ - (score / 100) * circ;
-  const color = score >= 80 ? "#10B981" : score >= 60 ? "#6C47FF" : "#F59E0B";
+  const color = score >= 80 ? "#10B981" : score >= 65 ? "#6C47FF" : "#F59E0B";
 
   return (
     <div className="relative w-32 h-32 flex items-center justify-center">
@@ -64,10 +61,20 @@ export function FeedbackPage({ session }: FeedbackPageProps) {
   const { t } = useLanguage();
   const p = t.jobseekerFeedbackPage;
 
-  const scoreLevel =
-    session.score >= 85 ? "Excellent" :
-    session.score >= 70 ? "Good" :
-    session.score >= 55 ? "Fair" : "Needs Work";
+  const { label: scoreLevelLabel, badgeClass: scoreLevelBadgeClass } = getScoreLevel(session.score, p.scoreLevels);
+
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(
+    () => new Set(session.answers.length > 0 ? [session.answers[0].questionId] : [])
+  );
+
+  function toggleExpanded(id: string) {
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
 
   const aiInsight = session.score >= 80
     ? "Outstanding performance! Your answers showed depth, structure, and concrete examples. You're well-prepared for this interview level."
@@ -91,20 +98,15 @@ export function FeedbackPage({ session }: FeedbackPageProps) {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         className="bg-white rounded-xl p-8 mb-6 flex items-center gap-10"
-        style={{ boxShadow: "rgba(0,0,0,0.08) 0px 4px 6px -1px, rgba(0,0,0,0.06) 0px 2px 4px -2px" }}
+        style={{ boxShadow: CARD_SHADOW }}
       >
         <ScoreRing score={session.score} />
 
         <div className="flex-1">
           <div className="flex items-center gap-3 mb-2">
             <h1 className="text-[24px] font-[800] text-[#111827]">{p.overallScore}</h1>
-            <span className={cn(
-              "text-[12px] font-[700] px-3 py-1 rounded-full",
-              session.score >= 80 ? "bg-emerald-50 text-emerald-700" :
-              session.score >= 65 ? "bg-violet-50 text-violet-700" :
-              "bg-amber-50 text-amber-700"
-            )}>
-              {scoreLevel}
+            <span className={cn("text-[12px] font-[700] px-3 py-1 rounded-full", scoreLevelBadgeClass)}>
+              {scoreLevelLabel}
             </span>
           </div>
 
@@ -148,7 +150,7 @@ export function FeedbackPage({ session }: FeedbackPageProps) {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
           className="bg-white rounded-xl p-6"
-          style={{ boxShadow: "rgba(0,0,0,0.08) 0px 4px 6px -1px, rgba(0,0,0,0.06) 0px 2px 4px -2px" }}
+          style={{ boxShadow: CARD_SHADOW }}
         >
           <h2 className="text-[16px] font-[700] text-[#111827] mb-5">{p.skillBreakdown}</h2>
           <ResponsiveContainer width="100%" height={260}>
@@ -179,7 +181,7 @@ export function FeedbackPage({ session }: FeedbackPageProps) {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.15 }}
           className="bg-white rounded-xl p-6 flex flex-col gap-4"
-          style={{ boxShadow: "rgba(0,0,0,0.08) 0px 4px 6px -1px, rgba(0,0,0,0.06) 0px 2px 4px -2px" }}
+          style={{ boxShadow: CARD_SHADOW }}
         >
           <h2 className="text-[16px] font-[700] text-[#111827]">{p.skillBreakdown}</h2>
           {skillRadarData.map((item, i) => (
@@ -220,88 +222,114 @@ export function FeedbackPage({ session }: FeedbackPageProps) {
           className="flex flex-col gap-4"
         >
           <h2 className="text-[20px] font-[700] text-[#111827]">{p.questionReviews}</h2>
-          {session.answers.map((ans, i) => (
-            <motion.div
-              key={ans.questionId}
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 + i * 0.08 }}
-              className="bg-white rounded-xl p-6"
-              style={{ boxShadow: "rgba(0,0,0,0.08) 0px 4px 6px -1px, rgba(0,0,0,0.06) 0px 2px 4px -2px" }}
-            >
-              {/* Question header */}
-              <div className="flex items-start justify-between gap-4 mb-5">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className={cn("text-[11px] font-[600] px-2.5 py-1 rounded-[6px]", CATEGORY_COLORS[ans.category])}>
-                      {ans.category}
-                    </span>
-                    <span className="text-[12px] text-[#6B7280]">Q{i + 1}</span>
+          {session.answers.map((ans, i) => {
+            const isExpanded = expandedIds.has(ans.questionId);
+            return (
+              <motion.div
+                key={ans.questionId}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 + i * 0.08 }}
+                className="bg-white rounded-xl p-6"
+                style={{ boxShadow: CARD_SHADOW }}
+              >
+                {/* Question header — always-visible summary, click to expand */}
+                <button
+                  onClick={() => toggleExpanded(ans.questionId)}
+                  className="w-full flex items-start justify-between gap-4 text-left cursor-pointer"
+                >
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Pill className={getCategoryBadgeClass(ans.category)}>{ans.category}</Pill>
+                      <span className="text-[12px] text-[#6B7280]">Q{i + 1}</span>
+                    </div>
+                    <p className="text-[15px] font-[700] text-[#111827] leading-[24px]">{ans.questionText}</p>
                   </div>
-                  <p className="text-[15px] font-[700] text-[#111827] leading-[24px]">{ans.questionText}</p>
-                </div>
-                <div className="shrink-0 flex flex-col items-center">
-                  <span className={cn(
-                    "text-[22px] font-[800] leading-none",
-                    ans.aiScore >= 80 ? "text-emerald-500" :
-                    ans.aiScore >= 65 ? "text-primary" : "text-amber-500"
-                  )}>
-                    {ans.aiScore}
-                  </span>
-                  <span className="text-[10px] text-[#6B7280]">/ 100</span>
-                </div>
-              </div>
-
-              {/* Your answer */}
-              <div className="bg-[#F9FAFB] rounded-lg p-4 mb-4">
-                <p className="text-[11px] font-[700] text-[#6B7280] uppercase tracking-wide mb-2">{p.yourAnswer}</p>
-                <p className="text-[13px] text-[#111827] leading-[22px]">{ans.answer}</p>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4 mb-4">
-                {/* Strengths */}
-                <div>
-                  <div className="flex items-center gap-1.5 mb-2">
-                    <CheckCircle2 size={13} className="text-emerald-500" />
-                    <p className="text-[12px] font-[700] text-emerald-700">{p.strengths}</p>
+                  <div className="shrink-0 flex items-center gap-3">
+                    <div className="flex flex-col items-center">
+                      <span className={cn(
+                        "text-[22px] font-[800] leading-none",
+                        ans.aiScore >= 80 ? "text-emerald-500" :
+                        ans.aiScore >= 65 ? "text-primary" : "text-amber-500"
+                      )}>
+                        {ans.aiScore}
+                      </span>
+                      <span className="text-[10px] text-[#6B7280]">/ 100</span>
+                    </div>
+                    <ChevronDown
+                      size={16}
+                      className={cn("text-gray-400 transition-transform duration-200", isExpanded && "rotate-180")}
+                    />
                   </div>
-                  <ul className="space-y-1">
-                    {ans.strengths.map((s, j) => (
-                      <li key={j} className="flex items-start gap-2 text-[13px] text-[#111827]">
-                        <span className="text-emerald-400 mt-1 shrink-0">·</span>
-                        {s}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
+                </button>
 
-                {/* Improvements */}
-                <div>
-                  <div className="flex items-center gap-1.5 mb-2">
-                    <AlertCircle size={13} className="text-amber-500" />
-                    <p className="text-[12px] font-[700] text-amber-700">{p.improvements}</p>
-                  </div>
-                  <ul className="space-y-1">
-                    {ans.improvements.map((s, j) => (
-                      <li key={j} className="flex items-start gap-2 text-[13px] text-[#111827]">
-                        <span className="text-amber-400 mt-1 shrink-0">·</span>
-                        {s}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
+                {/* initial=false: this body can start expanded (first question) — skip the
+                    height-grow animation on mount so it doesn't fight the card's own slide-in */}
+                <AnimatePresence initial={false}>
+                  {isExpanded && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.2 }}
+                      className="overflow-hidden"
+                    >
+                      <div className="pt-5">
+                        {/* Your answer */}
+                        <div className="bg-[#F9FAFB] rounded-lg p-4 mb-4">
+                          <p className="text-[11px] font-[700] text-[#6B7280] uppercase tracking-wide mb-2">{p.yourAnswer}</p>
+                          <p className="text-[13px] text-[#111827] leading-[22px]">{ans.answer}</p>
+                        </div>
 
-              {/* AI Suggestion */}
-              <div className="bg-[#F5F3FF] rounded-lg p-4 flex gap-3">
-                <Lightbulb size={14} className="text-primary shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-[11px] font-[700] text-primary mb-1">{p.suggestion}</p>
-                  <p className="text-[13px] text-[#111827] leading-[20px]">{ans.suggestion}</p>
-                </div>
-              </div>
-            </motion.div>
-          ))}
+                        <div className="grid grid-cols-2 gap-4 mb-4">
+                          {/* Strengths */}
+                          <div>
+                            <div className="flex items-center gap-1.5 mb-2">
+                              <CheckCircle2 size={13} className="text-emerald-500" />
+                              <p className="text-[12px] font-[700] text-emerald-700">{p.strengths}</p>
+                            </div>
+                            <ul className="space-y-1">
+                              {ans.strengths.map((s, j) => (
+                                <li key={j} className="flex items-start gap-2 text-[13px] text-[#111827]">
+                                  <span className="text-emerald-400 mt-1 shrink-0">·</span>
+                                  {s}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+
+                          {/* Improvements */}
+                          <div>
+                            <div className="flex items-center gap-1.5 mb-2">
+                              <AlertCircle size={13} className="text-amber-500" />
+                              <p className="text-[12px] font-[700] text-amber-700">{p.improvements}</p>
+                            </div>
+                            <ul className="space-y-1">
+                              {ans.improvements.map((s, j) => (
+                                <li key={j} className="flex items-start gap-2 text-[13px] text-[#111827]">
+                                  <span className="text-amber-400 mt-1 shrink-0">·</span>
+                                  {s}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        </div>
+
+                        {/* AI Suggestion */}
+                        <div className="bg-[#F5F3FF] rounded-lg p-4 flex gap-3">
+                          <Lightbulb size={14} className="text-primary shrink-0 mt-0.5" />
+                          <div>
+                            <p className="text-[11px] font-[700] text-primary mb-1">{p.suggestion}</p>
+                            <p className="text-[13px] text-[#111827] leading-[20px]">{ans.suggestion}</p>
+                          </div>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </motion.div>
+            );
+          })}
         </motion.div>
       )}
     </div>

@@ -9,19 +9,9 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLanguage } from "@/context/language-context";
-import type { QuestionSet, QuestionCategory, Difficulty } from "@/types/jobseeker";
-
-const DIFFICULTY_STYLES: Record<Difficulty, string> = {
-  Easy:   "bg-emerald-50 text-emerald-700",
-  Medium: "bg-amber-50   text-amber-700",
-  Hard:   "bg-red-50     text-red-600",
-};
-
-const CATEGORY_COLORS: Record<QuestionCategory, string> = {
-  Technical:   "bg-blue-50 text-blue-700",
-  Behavioral:  "bg-violet-50 text-violet-700",
-  Situational: "bg-amber-50 text-amber-700",
-};
+import type { QuestionSet, QuestionCategory } from "@/types/jobseeker";
+import { Pill, getDifficultyBadgeClass, getCategoryBadgeClass } from "@/components/jobseeker/ui/pill";
+import { CARD_SHADOW, ELEVATED_SHADOW } from "@/components/jobseeker/ui/constants";
 
 interface SetDetailProps {
   set: QuestionSet;
@@ -60,7 +50,7 @@ export function SetDetail({ set }: SetDetailProps) {
         >
           {/* Title block */}
           <div className="bg-white rounded-xl p-6"
-            style={{ boxShadow: "rgba(0,0,0,0.08) 0px 4px 6px -1px, rgba(0,0,0,0.06) 0px 2px 4px -2px" }}
+            style={{ boxShadow: CARD_SHADOW }}
           >
             <div className="flex items-start gap-4 mb-5">
               <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center text-white text-base font-bold shrink-0", set.companyColor)}>
@@ -70,9 +60,9 @@ export function SetDetail({ set }: SetDetailProps) {
                 <h1 className="text-[24px] font-[800] text-[#111827] leading-[32px]">{set.title}</h1>
                 <p className="text-[14px] text-[#6B7280] mt-1">{p.by} {set.company}</p>
               </div>
-              <span className={cn("text-[12px] font-[600] px-3 py-1.5 rounded-[6px]", DIFFICULTY_STYLES[set.difficulty])}>
+              <Pill className={cn("text-[12px] px-3 py-1.5", getDifficultyBadgeClass(set.difficulty))}>
                 {set.difficulty}
-              </span>
+              </Pill>
             </div>
 
             <p className="text-[15px] text-[#6B7280] leading-[24px] mb-5">{set.description}</p>
@@ -116,7 +106,7 @@ export function SetDetail({ set }: SetDetailProps) {
 
           {/* Question Preview */}
           <div className="bg-white rounded-xl overflow-hidden"
-            style={{ boxShadow: "rgba(0,0,0,0.08) 0px 4px 6px -1px, rgba(0,0,0,0.06) 0px 2px 4px -2px" }}
+            style={{ boxShadow: CARD_SHADOW }}
           >
             <div className="px-6 py-4 border-b border-gray-100">
               <h2 className="text-[16px] font-[700] text-[#111827]">{p.preview}</h2>
@@ -135,9 +125,7 @@ export function SetDetail({ set }: SetDetailProps) {
                       className="w-full flex items-center justify-between px-6 py-4 hover:bg-[#FAFAFA] transition-colors"
                     >
                       <div className="flex items-center gap-3">
-                        <span className={cn("text-[11px] font-[600] px-2.5 py-1 rounded-[6px]", CATEGORY_COLORS[cat])}>
-                          {p.categories[cat]}
-                        </span>
+                        <Pill className={getCategoryBadgeClass(cat)}>{p.categories[cat]}</Pill>
                         <span className="text-[13px] text-[#6B7280]">{qs.length} questions</span>
                       </div>
                       <ChevronDown
@@ -164,9 +152,9 @@ export function SetDetail({ set }: SetDetailProps) {
                                 {idx + 1}.
                               </span>
                               <p className="text-[14px] text-[#111827] leading-[22px] flex-1">{q.text}</p>
-                              <span className={cn("shrink-0 text-[11px] font-[500] px-2 py-0.5 rounded-[4px]", DIFFICULTY_STYLES[q.difficulty])}>
+                              <Pill size="sm" className={getDifficultyBadgeClass(q.difficulty)}>
                                 {q.difficulty}
-                              </span>
+                              </Pill>
                             </li>
                           ))}
                         </motion.ul>
@@ -188,7 +176,7 @@ export function SetDetail({ set }: SetDetailProps) {
         >
           <div
             className="bg-white rounded-xl overflow-hidden"
-            style={{ boxShadow: "rgba(0,0,0,0.12) 0px 20px 25px -5px, rgba(0,0,0,0.08) 0px 8px 10px -6px" }}
+            style={{ boxShadow: ELEVATED_SHADOW }}
           >
             {/* Card header */}
             <div className="bg-[#F9FAFB] px-5 py-4 border-b border-gray-100">
