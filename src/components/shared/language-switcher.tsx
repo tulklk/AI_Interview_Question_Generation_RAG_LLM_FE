@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Globe, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLanguage, type Lang } from "@/context/language-context";
+import { useOverlayTransition } from "@/hooks/use-overlay-transition";
 
 const LANGUAGES: { code: Lang; label: string; flag: string }[] = [
   { code: "en", label: "English", flag: "🇺🇸" },
@@ -17,8 +18,14 @@ interface LanguageSwitcherProps {
 export function LanguageSwitcher({ variant = "ghost" }: LanguageSwitcherProps) {
   const { lang, setLang } = useLanguage();
   const [open, setOpen] = useState(false);
+  const { mounted, exiting } = useOverlayTransition(open, 220);
 
   const active = LANGUAGES.find((l) => l.code === lang)!;
+
+  function closeMenu() {
+    if (exiting) return;
+    setOpen(false);
+  }
 
   return (
     <div className="relative">
@@ -38,14 +45,19 @@ export function LanguageSwitcher({ variant = "ghost" }: LanguageSwitcherProps) {
         <span className="sm:hidden">{active.flag}</span>
         <ChevronDown
           size={12}
-          className={cn("transition-transform", open && "rotate-180")}
+          className={cn("transition-transform duration-200", open && "rotate-180")}
         />
       </button>
 
-      {open && (
+      {mounted && (
         <>
-          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 top-full mt-1.5 z-50 w-44 bg-white rounded-lg border border-gray-200 shadow-lg py-1 animate-fade-up">
+          <div className="fixed inset-0 z-40" onClick={closeMenu} />
+          <div
+            className={cn(
+              "absolute right-0 top-full mt-1.5 z-50 w-44 bg-white rounded-lg border border-gray-200 shadow-lg py-1 origin-top-right",
+              exiting ? "animate-fade-up-out" : "animate-fade-up"
+            )}
+          >
             {LANGUAGES.map((language) => (
               <button
                 key={language.code}

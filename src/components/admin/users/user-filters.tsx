@@ -1,16 +1,19 @@
 "use client";
 
-import { Search, UserPlus } from "lucide-react";
+import { Search } from "lucide-react";
 import { useLanguage } from "@/context/language-context";
+import type { AdminUserRoleKey } from "@/types/admin-user";
+
+export type StatusFilterValue = "all" | "Active" | "Pending" | "Suspended";
+export type RoleFilterValue = "all" | AdminUserRoleKey;
 
 interface UserFiltersProps {
   search: string;
-  role: string;
-  status: string;
+  role: RoleFilterValue;
+  status: StatusFilterValue;
   onSearchChange: (v: string) => void;
-  onRoleChange: (v: string) => void;
-  onStatusChange: (v: string) => void;
-  onAddUser: () => void;
+  onRoleChange: (v: RoleFilterValue) => void;
+  onStatusChange: (v: StatusFilterValue) => void;
 }
 
 export function UserFilters({
@@ -20,14 +23,24 @@ export function UserFilters({
   onSearchChange,
   onRoleChange,
   onStatusChange,
-  onAddUser,
 }: UserFiltersProps) {
   const { t } = useLanguage();
   const f = t.adminPages.users.filters;
-  const u = t.adminPages.users;
+  const roleLabels = t.adminPages.users.roles;
 
-  const roles = [f.allRoles, "Admin", "Recruiter", "Guest"];
-  const statuses = [f.allStatus, "Active", "Pending", "Suspended"];
+  const roles: { value: RoleFilterValue; label: string }[] = [
+    { value: "all", label: f.allRoles },
+    { value: "ADMIN", label: roleLabels.ADMIN },
+    { value: "HR_MANAGER", label: roleLabels.HR_MANAGER },
+    { value: "JOB_SEEKER", label: roleLabels.JOB_SEEKER },
+  ];
+
+  const statuses: { value: StatusFilterValue; label: string }[] = [
+    { value: "all", label: f.allStatus },
+    { value: "Active", label: f.statusActive },
+    { value: "Pending", label: f.statusPending },
+    { value: "Suspended", label: f.statusInactive },
+  ];
 
   return (
     <div className="mb-4 flex flex-wrap items-center gap-3 animate-fade-up">
@@ -47,32 +60,27 @@ export function UserFilters({
 
       <select
         value={role}
-        onChange={(e) => onRoleChange(e.target.value)}
+        onChange={(e) => onRoleChange(e.target.value as RoleFilterValue)}
         className="min-h-[38px] rounded-lg border border-[#e5e7eb] bg-white px-3 py-2 text-xs text-[#111827] focus:border-[#6c47ff] focus:outline-none focus:ring-[3px] focus:ring-[rgba(108,71,255,0.1)]"
       >
         {roles.map((r) => (
-          <option key={r}>{r}</option>
+          <option key={r.value} value={r.value}>
+            {r.label}
+          </option>
         ))}
       </select>
 
       <select
         value={status}
-        onChange={(e) => onStatusChange(e.target.value)}
+        onChange={(e) => onStatusChange(e.target.value as StatusFilterValue)}
         className="min-h-[38px] rounded-lg border border-[#e5e7eb] bg-white px-3 py-2 text-xs text-[#111827] focus:border-[#6c47ff] focus:outline-none focus:ring-[3px] focus:ring-[rgba(108,71,255,0.1)]"
       >
         {statuses.map((s) => (
-          <option key={s}>{s}</option>
+          <option key={s.value} value={s.value}>
+            {s.label}
+          </option>
         ))}
       </select>
-
-      <button
-        type="button"
-        onClick={onAddUser}
-        className="ml-0 inline-flex min-h-9 w-full items-center justify-center gap-2 rounded-lg bg-[#6c47ff] px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#5a3dd9] active:bg-[#4b2fbf] sm:ml-auto sm:w-auto"
-      >
-        <UserPlus size={15} />
-        {u.addUser}
-      </button>
     </div>
   );
 }
