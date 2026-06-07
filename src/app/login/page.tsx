@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { LoginHero } from "@/components/auth/login-hero";
 import { LoginForm } from "@/components/auth/login-form";
 import { BrandLogo } from "@/components/shared/brand-logo";
@@ -18,7 +19,9 @@ export default function LoginPage() {
             subtitleClassName="text-[11px]"
           />
         </div>
-        <LoginForm />
+        <Suspense>
+          <LoginForm />
+        </Suspense>
       </div>
     </div>
   );
