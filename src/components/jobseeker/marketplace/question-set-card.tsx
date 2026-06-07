@@ -4,13 +4,9 @@ import Link from "next/link";
 import { Clock, Users, Star, ChevronRight, BarChart2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLanguage } from "@/context/language-context";
-import type { QuestionSet, Difficulty } from "@/types/jobseeker";
-
-const DIFFICULTY_STYLES: Record<Difficulty, string> = {
-  Easy:   "bg-emerald-50 text-emerald-700",
-  Medium: "bg-amber-50   text-amber-700",
-  Hard:   "bg-red-50     text-red-600",
-};
+import type { QuestionSet } from "@/types/jobseeker";
+import { Pill, getDifficultyBadgeClass } from "@/components/jobseeker/ui/pill";
+import { CARD_SHADOW, ELEVATED_SHADOW } from "@/components/jobseeker/ui/constants";
 
 interface QuestionSetCardProps {
   set: QuestionSet;
@@ -23,17 +19,13 @@ export function QuestionSetCard({ set }: QuestionSetCardProps) {
   return (
     <div
       className="group bg-white rounded-xl flex flex-col gap-0 transition-all duration-200 overflow-hidden"
-      style={{
-        boxShadow: "rgba(0,0,0,0.08) 0px 4px 6px -1px, rgba(0,0,0,0.06) 0px 2px 4px -2px",
-      }}
+      style={{ boxShadow: CARD_SHADOW }}
       onMouseEnter={(e) => {
-        (e.currentTarget as HTMLDivElement).style.boxShadow =
-          "rgba(0,0,0,0.12) 0px 20px 25px -5px, rgba(0,0,0,0.08) 0px 8px 10px -6px";
+        (e.currentTarget as HTMLDivElement).style.boxShadow = ELEVATED_SHADOW;
         (e.currentTarget as HTMLDivElement).style.transform = "translateY(-2px)";
       }}
       onMouseLeave={(e) => {
-        (e.currentTarget as HTMLDivElement).style.boxShadow =
-          "rgba(0,0,0,0.08) 0px 4px 6px -1px, rgba(0,0,0,0.06) 0px 2px 4px -2px";
+        (e.currentTarget as HTMLDivElement).style.boxShadow = CARD_SHADOW;
         (e.currentTarget as HTMLDivElement).style.transform = "translateY(0)";
       }}
     >
@@ -55,14 +47,7 @@ export function QuestionSetCard({ set }: QuestionSetCardProps) {
             </h3>
             <p className="text-[12px] text-[#6B7280] mt-0.5">{set.company}</p>
           </div>
-          <span
-            className={cn(
-              "shrink-0 text-[11px] font-[600] px-2.5 py-1 rounded-[6px]",
-              DIFFICULTY_STYLES[set.difficulty]
-            )}
-          >
-            {set.difficulty}
-          </span>
+          <Pill className={getDifficultyBadgeClass(set.difficulty)}>{set.difficulty}</Pill>
         </div>
 
         {/* Description */}
