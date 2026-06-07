@@ -17,12 +17,18 @@ import {
 import type { ApiErrorResponse } from "@/types/auth";
 import { useLanguage } from "@/context/language-context";
 import { useToast } from "@/context/toast-context";
+import { useUser } from "@/context/user-context";
+import { setCachedUserProfile } from "@/lib/user-profile-cache";
+import { parseGoogleIdToken } from "@/lib/google-id-token";
+import { syncGoogleAvatarIfNeeded } from "@/lib/sync-google-avatar";
+import { resolveAvatarUrl } from "@/lib/user-display";
 
 export function LoginForm() {
   const router = useRouter();
   const { t } = useLanguage();
   const lp = t.loginPage;
   const { addToast } = useToast();
+  const { refreshUser } = useUser();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -46,7 +52,12 @@ export function LoginForm() {
     return lp.loginFailed;
   }
 
-  function handleSuccess(data: unknown, role: string | null) {
+  async function handleSuccess(
+    data: unknown,
+    role: string | null,
+    profileHint?: { fullName: string; email: string; avatarUrl?: string | null },
+    options?: { googleIdToken?: string }
+  ) {
     const d = data as Record<string, unknown>;
     const src = (typeof d.data === "object" && d.data ? d.data : d) as Record<string, unknown>;
     const accessToken = (src.accessToken ?? src.access_token ?? src.token) as string | undefined;
@@ -54,6 +65,24 @@ export function LoginForm() {
     if (accessToken) setAuthTokens(accessToken, refreshToken);
     setAuth();
     setUserRole(role ?? "");
+
+    let profile = await refreshUser();
+    if (options?.googleIdToken) {
+      try {
+        await syncGoogleAvatarIfNeeded(options.googleIdToken, profile, role);
+        profile = await refreshUser();
+      } catch {
+        // Avatar sync is best-effort; login should still succeed.
+      }
+    }
+
+    if (profileHint) {
+      setCachedUserProfile({
+        ...profileHint,
+        avatarUrl: resolveAvatarUrl(profile) ?? profileHint.avatarUrl ?? null,
+      });
+    }
+
     router.push(getRoleRedirect(role));
   }
 
@@ -73,7 +102,10 @@ export function LoginForm() {
     try {
       const data = await login({ email: email.trim(), password });
       const role = extractRole(data);
-      handleSuccess(data, role);
+      await handleSuccess(data, role, {
+        fullName: email.trim().split("@")[0],
+        email: email.trim(),
+      });
     } catch (err) {
       const axiosErr = err as AxiosError<ApiErrorResponse>;
       const status = axiosErr.response?.status;
@@ -100,7 +132,19 @@ export function LoginForm() {
     try {
       const data = await loginWithGoogle({ idToken: credential, intendedRole: googleRole });
       const role = extractRole(data);
-      handleSuccess(data, role);
+      const claims = parseGoogleIdToken(credential);
+      const googleEmail = claims.email ?? "";
+      const googleName = claims.name ?? googleEmail.split("@")[0] ?? "";
+      await handleSuccess(
+        data,
+        role,
+        {
+          fullName: googleName,
+          email: googleEmail,
+          avatarUrl: claims.picture?.trim() || null,
+        },
+        { googleIdToken: credential }
+      );
     } catch (err) {
       addToast("error", parseLoginError(err));
     } finally {

@@ -7,6 +7,9 @@ import { Search, RefreshCw, Eye, BarChart2, Clock, Trophy, BookOpen, ChevronDown
 import { cn } from "@/lib/utils";
 import { practiceSessions } from "@/data/jobseeker";
 import { useLanguage } from "@/context/language-context";
+import { StatCard } from "@/components/jobseeker/ui/stat-card";
+import { Pill, getScoreBadgeClass } from "@/components/jobseeker/ui/pill";
+import { CARD_SHADOW } from "@/components/jobseeker/ui/constants";
 
 export function HistoryBoard() {
   const { t } = useLanguage();
@@ -41,14 +44,8 @@ export function HistoryBoard() {
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.06 }}
-            className="bg-white rounded-xl p-5"
-            style={{ boxShadow: "rgba(0,0,0,0.08) 0px 4px 6px -1px, rgba(0,0,0,0.06) 0px 2px 4px -2px" }}
           >
-            <div className={cn("w-9 h-9 rounded-lg flex items-center justify-center mb-3", s.bg)}>
-              <s.icon size={16} className={s.color} />
-            </div>
-            <p className="text-[24px] font-[700] text-[#111827] leading-none">{s.value}</p>
-            <p className="text-[13px] text-[#6B7280] mt-1">{s.label}</p>
+            <StatCard icon={s.icon} iconBg={s.bg} iconColor={s.color} value={s.value} label={s.label} />
           </motion.div>
         ))}
       </div>
@@ -59,7 +56,7 @@ export function HistoryBoard() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2 }}
         className="bg-white rounded-xl p-4 mb-4 flex items-center gap-3"
-        style={{ boxShadow: "rgba(0,0,0,0.08) 0px 4px 6px -1px, rgba(0,0,0,0.06) 0px 2px 4px -2px" }}
+        style={{ boxShadow: CARD_SHADOW }}
       >
         <div className="flex items-center gap-2 flex-1 border border-[#E5E7EB] rounded-lg px-3 h-[38px] focus-within:border-primary focus-within:shadow-[0_0_0_3px_rgba(108,71,255,0.1)] transition-all">
           <Search size={14} className="text-gray-400 shrink-0" />
@@ -91,7 +88,7 @@ export function HistoryBoard() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.25 }}
         className="bg-white rounded-xl overflow-hidden"
-        style={{ boxShadow: "rgba(0,0,0,0.08) 0px 4px 6px -1px, rgba(0,0,0,0.06) 0px 2px 4px -2px" }}
+        style={{ boxShadow: CARD_SHADOW }}
       >
         {/* Header */}
         <div className="grid grid-cols-[2.5fr_1fr_1fr_1fr_2fr_auto] gap-4 px-6 py-3 bg-[#F9FAFB] border-b border-gray-100">
@@ -127,14 +124,9 @@ export function HistoryBoard() {
                 <p className="text-[12px] text-[#6B7280]">{session.date}</p>
 
                 {/* Score */}
-                <span className={cn(
-                  "text-[13px] font-[700] px-2.5 py-1 rounded-[6px] w-fit",
-                  session.score >= 80 ? "bg-emerald-50 text-emerald-700" :
-                  session.score >= 65 ? "bg-violet-50 text-violet-700" :
-                  "bg-amber-50 text-amber-700"
-                )}>
+                <Pill className={cn("text-[13px] font-[700] px-2.5 py-1 w-fit", getScoreBadgeClass(session.score))}>
                   {session.score}%
-                </span>
+                </Pill>
 
                 {/* Duration */}
                 <p className="text-[12px] text-[#6B7280]">{session.duration}</p>
