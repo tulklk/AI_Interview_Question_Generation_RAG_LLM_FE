@@ -3,15 +3,27 @@
 import Link from "next/link";
 import { UserPlus } from "lucide-react";
 import { useLanguage } from "@/context/language-context";
+import { useUser } from "@/context/user-context";
+import { buildWelcomeMessage, getTimeOfDayGreeting } from "@/lib/greeting";
 
 export function AdminWelcomeSection() {
   const { t } = useLanguage();
+  const { user, loading } = useUser();
   const d = t.adminPages.dashboard;
+
+  const greeting = getTimeOfDayGreeting({
+    morning: d.greetingMorning,
+    afternoon: d.greetingAfternoon,
+    evening: d.greetingEvening,
+    night: d.greetingNight,
+  });
+  const displayName = user?.fullName || (loading ? "..." : d.defaultUserName);
+  const welcomeText = buildWelcomeMessage(d.welcomeTemplate, greeting, displayName);
 
   return (
     <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between mb-8 animate-fade-up rounded-xl border border-[#e5e7eb] bg-[#f5f3ff] p-6 md:p-8">
       <div>
-        <h2 className="text-[30px] font-bold leading-9 text-[#111827]">{d.welcome}</h2>
+        <h2 className="text-[30px] font-bold leading-9 text-[#111827]">{welcomeText}</h2>
         <p className="text-base text-[#6b7280] leading-6 mt-2">{d.welcomeSub}</p>
       </div>
       <Link
