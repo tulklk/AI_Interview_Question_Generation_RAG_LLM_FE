@@ -55,3 +55,15 @@ export interface CandidateRegisterRequest {
   seniorityLevel: string;
   techStack: string[];
 }
+
+export interface UpdateCandidateProfileRequest {
+  fullName: string;
+  targetRole?: string;
+  seniorityLevel?: string;
+  techStack?: string[];
+  phoneNumber?: string;
+  avatarUrl?: string;
+  linkedInUrl?: string;
+  githubUrl?: string;
+  bio?: string;
+}
