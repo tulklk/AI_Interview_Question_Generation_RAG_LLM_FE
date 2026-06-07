@@ -1,24 +1,18 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import { BookOpen, LogOut } from "lucide-react";
+import { usePathname } from "next/navigation";
+import { BookOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { jobseekerNavItems } from "@/data/jobseeker";
-import { clearAuth } from "@/lib/auth";
 import { useLanguage } from "@/context/language-context";
 import { BrandLogo } from "@/components/shared/brand-logo";
+import { SidebarUserFooter } from "@/components/layout/sidebar-user-footer";
 
 export function JobseekerSidebar() {
   const pathname = usePathname();
-  const router = useRouter();
   const { t } = useLanguage();
   const s = t.jobseekerSidebar;
-
-  function handleLogout() {
-    clearAuth();
-    router.push("/login");
-  }
 
   return (
     <aside className="flex flex-col w-[250px] shrink-0 h-screen bg-white border-r border-gray-100 overflow-y-auto">
@@ -98,28 +92,14 @@ export function JobseekerSidebar() {
         </div>
       </div>
 
-      {/* User Info */}
-      <div className="px-4 py-4 border-t border-gray-100">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full bg-[#6c47ff] flex items-center justify-center shrink-0">
-            <span className="text-white text-xs font-bold">AJ</span>
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-gray-800 text-sm font-semibold leading-tight truncate">Alex Johnson</p>
-            <p className="text-gray-400 text-[11px] leading-tight truncate">alex@example.com</p>
-          </div>
+      <SidebarUserFooter
+        logoutTitle={s.logoutTitle}
+        badge={
           <span className="text-[10px] font-bold text-cyan-600 bg-cyan-50 px-2 py-0.5 rounded-full shrink-0">
             Free
           </span>
-          <button
-            onClick={handleLogout}
-            title={s.logoutTitle}
-            className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors shrink-0"
-          >
-            <LogOut size={14} />
-          </button>
-        </div>
-      </div>
+        }
+      />
     </aside>
   );
 }
