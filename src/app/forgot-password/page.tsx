@@ -35,7 +35,10 @@ export default function ForgotPasswordPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setFieldError("");
-    if (!email.trim()) return;
+    if (!email.trim()) {
+      setFieldError(fp.emailRequired);
+      return;
+    }
     if (!isValidEmail(email)) {
       setFieldError(fp.emailInvalid);
       return;
@@ -73,25 +76,26 @@ export default function ForgotPasswordPage() {
     "border-red-300 focus:border-red-400 focus:ring-red-100";
 
   return (
-    <div className="flex h-screen items-center justify-center bg-white px-8">
-      <div className="w-full max-w-sm mx-auto animate-fade-up">
-        <div className="absolute top-6 right-8">
-          <BrandLogo
-            className="justify-end"
-            logoClassName="w-10 h-10"
-            titleClassName="text-[16px]"
-            subtitleClassName="text-[11px]"
-          />
-        </div>
+    <div className="relative flex h-screen items-center justify-center bg-white px-8">
+      <div className="absolute top-6 right-8 animate-fade-in z-10">
+        <BrandLogo
+          className="justify-end"
+          logoClassName="w-10 h-10"
+          titleClassName="text-[16px]"
+          subtitleClassName="text-[11px]"
+        />
+      </div>
 
+      <div className="w-full max-w-sm mx-auto animate-fade-up">
         {sent ? (
           <div className="text-center">
             <div className="w-16 h-16 rounded-full bg-emerald-50 flex items-center justify-center mx-auto mb-6">
               <CheckCircle2 size={28} className="text-emerald-600" />
             </div>
             <h2 className="text-2xl font-bold text-gray-900 mb-2">{fp.successTitle}</h2>
-            <p className="text-sm text-gray-500 mb-1">{fp.successSubtitle}</p>
-            <p className="text-sm font-semibold text-gray-800 mb-6 break-all">{email}</p>
+            <p className="text-sm text-gray-500 mb-4">{fp.successSubtitle}</p>
+            <p className="text-xs text-gray-400 mb-1">{fp.successEmailHint}</p>
+            <p className="text-sm font-medium text-gray-700 mb-6 break-all">{email}</p>
 
             <button
               type="button"
