@@ -9,19 +9,9 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLanguage } from "@/context/language-context";
-import type { QuestionSet, QuestionCategory, Difficulty } from "@/types/jobseeker";
-
-const CATEGORY_BADGE: Record<QuestionCategory, string> = {
-  Technical:   "bg-blue-50 text-blue-700",
-  Behavioral:  "bg-violet-50 text-violet-700",
-  Situational: "bg-amber-50 text-amber-700",
-};
-
-const DIFFICULTY_BADGE: Record<Difficulty, string> = {
-  Easy:   "bg-emerald-50 text-emerald-700",
-  Medium: "bg-amber-50 text-amber-700",
-  Hard:   "bg-red-50 text-red-600",
-};
+import type { QuestionSet } from "@/types/jobseeker";
+import { Pill, getCategoryBadgeClass, getDifficultyBadgeClass } from "@/components/jobseeker/ui/pill";
+import { CARD_SHADOW } from "@/components/jobseeker/ui/constants";
 
 function formatTime(seconds: number) {
   const m = Math.floor(seconds / 60).toString().padStart(2, "0");
@@ -157,16 +147,12 @@ export function PracticeSession({ set }: PracticeSessionProps) {
               exit="exit"
               transition={{ duration: 0.25, ease: "easeInOut" }}
               className="bg-white rounded-xl p-8"
-              style={{ boxShadow: "rgba(0,0,0,0.08) 0px 4px 6px -1px, rgba(0,0,0,0.06) 0px 2px 4px -2px" }}
+              style={{ boxShadow: CARD_SHADOW }}
             >
               {/* Category + difficulty badges */}
               <div className="flex items-center gap-2 mb-5">
-                <span className={cn("text-[11px] font-[600] px-2.5 py-1 rounded-[6px]", CATEGORY_BADGE[question.category])}>
-                  {question.category}
-                </span>
-                <span className={cn("text-[11px] font-[600] px-2.5 py-1 rounded-[6px]", DIFFICULTY_BADGE[question.difficulty])}>
-                  {question.difficulty}
-                </span>
+                <Pill className={getCategoryBadgeClass(question.category)}>{question.category}</Pill>
+                <Pill className={getDifficultyBadgeClass(question.difficulty)}>{question.difficulty}</Pill>
               </div>
 
               {/* Question text */}
@@ -178,7 +164,7 @@ export function PracticeSession({ set }: PracticeSessionProps) {
 
           {/* Answer area */}
           <div className="bg-white rounded-xl p-6"
-            style={{ boxShadow: "rgba(0,0,0,0.08) 0px 4px 6px -1px, rgba(0,0,0,0.06) 0px 2px 4px -2px" }}
+            style={{ boxShadow: CARD_SHADOW }}
           >
             {isSubmitted ? (
               /* Submitted state */
