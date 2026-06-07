@@ -17,7 +17,6 @@ import {
   ChevronDown,
   Search,
 } from "lucide-react";
-import { GoogleLogin } from "@react-oauth/google";
 import type { AxiosError } from "axios";
 import { registerCandidate, loginWithGoogle, updateCandidateProfile } from "@/lib/api/auth";
 import { setAuth, setAuthTokens, setUserRole, extractRole, getRoleRedirect, clearAuth } from "@/lib/auth";
@@ -29,6 +28,7 @@ import { useLanguage } from "@/context/language-context";
 import { useToast } from "@/context/toast-context";
 import { useUser } from "@/context/user-context";
 import { setCachedUserProfile } from "@/lib/user-profile-cache";
+import { SocialOAuthRow } from "@/components/auth/social-oauth-buttons";
 
 const TECH_OPTIONS = [
   "JavaScript", "TypeScript", "React", "Next.js", "Vue.js", "Angular",
@@ -430,20 +430,12 @@ export function RegisterJobSeekerForm() {
             <span className="text-xs text-gray-400">{rp.orContinueWith}</span>
             <div className="flex-1 h-px bg-gray-200" />
           </div>
-          <div className="relative">
-            {googleLoading && (
-              <div className="absolute inset-0 flex items-center justify-center bg-white/70 rounded-lg z-10">
-                <span className="w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
-              </div>
-            )}
-            <GoogleLogin
-              onSuccess={(c) => handleGoogle(c.credential)}
-              onError={() => addToast("error", rp.registrationFailed)}
-              useOneTap={false}
-              text="signup_with"
-              width="100%"
-            />
-          </div>
+          <SocialOAuthRow
+            googleLoading={googleLoading}
+            googleMode="signup"
+            onGoogleSuccess={handleGoogle}
+            onGoogleError={() => addToast("error", rp.registrationFailed)}
+          />
 
           {/* Footer links */}
           <p className="text-center text-sm text-gray-500 mt-5">
