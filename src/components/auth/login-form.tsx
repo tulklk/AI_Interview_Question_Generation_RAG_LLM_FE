@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Mail, Lock, Eye, EyeOff, ArrowRight } from "lucide-react";
 import { GoogleLogin } from "@react-oauth/google";
 import type { AxiosError } from "axios";
@@ -25,10 +25,18 @@ import { resolveAvatarUrl } from "@/lib/user-display";
 
 export function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { t } = useLanguage();
   const lp = t.loginPage;
   const { addToast } = useToast();
   const { refreshUser } = useUser();
+
+  useEffect(() => {
+    if (searchParams.get("reset") === "success") {
+      addToast("success", lp.passwordResetSuccess);
+      router.replace("/login");
+    }
+  }, [searchParams, addToast, lp.passwordResetSuccess, router]);
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
