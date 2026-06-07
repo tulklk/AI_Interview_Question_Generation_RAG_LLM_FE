@@ -18,6 +18,7 @@ interface TopHeaderUser {
   initials: string;
   name: string;
   plan?: string;
+  avatarUrl?: string | null;
 }
 
 interface TopHeaderProps {
@@ -53,7 +54,8 @@ export function TopHeader({
         {breadcrumb && breadcrumb.length > 0 && (
           <nav
             className={cn(
-              "flex items-center gap-1 mb-0.5",
+              "flex items-center gap-1",
+              !isAdmin && "mb-0.5",
               isAdmin ? "text-sm font-medium text-[#6b7280]" : "text-xs text-gray-400"
             )}
           >
@@ -79,16 +81,9 @@ export function TopHeader({
             ))}
           </nav>
         )}
-        <h1
-          className={cn(
-            "leading-tight text-[#111827]",
-            isAdmin
-              ? "text-[26px] md:text-[30px] font-bold leading-9 tracking-tight"
-              : "text-sm font-semibold text-gray-800"
-          )}
-        >
-          {pageTitle}
-        </h1>
+        {!isAdmin && (
+          <h1 className="text-sm font-semibold text-gray-800 leading-tight">{pageTitle}</h1>
+        )}
       </div>
 
       <div className="flex items-center gap-3">
@@ -96,7 +91,12 @@ export function TopHeader({
         <LanguageSwitcher />
         <div className="w-px h-5 bg-gray-200" />
         <NotificationBell count={2} />
-        <UserAvatar initials={user.initials} name={user.name} plan={user.plan} />
+        <UserAvatar
+          initials={user.initials}
+          name={user.name}
+          plan={user.plan}
+          avatarUrl={user.avatarUrl}
+        />
       </div>
     </header>
   );

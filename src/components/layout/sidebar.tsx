@@ -1,29 +1,23 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import { Sparkles, LogOut } from "lucide-react";
+import { usePathname } from "next/navigation";
+import { Sparkles } from "lucide-react";
 import { cn, isHrNavActive } from "@/lib/utils";
 import { navItems } from "@/data/dashboard";
-import { clearAuth } from "@/lib/auth";
 import { useLanguage } from "@/context/language-context";
 import { useHrSubscription } from "@/context/hr-subscription-context";
 import { BrandLogo } from "@/components/shared/brand-logo";
+import { SidebarUserFooter } from "@/components/layout/sidebar-user-footer";
 import type { HrPlanId } from "@/types/hr-subscription";
 
 export function Sidebar() {
   const pathname = usePathname();
-  const router = useRouter();
   const { t } = useLanguage();
   const { planId } = useHrSubscription();
   const planShortBadge = t.settingsPage.subscription.planShortBadge as Record<HrPlanId, string>;
   const short = planShortBadge[planId]?.trim();
   const s = t.sidebar;
-
-  function handleLogout() {
-    clearAuth();
-    router.push("/login");
-  }
 
   return (
     <aside className="flex flex-col w-[250px] shrink-0 h-screen bg-white border-r border-[#e5e7eb] overflow-y-auto">
@@ -96,16 +90,10 @@ export function Sidebar() {
         </div>
       </div>
 
-      <div className="px-4 py-4 border-t border-[#e5e7eb]">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full bg-[#6c47ff] flex items-center justify-center shrink-0">
-            <span className="text-white text-xs font-bold">HR</span>
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-gray-800 text-sm font-semibold leading-tight truncate">HR Manager</p>
-            <p className="text-gray-400 text-[11px] leading-tight truncate">hr@company.com</p>
-          </div>
-          {short ? (
+      <SidebarUserFooter
+        logoutTitle={s.logoutTitle}
+        badge={
+          short ? (
             <span
               className={cn(
                 "text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0",
@@ -117,16 +105,9 @@ export function Sidebar() {
             >
               {short}
             </span>
-          ) : null}
-          <button
-            onClick={handleLogout}
-            title={s.logoutTitle}
-            className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors shrink-0"
-          >
-            <LogOut size={14} />
-          </button>
-        </div>
-      </div>
+          ) : null
+        }
+      />
     </aside>
   );
 }

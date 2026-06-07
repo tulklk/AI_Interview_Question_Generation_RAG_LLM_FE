@@ -19,11 +19,16 @@ import {
 } from "lucide-react";
 import { GoogleLogin } from "@react-oauth/google";
 import type { AxiosError } from "axios";
-import { registerCandidate, loginWithGoogle } from "@/lib/api/auth";
-import { setAuth, setAuthTokens, setUserRole, extractRole, getRoleRedirect } from "@/lib/auth";
+import { registerCandidate, loginWithGoogle, updateCandidateProfile } from "@/lib/api/auth";
+import { setAuth, setAuthTokens, setUserRole, extractRole, getRoleRedirect, clearAuth } from "@/lib/auth";
+import { parseGoogleIdToken } from "@/lib/google-id-token";
+import { syncGoogleAvatarIfNeeded } from "@/lib/sync-google-avatar";
+import { resolveAvatarUrl } from "@/lib/user-display";
 import type { ApiErrorResponse } from "@/types/auth";
 import { useLanguage } from "@/context/language-context";
 import { useToast } from "@/context/toast-context";
+import { useUser } from "@/context/user-context";
+import { setCachedUserProfile } from "@/lib/user-profile-cache";
 
 const TECH_OPTIONS = [
   "JavaScript", "TypeScript", "React", "Next.js", "Vue.js", "Angular",
@@ -49,9 +54,12 @@ export function RegisterJobSeekerForm() {
   const { t } = useLanguage();
   const rp = t.registerJobSeekerPage;
   const { addToast } = useToast();
+  const { refreshUser, clearUser } = useUser();
 
   // ── Step state ──────────────────────────────────────────────────────────────
   const [step, setStep] = useState<1 | 2>(1);
+  const [isGoogleSignup, setIsGoogleSignup] = useState(false);
+  const [googleAvatarUrl, setGoogleAvatarUrl] = useState("");
 
   // ── Step 1 fields ───────────────────────────────────────────────────────────
   const [fullName, setFullName] = useState("");
@@ -141,6 +149,27 @@ export function RegisterJobSeekerForm() {
 
     setLoading(true);
     try {
+      if (isGoogleSignup) {
+        const displayName =
+          fullName.trim() || email.trim().split("@")[0] || "User";
+        await updateCandidateProfile({
+          fullName: displayName,
+          targetRole: targetRole.trim(),
+          seniorityLevel,
+          techStack,
+          avatarUrl: googleAvatarUrl.trim() || undefined,
+        });
+        setCachedUserProfile({
+          fullName: displayName,
+          email: email.trim(),
+          avatarUrl: googleAvatarUrl.trim() || null,
+        });
+        await refreshUser();
+        addToast("success", rp.profileCompleteSuccess);
+        router.push(getRoleRedirect("JOB_SEEKER"));
+        return;
+      }
+
       await registerCandidate({
         fullName: fullName.trim(),
         email: email.trim(),
@@ -163,31 +192,66 @@ export function RegisterJobSeekerForm() {
       } else if (data?.errors) {
         setFieldErrors(data.errors as FieldErrors);
       } else {
-        addToast("error", msg || rp.registrationFailed);
+        addToast("error", msg || (isGoogleSignup ? rp.profileCompleteFailed : rp.registrationFailed));
       }
     } finally {
       setLoading(false);
     }
   }
 
-  // ── Google OAuth ─────────────────────────────────────────────────────────────
-  function handleGoogleSuccess(raw: Record<string, unknown>, role: string | null) {
-    const src = (typeof raw.data === "object" && raw.data ? raw.data : raw) as Record<string, unknown>;
+  function persistGoogleSession(data: unknown) {
+    const d = data as Record<string, unknown>;
+    const src = (typeof d.data === "object" && d.data ? d.data : d) as Record<string, unknown>;
     const accessToken = (src.accessToken ?? src.access_token ?? src.token) as string | undefined;
     const refreshToken = (src.refreshToken ?? src.refresh_token) as string | undefined;
     if (accessToken) setAuthTokens(accessToken, refreshToken);
     setAuth();
-    setUserRole(role ?? "");
-    router.push(getRoleRedirect(role));
+    const role = extractRole(data) ?? "JOB_SEEKER";
+    setUserRole(role);
   }
 
   async function handleGoogle(credential: string | undefined) {
-    if (!credential) { addToast("error", rp.registrationFailed); return; }
+    if (!credential) {
+      addToast("error", rp.registrationFailed);
+      return;
+    }
     setGoogleLoading(true);
     try {
       const res = await loginWithGoogle({ idToken: credential, intendedRole: "JOB_SEEKER" });
-      const role = extractRole(res);
-      handleGoogleSuccess(res as unknown as Record<string, unknown>, role);
+      persistGoogleSession(res);
+
+      const claims = parseGoogleIdToken(credential);
+      const googleEmail = claims.email ?? "";
+      const googleName = claims.name ?? googleEmail.split("@")[0] ?? "";
+      const googlePicture = claims.picture?.trim() ?? "";
+      setGoogleAvatarUrl(googlePicture);
+      setFullName(googleName);
+      setEmail(googleEmail);
+
+      let profile = await refreshUser();
+      if (googlePicture) {
+        try {
+          await syncGoogleAvatarIfNeeded(credential, profile, "JOB_SEEKER");
+          profile = await refreshUser();
+        } catch {
+          // Profile may not exist yet; avatar is saved on step 2 submit.
+        }
+      }
+
+      setCachedUserProfile({
+        fullName: googleName,
+        email: googleEmail,
+        avatarUrl: resolveAvatarUrl(profile) ?? (googlePicture || null),
+      });
+      setPassword("");
+      setConfirmPassword("");
+      setFieldErrors({});
+      setIsGoogleSignup(true);
+      setStep(2);
+      addToast(
+        "success",
+        rp.googleSignupSuccess.replace("{{email}}", googleEmail || googleName)
+      );
     } catch {
       addToast("error", rp.registrationFailed);
     } finally {
@@ -195,9 +259,22 @@ export function RegisterJobSeekerForm() {
     }
   }
 
+  function handleBackFromStep2() {
+    if (isGoogleSignup) {
+      clearUser();
+      clearAuth();
+      setIsGoogleSignup(false);
+      setGoogleAvatarUrl("");
+    }
+    setStep(1);
+    setFieldErrors({});
+  }
+
   // ── Shared input class ───────────────────────────────────────────────────────
   const inputBase =
     "w-full pl-10 pr-4 py-2.5 text-sm border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors placeholder:text-gray-400";
+  const inputReadOnly =
+    "w-full pl-10 pr-4 py-2.5 text-sm border border-gray-200 rounded-lg bg-gray-50 text-gray-500 cursor-not-allowed";
   const inputErrorCls = "border-red-300 focus:border-red-400 focus:ring-red-100";
 
   return (
@@ -387,9 +464,51 @@ export function RegisterJobSeekerForm() {
       {step === 2 && (
         <>
           <h2 className="text-2xl font-bold text-gray-900 mb-1">{rp.step2Title}</h2>
-          <p className="text-sm text-gray-500 mb-6">{rp.step2Subtitle}</p>
+          <p className="text-sm text-gray-500 mb-6">
+            {isGoogleSignup ? rp.googleStep2Hint : rp.step2Subtitle}
+          </p>
 
           <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+            {isGoogleSignup && (
+              <>
+                {/* Full Name — prefilled from Google, read-only */}
+                <div>
+                  <label className="text-sm font-medium text-gray-700 block mb-1.5">
+                    {rp.fullNameLabel} <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <User size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                    <input
+                      type="text"
+                      value={fullName}
+                      readOnly
+                      tabIndex={-1}
+                      aria-readonly="true"
+                      className={inputReadOnly}
+                    />
+                  </div>
+                </div>
+
+                {/* Email — prefilled from Google, read-only */}
+                <div>
+                  <label className="text-sm font-medium text-gray-700 block mb-1.5">
+                    {rp.emailLabel} <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <Mail size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                    <input
+                      type="email"
+                      value={email}
+                      readOnly
+                      tabIndex={-1}
+                      aria-readonly="true"
+                      className={inputReadOnly}
+                    />
+                  </div>
+                </div>
+              </>
+            )}
+
             {/* Target Role */}
             <div>
               <label className="text-sm font-medium text-gray-700 block mb-1.5">
@@ -509,7 +628,7 @@ export function RegisterJobSeekerForm() {
           {/* Back link */}
           <button
             type="button"
-            onClick={() => { setStep(1); setFieldErrors({}); }}
+            onClick={handleBackFromStep2}
             className="mt-4 w-full flex items-center justify-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 transition-colors"
           >
             <ArrowLeft size={14} />
