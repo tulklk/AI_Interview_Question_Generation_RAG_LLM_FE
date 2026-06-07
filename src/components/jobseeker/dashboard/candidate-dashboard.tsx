@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { motion } from "framer-motion";
 import {
-  TrendingUp, Sparkles, ChevronRight,
+  Sparkles, ChevronRight,
   BarChart2, Clock, RefreshCw,
 } from "lucide-react";
 import {
@@ -16,6 +16,11 @@ import {
 } from "@/data/jobseeker";
 import { QuestionSetCard } from "@/components/jobseeker/marketplace/question-set-card";
 import { useLanguage } from "@/context/language-context";
+import { useUser } from "@/context/user-context";
+import { buildWelcomeMessage, getTimeOfDayGreeting } from "@/lib/greeting";
+import { StatCard } from "@/components/jobseeker/ui/stat-card";
+import { Pill, getScoreBadgeClass } from "@/components/jobseeker/ui/pill";
+import { CARD_SHADOW } from "@/components/jobseeker/ui/constants";
 
 const fadeUp = (delay = 0) => ({
   initial: { opacity: 0, y: 16 },
@@ -28,36 +33,38 @@ const weakSkills  = ["Situational Questions", "System Design", "SQL"];
 
 export function CandidateDashboard() {
   const { t } = useLanguage();
+  const { user, loading } = useUser();
   const p = t.jobseekerDashboardPage;
+
+  const greeting = getTimeOfDayGreeting({
+    morning: p.greetingMorning,
+    afternoon: p.greetingAfternoon,
+    evening: p.greetingEvening,
+    night: p.greetingNight,
+  });
+  const displayName = user?.fullName || (loading ? "..." : "User");
+  const welcomeText = buildWelcomeMessage(p.welcomeTemplate, greeting, displayName);
 
   return (
     <div>
       {/* ── Welcome ───────────────────────────────────────────────── */}
       <motion.div {...fadeUp(0)} className="mb-6">
-        <h1 className="text-[30px] font-[800] text-[#111827] leading-[36px]">{p.welcome}</h1>
+        <h1 className="text-[30px] font-[800] text-[#111827] leading-[36px]">{welcomeText}</h1>
         <p className="text-[16px] text-[#6B7280] leading-[24px] mt-1">{p.welcomeSub}</p>
       </motion.div>
 
       {/* ── Stats ─────────────────────────────────────────────────── */}
       <motion.div {...fadeUp(0.06)} className="grid grid-cols-4 gap-4 mb-6">
         {candidateStats.map((stat, i) => (
-          <div
+          <StatCard
             key={stat.id}
-            className="bg-white rounded-xl p-5"
-            style={{ boxShadow: "rgba(0,0,0,0.08) 0px 4px 6px -1px, rgba(0,0,0,0.06) 0px 2px 4px -2px" }}
-          >
-            <div className={cn("w-9 h-9 rounded-lg flex items-center justify-center mb-3", stat.iconBg)}>
-              <stat.icon size={16} className={stat.iconColor} />
-            </div>
-            <p className="text-[24px] font-[700] text-[#111827] leading-none">{stat.value}</p>
-            <p className="text-[13px] text-[#6B7280] mt-1">{p.statLabels[i] ?? stat.label}</p>
-            {stat.trend && (
-              <p className="text-[11px] text-emerald-600 font-[500] mt-1 flex items-center gap-1">
-                <TrendingUp size={10} />
-                {stat.trend}
-              </p>
-            )}
-          </div>
+            icon={stat.icon}
+            iconBg={stat.iconBg}
+            iconColor={stat.iconColor}
+            value={stat.value}
+            label={p.statLabels[i] ?? stat.label}
+            trend={stat.trend}
+          />
         ))}
       </motion.div>
 
@@ -69,7 +76,7 @@ export function CandidateDashboard() {
           <motion.div
             {...fadeUp(0.12)}
             className="bg-white rounded-xl p-6"
-            style={{ boxShadow: "rgba(0,0,0,0.08) 0px 4px 6px -1px, rgba(0,0,0,0.06) 0px 2px 4px -2px" }}
+            style={{ boxShadow: CARD_SHADOW }}
           >
             <h2 className="text-[16px] font-[700] text-[#111827] mb-4">{p.analyticsTitle}</h2>
             <ResponsiveContainer width="100%" height={220}>
@@ -90,7 +97,7 @@ export function CandidateDashboard() {
           <motion.div
             {...fadeUp(0.18)}
             className="bg-white rounded-xl overflow-hidden"
-            style={{ boxShadow: "rgba(0,0,0,0.08) 0px 4px 6px -1px, rgba(0,0,0,0.06) 0px 2px 4px -2px" }}
+            style={{ boxShadow: CARD_SHADOW }}
           >
             <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
               <div>
@@ -114,14 +121,9 @@ export function CandidateDashboard() {
                       {session.date} · {session.duration}
                     </p>
                   </div>
-                  <span className={cn(
-                    "text-[12px] font-[700] px-2.5 py-1 rounded-[6px]",
-                    session.score >= 80 ? "bg-emerald-50 text-emerald-700" :
-                    session.score >= 65 ? "bg-violet-50 text-violet-700" :
-                    "bg-amber-50 text-amber-700"
-                  )}>
+                  <Pill className={cn("text-[12px] font-[700] px-2.5 py-1", getScoreBadgeClass(session.score))}>
                     {session.score}%
-                  </span>
+                  </Pill>
                   <Link href={`/jobseeker/practice/${session.setId}`}
                     className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-primary hover:bg-[#F5F3FF] transition-colors"
                   >
@@ -135,51 +137,48 @@ export function CandidateDashboard() {
 
         {/* Right column: skills + AI recommendation */}
         <div className="flex flex-col gap-4">
-          {/* Strong skills */}
+          {/* Skills overview: strong + weak in one card, two sub-sections */}
           <motion.div
             {...fadeUp(0.14)}
             className="bg-white rounded-xl p-5"
-            style={{ boxShadow: "rgba(0,0,0,0.08) 0px 4px 6px -1px, rgba(0,0,0,0.06) 0px 2px 4px -2px" }}
+            style={{ boxShadow: CARD_SHADOW }}
           >
-            <h3 className="text-[14px] font-[700] text-[#111827] mb-3">{p.strongSkillsTitle}</h3>
-            <div className="flex flex-col gap-2">
-              {strongSkills.map((skill, i) => (
-                <div key={skill} className="flex items-center gap-3">
-                  <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                    <motion.div
-                      className="h-full bg-emerald-400 rounded-full"
-                      initial={{ width: 0 }}
-                      animate={{ width: `${90 - i * 6}%` }}
-                      transition={{ duration: 0.8, delay: 0.3 + i * 0.1 }}
-                    />
+            <div>
+              <h3 className="text-[14px] font-[700] text-[#111827] mb-3">{p.strongSkillsTitle}</h3>
+              <div className="flex flex-col gap-2">
+                {strongSkills.map((skill, i) => (
+                  <div key={skill} className="flex items-center gap-3">
+                    <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                      <motion.div
+                        className="h-full bg-emerald-400 rounded-full"
+                        initial={{ width: 0 }}
+                        animate={{ width: `${90 - i * 6}%` }}
+                        transition={{ duration: 0.8, delay: 0.3 + i * 0.1 }}
+                      />
+                    </div>
+                    <span className="text-[12px] font-[500] text-[#111827] w-24 shrink-0">{skill}</span>
                   </div>
-                  <span className="text-[12px] font-[500] text-[#111827] w-24 shrink-0">{skill}</span>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </motion.div>
 
-          {/* Weak skills */}
-          <motion.div
-            {...fadeUp(0.18)}
-            className="bg-white rounded-xl p-5"
-            style={{ boxShadow: "rgba(0,0,0,0.08) 0px 4px 6px -1px, rgba(0,0,0,0.06) 0px 2px 4px -2px" }}
-          >
-            <h3 className="text-[14px] font-[700] text-[#111827] mb-3">{p.weakSkillsTitle}</h3>
-            <div className="flex flex-col gap-2">
-              {weakSkills.map((skill, i) => (
-                <div key={skill} className="flex items-center gap-3">
-                  <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                    <motion.div
-                      className="h-full bg-amber-400 rounded-full"
-                      initial={{ width: 0 }}
-                      animate={{ width: `${55 - i * 8}%` }}
-                      transition={{ duration: 0.8, delay: 0.35 + i * 0.1 }}
-                    />
+            <div className="mt-4 pt-4 border-t border-gray-100">
+              <h3 className="text-[14px] font-[700] text-[#111827] mb-3">{p.weakSkillsTitle}</h3>
+              <div className="flex flex-col gap-2">
+                {weakSkills.map((skill, i) => (
+                  <div key={skill} className="flex items-center gap-3">
+                    <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                      <motion.div
+                        className="h-full bg-amber-400 rounded-full"
+                        initial={{ width: 0 }}
+                        animate={{ width: `${55 - i * 8}%` }}
+                        transition={{ duration: 0.8, delay: 0.35 + i * 0.1 }}
+                      />
+                    </div>
+                    <span className="text-[12px] font-[500] text-[#111827] w-24 shrink-0 truncate">{skill}</span>
                   </div>
-                  <span className="text-[12px] font-[500] text-[#111827] w-24 shrink-0 truncate">{skill}</span>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           </motion.div>
 

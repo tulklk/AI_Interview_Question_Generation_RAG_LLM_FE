@@ -1,15 +1,16 @@
+import { AvatarCircle } from "@/components/shared/avatar-circle";
+
 interface UserAvatarProps {
   initials: string;
   name: string;
   plan?: string;
+  avatarUrl?: string | null;
 }
 
-export function UserAvatar({ initials, name, plan }: UserAvatarProps) {
+export function UserAvatar({ initials, name, plan, avatarUrl }: UserAvatarProps) {
   return (
     <div className="flex items-center gap-2.5">
-      <div className="w-8 h-8 rounded-full bg-[#6c47ff] flex items-center justify-center shrink-0">
-        <span className="text-white text-xs font-bold">{initials}</span>
-      </div>
+      <AvatarCircle avatarUrl={avatarUrl} fullName={name || initials} size="sm" />
       <div className="hidden sm:block text-right">
         <p className="text-xs font-semibold text-gray-800 leading-tight">
           {name}
