@@ -1,6 +1,5 @@
 "use client";
 
-import { useRef } from "react";
 import { GoogleLogin } from "@react-oauth/google";
 
 const oauthBtnClass =
@@ -44,48 +43,55 @@ interface GoogleOAuthButtonProps {
   onError: () => void;
 }
 
+/**
+ * Custom-styled Google button using a transparent GoogleLogin overlay.
+ * Programmatic .click() on a hidden iframe does not work reliably in production.
+ */
 export function GoogleOAuthButton({
   loading = false,
   mode,
   onSuccess,
   onError,
 }: GoogleOAuthButtonProps) {
-  const wrapperRef = useRef<HTMLDivElement>(null);
-
-  function triggerGoogleLogin() {
-    if (loading) return;
-    const googleBtn = wrapperRef.current?.querySelector('[role="button"]') as HTMLElement | null;
-    googleBtn?.click();
-  }
+  const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ?? "";
+  const disabled = loading || !clientId;
 
   return (
-    <div className="relative min-w-0">
+    <div className="relative h-10 min-w-0">
       {loading && (
-        <div className="absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-white/70">
+        <div className="absolute inset-0 z-20 flex items-center justify-center rounded-lg bg-white/70">
           <span className="h-4 w-4 animate-spin rounded-full border-2 border-primary/30 border-t-primary" />
         </div>
       )}
-      <button
-        type="button"
-        onClick={triggerGoogleLogin}
-        disabled={loading}
-        className={oauthBtnClass}
+
+      {/* Visual layer (not clickable) */}
+      <div
+        className={`${oauthBtnClass} pointer-events-none select-none ${disabled ? "opacity-60" : ""}`}
+        aria-hidden
       >
         <GoogleIcon />
         Google
-      </button>
-      <div
-        ref={wrapperRef}
-        className="pointer-events-none absolute h-px w-px overflow-hidden opacity-0"
-        aria-hidden
-      >
-        <GoogleLogin
-          onSuccess={(c) => onSuccess(c.credential)}
-          onError={onError}
-          useOneTap={false}
-          text={mode === "signup" ? "signup_with" : "signin_with"}
-        />
       </div>
+
+      {/* Real Google button — transparent overlay receives user clicks */}
+      {!disabled && (
+        <div
+          className="absolute inset-0 z-10 overflow-hidden rounded-lg opacity-[0.011] cursor-pointer"
+          title="Google"
+        >
+          <GoogleLogin
+            onSuccess={(c) => onSuccess(c.credential)}
+            onError={onError}
+            useOneTap={false}
+            text={mode === "signup" ? "signup_with" : "signin_with"}
+            size="large"
+            width="100%"
+            containerProps={{
+              style: { width: "100%", height: "100%", display: "flex", alignItems: "center" },
+            }}
+          />
+        </div>
+      )}
     </div>
   );
 }
