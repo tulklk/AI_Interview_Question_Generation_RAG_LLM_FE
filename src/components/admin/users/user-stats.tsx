@@ -1,39 +1,41 @@
 "use client";
 
-import { Users2, UserCheck, Clock } from "lucide-react";
-import type { AdminUser } from "@/types/admin";
+import { Users2, UserCheck, Clock, Loader2 } from "lucide-react";
 import { useLanguage } from "@/context/language-context";
+import { getAdminUserStatus } from "@/lib/admin-user-display";
+import type { AdminUserListItem } from "@/types/admin-user";
 
 interface UserStatsProps {
-  users: AdminUser[];
+  users: AdminUserListItem[];
+  totalCount: number;
+  loading?: boolean;
 }
 
-export function UserStats({ users }: UserStatsProps) {
+export function UserStats({ users, totalCount, loading = false }: UserStatsProps) {
   const { t } = useLanguage();
   const s = t.adminPages.users.stats;
 
-  const total = users.length;
-  const active = users.filter((u) => u.status === "Active").length;
-  const pending = users.filter((u) => u.status === "Pending").length;
+  const active = users.filter((u) => getAdminUserStatus(u) === "Active").length;
+  const pending = users.filter((u) => getAdminUserStatus(u) === "Pending").length;
 
   const stats = [
     {
       label: s.totalUsers,
-      value: total,
+      value: loading ? "—" : totalCount,
       icon: Users2,
       iconBg: "bg-[#f5f3ff]",
       iconColor: "text-[#6c47ff]",
     },
     {
       label: s.activeUsers,
-      value: active,
+      value: loading ? "—" : active,
       icon: UserCheck,
       iconBg: "bg-[#f5f3ff]",
       iconColor: "text-[#6c47ff]",
     },
     {
       label: s.pendingApproval,
-      value: pending,
+      value: loading ? "—" : pending,
       icon: Clock,
       iconBg: "bg-[#f5f3ff]",
       iconColor: "text-[#6c47ff]",
@@ -53,7 +55,11 @@ export function UserStats({ users }: UserStatsProps) {
             <div
               className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-lg ${st.iconBg}`}
             >
-              <Icon size={20} className={st.iconColor} />
+              {loading ? (
+                <Loader2 size={18} className={`animate-spin ${st.iconColor}`} />
+              ) : (
+                <Icon size={20} className={st.iconColor} />
+              )}
             </div>
             <div>
               <p className="text-2xl font-bold leading-none text-[#111827]">{st.value}</p>
