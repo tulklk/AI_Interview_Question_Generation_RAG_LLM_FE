@@ -1,4 +1,5 @@
 import { apiClient } from "@/lib/api-client";
+import { sanitizeDisplayName } from "@/lib/text-encoding";
 import type { UpdateCandidateProfileRequest } from "@/types/auth";
 import type {
   CandidateProfileData,
@@ -11,7 +12,7 @@ import type {
 function pickString(obj: Record<string, unknown>, ...keys: string[]): string {
   for (const key of keys) {
     const val = obj[key];
-    if (typeof val === "string" && val.trim()) return val.trim();
+    if (typeof val === "string" && val.trim()) return sanitizeDisplayName(val);
   }
   return "";
 }
@@ -19,7 +20,7 @@ function pickString(obj: Record<string, unknown>, ...keys: string[]): string {
 function pickOptionalString(obj: Record<string, unknown>, ...keys: string[]): string {
   for (const key of keys) {
     const val = obj[key];
-    if (typeof val === "string") return val.trim();
+    if (typeof val === "string") return sanitizeDisplayName(val);
   }
   return "";
 }
