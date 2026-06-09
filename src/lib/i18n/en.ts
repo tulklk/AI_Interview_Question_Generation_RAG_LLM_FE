@@ -532,7 +532,9 @@ export const en = {
     completeProfileHint: "Fill in the remaining details to get started.",
     completeProfileButton: "Continue",
     backToLogin: "Back to sign in",
-    roleChangeFailed: "Could not switch role. Please contact support if this persists.",
+    useEmailPassword:
+      "This email is registered with a password. Please sign in with email and password.",
+    googleAccountExists: "Welcome back! Redirecting to your dashboard.",
   },
 
   forgotPasswordPage: {
