@@ -39,9 +39,9 @@ export function RegisterRoleTabs() {
       </div>
 
       {role === "hr" ? (
-        <RegisterForm key="hr" />
+        <RegisterForm key="hr" registerRole="hr" />
       ) : (
-        <RegisterJobSeekerForm key="jobseeker" />
+        <RegisterJobSeekerForm key="jobseeker" registerRole="jobseeker" />
       )}
     </div>
   );

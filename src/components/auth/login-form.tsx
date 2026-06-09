@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Mail, Lock, Eye, EyeOff, ArrowRight } from "lucide-react";
 import type { AxiosError } from "axios";
-import { login, loginWithGoogle } from "@/lib/api/auth";
+import { login } from "@/lib/api/auth";
 import {
   setAuth,
   setAuthTokens,
@@ -15,32 +15,26 @@ import {
   clearAuth,
 } from "@/lib/auth";
 import type { ApiErrorResponse } from "@/types/auth";
-import type { CurrentUser } from "@/types/user";
 import { useLanguage } from "@/context/language-context";
 import { useToast } from "@/context/toast-context";
 import { useUser } from "@/context/user-context";
 import { setCachedUserProfile } from "@/lib/user-profile-cache";
-import { syncGoogleAvatarIfNeeded } from "@/lib/sync-google-avatar";
 import { resolveAvatarUrl } from "@/lib/user-display";
 import { SocialOAuthRow } from "@/components/auth/social-oauth-buttons";
+import { GoogleLoginOnboarding } from "@/components/auth/google-login-onboarding";
 import {
-  GoogleLoginOnboarding,
+  verifyGoogleToken,
+  completeGoogleLogin,
+  finishGoogleAuth,
   parseGoogleClaims,
-} from "@/components/auth/google-login-onboarding";
-import {
-  isProfileComplete,
-  resolveOnboardingStep,
-  normalizeRole,
-} from "@/lib/google-onboarding";
-import type { GoogleOnboardingStep } from "@/lib/google-onboarding";
+  type GoogleClaims,
+} from "@/lib/google-oauth-flow";
 
 type LoginView = "login" | "onboarding";
 
 interface OnboardingState {
   credential: string;
-  claims: ReturnType<typeof parseGoogleClaims>;
-  step: GoogleOnboardingStep;
-  user: CurrentUser | null;
+  claims: GoogleClaims;
 }
 
 export function LoginForm() {
@@ -81,22 +75,10 @@ export function LoginForm() {
     return lp.loginFailed;
   }
 
-  function persistGoogleSession(data: unknown) {
-    const d = data as Record<string, unknown>;
-    const src = (typeof d.data === "object" && d.data ? d.data : d) as Record<string, unknown>;
-    const accessToken = (src.accessToken ?? src.access_token ?? src.token) as string | undefined;
-    const refreshToken = (src.refreshToken ?? src.refresh_token) as string | undefined;
-    if (accessToken) setAuthTokens(accessToken, refreshToken);
-    setAuth();
-    const role = extractRole(data);
-    if (role) setUserRole(role);
-  }
-
   async function handleSuccess(
     data: unknown,
     role: string | null,
-    profileHint?: { fullName: string; email: string; avatarUrl?: string | null },
-    options?: { googleIdToken?: string }
+    profileHint?: { fullName: string; email: string; avatarUrl?: string | null }
   ) {
     const d = data as Record<string, unknown>;
     const src = (typeof d.data === "object" && d.data ? d.data : d) as Record<string, unknown>;
@@ -106,15 +88,7 @@ export function LoginForm() {
     setAuth();
     setUserRole(role ?? "");
 
-    let profile = await refreshUser();
-    if (options?.googleIdToken) {
-      try {
-        await syncGoogleAvatarIfNeeded(options.googleIdToken, profile, role);
-        profile = await refreshUser();
-      } catch {
-        // Avatar sync is best-effort; login should still succeed.
-      }
-    }
+    const profile = await refreshUser();
 
     if (profileHint) {
       setCachedUserProfile({
@@ -173,47 +147,20 @@ export function LoginForm() {
     const claims = parseGoogleClaims(credential);
 
     try {
-      const data = await loginWithGoogle({ idToken: credential, intendedRole: "HR_MANAGER" });
-      persistGoogleSession(data);
+      const verify = await verifyGoogleToken(credential);
 
-      let profile = await refreshUser();
-      try {
-        await syncGoogleAvatarIfNeeded(credential, profile, normalizeRole(profile?.role));
-        profile = await refreshUser();
-      } catch {
-        // Avatar sync is best-effort.
-      }
-
-      if (profile) {
-        setCachedUserProfile({
-          fullName: claims.name,
-          email: claims.email,
-          avatarUrl: resolveAvatarUrl(profile) ?? (claims.picture || null),
-        });
-      }
-
-      if (profile && isProfileComplete(profile)) {
-        const role = normalizeRole(profile.role) ?? extractRole(data);
-        await handleSuccess(
-          data,
-          role,
-          {
-            fullName: claims.name,
-            email: claims.email,
-            avatarUrl: claims.picture || null,
-          },
-          { googleIdToken: credential }
-        );
+      if (verify.linkedToLocalAccount) {
+        addToast("error", lp.useEmailPassword);
         return;
       }
 
-      const step = profile ? resolveOnboardingStep(profile) : "role-select";
-      setOnboarding({
-        credential,
-        claims,
-        step,
-        user: profile,
-      });
+      if (!verify.isNewUser) {
+        const { role } = await completeGoogleLogin(credential);
+        await finishGoogleAuth(router, refreshUser, claims, credential, role);
+        return;
+      }
+
+      setOnboarding({ credential, claims });
       setView("onboarding");
     } catch (err) {
       addToast("error", parseLoginError(err));
@@ -239,8 +186,6 @@ export function LoginForm() {
       <GoogleLoginOnboarding
         credential={onboarding.credential}
         claims={onboarding.claims}
-        initialStep={onboarding.step}
-        initialUser={onboarding.user}
         onCancel={handleOnboardingCancel}
       />
     );
@@ -252,7 +197,6 @@ export function LoginForm() {
       <p className="text-sm text-gray-500 mb-7">{lp.subtitle}</p>
 
       <form onSubmit={handleSignIn} className="space-y-4" noValidate>
-        {/* Email */}
         <div>
           <label className="text-sm font-medium text-gray-700 block mb-1.5">
             {lp.emailLabel}
@@ -279,7 +223,6 @@ export function LoginForm() {
           )}
         </div>
 
-        {/* Password */}
         <div>
           <div className="flex items-center justify-between mb-1.5">
             <label className="text-sm font-medium text-gray-700">{lp.passwordLabel}</label>
@@ -319,7 +262,6 @@ export function LoginForm() {
           )}
         </div>
 
-        {/* Remember me */}
         <div className="flex items-center gap-2.5">
           <button
             type="button"
@@ -343,7 +285,6 @@ export function LoginForm() {
           <span className="text-sm text-gray-600">{lp.rememberMe}</span>
         </div>
 
-        {/* Submit */}
         <button
           type="submit"
           disabled={loading}
@@ -359,14 +300,12 @@ export function LoginForm() {
         </button>
       </form>
 
-      {/* Divider */}
       <div className="flex items-center gap-3 my-5">
         <div className="flex-1 h-px bg-gray-200" />
         <span className="text-xs text-gray-400">{lp.orContinueWith}</span>
         <div className="flex-1 h-px bg-gray-200" />
       </div>
 
-      {/* Google + GitHub */}
       <SocialOAuthRow
         googleLoading={googleLoading}
         googleMode="signin"
@@ -374,7 +313,6 @@ export function LoginForm() {
         onGoogleError={() => addToast("error", lp.loginFailed)}
       />
 
-      {/* Register link */}
       <p className="text-center text-sm text-gray-500 mt-6">
         {lp.noAccount}{" "}
         <Link href="/register" className="text-primary font-semibold hover:underline">
@@ -382,7 +320,6 @@ export function LoginForm() {
         </Link>
       </p>
 
-      {/* Legal */}
       <p className="text-center text-[11px] text-gray-400 mt-3 leading-relaxed">
         {lp.legal}{" "}
         <button type="button" className="underline hover:text-gray-600">
