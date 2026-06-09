@@ -35,9 +35,25 @@ export interface LoginResponse {
   };
 }
 
+export interface GoogleVerifyRequest {
+  idToken: string;
+  intendedRole?: string;
+}
+
+export interface GoogleVerifyResponse {
+  isNewUser: boolean;
+  linkedToLocalAccount: boolean;
+}
+
 export interface GoogleLoginRequest {
   idToken: string;
-  intendedRole: string;
+  intendedRole?: string;
+  companyId?: string;
+  companyName?: string;
+  jobTitle?: string;
+  targetRole?: string;
+  seniorityLevel?: string;
+  techStack?: string[];
 }
 
 export interface ResetPasswordRequest {

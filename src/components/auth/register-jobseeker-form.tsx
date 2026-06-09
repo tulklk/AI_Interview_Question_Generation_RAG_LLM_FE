@@ -18,16 +18,18 @@ import {
   Search,
 } from "lucide-react";
 import type { AxiosError } from "axios";
-import { registerCandidate, loginWithGoogle, updateCandidateProfile } from "@/lib/api/auth";
-import { setAuth, setAuthTokens, setUserRole, extractRole, getRoleRedirect, clearAuth } from "@/lib/auth";
-import { parseGoogleIdToken } from "@/lib/google-id-token";
-import { syncGoogleAvatarIfNeeded } from "@/lib/sync-google-avatar";
-import { resolveAvatarUrl } from "@/lib/user-display";
+import { registerCandidate } from "@/lib/api/auth";
+import {
+  verifyGoogleToken,
+  completeGoogleLogin,
+  finishGoogleAuth,
+  parseGoogleClaims,
+} from "@/lib/google-oauth-flow";
+import { toBackendIntendedRole, type RegisterRoleKey } from "@/lib/google-onboarding";
 import type { ApiErrorResponse } from "@/types/auth";
 import { useLanguage } from "@/context/language-context";
 import { useToast } from "@/context/toast-context";
 import { useUser } from "@/context/user-context";
-import { setCachedUserProfile } from "@/lib/user-profile-cache";
 import { SocialOAuthRow } from "@/components/auth/social-oauth-buttons";
 
 const TECH_OPTIONS = [
@@ -49,17 +51,23 @@ interface FieldErrors {
   techStack?: string;
 }
 
-export function RegisterJobSeekerForm() {
+interface RegisterJobSeekerFormProps {
+  registerRole?: RegisterRoleKey;
+}
+
+export function RegisterJobSeekerForm({ registerRole = "jobseeker" }: RegisterJobSeekerFormProps) {
+  const intendedRole = toBackendIntendedRole(registerRole);
   const router = useRouter();
   const { t } = useLanguage();
   const rp = t.registerJobSeekerPage;
+  const lp = t.loginPage;
   const { addToast } = useToast();
-  const { refreshUser, clearUser } = useUser();
+  const { refreshUser } = useUser();
 
   // ── Step state ──────────────────────────────────────────────────────────────
   const [step, setStep] = useState<1 | 2>(1);
   const [isGoogleSignup, setIsGoogleSignup] = useState(false);
-  const [googleAvatarUrl, setGoogleAvatarUrl] = useState("");
+  const [googleCredential, setGoogleCredential] = useState("");
 
   // ── Step 1 fields ───────────────────────────────────────────────────────────
   const [fullName, setFullName] = useState("");
@@ -150,23 +158,15 @@ export function RegisterJobSeekerForm() {
     setLoading(true);
     try {
       if (isGoogleSignup) {
-        const displayName =
-          fullName.trim() || email.trim().split("@")[0] || "User";
-        await updateCandidateProfile({
-          fullName: displayName,
+        const claims = parseGoogleClaims(googleCredential);
+        const { role } = await completeGoogleLogin(googleCredential, {
+          intendedRole,
           targetRole: targetRole.trim(),
           seniorityLevel,
           techStack,
-          avatarUrl: googleAvatarUrl.trim() || undefined,
         });
-        setCachedUserProfile({
-          fullName: displayName,
-          email: email.trim(),
-          avatarUrl: googleAvatarUrl.trim() || null,
-        });
-        await refreshUser();
         addToast("success", rp.profileCompleteSuccess);
-        router.push(getRoleRedirect("JOB_SEEKER"));
+        await finishGoogleAuth(router, refreshUser, claims, googleCredential, role);
         return;
       }
 
@@ -199,17 +199,6 @@ export function RegisterJobSeekerForm() {
     }
   }
 
-  function persistGoogleSession(data: unknown) {
-    const d = data as Record<string, unknown>;
-    const src = (typeof d.data === "object" && d.data ? d.data : d) as Record<string, unknown>;
-    const accessToken = (src.accessToken ?? src.access_token ?? src.token) as string | undefined;
-    const refreshToken = (src.refreshToken ?? src.refresh_token) as string | undefined;
-    if (accessToken) setAuthTokens(accessToken, refreshToken);
-    setAuth();
-    const role = extractRole(data) ?? "JOB_SEEKER";
-    setUserRole(role);
-  }
-
   async function handleGoogle(credential: string | undefined) {
     if (!credential) {
       addToast("error", rp.registrationFailed);
@@ -217,32 +206,24 @@ export function RegisterJobSeekerForm() {
     }
     setGoogleLoading(true);
     try {
-      const res = await loginWithGoogle({ idToken: credential, intendedRole: "JOB_SEEKER" });
-      persistGoogleSession(res);
+      const claims = parseGoogleClaims(credential);
+      const verify = await verifyGoogleToken(credential, { intendedRole });
 
-      const claims = parseGoogleIdToken(credential);
-      const googleEmail = claims.email ?? "";
-      const googleName = claims.name ?? googleEmail.split("@")[0] ?? "";
-      const googlePicture = claims.picture?.trim() ?? "";
-      setGoogleAvatarUrl(googlePicture);
-      setFullName(googleName);
-      setEmail(googleEmail);
-
-      let profile = await refreshUser();
-      if (googlePicture) {
-        try {
-          await syncGoogleAvatarIfNeeded(credential, profile, "JOB_SEEKER");
-          profile = await refreshUser();
-        } catch {
-          // Profile may not exist yet; avatar is saved on step 2 submit.
-        }
+      if (verify.linkedToLocalAccount) {
+        addToast("error", lp.useEmailPassword);
+        return;
       }
 
-      setCachedUserProfile({
-        fullName: googleName,
-        email: googleEmail,
-        avatarUrl: resolveAvatarUrl(profile) ?? (googlePicture || null),
-      });
+      if (!verify.isNewUser) {
+        const { role } = await completeGoogleLogin(credential, { intendedRole });
+        addToast("success", lp.googleAccountExists);
+        await finishGoogleAuth(router, refreshUser, claims, credential, role);
+        return;
+      }
+
+      setGoogleCredential(credential);
+      setFullName(claims.name);
+      setEmail(claims.email);
       setPassword("");
       setConfirmPassword("");
       setFieldErrors({});
@@ -250,7 +231,7 @@ export function RegisterJobSeekerForm() {
       setStep(2);
       addToast(
         "success",
-        rp.googleSignupSuccess.replace("{{email}}", googleEmail || googleName)
+        rp.googleSignupSuccess.replace("{{email}}", claims.email || claims.name)
       );
     } catch {
       addToast("error", rp.registrationFailed);
@@ -261,10 +242,8 @@ export function RegisterJobSeekerForm() {
 
   function handleBackFromStep2() {
     if (isGoogleSignup) {
-      clearUser();
-      clearAuth();
       setIsGoogleSignup(false);
-      setGoogleAvatarUrl("");
+      setGoogleCredential("");
     }
     setStep(1);
     setFieldErrors({});
