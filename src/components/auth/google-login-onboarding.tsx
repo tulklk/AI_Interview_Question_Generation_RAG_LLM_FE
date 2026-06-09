@@ -14,34 +14,17 @@ import {
   ChevronDown,
   Search,
 } from "lucide-react";
-import type { AxiosError } from "axios";
-import { loginWithGoogle } from "@/lib/api/auth";
-import { updateHrProfile, updateCandidateProfile } from "@/lib/api/user";
 import { searchCompanies } from "@/lib/api/company";
 import type { CompanyOption } from "@/lib/api/company";
-import {
-  setAuth,
-  setAuthTokens,
-  setUserRole,
-  extractRole,
-  getRoleRedirect,
-  clearAuth,
-} from "@/lib/auth";
-import type { ApiErrorResponse } from "@/types/auth";
-import type { CurrentUser } from "@/types/user";
-import { parseGoogleIdToken } from "@/lib/google-id-token";
-import { syncGoogleAvatarIfNeeded } from "@/lib/sync-google-avatar";
-import { resolveAvatarUrl } from "@/lib/user-display";
-import { setCachedUserProfile } from "@/lib/user-profile-cache";
+import type { GoogleClaims } from "@/lib/google-oauth-flow";
+import { completeGoogleLogin, finishGoogleAuth } from "@/lib/google-oauth-flow";
 import { useLanguage } from "@/context/language-context";
 import { useToast } from "@/context/toast-context";
 import { useUser } from "@/context/user-context";
 import {
+  toBackendIntendedRole,
   type GoogleOnboardingRole,
   type GoogleOnboardingStep,
-  getMissingHrFields,
-  getMissingCandidateFields,
-  normalizeRole,
 } from "@/lib/google-onboarding";
 
 const TECH_OPTIONS = [
@@ -53,37 +36,15 @@ const TECH_OPTIONS = [
 
 const SENIORITY_LEVELS = ["Intern", "Junior", "Mid-level", "Senior", "Lead"];
 
-interface GoogleClaims {
-  email: string;
-  name: string;
-  picture: string;
-}
-
 interface GoogleLoginOnboardingProps {
   credential: string;
   claims: GoogleClaims;
-  initialStep: GoogleOnboardingStep;
-  initialUser: CurrentUser | null;
   onCancel: () => void;
-}
-
-function persistSession(data: unknown, fallbackRole: GoogleOnboardingRole) {
-  const d = data as Record<string, unknown>;
-  const src = (typeof d.data === "object" && d.data ? d.data : d) as Record<string, unknown>;
-  const accessToken = (src.accessToken ?? src.access_token ?? src.token) as string | undefined;
-  const refreshToken = (src.refreshToken ?? src.refresh_token) as string | undefined;
-  if (accessToken) setAuthTokens(accessToken, refreshToken);
-  setAuth();
-  const role = normalizeRole(extractRole(data)) ?? fallbackRole;
-  setUserRole(role);
-  return role;
 }
 
 export function GoogleLoginOnboarding({
   credential,
   claims,
-  initialStep,
-  initialUser,
   onCancel,
 }: GoogleLoginOnboardingProps) {
   const router = useRouter();
@@ -94,49 +55,32 @@ export function GoogleLoginOnboarding({
   const { addToast } = useToast();
   const { refreshUser } = useUser();
 
-  const [step, setStep] = useState<GoogleOnboardingStep>(initialStep);
-  const [selectedRole, setSelectedRole] = useState<GoogleOnboardingRole>(
-    normalizeRole(initialUser?.role) ?? "HR_MANAGER"
-  );
+  const [step, setStep] = useState<GoogleOnboardingStep>("role-select");
+  const [selectedRole, setSelectedRole] = useState<GoogleOnboardingRole>("HR_MANAGER");
   const [loading, setLoading] = useState(false);
 
   const fullName = claims.name || claims.email.split("@")[0] || "";
   const email = claims.email;
-  const googleAvatarUrl = claims.picture;
 
-  // HR fields
-  const [companyName, setCompanyName] = useState(initialUser?.hrProfile?.companyName ?? "");
-  const [companyId, setCompanyId] = useState(initialUser?.hrProfile?.companyId ?? "");
-  const [jobTitle, setJobTitle] = useState(initialUser?.hrProfile?.jobTitle ?? "");
+  const [companyName, setCompanyName] = useState("");
+  const [companyId, setCompanyId] = useState("");
+  const [jobTitle, setJobTitle] = useState("");
   const [companyResults, setCompanyResults] = useState<CompanyOption[]>([]);
   const [companyOpen, setCompanyOpen] = useState(false);
   const [companyLoading, setCompanyLoading] = useState(false);
   const [companySearched, setCompanySearched] = useState(false);
 
-  // Jobseeker fields
-  const [targetRole, setTargetRole] = useState(initialUser?.candidateProfile?.targetRole ?? "");
-  const [seniorityLevel, setSeniorityLevel] = useState(
-    initialUser?.candidateProfile?.seniorityLevel ?? ""
-  );
-  const [techStack, setTechStack] = useState<string[]>(
-    initialUser?.candidateProfile?.techStack ?? []
-  );
+  const [targetRole, setTargetRole] = useState("");
+  const [seniorityLevel, setSeniorityLevel] = useState("");
+  const [techStack, setTechStack] = useState<string[]>([]);
   const [techSearch, setTechSearch] = useState("");
   const [techOpen, setTechOpen] = useState(false);
 
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-  const [profileUser, setProfileUser] = useState<CurrentUser | null>(initialUser);
 
   const companyRef = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const techDropdownRef = useRef<HTMLDivElement>(null);
-
-  const missingHrFields = profileUser
-    ? getMissingHrFields(profileUser)
-    : (["companyName", "jobTitle"] as const);
-  const missingJsFields = profileUser
-    ? getMissingCandidateFields(profileUser)
-    : (["targetRole", "seniorityLevel", "techStack"] as const);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -210,52 +154,9 @@ export function GoogleLoginOnboarding({
     if (fieldErrors.techStack) setFieldErrors((p) => ({ ...p, techStack: "" }));
   }
 
-  async function oauthWithRole(role: GoogleOnboardingRole): Promise<boolean> {
-    try {
-      const res = await loginWithGoogle({ idToken: credential, intendedRole: role });
-      persistSession(res, role);
-      let profile = await refreshUser();
-      if (googleAvatarUrl) {
-        try {
-          await syncGoogleAvatarIfNeeded(credential, profile, role);
-          profile = await refreshUser();
-        } catch {
-          // Avatar sync is best-effort.
-        }
-      }
-      setCachedUserProfile({
-        fullName,
-        email,
-        avatarUrl: resolveAvatarUrl(profile) ?? (googleAvatarUrl || null),
-      });
-      if (profile) {
-        setProfileUser(profile);
-        setCompanyName(profile.hrProfile?.companyName ?? "");
-        setCompanyId(profile.hrProfile?.companyId ?? "");
-        setJobTitle(profile.hrProfile?.jobTitle ?? "");
-        setTargetRole(profile.candidateProfile?.targetRole ?? "");
-        setSeniorityLevel(profile.candidateProfile?.seniorityLevel ?? "");
-        setTechStack(profile.candidateProfile?.techStack ?? []);
-      }
-      return true;
-    } catch (err) {
-      const axiosErr = err as AxiosError<ApiErrorResponse>;
-      const msg = axiosErr.response?.data?.message ?? "";
-      if (selectedRole !== role) {
-        addToast("error", lp.roleChangeFailed);
-      } else {
-        addToast("error", msg || lp.loginFailed);
-      }
-      return false;
-    }
-  }
-
-  async function handleRoleContinue(role: GoogleOnboardingRole) {
-    setLoading(true);
+  function handleRolePick(role: GoogleOnboardingRole) {
     setSelectedRole(role);
-    const ok = await oauthWithRole(role);
-    setLoading(false);
-    if (!ok) return;
+    setFieldErrors({});
     setStep(role === "HR_MANAGER" ? "hr-profile" : "js-profile");
   }
 
@@ -263,12 +164,8 @@ export function GoogleLoginOnboarding({
     e.preventDefault();
     setFieldErrors({});
     const errors: Record<string, string> = {};
-    if (missingHrFields.includes("companyName") && !companyName.trim()) {
-      errors.companyName = hrp.companyNameLabel;
-    }
-    if (missingHrFields.includes("jobTitle") && !jobTitle.trim()) {
-      errors.jobTitle = hrp.jobTitleLabel;
-    }
+    if (!companyName.trim()) errors.companyName = hrp.companyNameLabel;
+    if (!jobTitle.trim()) errors.jobTitle = hrp.jobTitleLabel;
     if (Object.keys(errors).length > 0) {
       setFieldErrors(errors);
       return;
@@ -276,22 +173,14 @@ export function GoogleLoginOnboarding({
 
     setLoading(true);
     try {
-      const displayName = fullName.trim() || email.split("@")[0] || "User";
-      await updateHrProfile({
-        fullName: displayName,
+      const { role } = await completeGoogleLogin(credential, {
+        intendedRole: toBackendIntendedRole(selectedRole),
         companyId: companyId || undefined,
-        companyName: companyName.trim() || initialUser?.hrProfile?.companyName,
-        jobTitle: jobTitle.trim() || initialUser?.hrProfile?.jobTitle,
-        avatarUrl: googleAvatarUrl || undefined,
+        companyName: companyName.trim(),
+        jobTitle: jobTitle.trim(),
       });
-      setCachedUserProfile({
-        fullName: displayName,
-        email,
-        avatarUrl: googleAvatarUrl || null,
-      });
-      await refreshUser();
       addToast("success", hrp.profileCompleteSuccess);
-      router.push(getRoleRedirect("HR_MANAGER"));
+      await finishGoogleAuth(router, refreshUser, claims, credential, role);
     } catch {
       addToast("error", hrp.profileCompleteFailed);
     } finally {
@@ -303,15 +192,9 @@ export function GoogleLoginOnboarding({
     e.preventDefault();
     setFieldErrors({});
     const errors: Record<string, string> = {};
-    if (missingJsFields.includes("targetRole") && !targetRole.trim()) {
-      errors.targetRole = jsp.targetRoleLabel;
-    }
-    if (missingJsFields.includes("seniorityLevel") && !seniorityLevel) {
-      errors.seniorityLevel = jsp.seniorityLabel;
-    }
-    if (missingJsFields.includes("techStack") && techStack.length === 0) {
-      errors.techStack = jsp.techStackLabel;
-    }
+    if (!targetRole.trim()) errors.targetRole = jsp.targetRoleLabel;
+    if (!seniorityLevel) errors.seniorityLevel = jsp.seniorityLabel;
+    if (techStack.length === 0) errors.techStack = jsp.techStackLabel;
     if (Object.keys(errors).length > 0) {
       setFieldErrors(errors);
       return;
@@ -319,22 +202,14 @@ export function GoogleLoginOnboarding({
 
     setLoading(true);
     try {
-      const displayName = fullName.trim() || email.split("@")[0] || "User";
-      await updateCandidateProfile({
-        fullName: displayName,
-        targetRole: targetRole.trim() || initialUser?.candidateProfile?.targetRole,
-        seniorityLevel: seniorityLevel || initialUser?.candidateProfile?.seniorityLevel,
-        techStack: techStack.length > 0 ? techStack : initialUser?.candidateProfile?.techStack,
-        avatarUrl: googleAvatarUrl || undefined,
+      const { role } = await completeGoogleLogin(credential, {
+        intendedRole: toBackendIntendedRole(selectedRole),
+        targetRole: targetRole.trim(),
+        seniorityLevel,
+        techStack,
       });
-      setCachedUserProfile({
-        fullName: displayName,
-        email,
-        avatarUrl: googleAvatarUrl || null,
-      });
-      await refreshUser();
       addToast("success", jsp.profileCompleteSuccess);
-      router.push(getRoleRedirect("JOB_SEEKER"));
+      await finishGoogleAuth(router, refreshUser, claims, credential, role);
     } catch {
       addToast("error", jsp.profileCompleteFailed);
     } finally {
@@ -344,20 +219,11 @@ export function GoogleLoginOnboarding({
 
   function handleBack() {
     if (step === "role-select") {
-      clearAuth();
       onCancel();
       return;
     }
-    if (needsRoleSelectionBack()) {
-      setStep("role-select");
-    } else {
-      clearAuth();
-      onCancel();
-    }
-  }
-
-  function needsRoleSelectionBack(): boolean {
-    return initialStep === "role-select";
+    setStep("role-select");
+    setFieldErrors({});
   }
 
   const inputBase =
@@ -376,35 +242,25 @@ export function GoogleLoginOnboarding({
         <div className="flex bg-gray-100 p-1 rounded-xl mb-6">
           <button
             type="button"
-            disabled={loading}
-            onClick={() => handleRoleContinue("HR_MANAGER")}
-            className={`flex-1 py-2.5 text-sm font-semibold rounded-lg transition-all disabled:opacity-60 ${
+            onClick={() => handleRolePick("HR_MANAGER")}
+            className={`flex-1 py-2.5 text-sm font-semibold rounded-lg transition-all ${
               selectedRole === "HR_MANAGER"
                 ? "bg-white text-primary shadow-sm"
                 : "text-gray-500 hover:text-gray-700"
             }`}
           >
-            {loading && selectedRole === "HR_MANAGER" ? (
-              <span className="inline-block w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
-            ) : (
-              lp.roleHr
-            )}
+            {lp.roleHr}
           </button>
           <button
             type="button"
-            disabled={loading}
-            onClick={() => handleRoleContinue("JOB_SEEKER")}
-            className={`flex-1 py-2.5 text-sm font-semibold rounded-lg transition-all disabled:opacity-60 ${
+            onClick={() => handleRolePick("JOB_SEEKER")}
+            className={`flex-1 py-2.5 text-sm font-semibold rounded-lg transition-all ${
               selectedRole === "JOB_SEEKER"
                 ? "bg-white text-primary shadow-sm"
                 : "text-gray-500 hover:text-gray-700"
             }`}
           >
-            {loading && selectedRole === "JOB_SEEKER" ? (
-              <span className="inline-block w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
-            ) : (
-              lp.roleJobSeeker
-            )}
+            {lp.roleJobSeeker}
           </button>
         </div>
 
@@ -428,7 +284,6 @@ export function GoogleLoginOnboarding({
       <p className="text-sm text-gray-500 mb-6">{lp.completeProfileHint}</p>
 
       <form onSubmit={isHr ? handleHrSubmit : handleJsSubmit} className="space-y-4" noValidate>
-        {/* Google prefilled — always read-only */}
         <div>
           <label className="text-sm font-medium text-gray-700 block mb-1.5">
             {isHr ? hrp.fullNameLabel : jsp.fullNameLabel}{" "}
@@ -453,259 +308,249 @@ export function GoogleLoginOnboarding({
 
         {isHr ? (
           <>
-            {missingHrFields.includes("companyName") && (
-              <div>
-                <label className="text-sm font-medium text-gray-700 block mb-1.5">
-                  {hrp.companyNameLabel} <span className="text-red-500">*</span>
-                </label>
-                <div className="relative" ref={companyRef}>
-                  <div className="relative">
-                    <Building2
-                      size={15}
-                      className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none z-10"
-                    />
-                    <input
-                      type="text"
-                      value={companyName}
-                      onChange={(e) => handleCompanyChange(e.target.value)}
-                      onFocus={() => {
-                        if (companyName.trim()) setCompanyOpen(true);
-                      }}
-                      placeholder={hrp.companyNamePlaceholder}
-                      className={`${inputBase} pr-9 ${
-                        fieldErrors.companyName
-                          ? inputErrorCls
-                          : companyId
-                          ? "border-emerald-300 focus:border-emerald-400 focus:ring-emerald-100"
-                          : ""
-                      }`}
-                      autoComplete="off"
-                    />
-                    {companyLoading ? (
-                      <span className="absolute right-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
-                    ) : companyId ? (
-                      <CheckCircle2
-                        size={14}
-                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-emerald-500 pointer-events-none"
-                      />
-                    ) : null}
-                  </div>
-
-                  {companyOpen && companyName.trim() && (
-                    <div className="absolute z-20 mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden">
-                      {companyLoading && (
-                        <div className="flex items-center gap-2.5 px-4 py-3 text-sm text-gray-400">
-                          <span className="w-3.5 h-3.5 border-2 border-primary/30 border-t-primary rounded-full animate-spin shrink-0" />
-                          {hrp.companySearchHint}
-                        </div>
-                      )}
-                      {!companyLoading && companyResults.length > 0 && (
-                        <div className="max-h-44 overflow-y-auto py-1">
-                          {companyResults.map((c) => (
-                            <button
-                              key={c.id}
-                              type="button"
-                              onMouseDown={() => selectCompany(c)}
-                              className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-primary/5 hover:text-primary transition-colors text-left"
-                            >
-                              <Building2 size={13} className="text-gray-400 shrink-0" />
-                              <span className="truncate">{c.name}</span>
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                      {!companyLoading && companyResults.length === 0 && companySearched && (
-                        <div>
-                          <p className="px-4 pt-3 pb-1 text-xs text-gray-400">{hrp.companyNotSelected}</p>
-                          <button
-                            type="button"
-                            onMouseDown={useTypedName}
-                            className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-primary/5 hover:text-primary transition-colors text-left border-t border-gray-100 mt-1"
-                          >
-                            <Building2 size={13} className="text-gray-400 shrink-0" />
-                            <span className="truncate">{companyName}</span>
-                            <span className="ml-auto text-xs text-primary shrink-0">Dùng tên này</span>
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-                {fieldErrors.companyName && (
-                  <p className="text-xs text-red-500 mt-1">{fieldErrors.companyName}</p>
-                )}
-              </div>
-            )}
-
-            {missingHrFields.includes("jobTitle") && (
-              <div>
-                <label className="text-sm font-medium text-gray-700 block mb-1.5">
-                  {hrp.jobTitleLabel} <span className="text-red-500">*</span>
-                </label>
+            <div>
+              <label className="text-sm font-medium text-gray-700 block mb-1.5">
+                {hrp.companyNameLabel} <span className="text-red-500">*</span>
+              </label>
+              <div className="relative" ref={companyRef}>
                 <div className="relative">
-                  <Briefcase
+                  <Building2
                     size={15}
-                    className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
+                    className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none z-10"
                   />
                   <input
                     type="text"
-                    value={jobTitle}
-                    onChange={(e) => {
-                      setJobTitle(e.target.value);
-                      if (fieldErrors.jobTitle) setFieldErrors((p) => ({ ...p, jobTitle: "" }));
+                    value={companyName}
+                    onChange={(e) => handleCompanyChange(e.target.value)}
+                    onFocus={() => {
+                      if (companyName.trim()) setCompanyOpen(true);
                     }}
-                    placeholder={hrp.jobTitlePlaceholder}
-                    className={`${inputBase} ${fieldErrors.jobTitle ? inputErrorCls : ""}`}
-                    autoComplete="organization-title"
+                    placeholder={hrp.companyNamePlaceholder}
+                    className={`${inputBase} pr-9 ${
+                      fieldErrors.companyName
+                        ? inputErrorCls
+                        : companyId
+                        ? "border-emerald-300 focus:border-emerald-400 focus:ring-emerald-100"
+                        : ""
+                    }`}
+                    autoComplete="off"
                   />
+                  {companyLoading ? (
+                    <span className="absolute right-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+                  ) : companyId ? (
+                    <CheckCircle2
+                      size={14}
+                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-emerald-500 pointer-events-none"
+                    />
+                  ) : null}
                 </div>
-                {fieldErrors.jobTitle && (
-                  <p className="text-xs text-red-500 mt-1">{fieldErrors.jobTitle}</p>
+
+                {companyOpen && companyName.trim() && (
+                  <div className="absolute z-20 mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden">
+                    {companyLoading && (
+                      <div className="flex items-center gap-2.5 px-4 py-3 text-sm text-gray-400">
+                        <span className="w-3.5 h-3.5 border-2 border-primary/30 border-t-primary rounded-full animate-spin shrink-0" />
+                        {hrp.companySearchHint}
+                      </div>
+                    )}
+                    {!companyLoading && companyResults.length > 0 && (
+                      <div className="max-h-44 overflow-y-auto py-1">
+                        {companyResults.map((c) => (
+                          <button
+                            key={c.id}
+                            type="button"
+                            onMouseDown={() => selectCompany(c)}
+                            className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-primary/5 hover:text-primary transition-colors text-left"
+                          >
+                            <Building2 size={13} className="text-gray-400 shrink-0" />
+                            <span className="truncate">{c.name}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    {!companyLoading && companyResults.length === 0 && companySearched && (
+                      <div>
+                        <p className="px-4 pt-3 pb-1 text-xs text-gray-400">{hrp.companyNotSelected}</p>
+                        <button
+                          type="button"
+                          onMouseDown={useTypedName}
+                          className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-primary/5 hover:text-primary transition-colors text-left border-t border-gray-100 mt-1"
+                        >
+                          <Building2 size={13} className="text-gray-400 shrink-0" />
+                          <span className="truncate">{companyName}</span>
+                          <span className="ml-auto text-xs text-primary shrink-0">Dùng tên này</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
-            )}
+              {fieldErrors.companyName && (
+                <p className="text-xs text-red-500 mt-1">{fieldErrors.companyName}</p>
+              )}
+            </div>
+
+            <div>
+              <label className="text-sm font-medium text-gray-700 block mb-1.5">
+                {hrp.jobTitleLabel} <span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
+                <Briefcase
+                  size={15}
+                  className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
+                />
+                <input
+                  type="text"
+                  value={jobTitle}
+                  onChange={(e) => {
+                    setJobTitle(e.target.value);
+                    if (fieldErrors.jobTitle) setFieldErrors((p) => ({ ...p, jobTitle: "" }));
+                  }}
+                  placeholder={hrp.jobTitlePlaceholder}
+                  className={`${inputBase} ${fieldErrors.jobTitle ? inputErrorCls : ""}`}
+                  autoComplete="organization-title"
+                />
+              </div>
+              {fieldErrors.jobTitle && (
+                <p className="text-xs text-red-500 mt-1">{fieldErrors.jobTitle}</p>
+              )}
+            </div>
           </>
         ) : (
           <>
-            {missingJsFields.includes("targetRole") && (
-              <div>
-                <label className="text-sm font-medium text-gray-700 block mb-1.5">
-                  {jsp.targetRoleLabel} <span className="text-red-500">*</span>
-                </label>
-                <div className="relative">
-                  <Briefcase
-                    size={15}
-                    className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
-                  />
+            <div>
+              <label className="text-sm font-medium text-gray-700 block mb-1.5">
+                {jsp.targetRoleLabel} <span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
+                <Briefcase
+                  size={15}
+                  className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
+                />
+                <input
+                  type="text"
+                  value={targetRole}
+                  onChange={(e) => {
+                    setTargetRole(e.target.value);
+                    if (fieldErrors.targetRole) setFieldErrors((p) => ({ ...p, targetRole: "" }));
+                  }}
+                  placeholder={jsp.targetRolePlaceholder}
+                  className={`${inputBase} ${fieldErrors.targetRole ? inputErrorCls : ""}`}
+                />
+              </div>
+              {fieldErrors.targetRole && (
+                <p className="text-xs text-red-500 mt-1">{fieldErrors.targetRole}</p>
+              )}
+            </div>
+
+            <div>
+              <label className="text-sm font-medium text-gray-700 block mb-1.5">
+                {jsp.seniorityLabel} <span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
+                <ChevronDown
+                  size={15}
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
+                />
+                <select
+                  value={seniorityLevel}
+                  onChange={(e) => {
+                    setSeniorityLevel(e.target.value);
+                    if (fieldErrors.seniorityLevel) {
+                      setFieldErrors((p) => ({ ...p, seniorityLevel: "" }));
+                    }
+                  }}
+                  className={`w-full px-3.5 py-2.5 text-sm border rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors appearance-none pr-9 ${
+                    fieldErrors.seniorityLevel
+                      ? "border-red-300 focus:border-red-400 focus:ring-red-100"
+                      : "border-gray-200"
+                  } ${!seniorityLevel ? "text-gray-400" : "text-gray-900"}`}
+                >
+                  <option value="" disabled>
+                    {jsp.seniorityPlaceholder}
+                  </option>
+                  {SENIORITY_LEVELS.map((level) => (
+                    <option key={level} value={level}>
+                      {level}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              {fieldErrors.seniorityLevel && (
+                <p className="text-xs text-red-500 mt-1">{fieldErrors.seniorityLevel}</p>
+              )}
+            </div>
+
+            <div>
+              <label className="text-sm font-medium text-gray-700 block mb-1.5">
+                {jsp.techStackLabel} <span className="text-red-500">*</span>
+              </label>
+
+              {techStack.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 mb-2">
+                  {techStack.map((tech) => (
+                    <span
+                      key={tech}
+                      className="inline-flex items-center gap-1 px-2.5 py-1 bg-primary/10 text-primary text-xs font-medium rounded-full"
+                    >
+                      {tech}
+                      <button
+                        type="button"
+                        onClick={() => setTechStack((p) => p.filter((t) => t !== tech))}
+                        className="hover:text-primary/70 transition-colors"
+                      >
+                        <X size={11} />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              <div className="relative" ref={techDropdownRef}>
+                <div
+                  className={`flex items-center border rounded-lg bg-white transition-colors ${
+                    techOpen
+                      ? "border-primary ring-2 ring-primary/20"
+                      : fieldErrors.techStack
+                      ? "border-red-300"
+                      : "border-gray-200"
+                  }`}
+                >
+                  <Search size={14} className="ml-3 text-gray-400 shrink-0" />
                   <input
                     type="text"
-                    value={targetRole}
-                    onChange={(e) => {
-                      setTargetRole(e.target.value);
-                      if (fieldErrors.targetRole) setFieldErrors((p) => ({ ...p, targetRole: "" }));
-                    }}
-                    placeholder={jsp.targetRolePlaceholder}
-                    className={`${inputBase} ${fieldErrors.targetRole ? inputErrorCls : ""}`}
+                    value={techSearch}
+                    onChange={(e) => setTechSearch(e.target.value)}
+                    onFocus={() => setTechOpen(true)}
+                    placeholder={jsp.techStackSearch}
+                    className="flex-1 px-2.5 py-2.5 text-sm bg-transparent focus:outline-none placeholder:text-gray-400"
                   />
                 </div>
-                {fieldErrors.targetRole && (
-                  <p className="text-xs text-red-500 mt-1">{fieldErrors.targetRole}</p>
-                )}
-              </div>
-            )}
-
-            {missingJsFields.includes("seniorityLevel") && (
-              <div>
-                <label className="text-sm font-medium text-gray-700 block mb-1.5">
-                  {jsp.seniorityLabel} <span className="text-red-500">*</span>
-                </label>
-                <div className="relative">
-                  <ChevronDown
-                    size={15}
-                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
-                  />
-                  <select
-                    value={seniorityLevel}
-                    onChange={(e) => {
-                      setSeniorityLevel(e.target.value);
-                      if (fieldErrors.seniorityLevel) {
-                        setFieldErrors((p) => ({ ...p, seniorityLevel: "" }));
-                      }
-                    }}
-                    className={`w-full px-3.5 py-2.5 text-sm border rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors appearance-none pr-9 ${
-                      fieldErrors.seniorityLevel
-                        ? "border-red-300 focus:border-red-400 focus:ring-red-100"
-                        : "border-gray-200"
-                    } ${!seniorityLevel ? "text-gray-400" : "text-gray-900"}`}
-                  >
-                    <option value="" disabled>
-                      {jsp.seniorityPlaceholder}
-                    </option>
-                    {SENIORITY_LEVELS.map((level) => (
-                      <option key={level} value={level}>
-                        {level}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                {fieldErrors.seniorityLevel && (
-                  <p className="text-xs text-red-500 mt-1">{fieldErrors.seniorityLevel}</p>
-                )}
-              </div>
-            )}
-
-            {missingJsFields.includes("techStack") && (
-              <div>
-                <label className="text-sm font-medium text-gray-700 block mb-1.5">
-                  {jsp.techStackLabel} <span className="text-red-500">*</span>
-                </label>
-
-                {techStack.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5 mb-2">
-                    {techStack.map((tech) => (
-                      <span
-                        key={tech}
-                        className="inline-flex items-center gap-1 px-2.5 py-1 bg-primary/10 text-primary text-xs font-medium rounded-full"
-                      >
-                        {tech}
-                        <button
-                          type="button"
-                          onClick={() => setTechStack((p) => p.filter((t) => t !== tech))}
-                          className="hover:text-primary/70 transition-colors"
-                        >
-                          <X size={11} />
-                        </button>
-                      </span>
-                    ))}
+                {techOpen && (
+                  <div className="absolute z-20 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                    {filteredTech.length === 0 ? (
+                      <p className="px-3 py-3 text-sm text-gray-400 text-center">{jsp.techStackEmpty}</p>
+                    ) : (
+                      <div className="p-2 flex flex-wrap gap-1.5">
+                        {filteredTech.map((tech) => (
+                          <button
+                            key={tech}
+                            type="button"
+                            onClick={() => toggleTech(tech)}
+                            className="px-2.5 py-1 text-xs font-medium rounded-full border border-gray-200 text-gray-700 hover:border-primary hover:text-primary hover:bg-primary/5 transition-colors"
+                          >
+                            {tech}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
-
-                <div className="relative" ref={techDropdownRef}>
-                  <div
-                    className={`flex items-center border rounded-lg bg-white transition-colors ${
-                      techOpen
-                        ? "border-primary ring-2 ring-primary/20"
-                        : fieldErrors.techStack
-                        ? "border-red-300"
-                        : "border-gray-200"
-                    }`}
-                  >
-                    <Search size={14} className="ml-3 text-gray-400 shrink-0" />
-                    <input
-                      type="text"
-                      value={techSearch}
-                      onChange={(e) => setTechSearch(e.target.value)}
-                      onFocus={() => setTechOpen(true)}
-                      placeholder={jsp.techStackSearch}
-                      className="flex-1 px-2.5 py-2.5 text-sm bg-transparent focus:outline-none placeholder:text-gray-400"
-                    />
-                  </div>
-                  {techOpen && (
-                    <div className="absolute z-20 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
-                      {filteredTech.length === 0 ? (
-                        <p className="px-3 py-3 text-sm text-gray-400 text-center">{jsp.techStackEmpty}</p>
-                      ) : (
-                        <div className="p-2 flex flex-wrap gap-1.5">
-                          {filteredTech.map((tech) => (
-                            <button
-                              key={tech}
-                              type="button"
-                              onClick={() => toggleTech(tech)}
-                              className="px-2.5 py-1 text-xs font-medium rounded-full border border-gray-200 text-gray-700 hover:border-primary hover:text-primary hover:bg-primary/5 transition-colors"
-                            >
-                              {tech}
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-                {fieldErrors.techStack && (
-                  <p className="text-xs text-red-500 mt-1">{fieldErrors.techStack}</p>
-                )}
               </div>
-            )}
+              {fieldErrors.techStack && (
+                <p className="text-xs text-red-500 mt-1">{fieldErrors.techStack}</p>
+              )}
+            </div>
           </>
         )}
 
@@ -734,15 +579,4 @@ export function GoogleLoginOnboarding({
       </button>
     </div>
   );
-}
-
-/** Parse credential into claims for onboarding. */
-export function parseGoogleClaims(credential: string): GoogleClaims {
-  const claims = parseGoogleIdToken(credential);
-  const googleEmail = claims.email ?? "";
-  return {
-    email: googleEmail,
-    name: claims.name ?? googleEmail.split("@")[0] ?? "",
-    picture: claims.picture?.trim() ?? "",
-  };
 }

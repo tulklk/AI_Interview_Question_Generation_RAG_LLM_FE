@@ -534,7 +534,9 @@ export const vi: Translations = {
     completeProfileHint: "Điền các thông tin còn thiếu để bắt đầu.",
     completeProfileButton: "Tiếp tục",
     backToLogin: "Quay lại đăng nhập",
-    roleChangeFailed: "Không thể đổi vai trò. Vui lòng liên hệ hỗ trợ nếu lỗi vẫn tiếp diễn.",
+    useEmailPassword:
+      "Email này đã đăng ký bằng mật khẩu. Vui lòng đăng nhập email/mật khẩu.",
+    googleAccountExists: "Chào mừng trở lại! Đang chuyển đến trang của bạn.",
   },
 
   forgotPasswordPage: {
