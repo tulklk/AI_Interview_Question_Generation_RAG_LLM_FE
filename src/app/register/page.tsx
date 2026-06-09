@@ -11,14 +11,22 @@ export const metadata = {
 export default function RegisterPage() {
   return (
     <div className="flex h-screen overflow-hidden bg-white">
-      {/* Left hero — reuse the same gradient panel as login */}
-      <div className="hidden lg:flex w-[55%] shrink-0 bg-gradient-to-br from-[#6c47ff] to-[#8b65ff] animate-slide-left">
+      {/* Left — hero gradient panel */}
+      <div className="hidden lg:flex w-[55%] shrink-0 bg-linear-to-br from-primary to-[#8b65ff] animate-slide-left">
         <LoginHero />
       </div>
 
-      {/* Right panel — logo in header row, form scrolls below */}
-      <div className="relative flex-1 flex flex-col min-h-0 animate-slide-right">
-        <div className="shrink-0 flex justify-end px-6 sm:px-8 pt-6 pb-4 animate-fade-in">
+      {/* Right — form panel with animated background orbs */}
+      <div className="relative flex-1 flex flex-col min-h-0 overflow-hidden animate-slide-right">
+        {/* Decorative background orbs */}
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="auth-panel-orb auth-panel-orb--1" style={{ width: 360, height: 360, top: -80, right: -70 }} />
+          <div className="auth-panel-orb auth-panel-orb--2" style={{ width: 300, height: 300, bottom: -80, left: -60 }} />
+          <div className="auth-panel-orb auth-panel-orb--3" style={{ width: 220, height: 220, top: "42%", right: "16%" }} />
+        </div>
+
+        {/* Brand logo row */}
+        <div className="relative z-10 shrink-0 flex justify-end px-6 sm:px-8 pt-6 pb-4 animate-fade-in">
           <BrandLogo
             className="justify-end max-w-[min(100%,280px)]"
             logoClassName="w-10 h-10"
@@ -26,7 +34,9 @@ export default function RegisterPage() {
             subtitleClassName="text-[11px]"
           />
         </div>
-        <div className="flex-1 overflow-y-auto px-6 sm:px-8 pb-10">
+
+        {/* Scrollable form area */}
+        <div className="relative z-10 flex-1 overflow-y-auto px-6 sm:px-8 pb-10">
           <div className="w-full max-w-sm mx-auto pt-2 sm:pt-4">
             <RegisterRoleTabs />
           </div>

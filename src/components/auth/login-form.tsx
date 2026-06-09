@@ -4,6 +4,27 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Mail, Lock, Eye, EyeOff, ArrowRight } from "lucide-react";
+import { motion, type Variants } from "framer-motion";
+
+const formContainer: Variants = {
+  hidden: {},
+  visible: { transition: { staggerChildren: 0.08, delayChildren: 0.05 } },
+};
+
+const formRow: Variants = {
+  hidden: { opacity: 0, y: 18 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.45, ease: "easeOut" } },
+};
+
+const headingContainer: Variants = {
+  hidden: {},
+  visible: { transition: { staggerChildren: 0.09, delayChildren: 0.02 } },
+};
+
+const headingWord: Variants = {
+  hidden: { opacity: 0, y: 24, scale: 0.82, filter: "blur(6px)" },
+  visible: { opacity: 1, y: 0, scale: 1, filter: "blur(0px)", transition: { duration: 0.5, ease: "easeOut" } },
+};
 import type { AxiosError } from "axios";
 import { login } from "@/lib/api/auth";
 import {
@@ -177,7 +198,7 @@ export function LoginForm() {
   }
 
   const inputBase =
-    "w-full pl-10 pr-4 py-2.5 text-sm border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors placeholder:text-gray-400";
+    "auth-input-glow w-full pl-10 pr-4 py-2.5 text-sm border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all placeholder:text-gray-400";
 
   const inputError = "border-red-300 focus:border-red-400 focus:ring-red-100";
 
@@ -192,12 +213,34 @@ export function LoginForm() {
   }
 
   return (
-    <div className="w-full max-w-sm mx-auto animate-fade-up">
-      <h2 className="text-2xl font-bold text-gray-900 mb-1">{lp.welcome}</h2>
-      <p className="text-sm text-gray-500 mb-7">{lp.subtitle}</p>
+    <motion.div
+      className="w-full max-w-sm mx-auto"
+      variants={formContainer}
+      initial="hidden"
+      animate="visible"
+    >
+      <motion.h2
+        variants={headingContainer}
+        className="text-2xl font-bold text-gray-900 mb-3 leading-tight"
+      >
+        {lp.welcome.split(" ").map((word, i) => (
+          <motion.span key={i} variants={headingWord} className="inline-block mr-[0.28em] last:mr-0">
+            {word}
+          </motion.span>
+        ))}
+      </motion.h2>
+
+      <motion.p
+        className="text-sm text-gray-500 mb-6"
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.55, ease: "easeOut" }}
+      >
+        {lp.subtitle}
+      </motion.p>
 
       <form onSubmit={handleSignIn} className="space-y-4" noValidate>
-        <div>
+        <motion.div variants={formRow}>
           <label className="text-sm font-medium text-gray-700 block mb-1.5">
             {lp.emailLabel}
           </label>
@@ -221,9 +264,9 @@ export function LoginForm() {
           {fieldErrors.email && (
             <p className="text-xs text-red-500 mt-1">{fieldErrors.email}</p>
           )}
-        </div>
+        </motion.div>
 
-        <div>
+        <motion.div variants={formRow}>
           <div className="flex items-center justify-between mb-1.5">
             <label className="text-sm font-medium text-gray-700">{lp.passwordLabel}</label>
             <Link
@@ -260,9 +303,9 @@ export function LoginForm() {
           {fieldErrors.password && (
             <p className="text-xs text-red-500 mt-1">{fieldErrors.password}</p>
           )}
-        </div>
+        </motion.div>
 
-        <div className="flex items-center gap-2.5">
+        <motion.div variants={formRow} className="flex items-center gap-2.5">
           <button
             type="button"
             onClick={() => setRememberMe((v) => !v)}
@@ -283,44 +326,63 @@ export function LoginForm() {
             )}
           </button>
           <span className="text-sm text-gray-600">{lp.rememberMe}</span>
-        </div>
+        </motion.div>
 
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full flex items-center justify-center gap-2 bg-primary hover:bg-primary-hover disabled:bg-primary/60 disabled:cursor-not-allowed text-white font-semibold text-sm py-3 rounded-lg transition-colors"
-        >
-          {loading ? (
-            <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-          ) : (
-            <>
-              {lp.signIn} <ArrowRight size={15} />
-            </>
-          )}
-        </button>
+        <motion.div variants={formRow}>
+          <motion.button
+            type="submit"
+            disabled={loading}
+            className="w-full relative overflow-hidden flex items-center justify-center gap-2 bg-primary hover:bg-primary-hover disabled:bg-primary/60 disabled:cursor-not-allowed text-white font-semibold text-sm py-3 rounded-lg transition-colors"
+            whileHover="hover"
+            whileTap={{ scale: 0.98 }}
+          >
+            {/* Shimmer sweep on hover */}
+            {!loading && (
+              <motion.span
+                className="absolute inset-0 bg-linear-to-r from-transparent via-white/20 to-transparent -skew-x-12 pointer-events-none"
+                initial={{ x: "-100%" }}
+                variants={{ hover: { x: "250%", transition: { duration: 0.55, ease: "easeInOut" } } }}
+              />
+            )}
+            <span className="relative z-10 flex items-center gap-2">
+              {loading ? (
+                <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              ) : (
+                <>
+                  {lp.signIn} <ArrowRight size={15} />
+                </>
+              )}
+            </span>
+          </motion.button>
+        </motion.div>
       </form>
 
-      <div className="flex items-center gap-3 my-5">
+      <motion.div variants={formRow} className="flex items-center gap-3 my-5">
         <div className="flex-1 h-px bg-gray-200" />
         <span className="text-xs text-gray-400">{lp.orContinueWith}</span>
         <div className="flex-1 h-px bg-gray-200" />
-      </div>
+      </motion.div>
 
-      <SocialOAuthRow
-        googleLoading={googleLoading}
-        googleMode="signin"
-        onGoogleSuccess={handleGoogleSuccess}
-        onGoogleError={() => addToast("error", lp.loginFailed)}
-      />
+      <motion.div variants={formRow}>
+        <SocialOAuthRow
+          googleLoading={googleLoading}
+          googleMode="signin"
+          onGoogleSuccess={handleGoogleSuccess}
+          onGoogleError={() => addToast("error", lp.loginFailed)}
+        />
+      </motion.div>
 
-      <p className="text-center text-sm text-gray-500 mt-6">
+      <motion.p variants={formRow} className="text-center text-sm text-gray-500 mt-6">
         {lp.noAccount}{" "}
         <Link href="/register" className="text-primary font-semibold hover:underline">
           {lp.signUpFree}
         </Link>
-      </p>
+      </motion.p>
 
-      <p className="text-center text-[11px] text-gray-400 mt-3 leading-relaxed">
+      <motion.p
+        variants={formRow}
+        className="text-center text-[11px] text-gray-400 mt-3 leading-relaxed"
+      >
         {lp.legal}{" "}
         <button type="button" className="underline hover:text-gray-600">
           {lp.terms}
@@ -329,7 +391,7 @@ export function LoginForm() {
         <button type="button" className="underline hover:text-gray-600">
           {lp.privacyPolicy}
         </button>
-      </p>
-    </div>
+      </motion.p>
+    </motion.div>
   );
 }
