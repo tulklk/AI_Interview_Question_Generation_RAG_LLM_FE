@@ -12,36 +12,16 @@ import {
   setUserRole,
   extractRole,
   getRoleRedirect,
-  clearAuth,
 } from "@/lib/auth";
 import type { ApiErrorResponse } from "@/types/auth";
-import type { CurrentUser } from "@/types/user";
 import { useLanguage } from "@/context/language-context";
 import { useToast } from "@/context/toast-context";
 import { useUser } from "@/context/user-context";
 import { setCachedUserProfile } from "@/lib/user-profile-cache";
+import { parseGoogleIdToken } from "@/lib/google-id-token";
 import { syncGoogleAvatarIfNeeded } from "@/lib/sync-google-avatar";
 import { resolveAvatarUrl } from "@/lib/user-display";
 import { SocialOAuthRow } from "@/components/auth/social-oauth-buttons";
-import {
-  GoogleLoginOnboarding,
-  parseGoogleClaims,
-} from "@/components/auth/google-login-onboarding";
-import {
-  isProfileComplete,
-  resolveOnboardingStep,
-  normalizeRole,
-} from "@/lib/google-onboarding";
-import type { GoogleOnboardingStep } from "@/lib/google-onboarding";
-
-type LoginView = "login" | "onboarding";
-
-interface OnboardingState {
-  credential: string;
-  claims: ReturnType<typeof parseGoogleClaims>;
-  step: GoogleOnboardingStep;
-  user: CurrentUser | null;
-}
 
 export function LoginForm() {
   const router = useRouter();
@@ -49,7 +29,7 @@ export function LoginForm() {
   const { t } = useLanguage();
   const lp = t.loginPage;
   const { addToast } = useToast();
-  const { refreshUser, clearUser } = useUser();
+  const { refreshUser } = useUser();
 
   useEffect(() => {
     if (searchParams.get("reset") === "success") {
@@ -66,8 +46,7 @@ export function LoginForm() {
   const [fieldErrors, setFieldErrors] = useState<{ email?: string; password?: string }>({});
 
   const [googleLoading, setGoogleLoading] = useState(false);
-  const [view, setView] = useState<LoginView>("login");
-  const [onboarding, setOnboarding] = useState<OnboardingState | null>(null);
+  const googleRole: "HR_MANAGER" | "JOB_SEEKER" = "HR_MANAGER";
 
   function parseLoginError(err: unknown): string {
     const axiosErr = err as AxiosError<ApiErrorResponse>;
@@ -79,17 +58,6 @@ export function LoginForm() {
     if (status === 403) return lp.accountDisabled;
     if (status === 423 || msg.includes("lock") || msg.includes("disabled")) return lp.accountDisabled;
     return lp.loginFailed;
-  }
-
-  function persistGoogleSession(data: unknown) {
-    const d = data as Record<string, unknown>;
-    const src = (typeof d.data === "object" && d.data ? d.data : d) as Record<string, unknown>;
-    const accessToken = (src.accessToken ?? src.access_token ?? src.token) as string | undefined;
-    const refreshToken = (src.refreshToken ?? src.refresh_token) as string | undefined;
-    if (accessToken) setAuthTokens(accessToken, refreshToken);
-    setAuth();
-    const role = extractRole(data);
-    if (role) setUserRole(role);
   }
 
   async function handleSuccess(
@@ -168,53 +136,23 @@ export function LoginForm() {
       addToast("error", lp.loginFailed);
       return;
     }
-
     setGoogleLoading(true);
-    const claims = parseGoogleClaims(credential);
-
     try {
-      const data = await loginWithGoogle({ idToken: credential, intendedRole: "HR_MANAGER" });
-      persistGoogleSession(data);
-
-      let profile = await refreshUser();
-      try {
-        await syncGoogleAvatarIfNeeded(credential, profile, normalizeRole(profile?.role));
-        profile = await refreshUser();
-      } catch {
-        // Avatar sync is best-effort.
-      }
-
-      if (profile) {
-        setCachedUserProfile({
-          fullName: claims.name,
-          email: claims.email,
-          avatarUrl: resolveAvatarUrl(profile) ?? (claims.picture || null),
-        });
-      }
-
-      if (profile && isProfileComplete(profile)) {
-        const role = normalizeRole(profile.role) ?? extractRole(data);
-        await handleSuccess(
-          data,
-          role,
-          {
-            fullName: claims.name,
-            email: claims.email,
-            avatarUrl: claims.picture || null,
-          },
-          { googleIdToken: credential }
-        );
-        return;
-      }
-
-      const step = profile ? resolveOnboardingStep(profile) : "role-select";
-      setOnboarding({
-        credential,
-        claims,
-        step,
-        user: profile,
-      });
-      setView("onboarding");
+      const data = await loginWithGoogle({ idToken: credential, intendedRole: googleRole });
+      const role = extractRole(data);
+      const claims = parseGoogleIdToken(credential);
+      const googleEmail = claims.email ?? "";
+      const googleName = claims.name ?? googleEmail.split("@")[0] ?? "";
+      await handleSuccess(
+        data,
+        role,
+        {
+          fullName: googleName,
+          email: googleEmail,
+          avatarUrl: claims.picture?.trim() || null,
+        },
+        { googleIdToken: credential }
+      );
     } catch (err) {
       addToast("error", parseLoginError(err));
     } finally {
@@ -222,29 +160,10 @@ export function LoginForm() {
     }
   }
 
-  function handleOnboardingCancel() {
-    clearUser();
-    clearAuth();
-    setOnboarding(null);
-    setView("login");
-  }
-
   const inputBase =
     "w-full pl-10 pr-4 py-2.5 text-sm border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors placeholder:text-gray-400";
 
   const inputError = "border-red-300 focus:border-red-400 focus:ring-red-100";
-
-  if (view === "onboarding" && onboarding) {
-    return (
-      <GoogleLoginOnboarding
-        credential={onboarding.credential}
-        claims={onboarding.claims}
-        initialStep={onboarding.step}
-        initialUser={onboarding.user}
-        onCancel={handleOnboardingCancel}
-      />
-    );
-  }
 
   return (
     <div className="w-full max-w-sm mx-auto animate-fade-up">

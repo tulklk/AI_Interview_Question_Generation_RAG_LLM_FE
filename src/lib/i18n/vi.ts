@@ -528,13 +528,6 @@ export const vi: Translations = {
     emailRequired: "Email là bắt buộc",
     passwordRequired: "Mật khẩu là bắt buộc",
     passwordResetSuccess: "Đặt lại mật khẩu thành công. Bạn có thể đăng nhập ngay.",
-    googleOnboardingTitle: "Gần xong rồi!",
-    googleOnboardingSubtitle: "Chọn vai trò của bạn trên HireGen AI để tiếp tục.",
-    completeProfileTitle: "Hoàn tất hồ sơ",
-    completeProfileHint: "Điền các thông tin còn thiếu để bắt đầu.",
-    completeProfileButton: "Tiếp tục",
-    backToLogin: "Quay lại đăng nhập",
-    roleChangeFailed: "Không thể đổi vai trò. Vui lòng liên hệ hỗ trợ nếu lỗi vẫn tiếp diễn.",
   },
 
   forgotPasswordPage: {
