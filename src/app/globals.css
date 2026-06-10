@@ -88,15 +88,52 @@
   50%  { transform: translate(35px, 30px) scale(1.12); }
 }
 
-/* Gentle landing background: crossfade two gradients via opacity (lighter than shifting bg-position) */
-@keyframes landingBgSoft {
-  0%,
-  100% {
-    opacity: 0.28;
-  }
-  50% {
-    opacity: 0.52;
-  }
+/* Landing background — gradient position shift + aurora layer */
+@keyframes bgPulseA {
+  0%   { background-position: 0%   20%;  }
+  25%  { background-position: 60%  0%;   }
+  50%  { background-position: 100% 80%;  }
+  75%  { background-position: 40%  100%; }
+  100% { background-position: 0%   20%;  }
+}
+
+@keyframes bgPulseB {
+  0%,  100% { background-position: 100% 0%;    opacity: 0.30; }
+  33%        { background-position: 20%  100%;  opacity: 0.58; }
+  66%        { background-position: 80%  50%;   opacity: 0.24; }
+}
+
+@keyframes auroraRotate {
+  0%   { transform: rotate(0deg)   scale(1.5); }
+  100% { transform: rotate(360deg) scale(1.5); }
+}
+
+@keyframes orbColorPulse {
+  0%,  100% { opacity: 1; }
+  50%        { opacity: 0.6; }
+}
+
+/* Auth page — particle + sparkle + gradient animations */
+@keyframes particleDrift {
+  0%   { opacity: 0;   transform: translateY(0px)   translateX(0px)   scale(1);   }
+  12%  { opacity: 0.8; }
+  88%  { opacity: 0.7; }
+  100% { opacity: 0;   transform: translateY(-65px) translateX(14px)  scale(0.2); }
+}
+
+@keyframes twinkle {
+  0%, 100% { opacity: 0;   transform: scale(0.15) rotate(0deg);   }
+  50%       { opacity: 1;   transform: scale(1)    rotate(45deg);  }
+}
+
+@keyframes gradientText {
+  0%, 100% { background-position: 0%   50%; }
+  50%       { background-position: 100% 50%; }
+}
+
+@keyframes shimmerSweep {
+  0%   { transform: translateX(-100%) skewX(-12deg); }
+  100% { transform: translateX(300%)  skewX(-12deg); }
 }
 
 @theme {
@@ -126,6 +163,10 @@
   --animate-scale-out: scaleOut 0.25s ease-in both;
   --animate-fade-up-out: fadeUpOut 0.28s ease-in both;
   --animate-toast-out: toastSlideOut 0.25s ease-in both;
+  --animate-twinkle: twinkle 3s ease-in-out infinite;
+  --animate-particle-drift: particleDrift 4s ease-out infinite;
+  --animate-gradient-text: gradientText 4s ease-in-out infinite;
+  --animate-shimmer-sweep: shimmerSweep 2.8s ease-in-out infinite;
 }
 
 :root {
@@ -150,7 +191,7 @@ body {
   font-family: var(--font-be-vietnam-pro), "Be Vietnam Pro", system-ui, -apple-system, sans-serif;
 }
 
-/* ── Landing background: two gradients, soft crossfade (slow opacity = subtle color drift) ── */
+/* ── Landing background: shifting gradient layers + aurora mesh ── */
 .animated-bg-stack {
   transform: translateZ(0);
   backface-visibility: hidden;
@@ -166,30 +207,59 @@ body {
   background: linear-gradient(
     145deg,
     #ede9fe 0%,
-    #e0e7ff 28%,
-    #dbeafe 52%,
-    #eef2ff 100%
+    #e0e7ff 20%,
+    #dbeafe 40%,
+    #d1fae5 62%,
+    #eef2ff 80%,
+    #fce7f3 100%
   );
+  background-size: 320% 320%;
+  animation: bgPulseA 34s ease-in-out infinite;
 }
 
 .animated-bg-layer--b {
   background: linear-gradient(
     168deg,
     #fce7f3 0%,
-    #f5f3ff 38%,
-    #cffafe 62%,
+    #f5f3ff 25%,
+    #cffafe 48%,
+    #fef9c3 70%,
     #ede9fe 100%
   );
+  background-size: 380% 380%;
   opacity: 0.4;
-  animation: landingBgSoft 26s ease-in-out infinite;
+  animation: bgPulseB 26s ease-in-out infinite;
+}
+
+/* Aurora — rotating conic gradient, very subtle */
+.aurora-mesh {
+  position: absolute;
+  inset: -50%;
+  width: 200%;
+  height: 200%;
+  background: conic-gradient(
+    from 0deg at 50% 50%,
+    rgba(108, 71, 255, 0.07) 0deg,
+    rgba(59, 130, 246, 0.05) 90deg,
+    rgba(236, 72, 153, 0.06) 180deg,
+    rgba(20, 184, 166, 0.04) 270deg,
+    rgba(108, 71, 255, 0.07) 360deg
+  );
+  animation: auroraRotate 70s linear infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .animated-bg-layer--a,
   .animated-bg-layer--b {
     animation: none;
+    background-size: 100% 100%;
+  }
+  .animated-bg-layer--b {
     opacity: 0.36;
   }
-
+  .aurora-mesh {
+    display: none;
+  }
   .holo-orb {
     animation: none !important;
     filter: blur(40px);
@@ -221,7 +291,120 @@ body {
   animation: orbFloat3 24s ease-in-out infinite;
 }
 
+.holo-orb--teal {
+  background: radial-gradient(circle, rgba(20, 184, 166, 0.28) 0%, rgba(20, 184, 166, 0) 70%);
+  animation: orbFloat2 30s ease-in-out infinite;
+}
+
+.holo-orb--amber {
+  background: radial-gradient(circle, rgba(245, 158, 11, 0.18) 0%, rgba(245, 158, 11, 0) 70%);
+  animation: orbFloat1 38s ease-in-out infinite;
+}
+
 /* Orbs inside scrolling sections — cheaper than full-page blur */
 .holo-orb--hero {
   filter: blur(38px);
+}
+
+/* ── Right-panel (white bg) orbs — very low opacity so they don't distract ── */
+.auth-panel-orb {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+.auth-panel-orb--1 {
+  background: radial-gradient(circle, rgba(108, 71, 255, 0.11) 0%, rgba(108, 71, 255, 0) 70%);
+  filter: blur(55px);
+  animation: orbFloat1 24s ease-in-out infinite;
+}
+
+.auth-panel-orb--2 {
+  background: radial-gradient(circle, rgba(99, 102, 241, 0.09) 0%, rgba(99, 102, 241, 0) 70%);
+  filter: blur(50px);
+  animation: orbFloat2 30s ease-in-out infinite;
+}
+
+.auth-panel-orb--3 {
+  background: radial-gradient(circle, rgba(168, 85, 247, 0.08) 0%, rgba(168, 85, 247, 0) 70%);
+  filter: blur(45px);
+  animation: orbFloat3 26s ease-in-out infinite;
+}
+
+/* Step indicator — repeating pulse ring for active step bubble */
+@keyframes stepRingPulse {
+  0%   { transform: scale(1);    opacity: 0.45; }
+  65%  { transform: scale(2.0);  opacity: 0;    }
+  100% { transform: scale(2.0);  opacity: 0;    }
+}
+
+.step-ring-active {
+  animation: stepRingPulse 1.6s ease-out infinite;
+}
+
+/* ── Input border travel: rotating light goes around once, then shows normal ring ── */
+@property --ba {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
+
+@keyframes inputBorderTravel {
+  0%   { --ba: 0deg;   opacity: 1; }
+  78%  {               opacity: 1; }
+  100% { --ba: 360deg; opacity: 0; }
+}
+
+/* Targets ONLY the div.relative that is the direct parent of the focused input */
+/* > child combinator prevents matching grandparent wrappers that also have class "relative" */
+/* inset:0 keeps ::after inside the wrapper → no overflow → no scrollbar shift on Windows */
+/* padding:2px + mask XOR = donut ring, only the 2px inner edge is visible */
+.relative:has(> .auth-input-glow:focus)::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  padding: 2px;
+  border-radius: 0.5rem;
+  background: conic-gradient(
+    from var(--ba),
+    transparent               0%,
+    transparent              60%,
+    rgba(108,  71, 255, 0)   64%,
+    rgba(108,  71, 255, 0.9) 71%,
+    rgba(180, 150, 255, 1)   77%,
+    rgba(108,  71, 255, 0.9) 83%,
+    rgba(108,  71, 255, 0)   90%,
+    transparent              94%,
+    transparent             100%
+  );
+  /* Punch a hole in the center → only the 2px ring is visible */
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  pointer-events: none;
+  z-index: 20;
+  animation: inputBorderTravel 0.65s linear 1 forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .relative:has(> .auth-input-glow:focus)::after {
+    display: none;
+  }
+}
+
+/* Input focus pulse — single pulse ring that fades out */
+@keyframes focusPulse {
+  0%   { box-shadow: 0 0 0 0   rgba(108, 71, 255, 0.30); }
+  100% { box-shadow: 0 0 0 7px rgba(108, 71, 255, 0);    }
+}
+
+.auth-input-glow:focus-visible {
+  animation: focusPulse 0.45s ease-out;
 }

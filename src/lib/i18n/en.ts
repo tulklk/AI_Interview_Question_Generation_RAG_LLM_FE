@@ -526,6 +526,15 @@ export const en = {
     emailRequired: "Email is required",
     passwordRequired: "Password is required",
     passwordResetSuccess: "Password reset successfully. You can sign in now.",
+    googleOnboardingTitle: "Almost there!",
+    googleOnboardingSubtitle: "Choose how you'll use HireGen AI to continue.",
+    completeProfileTitle: "Complete your profile",
+    completeProfileHint: "Fill in the remaining details to get started.",
+    completeProfileButton: "Continue",
+    backToLogin: "Back to sign in",
+    useEmailPassword:
+      "This email is registered with a password. Please sign in with email and password.",
+    googleAccountExists: "Welcome back! Redirecting to your dashboard.",
   },
 
   forgotPasswordPage: {
