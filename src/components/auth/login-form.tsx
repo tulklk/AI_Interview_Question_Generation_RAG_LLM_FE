@@ -4,24 +4,59 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Mail, Lock, Eye, EyeOff, ArrowRight } from "lucide-react";
+import { motion, type Variants } from "framer-motion";
+
+const formContainer: Variants = {
+  hidden: {},
+  visible: { transition: { staggerChildren: 0.08, delayChildren: 0.05 } },
+};
+
+const formRow: Variants = {
+  hidden: { opacity: 0, y: 18 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.45, ease: "easeOut" } },
+};
+
+const headingContainer: Variants = {
+  hidden: {},
+  visible: { transition: { staggerChildren: 0.09, delayChildren: 0.02 } },
+};
+
+const headingWord: Variants = {
+  hidden: { opacity: 0, y: 24, scale: 0.82, filter: "blur(6px)" },
+  visible: { opacity: 1, y: 0, scale: 1, filter: "blur(0px)", transition: { duration: 0.5, ease: "easeOut" } },
+};
 import type { AxiosError } from "axios";
-import { login, loginWithGoogle } from "@/lib/api/auth";
+import { login } from "@/lib/api/auth";
 import {
   setAuth,
   setAuthTokens,
   setUserRole,
   extractRole,
   getRoleRedirect,
+  clearAuth,
 } from "@/lib/auth";
 import type { ApiErrorResponse } from "@/types/auth";
 import { useLanguage } from "@/context/language-context";
 import { useToast } from "@/context/toast-context";
 import { useUser } from "@/context/user-context";
 import { setCachedUserProfile } from "@/lib/user-profile-cache";
-import { parseGoogleIdToken } from "@/lib/google-id-token";
-import { syncGoogleAvatarIfNeeded } from "@/lib/sync-google-avatar";
 import { resolveAvatarUrl } from "@/lib/user-display";
 import { SocialOAuthRow } from "@/components/auth/social-oauth-buttons";
+import { GoogleLoginOnboarding } from "@/components/auth/google-login-onboarding";
+import {
+  verifyGoogleToken,
+  completeGoogleLogin,
+  finishGoogleAuth,
+  parseGoogleClaims,
+  type GoogleClaims,
+} from "@/lib/google-oauth-flow";
+
+type LoginView = "login" | "onboarding";
+
+interface OnboardingState {
+  credential: string;
+  claims: GoogleClaims;
+}
 
 export function LoginForm() {
   const router = useRouter();
@@ -29,7 +64,7 @@ export function LoginForm() {
   const { t } = useLanguage();
   const lp = t.loginPage;
   const { addToast } = useToast();
-  const { refreshUser } = useUser();
+  const { refreshUser, clearUser } = useUser();
 
   useEffect(() => {
     if (searchParams.get("reset") === "success") {
@@ -46,7 +81,8 @@ export function LoginForm() {
   const [fieldErrors, setFieldErrors] = useState<{ email?: string; password?: string }>({});
 
   const [googleLoading, setGoogleLoading] = useState(false);
-  const googleRole: "HR_MANAGER" | "JOB_SEEKER" = "HR_MANAGER";
+  const [view, setView] = useState<LoginView>("login");
+  const [onboarding, setOnboarding] = useState<OnboardingState | null>(null);
 
   function parseLoginError(err: unknown): string {
     const axiosErr = err as AxiosError<ApiErrorResponse>;
@@ -63,8 +99,7 @@ export function LoginForm() {
   async function handleSuccess(
     data: unknown,
     role: string | null,
-    profileHint?: { fullName: string; email: string; avatarUrl?: string | null },
-    options?: { googleIdToken?: string }
+    profileHint?: { fullName: string; email: string; avatarUrl?: string | null }
   ) {
     const d = data as Record<string, unknown>;
     const src = (typeof d.data === "object" && d.data ? d.data : d) as Record<string, unknown>;
@@ -74,15 +109,7 @@ export function LoginForm() {
     setAuth();
     setUserRole(role ?? "");
 
-    let profile = await refreshUser();
-    if (options?.googleIdToken) {
-      try {
-        await syncGoogleAvatarIfNeeded(options.googleIdToken, profile, role);
-        profile = await refreshUser();
-      } catch {
-        // Avatar sync is best-effort; login should still succeed.
-      }
-    }
+    const profile = await refreshUser();
 
     if (profileHint) {
       setCachedUserProfile({
@@ -136,23 +163,26 @@ export function LoginForm() {
       addToast("error", lp.loginFailed);
       return;
     }
+
     setGoogleLoading(true);
+    const claims = parseGoogleClaims(credential);
+
     try {
-      const data = await loginWithGoogle({ idToken: credential, intendedRole: googleRole });
-      const role = extractRole(data);
-      const claims = parseGoogleIdToken(credential);
-      const googleEmail = claims.email ?? "";
-      const googleName = claims.name ?? googleEmail.split("@")[0] ?? "";
-      await handleSuccess(
-        data,
-        role,
-        {
-          fullName: googleName,
-          email: googleEmail,
-          avatarUrl: claims.picture?.trim() || null,
-        },
-        { googleIdToken: credential }
-      );
+      const verify = await verifyGoogleToken(credential);
+
+      if (verify.linkedToLocalAccount) {
+        addToast("error", lp.useEmailPassword);
+        return;
+      }
+
+      if (!verify.isNewUser) {
+        const { role } = await completeGoogleLogin(credential);
+        await finishGoogleAuth(router, refreshUser, claims, credential, role);
+        return;
+      }
+
+      setOnboarding({ credential, claims });
+      setView("onboarding");
     } catch (err) {
       addToast("error", parseLoginError(err));
     } finally {
@@ -160,19 +190,57 @@ export function LoginForm() {
     }
   }
 
+  function handleOnboardingCancel() {
+    clearUser();
+    clearAuth();
+    setOnboarding(null);
+    setView("login");
+  }
+
   const inputBase =
-    "w-full pl-10 pr-4 py-2.5 text-sm border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors placeholder:text-gray-400";
+    "auth-input-glow w-full pl-10 pr-4 py-2.5 text-sm border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all placeholder:text-gray-400";
 
   const inputError = "border-red-300 focus:border-red-400 focus:ring-red-100";
 
+  if (view === "onboarding" && onboarding) {
+    return (
+      <GoogleLoginOnboarding
+        credential={onboarding.credential}
+        claims={onboarding.claims}
+        onCancel={handleOnboardingCancel}
+      />
+    );
+  }
+
   return (
-    <div className="w-full max-w-sm mx-auto animate-fade-up">
-      <h2 className="text-2xl font-bold text-gray-900 mb-1">{lp.welcome}</h2>
-      <p className="text-sm text-gray-500 mb-7">{lp.subtitle}</p>
+    <motion.div
+      className="w-full max-w-sm mx-auto"
+      variants={formContainer}
+      initial="hidden"
+      animate="visible"
+    >
+      <motion.h2
+        variants={headingContainer}
+        className="text-2xl font-bold text-gray-900 mb-3 leading-tight"
+      >
+        {lp.welcome.split(" ").map((word, i) => (
+          <motion.span key={i} variants={headingWord} className="inline-block mr-[0.28em] last:mr-0">
+            {word}
+          </motion.span>
+        ))}
+      </motion.h2>
+
+      <motion.p
+        className="text-sm text-gray-500 mb-6"
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.55, ease: "easeOut" }}
+      >
+        {lp.subtitle}
+      </motion.p>
 
       <form onSubmit={handleSignIn} className="space-y-4" noValidate>
-        {/* Email */}
-        <div>
+        <motion.div variants={formRow}>
           <label className="text-sm font-medium text-gray-700 block mb-1.5">
             {lp.emailLabel}
           </label>
@@ -196,10 +264,9 @@ export function LoginForm() {
           {fieldErrors.email && (
             <p className="text-xs text-red-500 mt-1">{fieldErrors.email}</p>
           )}
-        </div>
+        </motion.div>
 
-        {/* Password */}
-        <div>
+        <motion.div variants={formRow}>
           <div className="flex items-center justify-between mb-1.5">
             <label className="text-sm font-medium text-gray-700">{lp.passwordLabel}</label>
             <Link
@@ -236,10 +303,9 @@ export function LoginForm() {
           {fieldErrors.password && (
             <p className="text-xs text-red-500 mt-1">{fieldErrors.password}</p>
           )}
-        </div>
+        </motion.div>
 
-        {/* Remember me */}
-        <div className="flex items-center gap-2.5">
+        <motion.div variants={formRow} className="flex items-center gap-2.5">
           <button
             type="button"
             onClick={() => setRememberMe((v) => !v)}
@@ -260,49 +326,63 @@ export function LoginForm() {
             )}
           </button>
           <span className="text-sm text-gray-600">{lp.rememberMe}</span>
-        </div>
+        </motion.div>
 
-        {/* Submit */}
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full flex items-center justify-center gap-2 bg-primary hover:bg-primary-hover disabled:bg-primary/60 disabled:cursor-not-allowed text-white font-semibold text-sm py-3 rounded-lg transition-colors"
-        >
-          {loading ? (
-            <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-          ) : (
-            <>
-              {lp.signIn} <ArrowRight size={15} />
-            </>
-          )}
-        </button>
+        <motion.div variants={formRow}>
+          <motion.button
+            type="submit"
+            disabled={loading}
+            className="w-full relative overflow-hidden flex items-center justify-center gap-2 bg-primary hover:bg-primary-hover disabled:bg-primary/60 disabled:cursor-not-allowed text-white font-semibold text-sm py-3 rounded-lg transition-colors"
+            whileHover="hover"
+            whileTap={{ scale: 0.98 }}
+          >
+            {/* Shimmer sweep on hover */}
+            {!loading && (
+              <motion.span
+                className="absolute inset-0 bg-linear-to-r from-transparent via-white/20 to-transparent -skew-x-12 pointer-events-none"
+                initial={{ x: "-100%" }}
+                variants={{ hover: { x: "250%", transition: { duration: 0.55, ease: "easeInOut" } } }}
+              />
+            )}
+            <span className="relative z-10 flex items-center gap-2">
+              {loading ? (
+                <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              ) : (
+                <>
+                  {lp.signIn} <ArrowRight size={15} />
+                </>
+              )}
+            </span>
+          </motion.button>
+        </motion.div>
       </form>
 
-      {/* Divider */}
-      <div className="flex items-center gap-3 my-5">
+      <motion.div variants={formRow} className="flex items-center gap-3 my-5">
         <div className="flex-1 h-px bg-gray-200" />
         <span className="text-xs text-gray-400">{lp.orContinueWith}</span>
         <div className="flex-1 h-px bg-gray-200" />
-      </div>
+      </motion.div>
 
-      {/* Google + GitHub */}
-      <SocialOAuthRow
-        googleLoading={googleLoading}
-        googleMode="signin"
-        onGoogleSuccess={handleGoogleSuccess}
-        onGoogleError={() => addToast("error", lp.loginFailed)}
-      />
+      <motion.div variants={formRow}>
+        <SocialOAuthRow
+          googleLoading={googleLoading}
+          googleMode="signin"
+          onGoogleSuccess={handleGoogleSuccess}
+          onGoogleError={() => addToast("error", lp.loginFailed)}
+        />
+      </motion.div>
 
-      {/* Register link */}
-      <p className="text-center text-sm text-gray-500 mt-6">
+      <motion.p variants={formRow} className="text-center text-sm text-gray-500 mt-6">
         {lp.noAccount}{" "}
         <Link href="/register" className="text-primary font-semibold hover:underline">
           {lp.signUpFree}
         </Link>
-      </p>
+      </motion.p>
 
-      {/* Legal */}
-      <p className="text-center text-[11px] text-gray-400 mt-3 leading-relaxed">
+      <motion.p
+        variants={formRow}
+        className="text-center text-[11px] text-gray-400 mt-3 leading-relaxed"
+      >
         {lp.legal}{" "}
         <button type="button" className="underline hover:text-gray-600">
           {lp.terms}
@@ -311,7 +391,7 @@ export function LoginForm() {
         <button type="button" className="underline hover:text-gray-600">
           {lp.privacyPolicy}
         </button>
-      </p>
-    </div>
+      </motion.p>
+    </motion.div>
   );
 }
