@@ -18,6 +18,8 @@ import { searchCompanies } from "@/lib/api/company";
 import type { CompanyOption } from "@/lib/api/company";
 import type { GoogleClaims } from "@/lib/google-oauth-flow";
 import { completeGoogleLogin, finishGoogleAuth } from "@/lib/google-oauth-flow";
+import { getRoleRedirect } from "@/lib/auth";
+import { markLoginWelcomeForRedirect } from "@/lib/login-welcome";
 import { useLanguage } from "@/context/language-context";
 import { useToast } from "@/context/toast-context";
 import { useUser } from "@/context/user-context";
@@ -180,6 +182,7 @@ export function GoogleLoginOnboarding({
         jobTitle: jobTitle.trim(),
       });
       addToast("success", hrp.profileCompleteSuccess);
+      markLoginWelcomeForRedirect(getRoleRedirect(role));
       await finishGoogleAuth(router, refreshUser, claims, credential, role);
     } catch {
       addToast("error", hrp.profileCompleteFailed);
@@ -209,6 +212,7 @@ export function GoogleLoginOnboarding({
         techStack,
       });
       addToast("success", jsp.profileCompleteSuccess);
+      markLoginWelcomeForRedirect(getRoleRedirect(role));
       await finishGoogleAuth(router, refreshUser, claims, credential, role);
     } catch {
       addToast("error", jsp.profileCompleteFailed);
