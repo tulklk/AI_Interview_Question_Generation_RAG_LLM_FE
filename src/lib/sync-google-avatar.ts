@@ -1,6 +1,5 @@
 import { updateCandidateProfile, updateHrProfile } from "@/lib/api/user";
 import { parseGoogleIdToken } from "@/lib/google-id-token";
-import { fixUtf8Mojibake } from "@/lib/text-encoding";
 import { resolveAvatarUrl } from "@/lib/user-display";
 import type { CurrentUser } from "@/types/user";
 
@@ -9,37 +8,24 @@ function isHrRole(role: string | null | undefined): boolean {
   return normalized.includes("HR") || normalized.includes("MANAGER");
 }
 
-/**
- * After Google OAuth, persist the correct display name and avatar from the ID token.
- * Name is always refreshed from Google when available (fixes backend mojibake).
- */
+/** Persist Google profile picture when the account has no avatar yet. */
 export async function syncGoogleAvatarIfNeeded(
   idToken: string,
   user: CurrentUser | null,
   role: string | null | undefined
 ): Promise<void> {
-  const claims = parseGoogleIdToken(idToken);
-  const googleName = claims.name?.trim();
-  const picture = claims.picture?.trim();
-  const avatarNeedsSync = Boolean(picture && !resolveAvatarUrl(user));
+  const picture = parseGoogleIdToken(idToken).picture?.trim();
+  if (!picture || resolveAvatarUrl(user)) return;
 
-  if (!googleName && !avatarNeedsSync) return;
-
-  const storedName = fixUtf8Mojibake(user?.fullName ?? "");
   const fullName =
-    googleName ||
-    storedName ||
+    user?.fullName ||
+    parseGoogleIdToken(idToken).name ||
     user?.email?.split("@")[0] ||
     "User";
 
-  const payload: { fullName: string; avatarUrl?: string } = { fullName };
-  if (avatarNeedsSync && picture) {
-    payload.avatarUrl = picture;
-  }
-
   if (isHrRole(role ?? user?.role)) {
-    await updateHrProfile(payload);
+    await updateHrProfile({ fullName, avatarUrl: picture });
   } else {
-    await updateCandidateProfile(payload);
+    await updateCandidateProfile({ fullName, avatarUrl: picture });
   }
 }
