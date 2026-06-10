@@ -519,6 +519,11 @@ export const en = {
     roleJobSeeker: "Job Seeker",
     invalidCredentials: "Email or password is incorrect. Please try again.",
     unverifiedEmail: "Please verify your email before logging in.",
+    unverifiedDialogTitle: "Email not verified",
+    unverifiedDialogMessage:
+      "Please verify {{email}} before signing in. Check your inbox or resend the link below.",
+    unverifiedResend: "Resend email",
+    unverifiedClose: "Close",
     accountDisabled: "Your account has been disabled. Please contact support.",
     loginFailed: "Login failed. Please try again.",
     selectRoleTitle: "Sign in as",

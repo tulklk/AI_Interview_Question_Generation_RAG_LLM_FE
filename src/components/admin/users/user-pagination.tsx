@@ -9,7 +9,6 @@ interface UserPaginationProps {
   totalCount: number;
   loading?: boolean;
   onPageChange: (page: number) => void;
-  onPageSizeChange: (size: number) => void;
 }
 
 export function UserPagination({
@@ -18,7 +17,6 @@ export function UserPagination({
   totalCount,
   loading = false,
   onPageChange,
-  onPageSizeChange,
 }: UserPaginationProps) {
   const { t } = useLanguage();
   const p = t.adminPages.users.pagination;
@@ -32,23 +30,7 @@ export function UserPagination({
     .replace("{{total}}", String(totalPages));
 
   return (
-    <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-      <div className="flex items-center gap-2 text-xs text-[#6b7280]">
-        <span>{p.pageSize}</span>
-        <select
-          value={pageSize}
-          disabled={loading}
-          onChange={(e) => onPageSizeChange(Number(e.target.value))}
-          className="min-h-[32px] rounded-lg border border-[#e5e7eb] bg-white px-2 py-1 text-xs text-[#111827] focus:border-[#6c47ff] focus:outline-none disabled:opacity-50"
-        >
-          {[10, 20, 50].map((size) => (
-            <option key={size} value={size}>
-              {size}
-            </option>
-          ))}
-        </select>
-      </div>
-
+    <div className="mt-4 flex flex-wrap items-center justify-end gap-3">
       <div className="flex items-center gap-2">
         <span className="text-xs text-[#6b7280]">{pageOf}</span>
         <button

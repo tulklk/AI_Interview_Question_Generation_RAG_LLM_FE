@@ -26,7 +26,9 @@ const headingWord: Variants = {
   visible: { opacity: 1, y: 0, scale: 1, filter: "blur(0px)", transition: { duration: 0.5, ease: "easeOut" } },
 };
 import type { AxiosError } from "axios";
-import { login } from "@/lib/api/auth";
+import { login, resendVerification } from "@/lib/api/auth";
+import { isUnverifiedLoginError } from "@/lib/login-errors";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   setAuth,
   setAuthTokens,
@@ -50,6 +52,7 @@ import {
   parseGoogleClaims,
   type GoogleClaims,
 } from "@/lib/google-oauth-flow";
+import { markLoginWelcomeForRedirect } from "@/lib/login-welcome";
 
 type LoginView = "login" | "onboarding";
 
@@ -67,11 +70,12 @@ export function LoginForm() {
   const { refreshUser, clearUser } = useUser();
 
   useEffect(() => {
-    if (searchParams.get("reset") === "success") {
-      addToast("success", lp.passwordResetSuccess);
-      router.replace("/login");
-    }
-  }, [searchParams, addToast, lp.passwordResetSuccess, router]);
+    if (searchParams.get("reset") !== "success") return;
+    addToast("success", lp.passwordResetSuccess);
+    const url = new URL(window.location.href);
+    url.searchParams.delete("reset");
+    window.history.replaceState({}, "", `${url.pathname}${url.search}`);
+  }, [searchParams, addToast, lp.passwordResetSuccess]);
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -84,16 +88,41 @@ export function LoginForm() {
   const [view, setView] = useState<LoginView>("login");
   const [onboarding, setOnboarding] = useState<OnboardingState | null>(null);
 
+  const [unverifiedOpen, setUnverifiedOpen] = useState(false);
+  const [unverifiedEmail, setUnverifiedEmail] = useState("");
+  const [resendLoading, setResendLoading] = useState(false);
+
   function parseLoginError(err: unknown): string {
     const axiosErr = err as AxiosError<ApiErrorResponse>;
     const status = axiosErr.response?.status;
     const msg = (axiosErr.response?.data?.message ?? "").toLowerCase();
 
+    if (isUnverifiedLoginError(err)) return lp.unverifiedEmail;
     if (status === 401 || status === 400) return lp.invalidCredentials;
-    if (status === 403 && msg.includes("verif")) return lp.unverifiedEmail;
     if (status === 403) return lp.accountDisabled;
     if (status === 423 || msg.includes("lock") || msg.includes("disabled")) return lp.accountDisabled;
     return lp.loginFailed;
+  }
+
+  function showUnverifiedDialog(targetEmail: string) {
+    setUnverifiedEmail(targetEmail.trim());
+    setUnverifiedOpen(true);
+  }
+
+  async function handleResendVerification() {
+    if (!unverifiedEmail || resendLoading) return;
+    setResendLoading(true);
+    try {
+      await resendVerification(unverifiedEmail);
+      addToast("success", t.verifyEmailPage.resendSuccess);
+      setUnverifiedOpen(false);
+      router.push(`/verify-email?email=${encodeURIComponent(unverifiedEmail)}`);
+    } catch (err) {
+      const axiosErr = err as AxiosError<ApiErrorResponse>;
+      addToast("error", axiosErr.response?.data?.message ?? lp.loginFailed);
+    } finally {
+      setResendLoading(false);
+    }
   }
 
   async function handleSuccess(
@@ -118,7 +147,9 @@ export function LoginForm() {
       });
     }
 
-    router.push(getRoleRedirect(role));
+    const redirect = getRoleRedirect(role);
+    markLoginWelcomeForRedirect(redirect);
+    router.push(redirect);
   }
 
   async function handleSignIn(e: React.FormEvent) {
@@ -142,14 +173,8 @@ export function LoginForm() {
         email: email.trim(),
       });
     } catch (err) {
-      const axiosErr = err as AxiosError<ApiErrorResponse>;
-      const status = axiosErr.response?.status;
-      const beMsg = (axiosErr.response?.data?.message ?? "").toLowerCase();
-      if (status === 403 && beMsg.includes("verif")) {
-        addToast("error", lp.unverifiedEmail, {
-          label: "Resend verification",
-          href: `/verify-email?email=${encodeURIComponent(email.trim())}`,
-        });
+      if (isUnverifiedLoginError(err)) {
+        showUnverifiedDialog(email);
       } else {
         addToast("error", parseLoginError(err));
       }
@@ -177,6 +202,7 @@ export function LoginForm() {
 
       if (!verify.isNewUser) {
         const { role } = await completeGoogleLogin(credential);
+        markLoginWelcomeForRedirect(getRoleRedirect(role));
         await finishGoogleAuth(router, refreshUser, claims, credential, role);
         return;
       }
@@ -184,7 +210,11 @@ export function LoginForm() {
       setOnboarding({ credential, claims });
       setView("onboarding");
     } catch (err) {
-      addToast("error", parseLoginError(err));
+      if (isUnverifiedLoginError(err)) {
+        showUnverifiedDialog(claims.email ?? email);
+      } else {
+        addToast("error", parseLoginError(err));
+      }
     } finally {
       setGoogleLoading(false);
     }
@@ -213,6 +243,25 @@ export function LoginForm() {
   }
 
   return (
+    <>
+    <ConfirmDialog
+      open={unverifiedOpen}
+      title={lp.unverifiedDialogTitle}
+      message={
+        unverifiedEmail
+          ? lp.unverifiedDialogMessage.replace("{{email}}", unverifiedEmail)
+          : lp.unverifiedDialogMessage.replace("{{email}}", "—")
+      }
+      confirmLabel={lp.unverifiedResend}
+      cancelLabel={lp.unverifiedClose}
+      variant="primary"
+      loading={resendLoading}
+      onConfirm={handleResendVerification}
+      onCancel={() => {
+        if (resendLoading) return;
+        setUnverifiedOpen(false);
+      }}
+    />
     <motion.div
       className="w-full max-w-sm mx-auto"
       variants={formContainer}
@@ -393,5 +442,6 @@ export function LoginForm() {
         </button>
       </motion.p>
     </motion.div>
+    </>
   );
 }
