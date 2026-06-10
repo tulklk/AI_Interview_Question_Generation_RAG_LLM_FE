@@ -1,8 +1,9 @@
 import { apiClient } from "@/lib/api-client";
-import { normalizeAdminRoleKey } from "@/lib/admin-user-display";
+import { normalizeAdminRoleKey, toBackendRoleFilter } from "@/lib/admin-user-display";
 import type {
   AdminUserDetail,
   AdminUserListItem,
+  AdminUserRoleKey,
   AdminUsersListParams,
   PaginatedResult,
 } from "@/types/admin-user";
@@ -240,7 +241,11 @@ export async function listUsers(
   };
 
   if (params.search?.trim()) query.Search = params.search.trim();
-  if (params.role) query.Role = params.role;
+  if (params.role) {
+    const backendRole =
+      toBackendRoleFilter(params.role as AdminUserRoleKey) ?? params.role;
+    query.Role = backendRole;
+  }
   if (params.isActive !== undefined) query.IsActive = params.isActive;
 
   const res = await apiClient.get("/api/users", { params: query });
