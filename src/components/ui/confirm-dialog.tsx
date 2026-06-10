@@ -112,7 +112,7 @@ export function ConfirmDialog({
           </h3>
           <p
             id="confirm-dialog-desc"
-            className="mt-2 text-center text-sm leading-relaxed text-[#6b7280]"
+            className="mt-2 whitespace-pre-line text-center text-sm leading-relaxed text-[#6b7280]"
           >
             {content.message}
           </p>
