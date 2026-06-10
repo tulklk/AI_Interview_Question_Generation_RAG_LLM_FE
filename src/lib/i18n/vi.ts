@@ -521,6 +521,11 @@ export const vi: Translations = {
     roleJobSeeker: "Ứng viên",
     invalidCredentials: "Email hoặc mật khẩu không đúng. Vui lòng thử lại.",
     unverifiedEmail: "Vui lòng xác minh email trước khi đăng nhập.",
+    unverifiedDialogTitle: "Email chưa xác minh",
+    unverifiedDialogMessage:
+      "Vui lòng xác minh email {{email}} trước khi đăng nhập. Kiểm tra hộp thư hoặc gửi lại liên kết bên dưới.",
+    unverifiedResend: "Gửi lại email",
+    unverifiedClose: "Đóng",
     accountDisabled: "Tài khoản của bạn đã bị vô hiệu hóa. Vui lòng liên hệ hỗ trợ.",
     loginFailed: "Đăng nhập thất bại. Vui lòng thử lại.",
     selectRoleTitle: "Đăng nhập với vai trò",

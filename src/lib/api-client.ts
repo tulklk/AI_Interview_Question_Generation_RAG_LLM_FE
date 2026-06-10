@@ -37,11 +37,20 @@ function extractTokensFromBody(data: unknown): {
   };
 }
 
+function normalizePath(path: string): string {
+  const trimmed = path.replace(/\/+$/, "");
+  return trimmed || "/";
+}
+
+function isOnLoginPage(): boolean {
+  if (typeof window === "undefined") return false;
+  return normalizePath(window.location.pathname) === normalizePath(getLoginPath());
+}
+
 function redirectToLogin() {
   if (typeof window === "undefined") return;
-  const login = getLoginPath();
-  if (window.location.pathname === login) return;
-  window.location.assign(login);
+  if (isOnLoginPage()) return;
+  window.location.assign(getLoginPath());
 }
 
 /** Axios instance without auth interceptors — used only for refresh calls. */
@@ -88,6 +97,20 @@ function isRefreshRequest(config: InternalAxiosRequestConfig): boolean {
   return url === path || url.endsWith(path);
 }
 
+/** Login/register errors must not trigger token refresh or hard redirect. */
+function isPublicAuthRequest(config: InternalAxiosRequestConfig): boolean {
+  const url = (config.url ?? "").toLowerCase();
+  return (
+    url.includes("/api/auth/login") ||
+    url.includes("/api/auth/register") ||
+    url.includes("/api/auth/oauth") ||
+    url.includes("/api/auth/forgot-password") ||
+    url.includes("/api/auth/reset-password") ||
+    url.includes("/api/auth/resend-verification") ||
+    url.includes("/api/auth/verify-email")
+  );
+}
+
 export const apiClient = axios.create({
   baseURL: getApiBaseUrl(),
   timeout: 60_000,
@@ -113,6 +136,10 @@ apiClient.interceptors.response.use(
 
     const status = error.response?.status;
     if (status !== 401) return Promise.reject(error);
+
+    if (isPublicAuthRequest(original)) {
+      return Promise.reject(error);
+    }
 
     if (isRefreshRequest(original)) {
       clearAuth();
