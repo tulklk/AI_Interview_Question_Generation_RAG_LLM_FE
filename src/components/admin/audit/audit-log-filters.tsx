@@ -2,6 +2,8 @@
 
 import { Search } from "lucide-react";
 import { useLanguage } from "@/context/language-context";
+import { cn } from "@/lib/utils";
+import { portalInput } from "@/lib/portal-ui";
 
 const ALL = "__all__";
 
@@ -11,6 +13,11 @@ interface AuditLogFiltersProps {
   onSearchChange: (v: string) => void;
   onTypeChange: (v: string) => void;
 }
+
+const filterCls = cn(
+  portalInput,
+  "min-h-[38px] rounded-lg text-xs transition-colors focus:border-[#6c47ff] focus:outline-none focus:ring-[3px] focus:ring-[rgba(108,71,255,0.1)]"
+);
 
 export function AuditLogFilters({
   search,
@@ -37,20 +44,20 @@ export function AuditLogFilters({
       <div className="relative min-w-0 w-full sm:max-w-md sm:flex-1">
         <Search
           size={14}
-          className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#9ca3af]"
+          className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500"
         />
         <input
           type="search"
           value={search}
           onChange={(e) => onSearchChange(e.target.value)}
           placeholder={f.searchPlaceholder}
-          className="min-h-[38px] w-full rounded-lg border border-[#e5e7eb] bg-white py-2 pl-9 pr-4 text-xs text-[#111827] transition-colors placeholder:text-[#9ca3af] focus:border-[#6c47ff] focus:outline-none focus:ring-[3px] focus:ring-[rgba(108,71,255,0.1)]"
+          className={cn(filterCls, "w-full py-2 pl-9 pr-4")}
         />
       </div>
       <select
         value={eventType}
         onChange={(e) => onTypeChange(e.target.value)}
-        className="min-h-[38px] w-full rounded-lg border border-[#e5e7eb] bg-white px-3 py-2 text-xs text-[#111827] sm:w-auto"
+        className={cn(filterCls, "w-full px-3 py-2 sm:w-auto")}
       >
         {typeOptions.map((o) => (
           <option key={o.value} value={o.value}>

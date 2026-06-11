@@ -1,14 +1,14 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Sun, Moon, Monitor, Save, Sparkles } from "lucide-react";
+import { Sun, Save, Sparkles } from "lucide-react";
 import { Toggle } from "@/components/ui/toggle";
+import { ThemePreferencePicker } from "@/components/shared/theme-preference-picker";
 import { SelectField } from "@/components/ui/select-field";
 import { cn } from "@/lib/utils";
 import { useLanguage } from "@/context/language-context";
 import { useHrSubscription } from "@/context/hr-subscription-context";
-
-type ThemeMode = "light" | "dark" | "system";
+import { portalDivider, portalHeading, portalSubtext } from "@/lib/portal-ui";
 
 const aiModels = [
   { value: "gpt4", label: "GPT-4 (Most Accurate)" },
@@ -41,13 +41,6 @@ export function PreferencesSection() {
   const { hasFeature } = useHrSubscription();
   const advancedOk = hasFeature("advancedModels");
 
-  const themeOptions: { id: ThemeMode; label: string; Icon: typeof Sun }[] = [
-    { id: "light", label: pref.light, Icon: Sun },
-    { id: "dark", label: pref.dark, Icon: Moon },
-    { id: "system", label: pref.system, Icon: Monitor },
-  ];
-
-  const [theme, setTheme] = useState<ThemeMode>("light");
   const [aiModel, setAiModel] = useState("gpt4");
   const [language, setLanguage] = useState("en-us");
   const [questionsCount, setQuestionsCount] = useState("5");
@@ -67,55 +60,31 @@ export function PreferencesSection() {
 
   return (
     <div>
-      <h3 className="text-base font-semibold text-gray-900 mb-5">{pref.title}</h3>
+      <h3 className={cn("text-base font-semibold mb-5", portalHeading)}>{pref.title}</h3>
 
       <div className="space-y-6">
         <div>
           <div className="flex items-center gap-2 mb-3">
             <Sun size={14} className="text-amber-400" />
-            <p className="text-sm font-semibold text-gray-700">{pref.appearance}</p>
+            <p className={cn("text-sm font-semibold", portalHeading)}>{pref.appearance}</p>
           </div>
-          <div className="flex items-center justify-between mb-3">
-            <div>
-              <p className="text-sm font-medium text-gray-800">{pref.darkMode}</p>
-              <p className="text-xs text-gray-400 mt-0.5">{pref.darkModeDesc}</p>
-            </div>
-            <div className="flex items-center gap-1.5 text-gray-400">
-              <Sun size={13} />
-              <Toggle
-                checked={theme === "dark"}
-                onChange={(v) => setTheme(v ? "dark" : "light")}
-              />
-              <Moon size={13} />
-            </div>
-          </div>
-          <div className="grid grid-cols-3 gap-2">
-            {themeOptions.map(({ id, label, Icon }) => (
-              <button
-                key={id}
-                type="button"
-                onClick={() => setTheme(id)}
-                className={cn(
-                  "flex items-center justify-center gap-2 py-3 rounded-lg border text-sm font-medium transition-colors relative",
-                  theme === id
-                    ? "border-[#6c47ff] text-[#6c47ff] bg-indigo-50"
-                    : "border-gray-200 text-gray-500 hover:border-gray-300"
-                )}
-              >
-                <Icon size={14} />
-                {label}
-                {theme === id && (
-                  <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[#6c47ff]" />
-                )}
-              </button>
-            ))}
-          </div>
+          <ThemePreferencePicker
+            variant="cards"
+            showToggle
+            labels={{
+              light: pref.light,
+              dark: pref.dark,
+              system: pref.system,
+              darkMode: pref.darkMode,
+              darkModeDesc: pref.darkModeDesc,
+            }}
+          />
         </div>
 
-        <div className="border-t border-gray-100 pt-5">
+        <div className={cn("border-t pt-5", portalDivider)}>
           <div className="flex items-center gap-2 mb-4">
             <Sparkles size={14} className="text-[#6c47ff]" />
-            <p className="text-sm font-semibold text-gray-700">{pref.aiSettings}</p>
+            <p className={cn("text-sm font-semibold", portalHeading)}>{pref.aiSettings}</p>
           </div>
           <div className="grid grid-cols-2 gap-4 mb-4">
             <div>
@@ -126,7 +95,7 @@ export function PreferencesSection() {
                 options={modelOptions}
               />
               {!advancedOk && (
-                <p className="text-[11px] text-amber-700 mt-1.5">{t.hrSubscription.lockedAdvancedModel}</p>
+                <p className="text-[11px] text-amber-700 dark:text-amber-400 mt-1.5">{t.hrSubscription.lockedAdvancedModel}</p>
               )}
             </div>
             <SelectField
@@ -152,18 +121,18 @@ export function PreferencesSection() {
           </div>
         </div>
 
-        <div className="border-t border-gray-100 pt-5 space-y-4">
+        <div className={cn("border-t pt-5 space-y-4", portalDivider)}>
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-800">{pref.showDifficulty}</p>
-              <p className="text-xs text-gray-400 mt-0.5">{pref.showDifficultyDesc}</p>
+              <p className={cn("text-sm font-medium", portalHeading)}>{pref.showDifficulty}</p>
+              <p className={cn("text-xs mt-0.5", portalSubtext)}>{pref.showDifficultyDesc}</p>
             </div>
             <Toggle checked={showDifficulty} onChange={setShowDifficulty} />
           </div>
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-800">{pref.includeAnswers}</p>
-              <p className="text-xs text-gray-400 mt-0.5">{pref.includeAnswersDesc}</p>
+              <p className={cn("text-sm font-medium", portalHeading)}>{pref.includeAnswers}</p>
+              <p className={cn("text-xs mt-0.5", portalSubtext)}>{pref.includeAnswersDesc}</p>
             </div>
             <Toggle
               checked={includeSuggestedAnswers}

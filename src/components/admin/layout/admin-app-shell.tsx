@@ -72,7 +72,7 @@ export function AdminAppShell({ children, breadcrumb, pageTitle }: AdminAppShell
             plan: "Admin",
           }}
         />
-        <main className="flex-1 overflow-y-auto bg-[#f5f7fb]">
+        <main className="flex-1 overflow-y-auto bg-[#f5f7fb] dark:bg-[#0b0f1a]">
           <div className="max-w-[1440px] mx-auto px-6 md:px-10 py-8">{children}</div>
         </main>
       </div>

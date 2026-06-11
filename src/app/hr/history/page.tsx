@@ -5,6 +5,8 @@ import { HistoryStats } from "@/components/history/history-stats";
 import { HistoryFilters } from "@/components/history/history-filters";
 import { HistoryTable } from "@/components/history/history-table";
 import { useLanguage } from "@/context/language-context";
+import { cn } from "@/lib/utils";
+import { portalHeading, portalSubtext } from "@/lib/portal-ui";
 
 export default function HrHistoryPage() {
   const { t } = useLanguage();
@@ -16,8 +18,8 @@ export default function HrHistoryPage() {
       breadcrumb={[{ label: "HR", href: "/hr/dashboard" }, { label: hp.heading }]}
     >
       <div className="mb-6 animate-fade-up">
-        <h2 className="text-2xl font-bold text-gray-900">{hp.heading}</h2>
-        <p className="text-sm text-gray-500 mt-1">{hp.subtext}</p>
+        <h2 className={cn("text-2xl font-bold", portalHeading)}>{hp.heading}</h2>
+        <p className={cn("text-sm mt-1", portalSubtext)}>{hp.subtext}</p>
       </div>
 
       <div className="animate-fade-up" style={{ animationDelay: "80ms" }}>

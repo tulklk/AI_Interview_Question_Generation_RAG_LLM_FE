@@ -5,7 +5,7 @@ import { BrandLogo } from "@/components/shared/brand-logo";
 
 export default function LoginPage() {
   return (
-    <div className="flex h-screen overflow-hidden bg-white">
+    <div className="flex h-screen overflow-hidden bg-white dark:bg-gray-950">
       {/* Left — hero gradient panel */}
       <div className="hidden lg:flex w-[55%] shrink-0 bg-linear-to-br from-primary to-[#8b65ff] animate-slide-left">
         <LoginHero />

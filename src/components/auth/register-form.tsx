@@ -347,7 +347,7 @@ export function RegisterForm({ registerRole = "hr" }: RegisterFormProps) {
       } else if (data?.errors) {
         setFieldErrors(data.errors as FieldErrors);
       } else {
-        addToast("error", msg || (isGoogleSignup ? rp.profileCompleteFailed : rp.registrationFailed));
+        addToast("error", isGoogleSignup ? rp.profileCompleteFailed : rp.registrationFailed);
       }
     } finally {
       setLoading(false);
@@ -355,9 +355,9 @@ export function RegisterForm({ registerRole = "hr" }: RegisterFormProps) {
   }
 
   const inputBase =
-    "auth-input-glow w-full pl-10 pr-4 py-2.5 text-sm border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors placeholder:text-gray-400";
+    "auth-input-glow w-full pl-10 pr-4 py-2.5 text-sm border border-gray-200 rounded-lg bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors placeholder:text-gray-400 dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100 dark:placeholder:text-gray-500";
   const inputReadOnly =
-    "w-full pl-10 pr-4 py-2.5 text-sm border border-gray-200 rounded-lg bg-gray-50 text-gray-500 cursor-not-allowed";
+    "w-full pl-10 pr-4 py-2.5 text-sm border border-gray-200 rounded-lg bg-gray-50 text-gray-500 cursor-not-allowed dark:bg-gray-800/50 dark:border-gray-700 dark:text-gray-400";
   const inputError = "border-red-300 focus:border-red-400 focus:ring-red-100";
 
   return (
@@ -419,7 +419,7 @@ export function RegisterForm({ registerRole = "hr" }: RegisterFormProps) {
         </motion.span>
 
         {/* Animated progress line */}
-        <div className="relative flex-1 h-px bg-gray-200 mx-1 overflow-hidden">
+        <div className="relative flex-1 h-px bg-gray-200 dark:bg-gray-700 mx-1 overflow-hidden">
           <motion.div
             className="absolute inset-y-0 left-0 bg-emerald-400 rounded-full"
             initial={{ width: "0%" }}
@@ -472,7 +472,7 @@ export function RegisterForm({ registerRole = "hr" }: RegisterFormProps) {
             <motion.div variants={fieldRows} initial="hidden" animate="visible">
               <motion.h2
                 variants={headingContainer}
-                className="text-2xl font-bold text-gray-900 mb-3 leading-tight"
+                className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-3 leading-tight"
               >
                 {rp.title.split(" ").map((word, i) => (
                   <motion.span key={i} variants={headingWord} className="inline-block mr-[0.28em] last:mr-0">
@@ -480,14 +480,14 @@ export function RegisterForm({ registerRole = "hr" }: RegisterFormProps) {
                   </motion.span>
                 ))}
               </motion.h2>
-              <motion.p variants={fieldRow} className="text-sm text-gray-500 mb-5">
+              <motion.p variants={fieldRow} className="text-sm text-gray-500 dark:text-gray-400 mb-5">
                 {rp.subtitle}
               </motion.p>
 
               <div className="space-y-4">
                 {/* Full name */}
                 <motion.div variants={fieldRow}>
-                  <label className="text-sm font-medium text-gray-700 block mb-1.5">
+                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-1.5">
                     {rp.fullNameLabel} <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
@@ -506,7 +506,7 @@ export function RegisterForm({ registerRole = "hr" }: RegisterFormProps) {
 
                 {/* Email */}
                 <motion.div variants={fieldRow}>
-                  <label className="text-sm font-medium text-gray-700 block mb-1.5">
+                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-1.5">
                     {rp.emailLabel} <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
@@ -525,7 +525,7 @@ export function RegisterForm({ registerRole = "hr" }: RegisterFormProps) {
 
                 {/* Password */}
                 <motion.div variants={fieldRow}>
-                  <label className="text-sm font-medium text-gray-700 block mb-1.5">
+                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-1.5">
                     {rp.passwordLabel} <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
@@ -538,7 +538,7 @@ export function RegisterForm({ registerRole = "hr" }: RegisterFormProps) {
                       className={`${inputBase} pr-10 ${fieldErrors.password ? inputError : ""}`}
                       autoComplete="new-password"
                     />
-                    <button type="button" onClick={() => setShowPassword((v) => !v)} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600" tabIndex={-1}>
+                    <button type="button" onClick={() => setShowPassword((v) => !v)} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300" tabIndex={-1}>
                       {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
                     </button>
                   </div>
@@ -548,14 +548,14 @@ export function RegisterForm({ registerRole = "hr" }: RegisterFormProps) {
                         {[1, 2, 3, 4].map((level) => (
                           <motion.div
                             key={level}
-                            className={`h-1 flex-1 rounded-full ${level <= passwordStrength ? strengthColor : "bg-gray-200"}`}
+                            className={`h-1 flex-1 rounded-full ${level <= passwordStrength ? strengthColor : "bg-gray-200 dark:bg-gray-700"}`}
                             initial={{ scaleX: 0 }}
                             animate={{ scaleX: level <= passwordStrength ? 1 : 0.3 }}
                             transition={{ duration: 0.3, delay: level * 0.05 }}
                           />
                         ))}
                       </div>
-                      <p className="text-xs text-gray-500">{strengthLabel}</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">{strengthLabel}</p>
                     </div>
                   )}
                   {fieldErrors.password && <p className="text-xs text-red-500 mt-1">{fieldErrors.password}</p>}
@@ -563,7 +563,7 @@ export function RegisterForm({ registerRole = "hr" }: RegisterFormProps) {
 
                 {/* Confirm password */}
                 <motion.div variants={fieldRow}>
-                  <label className="text-sm font-medium text-gray-700 block mb-1.5">
+                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-1.5">
                     {rp.confirmPasswordLabel} <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
@@ -585,7 +585,7 @@ export function RegisterForm({ registerRole = "hr" }: RegisterFormProps) {
                     {confirmPassword.length > 0 && confirmPassword === password ? (
                       <CheckCircle2 size={15} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-emerald-500 pointer-events-none" />
                     ) : (
-                      <button type="button" onClick={() => setShowConfirm((v) => !v)} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600" tabIndex={-1}>
+                      <button type="button" onClick={() => setShowConfirm((v) => !v)} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300" tabIndex={-1}>
                         {showConfirm ? <EyeOff size={15} /> : <Eye size={15} />}
                       </button>
                     )}
@@ -607,9 +607,9 @@ export function RegisterForm({ registerRole = "hr" }: RegisterFormProps) {
 
               {/* Divider + Social */}
               <motion.div variants={fieldRow} className="flex items-center gap-3 my-5">
-                <div className="flex-1 h-px bg-gray-200" />
-                <span className="text-xs text-gray-400">{rp.orContinueWith}</span>
-                <div className="flex-1 h-px bg-gray-200" />
+                <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700" />
+                <span className="text-xs text-gray-400 dark:text-gray-500">{rp.orContinueWith}</span>
+                <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700" />
               </motion.div>
               <motion.div variants={fieldRow}>
                 <SocialOAuthRow
@@ -619,7 +619,7 @@ export function RegisterForm({ registerRole = "hr" }: RegisterFormProps) {
                   onGoogleError={() => addToast("error", rp.registrationFailed)}
                 />
               </motion.div>
-              <motion.p variants={fieldRow} className="text-center text-sm text-gray-500 mt-5">
+              <motion.p variants={fieldRow} className="text-center text-sm text-gray-500 dark:text-gray-400 mt-5">
                 {rp.alreadyHaveAccount}{" "}
                 <Link href="/login" className="text-primary font-semibold hover:underline">
                   {rp.signIn}
@@ -639,7 +639,7 @@ export function RegisterForm({ registerRole = "hr" }: RegisterFormProps) {
             <motion.div variants={fieldRows} initial="hidden" animate="visible">
               <motion.h2
                 variants={headingContainer}
-                className="text-2xl font-bold text-gray-900 mb-3 leading-tight"
+                className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-3 leading-tight"
               >
                 {rp.step2Title.split(" ").map((word, i) => (
                   <motion.span key={i} variants={headingWord} className="inline-block mr-[0.28em] last:mr-0">
@@ -647,7 +647,7 @@ export function RegisterForm({ registerRole = "hr" }: RegisterFormProps) {
                   </motion.span>
                 ))}
               </motion.h2>
-              <motion.p variants={fieldRow} className="text-sm text-gray-500 mb-5">
+              <motion.p variants={fieldRow} className="text-sm text-gray-500 dark:text-gray-400 mb-5">
                 {isGoogleSignup ? rp.googleStep2Hint : rp.step2Subtitle}
               </motion.p>
 
@@ -655,7 +655,7 @@ export function RegisterForm({ registerRole = "hr" }: RegisterFormProps) {
                 {isGoogleSignup && (
                   <>
                     <motion.div variants={fieldRow}>
-                      <label className="text-sm font-medium text-gray-700 block mb-1.5">
+                      <label className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-1.5">
                         {rp.fullNameLabel} <span className="text-red-500">*</span>
                       </label>
                       <div className="relative">
@@ -664,7 +664,7 @@ export function RegisterForm({ registerRole = "hr" }: RegisterFormProps) {
                       </div>
                     </motion.div>
                     <motion.div variants={fieldRow}>
-                      <label className="text-sm font-medium text-gray-700 block mb-1.5">
+                      <label className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-1.5">
                         {rp.emailLabel} <span className="text-red-500">*</span>
                       </label>
                       <div className="relative">
@@ -677,7 +677,7 @@ export function RegisterForm({ registerRole = "hr" }: RegisterFormProps) {
 
                 {/* Company name */}
                 <motion.div variants={fieldRow}>
-                  <label className="text-sm font-medium text-gray-700 block mb-1.5">
+                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-1.5">
                     {rp.companyNameLabel} <span className="text-red-500">*</span>
                   </label>
                   <div className="relative" ref={companyRef}>
@@ -701,9 +701,9 @@ export function RegisterForm({ registerRole = "hr" }: RegisterFormProps) {
                       ) : null}
                     </div>
                     {companyOpen && companyName.trim() && (
-                      <div className="absolute z-20 mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden">
+                      <div className="absolute z-20 mt-1 w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg overflow-hidden">
                         {companyLoading && (
-                          <div className="flex items-center gap-2.5 px-4 py-3 text-sm text-gray-400">
+                          <div className="flex items-center gap-2.5 px-4 py-3 text-sm text-gray-400 dark:text-gray-500">
                             <span className="w-3.5 h-3.5 border-2 border-primary/30 border-t-primary rounded-full animate-spin shrink-0" />
                             {rp.companySearchHint}
                           </div>
@@ -715,7 +715,7 @@ export function RegisterForm({ registerRole = "hr" }: RegisterFormProps) {
                                 key={c.id}
                                 type="button"
                                 onMouseDown={() => selectCompany(c)}
-                                className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-primary/5 hover:text-primary transition-colors text-left"
+                                className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-200 hover:bg-primary/5 hover:text-primary transition-colors text-left"
                               >
                                 <Building2 size={13} className="text-gray-400 shrink-0" />
                                 <span className="truncate">{c.name}</span>
@@ -725,11 +725,11 @@ export function RegisterForm({ registerRole = "hr" }: RegisterFormProps) {
                         )}
                         {!companyLoading && companyResults.length === 0 && companySearched && (
                           <div>
-                            <p className="px-4 pt-3 pb-1 text-xs text-gray-400">{rp.companyNotSelected}</p>
+                            <p className="px-4 pt-3 pb-1 text-xs text-gray-400 dark:text-gray-500">{rp.companyNotSelected}</p>
                             <button
                               type="button"
                               onMouseDown={useTypedName}
-                              className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-primary/5 hover:text-primary transition-colors text-left border-t border-gray-100 mt-1"
+                              className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-200 hover:bg-primary/5 hover:text-primary transition-colors text-left border-t border-gray-100 dark:border-gray-700 mt-1"
                             >
                               <Building2 size={13} className="text-gray-400 shrink-0" />
                               <span className="truncate">{companyName}</span>
@@ -745,7 +745,7 @@ export function RegisterForm({ registerRole = "hr" }: RegisterFormProps) {
 
                 {/* Job title */}
                 <motion.div variants={fieldRow}>
-                  <label className="text-sm font-medium text-gray-700 block mb-1.5">
+                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-1.5">
                     {rp.jobTitleLabel} <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
@@ -767,7 +767,7 @@ export function RegisterForm({ registerRole = "hr" }: RegisterFormProps) {
                   <button
                     type="button"
                     onClick={() => setAgreed((v) => !v)}
-                    className={`w-4 h-4 mt-0.5 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${agreed ? "border-primary bg-primary" : "border-gray-300 bg-white"}`}
+                    className={`w-4 h-4 mt-0.5 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${agreed ? "border-primary bg-primary" : "border-gray-300 bg-white dark:border-gray-600 dark:bg-gray-900"}`}
                   >
                     {agreed && (
                       <svg width="8" height="6" viewBox="0 0 8 6" fill="none">
@@ -775,7 +775,7 @@ export function RegisterForm({ registerRole = "hr" }: RegisterFormProps) {
                       </svg>
                     )}
                   </button>
-                  <p className="text-sm text-gray-600 leading-snug">
+                  <p className="text-sm text-gray-600 dark:text-gray-400 leading-snug">
                     {rp.agreeText}{" "}
                     <button type="button" className="text-primary font-semibold hover:underline">{rp.terms}</button>{" "}
                     {rp.andText}{" "}
@@ -803,7 +803,7 @@ export function RegisterForm({ registerRole = "hr" }: RegisterFormProps) {
                 <button
                   type="button"
                   onClick={handleBackFromStep2}
-                  className="mt-4 w-full flex items-center justify-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 transition-colors"
+                  className="mt-4 w-full flex items-center justify-center gap-1.5 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
                 >
                   <ArrowLeft size={14} />
                   {rp.backButton}

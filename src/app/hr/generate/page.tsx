@@ -3,6 +3,8 @@
 import { AppShell } from "@/components/layout/app-shell";
 import { GenerateForm } from "@/components/generate/generate-form";
 import { useLanguage } from "@/context/language-context";
+import { cn } from "@/lib/utils";
+import { portalHeading, portalSubtext } from "@/lib/portal-ui";
 
 export default function HrGeneratePage() {
   const { t } = useLanguage();
@@ -15,8 +17,8 @@ export default function HrGeneratePage() {
     >
       <div className="max-w-4xl mx-auto animate-fade-up">
         <div className="mb-6">
-          <h2 className="text-2xl font-bold text-gray-900">{gp.heading}</h2>
-          <p className="text-sm text-gray-500 mt-1">{gp.subtext}</p>
+          <h2 className={cn("text-2xl font-bold", portalHeading)}>{gp.heading}</h2>
+          <p className={cn("text-sm mt-1", portalSubtext)}>{gp.subtext}</p>
         </div>
 
         <GenerateForm />
