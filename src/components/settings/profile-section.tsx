@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { Edit2, Save, X } from "lucide-react";
-import type { AxiosError } from "axios";
+import { cn } from "@/lib/utils";
 import { FormField } from "@/components/ui/form-field";
 import { useLanguage } from "@/context/language-context";
 import { useUser } from "@/context/user-context";
@@ -11,8 +11,7 @@ import { getCurrentUser, updateHrProfile } from "@/lib/api/user";
 import { AvatarUpload } from "@/components/shared/avatar-upload";
 import { uploadAvatarToCloudinary } from "@/lib/cloudinary";
 import { mapAvatarUploadError } from "@/lib/avatar-upload-messages";
-import type { ApiErrorResponse } from "@/types/auth";
-
+import { portalDivider, portalHeading, portalInput, portalMutedBg, portalSubtext } from "@/lib/portal-ui";
 interface HrProfileForm {
   fullName: string;
   email: string;
@@ -40,10 +39,10 @@ function ViewField({ label, value }: { label: string; value: string }) {
   const { t } = useLanguage();
   const empty = t.settingsPage.profile.emptyField;
   return (
-    <div className="border-b border-gray-100 pb-4 last:border-0 last:pb-0">
-      <p className="text-xs font-medium text-gray-500 mb-1">{label}</p>
-      <p className="text-sm text-gray-900 break-words">
-        {value.trim() ? value : <span className="text-gray-400 italic">{empty}</span>}
+    <div className={cn("border-b pb-4 last:border-0 last:pb-0", portalDivider)}>
+      <p className={cn("text-xs font-medium mb-1", portalSubtext)}>{label}</p>
+      <p className={cn("text-sm break-words", portalHeading)}>
+        {value.trim() ? value : <span className="text-gray-400 dark:text-gray-500 italic">{empty}</span>}
       </p>
     </div>
   );
@@ -54,8 +53,8 @@ function ViewUrlField({ label, url }: { label: string; url: string }) {
   const empty = t.settingsPage.profile.emptyField;
   const trimmed = url.trim();
   return (
-    <div className="border-b border-gray-100 pb-4 last:border-0 last:pb-0">
-      <p className="text-xs font-medium text-gray-500 mb-1">{label}</p>
+    <div className={cn("border-b pb-4 last:border-0 last:pb-0", portalDivider)}>
+      <p className={cn("text-xs font-medium mb-1", portalSubtext)}>{label}</p>
       {trimmed ? (
         <a
           href={trimmed}
@@ -66,7 +65,7 @@ function ViewUrlField({ label, url }: { label: string; url: string }) {
           {trimmed}
         </a>
       ) : (
-        <p className="text-sm text-gray-400 italic">{empty}</p>
+        <p className="text-sm text-gray-400 dark:text-gray-500 italic">{empty}</p>
       )}
     </div>
   );
@@ -145,22 +144,24 @@ export function ProfileSection() {
       await loadProfile();
       setEditing(false);
       addToast("success", sp.saveSuccess);
-    } catch (err) {
-      const axiosErr = err as AxiosError<ApiErrorResponse>;
-      addToast("error", axiosErr.response?.data?.message || sp.saveFailed);
+    } catch {
+      addToast("error", sp.saveFailed);
     } finally {
       setSaving(false);
     }
   }
 
-  const inputCls =
-    "w-full px-3.5 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#6c47ff]/20 focus:border-[#6c47ff] transition-colors bg-white disabled:bg-gray-50 disabled:text-gray-500 disabled:cursor-not-allowed";
+  const inputCls = cn(
+    "w-full px-3.5 py-2.5 text-sm rounded-lg focus:outline-none focus:ring-2 focus:ring-[#6c47ff]/20 focus:border-[#6c47ff] transition-colors disabled:cursor-not-allowed",
+    portalInput,
+    "disabled:bg-gray-50 dark:disabled:bg-gray-800 disabled:text-gray-500 dark:disabled:text-gray-400"
+  );
 
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[calc(100vh-16rem)] gap-4">
         <span className="w-14 h-14 border-[3px] border-[#6c47ff]/25 border-t-[#6c47ff] rounded-full animate-spin" />
-        <span className="text-sm font-medium text-gray-500">{sp.loading}</span>
+        <span className={cn("text-sm font-medium", portalSubtext)}>{sp.loading}</span>
       </div>
     );
   }
@@ -168,14 +169,14 @@ export function ProfileSection() {
   return (
     <div>
       <div className="flex items-center justify-between mb-5">
-        <h3 className="text-base font-semibold text-gray-900">{sp.title}</h3>
+        <h3 className={cn("text-base font-semibold", portalHeading)}>{sp.title}</h3>
         {editing ? (
           <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={handleCancel}
               disabled={saving || uploadingAvatar}
-              className="flex items-center gap-1.5 h-8 px-3 text-xs font-semibold text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+              className={cn("flex items-center gap-1.5 h-8 px-3 text-xs font-semibold border rounded-lg disabled:opacity-50", portalInput, "hover:bg-gray-50 dark:hover:bg-gray-800")}
             >
               <X size={13} />
               {sp.cancelBtn}
@@ -198,7 +199,7 @@ export function ProfileSection() {
           <button
             type="button"
             onClick={() => setEditing(true)}
-            className="flex items-center gap-1.5 h-8 px-3 text-xs font-semibold text-gray-800 border border-gray-200 rounded-lg hover:bg-gray-50"
+            className={cn("flex items-center gap-1.5 h-8 px-3 text-xs font-semibold border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800", portalInput, portalHeading)}
           >
             <Edit2 size={13} />
             {sp.editBtn}
@@ -229,7 +230,7 @@ export function ProfileSection() {
       />
 
       {!editing ? (
-        <div className="space-y-4 bg-gray-50/80 border border-gray-100 rounded-xl p-5">
+        <div className={cn("space-y-4 border rounded-xl p-5", portalMutedBg, portalDivider)}>
           <ViewField label={sp.fullName} value={form.fullName} />
           <ViewField label={sp.email} value={form.email} />
           <ViewField label={sp.company} value={form.companyName} />
@@ -259,7 +260,7 @@ export function ProfileSection() {
               disabled
               className={inputCls}
             />
-            <p className="text-xs text-gray-400 mt-1">{sp.emailReadOnly}</p>
+            <p className={cn("text-xs mt-1", portalSubtext)}>{sp.emailReadOnly}</p>
           </FormField>
 
           <div className="grid grid-cols-2 gap-4">

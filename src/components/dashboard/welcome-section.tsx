@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { Sparkles } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { portalHeading, portalSubtext } from "@/lib/portal-ui";
 import { useLanguage } from "@/context/language-context";
 
 export function WelcomeSection() {
@@ -11,8 +13,8 @@ export function WelcomeSection() {
   return (
     <div className="flex items-start justify-between mb-6 animate-fade-up">
       <div>
-        <h2 className="text-2xl font-bold text-gray-900">{dp.welcome}</h2>
-        <p className="text-sm text-gray-500 mt-1">{dp.welcomeSub}</p>
+        <h2 className={cn("text-2xl font-bold", portalHeading)}>{dp.welcome}</h2>
+        <p className={cn("text-sm mt-1", portalSubtext)}>{dp.welcomeSub}</p>
       </div>
       <Link
         href="/hr/generate"

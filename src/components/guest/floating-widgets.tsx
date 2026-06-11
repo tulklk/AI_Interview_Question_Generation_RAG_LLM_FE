@@ -124,7 +124,7 @@ function ChatPanel({
   return (
     <div
       className={cn(
-        "absolute bottom-16 right-0 w-80 sm:w-96 rounded-xl shadow-2xl border border-gray-200 bg-white overflow-hidden",
+        "absolute bottom-16 right-0 w-80 sm:w-96 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 overflow-hidden",
         "transition-all duration-300 origin-bottom-right",
         isOpen
           ? "opacity-100 translate-y-0 scale-100 pointer-events-auto"
@@ -164,19 +164,19 @@ function ChatPanel({
         {/* Welcome card */}
         <div className="flex items-start gap-2.5">
           <BotAvatar size={28} />
-          <div className="bg-[#f5f3ff] border border-[#6c47ff]/15 rounded-xl rounded-tl-sm px-3.5 py-2.5 max-w-[85%]">
+          <div className="bg-[#f5f3ff] dark:bg-[#6c47ff]/15 border border-[#6c47ff]/15 dark:border-[#6c47ff]/25 rounded-xl rounded-tl-sm px-3.5 py-2.5 max-w-[85%]">
             <div className="flex items-center gap-1.5 mb-2">
               <Sparkles size={11} className="text-[#6c47ff]" />
               <span className="text-[10px] font-bold text-[#6c47ff] uppercase tracking-wide">
                 HireGen AI
               </span>
             </div>
-            <p className="text-xs text-gray-700 leading-relaxed mb-2">
+            <p className="text-xs text-gray-700 dark:text-gray-200 leading-relaxed mb-2">
               {cw.welcomeMessage}
             </p>
             <ul className="space-y-1">
               {cw.welcomePoints.map((point, i) => (
-                <li key={i} className="flex items-start gap-1.5 text-xs text-gray-600">
+                <li key={i} className="flex items-start gap-1.5 text-xs text-gray-600 dark:text-gray-300">
                   <span className="text-[#6c47ff] mt-0.5">•</span>
                   {point}
                 </li>
@@ -205,8 +205,8 @@ function ChatPanel({
           msg.role === "bot" ? (
             <div key={msg.id} className="flex items-start gap-2.5 animate-fade-up">
               <BotAvatar size={28} />
-              <div className="bg-gray-100 rounded-xl rounded-tl-sm px-3.5 py-2.5 max-w-[85%]">
-                <p className="text-xs text-gray-800 leading-relaxed whitespace-pre-line">
+              <div className="bg-gray-100 dark:bg-gray-800 rounded-xl rounded-tl-sm px-3.5 py-2.5 max-w-[85%]">
+                <p className="text-xs text-gray-800 dark:text-gray-200 leading-relaxed whitespace-pre-line">
                   {msg.text}
                 </p>
               </div>
@@ -224,7 +224,7 @@ function ChatPanel({
         {isTyping && (
           <div className="flex items-start gap-2.5 animate-fade-up">
             <BotAvatar size={28} />
-            <div className="bg-gray-100 rounded-xl rounded-tl-sm px-3.5 py-3 flex items-center gap-1">
+            <div className="bg-gray-100 dark:bg-gray-800 rounded-xl rounded-tl-sm px-3.5 py-3 flex items-center gap-1">
               <span className="w-1.5 h-1.5 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: "0ms" }} />
               <span className="w-1.5 h-1.5 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: "150ms" }} />
               <span className="w-1.5 h-1.5 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: "300ms" }} />
@@ -236,14 +236,14 @@ function ChatPanel({
       </div>
 
       {/* ── Input ── */}
-      <div className="border-t border-gray-100 p-3 flex items-center gap-2 bg-white">
+      <div className="border-t border-gray-100 dark:border-gray-800 p-3 flex items-center gap-2 bg-white dark:bg-gray-900">
         <input
           type="text"
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder={cw.placeholder}
-          className="flex-1 text-xs bg-gray-50 border border-gray-200 rounded-lg px-3 py-2.5 outline-none focus:border-[#6c47ff]/50 focus:ring-2 focus:ring-[#6c47ff]/10 transition-all placeholder:text-gray-400"
+          className="flex-1 text-xs bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2.5 outline-none focus:border-[#6c47ff]/50 focus:ring-2 focus:ring-[#6c47ff]/10 transition-all placeholder:text-gray-400 dark:placeholder:text-gray-500 text-gray-900 dark:text-gray-100"
         />
         <button
           onClick={() => sendMessage(input)}
@@ -252,7 +252,7 @@ function ChatPanel({
             "w-9 h-9 rounded-lg flex items-center justify-center transition-all shrink-0",
             input.trim() && !isTyping
               ? "bg-[#6c47ff] text-white hover:bg-[#5535dd] shadow-sm"
-              : "bg-gray-100 text-gray-400 cursor-not-allowed"
+              : "bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500 cursor-not-allowed"
           )}
         >
           <Send size={14} />
@@ -316,8 +316,8 @@ export function FloatingWidgets() {
       <button
         onClick={scrollToTop}
         className={cn(
-          "w-11 h-11 rounded-full bg-white border border-gray-200 text-gray-600 shadow-md",
-          "flex items-center justify-center hover:text-[#6c47ff] hover:border-[#6c47ff]/40 hover:shadow-lg",
+          "w-11 h-11 rounded-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 shadow-md",
+          "flex items-center justify-center hover:text-[#6c47ff] hover:border-[#6c47ff]/40 hover:shadow-lg dark:hover:text-[#a78bff]",
           "transition-all duration-300",
           showScrollTop
             ? "opacity-100 scale-100 translate-y-0"

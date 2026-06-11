@@ -9,6 +9,7 @@ import { AvatarCircle } from "@/components/shared/avatar-circle";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useOverlayTransition } from "@/hooks/use-overlay-transition";
 import type { AdminUserDetail } from "@/types/admin-user";
+import { portalDivider, portalHeadingAlt, portalSubtextAlt } from "@/lib/portal-ui";
 
 interface UserDetailPanelProps {
   open: boolean;
@@ -28,11 +29,11 @@ function DetailRow({ label, value }: { label: string; value?: string | null }) {
   const noValue = t.adminPages.users.detail.noValue;
 
   return (
-    <div className="border-b border-[#f3f4f6] py-3 last:border-0">
-      <dt className="text-[11px] font-semibold uppercase tracking-wide text-[#9ca3af]">
+    <div className={cn("border-b py-3 last:border-0", portalDivider)}>
+      <dt className="text-[11px] font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500">
         {label}
       </dt>
-      <dd className="mt-1 text-sm text-[#111827] break-words">{value?.trim() || noValue}</dd>
+      <dd className={cn("mt-1 text-sm break-words", portalHeadingAlt)}>{value?.trim() || noValue}</dd>
     </div>
   );
 }
@@ -103,21 +104,22 @@ export function UserDetailPanel({
         />
         <aside
           className={cn(
-            "relative flex h-full w-full max-w-md flex-col border-l border-[#e5e7eb] bg-white shadow-[-8px_0_24px_rgba(0,0,0,0.08)]",
+            "relative flex h-full w-full max-w-md flex-col border-l bg-white dark:bg-gray-900 shadow-[-8px_0_24px_rgba(0,0,0,0.08)] dark:shadow-[-8px_0_24px_rgba(0,0,0,0.3)]",
+            portalDivider,
             exiting ? "animate-slide-out-right" : "animate-slide-right"
           )}
           role="dialog"
           aria-modal
           aria-labelledby="user-detail-title"
         >
-          <div className="flex items-center justify-between border-b border-[#e5e7eb] px-5 py-4">
-            <h2 id="user-detail-title" className="text-base font-bold text-[#111827]">
+          <div className={cn("flex items-center justify-between border-b px-5 py-4", portalDivider)}>
+            <h2 id="user-detail-title" className={cn("text-base font-bold", portalHeadingAlt)}>
               {u.detailTitle}
             </h2>
             <button
               type="button"
               onClick={handleClose}
-              className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-[#f5f7fb] hover:text-gray-600"
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-600 dark:hover:text-gray-300"
             >
               <X size={16} />
             </button>
@@ -131,8 +133,8 @@ export function UserDetailPanel({
             )}
 
             {error && !loading && (
-              <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-6 text-center">
-                <p className="text-sm text-red-700">{error}</p>
+              <div className="rounded-lg border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/30 px-4 py-6 text-center">
+                <p className="text-sm text-red-700 dark:text-red-400">{error}</p>
                 {onRetry && (
                   <button
                     type="button"
@@ -150,8 +152,8 @@ export function UserDetailPanel({
                 <div className="mb-5 flex items-center gap-4">
                   <AvatarCircle avatarUrl={user.avatarUrl} fullName={user.fullName} size="lg" />
                   <div>
-                    <p className="text-lg font-bold text-[#111827]">{user.fullName}</p>
-                    <p className="text-sm text-[#6b7280]">{user.email}</p>
+                    <p className={cn("text-lg font-bold", portalHeadingAlt)}>{user.fullName}</p>
+                    <p className={cn("text-sm", portalSubtextAlt)}>{user.email}</p>
                   </div>
                 </div>
 
@@ -200,13 +202,13 @@ export function UserDetailPanel({
           </div>
 
           {user && !loading && !error && (
-            <div className="border-t border-[#e5e7eb] px-5 py-4">
+            <div className={cn("border-t px-5 py-4", portalDivider)}>
               {user.isActive ? (
                 <button
                   type="button"
                   disabled={statusUpdating}
                   onClick={() => setPendingAction({ user, nextActive: false })}
-                  className="inline-flex w-full min-h-10 items-center justify-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-600 transition-colors hover:bg-red-100 disabled:opacity-50"
+                  className="inline-flex w-full min-h-10 items-center justify-center gap-2 rounded-lg border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/30 px-4 py-2 text-sm font-semibold text-red-600 dark:text-red-400 transition-colors hover:bg-red-100 dark:hover:bg-red-950/50 disabled:opacity-50"
                 >
                   {statusUpdating ? (
                     <Loader2 size={14} className="animate-spin" />

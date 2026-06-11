@@ -4,6 +4,8 @@ import { useState } from "react";
 import { Save } from "lucide-react";
 import { Toggle } from "@/components/ui/toggle";
 import { useLanguage } from "@/context/language-context";
+import { cn } from "@/lib/utils";
+import { portalDivider, portalHeading, portalSubtext, portalTableRow } from "@/lib/portal-ui";
 
 const eventIds = ["new_user", "jd_generation", "export", "login_alert", "quota_warning", "system_error"];
 
@@ -35,23 +37,23 @@ export function AdminNotificationsSection() {
 
   return (
     <div>
-      <h3 className="text-base font-semibold text-gray-900 mb-5">{n.title}</h3>
+      <h3 className={cn("text-base font-semibold mb-5", portalHeading)}>{n.title}</h3>
 
-      <div className="overflow-hidden rounded-lg border border-gray-100">
+      <div className={cn("overflow-hidden rounded-lg border", portalDivider)}>
         <table className="w-full text-sm">
-          <thead className="bg-gray-50 border-b border-gray-100">
+          <thead className={cn("bg-gray-50 dark:bg-gray-800/50 border-b", portalDivider)}>
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">{n.event}</th>
-              <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wide">{n.email}</th>
-              <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wide">{n.inApp}</th>
+              <th className={cn("px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide", portalSubtext)}>{n.event}</th>
+              <th className={cn("px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide", portalSubtext)}>{n.email}</th>
+              <th className={cn("px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide", portalSubtext)}>{n.inApp}</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-50">
+          <tbody className={cn("divide-y", portalDivider)}>
             {n.events.map((evt, idx) => (
-              <tr key={eventIds[idx]} className="hover:bg-gray-50/50 transition-colors">
+              <tr key={eventIds[idx]} className={cn("transition-colors", portalTableRow)}>
                 <td className="px-4 py-3.5">
-                  <p className="text-sm font-medium text-gray-800">{evt.label}</p>
-                  <p className="text-xs text-gray-400 mt-0.5">{evt.desc}</p>
+                  <p className={cn("text-sm font-medium", portalHeading)}>{evt.label}</p>
+                  <p className={cn("text-xs mt-0.5", portalSubtext)}>{evt.desc}</p>
                 </td>
                 <td className="px-4 py-3.5">
                   <div className="flex justify-center">

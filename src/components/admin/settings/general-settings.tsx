@@ -4,11 +4,15 @@ import { useState, useEffect } from "react";
 import { Save } from "lucide-react";
 import { FormField } from "@/components/ui/form-field";
 import { useLanguage } from "@/context/language-context";
+import { cn } from "@/lib/utils";
+import { portalDivider, portalHeadingAlt, portalInput, portalSubtextAlt } from "@/lib/portal-ui";
 
 const STORAGE_KEY = "hiregen_admin_general_settings";
 
-const inputCls =
-  "w-full min-h-[38px] rounded-lg border border-[#e5e7eb] bg-white px-3 py-2.5 text-xs text-[#111827] transition-colors placeholder:text-[#9ca3af] focus:border-[#6c47ff] focus:outline-none focus:ring-[3px] focus:ring-[rgba(108,71,255,0.1)]";
+const inputCls = cn(
+  portalInput,
+  "w-full min-h-[38px] rounded-lg px-3 py-2.5 text-xs transition-colors focus:border-[#6c47ff] focus:outline-none focus:ring-[3px] focus:ring-[rgba(108,71,255,0.1)]"
+);
 
 type StoredGeneral = {
   platformName: string;
@@ -86,7 +90,7 @@ export function GeneralSettings() {
 
   return (
     <div>
-      <h3 className="mb-5 text-base font-bold text-[#111827]">{g.title}</h3>
+      <h3 className={cn("mb-5 text-base font-bold", portalHeadingAlt)}>{g.title}</h3>
 
       <div className="space-y-4">
         <FormField label={g.platformName} htmlFor="platform-name">
@@ -134,16 +138,16 @@ export function GeneralSettings() {
           />
         </FormField>
 
-        <div className="border-t border-[#e5e7eb] pt-2">
-          <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-[#6b7280]">{g.dangerZone}</p>
-          <div className="flex flex-col gap-3 rounded-lg border border-red-100 bg-red-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className={cn("border-t pt-2", portalDivider)}>
+          <p className={cn("mb-3 text-xs font-semibold uppercase tracking-wide", portalSubtextAlt)}>{g.dangerZone}</p>
+          <div className="flex flex-col gap-3 rounded-lg border border-red-100 dark:border-red-900/50 bg-red-50 dark:bg-red-950/30 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="text-sm font-semibold text-[#111827]">{g.resetTitle}</p>
-              <p className="mt-0.5 text-xs text-[#6b7280]">{g.resetDesc}</p>
+              <p className={cn("text-sm font-semibold", portalHeadingAlt)}>{g.resetTitle}</p>
+              <p className={cn("mt-0.5 text-xs", portalSubtextAlt)}>{g.resetDesc}</p>
             </div>
             <button
               type="button"
-              className="shrink-0 rounded-lg border border-red-200 bg-white px-3 py-1.5 text-xs font-semibold text-red-600 transition-colors hover:bg-red-50"
+              className="shrink-0 rounded-lg border border-red-200 dark:border-red-900 bg-white dark:bg-gray-900 px-3 py-1.5 text-xs font-semibold text-red-600 dark:text-red-400 transition-colors hover:bg-red-50 dark:hover:bg-red-950/50"
             >
               {g.resetBtn}
             </button>

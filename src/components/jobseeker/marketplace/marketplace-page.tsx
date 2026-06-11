@@ -8,6 +8,17 @@ import { questionSets } from "@/data/jobseeker";
 import { QuestionSetCard } from "./question-set-card";
 import { useLanguage } from "@/context/language-context";
 import type { Difficulty } from "@/types/jobseeker";
+import { CARD_SHADOW } from "@/components/jobseeker/ui/constants";
+import {
+  portalBanner,
+  portalCard,
+  portalCardShadow,
+  portalDivider,
+  portalHeadingAlt,
+  portalInput,
+  portalMutedBg,
+  portalSubtextAlt,
+} from "@/lib/portal-ui";
 
 const CATEGORIES = ["All", "Frontend", "Full Stack", "Backend", "Product", "Data", "DevOps"];
 const DIFFICULTIES: Array<"All" | Difficulty> = ["All", "Easy", "Medium", "Hard"];
@@ -44,22 +55,21 @@ export function MarketplacePage() {
         initial={{ opacity: 0, y: 24 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="rounded-xl px-10 py-12 mb-8"
-        style={{ background: "#F5F3FF" }}
+        className={cn(portalBanner, "rounded-xl px-10 py-12 mb-8")}
       >
         <div className="max-w-2xl">
           {/* Badge */}
-          <div className="inline-flex items-center gap-2 bg-white border border-[#E5E7EB] rounded-full px-3 py-1.5 mb-5">
+          <div className={cn("inline-flex items-center gap-2 rounded-full px-3 py-1.5 mb-5", portalCard)}>
             <Sparkles size={13} className="text-primary" />
-            <span className="text-[12px] font-[600] text-[#111827]">{p.heroBadge}</span>
+            <span className={cn("text-[12px] font-[600]", portalHeadingAlt)}>{p.heroBadge}</span>
           </div>
 
           {/* Headline */}
-          <h1 className="text-[48px] font-[800] text-[#111827] leading-[52px] mb-4">
+          <h1 className={cn("text-[48px] font-[800] leading-[52px] mb-4", portalHeadingAlt)}>
             {p.heroTitle}{" "}
             <span className="text-primary">{p.heroTitleAccent}</span>
           </h1>
-          <p className="text-[16px] text-[#6B7280] leading-[24px] max-w-lg mb-8">
+          <p className={cn("text-[16px] leading-[24px] max-w-lg mb-8", portalSubtextAlt)}>
             {p.heroSub}
           </p>
 
@@ -71,7 +81,7 @@ export function MarketplacePage() {
             >
               {p.heroCta}
             </button>
-            <p className="text-[13px] text-[#6B7280]">{p.heroCtaSub}</p>
+            <p className={cn("text-[13px]", portalSubtextAlt)}>{p.heroCtaSub}</p>
           </div>
         </div>
       </motion.section>
@@ -81,20 +91,23 @@ export function MarketplacePage() {
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, delay: 0.15 }}
-        className="bg-white rounded-xl p-4 mb-6 flex flex-col gap-4"
-        style={{ boxShadow: "rgba(0,0,0,0.08) 0px 4px 6px -1px, rgba(0,0,0,0.06) 0px 2px 4px -2px" }}
+        className={cn(portalCardShadow, "p-4 mb-6 flex flex-col gap-4")}
+        style={{ boxShadow: CARD_SHADOW }}
       >
         {/* Search row */}
-        <div className="flex items-center gap-2 border border-[#E5E7EB] rounded-lg px-3 h-[40px] focus-within:border-primary focus-within:shadow-[0_0_0_3px_rgba(108,71,255,0.1)] transition-all">
-          <Search size={15} className="text-gray-400 shrink-0" />
+        <div className={cn(
+          "flex items-center gap-2 rounded-lg px-3 h-[40px] focus-within:border-primary focus-within:shadow-[0_0_0_3px_rgba(108,71,255,0.1)] transition-all",
+          portalInput
+        )}>
+          <Search size={15} className="text-gray-400 dark:text-gray-500 shrink-0" />
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder={p.searchPlaceholder}
-            className="flex-1 text-[13px] text-[#111827] placeholder:text-[#9CA3AF] bg-transparent outline-none"
+            className="flex-1 text-[13px] bg-transparent outline-none"
           />
-          <SlidersHorizontal size={14} className="text-gray-400 shrink-0" />
+          <SlidersHorizontal size={14} className="text-gray-400 dark:text-gray-500 shrink-0" />
         </div>
 
         {/* Filter pills row */}
@@ -109,7 +122,7 @@ export function MarketplacePage() {
                   "text-[12px] font-[500] px-3 py-1.5 rounded-[6px] transition-colors",
                   category === cat
                     ? "bg-primary text-white"
-                    : "bg-[#F5F7FB] text-[#6B7280] hover:bg-gray-200"
+                    : cn(portalMutedBg, portalSubtextAlt, "hover:bg-gray-200 dark:hover:bg-gray-700")
                 )}
               >
                 {cat}
@@ -117,7 +130,7 @@ export function MarketplacePage() {
             ))}
           </div>
 
-          <div className="w-px h-5 bg-gray-200 mx-1" />
+          <div className="w-px h-5 bg-gray-200 dark:bg-gray-700 mx-1" />
 
           {/* Difficulty */}
           <div className="flex items-center gap-1.5">
@@ -132,7 +145,7 @@ export function MarketplacePage() {
                     : d === "Medium" ? "bg-amber-500 text-white"
                     : d === "Hard"   ? "bg-red-500 text-white"
                     : "bg-primary text-white"
-                    : "bg-[#F5F7FB] text-[#6B7280] hover:bg-gray-200"
+                    : cn(portalMutedBg, portalSubtextAlt, "hover:bg-gray-200 dark:hover:bg-gray-700")
                 )}
               >
                 {d === "All" ? p.allDifficulties : p[d.toLowerCase() as "easy" | "medium" | "hard"]}
@@ -147,15 +160,15 @@ export function MarketplacePage() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.25 }}
-        className="text-[13px] text-[#6B7280] mb-5"
+        className={cn("text-[13px] mb-5", portalSubtextAlt)}
       >
-        <span className="font-[600] text-[#111827]">{filtered.length}</span>{" "}
+        <span className={cn("font-[600]", portalHeadingAlt)}>{filtered.length}</span>{" "}
         {p.setsFound}
       </motion.p>
 
       {/* ── Card Grid ─────────────────────────────────────────────────────── */}
       {filtered.length === 0 ? (
-        <p className="text-center py-16 text-[14px] text-[#6B7280]">{p.noResults}</p>
+        <p className={cn("text-center py-16 text-[14px]", portalSubtextAlt)}>{p.noResults}</p>
       ) : (
         <div className="grid grid-cols-3 gap-6">
           {filtered.map((set, i) => (

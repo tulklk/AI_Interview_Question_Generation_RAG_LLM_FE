@@ -2,6 +2,8 @@
 
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useLanguage } from "@/context/language-context";
+import { cn } from "@/lib/utils";
+import { portalCard, portalHeadingAlt, portalSubtextAlt } from "@/lib/portal-ui";
 
 interface UserPaginationProps {
   page: number;
@@ -29,15 +31,21 @@ export function UserPagination({
     .replace("{{page}}", String(page))
     .replace("{{total}}", String(totalPages));
 
+  const btnCls = cn(
+    portalCard,
+    portalHeadingAlt,
+    "inline-flex h-8 items-center gap-1 px-2.5 text-xs font-medium transition-colors hover:bg-gray-50 dark:hover:bg-gray-800 disabled:pointer-events-none disabled:opacity-40"
+  );
+
   return (
     <div className="mt-4 flex flex-wrap items-center justify-end gap-3">
       <div className="flex items-center gap-2">
-        <span className="text-xs text-[#6b7280]">{pageOf}</span>
+        <span className={cn("text-xs", portalSubtextAlt)}>{pageOf}</span>
         <button
           type="button"
           disabled={!canPrev || loading}
           onClick={() => onPageChange(page - 1)}
-          className="inline-flex h-8 items-center gap-1 rounded-lg border border-[#e5e7eb] bg-white px-2.5 text-xs font-medium text-[#111827] transition-colors hover:bg-[#f9fafb] disabled:pointer-events-none disabled:opacity-40"
+          className={btnCls}
         >
           <ChevronLeft size={14} />
           {p.prev}
@@ -46,7 +54,7 @@ export function UserPagination({
           type="button"
           disabled={!canNext || loading}
           onClick={() => onPageChange(page + 1)}
-          className="inline-flex h-8 items-center gap-1 rounded-lg border border-[#e5e7eb] bg-white px-2.5 text-xs font-medium text-[#111827] transition-colors hover:bg-[#f9fafb] disabled:pointer-events-none disabled:opacity-40"
+          className={btnCls}
         >
           {p.next}
           <ChevronRight size={14} />

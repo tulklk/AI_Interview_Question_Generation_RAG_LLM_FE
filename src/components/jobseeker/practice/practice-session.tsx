@@ -12,6 +12,14 @@ import { useLanguage } from "@/context/language-context";
 import type { QuestionSet } from "@/types/jobseeker";
 import { Pill, getCategoryBadgeClass, getDifficultyBadgeClass } from "@/components/jobseeker/ui/pill";
 import { CARD_SHADOW } from "@/components/jobseeker/ui/constants";
+import {
+  portalCard,
+  portalCardShadow,
+  portalDivider,
+  portalHeadingAlt,
+  portalSubtextAlt,
+} from "@/lib/portal-ui";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 function formatTime(seconds: number) {
   const m = Math.floor(seconds / 60).toString().padStart(2, "0");
@@ -34,6 +42,7 @@ export function PracticeSession({ set }: PracticeSessionProps) {
   const [evaluating, setEvaluating] = useState(false);
   const [timeLeft, setTimeLeft] = useState(45 * 60); // 45 min
   const [direction, setDirection] = useState(1);
+  const [exitOpen, setExitOpen] = useState(false);
 
   const question = set.questions[currentIdx];
   const totalQuestions = set.questions.length;
@@ -81,9 +90,25 @@ export function PracticeSession({ set }: PracticeSessionProps) {
   };
 
   return (
-    <div className="min-h-screen bg-[#F5F7FB] flex flex-col">
+    <>
+    <ConfirmDialog
+      open={exitOpen}
+      title={p.exitConfirmTitle}
+      message={p.exitConfirmMessage}
+      confirmLabel={p.exitConfirmBtn}
+      cancelLabel={p.exitCancelBtn}
+      variant="danger"
+      onConfirm={() => router.push(`/jobseeker/sets/${set.id}`)}
+      onCancel={() => setExitOpen(false)}
+    />
+    <div className="min-h-screen bg-[#F5F7FB] dark:bg-gray-950 flex flex-col">
       {/* ── Top bar ─────────────────────────────────────────────────── */}
-      <header className="bg-white border-b border-gray-100 px-8 h-[56px] flex items-center justify-between shrink-0"
+      <header
+        className={cn(
+          "border-b px-8 h-[56px] flex items-center justify-between shrink-0",
+          portalCard,
+          portalDivider
+        )}
         style={{ boxShadow: "rgba(0,0,0,0.05) 0px 1px 3px 0px" }}
       >
         {/* Left: set info */}
@@ -92,14 +117,14 @@ export function PracticeSession({ set }: PracticeSessionProps) {
             {set.companyInitials}
           </div>
           <div>
-            <p className="text-[13px] font-[600] text-[#111827] leading-none">{set.title}</p>
-            <p className="text-[11px] text-[#6B7280] mt-0.5">{set.company}</p>
+            <p className={cn("text-[13px] font-[600] leading-none", portalHeadingAlt)}>{set.title}</p>
+            <p className={cn("text-[11px] mt-0.5", portalSubtextAlt)}>{set.company}</p>
           </div>
         </div>
 
         {/* Center: progress */}
         <div className="flex items-center gap-3 flex-1 mx-10">
-          <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+          <div className="flex-1 h-1.5 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
             <motion.div
               className="h-full bg-primary rounded-full"
               initial={{ width: 0 }}
@@ -107,7 +132,7 @@ export function PracticeSession({ set }: PracticeSessionProps) {
               transition={{ duration: 0.4 }}
             />
           </div>
-          <span className="text-[12px] font-[600] text-[#6B7280] shrink-0 tabular-nums">
+          <span className={cn("text-[12px] font-[600] shrink-0 tabular-nums", portalSubtextAlt)}>
             {p.question} {currentIdx + 1} {p.of} {totalQuestions}
           </span>
         </div>
@@ -116,16 +141,16 @@ export function PracticeSession({ set }: PracticeSessionProps) {
         <div className="flex items-center gap-4">
           <div className={cn(
             "flex items-center gap-1.5 text-[13px] font-[600] tabular-nums",
-            timeLeft < 300 ? "text-red-500" : "text-[#6B7280]"
+            timeLeft < 300 ? "text-red-500" : portalSubtextAlt
           )}>
             <Timer size={14} />
             {formatTime(timeLeft)}
           </div>
           <button
-            onClick={() => {
-              if (window.confirm(p.exitConfirm)) router.push(`/jobseeker/sets/${set.id}`);
-            }}
-            className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+            type="button"
+            onClick={() => setExitOpen(true)}
+            className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            aria-label={p.exitConfirmBtn}
           >
             <X size={15} />
           </button>
@@ -146,7 +171,7 @@ export function PracticeSession({ set }: PracticeSessionProps) {
               animate="center"
               exit="exit"
               transition={{ duration: 0.25, ease: "easeInOut" }}
-              className="bg-white rounded-xl p-8"
+              className={cn(portalCardShadow, "p-8")}
               style={{ boxShadow: CARD_SHADOW }}
             >
               {/* Category + difficulty badges */}
@@ -156,14 +181,15 @@ export function PracticeSession({ set }: PracticeSessionProps) {
               </div>
 
               {/* Question text */}
-              <p className="text-[20px] font-[700] text-[#111827] leading-[30px]">
+              <p className={cn("text-[20px] font-[700] leading-[30px]", portalHeadingAlt)}>
                 {question.text}
               </p>
             </motion.div>
           </AnimatePresence>
 
           {/* Answer area */}
-          <div className="bg-white rounded-xl p-6"
+          <div
+            className={cn(portalCardShadow, "p-6")}
             style={{ boxShadow: CARD_SHADOW }}
           >
             {isSubmitted ? (
@@ -173,11 +199,11 @@ export function PracticeSession({ set }: PracticeSessionProps) {
                 animate={{ opacity: 1, y: 0 }}
                 className="flex flex-col gap-3"
               >
-                <div className="flex items-center gap-2 text-emerald-600">
+                <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
                   <CheckCircle2 size={16} />
                   <span className="text-[13px] font-[600]">Answer submitted</span>
                 </div>
-                <p className="text-[14px] text-[#6B7280] leading-[22px] whitespace-pre-wrap">
+                <p className={cn("text-[14px] leading-[22px] whitespace-pre-wrap", portalSubtextAlt)}>
                   {currentAnswer}
                 </p>
               </motion.div>
@@ -189,16 +215,20 @@ export function PracticeSession({ set }: PracticeSessionProps) {
                   onChange={(e) => setAnswers((prev) => ({ ...prev, [question.id]: e.target.value }))}
                   placeholder={p.answerPlaceholder}
                   disabled={evaluating}
-                  className="w-full min-h-[180px] text-[14px] font-[400] text-[#111827] placeholder:text-[#9CA3AF] bg-transparent outline-none resize-none leading-[24px]"
+                  className={cn(
+                    "w-full min-h-[180px] text-[14px] font-[400] bg-transparent outline-none resize-none leading-[24px]",
+                    portalHeadingAlt,
+                    "placeholder:text-gray-400 dark:placeholder:text-gray-500"
+                  )}
                 />
-                <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-100">
+                <div className={cn("flex items-center justify-between mt-3 pt-3 border-t", portalDivider)}>
                   <span className={cn(
                     "text-[12px] font-[500]",
-                    currentAnswer.length < 150 ? "text-[#9CA3AF]" : "text-emerald-600"
+                    currentAnswer.length < 150 ? "text-gray-400 dark:text-gray-500" : "text-emerald-600 dark:text-emerald-400"
                   )}>
                     {currentAnswer.length} {p.characters}
                     {currentAnswer.length < 150 && (
-                      <span className="text-[#9CA3AF]"> · {p.minRecommended}</span>
+                      <span className="text-gray-400 dark:text-gray-500"> · {p.minRecommended}</span>
                     )}
                   </span>
 
@@ -234,7 +264,7 @@ export function PracticeSession({ set }: PracticeSessionProps) {
                     ? "w-6 h-2 bg-primary"
                     : submitted[q.id]
                     ? "w-2 h-2 bg-emerald-400"
-                    : "w-2 h-2 bg-gray-200 hover:bg-gray-300"
+                    : "w-2 h-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600"
                 )}
               />
             ))}
@@ -245,7 +275,11 @@ export function PracticeSession({ set }: PracticeSessionProps) {
             <button
               onClick={() => navigate(-1)}
               disabled={currentIdx === 0}
-              className="flex items-center gap-2 h-[36px] px-4 text-[13px] font-[600] text-[#111827] bg-white hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg border border-[#E5E7EB] transition-colors"
+              className={cn(
+                "flex items-center gap-2 h-[36px] px-4 text-[13px] font-[600] hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg border transition-colors",
+                portalCard,
+                portalHeadingAlt
+              )}
             >
               <ChevronLeft size={15} />
               {p.prevBtn}
@@ -276,5 +310,6 @@ export function PracticeSession({ set }: PracticeSessionProps) {
         </div>
       </main>
     </div>
+    </>
   );
 }

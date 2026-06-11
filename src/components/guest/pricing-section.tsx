@@ -51,8 +51,8 @@ function PricingPlanCard({
         plan.highlighted
           ? "bg-gradient-to-b from-[#6c47ff] to-[#7c5cff] border-[#6c47ff] text-white z-10 shadow-xl shadow-[#6c47ff]/30 ring-1 ring-white/15 md:scale-[1.02] md:shadow-2xl md:shadow-[#6c47ff]/25"
           : isMutedLeadPlan
-            ? "bg-slate-50/90 border-slate-200/90 shadow-sm"
-            : "bg-white border-gray-200 shadow-sm"
+            ? "bg-slate-50/90 dark:bg-gray-900/80 border-slate-200/90 dark:border-gray-700 shadow-sm"
+            : "bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 shadow-sm"
       )}
     >
       {plan.highlighted && (
@@ -67,7 +67,7 @@ function PricingPlanCard({
         <p
           className={cn(
             "text-sm font-semibold mb-2.5 sm:mb-3 tracking-tight",
-            plan.highlighted ? "text-white/75" : "text-gray-500"
+            plan.highlighted ? "text-white/75" : "text-gray-500 dark:text-gray-400"
           )}
         >
           {planT.name}
@@ -76,7 +76,7 @@ function PricingPlanCard({
           <span
             className={cn(
               "text-3xl sm:text-4xl font-extrabold tracking-tight tabular-nums",
-              plan.highlighted ? "text-white" : "text-gray-900"
+              plan.highlighted ? "text-white" : "text-gray-900 dark:text-gray-100"
             )}
           >
             {plan.price}
@@ -85,7 +85,7 @@ function PricingPlanCard({
             <span
               className={cn(
                 "text-sm font-medium pb-0.5 sm:pb-1",
-                plan.highlighted ? "text-white/65" : "text-gray-400"
+                plan.highlighted ? "text-white/65" : "text-gray-400 dark:text-gray-500"
               )}
             >
               {planT.period}
@@ -96,7 +96,7 @@ function PricingPlanCard({
           <p
             className={cn(
               "text-xs sm:text-sm leading-relaxed mt-2.5 max-w-prose",
-              plan.highlighted ? "text-white/85" : "text-gray-500"
+              plan.highlighted ? "text-white/85" : "text-gray-500 dark:text-gray-400"
             )}
           >
             {footnote}
@@ -105,7 +105,7 @@ function PricingPlanCard({
         <p
           className={cn(
             "text-sm leading-relaxed mt-3 sm:mt-4",
-            plan.highlighted ? "text-white/80" : "text-gray-600"
+            plan.highlighted ? "text-white/80" : "text-gray-600 dark:text-gray-300"
           )}
         >
           {planT.description}
@@ -128,7 +128,7 @@ function PricingPlanCard({
                 size={16}
                 className={cn(
                   "shrink-0 mt-0.5",
-                  plan.highlighted ? "text-white/35" : "text-gray-300"
+                  plan.highlighted ? "text-white/35" : "text-gray-300 dark:text-gray-600"
                 )}
               />
             )}
@@ -138,10 +138,10 @@ function PricingPlanCard({
                 feature.included
                   ? plan.highlighted
                     ? "text-white/95"
-                    : "text-gray-700"
+                    : "text-gray-700 dark:text-gray-300"
                   : plan.highlighted
                     ? "text-white/45"
-                    : "text-gray-400"
+                    : "text-gray-400 dark:text-gray-500"
               )}
             >
               {planT.features[fi]}
@@ -172,14 +172,14 @@ export function PricingSection() {
   const p = t.pricing;
 
   return (
-    <section id="pricing" className="relative bg-white/92 py-16 sm:py-20 px-4 sm:px-6">
+    <section id="pricing" className="relative bg-white/92 dark:bg-gray-950/85 py-16 sm:py-20 px-4 sm:px-6">
       <div className="max-w-6xl mx-auto">
         <ScrollReveal animation="fade-up" className="text-center mb-10 sm:mb-12">
           <p className="text-sm font-semibold text-[#6c47ff] uppercase tracking-widest mb-3">
             {p.sectionLabel}
           </p>
-          <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight">{p.headline}</h2>
-          <p className="text-gray-500 mt-3 max-w-2xl mx-auto text-sm sm:text-base leading-relaxed px-1">
+          <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-50 tracking-tight">{p.headline}</h2>
+          <p className="text-gray-500 dark:text-gray-400 mt-3 max-w-2xl mx-auto text-sm sm:text-base leading-relaxed px-1">
             {p.introSubtext}
           </p>
         </ScrollReveal>
@@ -189,10 +189,10 @@ export function PricingSection() {
             animation="fade-up"
             className="text-center mb-8 sm:mb-10 max-w-2xl mx-auto px-1"
           >
-            <h3 className="text-xl sm:text-2xl font-bold text-gray-900 tracking-tight">
+            <h3 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-50 tracking-tight">
               {p.jobSeeker.title}
             </h3>
-            <p className="text-gray-500 mt-2.5 text-sm sm:text-base leading-relaxed">
+            <p className="text-gray-500 dark:text-gray-400 mt-2.5 text-sm sm:text-base leading-relaxed">
               {p.jobSeeker.subtext}
             </p>
           </ScrollReveal>
@@ -221,7 +221,7 @@ export function PricingSection() {
           </div>
 
           <ScrollReveal animation="fade-up" delay={120} className="mt-8 sm:mt-10 text-center px-2">
-            <p className="text-sm sm:text-base text-gray-600 max-w-xl mx-auto leading-relaxed font-medium">
+            <p className="text-sm sm:text-base text-gray-600 dark:text-gray-300 max-w-xl mx-auto leading-relaxed font-medium">
               {p.jobSeeker.comparisonNote}
             </p>
           </ScrollReveal>
@@ -232,14 +232,14 @@ export function PricingSection() {
             animation="fade-up"
             className="text-center mb-6 sm:mb-8 max-w-3xl mx-auto px-1"
           >
-            <h3 className="text-xl sm:text-2xl font-bold text-gray-900 tracking-tight">
+            <h3 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-50 tracking-tight">
               {p.recruiter.title}
             </h3>
-            <p className="text-gray-500 mt-2.5 text-sm sm:text-base leading-relaxed">
+            <p className="text-gray-500 dark:text-gray-400 mt-2.5 text-sm sm:text-base leading-relaxed">
               {p.recruiter.subtext}
             </p>
             {"valueMessage" in p.recruiter && p.recruiter.valueMessage ? (
-              <p className="text-gray-600 mt-4 text-sm sm:text-[15px] leading-relaxed font-medium max-w-2xl mx-auto">
+              <p className="text-gray-600 dark:text-gray-300 mt-4 text-sm sm:text-[15px] leading-relaxed font-medium max-w-2xl mx-auto">
                 {p.recruiter.valueMessage}
               </p>
             ) : null}
@@ -248,7 +248,7 @@ export function PricingSection() {
                 {p.recruiter.highlights.map((line, hi) => (
                   <li
                     key={hi}
-                    className="text-xs sm:text-sm text-gray-700 bg-white/90 border border-gray-200/90 rounded-full px-3.5 py-1.5 shadow-sm max-w-full sm:max-w-[340px] leading-snug"
+                    className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 bg-white/90 dark:bg-gray-900 border border-gray-200/90 dark:border-gray-700 rounded-full px-3.5 py-1.5 shadow-sm max-w-full sm:max-w-[340px] leading-snug"
                   >
                     {line}
                   </li>
@@ -278,8 +278,8 @@ export function PricingSection() {
 
           {"upgradeWhy" in p.recruiter && p.recruiter.upgradeWhy ? (
             <ScrollReveal animation="fade-up" delay={100} className="mt-14 sm:mt-16 max-w-5xl mx-auto">
-              <div className="rounded-2xl border border-gray-200/90 bg-white/90 shadow-sm px-5 py-8 sm:px-8 sm:py-10">
-                <h4 className="text-lg sm:text-xl font-bold text-gray-900 text-center tracking-tight">
+              <div className="rounded-2xl border border-gray-200/90 dark:border-gray-700 bg-white/90 dark:bg-gray-900 shadow-sm px-5 py-8 sm:px-8 sm:py-10">
+                <h4 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-50 text-center tracking-tight">
                   {p.recruiter.upgradeWhy.title}
                 </h4>
                 <ol className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
@@ -292,13 +292,13 @@ export function PricingSection() {
                         {pi + 1}
                       </span>
                       <div>
-                        <p className="font-semibold text-gray-900">{pt.title}</p>
-                        <p className="text-sm text-gray-600 mt-1 leading-relaxed">{pt.body}</p>
+                        <p className="font-semibold text-gray-900 dark:text-gray-100">{pt.title}</p>
+                        <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 leading-relaxed">{pt.body}</p>
                       </div>
                     </li>
                   ))}
                 </ol>
-                <p className="mt-8 sm:mt-10 text-center text-xs sm:text-sm text-gray-500 leading-relaxed max-w-3xl mx-auto border-t border-gray-100 pt-6">
+                <p className="mt-8 sm:mt-10 text-center text-xs sm:text-sm text-gray-500 dark:text-gray-400 leading-relaxed max-w-3xl mx-auto border-t border-gray-100 dark:border-gray-800 pt-6">
                   {p.recruiter.upgradeWhy.footnote}
                 </p>
               </div>

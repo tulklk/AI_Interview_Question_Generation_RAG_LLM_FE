@@ -1,6 +1,21 @@
 import type { AxiosError } from "axios";
 import type { ApiErrorResponse } from "@/types/auth";
 
+const DISABLED_ACCOUNT_HINTS = [
+  "disabled",
+  "deactivated",
+  "inactive",
+  "locked",
+  "bị vô hiệu hóa",
+  "bi vo hieu hoa",
+  "vô hiệu hóa",
+  "vo hieu hoa",
+  "bị khóa",
+  "bi khoa",
+  "tài khoản đã bị",
+  "tai khoan da bi",
+];
+
 const UNVERIFIED_HINTS = [
   "verif",
   "unverified",
@@ -39,4 +54,20 @@ export function isUnverifiedLoginError(err: unknown): boolean {
 
   const text = collectErrorText(axiosErr);
   return UNVERIFIED_HINTS.some((hint) => text.includes(hint));
+}
+
+export function isDisabledAccountLoginError(err: unknown): boolean {
+  const axiosErr = err as AxiosError<ApiErrorResponse>;
+  if (!axiosErr.response) return false;
+
+  const text = collectErrorText(axiosErr);
+  return DISABLED_ACCOUNT_HINTS.some((hint) => text.includes(hint));
+}
+
+export function getLoginApiErrorMessage(err: unknown): string | undefined {
+  const axiosErr = err as AxiosError<ApiErrorResponse>;
+  const data = axiosErr.response?.data as Record<string, unknown> | undefined;
+  if (typeof data?.error === "string" && data.error.trim()) return data.error.trim();
+  if (typeof data?.message === "string" && data.message.trim()) return data.message.trim();
+  return undefined;
 }

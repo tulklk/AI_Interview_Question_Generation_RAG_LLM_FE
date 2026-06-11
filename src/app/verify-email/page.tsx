@@ -8,6 +8,7 @@ import { verifyEmail, resendVerification } from "@/lib/api/auth";
 import type { AxiosError } from "axios";
 import { useLanguage } from "@/context/language-context";
 import { useToast } from "@/context/toast-context";
+import { AuthPageToolbar } from "@/components/auth/auth-page-toolbar";
 
 const COOLDOWN = 60;
 
@@ -83,9 +84,8 @@ function VerifyTokenView({ token }: { token: string }) {
       await resendVerification(resendEmail.trim());
       setCooldown(COOLDOWN);
       addToast("success", vp.resendSuccess);
-    } catch (err) {
-      const axiosErr = err as AxiosError<{ message?: string }>;
-      addToast("error", axiosErr.response?.data?.message ?? "Failed to resend. Please try again.");
+    } catch {
+      addToast("error", vp.resendFailed);
     } finally {
       setResendLoading(false);
     }
@@ -190,9 +190,8 @@ function WaitingView({ email }: { email: string }) {
       await resendVerification(email);
       setResendDone(true);
       addToast("success", vp.resendSuccess);
-    } catch (err) {
-      const axiosErr = err as AxiosError<{ message?: string }>;
-      addToast("error", axiosErr.response?.data?.message ?? "Failed to resend. Please try again.");
+    } catch {
+      addToast("error", vp.resendFailed);
     } finally {
       setResendLoading(false);
     }
@@ -279,7 +278,10 @@ function VerifyEmailContent() {
 
 export default function VerifyEmailPage() {
   return (
-    <div className="flex h-screen items-center justify-center bg-white px-8">
+    <div className="relative flex h-screen items-center justify-center bg-white dark:bg-gray-950 px-8">
+      <div className="absolute top-6 right-8 z-10">
+        <AuthPageToolbar />
+      </div>
       <Suspense>
         <VerifyEmailContent />
       </Suspense>
