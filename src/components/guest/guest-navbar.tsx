@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Menu, X } from "lucide-react";
 import { LanguageSwitcher } from "@/components/shared/language-switcher";
+import { ThemeToggle } from "@/components/shared/theme-toggle";
 import { useLanguage } from "@/context/language-context";
 import { BrandLogo } from "@/components/shared/brand-logo";
 
@@ -29,8 +30,10 @@ export function GuestNavbar() {
 
   return (
     <header
-      className={`sticky top-0 z-50 bg-white/95 transition-shadow duration-200 animate-slide-down ${
-        scrolled ? "shadow-sm border-b border-gray-200/60" : "border-b border-transparent"
+      className={`sticky top-0 z-50 bg-white/95 dark:bg-gray-950/95 transition-shadow duration-200 animate-slide-down ${
+        scrolled
+          ? "shadow-sm border-b border-gray-200/60 dark:border-gray-800/80"
+          : "border-b border-transparent"
       }`}
     >
       <div className="max-w-6xl mx-auto px-6 h-[72px] flex items-center gap-8">
@@ -46,7 +49,7 @@ export function GuestNavbar() {
             <a
               key={link.href}
               href={link.href}
-              className="px-3 py-1.5 text-sm font-medium text-gray-500 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-colors"
+              className="px-3 py-1.5 text-sm font-medium text-gray-500 hover:text-gray-900 hover:bg-gray-50 dark:text-gray-400 dark:hover:text-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
             >
               {link.label}
             </a>
@@ -54,11 +57,12 @@ export function GuestNavbar() {
         </nav>
 
         <div className="hidden md:flex items-center gap-2 ml-auto">
+          <ThemeToggle />
           <LanguageSwitcher />
-          <div className="w-px h-5 bg-gray-200" />
+          <div className="w-px h-5 bg-gray-200 dark:bg-gray-700" />
           <Link
             href="/login"
-            className="px-4 py-2 text-sm font-semibold text-gray-700 hover:text-[#6c47ff] hover:bg-[#6c47ff]/5 rounded-lg transition-colors"
+            className="px-4 py-2 text-sm font-semibold text-gray-700 hover:text-[#6c47ff] hover:bg-[#6c47ff]/5 dark:text-gray-300 dark:hover:text-[#a78bff] dark:hover:bg-[#6c47ff]/10 rounded-lg transition-colors"
           >
             {t.common.login}
           </Link>
@@ -71,7 +75,7 @@ export function GuestNavbar() {
         </div>
 
         <button
-          className="md:hidden ml-auto p-2 rounded-lg text-gray-500 hover:bg-gray-50 transition-colors"
+          className="md:hidden ml-auto p-2 rounded-lg text-gray-500 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-gray-800 transition-colors"
           onClick={() => setMobileOpen((v) => !v)}
         >
           {mobileOpen ? <X size={20} /> : <Menu size={20} />}
@@ -79,24 +83,25 @@ export function GuestNavbar() {
       </div>
 
       {mobileOpen && (
-        <div className="md:hidden border-t border-gray-100 bg-white px-6 py-4 space-y-1 animate-fade-up">
+        <div className="md:hidden border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-950 px-6 py-4 space-y-1 animate-fade-up">
           {navLinks.map((link) => (
             <a
               key={link.href}
               href={link.href}
               onClick={() => setMobileOpen(false)}
-              className="block px-3 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg transition-colors"
+              className="block px-3 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800 rounded-lg transition-colors"
             >
               {link.label}
             </a>
           ))}
-          <div className="pt-3 border-t border-gray-100 flex flex-col gap-2">
-            <div className="flex justify-start px-1 pb-1">
+          <div className="pt-3 border-t border-gray-100 dark:border-gray-800 flex flex-col gap-2">
+            <div className="flex items-center gap-2 px-1 pb-1">
+              <ThemeToggle variant="light" />
               <LanguageSwitcher variant="light" />
             </div>
             <Link
               href="/login"
-              className="block px-3 py-2.5 text-sm font-semibold text-center text-gray-700 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+              className="block px-3 py-2.5 text-sm font-semibold text-center text-gray-700 border border-gray-200 rounded-lg hover:bg-gray-50 dark:text-gray-300 dark:border-gray-700 dark:hover:bg-gray-800 transition-colors"
             >
               {t.common.login}
             </Link>

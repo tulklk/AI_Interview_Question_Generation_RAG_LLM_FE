@@ -11,7 +11,7 @@ export function HeroSection() {
   const h = t.hero;
 
   return (
-    <section id="home" className="relative py-20 px-6 overflow-hidden bg-white/92">
+    <section id="home" className="relative py-20 px-6 overflow-hidden bg-white/92 dark:bg-gray-950/85">
       {/* ── Hero holographic accents ── */}
       <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
         <div
@@ -41,7 +41,7 @@ export function HeroSection() {
           </div>
 
           <h1
-            className="text-4xl sm:text-[2.5rem] lg:text-[2.75rem] font-extrabold text-gray-900 leading-[1.1] tracking-tight mb-5 animate-fade-up"
+            className="text-4xl sm:text-[2.5rem] lg:text-[2.75rem] font-extrabold text-gray-900 dark:text-gray-50 leading-[1.1] tracking-tight mb-5 animate-fade-up"
             style={{ animationDelay: "80ms" }}
           >
             {h.headline1}
@@ -55,7 +55,7 @@ export function HeroSection() {
           </h1>
 
           <p
-            className="text-lg text-gray-500 leading-relaxed mb-8 max-w-md animate-fade-up"
+            className="text-lg text-gray-500 dark:text-gray-400 leading-relaxed mb-8 max-w-md animate-fade-up"
             style={{ animationDelay: "180ms" }}
           >
             {h.subtext}
@@ -66,7 +66,7 @@ export function HeroSection() {
             style={{ animationDelay: "280ms" }}
           >
             {[h.point1, h.point2, h.point3].map((point) => (
-              <span key={point} className="flex items-center gap-1.5 text-sm text-gray-600">
+              <span key={point} className="flex items-center gap-1.5 text-sm text-gray-600 dark:text-gray-300">
                 <CheckCircle2 size={15} className="text-emerald-500 shrink-0" />
                 {point}
               </span>
@@ -86,7 +86,7 @@ export function HeroSection() {
             </Link>
             <Link
               href="/login"
-              className="inline-flex items-center gap-2 text-sm font-semibold text-gray-700 border border-gray-200 hover:border-gray-300 hover:bg-gray-50 px-6 py-3 rounded-lg transition-colors"
+              className="inline-flex items-center gap-2 text-sm font-semibold text-gray-700 border border-gray-200 hover:border-gray-300 hover:bg-gray-50 dark:text-gray-200 dark:border-gray-700 dark:hover:border-gray-600 dark:hover:bg-gray-800 px-6 py-3 rounded-lg transition-colors"
             >
               {h.ctaSecondary}
               <ArrowRight size={15} />
@@ -100,39 +100,39 @@ export function HeroSection() {
           style={{ animationDelay: "200ms" }}
         >
         <div className="animate-float">
-          <div className="bg-white rounded-xl border border-gray-200 shadow-xl overflow-hidden">
-            <div className="bg-[#f5f7fb] border-b border-gray-100 px-5 py-3.5 flex items-center gap-3">
+          <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 shadow-xl overflow-hidden">
+            <div className="bg-[#f5f7fb] dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700 px-5 py-3.5 flex items-center gap-3">
               <div className="flex gap-1.5">
                 <span className="w-3 h-3 rounded-full bg-red-400" />
                 <span className="w-3 h-3 rounded-full bg-amber-400" />
                 <span className="w-3 h-3 rounded-full bg-emerald-400" />
               </div>
-              <span className="text-xs font-medium text-gray-500 ml-1">{h.mockupTitle}</span>
+              <span className="text-xs font-medium text-gray-500 dark:text-gray-400 ml-1">{h.mockupTitle}</span>
             </div>
 
             <div className="p-5 space-y-4">
-              <div className="rounded-lg border border-gray-200 bg-white p-4">
+              <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-4">
                 <div className="flex items-center gap-2 mb-3">
-                  <div className="w-5 h-5 rounded-md bg-gray-100 flex items-center justify-center">
+                  <div className="w-5 h-5 rounded-md bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
                     <span className="text-gray-400 text-[10px]">📄</span>
                   </div>
-                  <span className="text-xs font-semibold text-gray-700">{h.mockupJdLabel}</span>
+                  <span className="text-xs font-semibold text-gray-700 dark:text-gray-200">{h.mockupJdLabel}</span>
                 </div>
-                <div className="text-xs text-gray-400 leading-relaxed bg-gray-50 rounded-lg p-3 border border-gray-100">
+                <div className="text-xs text-gray-400 dark:text-gray-500 leading-relaxed bg-gray-50 dark:bg-gray-800 rounded-lg p-3 border border-gray-100 dark:border-gray-700">
                   {h.mockupJdText}
                 </div>
               </div>
 
-              <div className="rounded-lg border border-gray-100 bg-white p-4">
+              <div className="rounded-lg border border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-900 p-4">
                 <div className="flex items-center gap-2 mb-2.5">
                   <Tag size={13} className="text-[#6c47ff]" />
-                  <span className="text-xs font-semibold text-gray-700">{h.mockupKeywordsLabel}</span>
+                  <span className="text-xs font-semibold text-gray-700 dark:text-gray-200">{h.mockupKeywordsLabel}</span>
                 </div>
                 <div className="flex flex-wrap gap-1.5">
                   {keywords.map((k) => (
                     <span
                       key={k}
-                      className="text-xs font-medium text-gray-700 bg-gray-100 hover:bg-[#6c47ff]/10 hover:text-[#6c47ff] px-2.5 py-1 rounded-full transition-colors"
+                      className="text-xs font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 hover:bg-[#6c47ff]/10 hover:text-[#6c47ff] px-2.5 py-1 rounded-full transition-colors"
                     >
                       {k}
                     </span>
@@ -140,26 +140,26 @@ export function HeroSection() {
                 </div>
               </div>
 
-              <div className="rounded-lg border border-gray-100 bg-white p-4">
+              <div className="rounded-lg border border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-900 p-4">
                 <div className="flex items-center gap-2 mb-3">
                   <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-700">
                     Medium
                   </span>
-                  <span className="text-xs font-medium text-gray-500 bg-gray-100 px-2.5 py-0.5 rounded-full">
+                  <span className="text-xs font-medium text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-2.5 py-0.5 rounded-full">
                     Next.js
                   </span>
                 </div>
-                <p className="text-sm font-medium text-gray-800 leading-relaxed">
+                <p className="text-sm font-medium text-gray-800 dark:text-gray-200 leading-relaxed">
                   {h.mockupQuestion}
                 </p>
-                <div className="mt-3 rounded-lg bg-[#f5f3ff] border border-[#6c47ff]/15 p-3">
+                <div className="mt-3 rounded-lg bg-[#f5f3ff] dark:bg-[#6c47ff]/10 border border-[#6c47ff]/15 p-3">
                   <div className="flex items-center gap-1.5 mb-1.5">
                     <Sparkles size={11} className="text-[#6c47ff]" />
                     <span className="text-[10px] font-semibold text-[#6c47ff]">
                       {h.mockupAiLabel}
                     </span>
                   </div>
-                  <p className="text-xs text-gray-600 leading-relaxed">{h.mockupAnswer}</p>
+                  <p className="text-xs text-gray-600 dark:text-gray-300 leading-relaxed">{h.mockupAnswer}</p>
                 </div>
               </div>
             </div>

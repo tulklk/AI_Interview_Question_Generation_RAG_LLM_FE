@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Mail, ArrowLeft, CheckCircle2 } from "lucide-react";
-import type { AxiosError } from "axios";
 import { forgotPassword } from "@/lib/api/auth";
 import { useLanguage } from "@/context/language-context";
 import { useToast } from "@/context/toast-context";
@@ -48,9 +47,8 @@ export default function ForgotPasswordPage() {
       await forgotPassword(email.trim());
       setSent(true);
       setCooldown(COOLDOWN);
-    } catch (err) {
-      const axiosErr = err as AxiosError<{ message?: string }>;
-      addToast("error", axiosErr.response?.data?.message ?? fp.sendFailed);
+    } catch {
+      addToast("error", fp.sendFailed);
     } finally {
       setLoading(false);
     }
@@ -62,22 +60,21 @@ export default function ForgotPasswordPage() {
     try {
       await forgotPassword(email.trim());
       setCooldown(COOLDOWN);
-    } catch (err) {
-      const axiosErr = err as AxiosError<{ message?: string }>;
-      addToast("error", axiosErr.response?.data?.message ?? fp.sendFailed);
+    } catch {
+      addToast("error", fp.sendFailed);
     } finally {
       setLoading(false);
     }
   }
 
   const inputBase =
-    "w-full pl-10 pr-4 py-2.5 text-sm border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors placeholder:text-gray-400";
+    "w-full pl-10 pr-4 py-2.5 text-sm border border-gray-200 rounded-lg bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors placeholder:text-gray-400 dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100 dark:placeholder:text-gray-500";
   const inputErrorCls =
     "border-red-300 focus:border-red-400 focus:ring-red-100";
 
   return (
-    <div className="relative flex h-screen items-center justify-center bg-white px-8">
-      <div className="absolute top-6 right-8 animate-fade-in z-10">
+    <div className="relative flex min-h-screen flex-col bg-white dark:bg-gray-950">
+      <div className="absolute top-6 right-8 z-10 animate-fade-in">
         <BrandLogo
           className="justify-end"
           logoClassName="w-10 h-10"
@@ -86,16 +83,17 @@ export default function ForgotPasswordPage() {
         />
       </div>
 
-      <div className="w-full max-w-sm mx-auto animate-fade-up">
+      <div className="flex flex-1 items-center justify-center px-8 py-16">
+        <div className="w-full max-w-sm mx-auto animate-fade-up">
         {sent ? (
           <div className="text-center">
-            <div className="w-16 h-16 rounded-full bg-emerald-50 flex items-center justify-center mx-auto mb-6">
-              <CheckCircle2 size={28} className="text-emerald-600" />
+            <div className="w-16 h-16 rounded-full bg-emerald-50 dark:bg-emerald-950/40 flex items-center justify-center mx-auto mb-6">
+              <CheckCircle2 size={28} className="text-emerald-600 dark:text-emerald-400" />
             </div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">{fp.successTitle}</h2>
-            <p className="text-sm text-gray-500 mb-4">{fp.successSubtitle}</p>
-            <p className="text-xs text-gray-400 mb-1">{fp.successEmailHint}</p>
-            <p className="text-sm font-medium text-gray-700 mb-6 break-all">{email}</p>
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">{fp.successTitle}</h2>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">{fp.successSubtitle}</p>
+            <p className="text-xs text-gray-400 dark:text-gray-500 mb-1">{fp.successEmailHint}</p>
+            <p className="text-sm font-medium text-gray-700 dark:text-gray-200 mb-6 break-all">{email}</p>
 
             <button
               type="button"
@@ -114,7 +112,7 @@ export default function ForgotPasswordPage() {
             <div>
               <Link
                 href="/login"
-                className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 transition-colors"
+                className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
               >
                 <ArrowLeft size={14} />
                 {fp.backToLogin}
@@ -123,15 +121,17 @@ export default function ForgotPasswordPage() {
           </div>
         ) : (
           <>
-            <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center mb-6">
-              <Mail size={24} className="text-primary" />
+            <div className="text-center mb-7">
+              <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center mb-6 mx-auto">
+                <Mail size={24} className="text-primary" />
+              </div>
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-1">{fp.title}</h2>
+              <p className="text-sm text-gray-500 dark:text-gray-400">{fp.subtitle}</p>
             </div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-1">{fp.title}</h2>
-            <p className="text-sm text-gray-500 mb-7">{fp.subtitle}</p>
 
             <form onSubmit={handleSubmit} className="space-y-4" noValidate>
               <div>
-                <label className="text-sm font-medium text-gray-700 block mb-1.5">
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-400 block mb-1.5">
                   {fp.emailLabel}
                 </label>
                 <div className="relative">
@@ -173,7 +173,7 @@ export default function ForgotPasswordPage() {
             <div className="text-center mt-6">
               <Link
                 href="/login"
-                className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 transition-colors"
+                className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
               >
                 <ArrowLeft size={14} />
                 {fp.backToLogin}
@@ -181,6 +181,7 @@ export default function ForgotPasswordPage() {
             </div>
           </>
         )}
+        </div>
       </div>
     </div>
   );

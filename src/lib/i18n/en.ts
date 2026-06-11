@@ -4,6 +4,8 @@ export const en = {
     getStarted: "Get Started",
     logout: "Log out",
     tryFree: "Try for Free",
+    switchToLight: "Switch to light mode",
+    switchToDark: "Switch to dark mode",
   },
 
   nav: {
@@ -524,7 +526,7 @@ export const en = {
       "Please verify {{email}} before signing in. Check your inbox or resend the link below.",
     unverifiedResend: "Resend email",
     unverifiedClose: "Close",
-    accountDisabled: "Your account has been disabled. Please contact support.",
+    accountDisabled: "Your account has been disabled. Please contact the administrator.",
     loginFailed: "Login failed. Please try again.",
     selectRoleTitle: "Sign in as",
     continueWithGoogle: "Continue with Google",
@@ -671,6 +673,7 @@ export const en = {
     checkSpam: "Didn't receive it? Check your spam folder.",
     resendButton: "Resend verification email",
     resendSuccess: "Verification email resent.",
+    resendFailed: "Failed to resend verification email. Please try again.",
     backToLogin: "Back to login",
     verifyingTitle: "Verifying your email...",
     verifyingSubtitle: "Please wait a moment.",
@@ -1543,6 +1546,10 @@ export const en = {
     finishBtn: "Finish & Get Feedback",
     aiThinking: "AI is evaluating your answer...",
     exitConfirm: "Are you sure you want to exit? Your progress will be lost.",
+    exitConfirmTitle: "Exit practice?",
+    exitConfirmMessage: "Your progress in this session will be lost. Are you sure you want to leave?",
+    exitConfirmBtn: "Exit",
+    exitCancelBtn: "Stay",
   },
 
   jobseekerFeedbackPage: {
@@ -1674,6 +1681,9 @@ export const en = {
     languageDescription: "Choose your preferred display language",
     appearanceTitle: "Appearance",
     appearanceDescription: "Customize the look of the interface",
+    themeLight: "Light",
+    themeDark: "Dark",
+    themeSystem: "System",
     notificationsTitle: "Notifications",
     notificationsDescription: "Manage how you receive updates",
     notificationLabels: {

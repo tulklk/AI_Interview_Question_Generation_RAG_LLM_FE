@@ -13,6 +13,14 @@ import {
   HR_SUBSCRIPTION_FEATURE_ORDER,
   isOverPlanUsageQuota,
 } from "@/data/hr-subscription";
+import {
+  portalCard,
+  portalDivider,
+  portalHeading,
+  portalIconWell,
+  portalSubtext,
+  portalTableRow,
+} from "@/lib/portal-ui";
 
 const LIMIT_ROW_KEYS = [
   "jdsPerMonth",
@@ -55,15 +63,15 @@ export function HrBillingSubscription() {
   return (
     <div className="space-y-10">
       <header className="space-y-3 max-w-3xl">
-        <h2 className="text-xl sm:text-2xl font-bold text-gray-900 tracking-tight">
+        <h2 className={cn("text-xl sm:text-2xl font-bold tracking-tight", portalHeading)}>
           {sub.sectionTitle}
         </h2>
-        <p className="text-sm sm:text-base text-gray-600 leading-relaxed">{sub.sectionSubtitle}</p>
-        <p className="text-sm text-gray-700 font-medium leading-relaxed border-l-4 border-[#6c47ff] pl-4">
+        <p className={cn("text-sm sm:text-base leading-relaxed", portalSubtext)}>{sub.sectionSubtitle}</p>
+        <p className={cn("text-sm font-medium leading-relaxed border-l-4 border-[#6c47ff] pl-4", portalHeading)}>
           {sub.valueLine}
         </p>
-        <p className="text-xs sm:text-sm text-gray-500 leading-relaxed">{sub.roiLine}</p>
-        <p className="text-xs sm:text-sm text-gray-600 leading-relaxed italic">{sub.capabilitiesIntro}</p>
+        <p className={cn("text-xs sm:text-sm leading-relaxed", portalSubtext)}>{sub.roiLine}</p>
+        <p className={cn("text-xs sm:text-sm leading-relaxed italic", portalSubtext)}>{sub.capabilitiesIntro}</p>
       </header>
 
       <div className="bg-gradient-to-br from-[#6c47ff] to-[#8b65ff] rounded-xl p-5 relative overflow-hidden">
@@ -102,7 +110,7 @@ export function HrBillingSubscription() {
       </div>
 
       <div ref={plansRef} className="space-y-4">
-        <h3 className="text-base font-semibold text-gray-900">{sub.plansTitle}</h3>
+        <h3 className={cn("text-base font-semibold", portalHeading)}>{sub.plansTitle}</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 items-stretch min-w-0">
           {HR_PLAN_IDS.map((id) => {
             const def = HR_PLANS[id];
@@ -114,9 +122,10 @@ export function HrBillingSubscription() {
               <div
                 key={id}
                 className={cn(
-                  "rounded-xl border p-5 flex flex-col h-full min-h-0 min-w-0 overflow-hidden relative bg-white transition-shadow",
-                  recommended && "ring-2 ring-[#6c47ff] ring-offset-2 shadow-md",
-                  active ? "border-[#6c47ff] border-2" : "border-gray-200"
+                  "rounded-xl border p-5 flex flex-col h-full min-h-0 min-w-0 overflow-hidden relative transition-shadow",
+                  portalCard,
+                  recommended && "ring-2 ring-[#6c47ff] ring-offset-2 dark:ring-offset-gray-900 shadow-md",
+                  active ? "border-[#6c47ff] border-2" : "border-gray-200 dark:border-gray-700"
                 )}
               >
                 {recommended && (
@@ -124,31 +133,32 @@ export function HrBillingSubscription() {
                     <span className="pointer-events-auto text-[10px] font-bold uppercase tracking-wide text-white bg-[#6c47ff] px-2.5 py-1 rounded-full shadow-sm">
                       {sub.popular}
                     </span>
-                    <span className="pointer-events-auto text-[10px] font-semibold text-[#6c47ff] bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-100">
+                    <span className="pointer-events-auto text-[10px] font-semibold text-[#6c47ff] bg-indigo-50 dark:bg-indigo-950/40 px-2 py-0.5 rounded-full border border-indigo-100 dark:border-indigo-900">
                       {sub.recommendedSubtitle}
                     </span>
                   </div>
                 )}
 
                 <div className={cn("shrink-0 space-y-1", recommended ? "pt-10" : "pt-1")}>
-                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                  <p className={cn("text-xs font-semibold uppercase tracking-wide", portalSubtext)}>
                     {planNames[id]}
                   </p>
                   <div className="flex items-baseline gap-1 flex-wrap">
-                    <span className="text-3xl font-bold text-gray-900">{formatUsdPrice(def.priceUsd)}</span>
+                    <span className={cn("text-3xl font-bold", portalHeading)}>{formatUsdPrice(def.priceUsd)}</span>
                     {def.priceUsd !== null ? (
-                      <span className="text-sm text-gray-400">{t.settingsPage.billing.perMonth}</span>
+                      <span className={cn("text-sm", portalSubtext)}>{t.settingsPage.billing.perMonth}</span>
                     ) : null}
                   </div>
                   {id === "basic" && (
-                    <p className="text-[11px] text-gray-500">{sub.priceFreeTrialNote}</p>
+                    <p className={cn("text-[11px]", portalSubtext)}>{sub.priceFreeTrialNote}</p>
                   )}
-                  <p className="text-xs text-gray-600 mt-2 leading-relaxed break-words">{planSub[id]}</p>
+                  <p className={cn("text-xs mt-2 leading-relaxed break-words", portalSubtext)}>{planSub[id]}</p>
                 </div>
 
                 <ul
                   className={cn(
-                    "mt-3 flex-1 min-h-0 overflow-y-auto overscroll-y-contain border-t border-gray-100 pt-3 space-y-2 pr-0.5",
+                    "mt-3 flex-1 min-h-0 overflow-y-auto overscroll-y-contain border-t pt-3 space-y-2 pr-0.5",
+                    portalDivider,
                     "[scrollbar-gutter:stable]"
                   )}
                 >
@@ -158,13 +168,13 @@ export function HrBillingSubscription() {
                         {row.included ? (
                           <Check size={14} className="text-emerald-600" aria-hidden />
                         ) : (
-                          <Minus size={14} className="text-gray-300" aria-hidden />
+                          <Minus size={14} className="text-gray-300 dark:text-gray-600" aria-hidden />
                         )}
                       </span>
                       <span
                         className={cn(
                           "min-w-0 break-words",
-                          row.included ? "text-gray-800 font-medium" : "text-gray-400 line-through"
+                          row.included ? cn("font-medium", portalHeading) : "text-gray-400 dark:text-gray-500 line-through"
                         )}
                       >
                         {row.text}
@@ -173,9 +183,9 @@ export function HrBillingSubscription() {
                   ))}
                 </ul>
 
-                <div className="shrink-0 mt-auto pt-4 border-t border-gray-100 space-y-2">
+                <div className={cn("shrink-0 mt-auto pt-4 border-t space-y-2", portalDivider)}>
                   {id === "enterprise" && (
-                    <p className="text-[10px] text-gray-400 leading-snug break-words">{sub.enterpriseDemoNote}</p>
+                    <p className={cn("text-[10px] leading-snug break-words", portalSubtext)}>{sub.enterpriseDemoNote}</p>
                   )}
                   <button
                     type="button"
@@ -184,10 +194,10 @@ export function HrBillingSubscription() {
                     className={cn(
                       "w-full text-sm font-semibold py-2.5 rounded-lg transition-colors",
                       active
-                        ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                        ? cn("cursor-not-allowed", portalIconWell, portalSubtext)
                         : recommended
                           ? "bg-[#6c47ff] text-white hover:bg-[#5535dd] shadow-sm"
-                          : "bg-gray-900 text-white hover:bg-gray-800"
+                          : "bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-200"
                     )}
                   >
                     {active ? sub.currentPlanBtn : planCta[id]}
@@ -200,41 +210,41 @@ export function HrBillingSubscription() {
       </div>
 
       <section className="space-y-4">
-        <h3 className="text-base font-semibold text-gray-900">{sub.whyUpgradeTitle}</h3>
+        <h3 className={cn("text-base font-semibold", portalHeading)}>{sub.whyUpgradeTitle}</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
           {sub.whyUpgradePoints.map((pt, i) => (
             <div
               key={i}
-              className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm flex flex-col gap-2"
+              className={cn(portalCard, "p-4 shadow-sm flex flex-col gap-2")}
             >
-              <p className="text-sm font-bold text-gray-900">{pt.title}</p>
-              <p className="text-xs text-gray-600 leading-relaxed">{pt.body}</p>
+              <p className={cn("text-sm font-bold", portalHeading)}>{pt.title}</p>
+              <p className={cn("text-xs leading-relaxed", portalSubtext)}>{pt.body}</p>
             </div>
           ))}
         </div>
-        <p className="text-xs text-gray-500 max-w-3xl leading-relaxed">{sub.premiumNote}</p>
+        <p className={cn("text-xs max-w-3xl leading-relaxed", portalSubtext)}>{sub.premiumNote}</p>
       </section>
 
       <div>
-        <h3 className="text-base font-semibold text-gray-900 mb-3">{sub.compareTitle}</h3>
-        <div className="overflow-x-auto rounded-xl border border-gray-200">
+        <h3 className={cn("text-base font-semibold mb-3", portalHeading)}>{sub.compareTitle}</h3>
+        <div className={cn("overflow-x-auto rounded-xl border", portalDivider)}>
           <table className="w-full text-xs min-w-[720px]">
             <thead>
-              <tr className="bg-gray-50 border-b border-gray-200">
-                <th className="text-left px-3 py-2 font-semibold text-gray-600 w-[26%]">
+              <tr className={cn("border-b", portalDivider, portalIconWell)}>
+                <th className={cn("text-left px-3 py-2 font-semibold w-[26%]", portalSubtext)}>
                   {sub.featureColumn}
                 </th>
                 {HR_PLAN_IDS.map((pid) => (
-                  <th key={pid} className="text-center px-2 py-2 font-semibold text-gray-700">
+                  <th key={pid} className={cn("text-center px-2 py-2 font-semibold", portalHeading)}>
                     {planNames[pid]}
                   </th>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody className={cn("divide-y", portalDivider)}>
               {HR_SUBSCRIPTION_FEATURE_ORDER.map((fid) => (
-                <tr key={fid} className="bg-white">
-                  <td className="px-3 py-2 text-gray-700">{featureLabels[fid]}</td>
+                <tr key={fid} className={portalTableRow}>
+                  <td className={cn("px-3 py-2", portalHeading)}>{featureLabels[fid]}</td>
                   {HR_PLAN_IDS.map((pid) => {
                     const ok = HR_PLANS[pid].features[fid];
                     return (
@@ -242,7 +252,7 @@ export function HrBillingSubscription() {
                         {ok ? (
                           <Check size={14} className="inline text-emerald-600" aria-label={sub.included} />
                         ) : (
-                          <span className="text-gray-300">{sub.notIncluded}</span>
+                          <span className="text-gray-300 dark:text-gray-600">{sub.notIncluded}</span>
                         )}
                       </td>
                     );
@@ -250,8 +260,8 @@ export function HrBillingSubscription() {
                 </tr>
               ))}
               {LIMIT_ROW_KEYS.map((rowKey) => (
-                <tr key={rowKey} className="bg-gray-50/80">
-                  <td className="px-3 py-2 text-gray-600 font-medium">{limitLabels[rowKey]}</td>
+                <tr key={rowKey} className={portalIconWell}>
+                  <td className={cn("px-3 py-2 font-medium", portalSubtext)}>{limitLabels[rowKey]}</td>
                   {HR_PLAN_IDS.map((pid) => {
                     const L = HR_PLANS[pid].limits;
                     let val: string | number = "";
@@ -273,7 +283,7 @@ export function HrBillingSubscription() {
                     if (rowKey === "maxSeats") val = L.maxSeats >= 9999 ? "∞" : L.maxSeats;
                     if (rowKey === "maxQuestionsPerRun") val = L.maxQuestionsPerRun;
                     return (
-                      <td key={pid} className="text-center px-2 py-2 font-semibold text-gray-800">
+                      <td key={pid} className={cn("text-center px-2 py-2 font-semibold", portalHeading)}>
                         {val}
                       </td>
                     );
@@ -283,11 +293,11 @@ export function HrBillingSubscription() {
             </tbody>
           </table>
         </div>
-        <p className="text-[11px] text-gray-400 mt-2">{sub.limitsNote}</p>
+        <p className={cn("text-[11px] mt-2", portalSubtext)}>{sub.limitsNote}</p>
       </div>
 
       {isOverPlanUsageQuota(planId) && (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+        <div className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40 px-4 py-3 text-sm text-amber-950 dark:text-amber-200">
           <p className="font-semibold mb-1">{t.hrSubscription.quotaExceededTitle}</p>
           <p>
             {t.hrSubscription.quotaExceededBody}{" "}

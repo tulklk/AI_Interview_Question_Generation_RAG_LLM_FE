@@ -10,6 +10,16 @@ import { useLanguage } from "@/context/language-context";
 import { StatCard } from "@/components/jobseeker/ui/stat-card";
 import { Pill, getScoreBadgeClass } from "@/components/jobseeker/ui/pill";
 import { CARD_SHADOW } from "@/components/jobseeker/ui/constants";
+import {
+  portalCardShadow,
+  portalDivider,
+  portalHeadingAlt,
+  portalIconWell,
+  portalInput,
+  portalMutedBg,
+  portalSubtextAlt,
+  portalTableRow,
+} from "@/lib/portal-ui";
 
 export function HistoryBoard() {
   const { t } = useLanguage();
@@ -55,30 +65,36 @@ export function HistoryBoard() {
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2 }}
-        className="bg-white rounded-xl p-4 mb-4 flex items-center gap-3"
+        className={cn(portalCardShadow, "p-4 mb-4 flex items-center gap-3")}
         style={{ boxShadow: CARD_SHADOW }}
       >
-        <div className="flex items-center gap-2 flex-1 border border-[#E5E7EB] rounded-lg px-3 h-[38px] focus-within:border-primary focus-within:shadow-[0_0_0_3px_rgba(108,71,255,0.1)] transition-all">
-          <Search size={14} className="text-gray-400 shrink-0" />
+        <div className={cn(
+          "flex items-center gap-2 flex-1 rounded-lg px-3 h-[38px] focus-within:border-primary focus-within:shadow-[0_0_0_3px_rgba(108,71,255,0.1)] transition-all",
+          portalInput
+        )}>
+          <Search size={14} className="text-gray-400 dark:text-gray-500 shrink-0" />
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder={p.filters.searchPlaceholder}
-            className="flex-1 text-[12px] text-[#111827] placeholder:text-[#9CA3AF] bg-transparent outline-none"
+            className="flex-1 text-[12px] bg-transparent outline-none"
           />
         </div>
         <div className="relative">
           <select
             value={timeFilter}
             onChange={(e) => setTimeFilter(e.target.value)}
-            className="appearance-none border border-[#E5E7EB] rounded-lg pl-3 pr-8 h-[38px] text-[12px] text-[#111827] bg-white outline-none cursor-pointer focus:border-primary transition-all"
+            className={cn(
+              "appearance-none rounded-lg pl-3 pr-8 h-[38px] text-[12px] outline-none cursor-pointer focus:border-primary transition-all",
+              portalInput
+            )}
           >
             {[p.filters.allTime, p.filters.thisWeek, p.filters.thisMonth].map((opt) => (
               <option key={opt}>{opt}</option>
             ))}
           </select>
-          <ChevronDown size={13} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+          <ChevronDown size={13} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 pointer-events-none" />
         </div>
       </motion.div>
 
@@ -87,27 +103,30 @@ export function HistoryBoard() {
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.25 }}
-        className="bg-white rounded-xl overflow-hidden"
+        className={cn(portalCardShadow, "overflow-hidden")}
         style={{ boxShadow: CARD_SHADOW }}
       >
         {/* Header */}
-        <div className="grid grid-cols-[2.5fr_1fr_1fr_1fr_2fr_auto] gap-4 px-6 py-3 bg-[#F9FAFB] border-b border-gray-100">
+        <div className={cn("grid grid-cols-[2.5fr_1fr_1fr_1fr_2fr_auto] gap-4 px-6 py-3 border-b", portalIconWell, portalDivider)}>
           {[p.table.session, p.table.date, p.table.score, p.table.duration, p.table.skills, p.table.actions].map((col) => (
-            <span key={col} className="text-[11px] font-[700] text-[#6B7280] uppercase tracking-wide">{col}</span>
+            <span key={col} className={cn("text-[11px] font-[700] uppercase tracking-wide", portalSubtextAlt)}>{col}</span>
           ))}
         </div>
 
         {filtered.length === 0 ? (
-          <p className="text-center py-12 text-[14px] text-[#6B7280]">{p.noHistory}</p>
+          <p className={cn("text-center py-12 text-[14px]", portalSubtextAlt)}>{p.noHistory}</p>
         ) : (
-          <ul className="divide-y divide-gray-100">
+          <ul className={cn("divide-y", portalDivider)}>
             {filtered.map((session, i) => (
               <motion.li
                 key={session.id}
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.3 + i * 0.05 }}
-                className="grid grid-cols-[2.5fr_1fr_1fr_1fr_2fr_auto] gap-4 px-6 py-4 items-center hover:bg-[#FAFAFA] transition-colors"
+                className={cn(
+                  "grid grid-cols-[2.5fr_1fr_1fr_1fr_2fr_auto] gap-4 px-6 py-4 items-center transition-colors",
+                  portalTableRow
+                )}
               >
                 {/* Session */}
                 <div className="flex items-center gap-3 min-w-0">
@@ -115,13 +134,13 @@ export function HistoryBoard() {
                     {session.companyInitials}
                   </div>
                   <div className="min-w-0">
-                    <p className="text-[13px] font-[600] text-[#111827] truncate">{session.setTitle}</p>
-                    <p className="text-[11px] text-[#6B7280]">{session.company}</p>
+                    <p className={cn("text-[13px] font-[600] truncate", portalHeadingAlt)}>{session.setTitle}</p>
+                    <p className={cn("text-[11px]", portalSubtextAlt)}>{session.company}</p>
                   </div>
                 </div>
 
                 {/* Date */}
-                <p className="text-[12px] text-[#6B7280]">{session.date}</p>
+                <p className={cn("text-[12px]", portalSubtextAlt)}>{session.date}</p>
 
                 {/* Score */}
                 <Pill className={cn("text-[13px] font-[700] px-2.5 py-1 w-fit", getScoreBadgeClass(session.score))}>
@@ -129,12 +148,12 @@ export function HistoryBoard() {
                 </Pill>
 
                 {/* Duration */}
-                <p className="text-[12px] text-[#6B7280]">{session.duration}</p>
+                <p className={cn("text-[12px]", portalSubtextAlt)}>{session.duration}</p>
 
                 {/* Skills */}
                 <div className="flex flex-wrap gap-1.5">
                   {session.skills.slice(0, 3).map((skill) => (
-                    <span key={skill} className="bg-[#F5F7FB] text-[#111827] text-[11px] font-[500] px-2 py-0.5 rounded-[4px]">
+                    <span key={skill} className={cn("text-[11px] font-[500] px-2 py-0.5 rounded-[4px]", portalMutedBg, portalHeadingAlt)}>
                       {skill}
                     </span>
                   ))}
@@ -144,7 +163,10 @@ export function HistoryBoard() {
                 <div className="flex items-center gap-1">
                   <Link
                     href={`/jobseeker/practice/${session.setId}/result`}
-                    className="flex items-center gap-1.5 h-[30px] px-3 text-[11px] font-[600] text-[#6B7280] hover:text-primary hover:bg-[#F5F3FF] rounded-lg transition-colors"
+                    className={cn(
+                      "flex items-center gap-1.5 h-[30px] px-3 text-[11px] font-[600] hover:text-primary hover:bg-[#F5F3FF] dark:hover:bg-purple-950/30 rounded-lg transition-colors",
+                      portalSubtextAlt
+                    )}
                     title={p.viewBtn}
                   >
                     <Eye size={13} />

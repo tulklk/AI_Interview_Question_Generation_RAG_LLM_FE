@@ -60,7 +60,7 @@ export function NotificationBell({ count = 0 }: NotificationBellProps) {
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen((v) => !v)}
-        className="relative w-8 h-8 flex items-center justify-center rounded-lg bg-white border border-gray-200 text-gray-500 hover:text-gray-700 hover:border-gray-300 transition-colors"
+        className="relative w-8 h-8 flex items-center justify-center rounded-lg bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:border-gray-300 dark:hover:border-gray-600 transition-colors"
       >
         <Bell size={15} />
         {unread > 0 && (
@@ -71,9 +71,9 @@ export function NotificationBell({ count = 0 }: NotificationBellProps) {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-10 w-80 bg-white rounded-xl border border-gray-100 shadow-xl z-50">
-          <div className="flex items-center justify-between px-4 pt-4 pb-3 border-b border-gray-100">
-            <span className="text-sm font-bold text-gray-900">Notifications</span>
+        <div className="absolute right-0 top-10 w-80 bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 shadow-xl z-50">
+          <div className="flex items-center justify-between px-4 pt-4 pb-3 border-b border-gray-100 dark:border-gray-800">
+            <span className="text-sm font-bold text-gray-900 dark:text-gray-100">Notifications</span>
             <button
               onClick={markAllRead}
               className="text-xs font-semibold text-[#6c47ff] hover:text-[#5535dd] transition-colors"
@@ -86,24 +86,24 @@ export function NotificationBell({ count = 0 }: NotificationBellProps) {
             {items.map((n) => (
               <li
                 key={n.id}
-                className="flex items-start gap-3 px-4 py-3 hover:bg-gray-50 transition-colors cursor-pointer"
+                className="flex items-start gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer"
               >
                 <span
                   className={`mt-1.5 w-2 h-2 rounded-full shrink-0 ${
-                    n.read ? "bg-gray-300" : "bg-[#6c47ff]"
+                    n.read ? "bg-gray-300 dark:bg-gray-600" : "bg-[#6c47ff]"
                   }`}
                 />
                 <div className="flex-1 min-w-0">
-                  <p className={`text-sm leading-snug ${n.read ? "text-gray-500" : "text-gray-800 font-medium"}`}>
+                  <p className={`text-sm leading-snug ${n.read ? "text-gray-500 dark:text-gray-400" : "text-gray-800 dark:text-gray-100 font-medium"}`}>
                     {n.message}
                   </p>
-                  <p className="text-xs text-gray-400 mt-0.5">{n.time}</p>
+                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{n.time}</p>
                 </div>
               </li>
             ))}
           </ul>
 
-          <div className="px-4 py-3 border-t border-gray-100">
+          <div className="px-4 py-3 border-t border-gray-100 dark:border-gray-800">
             <button className="w-full text-xs font-semibold text-[#6c47ff] hover:text-[#5535dd] transition-colors text-center">
               View all notifications
             </button>

@@ -7,6 +7,7 @@ import { useLanguage } from "@/context/language-context";
 import type { QuestionSet } from "@/types/jobseeker";
 import { Pill, getDifficultyBadgeClass } from "@/components/jobseeker/ui/pill";
 import { CARD_SHADOW, ELEVATED_SHADOW } from "@/components/jobseeker/ui/constants";
+import { portalCardShadow, portalHeadingAlt, portalSubtextAlt } from "@/lib/portal-ui";
 
 interface QuestionSetCardProps {
   set: QuestionSet;
@@ -18,7 +19,7 @@ export function QuestionSetCard({ set }: QuestionSetCardProps) {
 
   return (
     <div
-      className="group bg-white rounded-xl flex flex-col gap-0 transition-all duration-200 overflow-hidden"
+      className={cn("group rounded-xl flex flex-col gap-0 transition-all duration-200 overflow-hidden", portalCardShadow)}
       style={{ boxShadow: CARD_SHADOW }}
       onMouseEnter={(e) => {
         (e.currentTarget as HTMLDivElement).style.boxShadow = ELEVATED_SHADOW;
@@ -42,16 +43,16 @@ export function QuestionSetCard({ set }: QuestionSetCardProps) {
             {set.companyInitials}
           </div>
           <div className="flex-1 min-w-0">
-            <h3 className="text-[14px] font-[700] text-[#111827] leading-[20px] line-clamp-2">
+            <h3 className={cn("text-[14px] font-[700] leading-[20px] line-clamp-2", portalHeadingAlt)}>
               {set.title}
             </h3>
-            <p className="text-[12px] text-[#6B7280] mt-0.5">{set.company}</p>
+            <p className={cn("text-[12px] mt-0.5", portalSubtextAlt)}>{set.company}</p>
           </div>
           <Pill className={getDifficultyBadgeClass(set.difficulty)}>{set.difficulty}</Pill>
         </div>
 
         {/* Description */}
-        <p className="text-[13px] text-[#6B7280] leading-[20px] line-clamp-2">
+        <p className={cn("text-[13px] leading-[20px] line-clamp-2", portalSubtextAlt)}>
           {set.description}
         </p>
 
@@ -60,20 +61,20 @@ export function QuestionSetCard({ set }: QuestionSetCardProps) {
           {set.skills.slice(0, 4).map((skill) => (
             <span
               key={skill}
-              className="bg-[#F5F7FB] text-[#111827] text-[11px] font-[500] px-2.5 py-1 rounded-[6px]"
+              className="bg-[#F5F7FB] dark:bg-gray-800 text-[#111827] dark:text-gray-200 text-[11px] font-[500] px-2.5 py-1 rounded-[6px]"
             >
               {skill}
             </span>
           ))}
           {set.skills.length > 4 && (
-            <span className="text-[11px] text-[#6B7280] px-1 py-1">
+            <span className={cn("text-[11px] px-1 py-1", portalSubtextAlt)}>
               +{set.skills.length - 4}
             </span>
           )}
         </div>
 
         {/* Meta row */}
-        <div className="flex items-center gap-4 text-[12px] text-[#6B7280]">
+        <div className={cn("flex items-center gap-4 text-[12px]", portalSubtextAlt)}>
           <span className="flex items-center gap-1">
             <BarChart2 size={12} className="shrink-0" />
             {set.totalQuestions} {p.questions}
@@ -100,11 +101,11 @@ export function QuestionSetCard({ set }: QuestionSetCardProps) {
                 className={
                   star <= Math.round(set.rating!)
                     ? "text-amber-400 fill-amber-400"
-                    : "text-gray-200 fill-gray-200"
+                    : "text-gray-200 dark:text-gray-700 fill-gray-200 dark:fill-gray-700"
                 }
               />
             ))}
-            <span className="text-[12px] font-[600] text-[#111827] ml-1">{set.rating}</span>
+            <span className={cn("text-[12px] font-[600] ml-1", portalHeadingAlt)}>{set.rating}</span>
           </div>
         )}
       </div>

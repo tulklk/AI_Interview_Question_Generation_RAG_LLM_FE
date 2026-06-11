@@ -2,16 +2,18 @@
 
 import { roleDistribution } from "@/data/admin";
 import { useLanguage } from "@/context/language-context";
+import { cn } from "@/lib/utils";
+import { portalCard, portalDivider, portalHeading, portalMutedBg, portalSubtext } from "@/lib/portal-ui";
 
 export function RoleDistribution() {
   const { t } = useLanguage();
   const rd = t.adminPages.analytics.roleDistribution;
 
   return (
-    <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 flex flex-col animate-fade-up">
+    <div className={cn(portalCard, "shadow-sm p-6 flex flex-col animate-fade-up")}>
       <div className="mb-5">
-        <h3 className="text-base font-semibold text-gray-900">{rd.title}</h3>
-        <p className="text-xs text-gray-400 mt-0.5">{rd.subtitle}</p>
+        <h3 className={cn("text-base font-semibold", portalHeading)}>{rd.title}</h3>
+        <p className={cn("text-xs mt-0.5", portalSubtext)}>{rd.subtitle}</p>
       </div>
 
       <div className="space-y-5">
@@ -22,14 +24,14 @@ export function RoleDistribution() {
               <div className="flex items-center justify-between mb-1.5">
                 <div className="flex items-center gap-2">
                   <span className={`w-2.5 h-2.5 rounded-full ${item.color} inline-block`} />
-                  <span className="text-sm font-medium text-gray-700">{item.label}</span>
+                  <span className={cn("text-sm font-medium", portalHeading)}>{item.label}</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-xs text-gray-400">{item.count} {rd.users}</span>
-                  <span className="text-sm font-bold text-gray-700">{pct}%</span>
+                  <span className={cn("text-xs", portalSubtext)}>{item.count} {rd.users}</span>
+                  <span className={cn("text-sm font-bold", portalHeading)}>{pct}%</span>
                 </div>
               </div>
-              <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+              <div className={cn("h-2 rounded-full overflow-hidden", portalMutedBg)}>
                 <div
                   className={`h-full rounded-full ${item.color}`}
                   style={{ width: `${pct}%` }}
@@ -40,9 +42,9 @@ export function RoleDistribution() {
         })}
       </div>
 
-      <div className="mt-6 pt-5 border-t border-gray-100 flex items-center justify-between">
-        <span className="text-sm text-gray-500">{rd.total}</span>
-        <span className="text-xl font-bold text-gray-900">142</span>
+      <div className={cn("mt-6 pt-5 border-t flex items-center justify-between", portalDivider)}>
+        <span className={cn("text-sm", portalSubtext)}>{rd.total}</span>
+        <span className={cn("text-xl font-bold", portalHeading)}>142</span>
       </div>
     </div>
   );
