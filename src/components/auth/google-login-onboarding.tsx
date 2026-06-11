@@ -231,26 +231,26 @@ export function GoogleLoginOnboarding({
   }
 
   const inputBase =
-    "w-full pl-10 pr-4 py-2.5 text-sm border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors placeholder:text-gray-400";
+    "w-full pl-10 pr-4 py-2.5 text-sm border border-gray-200 rounded-lg bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors placeholder:text-gray-400 dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100 dark:placeholder:text-gray-500";
   const inputReadOnly =
-    "w-full pl-10 pr-4 py-2.5 text-sm border border-gray-200 rounded-lg bg-gray-50 text-gray-500 cursor-not-allowed";
+    "w-full pl-10 pr-4 py-2.5 text-sm border border-gray-200 rounded-lg bg-gray-50 text-gray-500 cursor-not-allowed dark:bg-gray-800/50 dark:border-gray-700 dark:text-gray-400";
   const inputErrorCls = "border-red-300 focus:border-red-400 focus:ring-red-100";
 
   if (step === "role-select") {
     return (
       <div className="w-full max-w-sm mx-auto animate-fade-up">
-        <h2 className="text-2xl font-bold text-gray-900 mb-1">{lp.googleOnboardingTitle}</h2>
-        <p className="text-sm text-gray-500 mb-6">{lp.googleOnboardingSubtitle}</p>
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-1">{lp.googleOnboardingTitle}</h2>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">{lp.googleOnboardingSubtitle}</p>
 
-        <p className="text-sm font-medium text-gray-700 mb-3">{lp.selectRoleTitle}</p>
-        <div className="flex bg-gray-100 p-1 rounded-xl mb-6">
+        <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">{lp.selectRoleTitle}</p>
+        <div className="flex bg-gray-100 dark:bg-gray-800 p-1 rounded-xl mb-6">
           <button
             type="button"
             onClick={() => handleRolePick("HR_MANAGER")}
             className={`flex-1 py-2.5 text-sm font-semibold rounded-lg transition-all ${
               selectedRole === "HR_MANAGER"
-                ? "bg-white text-primary shadow-sm"
-                : "text-gray-500 hover:text-gray-700"
+                ? "bg-white dark:bg-gray-900 text-primary shadow-sm"
+                : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
             }`}
           >
             {lp.roleHr}
@@ -260,8 +260,8 @@ export function GoogleLoginOnboarding({
             onClick={() => handleRolePick("JOB_SEEKER")}
             className={`flex-1 py-2.5 text-sm font-semibold rounded-lg transition-all ${
               selectedRole === "JOB_SEEKER"
-                ? "bg-white text-primary shadow-sm"
-                : "text-gray-500 hover:text-gray-700"
+                ? "bg-white dark:bg-gray-900 text-primary shadow-sm"
+                : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
             }`}
           >
             {lp.roleJobSeeker}
@@ -271,7 +271,7 @@ export function GoogleLoginOnboarding({
         <button
           type="button"
           onClick={handleBack}
-          className="w-full flex items-center justify-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 transition-colors"
+          className="w-full flex items-center justify-center gap-1.5 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
         >
           <ArrowLeft size={14} />
           {lp.backToLogin}
@@ -284,12 +284,12 @@ export function GoogleLoginOnboarding({
 
   return (
     <div className="w-full max-w-sm mx-auto animate-fade-up">
-      <h2 className="text-2xl font-bold text-gray-900 mb-1">{lp.completeProfileTitle}</h2>
-      <p className="text-sm text-gray-500 mb-6">{lp.completeProfileHint}</p>
+      <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-1">{lp.completeProfileTitle}</h2>
+      <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">{lp.completeProfileHint}</p>
 
       <form onSubmit={isHr ? handleHrSubmit : handleJsSubmit} className="space-y-4" noValidate>
         <div>
-          <label className="text-sm font-medium text-gray-700 block mb-1.5">
+          <label className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-1.5">
             {isHr ? hrp.fullNameLabel : jsp.fullNameLabel}{" "}
             <span className="text-red-500">*</span>
           </label>
@@ -300,7 +300,7 @@ export function GoogleLoginOnboarding({
         </div>
 
         <div>
-          <label className="text-sm font-medium text-gray-700 block mb-1.5">
+          <label className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-1.5">
             {isHr ? hrp.emailLabel : jsp.emailLabel}{" "}
             <span className="text-red-500">*</span>
           </label>
@@ -313,7 +313,7 @@ export function GoogleLoginOnboarding({
         {isHr ? (
           <>
             <div>
-              <label className="text-sm font-medium text-gray-700 block mb-1.5">
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-1.5">
                 {hrp.companyNameLabel} <span className="text-red-500">*</span>
               </label>
               <div className="relative" ref={companyRef}>
@@ -350,9 +350,9 @@ export function GoogleLoginOnboarding({
                 </div>
 
                 {companyOpen && companyName.trim() && (
-                  <div className="absolute z-20 mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden">
+                  <div className="absolute z-20 mt-1 w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg overflow-hidden">
                     {companyLoading && (
-                      <div className="flex items-center gap-2.5 px-4 py-3 text-sm text-gray-400">
+                      <div className="flex items-center gap-2.5 px-4 py-3 text-sm text-gray-400 dark:text-gray-500">
                         <span className="w-3.5 h-3.5 border-2 border-primary/30 border-t-primary rounded-full animate-spin shrink-0" />
                         {hrp.companySearchHint}
                       </div>
@@ -364,7 +364,7 @@ export function GoogleLoginOnboarding({
                             key={c.id}
                             type="button"
                             onMouseDown={() => selectCompany(c)}
-                            className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-primary/5 hover:text-primary transition-colors text-left"
+                            className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-200 hover:bg-primary/5 hover:text-primary transition-colors text-left"
                           >
                             <Building2 size={13} className="text-gray-400 shrink-0" />
                             <span className="truncate">{c.name}</span>
@@ -374,11 +374,11 @@ export function GoogleLoginOnboarding({
                     )}
                     {!companyLoading && companyResults.length === 0 && companySearched && (
                       <div>
-                        <p className="px-4 pt-3 pb-1 text-xs text-gray-400">{hrp.companyNotSelected}</p>
+                        <p className="px-4 pt-3 pb-1 text-xs text-gray-400 dark:text-gray-500">{hrp.companyNotSelected}</p>
                         <button
                           type="button"
                           onMouseDown={useTypedName}
-                          className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-primary/5 hover:text-primary transition-colors text-left border-t border-gray-100 mt-1"
+                          className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-200 hover:bg-primary/5 hover:text-primary transition-colors text-left border-t border-gray-100 dark:border-gray-700 mt-1"
                         >
                           <Building2 size={13} className="text-gray-400 shrink-0" />
                           <span className="truncate">{companyName}</span>
@@ -395,7 +395,7 @@ export function GoogleLoginOnboarding({
             </div>
 
             <div>
-              <label className="text-sm font-medium text-gray-700 block mb-1.5">
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-1.5">
                 {hrp.jobTitleLabel} <span className="text-red-500">*</span>
               </label>
               <div className="relative">
@@ -423,7 +423,7 @@ export function GoogleLoginOnboarding({
         ) : (
           <>
             <div>
-              <label className="text-sm font-medium text-gray-700 block mb-1.5">
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-1.5">
                 {jsp.targetRoleLabel} <span className="text-red-500">*</span>
               </label>
               <div className="relative">
@@ -448,7 +448,7 @@ export function GoogleLoginOnboarding({
             </div>
 
             <div>
-              <label className="text-sm font-medium text-gray-700 block mb-1.5">
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-1.5">
                 {jsp.seniorityLabel} <span className="text-red-500">*</span>
               </label>
               <div className="relative">
@@ -464,11 +464,11 @@ export function GoogleLoginOnboarding({
                       setFieldErrors((p) => ({ ...p, seniorityLevel: "" }));
                     }
                   }}
-                  className={`w-full px-3.5 py-2.5 text-sm border rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors appearance-none pr-9 ${
+                  className={`w-full px-3.5 py-2.5 text-sm border rounded-lg bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors appearance-none pr-9 dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100 ${
                     fieldErrors.seniorityLevel
                       ? "border-red-300 focus:border-red-400 focus:ring-red-100"
                       : "border-gray-200"
-                  } ${!seniorityLevel ? "text-gray-400" : "text-gray-900"}`}
+                  } ${!seniorityLevel ? "text-gray-400 dark:text-gray-500" : "text-gray-900 dark:text-gray-100"}`}
                 >
                   <option value="" disabled>
                     {jsp.seniorityPlaceholder}
@@ -486,7 +486,7 @@ export function GoogleLoginOnboarding({
             </div>
 
             <div>
-              <label className="text-sm font-medium text-gray-700 block mb-1.5">
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-1.5">
                 {jsp.techStackLabel} <span className="text-red-500">*</span>
               </label>
 
@@ -512,12 +512,12 @@ export function GoogleLoginOnboarding({
 
               <div className="relative" ref={techDropdownRef}>
                 <div
-                  className={`flex items-center border rounded-lg bg-white transition-colors ${
+                  className={`flex items-center border rounded-lg bg-white dark:bg-gray-900 transition-colors ${
                     techOpen
                       ? "border-primary ring-2 ring-primary/20"
                       : fieldErrors.techStack
                       ? "border-red-300"
-                      : "border-gray-200"
+                      : "border-gray-200 dark:border-gray-700"
                   }`}
                 >
                   <Search size={14} className="ml-3 text-gray-400 shrink-0" />
@@ -527,13 +527,13 @@ export function GoogleLoginOnboarding({
                     onChange={(e) => setTechSearch(e.target.value)}
                     onFocus={() => setTechOpen(true)}
                     placeholder={jsp.techStackSearch}
-                    className="flex-1 px-2.5 py-2.5 text-sm bg-transparent focus:outline-none placeholder:text-gray-400"
+                    className="flex-1 px-2.5 py-2.5 text-sm bg-transparent text-gray-900 dark:text-gray-100 focus:outline-none placeholder:text-gray-400 dark:placeholder:text-gray-500"
                   />
                 </div>
                 {techOpen && (
-                  <div className="absolute z-20 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                  <div className="absolute z-20 mt-1 w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-48 overflow-y-auto">
                     {filteredTech.length === 0 ? (
-                      <p className="px-3 py-3 text-sm text-gray-400 text-center">{jsp.techStackEmpty}</p>
+                      <p className="px-3 py-3 text-sm text-gray-400 dark:text-gray-500 text-center">{jsp.techStackEmpty}</p>
                     ) : (
                       <div className="p-2 flex flex-wrap gap-1.5">
                         {filteredTech.map((tech) => (
@@ -541,7 +541,7 @@ export function GoogleLoginOnboarding({
                             key={tech}
                             type="button"
                             onClick={() => toggleTech(tech)}
-                            className="px-2.5 py-1 text-xs font-medium rounded-full border border-gray-200 text-gray-700 hover:border-primary hover:text-primary hover:bg-primary/5 transition-colors"
+                            className="px-2.5 py-1 text-xs font-medium rounded-full border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:border-primary hover:text-primary hover:bg-primary/5 transition-colors"
                           >
                             {tech}
                           </button>
@@ -576,7 +576,7 @@ export function GoogleLoginOnboarding({
       <button
         type="button"
         onClick={handleBack}
-        className="mt-4 w-full flex items-center justify-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 transition-colors"
+        className="mt-4 w-full flex items-center justify-center gap-1.5 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
       >
         <ArrowLeft size={14} />
         {lp.backToLogin}

@@ -52,7 +52,7 @@ export function AppShell({ children, breadcrumb, pageTitle }: AppShellProps) {
             avatarUrl: resolveAvatarUrl(user),
           }}
         />
-        <main className="flex-1 overflow-y-auto bg-[#f5f7fb]">
+        <main className="flex-1 overflow-y-auto bg-[#f5f7fb] dark:bg-[#0b0f1a]">
           <div className="max-w-[1400px] mx-auto px-8 py-7">{children}</div>
         </main>
       </div>

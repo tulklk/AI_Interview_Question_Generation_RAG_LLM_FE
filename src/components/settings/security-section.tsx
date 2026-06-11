@@ -2,12 +2,12 @@
 
 import { useState } from "react";
 import { Eye, EyeOff, Save } from "lucide-react";
-import type { AxiosError } from "axios";
+import { cn } from "@/lib/utils";
 import { FormField } from "@/components/ui/form-field";
 import { useLanguage } from "@/context/language-context";
 import { useToast } from "@/context/toast-context";
 import { changePassword } from "@/lib/api/user";
-import type { ApiErrorResponse } from "@/types/auth";
+import { portalBanner, portalHeading, portalInput } from "@/lib/portal-ui";
 
 function PasswordInput({
   id,
@@ -35,13 +35,17 @@ function PasswordInput({
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
           disabled={disabled}
-          className="w-full pr-10 px-3.5 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#6c47ff]/20 focus:border-[#6c47ff] transition-colors bg-white disabled:bg-gray-50 disabled:cursor-not-allowed"
+          className={cn(
+            "w-full pr-10 px-3.5 py-2.5 text-sm rounded-lg focus:outline-none focus:ring-2 focus:ring-[#6c47ff]/20 focus:border-[#6c47ff] transition-colors disabled:cursor-not-allowed",
+            portalInput,
+            "disabled:bg-gray-50 dark:disabled:bg-gray-800"
+          )}
         />
         <button
           type="button"
           onClick={() => setVisible((v) => !v)}
           disabled={disabled}
-          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 disabled:opacity-50"
+          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 disabled:opacity-50"
         >
           {visible ? <EyeOff size={15} /> : <Eye size={15} />}
         </button>
@@ -85,9 +89,8 @@ export function SecuritySection() {
       setNewPass("");
       setConfirm("");
       addToast("success", sec.saveSuccess);
-    } catch (err) {
-      const axiosErr = err as AxiosError<ApiErrorResponse>;
-      addToast("error", axiosErr.response?.data?.message || sec.saveFailed);
+    } catch {
+      addToast("error", sec.saveFailed);
     } finally {
       setSaving(false);
     }
@@ -95,7 +98,7 @@ export function SecuritySection() {
 
   return (
     <div>
-      <h3 className="text-base font-semibold text-gray-900 mb-5">{sec.title}</h3>
+      <h3 className={cn("text-base font-semibold mb-5", portalHeading)}>{sec.title}</h3>
 
       <div className="space-y-4">
         <PasswordInput
@@ -124,11 +127,11 @@ export function SecuritySection() {
         />
       </div>
 
-      <div className="mt-4 bg-indigo-50 border border-indigo-100 rounded-lg px-4 py-3">
-        <p className="text-xs font-semibold text-indigo-700 mb-1.5">{sec.requirements}</p>
+      <div className={cn("mt-4 rounded-lg px-4 py-3", portalBanner)}>
+        <p className="text-xs font-semibold text-indigo-700 dark:text-indigo-300 mb-1.5">{sec.requirements}</p>
         <ul className="space-y-0.5">
           {[sec.req1, sec.req2, sec.req3].map((req) => (
-            <li key={req} className="text-xs text-indigo-600 flex items-center gap-1.5">
+            <li key={req} className="text-xs text-indigo-600 dark:text-indigo-400 flex items-center gap-1.5">
               <span className="w-1 h-1 rounded-full bg-indigo-400 shrink-0" />
               {req}
             </li>

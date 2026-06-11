@@ -5,17 +5,18 @@ import { FileText, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { recentSessions } from "@/data/dashboard";
 import { useLanguage } from "@/context/language-context";
+import { portalCard, portalHeading, portalIconWell, portalSubtext } from "@/lib/portal-ui";
 
 export function RecentSessions() {
   const { t } = useLanguage();
   const rs = t.dashboardPage.recentSessions;
 
   return (
-    <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 animate-fade-up">
+    <div className={cn(portalCard, "shadow-sm p-6 animate-fade-up")}>
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h3 className="text-base font-semibold text-gray-900">{rs.title}</h3>
-          <p className="text-xs text-gray-400 mt-0.5">{rs.subtitle}</p>
+          <h3 className={cn("text-base font-semibold", portalHeading)}>{rs.title}</h3>
+          <p className={cn("text-xs mt-0.5", portalSubtext)}>{rs.subtitle}</p>
         </div>
         <Link
           href="/hr/history"
@@ -29,14 +30,14 @@ export function RecentSessions() {
         {recentSessions.map((session, i) => (
           <li key={session.id} className="animate-fade-up" style={{ animationDelay: `${i * 60}ms` }}>
             <div className="flex items-center gap-3 group">
-              <div className="w-8 h-8 rounded-lg bg-gray-50 border border-gray-100 flex items-center justify-center shrink-0">
-                <FileText size={14} className="text-gray-400" />
+              <div className={cn("w-8 h-8 rounded-lg border border-gray-100 dark:border-gray-700 flex items-center justify-center shrink-0", portalIconWell)}>
+                <FileText size={14} className="text-gray-400 dark:text-gray-500" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-800 truncate">
+                <p className={cn("text-sm font-medium truncate", portalHeading)}>
                   {session.title}
                 </p>
-                <p className="text-xs text-gray-400 mt-0.5">
+                <p className={cn("text-xs mt-0.5", portalSubtext)}>
                   {session.relativeTime}
                 </p>
               </div>

@@ -10,7 +10,7 @@ export const metadata = {
 
 export default function RegisterPage() {
   return (
-    <div className="flex h-screen overflow-hidden bg-white">
+    <div className="flex h-screen overflow-hidden bg-white dark:bg-gray-950">
       {/* Left — hero gradient panel */}
       <div className="hidden lg:flex w-[55%] shrink-0 bg-linear-to-br from-primary to-[#8b65ff] animate-slide-left">
         <LoginHero />
@@ -25,8 +25,8 @@ export default function RegisterPage() {
           <div className="auth-panel-orb auth-panel-orb--3" style={{ width: 220, height: 220, top: "42%", right: "16%" }} />
         </div>
 
-        {/* Brand logo row */}
-        <div className="relative z-10 shrink-0 flex justify-end px-6 sm:px-8 pt-6 pb-4 animate-fade-in">
+        {/* Brand logo — pinned top-right */}
+        <div className="absolute top-6 right-6 sm:right-8 z-10 animate-fade-in">
           <BrandLogo
             className="justify-end max-w-[min(100%,280px)]"
             logoClassName="w-10 h-10"
@@ -36,10 +36,8 @@ export default function RegisterPage() {
         </div>
 
         {/* Scrollable form area */}
-        <div className="relative z-10 flex-1 overflow-y-auto px-6 sm:px-8 pb-10">
-          <div className="w-full max-w-sm mx-auto pt-2 sm:pt-4">
-            <RegisterRoleTabs />
-          </div>
+        <div className="relative z-10 flex-1 overflow-y-auto px-6 sm:px-8 pt-20 pb-10">
+          <RegisterRoleTabs />
         </div>
       </div>
     </div>

@@ -7,6 +7,8 @@ import { ContentTable } from "@/components/admin/content/content-table";
 import { contentSessions } from "@/data/admin";
 import type { ContentSession } from "@/types/admin";
 import { useLanguage } from "@/context/language-context";
+import { cn } from "@/lib/utils";
+import { portalHeadingAlt, portalSubtextAlt } from "@/lib/portal-ui";
 
 function matchesDateRange(
   daysAgo: number,
@@ -114,8 +116,8 @@ export default function GeneratedContentPage() {
       breadcrumb={[{ label: "Admin", href: "/admin/dashboard" }, { label: c.heading }]}
     >
       <div className="mb-8 animate-fade-up">
-        <h2 className="text-[30px] font-bold leading-9 text-[#111827]">{c.heading}</h2>
-        <p className="mt-2 text-base leading-6 text-[#6b7280]">{c.subtext}</p>
+        <h2 className={cn("text-[30px] font-bold leading-9", portalHeadingAlt)}>{c.heading}</h2>
+        <p className={cn("mt-2 text-base leading-6", portalSubtextAlt)}>{c.subtext}</p>
       </div>
 
       <div className="animate-fade-up" style={{ animationDelay: "80ms" }}>

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { CheckCircle2, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLanguage } from "@/context/language-context";
+import { portalCard, portalHeading, portalIconWell, portalMutedBg, portalSubtext } from "@/lib/portal-ui";
 
 export function GeneratingProgress() {
   const router = useRouter();
@@ -28,13 +29,13 @@ export function GeneratingProgress() {
   const progress = Math.round((completedSteps / steps.length) * 100);
 
   return (
-    <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-8 py-12 flex flex-col items-center max-w-xl mx-auto w-full animate-scale-in">
-      <div className="w-16 h-16 rounded-xl bg-indigo-50 flex items-center justify-center mb-5">
+    <div className={cn(portalCard, "shadow-sm px-8 py-12 flex flex-col items-center max-w-xl mx-auto w-full animate-scale-in")}>
+      <div className={cn("w-16 h-16 rounded-xl flex items-center justify-center mb-5", portalIconWell, "bg-indigo-50 dark:bg-indigo-950/40")}>
         <Sparkles size={28} className="text-[#6c47ff]" />
       </div>
 
-      <h2 className="text-xl font-bold text-gray-900 mb-1">{gp.heading}</h2>
-      <p className="text-sm text-gray-400 mb-8">{gp.subtext}</p>
+      <h2 className={cn("text-xl font-bold mb-1", portalHeading)}>{gp.heading}</h2>
+      <p className={cn("text-sm mb-8", portalSubtext)}>{gp.subtext}</p>
 
       <ol className="w-full space-y-3 mb-8">
         {steps.map((step, i) => {
@@ -51,7 +52,7 @@ export function GeneratingProgress() {
                       "w-5 h-5 rounded-full border-2 flex items-center justify-center text-[10px] font-bold",
                       active
                         ? "border-[#6c47ff] text-[#6c47ff]"
-                        : "border-gray-200 text-gray-300"
+                        : "border-gray-200 dark:border-gray-700 text-gray-300 dark:text-gray-600"
                     )}
                   >
                     {i + 1}
@@ -62,10 +63,10 @@ export function GeneratingProgress() {
                 className={cn(
                   "text-sm transition-colors",
                   done
-                    ? "line-through text-gray-400"
+                    ? "line-through text-gray-400 dark:text-gray-500"
                     : active
-                    ? "text-gray-800 font-medium"
-                    : "text-gray-300"
+                    ? cn("font-medium", portalHeading)
+                    : "text-gray-300 dark:text-gray-600"
                 )}
               >
                 {step}
@@ -82,10 +83,10 @@ export function GeneratingProgress() {
 
       <div className="w-full">
         <div className="flex items-center justify-between mb-1.5">
-          <span className="text-xs text-gray-400">{gp.progressLabel}</span>
-          <span className="text-xs font-semibold text-gray-600">{progress}%</span>
+          <span className={cn("text-xs", portalSubtext)}>{gp.progressLabel}</span>
+          <span className={cn("text-xs font-semibold", portalHeading)}>{progress}%</span>
         </div>
-        <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
+        <div className={cn("h-2 w-full rounded-full overflow-hidden", portalMutedBg)}>
           <div
             className="h-full bg-[#6c47ff] rounded-full transition-all duration-500"
             style={{ width: `${progress}%` }}

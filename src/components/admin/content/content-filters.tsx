@@ -2,6 +2,8 @@
 
 import { Search, Download } from "lucide-react";
 import { useLanguage } from "@/context/language-context";
+import { cn } from "@/lib/utils";
+import { portalCard, portalHeadingAlt, portalInput } from "@/lib/portal-ui";
 
 interface ContentFiltersProps {
   search: string;
@@ -12,6 +14,11 @@ interface ContentFiltersProps {
   onDateRangeChange: (v: string) => void;
   onExportAll: () => void;
 }
+
+const filterCls = cn(
+  portalInput,
+  "min-h-[38px] rounded-lg text-xs transition-colors focus:border-[#6c47ff] focus:outline-none focus:ring-[3px] focus:ring-[rgba(108,71,255,0.1)]"
+);
 
 export function ContentFilters({
   search,
@@ -34,21 +41,21 @@ export function ContentFilters({
       <div className="relative min-w-0 w-full sm:max-w-xs sm:flex-1">
         <Search
           size={14}
-          className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#9ca3af]"
+          className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500"
         />
         <input
           type="text"
           value={search}
           onChange={(e) => onSearchChange(e.target.value)}
           placeholder={f.searchPlaceholder}
-          className="min-h-[38px] w-full rounded-lg border border-[#e5e7eb] bg-white py-2 pl-9 pr-4 text-xs text-[#111827] transition-colors placeholder:text-[#9ca3af] focus:border-[#6c47ff] focus:outline-none focus:ring-[3px] focus:ring-[rgba(108,71,255,0.1)]"
+          className={cn(filterCls, "w-full py-2 pl-9 pr-4")}
         />
       </div>
 
       <select
         value={role}
         onChange={(e) => onRoleChange(e.target.value)}
-        className="min-h-[38px] rounded-lg border border-[#e5e7eb] bg-white px-3 py-2 text-xs text-[#111827] transition-colors focus:border-[#6c47ff] focus:outline-none focus:ring-[3px] focus:ring-[rgba(108,71,255,0.1)]"
+        className={cn(filterCls, "px-3 py-2")}
       >
         {roles.map((r) => (
           <option key={r}>{r}</option>
@@ -58,7 +65,7 @@ export function ContentFilters({
       <select
         value={dateRange}
         onChange={(e) => onDateRangeChange(e.target.value)}
-        className="min-h-[38px] rounded-lg border border-[#e5e7eb] bg-white px-3 py-2 text-xs text-[#111827] transition-colors focus:border-[#6c47ff] focus:outline-none focus:ring-[3px] focus:ring-[rgba(108,71,255,0.1)]"
+        className={cn(filterCls, "px-3 py-2")}
       >
         {dateRanges.map((d) => (
           <option key={d}>{d}</option>
@@ -68,7 +75,11 @@ export function ContentFilters({
       <button
         type="button"
         onClick={onExportAll}
-        className="ml-0 inline-flex min-h-[38px] w-full items-center justify-center gap-2 rounded-lg border border-[#e5e7eb] bg-white px-4 py-2 text-sm font-semibold text-[#111827] transition-colors hover:border-[#d1d5db] hover:bg-[#f9fafb] sm:ml-auto sm:w-auto"
+        className={cn(
+          portalCard,
+          "ml-0 inline-flex min-h-[38px] w-full items-center justify-center gap-2 px-4 py-2 text-sm font-semibold transition-colors hover:bg-gray-50 dark:hover:bg-gray-800 sm:ml-auto sm:w-auto",
+          portalHeadingAlt
+        )}
       >
         <Download size={14} />
         {c.exportAll}
