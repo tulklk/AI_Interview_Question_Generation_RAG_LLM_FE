@@ -5,11 +5,18 @@ import { motion } from "framer-motion";
 import { Bell, Globe, Shield, Moon, ChevronRight, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLanguage } from "@/context/language-context";
+import { ThemePreferencePicker } from "@/components/shared/theme-preference-picker";
 import { SectionCard } from "@/components/jobseeker/ui/section-card";
 import { Toggle } from "@/components/ui/toggle";
+import {
+  portalCard,
+  portalDivider,
+  portalHeadingAlt,
+  portalSubtextAlt,
+  portalTableRow,
+} from "@/lib/portal-ui";
 
 const LANGUAGES = ["English", "Tiếng Việt"];
-const THEMES = ["Light", "Dark", "System"];
 
 function ChoiceButton({
   active,
@@ -28,7 +35,7 @@ function ChoiceButton({
         "flex items-center gap-1.5 h-[34px] px-3.5 text-[12px] font-[600] rounded-lg border transition-all",
         active
           ? "bg-primary text-white border-primary"
-          : "bg-white text-[#111827] border-[#E5E7EB] hover:border-primary hover:text-primary"
+          : cn(portalCard, portalHeadingAlt, "hover:border-primary hover:text-primary")
       )}
     >
       {active && <Check size={12} />}
@@ -41,7 +48,6 @@ export function SettingsPage() {
   const { t, lang, setLang } = useLanguage();
   const p = t.jobseekerSettingsPage;
   const [notifications, setNotifications] = useState({ email: true, practice: true, tips: false });
-  const [theme, setTheme] = useState("Light");
 
   const sections = [
     {
@@ -51,7 +57,7 @@ export function SettingsPage() {
       title: p.languageTitle,
       content: (
         <div className="flex flex-col gap-3">
-          <p className="text-[13px] text-[#6B7280]">{p.languageDescription}</p>
+          <p className={cn("text-[13px]", portalSubtextAlt)}>{p.languageDescription}</p>
           <div className="flex flex-wrap gap-2">
             {LANGUAGES.map((label) => {
               const val = label === "English" ? "en" : "vi";
@@ -72,14 +78,15 @@ export function SettingsPage() {
       title: p.appearanceTitle,
       content: (
         <div className="flex flex-col gap-3">
-          <p className="text-[13px] text-[#6B7280]">{p.appearanceDescription}</p>
-          <div className="flex flex-wrap gap-2">
-            {THEMES.map((th) => (
-              <ChoiceButton key={th} active={theme === th} onClick={() => setTheme(th)}>
-                {th}
-              </ChoiceButton>
-            ))}
-          </div>
+          <p className={cn("text-[13px]", portalSubtextAlt)}>{p.appearanceDescription}</p>
+          <ThemePreferencePicker
+            variant="buttons"
+            labels={{
+              light: p.themeLight,
+              dark: p.themeDark,
+              system: p.themeSystem,
+            }}
+          />
         </div>
       ),
     },
@@ -90,8 +97,8 @@ export function SettingsPage() {
       title: p.notificationsTitle,
       content: (
         <div className="flex flex-col gap-3">
-          <p className="text-[13px] text-[#6B7280]">{p.notificationsDescription}</p>
-          <div className="rounded-lg border border-gray-100 divide-y divide-gray-100">
+          <p className={cn("text-[13px]", portalSubtextAlt)}>{p.notificationsDescription}</p>
+          <div className={cn("rounded-lg border divide-y", portalDivider)}>
             {([
               { key: "email", label: p.notificationLabels.email },
               { key: "practice", label: p.notificationLabels.practice },
@@ -101,7 +108,7 @@ export function SettingsPage() {
                 key={key}
                 className="flex items-center justify-between gap-4 px-3 py-3"
               >
-                <span className="text-[13px] text-[#111827] leading-snug">{label}</span>
+                <span className={cn("text-[13px] leading-snug", portalHeadingAlt)}>{label}</span>
                 <Toggle
                   checked={notifications[key]}
                   onChange={(checked) =>
@@ -121,17 +128,21 @@ export function SettingsPage() {
       title: p.privacyTitle,
       content: (
         <div className="flex flex-col gap-3">
-          <p className="text-[13px] text-[#6B7280]">{p.privacyDescription}</p>
-          <div className="rounded-lg border border-gray-100 divide-y divide-gray-100">
+          <p className={cn("text-[13px]", portalSubtextAlt)}>{p.privacyDescription}</p>
+          <div className={cn("rounded-lg border divide-y", portalDivider)}>
             {[p.privacyActions.downloadData, p.privacyActions.deleteHistory, p.privacyActions.deleteAccount].map(
               (action) => (
                 <button
                   key={action}
                   type="button"
-                  className="flex items-center justify-between w-full gap-3 px-3 py-3 text-[13px] text-[#6B7280] hover:text-[#111827] hover:bg-gray-50/80 transition-colors"
+                  className={cn(
+                    "flex items-center justify-between w-full gap-3 px-3 py-3 text-[13px] hover:text-gray-900 dark:hover:text-gray-100 transition-colors",
+                    portalSubtextAlt,
+                    portalTableRow
+                  )}
                 >
                   <span className="text-left">{action}</span>
-                  <ChevronRight size={14} className="text-gray-400 shrink-0" />
+                  <ChevronRight size={14} className="text-gray-400 dark:text-gray-500 shrink-0" />
                 </button>
               )
             )}
@@ -148,8 +159,8 @@ export function SettingsPage() {
         animate={{ opacity: 1, y: 0 }}
         className="mb-6"
       >
-        <h1 className="text-[28px] font-[800] text-[#111827]">{p.heading}</h1>
-        <p className="text-[14px] text-[#6B7280] mt-1">{p.subtitle}</p>
+        <h1 className={cn("text-[28px] font-[800]", portalHeadingAlt)}>{p.heading}</h1>
+        <p className={cn("text-[14px] mt-1", portalSubtextAlt)}>{p.subtitle}</p>
       </motion.div>
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-3.5">

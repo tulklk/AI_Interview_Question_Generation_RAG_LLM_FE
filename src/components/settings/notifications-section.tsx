@@ -2,10 +2,12 @@
 
 import { useState } from "react";
 import { Save } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { Toggle } from "@/components/ui/toggle";
 import { defaultNotificationPrefs } from "@/data/settings";
 import type { NotificationPref } from "@/types/settings";
 import { useLanguage } from "@/context/language-context";
+import { portalHeading, portalSubtext } from "@/lib/portal-ui";
 
 export function NotificationsSection() {
   const { t } = useLanguage();
@@ -20,14 +22,14 @@ export function NotificationsSection() {
 
   return (
     <div>
-      <h3 className="text-base font-semibold text-gray-900 mb-5">{notif.title}</h3>
+      <h3 className={cn("text-base font-semibold mb-5", portalHeading)}>{notif.title}</h3>
 
       <div className="space-y-4">
         {prefs.map((pref) => (
           <div key={pref.id} className="flex items-start justify-between gap-4">
             <div>
-              <p className="text-sm font-medium text-gray-800">{pref.label}</p>
-              <p className="text-xs text-gray-400 mt-0.5">{pref.description}</p>
+              <p className={cn("text-sm font-medium", portalHeading)}>{pref.label}</p>
+              <p className={cn("text-xs mt-0.5", portalSubtext)}>{pref.description}</p>
             </div>
             <Toggle
               checked={pref.enabled}

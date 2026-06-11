@@ -11,6 +11,8 @@ import { UserPagination } from "@/components/admin/users/user-pagination";
 import { getAdminUserStatus } from "@/lib/admin-user-display";
 import { getUserById, listUsers, updateUserStatus } from "@/lib/api/admin-users";
 import { useLanguage } from "@/context/language-context";
+import { cn } from "@/lib/utils";
+import { portalHeadingAlt, portalSubtextAlt } from "@/lib/portal-ui";
 import { useToast } from "@/context/toast-context";
 import type { AdminUserDetail, AdminUserListItem } from "@/types/admin-user";
 
@@ -152,8 +154,8 @@ export default function UserManagementPage() {
     >
       <AdminRouteGuard>
         <div className="mb-8 animate-fade-up">
-          <h2 className="text-[30px] font-bold leading-9 text-[#111827]">{u.heading}</h2>
-          <p className="text-base text-[#6b7280] leading-6 mt-2">{u.subtext}</p>
+          <h2 className={cn("text-[30px] font-bold leading-9", portalHeadingAlt)}>{u.heading}</h2>
+          <p className={cn("text-base leading-6 mt-2", portalSubtextAlt)}>{u.subtext}</p>
         </div>
 
         <div className="animate-fade-up" style={{ animationDelay: "80ms" }}>

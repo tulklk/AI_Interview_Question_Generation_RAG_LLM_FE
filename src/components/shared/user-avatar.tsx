@@ -12,11 +12,11 @@ export function UserAvatar({ initials, name, plan, avatarUrl }: UserAvatarProps)
     <div className="flex items-center gap-2.5">
       <AvatarCircle avatarUrl={avatarUrl} fullName={name || initials} size="sm" />
       <div className="hidden sm:block text-right">
-        <p className="text-xs font-semibold text-gray-800 leading-tight">
+        <p className="text-xs font-semibold text-gray-800 dark:text-gray-100 leading-tight">
           {name}
         </p>
         {plan && (
-          <p className="text-[10px] text-gray-400 leading-tight">{plan}</p>
+          <p className="text-[10px] text-gray-400 dark:text-gray-500 leading-tight">{plan}</p>
         )}
       </div>
     </div>

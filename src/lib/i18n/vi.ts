@@ -6,6 +6,8 @@ export const vi: Translations = {
     getStarted: "Bắt đầu",
     logout: "Đăng xuất",
     tryFree: "Dùng miễn phí",
+    switchToLight: "Chuyển sang chế độ sáng",
+    switchToDark: "Chuyển sang chế độ tối",
   },
 
   nav: {
@@ -526,7 +528,7 @@ export const vi: Translations = {
       "Vui lòng xác minh email {{email}} trước khi đăng nhập. Kiểm tra hộp thư hoặc gửi lại liên kết bên dưới.",
     unverifiedResend: "Gửi lại email",
     unverifiedClose: "Đóng",
-    accountDisabled: "Tài khoản của bạn đã bị vô hiệu hóa. Vui lòng liên hệ hỗ trợ.",
+    accountDisabled: "Tài khoản của bạn đã bị vô hiệu hóa. Vui lòng liên hệ quản trị viên.",
     loginFailed: "Đăng nhập thất bại. Vui lòng thử lại.",
     selectRoleTitle: "Đăng nhập với vai trò",
     continueWithGoogle: "Tiếp tục với Google",
@@ -673,6 +675,7 @@ export const vi: Translations = {
     checkSpam: "Không nhận được? Kiểm tra thư mục spam.",
     resendButton: "Gửi lại email xác minh",
     resendSuccess: "Đã gửi lại email xác minh.",
+    resendFailed: "Gửi lại email xác minh thất bại. Vui lòng thử lại.",
     backToLogin: "Quay lại đăng nhập",
     verifyingTitle: "Đang xác minh email...",
     verifyingSubtitle: "Vui lòng chờ trong giây lát.",
@@ -1542,6 +1545,10 @@ export const vi: Translations = {
     finishBtn: "Hoàn thành & Xem phản hồi",
     aiThinking: "AI đang đánh giá câu trả lời của bạn...",
     exitConfirm: "Bạn có chắc muốn thoát? Tiến trình sẽ bị mất.",
+    exitConfirmTitle: "Thoát buổi luyện tập?",
+    exitConfirmMessage: "Tiến trình trong phiên này sẽ bị mất. Bạn có chắc muốn rời đi?",
+    exitConfirmBtn: "Thoát",
+    exitCancelBtn: "Ở lại",
   },
 
   jobseekerFeedbackPage: {
@@ -1673,6 +1680,9 @@ export const vi: Translations = {
     languageDescription: "Chọn ngôn ngữ hiển thị bạn muốn sử dụng",
     appearanceTitle: "Giao diện",
     appearanceDescription: "Tùy chỉnh giao diện hiển thị",
+    themeLight: "Sáng",
+    themeDark: "Tối",
+    themeSystem: "Hệ thống",
     notificationsTitle: "Thông báo",
     notificationsDescription: "Quản lý cách bạn nhận thông báo cập nhật",
     notificationLabels: {

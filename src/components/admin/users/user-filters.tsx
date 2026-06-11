@@ -3,6 +3,8 @@
 import { Search } from "lucide-react";
 import { useLanguage } from "@/context/language-context";
 import type { AdminUserRoleKey } from "@/types/admin-user";
+import { cn } from "@/lib/utils";
+import { portalInput } from "@/lib/portal-ui";
 
 export type StatusFilterValue = "all" | "Active" | "Pending" | "Suspended";
 export type RoleFilterValue = "all" | AdminUserRoleKey;
@@ -15,6 +17,11 @@ interface UserFiltersProps {
   onRoleChange: (v: RoleFilterValue) => void;
   onStatusChange: (v: StatusFilterValue) => void;
 }
+
+const filterCls = cn(
+  portalInput,
+  "min-h-[38px] rounded-lg text-xs transition-colors focus:border-[#6c47ff] focus:outline-none focus:ring-[3px] focus:ring-[rgba(108,71,255,0.1)]"
+);
 
 export function UserFilters({
   search,
@@ -47,21 +54,21 @@ export function UserFilters({
       <div className="relative min-w-0 w-full sm:max-w-xs sm:flex-1">
         <Search
           size={14}
-          className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#9ca3af]"
+          className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500"
         />
         <input
           type="text"
           value={search}
           onChange={(e) => onSearchChange(e.target.value)}
           placeholder={f.searchPlaceholder}
-          className="min-h-[38px] w-full rounded-lg border border-[#e5e7eb] bg-white py-2 pl-9 pr-4 text-xs text-[#111827] transition-colors focus:border-[#6c47ff] focus:outline-none focus:ring-[3px] focus:ring-[rgba(108,71,255,0.1)]"
+          className={cn(filterCls, "w-full py-2 pl-9 pr-4")}
         />
       </div>
 
       <select
         value={role}
         onChange={(e) => onRoleChange(e.target.value as RoleFilterValue)}
-        className="min-h-[38px] rounded-lg border border-[#e5e7eb] bg-white px-3 py-2 text-xs text-[#111827] focus:border-[#6c47ff] focus:outline-none focus:ring-[3px] focus:ring-[rgba(108,71,255,0.1)]"
+        className={cn(filterCls, "px-3 py-2")}
       >
         {roles.map((r) => (
           <option key={r.value} value={r.value}>
@@ -73,7 +80,7 @@ export function UserFilters({
       <select
         value={status}
         onChange={(e) => onStatusChange(e.target.value as StatusFilterValue)}
-        className="min-h-[38px] rounded-lg border border-[#e5e7eb] bg-white px-3 py-2 text-xs text-[#111827] focus:border-[#6c47ff] focus:outline-none focus:ring-[3px] focus:ring-[rgba(108,71,255,0.1)]"
+        className={cn(filterCls, "px-3 py-2")}
       >
         {statuses.map((s) => (
           <option key={s.value} value={s.value}>

@@ -9,21 +9,25 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
+import { cn } from "@/lib/utils";
 import { weeklyActivity } from "@/data/dashboard";
 import { useLanguage } from "@/context/language-context";
+import { useChartTheme } from "@/hooks/use-chart-theme";
+import { portalCard, portalHeading, portalSubtext } from "@/lib/portal-ui";
 
 export function WeeklyActivityCard() {
   const { t } = useLanguage();
   const wa = t.dashboardPage.weeklyActivity;
+  const chart = useChartTheme();
 
   return (
-    <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 flex flex-col animate-fade-up">
+    <div className={cn(portalCard, "shadow-sm p-6 flex flex-col animate-fade-up")}>
       <div className="flex items-center justify-between mb-1">
         <div>
-          <h3 className="text-base font-semibold text-gray-900">{wa.title}</h3>
-          <p className="text-xs text-gray-400 mt-0.5">{wa.subtitle}</p>
+          <h3 className={cn("text-base font-semibold", portalHeading)}>{wa.title}</h3>
+          <p className={cn("text-xs mt-0.5", portalSubtext)}>{wa.subtitle}</p>
         </div>
-        <div className="flex items-center gap-4 text-xs text-gray-500">
+        <div className={cn("flex items-center gap-4 text-xs", portalSubtext)}>
           <span className="flex items-center gap-1.5">
             <span className="w-2.5 h-2.5 rounded-full bg-[#6c47ff] inline-block" />
             {wa.questions}
@@ -51,15 +55,15 @@ export function WeeklyActivityCard() {
                 <stop offset="95%" stopColor="#34d399" stopOpacity={0} />
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
+            <CartesianGrid strokeDasharray="3 3" stroke={chart.chartGrid} vertical={false} />
             <XAxis
               dataKey="day"
-              tick={{ fontSize: 11, fill: "#9ca3af" }}
+              tick={{ fontSize: 11, fill: chart.axisTickFill }}
               axisLine={false}
               tickLine={false}
             />
             <YAxis
-              tick={{ fontSize: 11, fill: "#9ca3af" }}
+              tick={{ fontSize: 11, fill: chart.axisTickFill }}
               axisLine={false}
               tickLine={false}
               domain={[0, 60]}
@@ -69,10 +73,11 @@ export function WeeklyActivityCard() {
               contentStyle={{
                 fontSize: 12,
                 borderRadius: 10,
-                border: "1px solid #e5e7eb",
+                backgroundColor: chart.tooltipBg,
+                border: `1px solid ${chart.tooltipBorder}`,
                 boxShadow: "0 4px 12px rgba(0,0,0,0.06)",
               }}
-              cursor={{ stroke: "#e5e7eb", strokeWidth: 1 }}
+              cursor={{ stroke: chart.gridStroke, strokeWidth: 1 }}
             />
             <Area
               type="monotone"

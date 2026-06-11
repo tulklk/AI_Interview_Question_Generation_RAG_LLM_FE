@@ -255,7 +255,7 @@ export function RegisterJobSeekerForm({ registerRole = "jobseeker" }: RegisterJo
       } else if (data?.errors) {
         setFieldErrors(data.errors as FieldErrors);
       } else {
-        addToast("error", msg || (isGoogleSignup ? rp.profileCompleteFailed : rp.registrationFailed));
+        addToast("error", isGoogleSignup ? rp.profileCompleteFailed : rp.registrationFailed);
       }
     } finally {
       setLoading(false);
@@ -312,9 +312,9 @@ export function RegisterJobSeekerForm({ registerRole = "jobseeker" }: RegisterJo
   }
 
   const inputBase =
-    "auth-input-glow w-full pl-10 pr-4 py-2.5 text-sm border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors placeholder:text-gray-400";
+    "auth-input-glow w-full pl-10 pr-4 py-2.5 text-sm border border-gray-200 rounded-lg bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors placeholder:text-gray-400 dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100 dark:placeholder:text-gray-500";
   const inputReadOnly =
-    "w-full pl-10 pr-4 py-2.5 text-sm border border-gray-200 rounded-lg bg-gray-50 text-gray-500 cursor-not-allowed";
+    "w-full pl-10 pr-4 py-2.5 text-sm border border-gray-200 rounded-lg bg-gray-50 text-gray-500 cursor-not-allowed dark:bg-gray-800/50 dark:border-gray-700 dark:text-gray-400";
   const inputErrorCls = "border-red-300 focus:border-red-400 focus:ring-red-100";
 
   return (
@@ -375,7 +375,7 @@ export function RegisterJobSeekerForm({ registerRole = "jobseeker" }: RegisterJo
         </motion.span>
 
         {/* Animated progress line */}
-        <div className="relative flex-1 h-px bg-gray-200 mx-1 overflow-hidden">
+        <div className="relative flex-1 h-px bg-gray-200 dark:bg-gray-700 mx-1 overflow-hidden">
           <motion.div
             className="absolute inset-y-0 left-0 bg-emerald-400 rounded-full"
             initial={{ width: "0%" }}
@@ -428,7 +428,7 @@ export function RegisterJobSeekerForm({ registerRole = "jobseeker" }: RegisterJo
             <motion.div variants={fieldRows} initial="hidden" animate="visible">
               <motion.h2
                 variants={headingContainer}
-                className="text-2xl font-bold text-gray-900 mb-3 leading-tight"
+                className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-3 leading-tight"
               >
                 {rp.title.split(" ").map((word, i) => (
                   <motion.span key={i} variants={headingWord} className="inline-block mr-[0.28em] last:mr-0">
@@ -436,14 +436,14 @@ export function RegisterJobSeekerForm({ registerRole = "jobseeker" }: RegisterJo
                   </motion.span>
                 ))}
               </motion.h2>
-              <motion.p variants={fieldRow} className="text-sm text-gray-500 mb-5">
+              <motion.p variants={fieldRow} className="text-sm text-gray-500 dark:text-gray-400 mb-5">
                 {rp.subtitle}
               </motion.p>
 
               <div className="space-y-4">
                 {/* Full Name */}
                 <motion.div variants={fieldRow}>
-                  <label className="text-sm font-medium text-gray-700 block mb-1.5">
+                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-1.5">
                     {rp.fullNameLabel} <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
@@ -462,7 +462,7 @@ export function RegisterJobSeekerForm({ registerRole = "jobseeker" }: RegisterJo
 
                 {/* Email */}
                 <motion.div variants={fieldRow}>
-                  <label className="text-sm font-medium text-gray-700 block mb-1.5">
+                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-1.5">
                     {rp.emailLabel} <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
@@ -481,7 +481,7 @@ export function RegisterJobSeekerForm({ registerRole = "jobseeker" }: RegisterJo
 
                 {/* Password */}
                 <motion.div variants={fieldRow}>
-                  <label className="text-sm font-medium text-gray-700 block mb-1.5">
+                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-1.5">
                     {rp.passwordLabel} <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
@@ -494,7 +494,7 @@ export function RegisterJobSeekerForm({ registerRole = "jobseeker" }: RegisterJo
                       className={`${inputBase} pr-10 ${fieldErrors.password ? inputErrorCls : ""}`}
                       autoComplete="new-password"
                     />
-                    <button type="button" onClick={() => setShowPassword((v) => !v)} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600" tabIndex={-1}>
+                    <button type="button" onClick={() => setShowPassword((v) => !v)} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300" tabIndex={-1}>
                       {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
                     </button>
                   </div>
@@ -504,14 +504,14 @@ export function RegisterJobSeekerForm({ registerRole = "jobseeker" }: RegisterJo
                         {[1, 2, 3, 4].map((level) => (
                           <motion.div
                             key={level}
-                            className={`h-1 flex-1 rounded-full ${level <= passwordStrength ? strengthColor : "bg-gray-200"}`}
+                            className={`h-1 flex-1 rounded-full ${level <= passwordStrength ? strengthColor : "bg-gray-200 dark:bg-gray-700"}`}
                             initial={{ scaleX: 0 }}
                             animate={{ scaleX: level <= passwordStrength ? 1 : 0.3 }}
                             transition={{ duration: 0.3, delay: level * 0.05 }}
                           />
                         ))}
                       </div>
-                      <p className="text-xs text-gray-500">{strengthLabel}</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">{strengthLabel}</p>
                     </div>
                   )}
                   {fieldErrors.password && <p className="text-xs text-red-500 mt-1">{fieldErrors.password}</p>}
@@ -519,7 +519,7 @@ export function RegisterJobSeekerForm({ registerRole = "jobseeker" }: RegisterJo
 
                 {/* Confirm Password */}
                 <motion.div variants={fieldRow}>
-                  <label className="text-sm font-medium text-gray-700 block mb-1.5">
+                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-1.5">
                     {rp.confirmPasswordLabel} <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
@@ -539,7 +539,7 @@ export function RegisterJobSeekerForm({ registerRole = "jobseeker" }: RegisterJo
                     {confirmPassword.length > 0 && confirmPassword === password ? (
                       <CheckCircle2 size={15} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-emerald-500 pointer-events-none" />
                     ) : (
-                      <button type="button" onClick={() => setShowConfirm((v) => !v)} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600" tabIndex={-1}>
+                      <button type="button" onClick={() => setShowConfirm((v) => !v)} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300" tabIndex={-1}>
                         {showConfirm ? <EyeOff size={15} /> : <Eye size={15} />}
                       </button>
                     )}
@@ -561,9 +561,9 @@ export function RegisterJobSeekerForm({ registerRole = "jobseeker" }: RegisterJo
 
               {/* Divider + Social */}
               <motion.div variants={fieldRow} className="flex items-center gap-3 my-5">
-                <div className="flex-1 h-px bg-gray-200" />
-                <span className="text-xs text-gray-400">{rp.orContinueWith}</span>
-                <div className="flex-1 h-px bg-gray-200" />
+                <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700" />
+                <span className="text-xs text-gray-400 dark:text-gray-500">{rp.orContinueWith}</span>
+                <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700" />
               </motion.div>
               <motion.div variants={fieldRow}>
                 <SocialOAuthRow
@@ -573,7 +573,7 @@ export function RegisterJobSeekerForm({ registerRole = "jobseeker" }: RegisterJo
                   onGoogleError={() => addToast("error", rp.registrationFailed)}
                 />
               </motion.div>
-              <motion.p variants={fieldRow} className="text-center text-sm text-gray-500 mt-5">
+              <motion.p variants={fieldRow} className="text-center text-sm text-gray-500 dark:text-gray-400 mt-5">
                 {rp.alreadyHaveAccount}{" "}
                 <Link href="/login" className="text-primary font-semibold hover:underline">
                   {rp.signIn}
@@ -593,7 +593,7 @@ export function RegisterJobSeekerForm({ registerRole = "jobseeker" }: RegisterJo
             <motion.div variants={fieldRows} initial="hidden" animate="visible">
               <motion.h2
                 variants={headingContainer}
-                className="text-2xl font-bold text-gray-900 mb-3 leading-tight"
+                className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-3 leading-tight"
               >
                 {rp.step2Title.split(" ").map((word, i) => (
                   <motion.span key={i} variants={headingWord} className="inline-block mr-[0.28em] last:mr-0">
@@ -601,7 +601,7 @@ export function RegisterJobSeekerForm({ registerRole = "jobseeker" }: RegisterJo
                   </motion.span>
                 ))}
               </motion.h2>
-              <motion.p variants={fieldRow} className="text-sm text-gray-500 mb-5">
+              <motion.p variants={fieldRow} className="text-sm text-gray-500 dark:text-gray-400 mb-5">
                 {isGoogleSignup ? rp.googleStep2Hint : rp.step2Subtitle}
               </motion.p>
 
@@ -609,7 +609,7 @@ export function RegisterJobSeekerForm({ registerRole = "jobseeker" }: RegisterJo
                 {isGoogleSignup && (
                   <>
                     <motion.div variants={fieldRow}>
-                      <label className="text-sm font-medium text-gray-700 block mb-1.5">
+                      <label className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-1.5">
                         {rp.fullNameLabel} <span className="text-red-500">*</span>
                       </label>
                       <div className="relative">
@@ -618,7 +618,7 @@ export function RegisterJobSeekerForm({ registerRole = "jobseeker" }: RegisterJo
                       </div>
                     </motion.div>
                     <motion.div variants={fieldRow}>
-                      <label className="text-sm font-medium text-gray-700 block mb-1.5">
+                      <label className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-1.5">
                         {rp.emailLabel} <span className="text-red-500">*</span>
                       </label>
                       <div className="relative">
@@ -631,7 +631,7 @@ export function RegisterJobSeekerForm({ registerRole = "jobseeker" }: RegisterJo
 
                 {/* Target Role */}
                 <motion.div variants={fieldRow}>
-                  <label className="text-sm font-medium text-gray-700 block mb-1.5">
+                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-1.5">
                     {rp.targetRoleLabel} <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
@@ -649,7 +649,7 @@ export function RegisterJobSeekerForm({ registerRole = "jobseeker" }: RegisterJo
 
                 {/* Seniority Level */}
                 <motion.div variants={fieldRow}>
-                  <label className="text-sm font-medium text-gray-700 block mb-1.5">
+                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-1.5">
                     {rp.seniorityLabel} <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
@@ -657,9 +657,9 @@ export function RegisterJobSeekerForm({ registerRole = "jobseeker" }: RegisterJo
                     <select
                       value={seniorityLevel}
                       onChange={(e) => { setSeniorityLevel(e.target.value); if (fieldErrors.seniorityLevel) setFieldErrors((p) => ({ ...p, seniorityLevel: undefined })); }}
-                      className={`w-full px-3.5 py-2.5 text-sm border rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors appearance-none pr-9 ${
+                      className={`w-full px-3.5 py-2.5 text-sm border rounded-lg bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors appearance-none pr-9 dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100 ${
                         fieldErrors.seniorityLevel ? "border-red-300 focus:border-red-400 focus:ring-red-100" : "border-gray-200"
-                      } ${!seniorityLevel ? "text-gray-400" : "text-gray-900"}`}
+                      } ${!seniorityLevel ? "text-gray-400 dark:text-gray-500" : "text-gray-900 dark:text-gray-100"}`}
                     >
                       <option value="" disabled>{rp.seniorityPlaceholder}</option>
                       {SENIORITY_LEVELS.map((level) => (
@@ -672,7 +672,7 @@ export function RegisterJobSeekerForm({ registerRole = "jobseeker" }: RegisterJo
 
                 {/* Tech Stack */}
                 <motion.div variants={fieldRow}>
-                  <label className="text-sm font-medium text-gray-700 block mb-1.5">
+                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-1.5">
                     {rp.techStackLabel} <span className="text-red-500">*</span>
                   </label>
 
@@ -706,10 +706,10 @@ export function RegisterJobSeekerForm({ registerRole = "jobseeker" }: RegisterJo
 
                   {/* Search + dropdown */}
                   <div className="relative" ref={techDropdownRef}>
-                    <div className={`flex items-center border rounded-lg bg-white transition-colors ${
+                    <div className={`flex items-center border rounded-lg bg-white dark:bg-gray-900 transition-colors ${
                       techOpen ? "border-primary ring-2 ring-primary/20"
                       : fieldErrors.techStack ? "border-red-300"
-                      : "border-gray-200"
+                      : "border-gray-200 dark:border-gray-700"
                     }`}>
                       <Search size={14} className="ml-3 text-gray-400 shrink-0" />
                       <input
@@ -718,20 +718,20 @@ export function RegisterJobSeekerForm({ registerRole = "jobseeker" }: RegisterJo
                         onChange={(e) => setTechSearch(e.target.value)}
                         onFocus={() => setTechOpen(true)}
                         placeholder={rp.techStackSearch}
-                        className="flex-1 px-2.5 py-2.5 text-sm bg-transparent focus:outline-none placeholder:text-gray-400"
+                        className="flex-1 px-2.5 py-2.5 text-sm bg-transparent text-gray-900 dark:text-gray-100 focus:outline-none placeholder:text-gray-400 dark:placeholder:text-gray-500"
                       />
                     </div>
                     <AnimatePresence>
                       {techOpen && (
                         <motion.div
-                          className="absolute z-20 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto"
+                          className="absolute z-20 mt-1 w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-48 overflow-y-auto"
                           initial={{ opacity: 0, y: -6, scale: 0.97 }}
                           animate={{ opacity: 1, y: 0, scale: 1 }}
                           exit={{ opacity: 0, y: -4, scale: 0.97 }}
                           transition={{ duration: 0.18, ease: "easeOut" }}
                         >
                           {filteredTech.length === 0 ? (
-                            <p className="px-3 py-3 text-sm text-gray-400 text-center">{rp.techStackEmpty}</p>
+                            <p className="px-3 py-3 text-sm text-gray-400 dark:text-gray-500 text-center">{rp.techStackEmpty}</p>
                           ) : (
                             <div className="p-2 flex flex-wrap gap-1.5">
                               {filteredTech.map((tech) => (
@@ -739,7 +739,7 @@ export function RegisterJobSeekerForm({ registerRole = "jobseeker" }: RegisterJo
                                   key={tech}
                                   type="button"
                                   onClick={() => toggleTech(tech)}
-                                  className="px-2.5 py-1 text-xs font-medium rounded-full border border-gray-200 text-gray-700 hover:border-primary hover:text-primary hover:bg-primary/5 transition-colors"
+                                  className="px-2.5 py-1 text-xs font-medium rounded-full border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:border-primary hover:text-primary hover:bg-primary/5 transition-colors"
                                 >
                                   {tech}
                                 </button>
@@ -773,7 +773,7 @@ export function RegisterJobSeekerForm({ registerRole = "jobseeker" }: RegisterJo
                 <button
                   type="button"
                   onClick={handleBackFromStep2}
-                  className="mt-4 w-full flex items-center justify-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 transition-colors"
+                  className="mt-4 w-full flex items-center justify-center gap-1.5 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
                 >
                   <ArrowLeft size={14} />
                   {rp.backButton}

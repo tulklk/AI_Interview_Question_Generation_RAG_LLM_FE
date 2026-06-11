@@ -1,11 +1,13 @@
 "use client";
 
 import { Zap, Download } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { billingHistory, usageStats } from "@/data/settings";
 import { getUsageCaps } from "@/data/hr-subscription";
 import { useLanguage } from "@/context/language-context";
 import { useHrSubscription } from "@/context/hr-subscription-context";
 import { HrBillingSubscription } from "./hr-billing-subscription";
+import { portalHeading, portalIconWell, portalMutedBg, portalSubtext } from "@/lib/portal-ui";
 
 export function BillingSection() {
   const { t } = useLanguage();
@@ -16,7 +18,7 @@ export function BillingSection() {
 
   return (
     <div>
-      <h3 className="text-base font-semibold text-gray-900 mb-5">{bill.title}</h3>
+      <h3 className={cn("text-base font-semibold mb-5", portalHeading)}>{bill.title}</h3>
 
       <div className="mb-8">
         <HrBillingSubscription />
@@ -25,7 +27,7 @@ export function BillingSection() {
       <div className="mb-5">
         <div className="flex items-center gap-2 mb-3">
           <Zap size={14} className="text-amber-400" />
-          <p className="text-sm font-semibold text-gray-700">{bill.monthlyUsage}</p>
+          <p className={cn("text-sm font-semibold", portalHeading)}>{bill.monthlyUsage}</p>
         </div>
         <div className="space-y-3">
           {usageStats.map((stat) => {
@@ -36,10 +38,10 @@ export function BillingSection() {
               return (
                 <div key={stat.id}>
                   <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs text-gray-600">{label}</span>
-                    <span className="text-xs font-medium text-gray-400">{bill.usageNotOnPlan}</span>
+                    <span className={cn("text-xs", portalSubtext)}>{label}</span>
+                    <span className={cn("text-xs font-medium", portalSubtext)}>{bill.usageNotOnPlan}</span>
                   </div>
-                  <div className="h-2 bg-gray-100 rounded-full overflow-hidden" />
+                  <div className={cn("h-2 rounded-full overflow-hidden", portalMutedBg)} />
                 </div>
               );
             }
@@ -47,12 +49,12 @@ export function BillingSection() {
             return (
               <div key={stat.id}>
                 <div className="flex items-center justify-between mb-1">
-                  <span className="text-xs text-gray-600">{label}</span>
-                  <span className="text-xs font-medium text-gray-700">
+                  <span className={cn("text-xs", portalSubtext)}>{label}</span>
+                  <span className={cn("text-xs font-medium", portalHeading)}>
                     {stat.current} / {max}
                   </span>
                 </div>
-                <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                <div className={cn("h-2 rounded-full overflow-hidden", portalMutedBg)}>
                   <div className="h-full bg-[#6c47ff] rounded-full" style={{ width: `${pct}%` }} />
                 </div>
               </div>
@@ -62,20 +64,20 @@ export function BillingSection() {
       </div>
 
       <div>
-        <p className="text-sm font-semibold text-gray-700 mb-3">{bill.billingHistory}</p>
+        <p className={cn("text-sm font-semibold mb-3", portalHeading)}>{bill.billingHistory}</p>
         <div className="space-y-2">
           {billingHistory.map((record) => (
             <div
               key={record.id}
-              className="flex items-center justify-between bg-gray-50 rounded-lg px-4 py-3"
+              className={cn("flex items-center justify-between rounded-lg px-4 py-3", portalIconWell)}
             >
               <div>
-                <p className="text-sm font-medium text-gray-800">{record.date}</p>
-                <p className="text-xs text-gray-400">{record.invoiceNumber}</p>
+                <p className={cn("text-sm font-medium", portalHeading)}>{record.date}</p>
+                <p className={cn("text-xs", portalSubtext)}>{record.invoiceNumber}</p>
               </div>
               <div className="flex items-center gap-3">
-                <span className="text-sm font-semibold text-gray-700">{record.amount}</span>
-                <span className="text-[11px] font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md">
+                <span className={cn("text-sm font-semibold", portalHeading)}>{record.amount}</span>
+                <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-md">
                   {bill.paid}
                 </span>
                 <button

@@ -16,6 +16,7 @@ import { SecuritySection } from "./security-section";
 import { BillingSection } from "./billing-section";
 import type { SettingsTab } from "@/types/settings";
 import { useLanguage } from "@/context/language-context";
+import { portalCard, portalHeading } from "@/lib/portal-ui";
 
 function TabContent({ tab }: { tab: SettingsTab }) {
   switch (tab) {
@@ -59,7 +60,7 @@ export function SettingsLayout() {
 
   return (
     <div className="grid grid-cols-[220px_1fr] gap-6 items-start">
-      <nav className="bg-white rounded-xl border border-gray-100 shadow-sm p-2 sticky top-4 animate-slide-left">
+      <nav className={cn(portalCard, "shadow-sm p-2 sticky top-4 animate-slide-left")}>
         <ul className="space-y-0.5">
           {tabItems.map(({ id, label, Icon }) => (
             <li key={id}>
@@ -79,7 +80,7 @@ export function SettingsLayout() {
                   "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors text-left",
                   activeTab === id
                     ? "bg-[#6c47ff] text-white"
-                    : "text-gray-600 hover:bg-gray-50 hover:text-gray-800"
+                    : cn(portalHeading, "hover:bg-gray-50 dark:hover:bg-gray-800 opacity-80 hover:opacity-100")
                 )}
               >
                 <Icon size={16} className="shrink-0" />
@@ -90,7 +91,7 @@ export function SettingsLayout() {
         </ul>
       </nav>
 
-      <div key={activeTab} className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 animate-scale-in">
+      <div key={activeTab} className={cn(portalCard, "shadow-sm p-6 animate-scale-in")}>
         <TabContent tab={activeTab} />
       </div>
     </div>

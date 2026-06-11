@@ -6,6 +6,8 @@ import { AuditLogFilters, AUDIT_FILTER_ALL } from "@/components/admin/audit/audi
 import { AuditLogTable } from "@/components/admin/audit/audit-log-table";
 import { auditLogEntries } from "@/data/admin";
 import { useLanguage } from "@/context/language-context";
+import { cn } from "@/lib/utils";
+import { portalHeadingAlt, portalSubtextAlt } from "@/lib/portal-ui";
 
 export default function AdminAuditPage() {
   const { t } = useLanguage();
@@ -34,8 +36,8 @@ export default function AdminAuditPage() {
       breadcrumb={[{ label: "Admin", href: "/admin/dashboard" }, { label: "Audit" }]}
     >
       <div className="mb-8 animate-fade-up">
-        <h2 className="text-[30px] font-bold leading-9 text-[#111827]">{a.heading}</h2>
-        <p className="mt-2 text-base leading-6 text-[#6b7280]">{a.subtext}</p>
+        <h2 className={cn("text-[30px] font-bold leading-9", portalHeadingAlt)}>{a.heading}</h2>
+        <p className={cn("mt-2 text-base leading-6", portalSubtextAlt)}>{a.subtext}</p>
       </div>
 
       <div className="animate-fade-up" style={{ animationDelay: "80ms" }}>

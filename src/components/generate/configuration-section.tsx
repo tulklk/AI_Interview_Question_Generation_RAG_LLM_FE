@@ -1,9 +1,11 @@
 "use client";
 
 import { Sparkles, CheckCircle2, Hash } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { SelectField } from "@/components/ui/select-field";
 import { jobRoles, experienceLevels, questionCounts } from "@/data/generate";
 import { useLanguage } from "@/context/language-context";
+import { portalBanner, portalCard, portalHeading, portalSubtext } from "@/lib/portal-ui";
 
 interface ConfigurationSectionProps {
   role: string;
@@ -44,14 +46,14 @@ export function ConfigurationSection({
     .map((q) => ({ value: String(q.value), label: q.label }));
 
   return (
-    <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 space-y-5">
+    <div className={cn(portalCard, "shadow-sm p-6 space-y-5")}>
       <div className="flex items-center gap-2">
         <Sparkles size={16} className="text-[#6c47ff]" />
-        <h2 className="text-base font-semibold text-gray-900">{cfg.title}</h2>
+        <h2 className={cn("text-base font-semibold", portalHeading)}>{cfg.title}</h2>
       </div>
 
       {maxQuestionsPerRun < 20 && (
-        <p className="text-xs text-amber-800 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
+        <p className="text-xs text-amber-800 dark:text-amber-200 bg-amber-50 dark:bg-amber-950/40 border border-amber-100 dark:border-amber-900 rounded-lg px-3 py-2">
           {hs.lockedBatch.replace("{max}", String(maxQuestionsPerRun))}
         </p>
       )}
@@ -78,12 +80,12 @@ export function ConfigurationSection({
         />
 
         <div className="flex flex-col gap-1.5">
-          <label htmlFor="question-count" className="text-sm font-medium text-gray-700">
+          <label htmlFor="question-count" className={cn("text-sm font-medium", portalHeading)}>
             {cfg.questionsPerCategory}
           </label>
           <div className="relative">
             <div className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center gap-1 pointer-events-none">
-              <Hash size={12} className="text-gray-400" />
+              <Hash size={12} className="text-gray-400 dark:text-gray-500" />
             </div>
             <SelectField
               value={questionCount}
@@ -92,14 +94,14 @@ export function ConfigurationSection({
               id="question-count"
             />
           </div>
-          <p className="text-[11px] text-gray-400">{cfg.helperText}</p>
+          <p className={cn("text-[11px]", portalSubtext)}>{cfg.helperText}</p>
         </div>
       </div>
 
       {isReady && (
-        <div className="flex items-start gap-2.5 bg-indigo-50 border border-indigo-100 rounded-lg px-4 py-3">
+        <div className={cn("flex items-start gap-2.5 rounded-lg px-4 py-3", portalBanner)}>
           <CheckCircle2 size={15} className="text-[#6c47ff] mt-0.5 shrink-0" />
-          <p className="text-sm text-indigo-700">
+          <p className="text-sm text-indigo-700 dark:text-indigo-300">
             <span className="font-semibold">{cfg.readyBanner}</span>{" "}
             {cfg.aiWillCreate}{" "}
             <span className="font-semibold">
@@ -117,7 +119,7 @@ export function ConfigurationSection({
         type="button"
         onClick={onSubmit}
         disabled={!isReady || generateDisabled}
-        className="w-full flex items-center justify-center gap-2 bg-[#6c47ff] hover:bg-[#5535dd] disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed text-white font-semibold text-sm px-6 py-3.5 rounded-lg transition-colors"
+        className="w-full flex items-center justify-center gap-2 bg-[#6c47ff] hover:bg-[#5535dd] disabled:bg-gray-200 dark:disabled:bg-gray-800 disabled:text-gray-400 disabled:cursor-not-allowed text-white font-semibold text-sm px-6 py-3.5 rounded-lg transition-colors"
       >
         <Sparkles size={15} />
         {cfg.generateBtn}

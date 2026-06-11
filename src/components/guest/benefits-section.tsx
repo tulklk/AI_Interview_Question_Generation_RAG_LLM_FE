@@ -9,14 +9,14 @@ export function BenefitsSection() {
   const b = t.benefits;
 
   return (
-    <section className="relative bg-[#f5f7fb] py-20 px-6">
+    <section className="relative bg-[#f5f7fb] dark:bg-[#0b0f1a] py-20 px-6">
       <div className="max-w-6xl mx-auto">
         <ScrollReveal animation="fade-up" className="text-center mb-12">
           <p className="text-sm font-semibold text-[#6c47ff] uppercase tracking-widest mb-3">
             {b.sectionLabel}
           </p>
-          <h2 className="text-3xl font-bold text-gray-900">{b.headline}</h2>
-          <p className="text-gray-500 mt-3 max-w-xl mx-auto text-base leading-relaxed">
+          <h2 className="text-3xl font-bold text-gray-900 dark:text-gray-50">{b.headline}</h2>
+          <p className="text-gray-500 dark:text-gray-400 mt-3 max-w-xl mx-auto text-base leading-relaxed">
             {b.subtext}
           </p>
         </ScrollReveal>
@@ -27,7 +27,7 @@ export function BenefitsSection() {
               key={item.id}
               animation={i % 2 === 0 ? "slide-left" : "slide-right"}
               delay={i * 100}
-              className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 flex flex-col gap-4"
+              className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm p-6 flex flex-col gap-4"
             >
               <div
                 className={`w-11 h-11 rounded-lg flex items-center justify-center shrink-0 ${item.iconBg}`}
@@ -35,10 +35,10 @@ export function BenefitsSection() {
                 <item.icon size={20} className={item.iconColor} />
               </div>
               <div>
-                <h3 className="text-sm font-bold text-gray-900 mb-1.5">
+                <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100 mb-1.5">
                   {b.items[i].title}
                 </h3>
-                <p className="text-sm text-gray-500 leading-relaxed">
+                <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">
                   {b.items[i].description}
                 </p>
               </div>

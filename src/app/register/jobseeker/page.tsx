@@ -10,7 +10,7 @@ export const metadata = {
 
 export default function RegisterJobSeekerPage() {
   return (
-    <div className="flex h-screen overflow-hidden bg-white">
+    <div className="flex h-screen overflow-hidden bg-white dark:bg-gray-950">
       <div className="hidden lg:flex w-[55%] shrink-0 bg-gradient-to-br from-[#6c47ff] to-[#8b65ff] animate-slide-left">
         <LoginHero />
       </div>

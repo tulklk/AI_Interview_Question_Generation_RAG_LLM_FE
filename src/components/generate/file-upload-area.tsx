@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { Upload, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLanguage } from "@/context/language-context";
+import { portalHeading, portalIconWell, portalInput, portalSubtext } from "@/lib/portal-ui";
 
 export function FileUploadArea() {
   const { t } = useLanguage();
@@ -33,28 +34,28 @@ export function FileUploadArea() {
       className={cn(
         "flex items-center gap-3 px-5 py-4 rounded-lg border-2 border-dashed cursor-pointer transition-colors",
         isDragging
-          ? "border-[#6c47ff] bg-[#6c47ff]/5"
-          : "border-gray-200 hover:border-gray-300 bg-white"
+          ? "border-[#6c47ff] bg-[#6c47ff]/5 dark:bg-[#6c47ff]/10"
+          : cn(portalInput, "hover:border-gray-300 dark:hover:border-gray-600")
       )}
     >
-      <div className="w-8 h-8 rounded-lg bg-gray-50 border border-gray-100 flex items-center justify-center shrink-0">
-        <Upload size={14} className="text-gray-400" />
+      <div className={cn("w-8 h-8 rounded-lg border border-gray-100 dark:border-gray-700 flex items-center justify-center shrink-0", portalIconWell)}>
+        <Upload size={14} className="text-gray-400 dark:text-gray-500" />
       </div>
       {file ? (
         <div className="flex items-center gap-2 flex-1 min-w-0">
-          <span className="text-sm text-gray-700 truncate">{file.name}</span>
+          <span className={cn("text-sm truncate", portalHeading)}>{file.name}</span>
           <button
             type="button"
             onClick={(e) => { e.stopPropagation(); setFile(null); }}
-            className="ml-auto shrink-0 text-gray-400 hover:text-gray-600"
+            className={cn("ml-auto shrink-0 hover:text-gray-600 dark:hover:text-gray-300", portalSubtext)}
           >
             <X size={14} />
           </button>
         </div>
       ) : (
         <div>
-          <p className="text-sm font-medium text-gray-700">{fu.label}</p>
-          <p className="text-xs text-gray-400 mt-0.5">{fu.support}</p>
+          <p className={cn("text-sm font-medium", portalHeading)}>{fu.label}</p>
+          <p className={cn("text-xs mt-0.5", portalSubtext)}>{fu.support}</p>
         </div>
       )}
       <input

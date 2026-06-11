@@ -23,9 +23,9 @@ export function Pill({ className, children, size = "md" }: PillProps) {
 }
 
 const DIFFICULTY_BADGE_CLASS: Record<Difficulty, string> = {
-  Easy: "bg-emerald-50 text-emerald-700",
-  Medium: "bg-amber-50 text-amber-700",
-  Hard: "bg-red-50 text-red-600",
+  Easy: "bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300",
+  Medium: "bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-300",
+  Hard: "bg-red-50 dark:bg-red-950 text-red-600 dark:text-red-400",
 };
 
 export function getDifficultyBadgeClass(difficulty: Difficulty): string {
@@ -33,9 +33,9 @@ export function getDifficultyBadgeClass(difficulty: Difficulty): string {
 }
 
 const CATEGORY_BADGE_CLASS: Record<QuestionCategory, string> = {
-  Technical: "bg-blue-50 text-blue-700",
-  Behavioral: "bg-violet-50 text-violet-700",
-  Situational: "bg-amber-50 text-amber-700",
+  Technical: "bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300",
+  Behavioral: "bg-violet-50 dark:bg-violet-950 text-violet-700 dark:text-violet-300",
+  Situational: "bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-300",
 };
 
 export function getCategoryBadgeClass(category: QuestionCategory): string {
@@ -47,9 +47,9 @@ export function getCategoryBadgeClass(category: QuestionCategory): string {
  * a bare "NN%" is shown (dashboard recent sessions, history rows, per-question scores).
  */
 export function getScoreBadgeClass(score: number): string {
-  if (score >= 80) return "bg-emerald-50 text-emerald-700";
-  if (score >= 65) return "bg-violet-50 text-violet-700";
-  return "bg-amber-50 text-amber-700";
+  if (score >= 80) return "bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300";
+  if (score >= 65) return "bg-violet-50 dark:bg-violet-950 text-violet-700 dark:text-violet-300";
+  return "bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-300";
 }
 
 export interface ScoreLevelLabels {
@@ -67,8 +67,8 @@ export function getScoreLevel(
   score: number,
   labels: ScoreLevelLabels,
 ): { label: string; badgeClass: string } {
-  if (score >= 80) return { label: labels.excellent, badgeClass: "bg-emerald-50 text-emerald-700" };
-  if (score >= 65) return { label: labels.good, badgeClass: "bg-violet-50 text-violet-700" };
-  if (score >= 50) return { label: labels.fair, badgeClass: "bg-amber-50 text-amber-700" };
-  return { label: labels.needsWork, badgeClass: "bg-red-50 text-red-600" };
+  if (score >= 80) return { label: labels.excellent, badgeClass: "bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300" };
+  if (score >= 65) return { label: labels.good, badgeClass: "bg-violet-50 dark:bg-violet-950 text-violet-700 dark:text-violet-300" };
+  if (score >= 50) return { label: labels.fair, badgeClass: "bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-300" };
+  return { label: labels.needsWork, badgeClass: "bg-red-50 dark:bg-red-950 text-red-600 dark:text-red-400" };
 }

@@ -24,27 +24,27 @@ export function GuestFooter() {
   ];
 
   return (
-    <footer id="contact" className="relative bg-white border-t border-gray-100">
+    <footer id="contact" className="relative bg-white dark:bg-gray-950 border-t border-gray-100 dark:border-gray-800">
       <ScrollReveal animation="fade-up" className="max-w-6xl mx-auto px-6 py-14">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
           <div>
             <BrandLogo className="mb-4" logoClassName="w-9 h-9" />
-            <p className="text-sm text-gray-500 leading-relaxed max-w-xs">{f.tagline}</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed max-w-xs">{f.tagline}</p>
           </div>
 
           <div>
-            <h4 className="text-xs font-bold text-gray-900 uppercase tracking-widest mb-4">
+            <h4 className="text-xs font-bold text-gray-900 dark:text-gray-100 uppercase tracking-widest mb-4">
               {f.quickLinks}
             </h4>
             <ul className="space-y-2.5">
               {quickLinks.map((link) => (
                 <li key={link.label}>
                   {link.href.startsWith("#") ? (
-                    <a href={link.href} className="text-sm text-gray-500 hover:text-[#6c47ff] transition-colors">
+                    <a href={link.href} className="text-sm text-gray-500 dark:text-gray-400 hover:text-[#6c47ff] dark:hover:text-[#a78bff] transition-colors">
                       {link.label}
                     </a>
                   ) : (
-                    <Link href={link.href} className="text-sm text-gray-500 hover:text-[#6c47ff] transition-colors">
+                    <Link href={link.href} className="text-sm text-gray-500 dark:text-gray-400 hover:text-[#6c47ff] dark:hover:text-[#a78bff] transition-colors">
                       {link.label}
                     </Link>
                   )}
@@ -54,7 +54,7 @@ export function GuestFooter() {
           </div>
 
           <div>
-            <h4 className="text-xs font-bold text-gray-900 uppercase tracking-widest mb-4">
+            <h4 className="text-xs font-bold text-gray-900 dark:text-gray-100 uppercase tracking-widest mb-4">
               {f.legal}
             </h4>
             <ul className="space-y-2.5">
@@ -69,11 +69,11 @@ export function GuestFooter() {
           </div>
         </div>
 
-        <div className="mt-12 pt-6 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-3">
-          <p className="text-xs text-gray-400">
+        <div className="mt-12 pt-6 border-t border-gray-100 dark:border-gray-800 flex flex-col sm:flex-row items-center justify-between gap-3">
+          <p className="text-xs text-gray-400 dark:text-gray-500">
             © {new Date().getFullYear()} HireGen AI. {f.copyright}
           </p>
-          <p className="text-xs text-gray-400">{f.builtWith}</p>
+          <p className="text-xs text-gray-400 dark:text-gray-500">{f.builtWith}</p>
         </div>
       </ScrollReveal>
     </footer>

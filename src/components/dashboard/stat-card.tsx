@@ -8,7 +8,7 @@ interface StatCardProps {
 
 export function StatCard({ stat, labelOverride }: StatCardProps) {
   return (
-    <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 flex flex-col gap-4">
+    <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm p-5 flex flex-col gap-4">
       <div className="flex items-start justify-between">
         <div
           className={cn(
@@ -22,18 +22,18 @@ export function StatCard({ stat, labelOverride }: StatCardProps) {
           className={cn(
             "text-[11px] font-semibold px-2 py-0.5 rounded-full",
             stat.trendPositive
-              ? "bg-[#f5f3ff] text-[#6c47ff]"
-              : "bg-red-50 text-red-600"
+              ? "bg-[#f5f3ff] dark:bg-[#6c47ff]/15 text-[#6c47ff]"
+              : "bg-red-50 dark:bg-red-950 text-red-600 dark:text-red-400"
           )}
         >
           ↑ {stat.trend}
         </span>
       </div>
       <div>
-        <p className="text-[26px] font-bold text-gray-900 leading-none">
+        <p className="text-[26px] font-bold text-gray-900 dark:text-gray-100 leading-none">
           {stat.value}
         </p>
-        <p className="text-sm text-gray-500 mt-1">{labelOverride ?? stat.label}</p>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{labelOverride ?? stat.label}</p>
       </div>
     </div>
   );

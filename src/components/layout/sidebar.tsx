@@ -20,16 +20,16 @@ export function Sidebar() {
   const s = t.sidebar;
 
   return (
-    <aside className="flex flex-col w-[250px] shrink-0 h-screen bg-white border-r border-[#e5e7eb] overflow-y-auto">
+    <aside className="flex flex-col w-[250px] shrink-0 h-screen bg-white dark:bg-gray-950 border-r border-[#e5e7eb] dark:border-gray-800 overflow-y-auto">
       <div className="px-5 pt-6 pb-2">
         <BrandLogo
           logoClassName="w-9 h-9"
-          subtitleClassName="text-gray-400 text-[11px]"
+          subtitleClassName="text-gray-400 dark:text-gray-500 text-[11px]"
         />
       </div>
 
       <nav className="flex-1 px-4 mt-6">
-        <p className="text-gray-400 text-[10px] font-semibold uppercase tracking-widest px-2 mb-2">
+        <p className="text-gray-400 dark:text-gray-500 text-[10px] font-semibold uppercase tracking-widest px-2 mb-2">
           {s.sectionLabel}
         </p>
         <ul className="space-y-0.5">
@@ -43,15 +43,15 @@ export function Sidebar() {
                   className={cn(
                     "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors text-base font-normal",
                     isActive
-                      ? "bg-[rgba(108,71,255,0.1)] text-[#6c47ff] font-medium"
-                      : "text-[#6b7280] hover:bg-[rgba(108,71,255,0.05)] hover:text-[#111827]"
+                      ? "bg-[rgba(108,71,255,0.1)] dark:bg-[#6c47ff]/15 text-[#6c47ff] font-medium"
+                      : "text-[#6b7280] dark:text-gray-400 hover:bg-[rgba(108,71,255,0.05)] dark:hover:bg-gray-800 hover:text-[#111827] dark:hover:text-gray-100"
                   )}
                 >
                   <item.icon
                     size={18}
                     className={cn(
                       "shrink-0",
-                      isActive ? "text-[#6c47ff]" : "text-[#9ca3af]"
+                      isActive ? "text-[#6c47ff]" : "text-[#9ca3af] dark:text-gray-500"
                     )}
                   />
                   <span className="text-sm font-medium flex-1">{label}</span>
@@ -59,7 +59,7 @@ export function Sidebar() {
                     <span
                       className={cn(
                         "text-[10px] font-semibold px-1.5 py-0.5 rounded-md leading-none",
-                        isActive ? "bg-[#6c47ff]/15 text-[#6c47ff]" : "bg-[#f5f7fb] text-[#6b7280]"
+                        isActive ? "bg-[#6c47ff]/15 text-[#6c47ff]" : "bg-[#f5f7fb] dark:bg-gray-800 text-[#6b7280] dark:text-gray-400"
                       )}
                     >
                       {item.badge}
@@ -73,14 +73,14 @@ export function Sidebar() {
       </nav>
 
       <div className="px-4 mb-4">
-        <div className="bg-[#f5f3ff] rounded-xl p-4 border border-[#e5e7eb]/80">
+        <div className="bg-[#f5f3ff] dark:bg-[#6c47ff]/10 rounded-xl p-4 border border-[#e5e7eb]/80 dark:border-gray-800">
           <div className="w-8 h-8 rounded-lg bg-[#6c47ff]/15 flex items-center justify-center mb-3">
             <Sparkles size={15} className="text-[#6c47ff]" />
           </div>
-          <p className="text-gray-800 font-semibold text-sm leading-snug">
+          <p className="text-gray-800 dark:text-gray-100 font-semibold text-sm leading-snug">
             {s.quickGenerate.title}
           </p>
-          <p className="text-gray-500 text-xs mt-1 leading-relaxed">{s.quickGenerate.desc}</p>
+          <p className="text-gray-500 dark:text-gray-400 text-xs mt-1 leading-relaxed">{s.quickGenerate.desc}</p>
           <Link
             href="/hr/generate"
             className="mt-3 inline-block text-xs font-semibold text-white bg-[#6c47ff] hover:bg-[#5535dd] px-4 py-2 rounded-lg transition-colors w-full text-center"
@@ -97,10 +97,10 @@ export function Sidebar() {
             <span
               className={cn(
                 "text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0",
-                planId === "basic" && "text-gray-600 bg-gray-100",
-                planId === "professional" && "text-emerald-700 bg-emerald-50",
-                planId === "business" && "text-blue-700 bg-blue-50",
-                planId === "enterprise" && "text-violet-700 bg-violet-50"
+                planId === "basic" && "text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-800",
+                planId === "professional" && "text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950",
+                planId === "business" && "text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950",
+                planId === "enterprise" && "text-violet-700 dark:text-violet-300 bg-violet-50 dark:bg-violet-950"
               )}
             >
               {short}

@@ -79,7 +79,7 @@ export function ConfirmDialog({
         aria-labelledby="confirm-dialog-title"
         aria-describedby="confirm-dialog-desc"
         className={cn(
-          "relative w-full max-w-sm rounded-xl border border-[#e5e7eb] bg-white shadow-[0_20px_25px_-5px_rgba(0,0,0,0.1),0_8px_10px_-6px_rgba(0,0,0,0.1)]",
+          "relative w-full max-w-sm rounded-xl border border-[#e5e7eb] dark:border-gray-700 bg-white dark:bg-gray-900 shadow-[0_20px_25px_-5px_rgba(0,0,0,0.1),0_8px_10px_-6px_rgba(0,0,0,0.1)] dark:shadow-[0_20px_25px_-5px_rgba(0,0,0,0.4)]",
           exiting ? "animate-scale-out" : "animate-scale-in"
         )}
         onClick={(e) => e.stopPropagation()}
@@ -88,7 +88,7 @@ export function ConfirmDialog({
           type="button"
           onClick={handleCancel}
           disabled={loading}
-          className="absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-[#f5f7fb] hover:text-gray-600 disabled:opacity-50"
+          className="absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded-lg text-gray-400 dark:text-gray-500 transition-colors hover:bg-[#f5f7fb] dark:hover:bg-gray-800 hover:text-gray-600 dark:hover:text-gray-300 disabled:opacity-50"
           aria-label={content.cancelLabel}
         >
           <X size={15} />
@@ -98,7 +98,7 @@ export function ConfirmDialog({
           <div
             className={cn(
               "mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full",
-              isDanger ? "bg-red-50 text-red-600" : "bg-[#f5f3ff] text-[#6c47ff]"
+              isDanger ? "bg-red-50 dark:bg-red-950/50 text-red-600 dark:text-red-400" : "bg-[#f5f3ff] dark:bg-[#6c47ff]/15 text-[#6c47ff]"
             )}
           >
             <Icon size={22} />
@@ -106,24 +106,24 @@ export function ConfirmDialog({
 
           <h3
             id="confirm-dialog-title"
-            className="text-center text-base font-bold text-[#111827]"
+            className="text-center text-base font-bold text-[#111827] dark:text-gray-100"
           >
             {content.title}
           </h3>
           <p
             id="confirm-dialog-desc"
-            className="mt-2 whitespace-pre-line text-center text-sm leading-relaxed text-[#6b7280]"
+            className="mt-2 whitespace-pre-line text-center text-sm leading-relaxed text-[#6b7280] dark:text-gray-400"
           >
             {content.message}
           </p>
         </div>
 
-        <div className="flex gap-3 border-t border-[#e5e7eb] px-6 py-4">
+        <div className="flex gap-3 border-t border-[#e5e7eb] dark:border-gray-700 px-6 py-4">
           <button
             type="button"
             onClick={handleCancel}
             disabled={loading}
-            className="inline-flex min-h-10 flex-1 items-center justify-center rounded-lg border border-[#e5e7eb] bg-white px-4 py-2 text-sm font-semibold text-[#111827] transition-colors hover:bg-[#f9fafb] disabled:opacity-50"
+            className="inline-flex min-h-10 flex-1 items-center justify-center rounded-lg border border-[#e5e7eb] dark:border-gray-700 bg-white dark:bg-gray-800 px-4 py-2 text-sm font-semibold text-[#111827] dark:text-gray-100 transition-colors hover:bg-[#f9fafb] dark:hover:bg-gray-700 disabled:opacity-50"
           >
             {content.cancelLabel}
           </button>
