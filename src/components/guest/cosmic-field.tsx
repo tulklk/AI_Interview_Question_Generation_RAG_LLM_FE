@@ -27,6 +27,18 @@ const STARS_FULL = [
   { x: 92, y: 78, size: 2, color: 2, delay: 2.9, dur: 3.7 },
   { x: 38, y: 38, size: 2, color: 3, delay: 3.3, dur: 4.4 },
   { x: 56, y: 58, size: 3, color: 4, delay: 0.2, dur: 5.1 },
+  { x: 8,  y: 50, size: 1, color: 1, delay: 2.1, dur: 3.5 },
+  { x: 20, y: 65, size: 2, color: 4, delay: 0.4, dur: 4.3 },
+  { x: 35, y: 5,  size: 1, color: 2, delay: 1.6, dur: 3.9 },
+  { x: 48, y: 40, size: 2, color: 0, delay: 2.8, dur: 4.7 },
+  { x: 60, y: 75, size: 1, color: 3, delay: 0.7, dur: 4.0 },
+  { x: 70, y: 5,  size: 2, color: 1, delay: 1.3, dur: 3.6 },
+  { x: 85, y: 48, size: 1, color: 4, delay: 2.5, dur: 4.4 },
+  { x: 94, y: 92, size: 2, color: 2, delay: 0.9, dur: 5.2 },
+  { x: 16, y: 95, size: 1, color: 0, delay: 1.1, dur: 3.8 },
+  { x: 3,  y: 28, size: 2, color: 3, delay: 2.0, dur: 4.6 },
+  { x: 54, y: 25, size: 1, color: 1, delay: 0.3, dur: 3.7 },
+  { x: 88, y: 8,  size: 2, color: 4, delay: 1.5, dur: 4.9 },
 ];
 
 const STARS_COMPACT = [
@@ -39,12 +51,21 @@ const STARS_COMPACT = [
   { x: 84, y: 24, size: 4, color: 1, delay: 0.4, dur: 5.2 },
   { x: 92, y: 68, size: 2, color: 2, delay: 2.0, dur: 4.5 },
   { x: 38, y: 60, size: 3, color: 3, delay: 1.1, dur: 5.0 },
+  { x: 12, y: 42, size: 1, color: 4, delay: 0.8, dur: 3.9 },
+  { x: 25, y: 92, size: 2, color: 0, delay: 1.6, dur: 4.4 },
+  { x: 36, y: 8,  size: 1, color: 1, delay: 2.3, dur: 3.7 },
+  { x: 52, y: 48, size: 2, color: 2, delay: 0.5, dur: 4.8 },
+  { x: 64, y: 88, size: 1, color: 3, delay: 1.8, dur: 4.0 },
+  { x: 78, y: 40, size: 2, color: 4, delay: 2.9, dur: 5.0 },
+  { x: 88, y: 90, size: 1, color: 0, delay: 0.6, dur: 3.8 },
+  { x: 5,  y: 85, size: 2, color: 1, delay: 1.0, dur: 4.5 },
+  { x: 95, y: 12, size: 1, color: 2, delay: 2.6, dur: 4.1 },
 ];
 
 const SHOOTING_STARS: { x: number; y: number; delay: number; dur: number; color: number; dir: "left" | "right" }[] = [
-  { x: 10, y: 6,  delay: 0,  dur: 16, color: 0, dir: "right" },
-  { x: 82, y: 4,  delay: 7,  dur: 19, color: 1, dir: "left" },
-  { x: 30, y: 24, delay: 13, dur: 18, color: 2, dir: "right" },
+  { x: -6,  y: -4, delay: 0,  dur: 13, color: 0, dir: "right" },
+  { x: 106, y: -2, delay: 6,  dur: 15, color: 1, dir: "left" },
+  { x: 50,  y: -6, delay: 12, dur: 14, color: 2, dir: "right" },
 ];
 
 interface CosmicFieldProps {

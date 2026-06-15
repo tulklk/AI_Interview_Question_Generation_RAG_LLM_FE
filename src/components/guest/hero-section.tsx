@@ -30,8 +30,6 @@ export function HeroSection() {
         <div className="mesh-gradient hidden md:block" />
         <div className="dot-pattern hidden md:block" />
         <div className="bg-grid-pattern" />
-        <div className="hero-beam" />
-        <div className="hero-beam hero-beam--2" />
         <div
           className="holo-orb holo-orb--hero holo-orb--violet"
           style={{ width: 560, height: 560, top: "-22%", left: "-12%" }}

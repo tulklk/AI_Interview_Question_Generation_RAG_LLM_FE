@@ -137,7 +137,7 @@ export function LoginHero() {
           <br />
           Into{" "}
           <span
-            className="text-transparent bg-clip-text"
+            className="auth-heading-glow text-transparent bg-clip-text"
             style={{
               backgroundImage:
                 "linear-gradient(90deg, #fbbf24 0%, #f97316 30%, #fb923c 65%, #fbbf24 100%)",
@@ -163,7 +163,7 @@ export function LoginHero() {
           {features.map((f, i) => (
             <motion.div
               key={f.title}
-              className="group flex items-start gap-3.5 bg-white/10 hover:bg-white/[0.17] transition-colors rounded-lg px-4 py-3.5 relative overflow-hidden cursor-default"
+              className="glass-feature-card group flex items-start gap-3.5 rounded-lg px-4 py-3.5 relative overflow-hidden cursor-default"
               initial={{ opacity: 0, x: -26 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{
@@ -194,7 +194,7 @@ export function LoginHero() {
         {testimonials.map((t, i) => (
           <motion.div
             key={t.name}
-            className="bg-white/10 hover:bg-white/[0.17] transition-colors rounded-lg px-4 py-3.5 relative overflow-hidden"
+            className="glass-testimonial-card px-4 py-3.5 relative overflow-hidden"
             initial={{ opacity: 0, y: 22 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{
