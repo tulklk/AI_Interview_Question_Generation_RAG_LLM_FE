@@ -494,7 +494,7 @@ export function RegisterJobSeekerForm({ registerRole = "jobseeker" }: RegisterJo
                       className={`${inputBase} pr-10 ${fieldErrors.password ? inputErrorCls : ""}`}
                       autoComplete="new-password"
                     />
-                    <button type="button" onClick={() => setShowPassword((v) => !v)} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300" tabIndex={-1}>
+                    <button type="button" onClick={() => setShowPassword((v) => !v)} className="auth-eye-btn absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 dark:hover:text-gray-300" tabIndex={-1}>
                       {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
                     </button>
                   </div>
@@ -539,7 +539,7 @@ export function RegisterJobSeekerForm({ registerRole = "jobseeker" }: RegisterJo
                     {confirmPassword.length > 0 && confirmPassword === password ? (
                       <CheckCircle2 size={15} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-emerald-500 pointer-events-none" />
                     ) : (
-                      <button type="button" onClick={() => setShowConfirm((v) => !v)} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300" tabIndex={-1}>
+                      <button type="button" onClick={() => setShowConfirm((v) => !v)} className="auth-eye-btn absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 dark:hover:text-gray-300" tabIndex={-1}>
                         {showConfirm ? <EyeOff size={15} /> : <Eye size={15} />}
                       </button>
                     )}
@@ -575,7 +575,7 @@ export function RegisterJobSeekerForm({ registerRole = "jobseeker" }: RegisterJo
               </motion.div>
               <motion.p variants={fieldRow} className="text-center text-sm text-gray-500 dark:text-gray-400 mt-5">
                 {rp.alreadyHaveAccount}{" "}
-                <Link href="/login" className="text-primary font-semibold hover:underline">
+                <Link href="/login" className="auth-link-glow font-semibold">
                   {rp.signIn}
                 </Link>
               </motion.p>
