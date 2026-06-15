@@ -39,7 +39,7 @@ export function GenerateForm() {
   return (
     <div className="max-w-3xl space-y-4">
       {aiBlocked && (
-        <div className="rounded-xl border border-indigo-200 bg-indigo-50/90 px-4 py-3 text-sm text-indigo-950 animate-fade-up">
+        <div className="rounded-xl border border-indigo-200 dark:border-indigo-800 bg-indigo-50/90 dark:bg-indigo-950/40 px-4 py-3 text-sm text-indigo-950 dark:text-indigo-200 animate-fade-up">
           <p className="font-semibold mb-1">{t.generatePage.noAiPlan.title}</p>
           <p className="mb-2">{t.generatePage.noAiPlan.body}</p>
           <Link
@@ -52,7 +52,7 @@ export function GenerateForm() {
       )}
 
       {quotaBlocked && !aiBlocked && (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950 animate-fade-up">
+        <div className="rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40 px-4 py-3 text-sm text-amber-950 dark:text-amber-200 animate-fade-up">
           <p className="font-semibold mb-1">{t.generatePage.quota.exceededTitle}</p>
           <p className="mb-2">{t.generatePage.quota.exceededBody}</p>
           <Link

@@ -26,7 +26,9 @@ const headingWord: Variants = {
   visible: { opacity: 1, y: 0, scale: 1, filter: "blur(0px)", transition: { duration: 0.5, ease: "easeOut" } },
 };
 import type { AxiosError } from "axios";
-import { login } from "@/lib/api/auth";
+import { login, resendVerification } from "@/lib/api/auth";
+import { isDisabledAccountLoginError, isUnverifiedLoginError } from "@/lib/login-errors";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   setAuth,
   setAuthTokens,
@@ -50,6 +52,7 @@ import {
   parseGoogleClaims,
   type GoogleClaims,
 } from "@/lib/google-oauth-flow";
+import { markLoginWelcomeForRedirect } from "@/lib/login-welcome";
 
 type LoginView = "login" | "onboarding";
 
@@ -67,11 +70,12 @@ export function LoginForm() {
   const { refreshUser, clearUser } = useUser();
 
   useEffect(() => {
-    if (searchParams.get("reset") === "success") {
-      addToast("success", lp.passwordResetSuccess);
-      router.replace("/login");
-    }
-  }, [searchParams, addToast, lp.passwordResetSuccess, router]);
+    if (searchParams.get("reset") !== "success") return;
+    addToast("success", lp.passwordResetSuccess);
+    const url = new URL(window.location.href);
+    url.searchParams.delete("reset");
+    window.history.replaceState({}, "", `${url.pathname}${url.search}`);
+  }, [searchParams, addToast, lp.passwordResetSuccess]);
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -84,16 +88,39 @@ export function LoginForm() {
   const [view, setView] = useState<LoginView>("login");
   const [onboarding, setOnboarding] = useState<OnboardingState | null>(null);
 
+  const [unverifiedOpen, setUnverifiedOpen] = useState(false);
+  const [unverifiedEmail, setUnverifiedEmail] = useState("");
+  const [resendLoading, setResendLoading] = useState(false);
+
   function parseLoginError(err: unknown): string {
     const axiosErr = err as AxiosError<ApiErrorResponse>;
     const status = axiosErr.response?.status;
-    const msg = (axiosErr.response?.data?.message ?? "").toLowerCase();
 
+    if (isUnverifiedLoginError(err)) return lp.unverifiedEmail;
+    if (isDisabledAccountLoginError(err)) return lp.accountDisabled;
     if (status === 401 || status === 400) return lp.invalidCredentials;
-    if (status === 403 && msg.includes("verif")) return lp.unverifiedEmail;
     if (status === 403) return lp.accountDisabled;
-    if (status === 423 || msg.includes("lock") || msg.includes("disabled")) return lp.accountDisabled;
     return lp.loginFailed;
+  }
+
+  function showUnverifiedDialog(targetEmail: string) {
+    setUnverifiedEmail(targetEmail.trim());
+    setUnverifiedOpen(true);
+  }
+
+  async function handleResendVerification() {
+    if (!unverifiedEmail || resendLoading) return;
+    setResendLoading(true);
+    try {
+      await resendVerification(unverifiedEmail);
+      addToast("success", t.verifyEmailPage.resendSuccess);
+      setUnverifiedOpen(false);
+      router.push(`/verify-email?email=${encodeURIComponent(unverifiedEmail)}`);
+    } catch {
+      addToast("error", t.verifyEmailPage.resendFailed);
+    } finally {
+      setResendLoading(false);
+    }
   }
 
   async function handleSuccess(
@@ -118,7 +145,9 @@ export function LoginForm() {
       });
     }
 
-    router.push(getRoleRedirect(role));
+    const redirect = getRoleRedirect(role);
+    markLoginWelcomeForRedirect(redirect);
+    router.push(redirect);
   }
 
   async function handleSignIn(e: React.FormEvent) {
@@ -142,14 +171,8 @@ export function LoginForm() {
         email: email.trim(),
       });
     } catch (err) {
-      const axiosErr = err as AxiosError<ApiErrorResponse>;
-      const status = axiosErr.response?.status;
-      const beMsg = (axiosErr.response?.data?.message ?? "").toLowerCase();
-      if (status === 403 && beMsg.includes("verif")) {
-        addToast("error", lp.unverifiedEmail, {
-          label: "Resend verification",
-          href: `/verify-email?email=${encodeURIComponent(email.trim())}`,
-        });
+      if (isUnverifiedLoginError(err)) {
+        showUnverifiedDialog(email);
       } else {
         addToast("error", parseLoginError(err));
       }
@@ -177,6 +200,7 @@ export function LoginForm() {
 
       if (!verify.isNewUser) {
         const { role } = await completeGoogleLogin(credential);
+        markLoginWelcomeForRedirect(getRoleRedirect(role));
         await finishGoogleAuth(router, refreshUser, claims, credential, role);
         return;
       }
@@ -184,7 +208,11 @@ export function LoginForm() {
       setOnboarding({ credential, claims });
       setView("onboarding");
     } catch (err) {
-      addToast("error", parseLoginError(err));
+      if (isUnverifiedLoginError(err)) {
+        showUnverifiedDialog(claims.email ?? email);
+      } else {
+        addToast("error", parseLoginError(err));
+      }
     } finally {
       setGoogleLoading(false);
     }
@@ -198,7 +226,7 @@ export function LoginForm() {
   }
 
   const inputBase =
-    "auth-input-glow w-full pl-10 pr-4 py-2.5 text-sm border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all placeholder:text-gray-400";
+    "auth-input-glow w-full pl-10 pr-4 py-2.5 text-sm border border-gray-200 rounded-lg bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all placeholder:text-gray-400 dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100 dark:placeholder:text-gray-500";
 
   const inputError = "border-red-300 focus:border-red-400 focus:ring-red-100";
 
@@ -213,6 +241,25 @@ export function LoginForm() {
   }
 
   return (
+    <>
+    <ConfirmDialog
+      open={unverifiedOpen}
+      title={lp.unverifiedDialogTitle}
+      message={
+        unverifiedEmail
+          ? lp.unverifiedDialogMessage.replace("{{email}}", unverifiedEmail)
+          : lp.unverifiedDialogMessage.replace("{{email}}", "—")
+      }
+      confirmLabel={lp.unverifiedResend}
+      cancelLabel={lp.unverifiedClose}
+      variant="primary"
+      loading={resendLoading}
+      onConfirm={handleResendVerification}
+      onCancel={() => {
+        if (resendLoading) return;
+        setUnverifiedOpen(false);
+      }}
+    />
     <motion.div
       className="w-full max-w-sm mx-auto"
       variants={formContainer}
@@ -221,7 +268,7 @@ export function LoginForm() {
     >
       <motion.h2
         variants={headingContainer}
-        className="text-2xl font-bold text-gray-900 mb-3 leading-tight"
+        className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-3 leading-tight"
       >
         {lp.welcome.split(" ").map((word, i) => (
           <motion.span key={i} variants={headingWord} className="inline-block mr-[0.28em] last:mr-0">
@@ -231,7 +278,7 @@ export function LoginForm() {
       </motion.h2>
 
       <motion.p
-        className="text-sm text-gray-500 mb-6"
+        className="text-sm text-gray-500 dark:text-gray-400 mb-6"
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.55, ease: "easeOut" }}
@@ -241,7 +288,7 @@ export function LoginForm() {
 
       <form onSubmit={handleSignIn} className="space-y-4" noValidate>
         <motion.div variants={formRow}>
-          <label className="text-sm font-medium text-gray-700 block mb-1.5">
+          <label className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-1.5">
             {lp.emailLabel}
           </label>
           <div className="relative">
@@ -268,7 +315,7 @@ export function LoginForm() {
 
         <motion.div variants={formRow}>
           <div className="flex items-center justify-between mb-1.5">
-            <label className="text-sm font-medium text-gray-700">{lp.passwordLabel}</label>
+            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">{lp.passwordLabel}</label>
             <Link
               href="/forgot-password"
               className="text-xs text-primary font-medium hover:underline"
@@ -295,7 +342,7 @@ export function LoginForm() {
             <button
               type="button"
               onClick={() => setShowPassword((v) => !v)}
-              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
             >
               {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
             </button>
@@ -310,7 +357,7 @@ export function LoginForm() {
             type="button"
             onClick={() => setRememberMe((v) => !v)}
             className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${
-              rememberMe ? "border-primary bg-primary" : "border-gray-300 bg-white"
+              rememberMe ? "border-primary bg-primary" : "border-gray-300 bg-white dark:border-gray-600 dark:bg-gray-900"
             }`}
           >
             {rememberMe && (
@@ -325,7 +372,7 @@ export function LoginForm() {
               </svg>
             )}
           </button>
-          <span className="text-sm text-gray-600">{lp.rememberMe}</span>
+          <span className="text-sm text-gray-600 dark:text-gray-400">{lp.rememberMe}</span>
         </motion.div>
 
         <motion.div variants={formRow}>
@@ -358,9 +405,9 @@ export function LoginForm() {
       </form>
 
       <motion.div variants={formRow} className="flex items-center gap-3 my-5">
-        <div className="flex-1 h-px bg-gray-200" />
-        <span className="text-xs text-gray-400">{lp.orContinueWith}</span>
-        <div className="flex-1 h-px bg-gray-200" />
+        <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700" />
+        <span className="text-xs text-gray-400 dark:text-gray-500">{lp.orContinueWith}</span>
+        <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700" />
       </motion.div>
 
       <motion.div variants={formRow}>
@@ -372,7 +419,7 @@ export function LoginForm() {
         />
       </motion.div>
 
-      <motion.p variants={formRow} className="text-center text-sm text-gray-500 mt-6">
+      <motion.p variants={formRow} className="text-center text-sm text-gray-500 dark:text-gray-400 mt-6">
         {lp.noAccount}{" "}
         <Link href="/register" className="text-primary font-semibold hover:underline">
           {lp.signUpFree}
@@ -381,17 +428,18 @@ export function LoginForm() {
 
       <motion.p
         variants={formRow}
-        className="text-center text-[11px] text-gray-400 mt-3 leading-relaxed"
+        className="text-center text-[11px] text-gray-400 dark:text-gray-500 mt-3 leading-relaxed"
       >
         {lp.legal}{" "}
-        <button type="button" className="underline hover:text-gray-600">
+        <button type="button" className="underline hover:text-gray-600 dark:hover:text-gray-300">
           {lp.terms}
         </button>
         {" "}&amp;{" "}
-        <button type="button" className="underline hover:text-gray-600">
+        <button type="button" className="underline hover:text-gray-600 dark:hover:text-gray-300">
           {lp.privacyPolicy}
         </button>
       </motion.p>
     </motion.div>
+    </>
   );
 }

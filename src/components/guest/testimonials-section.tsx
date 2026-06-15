@@ -4,6 +4,8 @@ import { Quote } from "lucide-react";
 import { useLanguage } from "@/context/language-context";
 import { testimonials } from "@/data/guest";
 import { ScrollReveal } from "@/components/shared/scroll-reveal";
+import { TiltCard } from "@/components/shared/tilt-card";
+import { CosmicField } from "@/components/guest/cosmic-field";
 
 const cardAnimations = ["slide-left", "fade-up", "slide-right"] as const;
 
@@ -12,14 +14,17 @@ export function TestimonialsSection() {
   const tm = t.testimonials;
 
   return (
-    <section className="relative bg-[#f5f7fb] py-20 px-6">
-      <div className="max-w-6xl mx-auto">
+    <section className="relative bg-[#f5f7fb] dark:bg-[#0b0f1a] py-20 px-6">
+      <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
+        <CosmicField variant="compact" />
+      </div>
+      <div className="relative z-10 max-w-6xl mx-auto">
         <ScrollReveal animation="fade-up" className="text-center mb-14">
           <p className="text-sm font-semibold text-[#6c47ff] uppercase tracking-widest mb-3">
             {tm.sectionLabel}
           </p>
-          <h2 className="text-3xl font-bold text-gray-900">{tm.headline}</h2>
-          <p className="text-gray-500 mt-3 max-w-lg mx-auto text-base leading-relaxed">
+          <h2 className="text-3xl font-bold text-gray-900 dark:text-gray-50">{tm.headline}</h2>
+          <p className="text-gray-500 dark:text-gray-400 mt-3 max-w-lg mx-auto text-base leading-relaxed">
             {tm.subtext}
           </p>
         </ScrollReveal>
@@ -32,25 +37,27 @@ export function TestimonialsSection() {
                 key={person.id}
                 animation={cardAnimations[i % 3]}
                 delay={i * 80}
-                className="bg-white rounded-xl border border-gray-100 shadow-sm p-7 flex flex-col gap-5"
+                className="h-full"
               >
-                <Quote size={22} className="text-[#6c47ff]/30 shrink-0" />
-                <p className="text-sm text-gray-700 leading-relaxed flex-1 italic">
-                  &ldquo;{item.quote}&rdquo;
-                </p>
-                <div className="flex items-center gap-3 pt-2 border-t border-gray-100">
-                  <div
-                    className={`w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold shrink-0 ${person.avatarColor}`}
-                  >
-                    {person.initials}
+                <TiltCard className="h-full bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm p-7 flex flex-col gap-5">
+                  <Quote size={22} className="text-[#6c47ff]/30 shrink-0" />
+                  <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed flex-1 italic">
+                    &ldquo;{item.quote}&rdquo;
+                  </p>
+                  <div className="flex items-center gap-3 pt-2 border-t border-gray-100 dark:border-gray-800">
+                    <div
+                      className={`w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold shrink-0 ${person.avatarColor}`}
+                    >
+                      {person.initials}
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{item.name}</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        {item.role} · {item.company}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-sm font-semibold text-gray-900">{item.name}</p>
-                    <p className="text-xs text-gray-500">
-                      {item.role} · {item.company}
-                    </p>
-                  </div>
-                </div>
+                </TiltCard>
               </ScrollReveal>
             );
           })}

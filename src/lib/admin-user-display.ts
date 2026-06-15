@@ -1,5 +1,25 @@
 import type { AdminUserListItem, AdminUserRoleKey, AdminUserStatusKey } from "@/types/admin-user";
 
+/** Matches DomainLayer.Constants.UserRole (list/filter query param). */
+export const BACKEND_LIST_USER_ROLE = {
+  ADMIN: "Admin",
+  HR: "HR",
+  CANDIDATE: "Candidate",
+} as const;
+
+export function toBackendRoleFilter(roleKey: AdminUserRoleKey): string | undefined {
+  switch (roleKey) {
+    case "ADMIN":
+      return BACKEND_LIST_USER_ROLE.ADMIN;
+    case "HR_MANAGER":
+      return BACKEND_LIST_USER_ROLE.HR;
+    case "JOB_SEEKER":
+      return BACKEND_LIST_USER_ROLE.CANDIDATE;
+    default:
+      return undefined;
+  }
+}
+
 export function normalizeAdminRoleKey(role: string | undefined): AdminUserRoleKey {
   const r = (role ?? "").toUpperCase();
   if (r.includes("ADMIN")) return "ADMIN";

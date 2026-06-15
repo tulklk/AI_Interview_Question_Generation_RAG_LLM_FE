@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import type { InterviewQuestion, QuestionCategory } from "@/types/results";
 import { QuestionCard } from "./question-card";
 import { useLanguage } from "@/context/language-context";
+import { portalCard, portalMutedBg, portalSubtext } from "@/lib/portal-ui";
 
 const CATEGORIES: QuestionCategory[] = ["Technical", "Behavioral", "Situational"];
 
@@ -31,7 +32,7 @@ export function QuestionsTabs({ questions }: QuestionsTabsProps) {
 
   return (
     <div className="animate-fade-up" style={{ animationDelay: "160ms" }}>
-      <div className="flex bg-white border border-gray-200 rounded-xl p-1.5 gap-1 mb-5">
+      <div className={cn(portalCard, "p-1.5 gap-1 mb-5 flex")}>
         {CATEGORIES.map((cat) => {
           const count = countByCategory(cat);
           const isActive = activeTab === cat;
@@ -43,14 +44,14 @@ export function QuestionsTabs({ questions }: QuestionsTabsProps) {
                 "flex-1 flex items-center justify-center gap-2 py-2.5 px-4 text-sm font-semibold rounded-lg transition-all duration-200",
                 isActive
                   ? "bg-[#6c47ff] text-white shadow-sm"
-                  : "text-gray-500 hover:text-[#6c47ff] hover:bg-[#6c47ff]/5"
+                  : cn(portalSubtext, "hover:text-[#6c47ff] hover:bg-[#6c47ff]/5 dark:hover:bg-[#6c47ff]/10")
               )}
             >
               {tabLabel[cat]}
               <span
                 className={cn(
                   "text-xs font-bold px-1.5 py-0.5 rounded-md",
-                  isActive ? "bg-white/20 text-white" : "bg-gray-100 text-gray-500"
+                  isActive ? "bg-white/20 text-white" : cn(portalMutedBg, portalSubtext)
                 )}
               >
                 {count}

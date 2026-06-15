@@ -17,8 +17,17 @@ import { useLanguage } from "@/context/language-context";
 import type { PracticeSession } from "@/types/jobseeker";
 import { Pill, getCategoryBadgeClass, getScoreLevel } from "@/components/jobseeker/ui/pill";
 import { CARD_SHADOW } from "@/components/jobseeker/ui/constants";
+import { useChartTheme } from "@/hooks/use-chart-theme";
+import {
+  portalBanner,
+  portalCard,
+  portalCardShadow,
+  portalHeadingAlt,
+  portalIconWell,
+  portalSubtextAlt,
+} from "@/lib/portal-ui";
 
-function ScoreRing({ score }: { score: number }) {
+function ScoreRing({ score, trackStroke }: { score: number; trackStroke: string }) {
   const radius = 52;
   const circ = 2 * Math.PI * radius;
   const offset = circ - (score / 100) * circ;
@@ -27,7 +36,7 @@ function ScoreRing({ score }: { score: number }) {
   return (
     <div className="relative w-32 h-32 flex items-center justify-center">
       <svg width="128" height="128" className="-rotate-90">
-        <circle cx="64" cy="64" r={radius} fill="none" stroke="#F3F4F6" strokeWidth="10" />
+        <circle cx="64" cy="64" r={radius} fill="none" stroke={trackStroke} strokeWidth="10" />
         <motion.circle
           cx="64" cy="64" r={radius} fill="none"
           stroke={color} strokeWidth="10"
@@ -40,14 +49,14 @@ function ScoreRing({ score }: { score: number }) {
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
         <motion.span
-          className="text-[32px] font-[800] text-[#111827] leading-none"
+          className={cn("text-[32px] font-[800] leading-none", portalHeadingAlt)}
           initial={{ opacity: 0, scale: 0.8 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.5, duration: 0.4 }}
         >
           {score}
         </motion.span>
-        <span className="text-[11px] text-[#6B7280] font-[500]">/ 100</span>
+        <span className={cn("text-[11px] font-[500]", portalSubtextAlt)}>/ 100</span>
       </div>
     </div>
   );
@@ -60,6 +69,7 @@ interface FeedbackPageProps {
 export function FeedbackPage({ session }: FeedbackPageProps) {
   const { t } = useLanguage();
   const p = t.jobseekerFeedbackPage;
+  const chart = useChartTheme();
 
   const { label: scoreLevelLabel, badgeClass: scoreLevelBadgeClass } = getScoreLevel(session.score, p.scoreLevels);
 
@@ -87,7 +97,10 @@ export function FeedbackPage({ session }: FeedbackPageProps) {
       {/* Back */}
       <Link
         href="/jobseeker/history"
-        className="inline-flex items-center gap-1.5 text-[13px] font-[500] text-[#6B7280] hover:text-primary transition-colors mb-6"
+        className={cn(
+          "inline-flex items-center gap-1.5 text-[13px] font-[500] hover:text-primary transition-colors mb-6",
+          portalSubtextAlt
+        )}
       >
         <ArrowLeft size={14} />
         {p.backToHistory}
@@ -97,14 +110,14 @@ export function FeedbackPage({ session }: FeedbackPageProps) {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-white rounded-xl p-8 mb-6 flex items-center gap-10"
+        className={cn(portalCardShadow, "p-8 mb-6 flex items-center gap-10")}
         style={{ boxShadow: CARD_SHADOW }}
       >
-        <ScoreRing score={session.score} />
+        <ScoreRing score={session.score} trackStroke={chart.isDark ? "#374151" : "#F3F4F6"} />
 
         <div className="flex-1">
           <div className="flex items-center gap-3 mb-2">
-            <h1 className="text-[24px] font-[800] text-[#111827]">{p.overallScore}</h1>
+            <h1 className={cn("text-[24px] font-[800]", portalHeadingAlt)}>{p.overallScore}</h1>
             <span className={cn("text-[12px] font-[700] px-3 py-1 rounded-full", scoreLevelBadgeClass)}>
               {scoreLevelLabel}
             </span>
@@ -114,15 +127,15 @@ export function FeedbackPage({ session }: FeedbackPageProps) {
             <div className={cn("w-6 h-6 rounded-lg flex items-center justify-center text-white text-[10px] font-bold", session.companyColor)}>
               {session.companyInitials}
             </div>
-            <p className="text-[14px] text-[#6B7280]">{session.setTitle} · {session.company}</p>
+            <p className={cn("text-[14px]", portalSubtextAlt)}>{session.setTitle} · {session.company}</p>
           </div>
 
           {/* AI Insight */}
-          <div className="bg-[#F5F3FF] rounded-lg p-4 flex gap-3">
+          <div className={cn(portalBanner, "rounded-lg p-4 flex gap-3")}>
             <Sparkles size={15} className="text-primary shrink-0 mt-0.5" />
             <div>
               <p className="text-[12px] font-[700] text-primary mb-1">{p.aiInsight}</p>
-              <p className="text-[13px] text-[#111827] leading-[20px]">{aiInsight}</p>
+              <p className={cn("text-[13px] leading-[20px]", portalHeadingAlt)}>{aiInsight}</p>
             </div>
           </div>
         </div>
@@ -136,7 +149,11 @@ export function FeedbackPage({ session }: FeedbackPageProps) {
             <RefreshCw size={13} />
             {p.retryBtn}
           </Link>
-          <button className="flex items-center gap-2 h-[36px] px-4 text-[13px] font-[600] text-[#111827] bg-white hover:bg-gray-50 border border-[#E5E7EB] rounded-lg transition-colors">
+          <button className={cn(
+            "flex items-center gap-2 h-[36px] px-4 text-[13px] font-[600] hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg transition-colors",
+            portalCard,
+            portalHeadingAlt
+          )}>
             <Share2 size={13} />
             {p.shareBtn}
           </button>
@@ -149,16 +166,16 @@ export function FeedbackPage({ session }: FeedbackPageProps) {
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="bg-white rounded-xl p-6"
+          className={cn(portalCardShadow, "p-6")}
           style={{ boxShadow: CARD_SHADOW }}
         >
-          <h2 className="text-[16px] font-[700] text-[#111827] mb-5">{p.skillBreakdown}</h2>
+          <h2 className={cn("text-[16px] font-[700] mb-5", portalHeadingAlt)}>{p.skillBreakdown}</h2>
           <ResponsiveContainer width="100%" height={260}>
             <RadarChart data={skillRadarData}>
-              <PolarGrid stroke="#E5E7EB" />
+              <PolarGrid stroke={chart.gridStroke} />
               <PolarAngleAxis
                 dataKey="skill"
-                tick={{ fontSize: 12, fontFamily: "Be Vietnam Pro", fill: "#6B7280", fontWeight: 500 }}
+                tick={{ fontSize: 12, fontFamily: "Be Vietnam Pro", fill: chart.axisTickFill, fontWeight: 500 }}
               />
               <Radar
                 dataKey="score"
@@ -168,7 +185,14 @@ export function FeedbackPage({ session }: FeedbackPageProps) {
                 strokeWidth={2}
               />
               <Tooltip
-                contentStyle={{ fontFamily: "Be Vietnam Pro", fontSize: 12, borderRadius: 8, border: "1px solid #E5E7EB" }}
+                contentStyle={{
+                  fontFamily: "Be Vietnam Pro",
+                  fontSize: 12,
+                  borderRadius: 8,
+                  backgroundColor: chart.tooltipBg,
+                  border: `1px solid ${chart.tooltipBorder}`,
+                  color: chart.isDark ? "#F3F4F6" : "#111827",
+                }}
                 formatter={(v) => [`${v} / 100`, "Score"]}
               />
             </RadarChart>
@@ -180,10 +204,10 @@ export function FeedbackPage({ session }: FeedbackPageProps) {
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.15 }}
-          className="bg-white rounded-xl p-6 flex flex-col gap-4"
+          className={cn(portalCardShadow, "p-6 flex flex-col gap-4")}
           style={{ boxShadow: CARD_SHADOW }}
         >
-          <h2 className="text-[16px] font-[700] text-[#111827]">{p.skillBreakdown}</h2>
+          <h2 className={cn("text-[16px] font-[700]", portalHeadingAlt)}>{p.skillBreakdown}</h2>
           {skillRadarData.map((item, i) => (
             <motion.div
               key={item.skill}
@@ -193,10 +217,10 @@ export function FeedbackPage({ session }: FeedbackPageProps) {
               className="flex flex-col gap-1.5"
             >
               <div className="flex items-center justify-between">
-                <span className="text-[13px] font-[500] text-[#111827]">{item.skill}</span>
-                <span className="text-[13px] font-[700] text-[#111827]">{item.score}</span>
+                <span className={cn("text-[13px] font-[500]", portalHeadingAlt)}>{item.skill}</span>
+                <span className={cn("text-[13px] font-[700]", portalHeadingAlt)}>{item.score}</span>
               </div>
-              <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+              <div className="h-1.5 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
                 <motion.div
                   className={cn(
                     "h-full rounded-full",
@@ -221,7 +245,7 @@ export function FeedbackPage({ session }: FeedbackPageProps) {
           transition={{ delay: 0.25 }}
           className="flex flex-col gap-4"
         >
-          <h2 className="text-[20px] font-[700] text-[#111827]">{p.questionReviews}</h2>
+          <h2 className={cn("text-[20px] font-[700]", portalHeadingAlt)}>{p.questionReviews}</h2>
           {session.answers.map((ans, i) => {
             const isExpanded = expandedIds.has(ans.questionId);
             return (
@@ -230,7 +254,7 @@ export function FeedbackPage({ session }: FeedbackPageProps) {
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.3 + i * 0.08 }}
-                className="bg-white rounded-xl p-6"
+                className={cn(portalCardShadow, "p-6")}
                 style={{ boxShadow: CARD_SHADOW }}
               >
                 {/* Question header — always-visible summary, click to expand */}
@@ -241,9 +265,9 @@ export function FeedbackPage({ session }: FeedbackPageProps) {
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-2">
                       <Pill className={getCategoryBadgeClass(ans.category)}>{ans.category}</Pill>
-                      <span className="text-[12px] text-[#6B7280]">Q{i + 1}</span>
+                      <span className={cn("text-[12px]", portalSubtextAlt)}>Q{i + 1}</span>
                     </div>
-                    <p className="text-[15px] font-[700] text-[#111827] leading-[24px]">{ans.questionText}</p>
+                    <p className={cn("text-[15px] font-[700] leading-[24px]", portalHeadingAlt)}>{ans.questionText}</p>
                   </div>
                   <div className="shrink-0 flex items-center gap-3">
                     <div className="flex flex-col items-center">
@@ -254,17 +278,15 @@ export function FeedbackPage({ session }: FeedbackPageProps) {
                       )}>
                         {ans.aiScore}
                       </span>
-                      <span className="text-[10px] text-[#6B7280]">/ 100</span>
+                      <span className={cn("text-[10px]", portalSubtextAlt)}>/ 100</span>
                     </div>
                     <ChevronDown
                       size={16}
-                      className={cn("text-gray-400 transition-transform duration-200", isExpanded && "rotate-180")}
+                      className={cn("text-gray-400 dark:text-gray-500 transition-transform duration-200", isExpanded && "rotate-180")}
                     />
                   </div>
                 </button>
 
-                {/* initial=false: this body can start expanded (first question) — skip the
-                    height-grow animation on mount so it doesn't fight the card's own slide-in */}
                 <AnimatePresence initial={false}>
                   {isExpanded && (
                     <motion.div
@@ -276,9 +298,9 @@ export function FeedbackPage({ session }: FeedbackPageProps) {
                     >
                       <div className="pt-5">
                         {/* Your answer */}
-                        <div className="bg-[#F9FAFB] rounded-lg p-4 mb-4">
-                          <p className="text-[11px] font-[700] text-[#6B7280] uppercase tracking-wide mb-2">{p.yourAnswer}</p>
-                          <p className="text-[13px] text-[#111827] leading-[22px]">{ans.answer}</p>
+                        <div className={cn(portalIconWell, "rounded-lg p-4 mb-4")}>
+                          <p className={cn("text-[11px] font-[700] uppercase tracking-wide mb-2", portalSubtextAlt)}>{p.yourAnswer}</p>
+                          <p className={cn("text-[13px] leading-[22px]", portalHeadingAlt)}>{ans.answer}</p>
                         </div>
 
                         <div className="grid grid-cols-2 gap-4 mb-4">
@@ -286,11 +308,11 @@ export function FeedbackPage({ session }: FeedbackPageProps) {
                           <div>
                             <div className="flex items-center gap-1.5 mb-2">
                               <CheckCircle2 size={13} className="text-emerald-500" />
-                              <p className="text-[12px] font-[700] text-emerald-700">{p.strengths}</p>
+                              <p className="text-[12px] font-[700] text-emerald-700 dark:text-emerald-400">{p.strengths}</p>
                             </div>
                             <ul className="space-y-1">
                               {ans.strengths.map((s, j) => (
-                                <li key={j} className="flex items-start gap-2 text-[13px] text-[#111827]">
+                                <li key={j} className={cn("flex items-start gap-2 text-[13px]", portalHeadingAlt)}>
                                   <span className="text-emerald-400 mt-1 shrink-0">·</span>
                                   {s}
                                 </li>
@@ -302,11 +324,11 @@ export function FeedbackPage({ session }: FeedbackPageProps) {
                           <div>
                             <div className="flex items-center gap-1.5 mb-2">
                               <AlertCircle size={13} className="text-amber-500" />
-                              <p className="text-[12px] font-[700] text-amber-700">{p.improvements}</p>
+                              <p className="text-[12px] font-[700] text-amber-700 dark:text-amber-400">{p.improvements}</p>
                             </div>
                             <ul className="space-y-1">
                               {ans.improvements.map((s, j) => (
-                                <li key={j} className="flex items-start gap-2 text-[13px] text-[#111827]">
+                                <li key={j} className={cn("flex items-start gap-2 text-[13px]", portalHeadingAlt)}>
                                   <span className="text-amber-400 mt-1 shrink-0">·</span>
                                   {s}
                                 </li>
@@ -316,11 +338,11 @@ export function FeedbackPage({ session }: FeedbackPageProps) {
                         </div>
 
                         {/* AI Suggestion */}
-                        <div className="bg-[#F5F3FF] rounded-lg p-4 flex gap-3">
+                        <div className={cn(portalBanner, "rounded-lg p-4 flex gap-3")}>
                           <Lightbulb size={14} className="text-primary shrink-0 mt-0.5" />
                           <div>
                             <p className="text-[11px] font-[700] text-primary mb-1">{p.suggestion}</p>
-                            <p className="text-[13px] text-[#111827] leading-[20px]">{ans.suggestion}</p>
+                            <p className={cn("text-[13px] leading-[20px]", portalHeadingAlt)}>{ans.suggestion}</p>
                           </div>
                         </div>
                       </div>

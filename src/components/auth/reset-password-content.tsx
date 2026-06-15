@@ -84,7 +84,7 @@ export function ResetPasswordContent() {
       if (isTokenError(status, msg)) {
         setTokenError(true);
       } else {
-        addToast("error", msg || rp.resetFailed);
+        addToast("error", rp.resetFailed);
       }
     } finally {
       setLoading(false);

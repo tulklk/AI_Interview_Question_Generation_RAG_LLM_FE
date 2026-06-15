@@ -3,6 +3,7 @@
 import { FileText, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLanguage } from "@/context/language-context";
+import { portalCard, portalHeading, portalInput, portalSubtext } from "@/lib/portal-ui";
 
 interface JdInputCardProps {
   value: string;
@@ -20,10 +21,10 @@ export function JdInputCard({ value, onChange }: JdInputCardProps) {
   const isTooShort = charCount > 0 && charCount < MIN_CHARS;
 
   return (
-    <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6">
+    <div className={cn(portalCard, "shadow-sm p-6")}>
       <div className="flex items-center gap-2 mb-4">
-        <FileText size={16} className="text-gray-400" />
-        <h2 className="text-base font-semibold text-gray-900">{ji.title}</h2>
+        <FileText size={16} className="text-gray-400 dark:text-gray-500" />
+        <h2 className={cn("text-base font-semibold", portalHeading)}>{ji.title}</h2>
       </div>
 
       <div className="relative">
@@ -33,14 +34,15 @@ export function JdInputCard({ value, onChange }: JdInputCardProps) {
           placeholder={ji.placeholder}
           rows={8}
           className={cn(
-            "w-full resize-none rounded-lg border bg-white px-4 py-3 text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 transition-colors",
+            "w-full resize-none rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 transition-colors",
+            portalInput,
             isTooShort
-              ? "border-orange-300 focus:ring-orange-200 focus:border-orange-400"
-              : "border-gray-200 focus:ring-[#6c47ff]/20 focus:border-[#6c47ff]"
+              ? "border-orange-300 dark:border-orange-700 focus:ring-orange-200 dark:focus:ring-orange-900 focus:border-orange-400"
+              : "focus:ring-[#6c47ff]/20 focus:border-[#6c47ff]"
           )}
         />
         {value.length === 0 && (
-          <p className="absolute top-12 left-4 text-xs text-gray-400 pointer-events-none select-none leading-relaxed">
+          <p className={cn("absolute top-12 left-4 text-xs pointer-events-none select-none leading-relaxed", portalSubtext)}>
             {ji.exampleLabel}<br />
             {ji.exampleText}
           </p>
@@ -49,11 +51,11 @@ export function JdInputCard({ value, onChange }: JdInputCardProps) {
 
       <div className="flex items-center justify-between mt-2">
         <div className="flex items-center gap-3">
-          <span className="text-xs text-gray-400">
+          <span className={cn("text-xs", portalSubtext)}>
             {wordCount} {wordCount === 1 ? ji.word : ji.words}
           </span>
-          <span className="text-xs text-gray-300">·</span>
-          <span className="text-xs text-gray-400">{charCount} {ji.chars}</span>
+          <span className="text-xs text-gray-300 dark:text-gray-600">·</span>
+          <span className={cn("text-xs", portalSubtext)}>{charCount} {ji.chars}</span>
           {isTooShort && (
             <span className="flex items-center gap-1 text-xs text-orange-500 font-medium">
               <AlertCircle size={11} />
@@ -65,7 +67,7 @@ export function JdInputCard({ value, onChange }: JdInputCardProps) {
           <button
             type="button"
             onClick={() => onChange("")}
-            className="text-xs text-gray-400 hover:text-gray-600 transition-colors"
+            className={cn("text-xs transition-colors hover:text-gray-600 dark:hover:text-gray-300", portalSubtext)}
           >
             {ji.clear}
           </button>

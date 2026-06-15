@@ -19,8 +19,8 @@ export function BrandLogo({
   subtitleClassName,
   variant = "default",
 }: BrandLogoProps) {
-  const titleColor = variant === "onDark" ? "text-white" : "text-gray-900";
-  const subtitleColor = variant === "onDark" ? "text-white/60" : "text-gray-400";
+  const titleColor = variant === "onDark" ? "text-white" : "text-gray-900 dark:text-gray-50";
+  const subtitleColor = variant === "onDark" ? "text-white/60" : "text-gray-400 dark:text-gray-500";
 
   return (
     <Link href={href} className={cn("flex items-center gap-3", className)}>

@@ -5,37 +5,38 @@ import { cn } from "@/lib/utils";
 import { systemActivity } from "@/data/admin";
 import type { SystemActivityEvent } from "@/types/admin";
 import { useLanguage } from "@/context/language-context";
+import { portalCard, portalDivider, portalHeading, portalSubtext, portalTableRow } from "@/lib/portal-ui";
 
 const eventIcons: Record<SystemActivityEvent["type"], {
   icon: typeof UserPlus; iconBg: string; iconColor: string; badgeBg: string; badgeColor: string;
 }> = {
   user_created: {
     icon: UserPlus,
-    iconBg: "bg-blue-50",
-    iconColor: "text-blue-500",
-    badgeBg: "bg-blue-50",
-    badgeColor: "text-blue-600",
+    iconBg: "bg-blue-50 dark:bg-blue-950/40",
+    iconColor: "text-blue-500 dark:text-blue-400",
+    badgeBg: "bg-blue-50 dark:bg-blue-950/40",
+    badgeColor: "text-blue-600 dark:text-blue-400",
   },
   recruiter_login: {
     icon: LogIn,
-    iconBg: "bg-gray-50",
-    iconColor: "text-gray-400",
-    badgeBg: "bg-gray-100",
-    badgeColor: "text-gray-500",
+    iconBg: "bg-gray-50 dark:bg-gray-800",
+    iconColor: "text-gray-400 dark:text-gray-500",
+    badgeBg: "bg-gray-100 dark:bg-gray-800",
+    badgeColor: "text-gray-500 dark:text-gray-400",
   },
   jd_generation: {
     icon: Zap,
-    iconBg: "bg-violet-50",
-    iconColor: "text-violet-500",
-    badgeBg: "bg-violet-50",
-    badgeColor: "text-violet-600",
+    iconBg: "bg-violet-50 dark:bg-violet-950/40",
+    iconColor: "text-violet-500 dark:text-violet-400",
+    badgeBg: "bg-violet-50 dark:bg-violet-950/40",
+    badgeColor: "text-violet-600 dark:text-violet-400",
   },
   export: {
     icon: Download,
-    iconBg: "bg-emerald-50",
-    iconColor: "text-emerald-500",
-    badgeBg: "bg-emerald-50",
-    badgeColor: "text-emerald-600",
+    iconBg: "bg-emerald-50 dark:bg-emerald-950/40",
+    iconColor: "text-emerald-500 dark:text-emerald-400",
+    badgeBg: "bg-emerald-50 dark:bg-emerald-950/40",
+    badgeColor: "text-emerald-600 dark:text-emerald-400",
   },
 };
 
@@ -44,25 +45,25 @@ export function SystemActivityTable() {
   const ra = t.adminPages.dashboard.recentActivity;
 
   return (
-    <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 animate-fade-up">
+    <div className={cn(portalCard, "shadow-sm p-6 animate-fade-up")}>
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h3 className="text-base font-semibold text-gray-900">{ra.title}</h3>
-          <p className="text-xs text-gray-400 mt-0.5">{ra.subtitle}</p>
+          <h3 className={cn("text-base font-semibold", portalHeading)}>{ra.title}</h3>
+          <p className={cn("text-xs mt-0.5", portalSubtext)}>{ra.subtitle}</p>
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-lg border border-gray-100">
+      <div className={cn("overflow-hidden rounded-lg border", portalDivider)}>
         <table className="w-full text-sm">
-          <thead className="bg-gray-50 border-b border-gray-100">
+          <thead className={cn("bg-gray-50 dark:bg-gray-800/50 border-b", portalDivider)}>
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">{ra.event}</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">{ra.actor}</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">{ra.details}</th>
-              <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">{ra.time}</th>
+              <th className={cn("px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide", portalSubtext)}>{ra.event}</th>
+              <th className={cn("px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide", portalSubtext)}>{ra.actor}</th>
+              <th className={cn("px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide", portalSubtext)}>{ra.details}</th>
+              <th className={cn("px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide", portalSubtext)}>{ra.time}</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-50">
+          <tbody className={cn("divide-y", portalDivider)}>
             {systemActivity.map((event, i) => {
               const cfg = eventIcons[event.type];
               const Icon = cfg.icon;
@@ -70,7 +71,7 @@ export function SystemActivityTable() {
               return (
                 <tr
                   key={event.id}
-                  className="hover:bg-gray-50/50 transition-colors animate-fade-up"
+                  className={cn("transition-colors animate-fade-up", portalTableRow)}
                   style={{ animationDelay: `${i * 40}ms` }}
                 >
                   <td className="px-4 py-3.5">
@@ -84,14 +85,14 @@ export function SystemActivityTable() {
                     </div>
                   </td>
                   <td className="px-4 py-3.5">
-                    <p className="text-sm font-medium text-gray-800">{event.actor}</p>
-                    <p className="text-xs text-gray-400 mt-0.5">{event.description}</p>
+                    <p className={cn("text-sm font-medium", portalHeading)}>{event.actor}</p>
+                    <p className={cn("text-xs mt-0.5", portalSubtext)}>{event.description}</p>
                   </td>
                   <td className="px-4 py-3.5">
-                    <span className="text-xs text-gray-500">{event.metadata}</span>
+                    <span className={cn("text-xs", portalSubtext)}>{event.metadata}</span>
                   </td>
                   <td className="px-4 py-3.5 text-right">
-                    <span className="text-xs text-gray-400">{event.timestamp}</span>
+                    <span className={cn("text-xs", portalSubtext)}>{event.timestamp}</span>
                   </td>
                 </tr>
               );

@@ -11,10 +11,13 @@ import { UserPagination } from "@/components/admin/users/user-pagination";
 import { getAdminUserStatus } from "@/lib/admin-user-display";
 import { getUserById, listUsers, updateUserStatus } from "@/lib/api/admin-users";
 import { useLanguage } from "@/context/language-context";
+import { cn } from "@/lib/utils";
+import { portalHeadingAlt, portalSubtextAlt } from "@/lib/portal-ui";
 import { useToast } from "@/context/toast-context";
 import type { AdminUserDetail, AdminUserListItem } from "@/types/admin-user";
 
 const SEARCH_DEBOUNCE_MS = 300;
+const DEFAULT_PAGE_SIZE = 10;
 
 export default function UserManagementPage() {
   const { t } = useLanguage();
@@ -22,7 +25,6 @@ export default function UserManagementPage() {
   const u = t.adminPages.users;
 
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
   const [searchInput, setSearchInput] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState<RoleFilterValue>("all");
@@ -61,7 +63,7 @@ export default function UserManagementPage() {
     try {
       const result = await listUsers({
         page,
-        pageSize,
+        pageSize: DEFAULT_PAGE_SIZE,
         search: debouncedSearch || undefined,
         role: roleFilter === "all" ? undefined : roleFilter,
         isActive: apiStatusFilter,
@@ -84,7 +86,7 @@ export default function UserManagementPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, pageSize, debouncedSearch, roleFilter, apiStatusFilter, statusFilter, u.loadError]);
+  }, [page, debouncedSearch, roleFilter, apiStatusFilter, statusFilter, u.loadError]);
 
   useEffect(() => {
     void fetchUsers();
@@ -145,11 +147,6 @@ export default function UserManagementPage() {
     setPage(1);
   }
 
-  function handlePageSizeChange(size: number) {
-    setPageSize(size);
-    setPage(1);
-  }
-
   return (
     <AdminAppShell
       pageTitle={u.heading}
@@ -157,8 +154,8 @@ export default function UserManagementPage() {
     >
       <AdminRouteGuard>
         <div className="mb-8 animate-fade-up">
-          <h2 className="text-[30px] font-bold leading-9 text-[#111827]">{u.heading}</h2>
-          <p className="text-base text-[#6b7280] leading-6 mt-2">{u.subtext}</p>
+          <h2 className={cn("text-[30px] font-bold leading-9", portalHeadingAlt)}>{u.heading}</h2>
+          <p className={cn("text-base leading-6 mt-2", portalSubtextAlt)}>{u.subtext}</p>
         </div>
 
         <div className="animate-fade-up" style={{ animationDelay: "80ms" }}>
@@ -188,11 +185,10 @@ export default function UserManagementPage() {
           {!error && (
             <UserPagination
               page={page}
-              pageSize={pageSize}
+              pageSize={DEFAULT_PAGE_SIZE}
               totalCount={totalCount}
               loading={loading}
               onPageChange={setPage}
-              onPageSizeChange={handlePageSizeChange}
             />
           )}
         </div>

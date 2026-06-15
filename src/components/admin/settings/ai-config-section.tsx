@@ -4,12 +4,16 @@ import { useState } from "react";
 import { Save } from "lucide-react";
 import { Toggle } from "@/components/ui/toggle";
 import { useLanguage } from "@/context/language-context";
+import { cn } from "@/lib/utils";
+import { portalDivider, portalHeading, portalInput, portalSubtext } from "@/lib/portal-ui";
 
 const CATEGORY_KEYS = ["Technical", "Behavioral", "Situational", "Cultural", "Leadership"] as const;
 const MODELS = ["gpt-4o", "gpt-4-turbo", "gpt-3.5-turbo"];
 
-const inputCls =
-  "w-full px-3.5 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#6c47ff]/20 focus:border-[#6c47ff] transition-colors bg-white";
+const inputCls = cn(
+  portalInput,
+  "w-full px-3.5 py-2.5 text-sm rounded-lg focus:outline-none focus:ring-2 focus:ring-[#6c47ff]/20 focus:border-[#6c47ff] transition-colors"
+);
 
 export function AiConfigSection() {
   const { t } = useLanguage();
@@ -28,17 +32,17 @@ export function AiConfigSection() {
 
   return (
     <div>
-      <h3 className="text-base font-semibold text-gray-900 mb-5">{ai.title}</h3>
+      <h3 className={cn("text-base font-semibold mb-5", portalHeading)}>{ai.title}</h3>
 
       <div className="space-y-5">
         <div>
-          <p className="text-sm font-medium text-gray-700 mb-3">{ai.categories}</p>
+          <p className={cn("text-sm font-medium mb-3", portalHeading)}>{ai.categories}</p>
           <div className="space-y-3">
             {CATEGORY_KEYS.map((cat, i) => (
-              <div key={cat} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
+              <div key={cat} className={cn("flex items-center justify-between py-2 border-b last:border-0", portalDivider)}>
                 <div>
-                  <p className="text-sm font-medium text-gray-800">{ai.categoryLabels[i]}</p>
-                  <p className="text-xs text-gray-400">
+                  <p className={cn("text-sm font-medium", portalHeading)}>{ai.categoryLabels[i]}</p>
+                  <p className={cn("text-xs", portalSubtext)}>
                     {ai.includePrefix} {ai.categoryLabels[i].toLowerCase()} {ai.includeSuffix}
                   </p>
                 </div>
@@ -51,9 +55,9 @@ export function AiConfigSection() {
           </div>
         </div>
 
-        <div className="pt-4 border-t border-gray-100 space-y-4">
+        <div className={cn("pt-4 border-t space-y-4", portalDivider)}>
           <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium text-gray-700">{ai.languageModel}</label>
+            <label className={cn("text-sm font-medium", portalHeading)}>{ai.languageModel}</label>
             <select
               value={model}
               onChange={(e) => setModel(e.target.value)}
@@ -67,8 +71,8 @@ export function AiConfigSection() {
 
           <div className="grid grid-cols-2 gap-4">
             <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium text-gray-700">
-                {ai.temperature} <span className="text-gray-400 font-normal">({temperature})</span>
+              <label className={cn("text-sm font-medium", portalHeading)}>
+                {ai.temperature} <span className={cn("font-normal", portalSubtext)}>({temperature})</span>
               </label>
               <input
                 type="number"
@@ -79,11 +83,11 @@ export function AiConfigSection() {
                 onChange={(e) => setTemperature(e.target.value)}
                 className={inputCls}
               />
-              <p className="text-xs text-gray-400">{ai.tempHint}</p>
+              <p className={cn("text-xs", portalSubtext)}>{ai.tempHint}</p>
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium text-gray-700">{ai.maxTokens}</label>
+              <label className={cn("text-sm font-medium", portalHeading)}>{ai.maxTokens}</label>
               <input
                 type="number"
                 min={512}

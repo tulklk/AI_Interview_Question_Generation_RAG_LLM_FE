@@ -6,6 +6,8 @@ import { WeeklyUsageChart } from "@/components/admin/analytics/weekly-usage-char
 import { CategoryChart } from "@/components/admin/analytics/category-chart";
 import { RoleDistribution } from "@/components/admin/analytics/role-distribution";
 import { useLanguage } from "@/context/language-context";
+import { cn } from "@/lib/utils";
+import { portalHeadingAlt, portalSubtextAlt } from "@/lib/portal-ui";
 
 export default function SystemAnalyticsPage() {
   const { t } = useLanguage();
@@ -17,8 +19,8 @@ export default function SystemAnalyticsPage() {
       breadcrumb={[{ label: "Admin", href: "/admin/dashboard" }, { label: a.heading }]}
     >
       <div className="mb-8 animate-fade-up">
-        <h2 className="text-[30px] font-bold leading-9 text-[#111827]">{a.heading}</h2>
-        <p className="text-base text-[#6b7280] leading-6 mt-2">{a.subtext}</p>
+        <h2 className={cn("text-[30px] font-bold leading-9", portalHeadingAlt)}>{a.heading}</h2>
+        <p className={cn("text-base leading-6 mt-2", portalSubtextAlt)}>{a.subtext}</p>
       </div>
 
       <div className="animate-fade-up" style={{ animationDelay: "80ms" }}>
