@@ -1000,7 +1000,7 @@ body {
   bottom: 2px;
   height: 2px;
   border-radius: 999px;
-  background: linear-gradient(90deg, #7C3AED, #22D3EE);
+  background: #7C3AED;
   transform: scaleX(0);
   opacity: 0;
   transition: transform 0.25s ease, opacity 0.25s ease;
