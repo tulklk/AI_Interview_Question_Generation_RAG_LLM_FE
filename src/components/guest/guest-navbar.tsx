@@ -30,10 +30,10 @@ export function GuestNavbar() {
 
   return (
     <header
-      className={`sticky top-0 z-50 bg-white/95 dark:bg-gray-950/95 transition-shadow duration-200 animate-slide-down ${
+      className={`sticky top-0 z-50 bg-white/80 dark:bg-[#070B1A]/70 transition-all duration-200 animate-slide-down border-b ${
         scrolled
-          ? "shadow-sm border-b border-gray-200/60 dark:border-gray-800/80"
-          : "border-b border-transparent"
+          ? "backdrop-blur-lg shadow-sm border-gray-200/60 dark:border-[rgba(148,163,184,0.18)]"
+          : "backdrop-blur-md border-[rgba(124,58,237,0.06)] dark:border-[rgba(148,163,184,0.1)]"
       }`}
     >
       <div className="max-w-6xl mx-auto px-6 h-[72px] flex items-center gap-8">
@@ -49,7 +49,7 @@ export function GuestNavbar() {
             <a
               key={link.href}
               href={link.href}
-              className="px-3 py-1.5 text-sm font-medium text-gray-500 hover:text-gray-900 hover:bg-gray-50 dark:text-gray-400 dark:hover:text-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+              className="nav-link-glow px-3 py-1.5 text-sm font-medium text-gray-500 hover:text-[#7C3AED] hover:bg-gray-50 dark:text-gray-400 dark:hover:text-gray-100 dark:hover:bg-white/5 rounded-lg transition-colors"
             >
               {link.label}
             </a>
@@ -68,7 +68,7 @@ export function GuestNavbar() {
           </Link>
           <Link
             href="/login"
-            className="px-4 py-2 text-sm font-semibold text-white bg-[#6c47ff] hover:bg-[#5535dd] rounded-lg transition-colors"
+            className="btn-cta-primary shimmer-button px-4 py-2 text-sm font-semibold text-white rounded-lg"
           >
             {t.common.getStarted}
           </Link>
@@ -107,7 +107,7 @@ export function GuestNavbar() {
             </Link>
             <Link
               href="/login"
-              className="block px-3 py-2.5 text-sm font-semibold text-center text-white bg-[#6c47ff] hover:bg-[#5535dd] rounded-lg transition-colors"
+              className="btn-cta-primary shimmer-button block px-3 py-2.5 text-sm font-semibold text-center text-white rounded-lg"
             >
               {t.common.getStarted}
             </Link>
