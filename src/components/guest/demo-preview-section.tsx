@@ -6,6 +6,8 @@ import { cn } from "@/lib/utils";
 import { demoKeywords, demoQuestions } from "@/data/guest";
 import { useLanguage } from "@/context/language-context";
 import { ScrollReveal } from "@/components/shared/scroll-reveal";
+import { CosmicField } from "@/components/guest/cosmic-field";
+import { KEYWORD_ICONS } from "@/components/guest/keyword-icons";
 import type { DemoQuestion } from "@/types/guest";
 
 type Category = "Technical" | "Behavioral" | "Situational";
@@ -96,7 +98,10 @@ export function DemoPreviewSection() {
 
   return (
     <section className="relative bg-white/92 dark:bg-gray-950/85 py-20 px-6">
-      <div className="max-w-4xl mx-auto">
+      <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
+        <CosmicField variant="compact" />
+      </div>
+      <div className="relative z-10 max-w-4xl mx-auto">
         <ScrollReveal animation="fade-up" className="text-center mb-12">
           <p className="text-sm font-semibold text-[#6c47ff] uppercase tracking-widest mb-3">
             {d.sectionLabel}
@@ -108,6 +113,9 @@ export function DemoPreviewSection() {
         </ScrollReveal>
 
         <ScrollReveal animation="fade-up" delay={80}>
+          <div className="demo-mockup-3d-wrap">
+          <div className="demo-mockup-3d-shadow" aria-hidden="true" />
+          <div className="demo-mockup-3d">
           <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 shadow-lg overflow-hidden">
             <div className="border-b border-gray-100 dark:border-gray-700 bg-[#f5f7fb] dark:bg-gray-800 px-6 py-4">
               <div className="flex items-start justify-between">
@@ -129,14 +137,19 @@ export function DemoPreviewSection() {
               </div>
               <div className="mt-3 flex items-center gap-2 flex-wrap">
                 <Tag size={12} className="text-[#6c47ff] shrink-0" />
-                {demoKeywords.map((k) => (
-                  <span
-                    key={k}
-                    className="text-xs font-medium text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 px-2.5 py-1 rounded-full"
-                  >
-                    {k}
-                  </span>
-                ))}
+                {demoKeywords.map((k) => {
+                  const iconConfig = KEYWORD_ICONS[k];
+                  const Icon = iconConfig?.icon;
+                  return (
+                    <span
+                      key={k}
+                      className="chip-pulse inline-flex items-center gap-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 px-2.5 py-1 rounded-full"
+                    >
+                      {Icon && <Icon size={12} className={cn("shrink-0", iconConfig.className)} />}
+                      {k}
+                    </span>
+                  );
+                })}
               </div>
             </div>
 
@@ -178,6 +191,8 @@ export function DemoPreviewSection() {
                 <QuestionCard key={q.id} question={q} index={idx + 1} delay={idx * 100} />
               ))}
             </div>
+          </div>
+          </div>
           </div>
         </ScrollReveal>
       </div>
