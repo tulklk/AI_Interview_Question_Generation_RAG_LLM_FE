@@ -6,6 +6,7 @@ import { useLanguage } from "@/context/language-context";
 import { pricingPlansJobSeeker, pricingPlansRecruiter } from "@/data/guest";
 import { cn } from "@/lib/utils";
 import { ScrollReveal } from "@/components/shared/scroll-reveal";
+import { CosmicField } from "@/components/guest/cosmic-field";
 import type { Translations } from "@/lib/i18n/en";
 import type { PricingPlan } from "@/types/guest";
 
@@ -173,7 +174,10 @@ export function PricingSection() {
 
   return (
     <section id="pricing" className="relative bg-white/92 dark:bg-gray-950/85 py-16 sm:py-20 px-4 sm:px-6">
-      <div className="max-w-6xl mx-auto">
+      <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
+        <CosmicField variant="compact" />
+      </div>
+      <div className="relative z-10 max-w-6xl mx-auto">
         <ScrollReveal animation="fade-up" className="text-center mb-10 sm:mb-12">
           <p className="text-sm font-semibold text-[#6c47ff] uppercase tracking-widest mb-3">
             {p.sectionLabel}
