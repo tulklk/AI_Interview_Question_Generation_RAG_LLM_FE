@@ -21,6 +21,7 @@ export default function RootPage() {
         <div className="animated-bg-layer animated-bg-layer--a" />
         <div className="animated-bg-layer animated-bg-layer--b" />
         <div className="aurora-mesh" />
+        <div className="bg-grid-pattern" />
       </div>
 
       {/* ── Floating holo orbs ── */}

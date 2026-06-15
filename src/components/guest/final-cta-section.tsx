@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Sparkles, ArrowRight } from "lucide-react";
 import { useLanguage } from "@/context/language-context";
 import { ScrollReveal } from "@/components/shared/scroll-reveal";
+import { CosmicField } from "@/components/guest/cosmic-field";
 
 export function FinalCtaSection() {
   const { t } = useLanguage();
@@ -11,7 +12,10 @@ export function FinalCtaSection() {
 
   return (
     <section className="relative bg-[#f5f7fb] dark:bg-[#0b0f1a] py-20 px-6">
-      <div className="max-w-6xl mx-auto">
+      <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
+        <CosmicField variant="compact" />
+      </div>
+      <div className="relative z-10 max-w-6xl mx-auto">
         <div className="bg-gradient-to-br from-[#6c47ff] to-[#8b65ff] rounded-xl px-10 py-16 text-center relative overflow-hidden">
           <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/3 pointer-events-none" />
           <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/4 pointer-events-none" />
