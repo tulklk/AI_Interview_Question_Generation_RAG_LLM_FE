@@ -17,4 +17,4 @@ export interface QuestionCountOption {
   label: string;
 }
 
-export type GenerateView = "form" | "generating";
+export type GenerateView = "form" | "submitting" | "clarifying" | "plan_review" | "generating" | "completed";

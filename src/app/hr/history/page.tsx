@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { AppShell } from "@/components/layout/app-shell";
 import { HistoryStats } from "@/components/history/history-stats";
 import { HistoryFilters } from "@/components/history/history-filters";
@@ -11,6 +12,10 @@ import { portalHeading, portalSubtext } from "@/lib/portal-ui";
 export default function HrHistoryPage() {
   const { t } = useLanguage();
   const hp = t.historyPage;
+
+  const [search, setSearch] = useState("");
+  const [role, setRole] = useState("");
+  const [level, setLevel] = useState("");
 
   return (
     <AppShell
@@ -26,10 +31,17 @@ export default function HrHistoryPage() {
         <HistoryStats />
       </div>
       <div className="animate-fade-up" style={{ animationDelay: "160ms" }}>
-        <HistoryFilters />
+        <HistoryFilters
+          search={search}
+          onSearchChange={setSearch}
+          role={role}
+          onRoleChange={setRole}
+          level={level}
+          onLevelChange={setLevel}
+        />
       </div>
       <div className="animate-fade-up" style={{ animationDelay: "240ms" }}>
-        <HistoryTable />
+        <HistoryTable search={search} role={role} level={level} />
       </div>
     </AppShell>
   );

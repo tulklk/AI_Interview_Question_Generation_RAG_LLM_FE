@@ -1,14 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { CheckCircle2, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLanguage } from "@/context/language-context";
 import { portalCard, portalHeading, portalIconWell, portalMutedBg, portalSubtext } from "@/lib/portal-ui";
 
+// Pure visual progress component shown while RAG is generating questions.
+// The parent (generate-form) owns the actual API call and switches view when done.
 export function GeneratingProgress() {
-  const router = useRouter();
   const { t } = useLanguage();
   const gp = t.generatePage.progress;
   const steps = t.generatePage.steps;
@@ -16,22 +16,22 @@ export function GeneratingProgress() {
   const [completedSteps, setCompletedSteps] = useState(0);
 
   useEffect(() => {
-    if (completedSteps >= steps.length) {
-      const timeout = setTimeout(() => router.push("/hr/history"), 800);
-      return () => clearTimeout(timeout);
-    }
+    if (completedSteps >= steps.length) return;
     const timer = setTimeout(() => {
       setCompletedSteps((prev) => prev + 1);
     }, 700);
     return () => clearTimeout(timer);
-  }, [completedSteps, router, steps.length]);
+  }, [completedSteps, steps.length]);
 
-  const progress = Math.round((completedSteps / steps.length) * 100);
+  const progress = Math.min(
+    Math.round((completedSteps / steps.length) * 100),
+    90
+  );
 
   return (
     <div className={cn(portalCard, "shadow-sm px-8 py-12 flex flex-col items-center max-w-xl mx-auto w-full animate-scale-in")}>
       <div className={cn("w-16 h-16 rounded-xl flex items-center justify-center mb-5", portalIconWell, "bg-indigo-50 dark:bg-indigo-950/40")}>
-        <Sparkles size={28} className="text-[#6c47ff]" />
+        <Sparkles size={28} className="text-primary animate-pulse" />
       </div>
 
       <h2 className={cn("text-xl font-bold mb-1", portalHeading)}>{gp.heading}</h2>
@@ -51,7 +51,7 @@ export function GeneratingProgress() {
                     className={cn(
                       "w-5 h-5 rounded-full border-2 flex items-center justify-center text-[10px] font-bold",
                       active
-                        ? "border-[#6c47ff] text-[#6c47ff]"
+                        ? "border-primary text-primary"
                         : "border-gray-200 dark:border-gray-700 text-gray-300 dark:text-gray-600"
                     )}
                   >
@@ -88,7 +88,7 @@ export function GeneratingProgress() {
         </div>
         <div className={cn("h-2 w-full rounded-full overflow-hidden", portalMutedBg)}>
           <div
-            className="h-full bg-[#6c47ff] rounded-full transition-all duration-500"
+            className="h-full bg-primary rounded-full transition-all duration-500"
             style={{ width: `${progress}%` }}
           />
         </div>

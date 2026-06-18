@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { Search, Filter, Clock, Download } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLanguage } from "@/context/language-context";
@@ -9,21 +8,30 @@ import { portalHeading, portalInput } from "@/lib/portal-ui";
 const roleKeys = ["Frontend", "Backend", "Data", "Product", "Design", "DevOps", "ML"];
 const levelKeys = ["Intern", "Junior", "Mid-Level", "Senior", "Lead"];
 
-export function HistoryFilters() {
+interface HistoryFiltersProps {
+  search: string;
+  onSearchChange: (v: string) => void;
+  role: string;
+  onRoleChange: (v: string) => void;
+  level: string;
+  onLevelChange: (v: string) => void;
+}
+
+export function HistoryFilters({
+  search,
+  onSearchChange,
+  role,
+  onRoleChange,
+  level,
+  onLevelChange,
+}: HistoryFiltersProps) {
   const { t } = useLanguage();
   const hf = t.historyPage.filters;
 
-  const roles = [hf.allRoles, ...roleKeys];
-  const levels = [hf.allLevels, ...levelKeys];
+  const roles = [{ value: "", label: hf.allRoles }, ...roleKeys.map((r) => ({ value: r, label: r }))];
+  const levels = [{ value: "", label: hf.allLevels }, ...levelKeys.map((l) => ({ value: l, label: l }))];
 
-  const [search, setSearch] = useState("");
-  const [role, setRole] = useState(hf.allRoles);
-  const [level, setLevel] = useState(hf.allLevels);
-
-  const filterBox = cn(
-    "flex items-center gap-2 rounded-lg px-3 py-2",
-    portalInput
-  );
+  const filterBox = cn("flex items-center gap-2 rounded-lg px-3 py-2", portalInput);
 
   return (
     <div className="flex items-center gap-3 mb-4 animate-fade-up">
@@ -35,7 +43,7 @@ export function HistoryFilters() {
         <input
           type="text"
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) => onSearchChange(e.target.value)}
           placeholder={hf.searchPlaceholder}
           className={cn(
             "w-full pl-9 pr-4 py-2 text-sm rounded-lg focus:outline-none focus:ring-2 focus:ring-[#6c47ff]/20 focus:border-[#6c47ff] transition-colors",
@@ -48,11 +56,11 @@ export function HistoryFilters() {
         <Filter size={13} className="text-gray-400 dark:text-gray-500 shrink-0" />
         <select
           value={role}
-          onChange={(e) => setRole(e.target.value)}
+          onChange={(e) => onRoleChange(e.target.value)}
           className={cn("text-sm bg-transparent focus:outline-none cursor-pointer", portalHeading)}
         >
           {roles.map((r) => (
-            <option key={r}>{r}</option>
+            <option key={r.value} value={r.value}>{r.label}</option>
           ))}
         </select>
       </div>
@@ -61,20 +69,23 @@ export function HistoryFilters() {
         <Clock size={13} className="text-gray-400 dark:text-gray-500 shrink-0" />
         <select
           value={level}
-          onChange={(e) => setLevel(e.target.value)}
+          onChange={(e) => onLevelChange(e.target.value)}
           className={cn("text-sm bg-transparent focus:outline-none cursor-pointer", portalHeading)}
         >
           {levels.map((l) => (
-            <option key={l}>{l}</option>
+            <option key={l.value} value={l.value}>{l.label}</option>
           ))}
         </select>
       </div>
 
-      <button className={cn(
-        "ml-auto flex items-center gap-2 text-sm font-medium rounded-lg px-4 py-2 transition-colors",
-        portalInput,
-        "hover:border-gray-300 dark:hover:border-gray-600"
-      )}>
+      <button
+        type="button"
+        className={cn(
+          "ml-auto flex items-center gap-2 text-sm font-medium rounded-lg px-4 py-2 transition-colors",
+          portalInput,
+          "hover:border-gray-300 dark:hover:border-gray-600"
+        )}
+      >
         <Download size={14} />
         {hf.exportAll}
       </button>
