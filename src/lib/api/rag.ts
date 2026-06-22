@@ -230,7 +230,7 @@ export interface RagSessionResult {
 // ---------------------------------------------------------------------------
 
 export async function startInterviewPlan(payload: StartPlanPayload): Promise<RagSessionResult> {
-  const { data } = await ragClient.post<unknown>("/api/rag/interview-plans/start", payload);
+  const { data } = await ragClient.post<unknown>("/api/rag/interview-plans/start/", payload);
   const session = normalisePlanSession(data);
   return {
     ragSessionId: session.session_id,
@@ -245,7 +245,7 @@ export async function sendPlanMessage(
   message: string,
   ownerId: string,
 ): Promise<RagSessionResult> {
-  const { data } = await ragClient.post<unknown>("/api/rag/interview-plans/messages", {
+  const { data } = await ragClient.post<unknown>("/api/rag/interview-plans/messages/", {
     session_id: ragSessionId,
     owner_id: ownerId,
     message,
@@ -278,7 +278,7 @@ export async function confirmInterviewPlan(
   ownerId: string,
   planDraft: PlanDraft,
 ): Promise<RagSessionResult> {
-  const { data } = await ragClient.post<unknown>("/api/rag/interview-plans/confirm", {
+  const { data } = await ragClient.post<unknown>("/api/rag/interview-plans/confirm/", {
     session_id: ragSessionId,
     owner_id: ownerId,
     plan_draft: planDraftToV1Body(ownerId, planDraft),
@@ -296,7 +296,7 @@ export async function generateInterviewQuestions(
   ownerId: string,
   plan: PlanDraft,
 ): Promise<GeneratedQuestion[]> {
-  const { data } = await ragClient.post<unknown>("/api/rag/interview-questions", {
+  const { data } = await ragClient.post<unknown>("/api/rag/interview-questions/", {
     owner_id: ownerId,
     confirmed_plan: planDraftToV1Body(ownerId, plan),
   });
@@ -308,7 +308,7 @@ export async function uploadHrJdFile(ownerId: string, file: File): Promise<{ suc
   const formData = new FormData();
   formData.append("files", file);
   const { data } = await ragClient.post(
-    `/api/rag/knowledge/hr/${encodeURIComponent(ownerId)}/files`,
+    `/api/rag/knowledge/hr/${encodeURIComponent(ownerId)}/files/`,
     formData,
     { headers: { "Content-Type": "multipart/form-data" } }
   );

@@ -8,6 +8,61 @@ import type {
   QuestionAIChat,
 } from "@/types/generation-session";
 
+// ---------------------------------------------------------------------------
+// New backend API: /api/hr/question-generation-jobs
+// ---------------------------------------------------------------------------
+
+interface CreateJobResponseData {
+  id?: string;
+  jobId?: string;
+  data?: { id?: string };
+}
+
+export async function createGenerationJob(payload: {
+  jobDescription?: string;
+  hrNote?: string;
+  numberOfQuestions?: number;
+  questionTypes?: string[];
+  skills?: string[];
+}): Promise<string | null> {
+  try {
+    const { data } = await apiClient.post<CreateJobResponseData>(
+      "/api/hr/question-generation-jobs/plan",
+      payload
+    );
+    const id = data?.id ?? data?.jobId ?? data?.data?.id;
+    return id ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export async function saveGenerationResult(
+  jobId: string,
+  questions: GeneratedQuestion[],
+): Promise<boolean> {
+  try {
+    await apiClient.patch(
+      `/internal/question-generation-jobs/${jobId}/generation-result`,
+      {
+        phase: "COMPLETED",
+        success: true,
+        questions: questions.map((q, i) => ({
+          question: q.question,
+          questionType: q.questionType,
+          difficulty: q.difficulty,
+          rationale: q.rationale ?? null,
+          sampleAnswer: q.sampleAnswer ?? null,
+          order: i,
+        })),
+      }
+    );
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export interface CreateSessionPayload {
   jdContent?: string;
   jdFilePath?: string;
