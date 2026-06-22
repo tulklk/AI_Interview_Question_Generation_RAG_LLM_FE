@@ -44,8 +44,8 @@ function QuestionCard({
   const qT = d.questions[question.id as keyof typeof d.questions];
 
   return (
-    <ScrollReveal animation="fade-up" delay={delay} className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm p-5">
-      <div className="flex items-start gap-4">
+    <ScrollReveal animation="fade-up" delay={delay} className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm p-3.5 sm:p-5">
+      <div className="flex items-start gap-3 sm:gap-4">
         <div className="w-7 h-7 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">
           {index}
         </div>
@@ -117,13 +117,13 @@ export function DemoPreviewSection() {
           <div className="demo-mockup-3d-shadow" aria-hidden="true" />
           <div className="demo-mockup-3d">
           <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 shadow-lg overflow-hidden">
-            <div className="border-b border-gray-100 dark:border-gray-700 bg-[#f5f7fb] dark:bg-gray-800 px-6 py-4">
-              <div className="flex items-start justify-between">
+            <div className="border-b border-gray-100 dark:border-gray-700 bg-[#f5f7fb] dark:bg-gray-800 px-4 sm:px-6 py-4">
+              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
                 <div>
                   <h3 className="text-base font-bold text-gray-900 dark:text-gray-100">{d.jobTitle}</h3>
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{d.generatedFor}</p>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-300">
                     Frontend
                   </span>
@@ -153,7 +153,7 @@ export function DemoPreviewSection() {
               </div>
             </div>
 
-            <div className="p-4 border-b border-gray-100 dark:border-gray-800">
+            <div className="p-3 sm:p-4 border-b border-gray-100 dark:border-gray-800">
               <div className="flex bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-1 gap-1">
                 {CATEGORIES.map((cat) => {
                   const count = demoQuestions.filter((q) => q.category === cat).length;
@@ -163,7 +163,7 @@ export function DemoPreviewSection() {
                       key={cat}
                       onClick={() => setActiveTab(cat)}
                       className={cn(
-                        "flex-1 flex items-center justify-center gap-2 py-2 px-3 text-sm font-semibold rounded-lg transition-all duration-200",
+                        "flex-1 flex items-center justify-center gap-1 sm:gap-2 py-2 px-1.5 sm:px-3 text-xs sm:text-sm font-semibold rounded-lg transition-all duration-200",
                         isActive
                           ? "bg-[#6c47ff] text-white shadow-sm"
                           : "text-gray-500 dark:text-gray-400 hover:text-[#6c47ff] dark:hover:text-[#a78bff] hover:bg-white dark:hover:bg-gray-700"
@@ -186,7 +186,7 @@ export function DemoPreviewSection() {
               </div>
             </div>
 
-            <div className="p-4 space-y-3">
+            <div className="p-3 sm:p-4 space-y-3">
               {filtered.map((q, idx) => (
                 <QuestionCard key={q.id} question={q} index={idx + 1} delay={idx * 100} />
               ))}

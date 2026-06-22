@@ -3,7 +3,7 @@
 import { GoogleLogin } from "@react-oauth/google";
 
 const oauthBtnClass =
-  "flex h-10 w-full items-center justify-center gap-2 rounded-lg border border-gray-200 bg-white px-3 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700";
+  "auth-social-button-face flex h-10 w-full items-center justify-center gap-2 rounded-lg border px-3 text-sm font-medium text-gray-700 transition-colors disabled:cursor-not-allowed disabled:opacity-60 dark:text-gray-100";
 
 function GoogleIcon() {
   return (
@@ -57,7 +57,7 @@ export function GoogleOAuthButton({
   const disabled = loading || !clientId;
 
   return (
-    <div className="relative h-10 min-w-0">
+    <div className="auth-social-button relative h-10 min-w-0">
       {loading && (
         <div className="absolute inset-0 z-20 flex items-center justify-center rounded-lg bg-white/70 dark:bg-gray-900/70">
           <span className="h-4 w-4 animate-spin rounded-full border-2 border-primary/30 border-t-primary" />
@@ -99,10 +99,12 @@ export function GoogleOAuthButton({
 /** UI-only GitHub OAuth button (not wired yet). */
 export function GithubOAuthButton() {
   return (
-    <button type="button" className={oauthBtnClass}>
-      <GithubIcon />
-      Github
-    </button>
+    <div className="auth-social-button relative h-10 min-w-0">
+      <button type="button" className={oauthBtnClass}>
+        <GithubIcon />
+        Github
+      </button>
+    </div>
   );
 }
 

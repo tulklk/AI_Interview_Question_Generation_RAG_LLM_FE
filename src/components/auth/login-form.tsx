@@ -318,7 +318,7 @@ export function LoginForm() {
             <label className="text-sm font-medium text-gray-700 dark:text-gray-300">{lp.passwordLabel}</label>
             <Link
               href="/forgot-password"
-              className="text-xs text-primary font-medium hover:underline"
+              className="auth-link-underline text-xs text-primary font-medium"
             >
               {lp.forgotPassword}
             </Link>
@@ -342,7 +342,7 @@ export function LoginForm() {
             <button
               type="button"
               onClick={() => setShowPassword((v) => !v)}
-              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+              className="auth-eye-btn absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 dark:hover:text-gray-300"
             >
               {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
             </button>
@@ -356,7 +356,7 @@ export function LoginForm() {
           <button
             type="button"
             onClick={() => setRememberMe((v) => !v)}
-            className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${
+            className={`auth-checkbox w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${
               rememberMe ? "border-primary bg-primary" : "border-gray-300 bg-white dark:border-gray-600 dark:bg-gray-900"
             }`}
           >
@@ -421,7 +421,7 @@ export function LoginForm() {
 
       <motion.p variants={formRow} className="text-center text-sm text-gray-500 dark:text-gray-400 mt-6">
         {lp.noAccount}{" "}
-        <Link href="/register" className="text-primary font-semibold hover:underline">
+        <Link href="/register" className="auth-link-glow font-semibold">
           {lp.signUpFree}
         </Link>
       </motion.p>

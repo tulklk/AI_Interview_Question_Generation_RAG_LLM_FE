@@ -1,6 +1,5 @@
-import { LoginHero } from "@/components/auth/login-hero";
 import { RegisterRoleTabs } from "@/components/auth/register-role-tabs";
-import { BrandLogo } from "@/components/shared/brand-logo";
+import { AuthLayout } from "@/components/auth/auth-layout";
 
 export const metadata = {
   title: "Sign Up — HireGen AI",
@@ -10,36 +9,8 @@ export const metadata = {
 
 export default function RegisterPage() {
   return (
-    <div className="flex h-screen overflow-hidden bg-white dark:bg-gray-950">
-      {/* Left — hero gradient panel */}
-      <div className="hidden lg:flex w-[55%] shrink-0 bg-linear-to-br from-primary to-[#8b65ff] animate-slide-left">
-        <LoginHero />
-      </div>
-
-      {/* Right — form panel with animated background orbs */}
-      <div className="relative flex-1 flex flex-col min-h-0 overflow-hidden animate-slide-right">
-        {/* Decorative background orbs */}
-        <div className="absolute inset-0 pointer-events-none">
-          <div className="auth-panel-orb auth-panel-orb--1" style={{ width: 360, height: 360, top: -80, right: -70 }} />
-          <div className="auth-panel-orb auth-panel-orb--2" style={{ width: 300, height: 300, bottom: -80, left: -60 }} />
-          <div className="auth-panel-orb auth-panel-orb--3" style={{ width: 220, height: 220, top: "42%", right: "16%" }} />
-        </div>
-
-        {/* Brand logo — pinned top-right */}
-        <div className="absolute top-6 right-6 sm:right-8 z-10 animate-fade-in">
-          <BrandLogo
-            className="justify-end max-w-[min(100%,280px)]"
-            logoClassName="w-10 h-10"
-            titleClassName="text-[16px]"
-            subtitleClassName="text-[11px]"
-          />
-        </div>
-
-        {/* Scrollable form area */}
-        <div className="relative z-10 flex-1 overflow-y-auto px-6 sm:px-8 pt-20 pb-10">
-          <RegisterRoleTabs />
-        </div>
-      </div>
-    </div>
+    <AuthLayout formAreaClassName="items-start justify-center">
+      <RegisterRoleTabs />
+    </AuthLayout>
   );
 }
