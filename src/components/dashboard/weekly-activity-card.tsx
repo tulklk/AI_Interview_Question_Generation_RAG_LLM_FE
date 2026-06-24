@@ -13,7 +13,7 @@ import { cn } from "@/lib/utils";
 import { weeklyActivity } from "@/data/dashboard";
 import { useLanguage } from "@/context/language-context";
 import { useChartTheme } from "@/hooks/use-chart-theme";
-import { portalCard, portalHeading, portalSubtext } from "@/lib/portal-ui";
+import { portalHeading, portalSubtext } from "@/lib/portal-ui";
 
 export function WeeklyActivityCard() {
   const { t } = useLanguage();
@@ -21,7 +21,7 @@ export function WeeklyActivityCard() {
   const chart = useChartTheme();
 
   return (
-    <div className={cn(portalCard, "shadow-sm p-6 flex flex-col animate-fade-up")}>
+    <div className="hr-glass-card p-6 flex flex-col animate-fade-up">
       <div className="flex items-center justify-between mb-1">
         <div>
           <h3 className={cn("text-base font-semibold", portalHeading)}>{wa.title}</h3>
