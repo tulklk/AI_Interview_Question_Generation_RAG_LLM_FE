@@ -3,14 +3,15 @@ export interface HrRegisterRequest {
   email: string;
   password: string;
   confirmPassword: string;
-  companyId: string;
+  companyId?: string;
   companyName: string;
   jobTitle: string;
 }
 
 export interface ApiErrorResponse {
   message?: string;
-  errors?: Record<string, string>;
+  error?: string;
+  errors?: Record<string, string> | string[];
 }
 
 export interface LoginRequest {
