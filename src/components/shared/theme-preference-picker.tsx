@@ -63,14 +63,14 @@ export function ThemePreferencePicker({
               className={cn(
                 "flex items-center justify-center gap-2 py-3 rounded-lg border text-sm font-medium transition-colors relative",
                 preference === id
-                  ? "border-[#6c47ff] text-[#6c47ff] bg-indigo-50 dark:bg-indigo-950/40"
-                  : cn(portalInput, "hover:border-gray-300 dark:hover:border-gray-600", portalSubtext)
+                  ? "border-[#7C3AED] text-[#7C3AED] dark:text-[#a78bff] bg-violet-50 dark:bg-violet-950/40"
+                  : cn(portalInput, "hover:border-[#7C3AED]/40 dark:hover:border-[#7C3AED]/40", portalSubtext)
               )}
             >
               <Icon size={14} />
               {label}
               {preference === id && (
-                <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[#6c47ff]" />
+                <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[#7C3AED] dark:bg-[#a78bff]" />
               )}
             </button>
           ))}

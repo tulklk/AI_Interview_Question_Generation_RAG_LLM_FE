@@ -31,7 +31,7 @@ export function SelectField({
       {label && (
         <label
           htmlFor={id}
-          className="text-sm font-medium text-gray-700"
+          className="text-sm font-medium text-gray-700 dark:text-gray-300"
         >
           {label}
           {required && <span className="text-red-500 ml-0.5">*</span>}
@@ -42,7 +42,7 @@ export function SelectField({
           id={id}
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className="w-full appearance-none bg-white border border-gray-200 rounded-lg px-3.5 py-2.5 pr-9 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#6c47ff]/30 focus:border-[#6c47ff] transition-colors"
+          className="w-full appearance-none bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg px-3.5 py-2.5 pr-9 text-sm text-gray-700 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
         >
           <option value="" disabled>
             {placeholder}
@@ -55,7 +55,7 @@ export function SelectField({
         </select>
         <ChevronDown
           size={15}
-          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
+          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 pointer-events-none"
         />
       </div>
     </div>
