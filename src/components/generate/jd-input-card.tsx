@@ -3,7 +3,7 @@
 import { FileText, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLanguage } from "@/context/language-context";
-import { portalCard, portalHeading, portalInput, portalSubtext } from "@/lib/portal-ui";
+import { portalHeading, portalInput, portalSubtext } from "@/lib/portal-ui";
 
 interface JdInputCardProps {
   value: string;
@@ -21,9 +21,9 @@ export function JdInputCard({ value, onChange }: JdInputCardProps) {
   const isTooShort = charCount > 0 && charCount < MIN_CHARS;
 
   return (
-    <div className={cn(portalCard, "shadow-sm p-6")}>
+    <div className="hr-glass-card p-6">
       <div className="flex items-center gap-2 mb-4">
-        <FileText size={16} className="text-gray-400 dark:text-gray-500" />
+        <FileText size={16} className="text-[#7C3AED] dark:text-[#a78bff]" />
         <h2 className={cn("text-base font-semibold", portalHeading)}>{ji.title}</h2>
       </div>
 

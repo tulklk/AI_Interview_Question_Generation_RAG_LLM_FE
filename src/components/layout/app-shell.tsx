@@ -1,12 +1,16 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 import { Sidebar } from "./sidebar";
 import { TopHeader } from "./top-header";
 import { useLanguage } from "@/context/language-context";
+import { useToast } from "@/context/toast-context";
 import { useHrSubscription } from "@/context/hr-subscription-context";
 import { useUser } from "@/context/user-context";
+import { buildWelcomeMessage, getTimeOfDayGreeting } from "@/lib/greeting";
+import { clearLoginWelcomePending, hasLoginWelcomePending } from "@/lib/login-welcome";
 import { getInitials, resolveAvatarUrl } from "@/lib/user-display";
 import type { HrPlanId } from "@/types/hr-subscription";
 
@@ -21,6 +25,27 @@ export function AppShell({ children, breadcrumb, pageTitle }: AppShellProps) {
   const pathname = usePathname();
   const { planId } = useHrSubscription();
   const { user, loading } = useUser();
+  const { addToast } = useToast();
+  const welcomedRef = useRef(false);
+
+  useEffect(() => {
+    if (loading || welcomedRef.current || !hasLoginWelcomePending("hr")) return;
+
+    const displayName = user?.fullName?.trim();
+    if (!displayName) return;
+
+    welcomedRef.current = true;
+    clearLoginWelcomePending();
+
+    const d = t.dashboardPage;
+    const greeting = getTimeOfDayGreeting({
+      morning: d.greetingMorning,
+      afternoon: d.greetingAfternoon,
+      evening: d.greetingEvening,
+      night: d.greetingNight,
+    });
+    addToast("success", buildWelcomeMessage(d.welcomeTemplate, greeting, displayName));
+  }, [addToast, loading, t.dashboardPage, user?.fullName]);
   const planNames = t.settingsPage.subscription.planNames as Record<HrPlanId, string>;
   const planDisplay = t.settingsPage.subscription.userPlanTemplate.replace(
     "{{plan}}",
@@ -52,8 +77,11 @@ export function AppShell({ children, breadcrumb, pageTitle }: AppShellProps) {
             avatarUrl: resolveAvatarUrl(user),
           }}
         />
-        <main className="flex-1 overflow-y-auto bg-[#f5f7fb] dark:bg-[#0b0f1a]">
-          <div className="max-w-[1400px] mx-auto px-8 py-7">{children}</div>
+        <main className="flex-1 overflow-y-auto hr-main-bg">
+          <div className="hr-aurora-orb hr-aurora-orb--purple w-125 h-125 -top-30 -left-20" aria-hidden="true" />
+          <div className="hr-aurora-orb hr-aurora-orb--cyan w-100 h-100 top-[30%] -right-15" aria-hidden="true" />
+          <div className="hr-aurora-orb hr-aurora-orb--violet w-87.5 h-87.5 -bottom-20 left-[30%]" aria-hidden="true" />
+          <div className="relative max-w-350 mx-auto px-8 py-7">{children}</div>
         </main>
       </div>
     </div>

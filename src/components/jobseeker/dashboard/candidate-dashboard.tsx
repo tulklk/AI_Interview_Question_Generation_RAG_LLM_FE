@@ -20,9 +20,8 @@ import { useUser } from "@/context/user-context";
 import { buildWelcomeMessage, getTimeOfDayGreeting } from "@/lib/greeting";
 import { StatCard } from "@/components/jobseeker/ui/stat-card";
 import { Pill, getScoreBadgeClass } from "@/components/jobseeker/ui/pill";
-import { CARD_SHADOW } from "@/components/jobseeker/ui/constants";
 import { useChartTheme } from "@/hooks/use-chart-theme";
-import { portalBanner, portalCardShadow, portalDivider, portalHeadingAlt, portalSubtextAlt, portalTableRow } from "@/lib/portal-ui";
+import { portalDivider, portalHeadingAlt, portalSubtextAlt } from "@/lib/portal-ui";
 
 const fadeUp = (delay = 0) => ({
   initial: { opacity: 0, y: 16 },
@@ -73,8 +72,7 @@ export function CandidateDashboard() {
         <div className="flex flex-col gap-6">
           <motion.div
             {...fadeUp(0.12)}
-            className={cn(portalCardShadow, "p-6")}
-            style={{ boxShadow: CARD_SHADOW }}
+            className="hr-glass-card p-6"
           >
             <h2 className={cn("text-[16px] font-[700] mb-4", portalHeadingAlt)}>{p.analyticsTitle}</h2>
             <ResponsiveContainer width="100%" height={220}>
@@ -93,8 +91,7 @@ export function CandidateDashboard() {
 
           <motion.div
             {...fadeUp(0.18)}
-            className={cn(portalCardShadow, "overflow-hidden")}
-            style={{ boxShadow: CARD_SHADOW }}
+            className="hr-glass-card overflow-hidden"
           >
             <div className={cn("flex items-center justify-between px-5 py-4 border-b", portalDivider)}>
               <div>
@@ -107,7 +104,7 @@ export function CandidateDashboard() {
             </div>
             <ul className={cn("divide-y", portalDivider)}>
               {practiceSessions.slice(0, 3).map((session) => (
-                <li key={session.id} className={cn("flex items-center gap-4 px-5 py-3.5 transition-colors", portalTableRow)}>
+                <li key={session.id} className="hr-table-row flex items-center gap-4 px-5 py-3.5">
                   <div className={cn("w-8 h-8 rounded-lg text-white text-[11px] font-bold flex items-center justify-center shrink-0", session.companyColor)}>
                     {session.companyInitials}
                   </div>
@@ -135,8 +132,7 @@ export function CandidateDashboard() {
         <div className="flex flex-col gap-4">
           <motion.div
             {...fadeUp(0.14)}
-            className={cn(portalCardShadow, "p-5")}
-            style={{ boxShadow: CARD_SHADOW }}
+            className="hr-glass-card p-5"
           >
             <div>
               <h3 className={cn("text-[14px] font-[700] mb-3", portalHeadingAlt)}>{p.strongSkillsTitle}</h3>
@@ -179,8 +175,7 @@ export function CandidateDashboard() {
 
           <motion.div
             {...fadeUp(0.22)}
-            className={cn(portalBanner, "rounded-xl p-5")}
-            style={{ boxShadow: "rgba(0,0,0,0.06) 0px 4px 6px -1px" }}
+            className="hr-quick-generate rounded-xl p-5"
           >
             <div className="flex items-center gap-2 mb-3">
               <Sparkles size={14} className="text-primary" />

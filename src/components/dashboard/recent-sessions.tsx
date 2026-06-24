@@ -5,14 +5,14 @@ import { FileText, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { recentSessions } from "@/data/dashboard";
 import { useLanguage } from "@/context/language-context";
-import { portalCard, portalHeading, portalIconWell, portalSubtext } from "@/lib/portal-ui";
+import { portalHeading, portalSubtext } from "@/lib/portal-ui";
 
 export function RecentSessions() {
   const { t } = useLanguage();
   const rs = t.dashboardPage.recentSessions;
 
   return (
-    <div className={cn(portalCard, "shadow-sm p-6 animate-fade-up")}>
+    <div className="hr-glass-card p-6 animate-fade-up">
       <div className="flex items-center justify-between mb-4">
         <div>
           <h3 className={cn("text-base font-semibold", portalHeading)}>{rs.title}</h3>
@@ -20,7 +20,7 @@ export function RecentSessions() {
         </div>
         <Link
           href="/hr/history"
-          className="text-xs font-semibold text-[#6c47ff] hover:underline flex items-center gap-0.5"
+          className="text-xs font-semibold text-[#7C3AED] dark:text-[#a78bff] hover:underline flex items-center gap-0.5"
         >
           {rs.viewAll} <ChevronRight size={12} />
         </Link>
@@ -30,8 +30,8 @@ export function RecentSessions() {
         {recentSessions.map((session, i) => (
           <li key={session.id} className="animate-fade-up" style={{ animationDelay: `${i * 60}ms` }}>
             <div className="flex items-center gap-3 group">
-              <div className={cn("w-8 h-8 rounded-lg border border-gray-100 dark:border-gray-700 flex items-center justify-center shrink-0", portalIconWell)}>
-                <FileText size={14} className="text-gray-400 dark:text-gray-500" />
+              <div className="w-8 h-8 rounded-lg hr-icon-box flex items-center justify-center shrink-0">
+                <FileText size={14} className="text-[#7C3AED] dark:text-[#a78bff]" />
               </div>
               <div className="flex-1 min-w-0">
                 <p className={cn("text-sm font-medium truncate", portalHeading)}>
@@ -51,7 +51,7 @@ export function RecentSessions() {
                 >
                   {session.role}
                 </span>
-                <span className="text-xs font-semibold text-[#6c47ff] flex items-center gap-0.5">
+                <span className="text-xs font-semibold text-[#7C3AED] dark:text-[#a78bff] flex items-center gap-0.5">
                   {session.questionsCount} {rs.qs}
                   <ChevronRight size={12} />
                 </span>

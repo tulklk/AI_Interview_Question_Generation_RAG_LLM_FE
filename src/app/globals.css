@@ -1637,11 +1637,340 @@ body {
 
 /* ── Left-panel heading keyword glow ── */
 .auth-heading-glow {
-  filter: drop-shadow(0 0 18px rgba(251, 146, 60, 0.35));
+  filter: drop-shadow(0 0 18px rgba(124, 58, 237, 0.35));
 }
 
 @media (prefers-reduced-motion: reduce) {
   .auth-heading-glow {
     filter: none;
   }
+}
+
+/* =====================================================================
+   HR PORTAL — premium AI SaaS visual system (Linear + Vercel + Raycast)
+   Glass cards, aurora background, 3D hover tilt, gradient borders.
+   ===================================================================== */
+
+/* HR Glass Card — layered shadow + glassmorphism */
+.hr-glass-card {
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 14px;
+  border: 1px solid rgba(124, 58, 237, 0.08);
+  box-shadow:
+    0 1px 3px rgba(15, 23, 42, 0.04),
+    0 4px 16px -4px rgba(124, 58, 237, 0.07),
+    0 8px 32px -8px rgba(15, 23, 42, 0.05);
+  transition:
+    box-shadow 0.35s ease,
+    transform 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 0.35s ease;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.dark .hr-glass-card {
+  background: rgba(15, 23, 42, 0.82);
+  border-color: rgba(124, 58, 237, 0.13);
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.28),
+    0 4px 16px -4px rgba(124, 58, 237, 0.17),
+    0 8px 32px -8px rgba(0, 0, 0, 0.38),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+@media (hover: hover) {
+  .hr-glass-card:hover {
+    transform: translateY(-3px);
+    border-color: rgba(124, 58, 237, 0.18);
+    box-shadow:
+      0 2px 8px rgba(15, 23, 42, 0.05),
+      0 8px 28px -6px rgba(124, 58, 237, 0.13),
+      0 16px 48px -12px rgba(15, 23, 42, 0.08);
+  }
+
+  .dark .hr-glass-card:hover {
+    border-color: rgba(124, 58, 237, 0.26);
+    box-shadow:
+      0 2px 8px rgba(0, 0, 0, 0.32),
+      0 8px 28px -6px rgba(124, 58, 237, 0.26),
+      0 16px 48px -12px rgba(0, 0, 0, 0.48),
+      inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hr-glass-card:hover {
+    transform: none;
+  }
+}
+
+/* HR Stat Card — 3D tilt on hover */
+.hr-stat-card {
+  background: rgba(255, 255, 255, 0.92);
+  border-radius: 14px;
+  border: 1px solid rgba(124, 58, 237, 0.07);
+  box-shadow:
+    0 1px 3px rgba(15, 23, 42, 0.04),
+    0 4px 16px -4px rgba(124, 58, 237, 0.06),
+    0 8px 24px -8px rgba(15, 23, 42, 0.04);
+  transition:
+    box-shadow 0.38s ease,
+    transform 0.38s cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 0.38s ease;
+}
+
+.dark .hr-stat-card {
+  background: rgba(15, 23, 42, 0.85);
+  border-color: rgba(124, 58, 237, 0.11);
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.28),
+    0 4px 16px -4px rgba(124, 58, 237, 0.14),
+    0 8px 24px -8px rgba(0, 0, 0, 0.32),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+@media (hover: hover) {
+  .hr-stat-card:hover {
+    transform: translateY(-4px) perspective(800px) rotateX(2deg);
+    border-color: rgba(124, 58, 237, 0.2);
+    box-shadow:
+      0 4px 12px rgba(15, 23, 42, 0.06),
+      0 12px 36px -8px rgba(124, 58, 237, 0.18),
+      0 20px 48px -16px rgba(15, 23, 42, 0.08);
+  }
+
+  .dark .hr-stat-card:hover {
+    border-color: rgba(124, 58, 237, 0.32);
+    box-shadow:
+      0 4px 12px rgba(0, 0, 0, 0.38),
+      0 12px 36px -8px rgba(124, 58, 237, 0.32),
+      0 20px 48px -16px rgba(0, 0, 0, 0.48),
+      0 0 50px -18px rgba(6, 182, 212, 0.12),
+      inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hr-stat-card:hover {
+    transform: none;
+  }
+}
+
+/* HR Sidebar — premium glass look */
+.hr-sidebar {
+  background: rgba(255, 255, 255, 0.96);
+  border-right: 1px solid rgba(124, 58, 237, 0.08);
+  box-shadow: 4px 0 24px -4px rgba(124, 58, 237, 0.05);
+}
+
+.dark .hr-sidebar {
+  background: rgba(7, 10, 19, 0.97);
+  border-right-color: rgba(124, 58, 237, 0.13);
+  box-shadow: 4px 0 24px -4px rgba(124, 58, 237, 0.13);
+}
+
+/* HR Topbar — glass blur sticky header */
+.hr-topbar {
+  background: rgba(248, 250, 252, 0.88);
+  border-bottom: 1px solid rgba(124, 58, 237, 0.07);
+  box-shadow: 0 1px 12px -4px rgba(124, 58, 237, 0.05);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+.dark .hr-topbar {
+  background: rgba(7, 10, 19, 0.88);
+  border-bottom-color: rgba(124, 58, 237, 0.14);
+  box-shadow: 0 1px 12px -4px rgba(124, 58, 237, 0.16);
+}
+
+/* HR Nav Active Item — gradient glow state */
+.hr-nav-active {
+  background: linear-gradient(135deg, rgba(124, 58, 237, 0.12) 0%, rgba(6, 182, 212, 0.05) 100%);
+  border: 1px solid rgba(124, 58, 237, 0.15);
+  box-shadow: 0 2px 8px -2px rgba(124, 58, 237, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+
+.dark .hr-nav-active {
+  background: linear-gradient(135deg, rgba(124, 58, 237, 0.2) 0%, rgba(6, 182, 212, 0.06) 100%);
+  border-color: rgba(124, 58, 237, 0.24);
+  box-shadow: 0 2px 8px -2px rgba(124, 58, 237, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+/* HR Quick Generate Card */
+.hr-quick-generate {
+  background: linear-gradient(135deg, rgba(124, 58, 237, 0.07) 0%, rgba(6, 182, 212, 0.04) 100%);
+  border: 1px solid rgba(124, 58, 237, 0.11);
+  box-shadow: 0 2px 8px -2px rgba(124, 58, 237, 0.07), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+.dark .hr-quick-generate {
+  background: linear-gradient(135deg, rgba(124, 58, 237, 0.14) 0%, rgba(6, 182, 212, 0.06) 100%);
+  border-color: rgba(124, 58, 237, 0.2);
+  box-shadow: 0 2px 8px -2px rgba(124, 58, 237, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+/* HR CTA Button — gradient with glow */
+.hr-cta-btn {
+  background: linear-gradient(135deg, #7C3AED 0%, #6c47ff 60%, #06B6D4 100%);
+  box-shadow: 0 2px 12px -2px rgba(124, 58, 237, 0.38), 0 4px 20px -4px rgba(124, 58, 237, 0.28);
+  transition: box-shadow 0.3s ease, transform 0.2s ease, filter 0.3s ease;
+}
+
+@media (hover: hover) {
+  .hr-cta-btn:hover {
+    filter: brightness(1.08) saturate(1.1);
+    box-shadow: 0 4px 20px -2px rgba(124, 58, 237, 0.52), 0 8px 32px -6px rgba(6, 182, 212, 0.28);
+    transform: translateY(-1px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hr-cta-btn:hover {
+    transform: none;
+  }
+}
+
+/* HR Main Background */
+.hr-main-bg {
+  background: linear-gradient(160deg, #F6F7FB 0%, #F8FAFC 50%, #F5F7FF 100%);
+  position: relative;
+}
+
+.dark .hr-main-bg {
+  background: linear-gradient(160deg, #070A13 0%, #0B1020 50%, #07111E 100%);
+}
+
+/* HR Aurora orbs — only visible in dark mode */
+.hr-aurora-orb {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  filter: blur(80px);
+  opacity: 0;
+}
+
+.dark .hr-aurora-orb {
+  opacity: 1;
+}
+
+.hr-aurora-orb--purple {
+  background: radial-gradient(circle, rgba(124, 58, 237, 0.26) 0%, rgba(124, 58, 237, 0) 70%);
+  animation: orbFloat1 24s ease-in-out infinite;
+}
+
+.hr-aurora-orb--cyan {
+  background: radial-gradient(circle, rgba(6, 182, 212, 0.2) 0%, rgba(6, 182, 212, 0) 70%);
+  animation: orbFloat2 30s ease-in-out infinite;
+}
+
+.hr-aurora-orb--violet {
+  background: radial-gradient(circle, rgba(168, 85, 247, 0.16) 0%, rgba(168, 85, 247, 0) 70%);
+  animation: orbFloat3 26s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hr-aurora-orb {
+    animation: none;
+    filter: blur(100px);
+  }
+}
+
+/* HR Table Row hover glow */
+.hr-table-row {
+  transition: background-color 0.18s ease;
+}
+
+@media (hover: hover) {
+  .hr-table-row:hover {
+    background-color: rgba(124, 58, 237, 0.03);
+  }
+
+  .dark .hr-table-row:hover {
+    background-color: rgba(124, 58, 237, 0.07);
+  }
+}
+
+/* HR Settings Tab Active */
+.hr-settings-tab-active {
+  background: linear-gradient(135deg, rgba(124, 58, 237, 0.11) 0%, rgba(6, 182, 212, 0.04) 100%);
+  border: 1px solid rgba(124, 58, 237, 0.17);
+  box-shadow: 0 2px 8px -2px rgba(124, 58, 237, 0.1);
+}
+
+.dark .hr-settings-tab-active {
+  background: linear-gradient(135deg, rgba(124, 58, 237, 0.19) 0%, rgba(6, 182, 212, 0.06) 100%);
+  border-color: rgba(124, 58, 237, 0.27);
+  box-shadow: 0 2px 8px -2px rgba(124, 58, 237, 0.22);
+}
+
+/* HR Avatar Ring */
+.hr-avatar-ring {
+  box-shadow: 0 0 0 2px rgba(124, 58, 237, 0.28), 0 0 10px -2px rgba(124, 58, 237, 0.2);
+}
+
+.dark .hr-avatar-ring {
+  box-shadow: 0 0 0 2px rgba(124, 58, 237, 0.45), 0 0 14px -2px rgba(124, 58, 237, 0.38);
+}
+
+/* HR Stepper — done / active step bubbles */
+.hr-stepper-done {
+  background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+  box-shadow: 0 2px 8px -2px rgba(16, 185, 129, 0.38);
+}
+
+.hr-stepper-active {
+  background: linear-gradient(135deg, #7C3AED 0%, #6c47ff 100%);
+  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.18), 0 2px 8px -2px rgba(124, 58, 237, 0.42);
+}
+
+.hr-stepper-connector-done {
+  background: linear-gradient(90deg, #10B981, rgba(16, 185, 129, 0.4));
+}
+
+/* HR Polling loader box — glow on icon container */
+.hr-loader-box {
+  background: linear-gradient(135deg, rgba(124, 58, 237, 0.1) 0%, rgba(6, 182, 212, 0.05) 100%);
+  border: 1px solid rgba(124, 58, 237, 0.15);
+  box-shadow: 0 0 20px -6px rgba(124, 58, 237, 0.3);
+}
+
+.dark .hr-loader-box {
+  background: linear-gradient(135deg, rgba(124, 58, 237, 0.18) 0%, rgba(6, 182, 212, 0.08) 100%);
+  border-color: rgba(124, 58, 237, 0.3);
+  box-shadow: 0 0 24px -6px rgba(124, 58, 237, 0.45);
+}
+
+/* HR icon box — 3D icon well with shimmer */
+.hr-icon-box {
+  background: linear-gradient(135deg, rgba(124, 58, 237, 0.12) 0%, rgba(6, 182, 212, 0.06) 100%);
+  border: 1px solid rgba(124, 58, 237, 0.15);
+  box-shadow: 0 2px 8px -2px rgba(124, 58, 237, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
+.dark .hr-icon-box {
+  background: linear-gradient(135deg, rgba(124, 58, 237, 0.22) 0%, rgba(6, 182, 212, 0.1) 100%);
+  border-color: rgba(124, 58, 237, 0.28);
+  box-shadow: 0 2px 8px -2px rgba(124, 58, 237, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+/* HR Plan badge — enterprise/professional/business glow */
+.hr-plan-badge {
+  box-shadow: 0 0 6px -1px rgba(124, 58, 237, 0.3);
+}
+
+/* Mobile auth header strip */
+.auth-mobile-header {
+  background: linear-gradient(135deg, #4c1d95 0%, #6c47ff 50%, #7c3aed 100%);
+  position: relative;
+  overflow: hidden;
+}
+
+.auth-mobile-header::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(rgba(255, 255, 255, 0.15) 1px, transparent 1px);
+  background-size: 16px 16px;
+  pointer-events: none;
 }

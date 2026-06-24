@@ -9,16 +9,13 @@ import { practiceSessions } from "@/data/jobseeker";
 import { useLanguage } from "@/context/language-context";
 import { StatCard } from "@/components/jobseeker/ui/stat-card";
 import { Pill, getScoreBadgeClass } from "@/components/jobseeker/ui/pill";
-import { CARD_SHADOW } from "@/components/jobseeker/ui/constants";
 import {
-  portalCardShadow,
   portalDivider,
   portalHeadingAlt,
   portalIconWell,
   portalInput,
   portalMutedBg,
   portalSubtextAlt,
-  portalTableRow,
 } from "@/lib/portal-ui";
 
 export function HistoryBoard() {
@@ -38,10 +35,10 @@ export function HistoryBoard() {
   const totalTime = practiceSessions.reduce((a, s) => a + parseInt(s.duration), 0);
 
   const statCards = [
-    { icon: BookOpen, label: p.statLabels[0], value: practiceSessions.length.toString(), bg: "bg-blue-50", color: "text-blue-500" },
-    { icon: BarChart2, label: p.statLabels[1], value: `${avgScore}%`, bg: "bg-violet-50", color: "text-violet-500" },
-    { icon: Trophy, label: p.statLabels[2], value: `${bestScore}%`, bg: "bg-amber-50", color: "text-amber-500" },
-    { icon: Clock, label: p.statLabels[3], value: `${totalTime} min`, bg: "bg-emerald-50", color: "text-emerald-500" },
+    { icon: BookOpen, label: p.statLabels[0], value: practiceSessions.length.toString(), bg: "bg-blue-50 dark:bg-blue-950/40", color: "text-blue-500 dark:text-blue-400" },
+    { icon: BarChart2, label: p.statLabels[1], value: `${avgScore}%`, bg: "bg-violet-50 dark:bg-violet-950/40", color: "text-violet-500 dark:text-violet-400" },
+    { icon: Trophy, label: p.statLabels[2], value: `${bestScore}%`, bg: "bg-amber-50 dark:bg-amber-950/40", color: "text-amber-500 dark:text-amber-400" },
+    { icon: Clock, label: p.statLabels[3], value: `${totalTime} min`, bg: "bg-emerald-50 dark:bg-emerald-950/40", color: "text-emerald-500 dark:text-emerald-400" },
   ];
 
   return (
@@ -65,8 +62,7 @@ export function HistoryBoard() {
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2 }}
-        className={cn(portalCardShadow, "p-4 mb-4 flex items-center gap-3")}
-        style={{ boxShadow: CARD_SHADOW }}
+        className="hr-glass-card p-4 mb-4 flex items-center gap-3"
       >
         <div className={cn(
           "flex items-center gap-2 flex-1 rounded-lg px-3 h-[38px] focus-within:border-primary focus-within:shadow-[0_0_0_3px_rgba(108,71,255,0.1)] transition-all",
@@ -103,8 +99,7 @@ export function HistoryBoard() {
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.25 }}
-        className={cn(portalCardShadow, "overflow-hidden")}
-        style={{ boxShadow: CARD_SHADOW }}
+        className="hr-glass-card overflow-hidden"
       >
         {/* Header */}
         <div className={cn("grid grid-cols-[2.5fr_1fr_1fr_1fr_2fr_auto] gap-4 px-6 py-3 border-b", portalIconWell, portalDivider)}>
@@ -123,10 +118,7 @@ export function HistoryBoard() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.3 + i * 0.05 }}
-                className={cn(
-                  "grid grid-cols-[2.5fr_1fr_1fr_1fr_2fr_auto] gap-4 px-6 py-4 items-center transition-colors",
-                  portalTableRow
-                )}
+                className="hr-table-row grid grid-cols-[2.5fr_1fr_1fr_1fr_2fr_auto] gap-4 px-6 py-4 items-center"
               >
                 {/* Session */}
                 <div className="flex items-center gap-3 min-w-0">
@@ -174,7 +166,7 @@ export function HistoryBoard() {
                   </Link>
                   <Link
                     href={`/jobseeker/practice/${session.setId}`}
-                    className="flex items-center gap-1.5 h-[30px] px-3 text-[11px] font-[600] text-white bg-primary hover:bg-primary-hover rounded-lg transition-colors"
+                    className="shimmer-button flex items-center gap-1.5 h-7.5 px-3 text-[11px] font-semibold text-white hr-cta-btn rounded-lg"
                     title={p.retryBtn}
                   >
                     <RefreshCw size={12} />

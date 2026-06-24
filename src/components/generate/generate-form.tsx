@@ -65,21 +65,21 @@ function viewToStep(view: FlowView, pollingPhase: "plan" | "questions"): number 
 
 function FlowStepIndicator({ currentStep }: { currentStep: number }) {
   return (
-    <div className="flex items-center gap-0.5 mb-6 overflow-x-auto pb-1 select-none">
+    <div className="flex items-center w-full mb-6 select-none">
       {FLOW_STEPS.map((label, i) => {
         const stepNum = i + 1;
         const done   = stepNum < currentStep;
         const active = stepNum === currentStep;
         return (
-          <div key={i} className="flex items-center">
-            <div className="flex flex-col items-center gap-1 min-w-13">
+          <div key={i} className={cn("flex items-center", i < FLOW_STEPS.length - 1 && "flex-1")}>
+            <div className="flex flex-col items-center gap-1 shrink-0">
               <div
                 className={cn(
-                  "w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 transition-colors",
+                  "w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 transition-all duration-300",
                   done
-                    ? "bg-emerald-500 text-white"
+                    ? "hr-stepper-done text-white"
                     : active
-                    ? "bg-primary text-white"
+                    ? "hr-stepper-active text-white"
                     : "bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500"
                 )}
               >
@@ -87,9 +87,9 @@ function FlowStepIndicator({ currentStep }: { currentStep: number }) {
               </div>
               <span
                 className={cn(
-                  "text-[9px] font-medium text-center leading-tight",
+                  "text-[9px] font-medium text-center leading-tight whitespace-nowrap",
                   active
-                    ? "text-primary"
+                    ? "text-[#7C3AED] dark:text-[#a78bff]"
                     : done
                     ? "text-emerald-600 dark:text-emerald-400"
                     : "text-gray-400 dark:text-gray-500"
@@ -101,9 +101,9 @@ function FlowStepIndicator({ currentStep }: { currentStep: number }) {
             {i < FLOW_STEPS.length - 1 && (
               <div
                 className={cn(
-                  "w-6 h-0.5 mx-0.5 mb-4 shrink-0 transition-colors",
+                  "flex-1 h-0.5 mx-2 mb-4 transition-all duration-300",
                   stepNum < currentStep
-                    ? "bg-emerald-400"
+                    ? "hr-stepper-connector-done"
                     : "bg-gray-200 dark:bg-gray-700"
                 )}
               />
@@ -400,9 +400,9 @@ export function GenerateForm() {
     return (
       <div className="max-w-3xl space-y-4 animate-fade-up">
         <FlowStepIndicator currentStep={currentStep} />
-        <div className={cn(portalCard, "shadow-sm p-12 flex flex-col items-center gap-5")}>
-          <div className="w-14 h-14 rounded-2xl bg-violet-50 dark:bg-violet-950/40 flex items-center justify-center">
-            <Sparkles size={26} className="text-primary animate-pulse" />
+        <div className="hr-glass-card p-12 flex flex-col items-center gap-5">
+          <div className="w-14 h-14 rounded-2xl hr-loader-box flex items-center justify-center">
+            <Sparkles size={26} className="text-[#7C3AED] dark:text-[#a78bff] animate-pulse" />
           </div>
           <div className="text-center space-y-1">
             <p className={cn("text-base font-semibold", portalHeading)}>
@@ -412,7 +412,7 @@ export function GenerateForm() {
             </p>
             <p className={cn("text-sm", portalSubtext)}>{statusLabel}</p>
           </div>
-          <Loader2 size={22} className="text-primary animate-spin" />
+          <Loader2 size={22} className="text-[#7C3AED] dark:text-[#a78bff] animate-spin" />
         </div>
       </div>
     );
@@ -491,7 +491,7 @@ export function GenerateForm() {
       <div className="max-w-3xl space-y-4 animate-fade-up">
         <FlowStepIndicator currentStep={currentStep} />
 
-        <div className={cn(portalCard, "shadow-sm p-8 space-y-4")}>
+        <div className="hr-glass-card p-8 space-y-4">
           <div className="flex items-start gap-3">
             <AlertCircle size={22} className="text-red-500 shrink-0 mt-0.5" />
             <div>
@@ -578,7 +578,7 @@ export function GenerateForm() {
     return (
       <div className="max-w-3xl space-y-4 animate-fade-up">
         <FlowStepIndicator currentStep={5} />
-        <div className={cn(portalCard, "shadow-sm p-8 flex flex-col items-center gap-4 text-center")}>
+        <div className="hr-glass-card p-8 flex flex-col items-center gap-4 text-center">
           <div className="w-12 h-12 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 flex items-center justify-center">
             <BookMarked size={22} className="text-emerald-500" />
           </div>
@@ -652,7 +652,7 @@ export function GenerateForm() {
       </div>
 
       <div
-        className={cn(portalCard, "shadow-sm p-6 space-y-2 animate-fade-up")}
+        className="hr-glass-card p-6 space-y-2 animate-fade-up"
         style={{ animationDelay: "120ms" }}
       >
         <div className="flex items-center gap-2 mb-1">
@@ -697,9 +697,9 @@ export function GenerateForm() {
               disabled={submitDisabled}
               title={tooShort ? `Cần thêm ${remaining} ký tự nữa` : undefined}
               className={cn(
-                "w-full flex items-center justify-center gap-2 font-semibold text-sm px-6 py-3.5 rounded-lg transition-colors animate-fade-up",
-                "bg-primary hover:bg-[#5535dd] text-white",
-                "disabled:bg-gray-200 dark:disabled:bg-gray-800 disabled:text-gray-400 disabled:cursor-not-allowed"
+                "shimmer-button w-full flex items-center justify-center gap-2 font-semibold text-sm px-6 py-3.5 rounded-xl transition-all animate-fade-up text-white",
+                !submitDisabled && "hr-cta-btn",
+                submitDisabled && "bg-gray-200 dark:bg-gray-800 text-gray-400 cursor-not-allowed shadow-none"
               )}
               style={{ animationDelay: "180ms" }}
             >

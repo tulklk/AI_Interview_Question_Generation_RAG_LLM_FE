@@ -16,14 +16,9 @@ import { skillRadarData } from "@/data/jobseeker";
 import { useLanguage } from "@/context/language-context";
 import type { PracticeSession } from "@/types/jobseeker";
 import { Pill, getCategoryBadgeClass, getScoreLevel } from "@/components/jobseeker/ui/pill";
-import { CARD_SHADOW } from "@/components/jobseeker/ui/constants";
 import { useChartTheme } from "@/hooks/use-chart-theme";
 import {
-  portalBanner,
-  portalCard,
-  portalCardShadow,
   portalHeadingAlt,
-  portalIconWell,
   portalSubtextAlt,
 } from "@/lib/portal-ui";
 
@@ -110,8 +105,7 @@ export function FeedbackPage({ session }: FeedbackPageProps) {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className={cn(portalCardShadow, "p-8 mb-6 flex items-center gap-10")}
-        style={{ boxShadow: CARD_SHADOW }}
+        className="hr-glass-card p-8 mb-6 flex items-center gap-10"
       >
         <ScoreRing score={session.score} trackStroke={chart.isDark ? "#374151" : "#F3F4F6"} />
 
@@ -131,8 +125,8 @@ export function FeedbackPage({ session }: FeedbackPageProps) {
           </div>
 
           {/* AI Insight */}
-          <div className={cn(portalBanner, "rounded-lg p-4 flex gap-3")}>
-            <Sparkles size={15} className="text-primary shrink-0 mt-0.5" />
+          <div className="hr-quick-generate rounded-lg p-4 flex gap-3">
+            <Sparkles size={15} className="text-[#7C3AED] dark:text-[#a78bff] shrink-0 mt-0.5" />
             <div>
               <p className="text-[12px] font-[700] text-primary mb-1">{p.aiInsight}</p>
               <p className={cn("text-[13px] leading-[20px]", portalHeadingAlt)}>{aiInsight}</p>
@@ -144,14 +138,13 @@ export function FeedbackPage({ session }: FeedbackPageProps) {
         <div className="flex flex-col gap-2 shrink-0">
           <Link
             href={`/jobseeker/practice/${session.setId}`}
-            className="flex items-center gap-2 h-[36px] px-4 text-[13px] font-[600] text-white bg-primary hover:bg-primary-hover rounded-lg transition-colors"
+            className="shimmer-button flex items-center gap-2 h-9 px-4 text-[13px] font-semibold text-white hr-cta-btn rounded-lg"
           >
             <RefreshCw size={13} />
             {p.retryBtn}
           </Link>
           <button className={cn(
-            "flex items-center gap-2 h-[36px] px-4 text-[13px] font-[600] hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg transition-colors",
-            portalCard,
+            "hr-glass-card flex items-center gap-2 h-9 px-4 text-[13px] font-semibold hover:border-[#7C3AED]/30",
             portalHeadingAlt
           )}>
             <Share2 size={13} />
@@ -166,8 +159,7 @@ export function FeedbackPage({ session }: FeedbackPageProps) {
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className={cn(portalCardShadow, "p-6")}
-          style={{ boxShadow: CARD_SHADOW }}
+          className="hr-glass-card p-6"
         >
           <h2 className={cn("text-[16px] font-[700] mb-5", portalHeadingAlt)}>{p.skillBreakdown}</h2>
           <ResponsiveContainer width="100%" height={260}>
@@ -204,8 +196,7 @@ export function FeedbackPage({ session }: FeedbackPageProps) {
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.15 }}
-          className={cn(portalCardShadow, "p-6 flex flex-col gap-4")}
-          style={{ boxShadow: CARD_SHADOW }}
+          className="hr-glass-card p-6 flex flex-col gap-4"
         >
           <h2 className={cn("text-[16px] font-[700]", portalHeadingAlt)}>{p.skillBreakdown}</h2>
           {skillRadarData.map((item, i) => (
@@ -254,8 +245,7 @@ export function FeedbackPage({ session }: FeedbackPageProps) {
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.3 + i * 0.08 }}
-                className={cn(portalCardShadow, "p-6")}
-                style={{ boxShadow: CARD_SHADOW }}
+                className="hr-glass-card p-6"
               >
                 {/* Question header — always-visible summary, click to expand */}
                 <button
@@ -298,7 +288,7 @@ export function FeedbackPage({ session }: FeedbackPageProps) {
                     >
                       <div className="pt-5">
                         {/* Your answer */}
-                        <div className={cn(portalIconWell, "rounded-lg p-4 mb-4")}>
+                        <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4 mb-4 border border-gray-100 dark:border-gray-700/50">
                           <p className={cn("text-[11px] font-[700] uppercase tracking-wide mb-2", portalSubtextAlt)}>{p.yourAnswer}</p>
                           <p className={cn("text-[13px] leading-[22px]", portalHeadingAlt)}>{ans.answer}</p>
                         </div>
@@ -338,8 +328,8 @@ export function FeedbackPage({ session }: FeedbackPageProps) {
                         </div>
 
                         {/* AI Suggestion */}
-                        <div className={cn(portalBanner, "rounded-lg p-4 flex gap-3")}>
-                          <Lightbulb size={14} className="text-primary shrink-0 mt-0.5" />
+                        <div className="hr-quick-generate rounded-lg p-4 flex gap-3">
+                          <Lightbulb size={14} className="text-[#7C3AED] dark:text-[#a78bff] shrink-0 mt-0.5" />
                           <div>
                             <p className="text-[11px] font-[700] text-primary mb-1">{p.suggestion}</p>
                             <p className={cn("text-[13px] leading-[20px]", portalHeadingAlt)}>{ans.suggestion}</p>

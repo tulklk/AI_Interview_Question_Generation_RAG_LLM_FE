@@ -11,10 +11,7 @@ import { cn } from "@/lib/utils";
 import { useLanguage } from "@/context/language-context";
 import type { QuestionSet } from "@/types/jobseeker";
 import { Pill, getCategoryBadgeClass, getDifficultyBadgeClass } from "@/components/jobseeker/ui/pill";
-import { CARD_SHADOW } from "@/components/jobseeker/ui/constants";
 import {
-  portalCard,
-  portalCardShadow,
   portalDivider,
   portalHeadingAlt,
   portalSubtextAlt,
@@ -101,16 +98,9 @@ export function PracticeSession({ set }: PracticeSessionProps) {
       onConfirm={() => router.push(`/jobseeker/sets/${set.id}`)}
       onCancel={() => setExitOpen(false)}
     />
-    <div className="min-h-screen bg-[#F5F7FB] dark:bg-gray-950 flex flex-col">
+    <div className="min-h-screen hr-main-bg flex flex-col">
       {/* ── Top bar ─────────────────────────────────────────────────── */}
-      <header
-        className={cn(
-          "border-b px-8 h-[56px] flex items-center justify-between shrink-0",
-          portalCard,
-          portalDivider
-        )}
-        style={{ boxShadow: "rgba(0,0,0,0.05) 0px 1px 3px 0px" }}
-      >
+      <header className={cn("hr-topbar px-8 h-14 flex items-center justify-between shrink-0 border-b", portalDivider)}>
         {/* Left: set info */}
         <div className="flex items-center gap-3">
           <div className={cn("w-7 h-7 rounded-lg text-white text-[11px] font-bold flex items-center justify-center", set.companyColor)}>
@@ -171,8 +161,7 @@ export function PracticeSession({ set }: PracticeSessionProps) {
               animate="center"
               exit="exit"
               transition={{ duration: 0.25, ease: "easeInOut" }}
-              className={cn(portalCardShadow, "p-8")}
-              style={{ boxShadow: CARD_SHADOW }}
+              className="hr-glass-card p-8"
             >
               {/* Category + difficulty badges */}
               <div className="flex items-center gap-2 mb-5">
@@ -188,10 +177,7 @@ export function PracticeSession({ set }: PracticeSessionProps) {
           </AnimatePresence>
 
           {/* Answer area */}
-          <div
-            className={cn(portalCardShadow, "p-6")}
-            style={{ boxShadow: CARD_SHADOW }}
-          >
+          <div className="hr-glass-card p-6">
             {isSubmitted ? (
               /* Submitted state */
               <motion.div
@@ -241,7 +227,7 @@ export function PracticeSession({ set }: PracticeSessionProps) {
                     <button
                       onClick={handleSubmitAnswer}
                       disabled={!currentAnswer.trim()}
-                      className="flex items-center gap-2 h-[36px] px-4 text-[13px] font-[600] text-white bg-primary hover:bg-primary-hover disabled:opacity-40 disabled:cursor-not-allowed rounded-lg transition-colors"
+                      className="shimmer-button flex items-center gap-2 h-9 px-4 text-[13px] font-semibold text-white hr-cta-btn disabled:opacity-40 disabled:cursor-not-allowed rounded-lg"
                     >
                       <Send size={13} />
                       {p.submitBtn}
@@ -275,11 +261,7 @@ export function PracticeSession({ set }: PracticeSessionProps) {
             <button
               onClick={() => navigate(-1)}
               disabled={currentIdx === 0}
-              className={cn(
-                "flex items-center gap-2 h-[36px] px-4 text-[13px] font-[600] hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg border transition-colors",
-                portalCard,
-                portalHeadingAlt
-              )}
+              className="hr-glass-card flex items-center gap-2 h-9 px-4 text-[13px] font-semibold text-gray-700 dark:text-gray-200 hover:border-[#7C3AED]/30 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg"
             >
               <ChevronLeft size={15} />
               {p.prevBtn}
@@ -290,8 +272,7 @@ export function PracticeSession({ set }: PracticeSessionProps) {
                 initial={{ scale: 0.95 }}
                 animate={{ scale: 1 }}
                 onClick={handleFinish}
-                className="flex items-center gap-2 h-[40px] px-6 text-[14px] font-[600] text-white bg-primary hover:bg-primary-hover rounded-xl transition-colors"
-                style={{ boxShadow: "rgba(108,71,255,0.3) 0px 4px 14px 0px" }}
+                className="shimmer-button flex items-center gap-2 h-10 px-6 text-[14px] font-semibold text-white hr-cta-btn rounded-xl"
               >
                 <Sparkles size={15} />
                 {p.finishBtn}
@@ -300,7 +281,7 @@ export function PracticeSession({ set }: PracticeSessionProps) {
               <button
                 onClick={() => navigate(1)}
                 disabled={isLast}
-                className="flex items-center gap-2 h-[36px] px-4 text-[13px] font-[600] text-white bg-primary hover:bg-primary-hover disabled:opacity-40 disabled:cursor-not-allowed rounded-lg transition-colors"
+                className="shimmer-button flex items-center gap-2 h-9 px-4 text-[13px] font-semibold text-white hr-cta-btn disabled:opacity-40 disabled:cursor-not-allowed rounded-lg"
               >
                 {p.nextBtn}
                 <ChevronRight size={15} />

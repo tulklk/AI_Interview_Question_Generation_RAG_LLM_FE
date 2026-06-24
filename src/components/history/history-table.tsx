@@ -181,15 +181,15 @@ export function HistoryTable({ search = "", role = "", level = "" }: HistoryTabl
 
   if (sessions.length === 0) {
     return (
-      <div className={cn(portalCard, "shadow-sm p-12 flex flex-col items-center gap-3 text-center")}>
-        <div className="w-12 h-12 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
-          <Inbox size={22} className="text-gray-400 dark:text-gray-500" />
+      <div className="hr-glass-card p-12 flex flex-col items-center gap-3 text-center animate-fade-up">
+        <div className="w-12 h-12 rounded-xl hr-icon-box flex items-center justify-center">
+          <Inbox size={22} className="text-[#7C3AED] dark:text-[#a78bff]" />
         </div>
         <p className={cn("text-sm font-medium", portalHeading)}>Chưa có bài nào</p>
         <p className={cn("text-xs", portalSubtext)}>Generate câu hỏi đầu tiên để thấy lịch sử tại đây.</p>
         <Link
           href="/hr/generate"
-          className="mt-2 text-xs font-semibold text-primary hover:underline"
+          className="mt-2 text-xs font-semibold text-[#7C3AED] dark:text-[#a78bff] hover:underline"
         >
           Đến trang Generate →
         </Link>
@@ -207,7 +207,7 @@ export function HistoryTable({ search = "", role = "", level = "" }: HistoryTabl
         dm={dm}
       />
     )}
-    <div className={cn(portalCard, "shadow-sm overflow-hidden animate-fade-up")}>
+    <div className="hr-glass-card overflow-hidden animate-fade-up">
       <table className="w-full text-sm">
         <thead className={cn("border-b", portalDivider)}>
           <tr>
@@ -236,11 +236,11 @@ export function HistoryTable({ search = "", role = "", level = "" }: HistoryTabl
             const title = session.jobTitle || (sessionRole !== "—" ? `${sessionRole} Interview` : "Untitled");
 
             return (
-              <tr key={session.id} className={cn("transition-colors", portalTableRow)}>
+              <tr key={session.id} className="hr-table-row">
                 <td className="px-4 py-3.5">
                   <div className="flex items-center gap-3">
-                    <div className={cn("w-7 h-7 rounded-lg border border-gray-100 dark:border-gray-700 flex items-center justify-center shrink-0", portalIconWell)}>
-                      <FileText size={13} className="text-gray-400 dark:text-gray-500" />
+                    <div className="w-7 h-7 rounded-lg hr-icon-box flex items-center justify-center shrink-0">
+                      <FileText size={13} className="text-[#7C3AED] dark:text-[#a78bff]" />
                     </div>
                     <span className={cn("font-medium", portalHeading)}>{title}</span>
                   </div>
@@ -251,7 +251,7 @@ export function HistoryTable({ search = "", role = "", level = "" }: HistoryTabl
                   </span>
                 </td>
                 <td className="px-4 py-3.5">
-                  <span className={cn("text-xs font-semibold px-2 py-0.5 rounded-md bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300")}>
+                  <span className="text-xs font-semibold px-2 py-0.5 rounded-md bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300">
                     {sessionLevel}
                   </span>
                 </td>
@@ -271,7 +271,7 @@ export function HistoryTable({ search = "", role = "", level = "" }: HistoryTabl
                   <div className="flex items-center justify-end gap-1">
                     <Link
                       href={`/hr/history/${session.id}`}
-                      className="p-1.5 text-gray-400 dark:text-gray-500 hover:text-primary hover:bg-indigo-50 dark:hover:bg-indigo-950/40 rounded-lg transition-colors inline-flex"
+                      className="p-1.5 text-gray-400 dark:text-gray-500 hover:text-[#7C3AED] dark:hover:text-[#a78bff] hover:bg-violet-50 dark:hover:bg-violet-950/30 rounded-lg transition-colors inline-flex"
                     >
                       <Eye size={14} />
                     </Link>
