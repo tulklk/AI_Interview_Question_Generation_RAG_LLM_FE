@@ -1,4 +1,3 @@
-import { sanitizeDisplayName } from "@/lib/text-encoding";
 import type { CachedUserProfile } from "@/types/user";
 
 const KEY = "interviewai_user_profile";
@@ -14,10 +13,7 @@ export function getCachedUserProfile(): CachedUserProfile | null {
       typeof parsed.email === "string" &&
       (parsed.fullName || parsed.email)
     ) {
-      return {
-        ...parsed,
-        fullName: sanitizeDisplayName(parsed.fullName),
-      };
+      return parsed;
     }
     return null;
   } catch {
@@ -27,13 +23,7 @@ export function getCachedUserProfile(): CachedUserProfile | null {
 
 export function setCachedUserProfile(profile: CachedUserProfile): void {
   if (typeof window === "undefined") return;
-  localStorage.setItem(
-    KEY,
-    JSON.stringify({
-      ...profile,
-      fullName: sanitizeDisplayName(profile.fullName),
-    })
-  );
+  localStorage.setItem(KEY, JSON.stringify(profile));
 }
 
 export function clearCachedUserProfile(): void {

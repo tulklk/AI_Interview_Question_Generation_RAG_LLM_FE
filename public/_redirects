@@ -1,0 +1,3 @@
+# Rewrite /hr/history/<any-uuid> to the pre-rendered placeholder shell.
+# The browser URL stays unchanged, so useParams() hydrates with the real ID.
+/hr/history/:id /hr/history/placeholder/ 200
