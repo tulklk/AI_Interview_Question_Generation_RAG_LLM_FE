@@ -683,12 +683,12 @@ export function GenerateForm() {
           <>
             {tooShort && (
               <p className="text-xs text-orange-500 font-medium -mt-1 animate-fade-up" style={{ animationDelay: "160ms" }}>
-                Cần thêm <span className="font-bold">{remaining}</span> ký tự nữa để đủ yêu cầu tối thiểu (400 ký tự).
+                {t.generatePage.jdInput.needMoreChars.replace("{{n}}", String(remaining))}
               </p>
             )}
             {!trimmed && !jdFile && (
               <p className="text-xs text-gray-400 dark:text-gray-500 -mt-1" style={{ animationDelay: "160ms" }}>
-                Nhập ít nhất 400 ký tự hoặc tải lên file JD để tiếp tục.
+                {t.generatePage.jdInput.minCharsHint}
               </p>
             )}
             <button

@@ -20,6 +20,7 @@ import {
   portalDivider,
 } from "@/lib/portal-ui";
 import type { PlanDraft, QuestionType } from "@/types/generation-session";
+import { useLanguage } from "@/context/language-context";
 
 const ALL_TYPES: QuestionType[] = [
   "Technical",
@@ -57,6 +58,8 @@ export function PlanEditCard({
   onRetryPlan,
   onBack,
 }: PlanEditCardProps) {
+  const { t } = useLanguage();
+  const pec = t.planEditCard;
   const [topicsText, setTopicsText] = useState(() => plan.topics.join(", "));
   const [touched, setTouched] = useState({ role: false, level: false });
 
@@ -157,7 +160,7 @@ export function PlanEditCard({
             />
             {touched.role && errors.role && (
               <p className="flex items-center gap-1 text-xs text-red-500 font-medium">
-                <AlertCircle size={11} /> Vị trí không được để trống
+                <AlertCircle size={11} /> {pec.roleRequired}
               </p>
             )}
           </div>
@@ -186,7 +189,7 @@ export function PlanEditCard({
             </select>
             {touched.level && errors.level && (
               <p className="flex items-center gap-1 text-xs text-red-500 font-medium">
-                <AlertCircle size={11} /> Vui lòng chọn cấp độ
+                <AlertCircle size={11} /> {pec.levelRequired}
               </p>
             )}
           </div>
@@ -234,8 +237,8 @@ export function PlanEditCard({
                   className={cn(
                     "text-xs font-semibold px-3 py-1.5 rounded-lg border transition-colors",
                     selected
-                      ? "bg-[#6c47ff] text-white border-[#6c47ff]"
-                      : "border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-[#6c47ff] hover:text-[#6c47ff]"
+                      ? "bg-primary text-white border-primary"
+                      : "border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-primary hover:text-primary"
                   )}
                 >
                   {type}
@@ -293,8 +296,8 @@ export function PlanEditCard({
           <div className="flex items-center gap-2 rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/30 px-3 py-2 text-xs text-red-600 dark:text-red-400">
             <AlertCircle size={13} className="shrink-0" />
             <span>
-              Vui lòng điền đầy đủ các trường bắt buộc:{" "}
-              {[errors.role && "Vị trí", errors.level && "Cấp độ"].filter(Boolean).join(", ")}
+              {pec.missingFieldsPre}
+              {[errors.role && pec.roleLabel, errors.level && pec.levelLabel].filter(Boolean).join(", ")}
             </span>
           </div>
         )}

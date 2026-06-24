@@ -49,47 +49,39 @@ function DeleteConfirmModal({
   session,
   onConfirm,
   onCancel,
+  dm,
 }: {
   session: GenerationSession;
   onConfirm: () => void;
   onCancel: () => void;
+  dm: { title: string; subtitle: string; body: string; cancel: string; confirm: string };
 }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-        onClick={onCancel}
-      />
-      {/* Modal */}
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onCancel} />
       <div className="relative w-full max-w-md rounded-2xl bg-white dark:bg-gray-900 shadow-2xl border border-gray-200 dark:border-gray-700 p-6 animate-fade-up">
-        {/* Icon */}
         <div className="flex items-center gap-4 mb-4">
           <div className="w-11 h-11 rounded-xl bg-red-100 dark:bg-red-950/50 flex items-center justify-center shrink-0">
             <AlertTriangle size={22} className="text-red-500" />
           </div>
           <div>
-            <h3 className={cn("text-base font-semibold", portalHeading)}>Xác nhận xóa</h3>
-            <p className={cn("text-xs mt-0.5", portalSubtext)}>Hành động này không thể hoàn tác</p>
+            <h3 className={cn("text-base font-semibold", portalHeading)}>{dm.title}</h3>
+            <p className={cn("text-xs mt-0.5", portalSubtext)}>{dm.subtitle}</p>
           </div>
         </div>
 
-        {/* Body */}
-        <p className={cn("text-sm mb-1", portalSubtext)}>
-          Bạn có chắc chắn muốn xóa bộ câu hỏi này không?
-        </p>
+        <p className={cn("text-sm mb-1", portalSubtext)}>{dm.body}</p>
         <p className={cn("text-sm font-semibold px-3 py-2 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 mt-2", portalHeading)}>
           {session.jobTitle || "Untitled"}
         </p>
 
-        {/* Actions */}
         <div className="flex gap-3 mt-5 justify-end">
           <button
             type="button"
             onClick={onCancel}
             className="px-4 py-2 text-sm font-medium rounded-xl border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
           >
-            Hủy
+            {dm.cancel}
           </button>
           <button
             type="button"
@@ -97,7 +89,7 @@ function DeleteConfirmModal({
             className="px-4 py-2 text-sm font-semibold rounded-xl bg-red-500 hover:bg-red-600 text-white transition-colors flex items-center gap-2"
           >
             <Trash2 size={14} />
-            Xóa
+            {dm.confirm}
           </button>
         </div>
       </div>
@@ -127,6 +119,7 @@ export function HistoryTable({ search = "", role = "", level = "" }: HistoryTabl
   const { hasFeature } = useHrSubscription();
   const ht = t.historyPage.table;
   const hs = t.hrSubscription;
+  const dm = t.historyPage.deleteModal;
   const canExport = hasFeature("pdfExport");
 
   const [sessions, setSessions] = useState<GenerationSession[]>([]);
@@ -211,6 +204,7 @@ export function HistoryTable({ search = "", role = "", level = "" }: HistoryTabl
         session={confirmSession}
         onConfirm={confirmDelete}
         onCancel={() => setConfirmSession(null)}
+        dm={dm}
       />
     )}
     <div className={cn(portalCard, "shadow-sm overflow-hidden animate-fade-up")}>
@@ -285,7 +279,7 @@ export function HistoryTable({ search = "", role = "", level = "" }: HistoryTabl
                       type="button"
                       onClick={() => handleExport(session)}
                       disabled={session.status !== "COMPLETED" || exportingId === session.id}
-                      title={session.status !== "COMPLETED" ? "Chỉ export được khi hoàn thành" : "Tải xuống Excel"}
+                      title={session.status !== "COMPLETED" ? ht.exportDisabledTitle : ht.exportTitle}
                       className={cn(
                         "p-1.5 rounded-lg transition-colors",
                         session.status === "COMPLETED"
@@ -301,7 +295,7 @@ export function HistoryTable({ search = "", role = "", level = "" }: HistoryTabl
                       type="button"
                       onClick={() => setConfirmSession(session)}
                       disabled={deletingId === session.id}
-                      title="Xóa"
+                      title={ht.deleteTitle}
                       className="p-1.5 text-gray-400 dark:text-gray-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg transition-colors disabled:opacity-50"
                     >
                       {deletingId === session.id

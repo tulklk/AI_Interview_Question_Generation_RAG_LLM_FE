@@ -737,6 +737,8 @@ export const en = {
       chars: "chars",
       tooShort: "Too short — please enter at least 400 characters (~80 words)",
       clear: "Clear",
+      minCharsHint: "Enter at least 400 characters or upload a JD file to continue.",
+      needMoreChars: "Need {{n}} more characters to meet the minimum (400 characters).",
     },
     fileUpload: {
       label: "Drag & drop a file, or click to browse",
@@ -802,7 +804,25 @@ export const en = {
       date: "Date",
       questions: "Questions",
       actions: "Actions",
+      exportDisabledTitle: "Export only available for completed jobs",
+      exportTitle: "Download Excel",
+      deleteTitle: "Delete",
     },
+    deleteModal: {
+      title: "Confirm Delete",
+      subtitle: "This action cannot be undone",
+      body: "Are you sure you want to delete this question set?",
+      cancel: "Cancel",
+      confirm: "Delete",
+    },
+  },
+
+  planEditCard: {
+    roleLabel: "Role",
+    levelLabel: "Level",
+    roleRequired: "Role cannot be empty",
+    levelRequired: "Please select a level",
+    missingFieldsPre: "Please fill in all required fields: ",
   },
 
   settingsPage: {

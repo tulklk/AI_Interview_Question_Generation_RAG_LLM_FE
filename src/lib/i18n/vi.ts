@@ -739,6 +739,8 @@ export const vi: Translations = {
       chars: "ký tự",
       tooShort: "Quá ngắn — cần ít nhất 400 ký tự (~80 từ) / Too short (min. 400 chars)",
       clear: "Xóa",
+      minCharsHint: "Nhập ít nhất 400 ký tự hoặc tải lên file JD để tiếp tục.",
+      needMoreChars: "Cần thêm {{n}} ký tự nữa để đủ yêu cầu tối thiểu (400 ký tự).",
     },
     fileUpload: {
       label: "Kéo & thả tệp, hoặc nhấp để chọn",
@@ -804,7 +806,25 @@ export const vi: Translations = {
       date: "Ngày",
       questions: "Câu hỏi",
       actions: "Thao tác",
+      exportDisabledTitle: "Chỉ export được khi hoàn thành",
+      exportTitle: "Tải xuống Excel",
+      deleteTitle: "Xóa",
     },
+    deleteModal: {
+      title: "Xác nhận xóa",
+      subtitle: "Hành động này không thể hoàn tác",
+      body: "Bạn có chắc chắn muốn xóa bộ câu hỏi này không?",
+      cancel: "Hủy",
+      confirm: "Xóa",
+    },
+  },
+
+  planEditCard: {
+    roleLabel: "Vị trí",
+    levelLabel: "Cấp độ",
+    roleRequired: "Vị trí không được để trống",
+    levelRequired: "Vui lòng chọn cấp độ",
+    missingFieldsPre: "Vui lòng điền đầy đủ các trường bắt buộc: ",
   },
 
   settingsPage: {
