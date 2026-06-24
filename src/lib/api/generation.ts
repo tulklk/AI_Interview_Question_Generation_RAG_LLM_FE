@@ -540,6 +540,35 @@ export async function saveJobDraft(jobId: string): Promise<string | null> {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Delete & Export (plans API)
+// ---------------------------------------------------------------------------
+
+export async function deleteGenerationPlan(jobId: string): Promise<boolean> {
+  try {
+    await apiClient.delete(`/api/hr/question-generation-plans/${jobId}`);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function exportPlanQuestions(jobId: string, fileName: string): Promise<void> {
+  const { data } = await apiClient.get(
+    `/api/hr/question-generation-plans/${jobId}/questions/export`,
+    { responseType: "arraybuffer" }
+  );
+  const blob = new Blob([data as ArrayBuffer], {
+    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${fileName.replace(/[^a-z0-9_\- ]/gi, "_")}.xlsx`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 export async function getDraft(questionSetId: string): Promise<DraftQuestionSet | null> {
   try {
     const { data } = await apiClient.get<{ data?: DraftQuestionSet } | DraftQuestionSet>(

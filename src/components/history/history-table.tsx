@@ -2,12 +2,12 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { FileText, Calendar, ArrowUpDown, Eye, Download, Trash2, Inbox } from "lucide-react";
+import { FileText, Calendar, ArrowUpDown, Eye, Download, Trash2, Inbox, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLanguage } from "@/context/language-context";
 import { useHrSubscription } from "@/context/hr-subscription-context";
 import { getLocalSessions, toGenerationSession } from "@/lib/local-history";
-import { getGenerationPlans } from "@/lib/api/generation";
+import { getGenerationPlans, deleteGenerationPlan, exportPlanQuestions } from "@/lib/api/generation";
 import type { GenerationSession } from "@/types/generation-session";
 import { SessionStatusBadge } from "@/components/history/session-status-badge";
 import {
@@ -70,6 +70,26 @@ export function HistoryTable({ search = "", role = "", level = "" }: HistoryTabl
   const canExport = hasFeature("pdfExport");
 
   const [sessions, setSessions] = useState<GenerationSession[]>([]);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [exportingId, setExportingId] = useState<string | null>(null);
+
+  async function handleDelete(session: GenerationSession) {
+    if (!confirm(`Xóa bộ câu hỏi "${session.jobTitle}"?\nHành động này không thể hoàn tác.`)) return;
+    setDeletingId(session.id);
+    const ok = await deleteGenerationPlan(session.id);
+    if (ok) setSessions(prev => prev.filter(s => s.id !== session.id));
+    setDeletingId(null);
+  }
+
+  async function handleExport(session: GenerationSession) {
+    if (session.status !== "COMPLETED") return;
+    setExportingId(session.id);
+    try {
+      await exportPlanQuestions(session.id, session.jobTitle || "interview-questions");
+    } finally {
+      setExportingId(null);
+    }
+  }
 
   useEffect(() => {
     const localSessions = getLocalSessions();
@@ -192,19 +212,30 @@ export function HistoryTable({ search = "", role = "", level = "" }: HistoryTabl
                     </Link>
                     <button
                       type="button"
-                      disabled={!canExport}
-                      title={!canExport ? hs.lockedExport : undefined}
+                      onClick={() => handleExport(session)}
+                      disabled={session.status !== "COMPLETED" || exportingId === session.id}
+                      title={session.status !== "COMPLETED" ? "Chỉ export được khi hoàn thành" : "Tải xuống Excel"}
                       className={cn(
                         "p-1.5 rounded-lg transition-colors",
-                        canExport
-                          ? "text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
+                        session.status === "COMPLETED"
+                          ? "text-gray-400 dark:text-gray-500 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 disabled:opacity-50"
                           : "text-gray-200 dark:text-gray-700 cursor-not-allowed"
                       )}
                     >
-                      <Download size={14} />
+                      {exportingId === session.id
+                        ? <Loader2 size={14} className="animate-spin" />
+                        : <Download size={14} />}
                     </button>
-                    <button className="p-1.5 text-gray-400 dark:text-gray-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg transition-colors">
-                      <Trash2 size={14} />
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(session)}
+                      disabled={deletingId === session.id}
+                      title="Xóa"
+                      className="p-1.5 text-gray-400 dark:text-gray-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg transition-colors disabled:opacity-50"
+                    >
+                      {deletingId === session.id
+                        ? <Loader2 size={14} className="animate-spin" />
+                        : <Trash2 size={14} />}
                     </button>
                   </div>
                 </td>
