@@ -47,8 +47,10 @@ export function TopHeader({
   return (
     <header
       className={cn(
-        "shrink-0 flex items-center gap-4 border-b border-[#e5e7eb] dark:border-gray-800 bg-[#f5f7fb] dark:bg-gray-950",
-        isAdmin ? "h-16 min-h-[64px] px-6 md:px-10" : "h-14 px-8"
+        "shrink-0 flex items-center gap-4",
+        !isAdmin && "hr-topbar",
+        isAdmin && "bg-page-bg dark:bg-gray-950 border-b border-border dark:border-gray-800",
+        isAdmin ? "h-16 min-h-16 px-6 md:px-10" : "h-14 px-8"
       )}
     >
       <div className="flex-1 min-w-0">
@@ -76,7 +78,7 @@ export function TopHeader({
                     className={cn(
                       "transition-colors no-underline",
                       isAdmin
-                        ? "text-[#111827] dark:text-gray-200 hover:text-[#6c47ff] dark:hover:text-[#a78bff]"
+                        ? "text-charcoal dark:text-gray-200 hover:text-primary dark:hover:text-[#a78bff]"
                         : "hover:text-gray-600 dark:hover:text-gray-300 text-gray-400 dark:text-gray-500"
                     )}
                   >

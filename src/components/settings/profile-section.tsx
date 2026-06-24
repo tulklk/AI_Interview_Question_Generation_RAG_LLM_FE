@@ -185,7 +185,7 @@ export function ProfileSection() {
               type="button"
               onClick={() => void handleSave()}
               disabled={saving || uploadingAvatar}
-              className="flex items-center gap-1.5 h-8 px-3 text-xs font-semibold text-white bg-[#6c47ff] hover:bg-[#5535dd] rounded-lg disabled:opacity-60"
+              className="shimmer-button flex items-center gap-1.5 h-8 px-3 text-xs font-semibold text-white hr-cta-btn rounded-lg disabled:opacity-60"
             >
               {saving ? (
                 <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />

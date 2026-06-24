@@ -11,15 +11,12 @@ import { cn } from "@/lib/utils";
 import { useLanguage } from "@/context/language-context";
 import type { QuestionSet, QuestionCategory } from "@/types/jobseeker";
 import { Pill, getDifficultyBadgeClass, getCategoryBadgeClass } from "@/components/jobseeker/ui/pill";
-import { CARD_SHADOW, ELEVATED_SHADOW } from "@/components/jobseeker/ui/constants";
 import {
-  portalCardShadow,
   portalDivider,
   portalHeadingAlt,
   portalIconWell,
   portalMutedBg,
   portalSubtextAlt,
-  portalTableRow,
 } from "@/lib/portal-ui";
 
 interface SetDetailProps {
@@ -62,8 +59,7 @@ export function SetDetail({ set }: SetDetailProps) {
         >
           {/* Title block */}
           <div
-            className={cn(portalCardShadow, "p-6")}
-            style={{ boxShadow: CARD_SHADOW }}
+            className="hr-glass-card p-6"
           >
             <div className="flex items-start gap-4 mb-5">
               <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center text-white text-base font-bold shrink-0", set.companyColor)}>
@@ -119,8 +115,7 @@ export function SetDetail({ set }: SetDetailProps) {
 
           {/* Question Preview */}
           <div
-            className={cn(portalCardShadow, "overflow-hidden")}
-            style={{ boxShadow: CARD_SHADOW }}
+            className="hr-glass-card overflow-hidden"
           >
             <div className={cn("px-6 py-4 border-b", portalDivider)}>
               <h2 className={cn("text-[16px] font-[700]", portalHeadingAlt)}>{p.preview}</h2>
@@ -136,10 +131,7 @@ export function SetDetail({ set }: SetDetailProps) {
                   <div key={cat}>
                     <button
                       onClick={() => setOpenCategory(isOpen ? null : cat)}
-                      className={cn(
-                        "w-full flex items-center justify-between px-6 py-4 transition-colors",
-                        portalTableRow
-                      )}
+                      className="hr-table-row w-full flex items-center justify-between px-6 py-4"
                     >
                       <div className="flex items-center gap-3">
                         <Pill className={getCategoryBadgeClass(cat)}>{p.categories[cat]}</Pill>
@@ -196,8 +188,7 @@ export function SetDetail({ set }: SetDetailProps) {
           className="sticky top-6"
         >
           <div
-            className={cn(portalCardShadow, "overflow-hidden")}
-            style={{ boxShadow: ELEVATED_SHADOW }}
+            className="hr-glass-card overflow-hidden"
           >
             {/* Card header */}
             <div className={cn("px-5 py-4 border-b", portalIconWell, portalDivider)}>
@@ -236,8 +227,7 @@ export function SetDetail({ set }: SetDetailProps) {
               {/* CTA */}
               <Link
                 href={`/jobseeker/practice/${set.id}`}
-                className="flex items-center justify-center gap-2 w-full h-[40px] text-[14px] font-[600] text-white bg-primary hover:bg-primary-hover rounded-lg transition-colors mt-2"
-                style={{ boxShadow: "rgba(108,71,255,0.3) 0px 4px 14px 0px" }}
+                className="shimmer-button flex items-center justify-center gap-2 w-full h-10 text-[14px] font-semibold text-white hr-cta-btn rounded-lg mt-2"
               >
                 {p.summaryCard.startBtn}
                 <ChevronRight size={14} />

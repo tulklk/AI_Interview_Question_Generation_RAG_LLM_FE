@@ -77,8 +77,12 @@ export function JobseekerAppShell({
             avatarUrl: resolveAvatarUrl(user),
           }}
         />
-        <main className="flex-1 overflow-y-auto bg-[#f5f7fb] dark:bg-[#0b0f1a]">
-          <div className="max-w-[1400px] mx-auto px-8 py-7">{children}</div>
+        <main className="flex-1 overflow-y-auto hr-main-bg">
+          {/* Aurora orbs — visible in dark mode only */}
+          <div className="hr-aurora-orb hr-aurora-orb--purple w-130 h-130 -top-20 -left-15" aria-hidden="true" />
+          <div className="hr-aurora-orb hr-aurora-orb--cyan w-100 h-100 bottom-[10%] -right-10" aria-hidden="true" />
+          <div className="hr-aurora-orb hr-aurora-orb--violet w-80 h-80 top-[40%] left-[30%]" aria-hidden="true" />
+          <div className="relative z-10 max-w-350 mx-auto px-8 py-7">{children}</div>
         </main>
       </div>
     </div>

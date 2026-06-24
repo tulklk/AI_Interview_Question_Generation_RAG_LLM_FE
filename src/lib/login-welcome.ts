@@ -1,6 +1,6 @@
 const LOGIN_WELCOME_KEY = "interviewai_login_welcome";
 
-export type LoginWelcomeRole = "jobseeker" | "admin";
+export type LoginWelcomeRole = "jobseeker" | "admin" | "hr";
 
 function normalizePath(path: string): string {
   return path.replace(/\/+$/, "") || "/";
@@ -9,9 +9,8 @@ function normalizePath(path: string): string {
 export function getLoginWelcomeRoleFromRedirect(path: string): LoginWelcomeRole | null {
   const normalized = normalizePath(path);
   if (normalized === "/jobseeker") return "jobseeker";
-  if (normalized === "/admin/dashboard" || normalized.startsWith("/admin/")) {
-    return "admin";
-  }
+  if (normalized === "/admin/dashboard" || normalized.startsWith("/admin/")) return "admin";
+  if (normalized === "/hr/dashboard" || normalized.startsWith("/hr/")) return "hr";
   return null;
 }
 

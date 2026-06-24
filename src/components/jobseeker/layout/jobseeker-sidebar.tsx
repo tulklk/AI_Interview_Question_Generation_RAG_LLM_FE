@@ -15,7 +15,7 @@ export function JobseekerSidebar() {
   const s = t.jobseekerSidebar;
 
   return (
-    <aside className="flex flex-col w-[250px] shrink-0 h-screen bg-white dark:bg-gray-950 border-r border-gray-100 dark:border-gray-800 overflow-y-auto">
+    <aside className="flex flex-col w-[250px] shrink-0 h-screen hr-sidebar overflow-y-auto">
       <div className="px-5 pt-6 pb-2">
         <BrandLogo
           logoClassName="w-9 h-9"
@@ -43,13 +43,13 @@ export function JobseekerSidebar() {
                   className={cn(
                     "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors",
                     isActive
-                      ? "bg-[#6c47ff] text-white"
-                      : "text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-800 dark:hover:text-gray-100"
+                      ? "hr-nav-active text-[#7C3AED] dark:text-[#a78bff]"
+                      : "text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800/60 hover:text-gray-800 dark:hover:text-gray-100"
                   )}
                 >
                   <item.icon
                     size={18}
-                    className={cn("shrink-0", isActive ? "text-white" : "text-gray-400 dark:text-gray-500")}
+                    className={cn("shrink-0", isActive ? "text-[#7C3AED] dark:text-[#a78bff]" : "text-gray-400 dark:text-gray-500")}
                   />
                   <span className="text-sm font-medium flex-1">{label}</span>
                   {item.badge !== undefined && (
@@ -57,9 +57,9 @@ export function JobseekerSidebar() {
                       className={cn(
                         "text-[10px] font-semibold px-1.5 py-0.5 rounded-md leading-none",
                         isActive
-                          ? "bg-white/20 text-white"
+                          ? "bg-[#7C3AED]/10 text-[#7C3AED] dark:text-[#a78bff]"
                           : item.badgeVariant === "new"
-                          ? "bg-[#6c47ff]/10 text-[#6c47ff]"
+                          ? "bg-[#7C3AED]/10 text-[#7C3AED] dark:text-[#a78bff]"
                           : "bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400"
                       )}
                     >
@@ -75,9 +75,9 @@ export function JobseekerSidebar() {
 
       {/* Practice CTA */}
       <div className="px-4 mb-4">
-        <div className="bg-[#f0edff] dark:bg-[#6c47ff]/10 rounded-xl p-4">
-          <div className="w-8 h-8 rounded-lg bg-[#6c47ff]/15 flex items-center justify-center mb-3">
-            <BookOpen size={15} className="text-[#6c47ff]" />
+        <div className="hr-quick-generate rounded-xl p-4">
+          <div className="hr-icon-box w-8 h-8 rounded-lg flex items-center justify-center mb-3">
+            <BookOpen size={15} className="text-[#7C3AED] dark:text-[#a78bff]" />
           </div>
           <p className="text-gray-800 dark:text-gray-100 font-semibold text-sm leading-snug">
             {s.practiceNow.title}
@@ -85,7 +85,7 @@ export function JobseekerSidebar() {
           <p className="text-gray-500 dark:text-gray-400 text-xs mt-1 leading-relaxed">{s.practiceNow.desc}</p>
           <Link
             href="/jobseeker"
-            className="mt-3 inline-block text-xs font-semibold text-white bg-primary hover:bg-primary-hover px-4 py-2 rounded-lg transition-colors w-full text-center"
+            className="shimmer-button mt-3 inline-block text-xs font-semibold text-white hr-cta-btn px-4 py-2 rounded-lg w-full text-center"
           >
             {s.practiceNow.btn}
           </Link>

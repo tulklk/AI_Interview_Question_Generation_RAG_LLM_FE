@@ -689,6 +689,11 @@ export const en = {
   },
 
   dashboardPage: {
+    welcomeTemplate: "{{greeting}}, {{name}} 👋",
+    greetingMorning: "Good morning",
+    greetingAfternoon: "Good afternoon",
+    greetingEvening: "Good evening",
+    greetingNight: "Hello",
     welcome: "Good morning, HR Manager 👋",
     welcomeSub: "Here's what's happening with your recruitment toolkit today.",
     generateBtn: "Generate Questions",

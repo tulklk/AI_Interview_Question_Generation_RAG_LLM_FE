@@ -8,11 +8,11 @@ interface StatCardProps {
 
 export function StatCard({ stat, labelOverride }: StatCardProps) {
   return (
-    <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm p-5 flex flex-col gap-4">
+    <div className="hr-stat-card p-5 flex flex-col gap-4">
       <div className="flex items-start justify-between">
         <div
           className={cn(
-            "w-11 h-11 rounded-lg flex items-center justify-center shrink-0",
+            "w-11 h-11 rounded-xl flex items-center justify-center shrink-0 shadow-sm ring-1 ring-black/5 dark:ring-white/10",
             stat.iconBg
           )}
         >
@@ -22,8 +22,8 @@ export function StatCard({ stat, labelOverride }: StatCardProps) {
           className={cn(
             "text-[11px] font-semibold px-2 py-0.5 rounded-full",
             stat.trendPositive
-              ? "bg-[#f5f3ff] dark:bg-[#6c47ff]/15 text-[#6c47ff]"
-              : "bg-red-50 dark:bg-red-950 text-red-600 dark:text-red-400"
+              ? "bg-violet-50 dark:bg-violet-950/40 text-[#7C3AED] dark:text-violet-300"
+              : "bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400"
           )}
         >
           ↑ {stat.trend}

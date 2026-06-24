@@ -13,7 +13,7 @@ import { cn } from "@/lib/utils";
 import { categoryStats } from "@/data/dashboard";
 import { useLanguage } from "@/context/language-context";
 import { useChartTheme } from "@/hooks/use-chart-theme";
-import { portalCard, portalHeading, portalMutedBg, portalSubtext } from "@/lib/portal-ui";
+import { portalHeading, portalMutedBg, portalSubtext } from "@/lib/portal-ui";
 
 export function CategoryBreakdownCard() {
   const { t } = useLanguage();
@@ -22,7 +22,7 @@ export function CategoryBreakdownCard() {
   const maxCount = Math.max(...categoryStats.map((c) => c.count));
 
   return (
-    <div className={cn(portalCard, "shadow-sm p-6 flex flex-col animate-fade-up")}>
+    <div className="hr-glass-card p-6 flex flex-col animate-fade-up">
       <div className="mb-1">
         <h3 className={cn("text-base font-semibold", portalHeading)}>{cb.title}</h3>
         <p className={cn("text-xs mt-0.5", portalSubtext)}>{cb.subtitle}</p>

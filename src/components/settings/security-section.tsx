@@ -143,7 +143,7 @@ export function SecuritySection() {
         type="button"
         onClick={() => void handleSave()}
         disabled={saving}
-        className="mt-6 w-full flex items-center justify-center gap-2 bg-[#6c47ff] hover:bg-[#5535dd] disabled:opacity-60 disabled:cursor-not-allowed text-white text-sm font-semibold px-5 py-2.5 rounded-lg transition-colors"
+        className="shimmer-button mt-6 w-full flex items-center justify-center gap-2 hr-cta-btn text-white text-sm font-semibold px-5 py-2.5 rounded-lg disabled:opacity-60 disabled:cursor-not-allowed"
       >
         {saving ? (
           <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
