@@ -671,20 +671,44 @@ export function GenerateForm() {
         />
       </div>
 
-      <button
-        type="button"
-        onClick={handleSubmitForm}
-        disabled={generateDisabled || (!jdText.trim() && !jdFile)}
-        className={cn(
-          "w-full flex items-center justify-center gap-2 font-semibold text-sm px-6 py-3.5 rounded-lg transition-colors animate-fade-up",
-          "bg-primary hover:bg-[#5535dd] text-white",
-          "disabled:bg-gray-200 dark:disabled:bg-gray-800 disabled:text-gray-400 disabled:cursor-not-allowed"
-        )}
-        style={{ animationDelay: "180ms" }}
-      >
-        <Sparkles size={15} />
-        Tạo Plan
-      </button>
+      {(() => {
+        const MIN_CHARS = 400;
+        const trimmed = jdText.trim();
+        const charCount = trimmed.length;
+        const tooShort = charCount > 0 && charCount < MIN_CHARS && !jdFile;
+        const remaining = MIN_CHARS - charCount;
+        const jdValid = !!jdFile || charCount >= MIN_CHARS;
+        const submitDisabled = generateDisabled || !jdValid;
+        return (
+          <>
+            {tooShort && (
+              <p className="text-xs text-orange-500 font-medium -mt-1 animate-fade-up" style={{ animationDelay: "160ms" }}>
+                Cần thêm <span className="font-bold">{remaining}</span> ký tự nữa để đủ yêu cầu tối thiểu (400 ký tự).
+              </p>
+            )}
+            {!trimmed && !jdFile && (
+              <p className="text-xs text-gray-400 dark:text-gray-500 -mt-1" style={{ animationDelay: "160ms" }}>
+                Nhập ít nhất 400 ký tự hoặc tải lên file JD để tiếp tục.
+              </p>
+            )}
+            <button
+              type="button"
+              onClick={handleSubmitForm}
+              disabled={submitDisabled}
+              title={tooShort ? `Cần thêm ${remaining} ký tự nữa` : undefined}
+              className={cn(
+                "w-full flex items-center justify-center gap-2 font-semibold text-sm px-6 py-3.5 rounded-lg transition-colors animate-fade-up",
+                "bg-primary hover:bg-[#5535dd] text-white",
+                "disabled:bg-gray-200 dark:disabled:bg-gray-800 disabled:text-gray-400 disabled:cursor-not-allowed"
+              )}
+              style={{ animationDelay: "180ms" }}
+            >
+              <Sparkles size={15} />
+              Tạo Plan
+            </button>
+          </>
+        );
+      })()}
     </div>
   );
 }
