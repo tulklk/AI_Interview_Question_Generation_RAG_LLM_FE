@@ -11,10 +11,16 @@ import type { GenerationSession, DraftQuestionSet } from "@/types/generation-ses
 import { cn } from "@/lib/utils";
 import { portalHeading, portalSubtext } from "@/lib/portal-ui";
 
+function getRealId(paramId: string): string {
+  if (paramId && paramId !== "placeholder") return paramId;
+  if (typeof window === "undefined") return paramId;
+  const segments = window.location.pathname.split("/").filter(Boolean);
+  return segments[segments.length - 1] || paramId;
+}
+
 export function HrReviewPageClient() {
-  // useParams reads from the browser URL after hydration — correct even when
-  // Cloudflare rewrites /hr/history/<uuid> → /hr/history/placeholder/
-  const { id } = useParams<{ id: string }>();
+  const params = useParams<{ id: string }>();
+  const id = getRealId(params.id ?? "");
   const [session, setSession] = useState<GenerationSession | null>(null);
   const [draft, setDraft] = useState<DraftQuestionSet | null>(null);
   const [loading, setLoading] = useState(true);
