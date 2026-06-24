@@ -3,11 +3,8 @@ import { type NextRequest, NextResponse } from "next/server";
 const RAG_BASE = (process.env.NEXT_PUBLIC_RAG_BASE_URL ?? "https://iqgsrag.cloud").replace(/\/+$/, "");
 const RAG_KEY = process.env.RAG_API_KEY ?? process.env.NEXT_PUBLIC_RAG_API_KEY ?? "";
 
-export async function POST(
-  req: NextRequest,
-  { params }: { params: Promise<{ owner_id: string }> }
-) {
-  const { owner_id } = await params;
+export async function POST(req: NextRequest) {
+  const owner_id = new URL(req.url).searchParams.get("owner_id") ?? "";
   const url = `${RAG_BASE}/api/v1/knowledge/hr/${encodeURIComponent(owner_id)}/files`;
 
   const headers: Record<string, string> = {};

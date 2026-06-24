@@ -308,7 +308,7 @@ export async function uploadHrJdFile(ownerId: string, file: File): Promise<{ suc
   const formData = new FormData();
   formData.append("files", file);
   const { data } = await ragClient.post(
-    `/api/rag/knowledge/hr/${encodeURIComponent(ownerId)}/files/`,
+    `/api/rag/knowledge/hr/files/?owner_id=${encodeURIComponent(ownerId)}`,
     formData,
     { headers: { "Content-Type": "multipart/form-data" } }
   );
