@@ -25,7 +25,7 @@ import {
 import type { GeneratedQuestion, DifficultyLevel, QuestionType } from "@/types/generation-session";
 import { AskAIPanel } from "./ask-ai-panel";
 
-const QUESTION_TYPES: QuestionType[] = ["Technical", "Behavioral", "Situational", "Competency-based"];
+const QUESTION_TYPES: QuestionType[] = ["Technical", "Behavioral", "Situational", "System-design", "Problem-solving"];
 const DIFFICULTIES: DifficultyLevel[] = ["Easy", "Medium", "Hard"];
 
 const difficultyStyles: Record<DifficultyLevel, string> = {
@@ -38,7 +38,8 @@ const typeStyles: Record<QuestionType, string> = {
   Technical: "bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-400",
   Behavioral: "bg-violet-50 dark:bg-violet-950/40 text-violet-700 dark:text-violet-400",
   Situational: "bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400",
-  "Competency-based": "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400",
+  "System-design": "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400",
+  "Problem-solving": "bg-cyan-50 dark:bg-cyan-950/40 text-cyan-700 dark:text-cyan-400",
 };
 
 interface QuestionEditCardProps {

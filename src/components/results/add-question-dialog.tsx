@@ -12,7 +12,7 @@ import {
 } from "@/lib/portal-ui";
 import type { GeneratedQuestion, QuestionType, DifficultyLevel } from "@/types/generation-session";
 
-const QUESTION_TYPES: QuestionType[] = ["Technical", "Behavioral", "Situational", "Competency-based"];
+const QUESTION_TYPES: QuestionType[] = ["Technical", "Behavioral", "Situational", "System-design", "Problem-solving"];
 const DIFFICULTIES: DifficultyLevel[] = ["Easy", "Medium", "Hard"];
 
 interface AddQuestionDialogProps {

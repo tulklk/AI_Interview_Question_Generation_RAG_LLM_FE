@@ -5,6 +5,7 @@ const MAX_SESSIONS = 50;
 
 export interface LocalSession {
   id: string;
+  backendJobId?: string;
   jobTitle: string;
   jdContent?: string;
   note?: GenerationNote;
@@ -42,6 +43,22 @@ export function saveLocalSession(session: Omit<LocalSession, "id" | "createdAt" 
   const existing = load();
   save([newSession, ...existing]);
   return newSession;
+}
+
+export function patchLocalSession(id: string, patch: Partial<Pick<LocalSession, "backendJobId">>): void {
+  const sessions = load();
+  const idx = sessions.findIndex((s) => s.id === id);
+  if (idx === -1) return;
+  sessions[idx] = { ...sessions[idx], ...patch };
+  save(sessions);
+}
+
+export function updateLocalSessionQuestions(id: string, questions: GeneratedQuestion[]): void {
+  const sessions = load();
+  const idx = sessions.findIndex((s) => s.id === id);
+  if (idx === -1) return;
+  sessions[idx] = { ...sessions[idx], generatedQuestions: questions, updatedAt: new Date().toISOString() };
+  save(sessions);
 }
 
 export function getLocalSessions(): LocalSession[] {

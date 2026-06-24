@@ -5,15 +5,16 @@ import { useParams } from "next/navigation";
 import { Loader2, AlertCircle } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
 import { ReviewPageClient } from "@/components/results/review-page-client";
-import { getGenerationSession } from "@/lib/api/generation";
+import { getGenerationSession, getGenerationJob, getJobQuestions, getDraft } from "@/lib/api/generation";
 import { getLocalSession, toGenerationSession } from "@/lib/local-history";
-import type { GenerationSession } from "@/types/generation-session";
+import type { GenerationSession, DraftQuestionSet } from "@/types/generation-session";
 import { cn } from "@/lib/utils";
 import { portalHeading, portalSubtext } from "@/lib/portal-ui";
 
 export default function HrReviewPage() {
   const { id } = useParams<{ id: string }>();
   const [session, setSession] = useState<GenerationSession | null>(null);
+  const [draft, setDraft] = useState<DraftQuestionSet | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -21,7 +22,7 @@ export default function HrReviewPage() {
     if (!id) return;
     setLoading(true);
 
-    // Local sessions (saved after generation) — no network call needed
+    // Local sessions — no network call needed
     if (id.startsWith("local-")) {
       const local = getLocalSession(id);
       if (local) setSession(toGenerationSession(local));
@@ -30,8 +31,28 @@ export default function HrReviewPage() {
       return;
     }
 
-    getGenerationSession(id)
-      .then(setSession)
+    getGenerationJob(id)
+      .then(async (job) => {
+        if (!job) {
+          return getGenerationSession(id).then(setSession);
+        }
+
+        // Load questions from the separate endpoint (BE doesn't embed them in GET /{id})
+        if (job.status === "COMPLETED") {
+          const qs = await getJobQuestions(id);
+          if (qs.length > 0) {
+            job = { ...job, generatedQuestions: qs };
+          }
+        }
+
+        if (job.hasDraft && job.questionSetId) {
+          // Load saved draft for read-only view
+          const d = await getDraft(job.questionSetId);
+          if (d) setDraft(d);
+        }
+
+        setSession(job);
+      })
       .catch(() => setError("Failed to load session."))
       .finally(() => setLoading(false));
   }, [id]);
@@ -60,7 +81,11 @@ export default function HrReviewPage() {
       )}
 
       {!loading && !error && session && (
-        <ReviewPageClient session={session} />
+        <ReviewPageClient
+          session={session}
+          draftQuestions={draft?.questions}
+          isDraftView={!!draft}
+        />
       )}
     </AppShell>
   );

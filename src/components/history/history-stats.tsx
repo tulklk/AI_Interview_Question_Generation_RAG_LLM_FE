@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { FileText, Zap, BarChart3 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getLocalSessions } from "@/lib/local-history";
+import { getGenerationJobs } from "@/lib/api/generation";
+import type { GenerationSession } from "@/types/generation-session";
 import { useLanguage } from "@/context/language-context";
 import { portalCard, portalHeading, portalSubtext } from "@/lib/portal-ui";
 
@@ -22,17 +24,49 @@ export function HistoryStats() {
   const [stats, setStats] = useState({ total: 0, questions: 0, thisMonth: 0 });
 
   useEffect(() => {
-    const sessions = getLocalSessions();
-    const now = new Date();
-    const thisMonth = sessions.filter((s) => {
-      const d = new Date(s.createdAt);
-      return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
-    });
-    setStats({
-      total: sessions.length,
-      questions: sessions.reduce((acc, s) => acc + (s.generatedQuestions?.length ?? 0), 0),
-      thisMonth: thisMonth.length,
-    });
+    function computeStats(sessions: GenerationSession[]) {
+      const now = new Date();
+      const thisMonth = sessions.filter((s) => {
+        const d = new Date(s.createdAt);
+        return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+      });
+      setStats({
+        total: sessions.length,
+        questions: sessions.reduce((acc, s) => acc + (s.generatedQuestions?.length ?? 0), 0),
+        thisMonth: thisMonth.length,
+      });
+    }
+
+    const localSessions = getLocalSessions();
+    const localOnly = localSessions.filter((s) => !s.backendJobId);
+
+    getGenerationJobs()
+      .then((backendSessions) => {
+        const merged = [
+          ...backendSessions,
+          ...localOnly.map((s) => ({
+            id: s.id,
+            jobTitle: s.jobTitle,
+            hrOwner: s.hrOwner,
+            status: s.status,
+            planDraft: s.planDraft,
+            generatedQuestions: s.generatedQuestions,
+            createdAt: s.createdAt,
+            updatedAt: s.updatedAt,
+          })),
+        ] as GenerationSession[];
+        computeStats(merged);
+      })
+      .catch(() => computeStats(localSessions.map((s) => ({
+        id: s.id,
+        jobTitle: s.jobTitle,
+        hrOwner: s.hrOwner,
+        status: s.status,
+        planDraft: s.planDraft,
+        generatedQuestions: s.generatedQuestions,
+        createdAt: s.createdAt,
+        updatedAt: s.updatedAt,
+      })) as GenerationSession[]));
   }, []);
 
   const values = [String(stats.total), String(stats.questions), String(stats.thisMonth)];

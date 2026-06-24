@@ -7,13 +7,15 @@ import { ReviewQuestionsSection } from "@/components/results/review-questions-se
 import { useLanguage } from "@/context/language-context";
 import { cn } from "@/lib/utils";
 import { portalHeading, portalSubtext } from "@/lib/portal-ui";
-import type { GenerationSession } from "@/types/generation-session";
+import type { GenerationSession, GeneratedQuestion } from "@/types/generation-session";
 
 interface ReviewPageClientProps {
   session: GenerationSession;
+  draftQuestions?: GeneratedQuestion[];
+  isDraftView?: boolean;
 }
 
-export function ReviewPageClient({ session }: ReviewPageClientProps) {
+export function ReviewPageClient({ session, draftQuestions, isDraftView = false }: ReviewPageClientProps) {
   const { t } = useLanguage();
   const rp = t.reviewPage;
   const gsp = t.generationSessionPage;
@@ -91,13 +93,29 @@ export function ReviewPageClient({ session }: ReviewPageClientProps) {
         </div>
       )}
 
+      {/* Draft saved banner */}
+      {isDraftView && (
+        <div
+          className="animate-fade-up rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/30 px-4 py-3"
+          style={{ animationDelay: "90ms" }}
+        >
+          <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-400">
+            Bản nháp đã lưu — chỉ xem
+          </p>
+          <p className="text-xs text-emerald-600 dark:text-emerald-500 mt-0.5">
+            Câu hỏi đã được lưu thành công. Để chỉnh sửa, hãy tạo phiên mới.
+          </p>
+        </div>
+      )}
+
       {/* Review questions section */}
       <div className="animate-fade-up" style={{ animationDelay: "120ms" }}>
         <ReviewQuestionsSection
           sessionId={session.id}
-          initialQuestions={session.generatedQuestions ?? []}
+          initialQuestions={draftQuestions ?? session.generatedQuestions ?? []}
           status={session.status}
           failureMessage={session.failureMessage}
+          readOnly={isDraftView}
         />
       </div>
     </div>

@@ -151,7 +151,7 @@ function mapRagMessages(msgs: RagMessage[]): ClarifyMessage[] {
 }
 
 function mapRagPlan(plan: RagPlan): PlanDraft {
-  const allowedTypes: QuestionType[] = ["Technical", "Behavioral", "Situational", "Competency-based"];
+  const allowedTypes: QuestionType[] = ["Technical", "Behavioral", "Situational", "System-design", "Problem-solving"];
   const rawTypes = plan.question_types ?? [];
 
   // v1 uses lowercase ("technical") → capitalise for frontend
@@ -175,7 +175,7 @@ function mapRagQuestion(q: RagQuestion, index: number): GeneratedQuestion {
   const rawDiff = (q.difficulty ?? "Medium") as DifficultyLevel;
   const difficulty = allowedDifficulty.includes(rawDiff) ? rawDiff : "Medium";
 
-  const allowedTypes: QuestionType[] = ["Technical", "Behavioral", "Situational", "Competency-based"];
+  const allowedTypes: QuestionType[] = ["Technical", "Behavioral", "Situational", "System-design", "Problem-solving"];
   const rawType = (q.type ?? q.question_type ?? "Technical");
   const normType = (rawType.charAt(0).toUpperCase() + rawType.slice(1)) as QuestionType;
   const questionType = allowedTypes.includes(normType) ? normType : "Technical";

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import {
   CheckCircle2,
@@ -9,17 +9,17 @@ import {
   RotateCcw,
   Sparkles,
   Loader2,
+  AlertCircle,
+  BookMarked,
 } from "lucide-react";
 import { JdInputCard } from "./jd-input-card";
 import { FileUploadArea } from "./file-upload-area";
-import { GeneratingProgress } from "./generating-progress";
 import { PlanEditCard } from "./plan-edit-card";
-import type { GenerateView } from "@/types/generate";
+import { ReviewQuestionsSection } from "@/components/results/review-questions-section";
 import type { PlanDraft, QuestionType, GeneratedQuestion } from "@/types/generation-session";
 import { useHrSubscription } from "@/context/hr-subscription-context";
 import { isOverPlanUsageQuota } from "@/data/hr-subscription";
 import { useLanguage } from "@/context/language-context";
-import { useUser } from "@/context/user-context";
 import { cn } from "@/lib/utils";
 import {
   portalCard,
@@ -29,33 +29,37 @@ import {
   portalMutedBg,
 } from "@/lib/portal-ui";
 import {
-  startInterviewPlan,
-  confirmInterviewPlan,
-  generateInterviewQuestions,
-  uploadHrJdFile,
-} from "@/lib/api/rag";
-import { saveLocalSession } from "@/lib/local-history";
-import { createGenerationJob, saveGenerationResult } from "@/lib/api/generation";
+  createGenerationJob,
+  getGenerationJob,
+  updateJobPlan,
+  approvePlan,
+  retryPlan,
+  retryQuestions,
+  updateJobInput,
+  getJobQuestions,
+} from "@/lib/api/generation";
 
 // ── Step indicator ───────────────────────────────────────────────────────────
 
 const FLOW_STEPS = [
-  "Note + JB",
+  "Nhập JD",
   "Tạo Plan",
-  "Chỉnh sửa Plan",
-  "Approve Plan",
+  "Review Plan",
   "Generate",
-  "Kết quả",
+  "Review Kết quả",
 ];
 
-function viewToStep(view: GenerateView, isApproving: boolean): number {
+type FlowView = "form" | "polling" | "plan_review" | "question_review" | "failed" | "draft_view";
+
+function viewToStep(view: FlowView, pollingPhase: "plan" | "questions"): number {
   switch (view) {
-    case "form":          return 1;
-    case "creating_plan": return 2;
-    case "plan_edit":     return isApproving ? 4 : 3;
-    case "generating":    return 5;
-    case "completed":     return 6;
-    default:              return 1;
+    case "form":            return 1;
+    case "polling":         return pollingPhase === "plan" ? 2 : 4;
+    case "plan_review":     return 3;
+    case "question_review": return 5;
+    case "failed":          return 2;
+    case "draft_view":      return 5;
+    default:                return 1;
   }
 }
 
@@ -111,94 +115,152 @@ function FlowStepIndicator({ currentStep }: { currentStep: number }) {
   );
 }
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
-
-function extractErrorMessage(err: unknown): string {
-  const data = (err as { response?: { data?: Record<string, unknown> } })
-    ?.response?.data;
-  const ragMsg = ((data?.error ?? {}) as Record<string, unknown>)
-    .message as string | undefined;
-  return (
-    ragMsg ??
-    (data?.detail as string) ??
-    (data?.message as string) ??
-    "Đã xảy ra lỗi. Vui lòng thử lại."
-  );
-}
-
 // ── Main component ───────────────────────────────────────────────────────────
 
 export function GenerateForm() {
   const { t }  = useLanguage();
-  const { user } = useUser();
   const { planId, limits, hasFeature } = useHrSubscription();
 
   // ── Form inputs ──
-  const [view,    setView]    = useState<GenerateView>("form");
+  const [view,    setView]    = useState<FlowView>("form");
   const [jdText,  setJdText]  = useState("");
   const [jdFile,  setJdFile]  = useState<File | null>(null);
   const [note,    setNote]    = useState("");
 
-  // ── RAG session ──
-  const [ragSessionId, setRagSessionId] = useState<string | null>(null);
-  const [ragOwnerId,   setRagOwnerId]   = useState<string>("anonymous");
+  // ── Job state ──
+  const [jobId,     setJobId]     = useState<string | null>(null);
+  const [plan,      setPlan]      = useState<PlanDraft | null>(null);
+  const [questions, setQuestions] = useState<GeneratedQuestion[]>([]);
 
-  // ── Plan ──
-  const [plan,       setPlan]       = useState<PlanDraft | null>(null);
-  const [aiMessage,  setAiMessage]  = useState("");
-  const [isApproving, setIsApproving] = useState(false);
+  // ── Polling state ──
+  const [pollingPhase,   setPollingPhase]   = useState<"plan" | "questions">("plan");
+  const [statusLabel,    setStatusLabel]    = useState<string>("Đang xử lý...");
+  const [isApproving,    setIsApproving]    = useState(false);
+  const pollingRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pollingActiveRef = useRef(false);
+  // Track which phase we're polling so REVIEW_PLAN is ignored while waiting for questions
+  const pollingPhaseRef = useRef<"plan" | "questions">("plan");
 
-  // ── Results ──
-  const [generatedQuestions, setGeneratedQuestions] = useState<GeneratedQuestion[]>([]);
+  // ── Error / recovery state ──
+  const [formError,      setFormError]      = useState<string | null>(null);
+  const [failureMessage, setFailureMessage] = useState<string | null>(null);
+  const [canRetryPlan,   setCanRetryPlan]   = useState(false);
+  const [canRetryQs,     setCanRetryQs]     = useState(false);
+  const [canEditInput,   setCanEditInput]   = useState(false);
 
-  // ── Errors ──
-  const [formError,     setFormError]     = useState<string | null>(null);
-  const [generateError, setGenerateError] = useState<string | null>(null);
-
-  const quotaBlocked  = isOverPlanUsageQuota(planId);
-  const aiBlocked     = !hasFeature("aiPoweredGeneration");
+  const quotaBlocked     = isOverPlanUsageQuota(planId);
+  const aiBlocked        = !hasFeature("aiPoweredGeneration");
   const generateDisabled = quotaBlocked || aiBlocked;
 
-  // ── Step 1 → 2 : upload JD → create plan ─────────────────────────────────
+  // Cleanup polling on unmount
+  useEffect(() => {
+    return () => {
+      pollingActiveRef.current = false;
+      if (pollingRef.current) clearTimeout(pollingRef.current);
+    };
+  }, []);
 
-  async function doCreatePlan() {
-    setView("creating_plan");
-    setFormError(null);
+  // ── Polling loop ──────────────────────────────────────────────────────────
+
+  const pollJob = useCallback(async (jId: string) => {
+    if (!pollingActiveRef.current) return;
 
     try {
-      const ownerId = user?.email ?? user?.id ?? "anonymous";
-      setRagOwnerId(ownerId);
+      const session = await getGenerationJob(jId);
+      if (!session || !pollingActiveRef.current) return;
 
-      if (jdFile) {
-        await uploadHrJdFile(ownerId, jdFile);
+      if (session.isPolling) {
+        setStatusLabel(session.statusLabel ?? "Đang xử lý...");
+        pollingRef.current = setTimeout(() => pollJob(jId), 3000);
+        return;
       }
 
-      const result = await startInterviewPlan({
-        jd_text:          jdText || undefined,
-        owner_id:         ownerId,
-        additional_notes: note   || undefined,
-      });
+      const action = session.suggestedAction ?? "";
+      const inQuestionsPhase = pollingPhaseRef.current === "questions";
 
-      setRagSessionId(result.ragSessionId);
+      // REVIEW_PLAN: only honour when waiting for plan, not when waiting for questions
+      if (action === "REVIEW_PLAN" && !inQuestionsPhase) {
+        setPlan(session.planDraft ?? buildDefaultPlan());
+        setView("plan_review");
+        return;
+      }
 
-      const finalPlan = result.plan ?? buildDefaultPlan();
-      const msg = result.messages.find((m) => m.role === "ai")?.content ?? "";
-      setPlan(finalPlan);
-      setAiMessage(msg);
-      setView("plan_edit");
-    } catch (err) {
-      setFormError(extractErrorMessage(err));
-      setView("form");
+      if (action === "REVIEW_QUESTIONS") {
+        const qs = await getJobQuestions(jId);
+        setQuestions(qs.length ? qs : session.generatedQuestions ?? []);
+        setView("question_review");
+        return;
+      }
+
+      if (action === "EDIT_INPUT") {
+        setFailureMessage(session.failureMessage ?? "Có lỗi xảy ra với input.");
+        setCanEditInput(true);
+        setCanRetryPlan(false);
+        setCanRetryQs(false);
+        setView("failed");
+        return;
+      }
+
+      if (action === "RETRY_PLAN" && !inQuestionsPhase) {
+        setFailureMessage(session.failureMessage ?? "Tạo plan thất bại.");
+        setCanRetryPlan(true);
+        setCanEditInput(false);
+        setCanRetryQs(false);
+        setView("failed");
+        return;
+      }
+
+      if (action === "RETRY_QUESTIONS") {
+        setFailureMessage(session.failureMessage ?? "Tạo câu hỏi thất bại.");
+        setCanRetryQs(true);
+        setCanRetryPlan(false);
+        setCanEditInput(false);
+        setView("failed");
+        return;
+      }
+
+      if (action === "VIEW_DRAFT") {
+        setView("draft_view");
+        return;
+      }
+
+      // Fallback: inspect status when BE does not send expected suggestedAction
+      const s = session.status;
+      if (s === "COMPLETED") {
+        const qs = await getJobQuestions(jId);
+        setQuestions(qs.length ? qs : session.generatedQuestions ?? []);
+        setView("question_review");
+      } else if (s === "FAILED") {
+        setFailureMessage(session.failureMessage ?? "Đã xảy ra lỗi.");
+        setCanRetryPlan(session.canRetryPlan ?? false);
+        setCanRetryQs(session.canRetryQuestions ?? false);
+        setCanEditInput(session.canEditInput ?? false);
+        setView("failed");
+      } else if (s === "PLAN_PROPOSED" && !inQuestionsPhase) {
+        setPlan(session.planDraft ?? buildDefaultPlan());
+        setView("plan_review");
+      } else {
+        // Still processing — keep polling
+        pollingRef.current = setTimeout(() => pollJob(jId), 3000);
+      }
+    } catch {
+      if (pollingActiveRef.current) {
+        pollingRef.current = setTimeout(() => pollJob(jId), 5000);
+      }
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function startPolling(jId: string, phase: "plan" | "questions") {
+    if (pollingRef.current) clearTimeout(pollingRef.current);
+    pollingActiveRef.current = true;
+    pollingPhaseRef.current = phase;
+    setPollingPhase(phase);
+    setView("polling");
+    pollJob(jId);
   }
 
-  function handleSubmitForm() {
-    if (!jdText.trim() && !jdFile) {
-      setFormError("Vui lòng nhập mô tả công việc hoặc tải lên file JD.");
-      return;
-    }
-    doCreatePlan();
-  }
+  // ── Step 1: Submit form ───────────────────────────────────────────────────
 
   function buildDefaultPlan(): PlanDraft {
     return {
@@ -211,111 +273,130 @@ export function GenerateForm() {
     };
   }
 
-  // ── Step 3-4 : approve plan → confirm → generate ─────────────────────────
+  async function handleSubmitForm() {
+    if (!jdText.trim() && !jdFile) {
+      setFormError("Vui lòng nhập mô tả công việc hoặc tải lên file JD.");
+      return;
+    }
+    const wordCount = jdText.trim().split(/\s+/).filter(Boolean).length;
+    if (jdText.trim() && wordCount < 100 && !jdFile) {
+      setFormError(`Mô tả công việc cần ít nhất 100 từ (hiện tại: ${wordCount} từ).`);
+      return;
+    }
+
+    setFormError(null);
+    setStatusLabel("Đang tạo job...");
+
+    const jId = await createGenerationJob({
+      jobDescription:    jdText        || undefined,
+      hrNote:            note          || undefined,
+      numberOfQuestions: Math.min(10, limits.maxQuestionsPerRun),
+      difficulty:        "medium",
+      questionTypes:     ["technical", "behavioral"],
+    });
+
+    if (!jId) {
+      setFormError("Không thể tạo job. Vui lòng kiểm tra lại nội dung JD và thử lại.");
+      return;
+    }
+
+    setJobId(jId);
+    startPolling(jId, "plan");
+  }
+
+  // ── Step 3: Approve plan ──────────────────────────────────────────────────
 
   async function handleApprovePlan() {
-    if (!plan) return;
+    if (!jobId || !plan) return;
     setIsApproving(true);
     setFormError(null);
 
     try {
-      if (ragSessionId) {
-        await confirmInterviewPlan(ragSessionId, ragOwnerId, plan);
-      }
-    } catch (err) {
+      // Push edited plan fields to BE first (notes must be a string, not null)
+      await updateJobPlan(jobId, {
+        roleTitle:      plan.role,
+        totalQuestions: plan.questionCount,
+        questionTypes:  plan.questionTypes,
+        skills:         plan.topics,
+        notes:          plan.constraints ?? "",
+      });
+      await approvePlan(jobId);
+      startPolling(jobId, "questions");
+    } catch {
+      setFormError("Không thể approve plan. Vui lòng thử lại.");
+    } finally {
       setIsApproving(false);
-      setFormError(extractErrorMessage(err));
+    }
+  }
+
+  async function handleRetryPlanFromReview() {
+    if (!jobId) return;
+    const ok = await retryPlan(jobId);
+    if (ok) {
+      startPolling(jobId, "plan");
+    } else {
+      setFormError("Không thể retry plan. Vui lòng thử lại.");
+    }
+  }
+
+  // ── Recovery from failed state ────────────────────────────────────────────
+
+  async function handleRetryPlanFromFailed() {
+    if (!jobId) return;
+    setFormError(null);
+    const ok = await retryPlan(jobId);
+    if (ok) startPolling(jobId, "plan");
+    else setFormError("Retry thất bại.");
+  }
+
+  async function handleRetryQuestionsFromFailed() {
+    if (!jobId) return;
+    setFormError(null);
+    const ok = await retryQuestions(jobId);
+    if (ok) startPolling(jobId, "questions");
+    else setFormError("Retry thất bại.");
+  }
+
+  async function handleEditInputResubmit() {
+    if (!jobId) return;
+    if (!jdText.trim() && !jdFile) {
+      setFormError("Vui lòng nhập JD.");
       return;
     }
-
-    setIsApproving(false);
-    await runGeneration(plan);
-  }
-
-  // ── Step 5 : generate questions ──────────────────────────────────────────
-
-  async function runGeneration(effectivePlan: PlanDraft) {
-    setView("generating");
-    setGenerateError(null);
-
-    try {
-      const questions = await generateInterviewQuestions(ragOwnerId, effectivePlan);
-      setGeneratedQuestions(questions);
-      setView("completed");
-
-      const jobTitle = effectivePlan.role
-        ? `${effectivePlan.role}${effectivePlan.level ? ` – ${effectivePlan.level}` : ""}`
-        : "Interview Questions";
-
-      // Save to localStorage (always available, works offline)
-      saveLocalSession({
-        jobTitle,
-        jdContent: jdText || undefined,
-        note: {
-          questionCount:  effectivePlan.questionCount,
-          questionTypes:  effectivePlan.questionTypes,
-          additionalNote: note || undefined,
-        },
-        planDraft:          effectivePlan,
-        generatedQuestions: questions,
-        status:    "COMPLETED",
-        hrOwner:   ragOwnerId,
-      });
-
-      // Save to backend (best-effort — failure does not break the UX)
-      saveQuestionsToBackend(effectivePlan, questions).catch(() => {});
-    } catch {
-      setGeneratedQuestions([]);
-      setGenerateError("Không thể tạo câu hỏi. Vui lòng thử lại.");
-      setView("completed");
-    }
-  }
-
-  async function saveQuestionsToBackend(plan: PlanDraft, questions: GeneratedQuestion[]) {
-    const jobId = await createGenerationJob({
+    setFormError(null);
+    const ok = await updateJobInput(jobId, {
       jobDescription: jdText || undefined,
       hrNote:         note   || undefined,
-      numberOfQuestions: plan.questionCount,
-      questionTypes:  plan.questionTypes,
-      skills:         plan.topics.length ? plan.topics : undefined,
     });
-    if (!jobId) return;
-    await saveGenerationResult(jobId, questions);
-  }
-
-  // ── Step 6 : retry ───────────────────────────────────────────────────────
-
-  function handleRetryPlan() {
-    setGenerateError(null);
-    setView("plan_edit");
-  }
-
-  async function handleRetryQuestions() {
-    if (!plan) return;
-    await runGeneration(plan);
+    if (ok) startPolling(jobId, "plan");
+    else setFormError("Cập nhật input thất bại.");
   }
 
   function handleReset() {
+    pollingActiveRef.current = false;
+    if (pollingRef.current) clearTimeout(pollingRef.current);
     setView("form");
     setJdText("");
     setJdFile(null);
     setNote("");
-    setRagSessionId(null);
+    setJobId(null);
     setPlan(null);
-    setAiMessage("");
-    setGeneratedQuestions([]);
+    setQuestions([]);
     setFormError(null);
-    setGenerateError(null);
+    setFailureMessage(null);
     setIsApproving(false);
+    setCanRetryPlan(false);
+    setCanRetryQs(false);
+    setCanEditInput(false);
   }
 
-  // ── Computed ─────────────────────────────────────────────────────────────
+  // ── Computed ──────────────────────────────────────────────────────────────
 
-  const currentStep = viewToStep(view, isApproving);
+  const currentStep = viewToStep(view, pollingPhase);
 
-  // ── Render: Creating Plan ─────────────────────────────────────────────────
+  // ── Render: Polling ───────────────────────────────────────────────────────
 
-  if (view === "creating_plan") {
+  if (view === "polling") {
     return (
       <div className="max-w-3xl space-y-4 animate-fade-up">
         <FlowStepIndicator currentStep={currentStep} />
@@ -325,11 +406,11 @@ export function GenerateForm() {
           </div>
           <div className="text-center space-y-1">
             <p className={cn("text-base font-semibold", portalHeading)}>
-              AI đang phân tích mô tả công việc…
+              {pollingPhase === "plan"
+                ? "AI đang phân tích mô tả công việc…"
+                : "AI đang tạo câu hỏi phỏng vấn…"}
             </p>
-            <p className={cn("text-sm", portalSubtext)}>
-              Đang tạo kế hoạch phỏng vấn dựa trên JD của bạn
-            </p>
+            <p className={cn("text-sm", portalSubtext)}>{statusLabel}</p>
           </div>
           <Loader2 size={22} className="text-primary animate-spin" />
         </div>
@@ -337,9 +418,9 @@ export function GenerateForm() {
     );
   }
 
-  // ── Render: Plan Edit (Step 3-4) ──────────────────────────────────────────
+  // ── Render: Plan Review ───────────────────────────────────────────────────
 
-  if (view === "plan_edit" && plan) {
+  if (view === "plan_review" && plan) {
     return (
       <div className="max-w-3xl space-y-4 animate-fade-up">
         <FlowStepIndicator currentStep={currentStep} />
@@ -352,115 +433,180 @@ export function GenerateForm() {
 
         <PlanEditCard
           plan={plan}
-          aiMessage={aiMessage}
           isApproving={isApproving}
           onPlanChange={setPlan}
           onApprove={handleApprovePlan}
-          onRetryPlan={doCreatePlan}
+          onRetryPlan={handleRetryPlanFromReview}
           onBack={() => setView("form")}
         />
       </div>
     );
   }
 
-  // ── Render: Generating (Step 5) ───────────────────────────────────────────
+  // ── Render: Question Review ───────────────────────────────────────────────
 
-  if (view === "generating") {
-    return (
-      <div className="max-w-3xl space-y-4">
-        <FlowStepIndicator currentStep={currentStep} />
-        <GeneratingProgress />
-      </div>
-    );
-  }
-
-  // ── Render: Completed (Step 6) ────────────────────────────────────────────
-
-  if (view === "completed") {
+  if (view === "question_review" && jobId) {
     return (
       <div className="max-w-3xl space-y-4 animate-fade-up">
         <FlowStepIndicator currentStep={currentStep} />
 
-        {generateError ? (
-          <div className={cn(portalCard, "shadow-sm p-8 text-center space-y-4")}>
-            <p className="text-base font-semibold text-red-600 dark:text-red-400">
-              Tạo câu hỏi thất bại
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 flex items-center justify-center">
+            <CheckCircle2 size={20} className="text-emerald-500" />
+          </div>
+          <div>
+            <h2 className={cn("text-base font-semibold", portalHeading)}>
+              {questions.length} câu hỏi đã được tạo
+            </h2>
+            <p className={cn("text-xs", portalSubtext)}>
+              Review và chỉnh sửa trước khi lưu bản nháp
             </p>
-            <p className={cn("text-sm", portalSubtext)}>{generateError}</p>
-            <div className="flex justify-center gap-3">
+          </div>
+        </div>
+
+        <ReviewQuestionsSection
+          sessionId={jobId}
+          initialQuestions={questions}
+          status="COMPLETED"
+        />
+
+        <button
+          type="button"
+          onClick={handleReset}
+          className={cn(
+            "w-full py-2.5 text-sm font-semibold rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors",
+            portalHeading
+          )}
+        >
+          Tạo bộ câu hỏi mới
+        </button>
+      </div>
+    );
+  }
+
+  // ── Render: Failed ────────────────────────────────────────────────────────
+
+  if (view === "failed") {
+    return (
+      <div className="max-w-3xl space-y-4 animate-fade-up">
+        <FlowStepIndicator currentStep={currentStep} />
+
+        <div className={cn(portalCard, "shadow-sm p-8 space-y-4")}>
+          <div className="flex items-start gap-3">
+            <AlertCircle size={22} className="text-red-500 shrink-0 mt-0.5" />
+            <div>
+              <p className={cn("text-base font-semibold", portalHeading)}>
+                Đã xảy ra lỗi
+              </p>
+              {failureMessage && (
+                <p className={cn("text-sm mt-1", portalSubtext)}>{failureMessage}</p>
+              )}
+            </div>
+          </div>
+
+          {formError && (
+            <div className="rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/30 px-3 py-2 text-sm text-red-700 dark:text-red-400">
+              {formError}
+            </div>
+          )}
+
+          {canEditInput && (
+            <div className="space-y-3 border-t pt-4">
+              <p className={cn("text-sm font-medium", portalHeading)}>
+                Chỉnh sửa JD và thử lại:
+              </p>
+              <textarea
+                value={jdText}
+                onChange={(e) => setJdText(e.target.value)}
+                rows={6}
+                className={cn(
+                  "w-full resize-none rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors",
+                  portalInput
+                )}
+              />
               <button
                 type="button"
-                onClick={handleRetryPlan}
-                className="flex items-center gap-2 px-5 py-2.5 text-sm font-semibold rounded-lg border border-violet-200 dark:border-violet-800 text-violet-600 dark:text-violet-400 hover:bg-violet-50 dark:hover:bg-violet-950/40 transition-colors"
-              >
-                <RotateCcw size={14} />
-                Chỉnh lại Plan
-              </button>
-              <button
-                type="button"
-                onClick={handleRetryQuestions}
+                onClick={handleEditInputResubmit}
                 className="flex items-center gap-2 px-5 py-2.5 text-sm font-semibold rounded-lg bg-primary text-white hover:bg-[#5535dd] transition-colors"
               >
                 <RotateCcw size={14} />
-                Thử lại Generate
+                Gửi lại
               </button>
             </div>
+          )}
+
+          <div className="flex gap-3 flex-wrap">
+            {canRetryPlan && (
+              <button
+                type="button"
+                onClick={handleRetryPlanFromFailed}
+                className="flex items-center gap-2 px-5 py-2.5 text-sm font-semibold rounded-lg border border-violet-200 dark:border-violet-800 text-violet-600 dark:text-violet-400 hover:bg-violet-50 dark:hover:bg-violet-950/40 transition-colors"
+              >
+                <RotateCcw size={14} />
+                Retry Tạo Plan
+              </button>
+            )}
+            {canRetryQs && (
+              <button
+                type="button"
+                onClick={handleRetryQuestionsFromFailed}
+                className="flex items-center gap-2 px-5 py-2.5 text-sm font-semibold rounded-lg bg-primary text-white hover:bg-[#5535dd] transition-colors"
+              >
+                <RotateCcw size={14} />
+                Retry Tạo Câu Hỏi
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={handleReset}
+              className={cn(
+                "px-5 py-2.5 text-sm font-semibold rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors",
+                portalHeading
+              )}
+            >
+              Bắt đầu lại
+            </button>
           </div>
-        ) : (
-          <>
-            {/* Success header */}
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 flex items-center justify-center">
-                <CheckCircle2 size={20} className="text-emerald-500" />
-              </div>
-              <div>
-                <h2 className={cn("text-base font-semibold", portalHeading)}>
-                  {generatedQuestions.length} câu hỏi đã được tạo
-                </h2>
-                <p className={cn("text-xs", portalSubtext)}>
-                  Review và chỉnh sửa trước khi sử dụng
-                </p>
-              </div>
-            </div>
+        </div>
+      </div>
+    );
+  }
 
-            {/* Questions list */}
-            <div className="space-y-3">
-              {generatedQuestions.map((q, i) => (
-                <GeneratedQuestionCard key={q.id} question={q} index={i} />
-              ))}
-            </div>
+  // ── Render: Draft View ────────────────────────────────────────────────────
 
-            {/* Retry / new actions */}
-            <div className="flex gap-3 flex-wrap">
-              <button
-                type="button"
-                onClick={handleRetryPlan}
-                className="flex items-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-lg border border-violet-200 dark:border-violet-800 text-violet-600 dark:text-violet-400 hover:bg-violet-50 dark:hover:bg-violet-950/40 transition-colors"
-              >
-                <RotateCcw size={14} />
-                Chỉnh lại Plan
-              </button>
-              <button
-                type="button"
-                onClick={handleRetryQuestions}
-                className="flex items-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-lg border border-emerald-200 dark:border-emerald-800 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 transition-colors"
-              >
-                <RotateCcw size={14} />
-                Retry Questions
-              </button>
-              <button
-                type="button"
-                onClick={handleReset}
-                className={cn(
-                  "flex-1 py-2.5 text-sm font-semibold rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors",
-                  portalHeading
-                )}
-              >
-                Tạo bộ câu hỏi mới
-              </button>
-            </div>
-          </>
-        )}
+  if (view === "draft_view") {
+    return (
+      <div className="max-w-3xl space-y-4 animate-fade-up">
+        <FlowStepIndicator currentStep={5} />
+        <div className={cn(portalCard, "shadow-sm p-8 flex flex-col items-center gap-4 text-center")}>
+          <div className="w-12 h-12 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 flex items-center justify-center">
+            <BookMarked size={22} className="text-emerald-500" />
+          </div>
+          <p className={cn("text-base font-semibold", portalHeading)}>
+            Bản nháp đã được lưu
+          </p>
+          <p className={cn("text-sm", portalSubtext)}>
+            Câu hỏi đã lưu vào lịch sử. Bạn có thể xem lại ở trang History.
+          </p>
+          <div className="flex gap-3">
+            <Link
+              href="/hr/history"
+              className="flex items-center gap-2 px-5 py-2.5 text-sm font-semibold rounded-lg bg-primary text-white hover:bg-[#5535dd] transition-colors"
+            >
+              Xem History
+            </Link>
+            <button
+              type="button"
+              onClick={handleReset}
+              className={cn(
+                "px-5 py-2.5 text-sm font-semibold rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors",
+                portalHeading
+              )}
+            >
+              Tạo mới
+            </button>
+          </div>
+        </div>
       </div>
     );
   }
@@ -471,15 +617,11 @@ export function GenerateForm() {
     <div className="max-w-3xl space-y-4">
       <FlowStepIndicator currentStep={1} />
 
-      {/* Subscription / quota warnings */}
       {aiBlocked && (
         <div className="rounded-xl border border-indigo-200 dark:border-indigo-800 bg-indigo-50/90 dark:bg-indigo-950/40 px-4 py-3 text-sm text-indigo-950 dark:text-indigo-200 animate-fade-up">
           <p className="font-semibold mb-1">{t.generatePage.noAiPlan.title}</p>
           <p className="mb-2">{t.generatePage.noAiPlan.body}</p>
-          <Link
-            href="/hr/settings#billing"
-            className="inline-flex font-semibold text-primary hover:underline"
-          >
+          <Link href="/hr/settings#billing" className="inline-flex font-semibold text-primary hover:underline">
             {t.generatePage.noAiPlan.goToPlans}
           </Link>
         </div>
@@ -489,41 +631,32 @@ export function GenerateForm() {
         <div className="rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40 px-4 py-3 text-sm text-amber-950 dark:text-amber-200 animate-fade-up">
           <p className="font-semibold mb-1">{t.generatePage.quota.exceededTitle}</p>
           <p className="mb-2">{t.generatePage.quota.exceededBody}</p>
-          <Link
-            href="/hr/settings#billing"
-            className="inline-flex font-semibold text-primary hover:underline"
-          >
+          <Link href="/hr/settings#billing" className="inline-flex font-semibold text-primary hover:underline">
             {t.generatePage.quota.goToBilling}
           </Link>
         </div>
       )}
 
-      {/* Form error */}
       {formError && (
         <div className="rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/30 px-4 py-3 text-sm text-red-700 dark:text-red-400 animate-fade-up">
           {formError}
         </div>
       )}
 
-      {/* JD input */}
       <div className="animate-fade-up">
         <JdInputCard value={jdText} onChange={setJdText} />
       </div>
 
-      {/* File upload */}
       <div className="animate-fade-up" style={{ animationDelay: "60ms" }}>
         <FileUploadArea onFileChange={setJdFile} />
       </div>
 
-      {/* Note to AI */}
       <div
         className={cn(portalCard, "shadow-sm p-6 space-y-2 animate-fade-up")}
         style={{ animationDelay: "120ms" }}
       >
         <div className="flex items-center gap-2 mb-1">
-          <span className={cn("text-base font-semibold", portalHeading)}>
-            Ghi chú cho AI
-          </span>
+          <span className={cn("text-base font-semibold", portalHeading)}>Ghi chú cho AI</span>
           <span className={cn("text-xs", portalSubtext)}>(tùy chọn)</span>
         </div>
         <textarea
@@ -538,7 +671,6 @@ export function GenerateForm() {
         />
       </div>
 
-      {/* Submit */}
       <button
         type="button"
         onClick={handleSubmitForm}
@@ -559,7 +691,7 @@ export function GenerateForm() {
 
 // ── Inline question card ──────────────────────────────────────────────────────
 
-function GeneratedQuestionCard({
+export function GeneratedQuestionCard({
   question,
   index,
 }: {
@@ -615,19 +747,13 @@ function GeneratedQuestionCard({
           {question.rationale && (
             <div>
               <p className={cn("text-xs font-semibold mb-0.5", portalSubtext)}>Lý do</p>
-              <p className={cn("text-sm leading-relaxed", portalHeading)}>
-                {question.rationale}
-              </p>
+              <p className={cn("text-sm leading-relaxed", portalHeading)}>{question.rationale}</p>
             </div>
           )}
           {question.sampleAnswer && (
             <div>
-              <p className={cn("text-xs font-semibold mb-0.5", portalSubtext)}>
-                Câu trả lời mẫu
-              </p>
-              <p className={cn("text-sm leading-relaxed", portalHeading)}>
-                {question.sampleAnswer}
-              </p>
+              <p className={cn("text-xs font-semibold mb-0.5", portalSubtext)}>Câu trả lời mẫu</p>
+              <p className={cn("text-sm leading-relaxed", portalHeading)}>{question.sampleAnswer}</p>
             </div>
           )}
         </div>

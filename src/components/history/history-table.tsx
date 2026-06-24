@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { useLanguage } from "@/context/language-context";
 import { useHrSubscription } from "@/context/hr-subscription-context";
 import { getLocalSessions, toGenerationSession } from "@/lib/local-history";
+import { getGenerationJobs } from "@/lib/api/generation";
 import type { GenerationSession } from "@/types/generation-session";
 import { SessionStatusBadge } from "@/components/history/session-status-badge";
 import {
@@ -28,7 +29,8 @@ const ROLE_PALETTES = [
 ];
 
 function rolePalette(role: string) {
-  const idx = Math.abs(role.charCodeAt(0) ?? 0) % ROLE_PALETTES.length;
+  if (!role) return ROLE_PALETTES[0];
+  const idx = Math.abs(role.charCodeAt(0)) % ROLE_PALETTES.length;
   return ROLE_PALETTES[idx];
 }
 
@@ -70,7 +72,24 @@ export function HistoryTable({ search = "", role = "", level = "" }: HistoryTabl
   const [sessions, setSessions] = useState<GenerationSession[]>([]);
 
   useEffect(() => {
-    setSessions(getLocalSessions().map(toGenerationSession));
+    const localSessions = getLocalSessions();
+    // Sessions where backend save failed (no backendJobId) — show from local only
+    const localOnly = localSessions
+      .filter((s) => !s.backendJobId)
+      .map(toGenerationSession);
+
+    // Merge with backend sessions; backend is source of truth for saved sessions
+    getGenerationJobs()
+      .then((backendSessions) => {
+        const merged = [...backendSessions, ...localOnly].sort(
+          (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        );
+        setSessions(merged);
+      })
+      .catch(() => {
+        // Backend unavailable — show all local sessions as fallback
+        setSessions(localSessions.map(toGenerationSession));
+      });
   }, []);
 
   const filtered = sessions.filter((s) => {

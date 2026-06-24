@@ -1,13 +1,22 @@
 export type GenerationStatus =
   | "DRAFT"
+  | "PLAN_QUEUED"
   | "PLAN_PROPOSED"
   | "CONFIRMED"
   | "QUEUED"
+  | "QUESTION_QUEUED"
+  | "QUESTION_PROCESSING"
   | "PROCESSING"
   | "COMPLETED"
   | "FAILED";
 
-export type QuestionType = "Technical" | "Behavioral" | "Situational" | "Competency-based";
+export type QuestionType =
+  | "Technical"
+  | "Behavioral"
+  | "Situational"
+  | "System-design"
+  | "Problem-solving";
+
 export type DifficultyLevel = "Easy" | "Medium" | "Hard";
 
 export interface GenerationNote {
@@ -76,6 +85,17 @@ export interface GenerationSession {
   failureMessage?: string;
   createdAt: string;
   updatedAt: string;
+  // BE-driven UI guidance fields
+  suggestedAction?: string;
+  isPolling?: boolean;
+  statusLabel?: string;
+  hasDraft?: boolean;
+  questionSetId?: string;
+  canRetryPlan?: boolean;
+  canRetryQuestions?: boolean;
+  canEditInput?: boolean;
+  canEditPlan?: boolean;
+  canApprovePlan?: boolean;
 }
 
 export interface DraftQuestionSet {

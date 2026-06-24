@@ -11,6 +11,8 @@ import {
   portalMutedBg,
 } from "@/lib/portal-ui";
 import type { GeneratedQuestion, GenerationStatus } from "@/types/generation-session";
+import { updateLocalSessionQuestions } from "@/lib/local-history";
+import { updateJobQuestion, deleteJobQuestion, addJobQuestion, saveJobDraft } from "@/lib/api/generation";
 import { QuestionEditCard } from "./question-edit-card";
 import { AddQuestionDialog } from "./add-question-dialog";
 
@@ -19,6 +21,7 @@ interface ReviewQuestionsSectionProps {
   initialQuestions: GeneratedQuestion[];
   status: GenerationStatus;
   failureMessage?: string;
+  readOnly?: boolean;
 }
 
 type SaveState = "idle" | "saving" | "saved" | "error";
@@ -28,14 +31,16 @@ export function ReviewQuestionsSection({
   initialQuestions,
   status,
   failureMessage,
+  readOnly = false,
 }: ReviewQuestionsSectionProps) {
   const { t } = useLanguage();
   const rp = t.reviewPage;
   const [questions, setQuestions] = useState<GeneratedQuestion[]>(initialQuestions);
+  const [deletedIds, setDeletedIds] = useState<string[]>([]);
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [saveState, setSaveState] = useState<SaveState>("idle");
 
-  const isEditable = status === "COMPLETED";
+  const isEditable = status === "COMPLETED" && !readOnly;
 
   function handleUpdate(id: string, changes: Partial<GeneratedQuestion>) {
     setQuestions((prev) =>
@@ -45,6 +50,10 @@ export function ReviewQuestionsSection({
 
   function handleDelete(id: string) {
     setQuestions((prev) => prev.filter((q) => q.id !== id));
+    // Only track backend question IDs for deletion — manually-added ones were never saved
+    if (!id.startsWith("manual-")) {
+      setDeletedIds((prev) => [...prev, id]);
+    }
   }
 
   function handleMoveUp(index: number) {
@@ -77,8 +86,50 @@ export function ReviewQuestionsSection({
   async function handleSaveDraft() {
     setSaveState("saving");
     try {
-      // Mock API call
-      await new Promise((r) => setTimeout(r, 1200));
+      const isLocal = sessionId.startsWith("local-");
+
+      if (isLocal) {
+        updateLocalSessionQuestions(sessionId, questions);
+      } else {
+        // 1. DELETE questions removed by user (backend IDs only)
+        await Promise.all(
+          deletedIds.map((id) => deleteJobQuestion(sessionId, id).catch(() => {}))
+        );
+
+        // 2. POST manually-added questions (id starts with "manual-")
+        const newQuestions = questions.filter((q) => q.id.startsWith("manual-"));
+        await Promise.all(
+          newQuestions.map((q) =>
+            addJobQuestion(sessionId, {
+              question: q.question,
+              questionType: q.questionType,
+              difficulty: q.difficulty,
+              rationale: q.rationale,
+              sampleAnswer: q.sampleAnswer,
+              order: q.orderIndex,
+            })
+          )
+        );
+
+        // 3. PUT edited existing questions
+        const editedQuestions = questions.filter((q) => q.isEdited && !q.id.startsWith("manual-"));
+        await Promise.all(
+          editedQuestions.map((q) =>
+            updateJobQuestion(sessionId, q.id, {
+              question: q.question,
+              questionType: q.questionType,
+              difficulty: q.difficulty,
+              rationale: q.rationale ?? null,
+              sampleAnswer: q.sampleAnswer ?? null,
+            })
+          )
+        );
+
+        // 4. Mark as saved draft
+        await saveJobDraft(sessionId);
+      }
+
+      setDeletedIds([]);
       setSaveState("saved");
       setTimeout(() => setSaveState("idle"), 3000);
     } catch {
@@ -137,54 +188,58 @@ export function ReviewQuestionsSection({
           {rp.questionCount.replace("{{count}}", String(questions.length))}
         </p>
         <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setShowAddDialog(true)}
-            className={cn(
-              "flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-lg border transition-colors",
-              portalCard,
-              portalHeading,
-              "hover:bg-gray-50 dark:hover:bg-gray-800"
-            )}
-          >
-            <Plus size={14} />
-            {rp.addQuestion}
-          </button>
-          <button
-            type="button"
-            onClick={handleSaveDraft}
-            disabled={saveState === "saving"}
-            className={cn(
-              "flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-lg transition-colors",
-              saveState === "saved"
-                ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800"
-                : saveState === "error"
-                  ? "bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800"
-                  : "bg-[#6c47ff] text-white hover:bg-[#5535dd] disabled:opacity-70"
-            )}
-          >
-            {saveState === "saving" ? (
-              <>
-                <Loader2 size={14} className="animate-spin" />
-                {rp.saving}
-              </>
-            ) : saveState === "saved" ? (
-              <>
-                <CheckCircle2 size={14} />
-                {rp.savedSuccess}
-              </>
-            ) : saveState === "error" ? (
-              <>
-                <AlertCircle size={14} />
-                {rp.savedFailed}
-              </>
-            ) : (
-              <>
-                <BookMarked size={14} />
-                {rp.saveDraft}
-              </>
-            )}
-          </button>
+          {!readOnly && (
+            <>
+              <button
+                type="button"
+                onClick={() => setShowAddDialog(true)}
+                className={cn(
+                  "flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-lg border transition-colors",
+                  portalCard,
+                  portalHeading,
+                  "hover:bg-gray-50 dark:hover:bg-gray-800"
+                )}
+              >
+                <Plus size={14} />
+                {rp.addQuestion}
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveDraft}
+                disabled={saveState === "saving"}
+                className={cn(
+                  "flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-lg transition-colors",
+                  saveState === "saved"
+                    ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800"
+                    : saveState === "error"
+                      ? "bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800"
+                      : "bg-[#6c47ff] text-white hover:bg-[#5535dd] disabled:opacity-70"
+                )}
+              >
+                {saveState === "saving" ? (
+                  <>
+                    <Loader2 size={14} className="animate-spin" />
+                    {rp.saving}
+                  </>
+                ) : saveState === "saved" ? (
+                  <>
+                    <CheckCircle2 size={14} />
+                    {rp.savedSuccess}
+                  </>
+                ) : saveState === "error" ? (
+                  <>
+                    <AlertCircle size={14} />
+                    {rp.savedFailed}
+                  </>
+                ) : (
+                  <>
+                    <BookMarked size={14} />
+                    {rp.saveDraft}
+                  </>
+                )}
+              </button>
+            </>
+          )}
         </div>
       </div>
 

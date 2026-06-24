@@ -50,11 +50,8 @@ export async function POST(req: NextRequest) {
         console.warn("[rag/start] JD upload failed:", uploadRes.status, errText.substring(0, 200));
         // If 422 (validation), return error immediately so user knows JD is invalid
         if (uploadRes.status === 422) {
-          let detail = "JD không hợp lệ. Vui lòng nhập đủ nội dung (ít nhất 80 từ / 400 ký tự).";
-          try {
-            const parsed = JSON.parse(errText);
-            if (parsed?.error?.message) detail = parsed.error.message;
-          } catch { /* ignore */ }
+          // Always use bilingual message so both VI and EN users understand
+          const detail = "JD quá ngắn — vui lòng nhập ít nhất 400 ký tự (~80 từ). / Job description is too short — please enter at least 400 characters (~80 words).";
           return NextResponse.json(
             { success: false, error: { code: "JD_INVALID", message: detail }, data: {}, meta: {} },
             { status: 422 }

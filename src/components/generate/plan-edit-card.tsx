@@ -24,7 +24,8 @@ const ALL_TYPES: QuestionType[] = [
   "Technical",
   "Behavioral",
   "Situational",
-  "Competency-based",
+  "System-design",
+  "Problem-solving",
 ];
 
 const LEVELS = [
@@ -80,7 +81,6 @@ export function PlanEditCard({
   const canApprove =
     !isApproving &&
     plan.role.trim() !== "" &&
-    plan.level !== "" &&
     plan.questionCount >= 1;
 
   const displayMessage = aiMessage || plan.summary;
@@ -165,18 +165,18 @@ export function PlanEditCard({
           <label className={cn("text-sm font-medium", portalHeading)}>
             Số câu hỏi{" "}
             <span className={cn("text-xs font-normal", portalSubtext)}>
-              (1 – 30)
+              (1 – 50)
             </span>
           </label>
           <input
             type="number"
             min={1}
-            max={30}
+            max={50}
             value={plan.questionCount}
             onChange={(e) =>
               update(
                 "questionCount",
-                Math.min(30, Math.max(1, Number(e.target.value) || 1))
+                Math.min(50, Math.max(1, Number(e.target.value) || 1))
               )
             }
             className={cn(

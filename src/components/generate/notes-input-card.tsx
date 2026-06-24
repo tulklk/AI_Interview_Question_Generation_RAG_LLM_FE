@@ -6,7 +6,7 @@ import { useLanguage } from "@/context/language-context";
 import { portalCard, portalHeading, portalInput, portalSubtext } from "@/lib/portal-ui";
 import type { QuestionType } from "@/types/generation-session";
 
-const ALL_TYPES: QuestionType[] = ["Technical", "Behavioral", "Situational", "Competency-based"];
+const ALL_TYPES: QuestionType[] = ["Technical", "Behavioral", "Situational", "System-design", "Problem-solving"];
 
 interface NotesInputCardProps {
   selectedTypes: QuestionType[];

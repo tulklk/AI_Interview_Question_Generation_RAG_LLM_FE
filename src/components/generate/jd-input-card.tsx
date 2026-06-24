@@ -10,7 +10,7 @@ interface JdInputCardProps {
   onChange: (value: string) => void;
 }
 
-const MIN_CHARS = 30;
+const MIN_CHARS = 400; // RAG API requires at least 400 characters / ~80 words
 
 export function JdInputCard({ value, onChange }: JdInputCardProps) {
   const { t } = useLanguage();
