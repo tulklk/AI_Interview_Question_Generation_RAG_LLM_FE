@@ -265,6 +265,62 @@ export async function getGenerationJob(id: string): Promise<GenerationSession | 
   }
 }
 
+// ---------------------------------------------------------------------------
+// Plans API — richer metadata (jobTitle, role, level, questionCount)
+// ---------------------------------------------------------------------------
+
+interface BackendPlanItem {
+  jobId: string;
+  jobTitle?: string;
+  role?: string;
+  level?: string;
+  question?: number;        // actual generated count
+  createdAt: string;
+  status?: string;
+  isPlanApproved?: boolean;
+}
+
+function mapPlanToSession(p: BackendPlanItem): GenerationSession {
+  const status = mapJobPhaseToStatus(p.status ?? "");
+  const count = p.question ?? 0;
+  return {
+    id: p.jobId,
+    jobTitle: p.jobTitle || "Interview Questions",
+    hrOwner: "",
+    status,
+    planDraft: {
+      role: p.jobTitle ?? "",
+      level: p.level ? (p.level.charAt(0).toUpperCase() + p.level.slice(1)) : "",
+      questionCount: count,
+      questionTypes: ["Technical"],
+      topics: [],
+    },
+    generatedQuestions: Array.from({ length: count }, (_, i) => ({
+      id: `stub-${p.jobId}-${i}`,
+      question: "",
+      questionType: "Technical" as QuestionType,
+      difficulty: "Medium" as DifficultyLevel,
+      citations: [],
+      orderIndex: i,
+    })),
+    createdAt: p.createdAt,
+    updatedAt: p.createdAt,
+    isPolling: false,
+  };
+}
+
+export async function getGenerationPlans(): Promise<GenerationSession[]> {
+  try {
+    const { data } = await apiClient.get<{ data?: { items?: BackendPlanItem[] } }>(
+      "/api/hr/question-generation-plans"
+    );
+    const items = (data as { data?: { items?: BackendPlanItem[] } })?.data?.items ?? [];
+    return items.map(mapPlanToSession);
+  } catch {
+    return [];
+  }
+}
+
 export async function getGenerationJobs(): Promise<GenerationSession[]> {
   try {
     const { data } = await apiClient.get<BackendJobListResponse>(

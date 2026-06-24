@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 import { useLanguage } from "@/context/language-context";
 import { useHrSubscription } from "@/context/hr-subscription-context";
 import { getLocalSessions, toGenerationSession } from "@/lib/local-history";
-import { getGenerationJobs } from "@/lib/api/generation";
+import { getGenerationPlans } from "@/lib/api/generation";
 import type { GenerationSession } from "@/types/generation-session";
 import { SessionStatusBadge } from "@/components/history/session-status-badge";
 import {
@@ -78,8 +78,8 @@ export function HistoryTable({ search = "", role = "", level = "" }: HistoryTabl
       .filter((s) => !s.backendJobId)
       .map(toGenerationSession);
 
-    // Merge with backend sessions; backend is source of truth for saved sessions
-    getGenerationJobs()
+    // Merge with backend sessions; plans API has full metadata (jobTitle, role, level)
+    getGenerationPlans()
       .then((backendSessions) => {
         const merged = [...backendSessions, ...localOnly].sort(
           (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
