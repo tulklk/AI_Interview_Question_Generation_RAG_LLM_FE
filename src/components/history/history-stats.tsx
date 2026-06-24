@@ -7,7 +7,7 @@ import { getLocalSessions } from "@/lib/local-history";
 import { getGenerationJobs } from "@/lib/api/generation";
 import type { GenerationSession } from "@/types/generation-session";
 import { useLanguage } from "@/context/language-context";
-import { portalCard, portalHeading, portalSubtext } from "@/lib/portal-ui";
+import { portalHeading, portalSubtext } from "@/lib/portal-ui";
 
 const icons = [FileText, Zap, BarChart3];
 const iconBgs = [
@@ -15,7 +15,7 @@ const iconBgs = [
   "bg-violet-50 dark:bg-violet-950/40",
   "bg-emerald-50 dark:bg-emerald-950/40",
 ];
-const iconColors = ["text-blue-500", "text-violet-500", "text-emerald-500"];
+const iconColors = ["text-blue-500 dark:text-blue-400", "text-violet-500 dark:text-violet-400", "text-emerald-500 dark:text-emerald-400"];
 
 export function HistoryStats() {
   const { t } = useLanguage();
@@ -78,7 +78,7 @@ export function HistoryStats() {
         return (
           <div
             key={i}
-            className={cn(portalCard, "shadow-sm p-5 flex items-center gap-4 animate-fade-up")}
+            className="hr-glass-card p-5 flex items-center gap-4 animate-fade-up"
             style={{ animationDelay: `${i * 80}ms` }}
           >
             <div className={`w-11 h-11 rounded-lg flex items-center justify-center shrink-0 ${iconBgs[i]}`}>

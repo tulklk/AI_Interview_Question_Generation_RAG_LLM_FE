@@ -12,7 +12,6 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
-  portalCard,
   portalHeading,
   portalSubtext,
   portalInput,
@@ -103,7 +102,7 @@ export function PlanEditCard({
   const displayMessage = aiMessage || plan.summary;
 
   return (
-    <div className={cn(portalCard, "shadow-sm p-6 space-y-5")}>
+    <div className="hr-glass-card p-6 space-y-5">
       {/* Header */}
       <div className="flex items-center gap-3">
         <div className="w-10 h-10 rounded-xl bg-violet-50 dark:bg-violet-950/40 flex items-center justify-center shrink-0">
@@ -334,7 +333,7 @@ export function PlanEditCard({
             className={cn(
               "flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-lg transition-colors",
               canApprove
-                ? "bg-primary hover:bg-[#5535dd] text-white"
+                ? "shimmer-button hr-cta-btn text-white"
                 : "bg-gray-200 dark:bg-gray-800 text-gray-400 dark:text-gray-500 cursor-not-allowed"
             )}
           >
