@@ -29,17 +29,17 @@ import { AvatarUpload } from "@/components/shared/avatar-upload";
 import { uploadAvatarToCloudinary } from "@/lib/cloudinary";
 import { mapAvatarUploadError } from "@/lib/avatar-upload-messages";
 import { SectionCard, Field } from "@/components/jobseeker/ui/section-card";
-import { CARD_SHADOW } from "@/components/jobseeker/ui/constants";
 import {
-  portalBanner,
   portalCard,
-  portalCardShadow,
   portalHeadingAlt,
   portalIconWell,
   portalInput,
   portalMutedBg,
   portalSubtextAlt,
 } from "@/lib/portal-ui";
+
+const EARNED_BADGE_CLS = "bg-violet-50 dark:bg-violet-950/30 border border-violet-100 dark:border-violet-800/30";
+const TARGET_ROLE_CLS = "bg-violet-50 dark:bg-violet-950/30 border border-violet-100 dark:border-violet-800/30";
 
 const INPUT_CLASS = cn(
   "w-full text-[13px] rounded-lg px-3 py-2 outline-none transition-all focus:border-primary focus:shadow-[0_0_0_3px_rgba(108,71,255,0.1)]",
@@ -190,29 +190,29 @@ export function CandidateProfile() {
       icon: BookOpen,
       label: p.stats.sessions,
       value: practiceSessions.length.toString(),
-      color: "text-blue-500",
-      bg: "bg-blue-50",
+      color: "text-blue-500 dark:text-blue-400",
+      bg: "bg-blue-50 dark:bg-blue-950/40",
     },
     {
       icon: TrendingUp,
       label: p.stats.avgScore,
       value: `${avgScore}%`,
-      color: "text-violet-500",
-      bg: "bg-violet-50",
+      color: "text-violet-500 dark:text-violet-400",
+      bg: "bg-violet-50 dark:bg-violet-950/40",
     },
     {
       icon: Trophy,
       label: p.stats.bestScore,
       value: `${bestScore}%`,
-      color: "text-amber-500",
-      bg: "bg-amber-50",
+      color: "text-amber-500 dark:text-amber-400",
+      bg: "bg-amber-50 dark:bg-amber-950/40",
     },
     {
       icon: Flame,
       label: p.stats.streak,
       value: "7 days",
-      color: "text-emerald-500",
-      bg: "bg-emerald-50",
+      color: "text-emerald-500 dark:text-emerald-400",
+      bg: "bg-emerald-50 dark:bg-emerald-950/40",
     },
   ];
 
@@ -251,8 +251,7 @@ export function CandidateProfile() {
         <motion.div
           initial={{ opacity: 0, x: -16 }}
           animate={{ opacity: 1, x: 0 }}
-          className={cn(portalCardShadow, "p-6 flex flex-col items-center text-center")}
-          style={{ boxShadow: CARD_SHADOW }}
+          className="hr-glass-card p-6 flex flex-col items-center text-center"
         >
           <AvatarUpload
             avatarUrl={form.avatarUrl.trim() || null}
@@ -278,7 +277,7 @@ export function CandidateProfile() {
           <p className={cn("text-[13px] mt-1", portalSubtextAlt)}>{form.email}</p>
 
           {form.targetRole ? (
-            <div className={cn("flex items-center gap-1.5 mt-3 rounded-full px-3 py-1.5", portalBanner)}>
+            <div className={cn("flex items-center gap-1.5 mt-3 rounded-full px-3 py-1.5", TARGET_ROLE_CLS)}>
               <Target size={12} className="text-primary" />
               <span className="text-[12px] font-[600] text-primary">{form.targetRole}</span>
             </div>
@@ -306,8 +305,7 @@ export function CandidateProfile() {
           initial={{ opacity: 0, x: -16 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.1 }}
-          className={cn(portalCardShadow, "p-5")}
-          style={{ boxShadow: CARD_SHADOW }}
+          className="hr-glass-card p-5"
         >
           <h3 className={cn("text-[14px] font-[700] mb-4", portalHeadingAlt)}>{p.achievements}</h3>
           <div className="grid grid-cols-3 gap-2">
@@ -317,7 +315,7 @@ export function CandidateProfile() {
                 title={ach.description}
                 className={cn(
                   "flex flex-col items-center text-center p-2 rounded-lg transition-all",
-                  ach.earned ? cn(portalBanner, "cursor-default") : cn(portalIconWell, "opacity-40 grayscale")
+                  ach.earned ? cn(EARNED_BADGE_CLS, "cursor-default") : cn(portalIconWell, "opacity-40 grayscale")
                 )}
               >
                 <span className="text-2xl leading-none mb-1">{ach.icon}</span>
@@ -358,7 +356,7 @@ export function CandidateProfile() {
                 type="button"
                 onClick={() => void handleSave()}
                 disabled={saving || uploadingAvatar}
-                className="flex items-center gap-1.5 h-[34px] px-4 text-[12px] font-[600] text-white bg-primary hover:bg-primary-hover rounded-lg transition-colors disabled:opacity-60"
+                className="shimmer-button flex items-center gap-1.5 h-8.5 px-4 text-[12px] font-semibold text-white hr-cta-btn rounded-lg disabled:opacity-60"
               >
                 {saving ? (
                   <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />

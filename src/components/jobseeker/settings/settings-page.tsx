@@ -13,7 +13,6 @@ import {
   portalDivider,
   portalHeadingAlt,
   portalSubtextAlt,
-  portalTableRow,
 } from "@/lib/portal-ui";
 
 const LANGUAGES = ["English", "Tiếng Việt"];
@@ -52,8 +51,8 @@ export function SettingsPage() {
   const sections = [
     {
       icon: Globe,
-      iconBg: "bg-blue-50",
-      iconColor: "text-blue-500",
+      iconBg: "bg-blue-50 dark:bg-blue-950/40",
+      iconColor: "text-blue-500 dark:text-blue-400",
       title: p.languageTitle,
       content: (
         <div className="flex flex-col gap-3">
@@ -73,8 +72,8 @@ export function SettingsPage() {
     },
     {
       icon: Moon,
-      iconBg: "bg-violet-50",
-      iconColor: "text-violet-500",
+      iconBg: "bg-violet-50 dark:bg-violet-950/40",
+      iconColor: "text-violet-500 dark:text-violet-400",
       title: p.appearanceTitle,
       content: (
         <div className="flex flex-col gap-3">
@@ -92,8 +91,8 @@ export function SettingsPage() {
     },
     {
       icon: Bell,
-      iconBg: "bg-amber-50",
-      iconColor: "text-amber-500",
+      iconBg: "bg-amber-50 dark:bg-amber-950/40",
+      iconColor: "text-amber-500 dark:text-amber-400",
       title: p.notificationsTitle,
       content: (
         <div className="flex flex-col gap-3">
@@ -123,8 +122,8 @@ export function SettingsPage() {
     },
     {
       icon: Shield,
-      iconBg: "bg-emerald-50",
-      iconColor: "text-emerald-500",
+      iconBg: "bg-emerald-50 dark:bg-emerald-950/40",
+      iconColor: "text-emerald-500 dark:text-emerald-400",
       title: p.privacyTitle,
       content: (
         <div className="flex flex-col gap-3">
@@ -136,9 +135,8 @@ export function SettingsPage() {
                   key={action}
                   type="button"
                   className={cn(
-                    "flex items-center justify-between w-full gap-3 px-3 py-3 text-[13px] hover:text-gray-900 dark:hover:text-gray-100 transition-colors",
-                    portalSubtextAlt,
-                    portalTableRow
+                    "hr-table-row flex items-center justify-between w-full gap-3 px-3 py-3 text-[13px] hover:text-gray-900 dark:hover:text-gray-100",
+                    portalSubtextAlt
                   )}
                 >
                   <span className="text-left">{action}</span>

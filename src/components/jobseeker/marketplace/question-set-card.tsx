@@ -6,8 +6,7 @@ import { cn } from "@/lib/utils";
 import { useLanguage } from "@/context/language-context";
 import type { QuestionSet } from "@/types/jobseeker";
 import { Pill, getDifficultyBadgeClass } from "@/components/jobseeker/ui/pill";
-import { CARD_SHADOW, ELEVATED_SHADOW } from "@/components/jobseeker/ui/constants";
-import { portalCardShadow, portalHeadingAlt, portalSubtextAlt } from "@/lib/portal-ui";
+import { portalHeadingAlt, portalSubtextAlt } from "@/lib/portal-ui";
 
 interface QuestionSetCardProps {
   set: QuestionSet;
@@ -18,18 +17,7 @@ export function QuestionSetCard({ set }: QuestionSetCardProps) {
   const p = t.jobseekerMarketplacePage;
 
   return (
-    <div
-      className={cn("group rounded-xl flex flex-col gap-0 transition-all duration-200 overflow-hidden", portalCardShadow)}
-      style={{ boxShadow: CARD_SHADOW }}
-      onMouseEnter={(e) => {
-        (e.currentTarget as HTMLDivElement).style.boxShadow = ELEVATED_SHADOW;
-        (e.currentTarget as HTMLDivElement).style.transform = "translateY(-2px)";
-      }}
-      onMouseLeave={(e) => {
-        (e.currentTarget as HTMLDivElement).style.boxShadow = CARD_SHADOW;
-        (e.currentTarget as HTMLDivElement).style.transform = "translateY(0)";
-      }}
-    >
+    <div className="hr-glass-card group flex flex-col gap-0 overflow-hidden">
       {/* Card body */}
       <div className="p-6 flex flex-col gap-4 flex-1">
         {/* Header row */}
@@ -61,7 +49,7 @@ export function QuestionSetCard({ set }: QuestionSetCardProps) {
           {set.skills.slice(0, 4).map((skill) => (
             <span
               key={skill}
-              className="bg-[#F5F7FB] dark:bg-gray-800 text-[#111827] dark:text-gray-200 text-[11px] font-[500] px-2.5 py-1 rounded-[6px]"
+              className="bg-violet-50 dark:bg-violet-950/30 text-violet-700 dark:text-violet-300 border border-violet-100 dark:border-violet-800/30 text-[11px] font-medium px-2.5 py-1 rounded-md"
             >
               {skill}
             </span>
@@ -114,8 +102,7 @@ export function QuestionSetCard({ set }: QuestionSetCardProps) {
       <div className="px-6 pb-5">
         <Link
           href={`/jobseeker/sets/${set.id}`}
-          className="flex items-center justify-center gap-2 w-full text-[14px] font-[600] text-white bg-primary hover:bg-primary-hover active:bg-[#4B2FBF] rounded-lg h-[36px] transition-colors"
-          style={{ boxShadow: "rgba(0,0,0,0.1) 0px 1px 3px 0px" }}
+          className="shimmer-button flex items-center justify-center gap-2 w-full text-[14px] font-semibold text-white hr-cta-btn rounded-lg h-9"
         >
           {p.startPractice}
           <ChevronRight size={14} />

@@ -8,12 +8,8 @@ import { questionSets } from "@/data/jobseeker";
 import { QuestionSetCard } from "./question-set-card";
 import { useLanguage } from "@/context/language-context";
 import type { Difficulty } from "@/types/jobseeker";
-import { CARD_SHADOW } from "@/components/jobseeker/ui/constants";
 import {
-  portalBanner,
   portalCard,
-  portalCardShadow,
-  portalDivider,
   portalHeadingAlt,
   portalInput,
   portalMutedBg,
@@ -55,7 +51,7 @@ export function MarketplacePage() {
         initial={{ opacity: 0, y: 24 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className={cn(portalBanner, "rounded-xl px-10 py-12 mb-8")}
+        className="hr-quick-generate rounded-xl px-10 py-12 mb-8"
       >
         <div className="max-w-2xl">
           {/* Badge */}
@@ -76,8 +72,7 @@ export function MarketplacePage() {
           {/* CTAs */}
           <div className="flex items-center gap-4">
             <button
-              className="h-[44px] px-6 text-[14px] font-[600] text-white bg-primary hover:bg-primary-hover rounded-xl transition-colors"
-              style={{ boxShadow: "rgba(108,71,255,0.3) 0px 4px 14px 0px" }}
+              className="shimmer-button h-11 px-6 text-[14px] font-semibold text-white hr-cta-btn rounded-xl"
             >
               {p.heroCta}
             </button>
@@ -91,8 +86,7 @@ export function MarketplacePage() {
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, delay: 0.15 }}
-        className={cn(portalCardShadow, "p-4 mb-6 flex flex-col gap-4")}
-        style={{ boxShadow: CARD_SHADOW }}
+        className="hr-glass-card p-4 mb-6 flex flex-col gap-4"
       >
         {/* Search row */}
         <div className={cn(
@@ -121,7 +115,7 @@ export function MarketplacePage() {
                 className={cn(
                   "text-[12px] font-[500] px-3 py-1.5 rounded-[6px] transition-colors",
                   category === cat
-                    ? "bg-primary text-white"
+                    ? "hr-nav-active text-[#7C3AED] dark:text-[#a78bff] font-semibold"
                     : cn(portalMutedBg, portalSubtextAlt, "hover:bg-gray-200 dark:hover:bg-gray-700")
                 )}
               >
