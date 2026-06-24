@@ -16,7 +16,7 @@ import { SecuritySection } from "./security-section";
 import { BillingSection } from "./billing-section";
 import type { SettingsTab } from "@/types/settings";
 import { useLanguage } from "@/context/language-context";
-import { portalCard, portalHeading } from "@/lib/portal-ui";
+import { portalHeading } from "@/lib/portal-ui";
 
 function TabContent({ tab }: { tab: SettingsTab }) {
   switch (tab) {
@@ -60,7 +60,7 @@ export function SettingsLayout() {
 
   return (
     <div className="grid grid-cols-[220px_1fr] gap-6 items-start">
-      <nav className={cn(portalCard, "shadow-sm p-2 sticky top-4 animate-slide-left")}>
+      <nav className="hr-glass-card p-2 sticky top-4 animate-slide-left">
         <ul className="space-y-0.5">
           {tabItems.map(({ id, label, Icon }) => (
             <li key={id}>
@@ -77,13 +77,18 @@ export function SettingsLayout() {
                   }
                 }}
                 className={cn(
-                  "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors text-left",
+                  "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 text-left",
                   activeTab === id
-                    ? "bg-[#6c47ff] text-white"
-                    : cn(portalHeading, "hover:bg-gray-50 dark:hover:bg-gray-800 opacity-80 hover:opacity-100")
+                    ? "hr-settings-tab-active text-[#7C3AED] dark:text-[#a78bff] font-semibold"
+                    : cn(portalHeading, "hover:bg-[rgba(124,58,237,0.05)] dark:hover:bg-[rgba(124,58,237,0.08)] opacity-80 hover:opacity-100")
                 )}
               >
-                <Icon size={16} className="shrink-0" />
+                <div className={cn(
+                  "w-6 h-6 rounded-md flex items-center justify-center shrink-0",
+                  activeTab === id ? "hr-icon-box" : "bg-gray-100 dark:bg-gray-800"
+                )}>
+                  <Icon size={13} className={activeTab === id ? "text-[#7C3AED] dark:text-[#a78bff]" : "text-gray-500 dark:text-gray-400"} />
+                </div>
                 {label}
               </button>
             </li>
@@ -91,7 +96,7 @@ export function SettingsLayout() {
         </ul>
       </nav>
 
-      <div key={activeTab} className={cn(portalCard, "shadow-sm p-6 animate-scale-in")}>
+      <div key={activeTab} className="hr-glass-card p-6 animate-scale-in">
         <TabContent tab={activeTab} />
       </div>
     </div>
