@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { FileText, Calendar, ArrowUpDown, Eye, Download, Trash2, Inbox, Loader2 } from "lucide-react";
+import { FileText, Calendar, ArrowUpDown, Eye, Download, Trash2, Inbox, Loader2, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLanguage } from "@/context/language-context";
 import { useHrSubscription } from "@/context/hr-subscription-context";
@@ -45,6 +45,66 @@ function formatDate(iso: string): string {
   return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
 }
 
+function DeleteConfirmModal({
+  session,
+  onConfirm,
+  onCancel,
+}: {
+  session: GenerationSession;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      {/* Backdrop */}
+      <div
+        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+        onClick={onCancel}
+      />
+      {/* Modal */}
+      <div className="relative w-full max-w-md rounded-2xl bg-white dark:bg-gray-900 shadow-2xl border border-gray-200 dark:border-gray-700 p-6 animate-fade-up">
+        {/* Icon */}
+        <div className="flex items-center gap-4 mb-4">
+          <div className="w-11 h-11 rounded-xl bg-red-100 dark:bg-red-950/50 flex items-center justify-center shrink-0">
+            <AlertTriangle size={22} className="text-red-500" />
+          </div>
+          <div>
+            <h3 className={cn("text-base font-semibold", portalHeading)}>Xác nhận xóa</h3>
+            <p className={cn("text-xs mt-0.5", portalSubtext)}>Hành động này không thể hoàn tác</p>
+          </div>
+        </div>
+
+        {/* Body */}
+        <p className={cn("text-sm mb-1", portalSubtext)}>
+          Bạn có chắc chắn muốn xóa bộ câu hỏi này không?
+        </p>
+        <p className={cn("text-sm font-semibold px-3 py-2 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 mt-2", portalHeading)}>
+          {session.jobTitle || "Untitled"}
+        </p>
+
+        {/* Actions */}
+        <div className="flex gap-3 mt-5 justify-end">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="px-4 py-2 text-sm font-medium rounded-xl border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+          >
+            Hủy
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            className="px-4 py-2 text-sm font-semibold rounded-xl bg-red-500 hover:bg-red-600 text-white transition-colors flex items-center gap-2"
+          >
+            <Trash2 size={14} />
+            Xóa
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ColumnHeader({ label }: { label: string }) {
   return (
     <th className={cn("px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide whitespace-nowrap", portalSubtext)}>
@@ -72,12 +132,15 @@ export function HistoryTable({ search = "", role = "", level = "" }: HistoryTabl
   const [sessions, setSessions] = useState<GenerationSession[]>([]);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [exportingId, setExportingId] = useState<string | null>(null);
+  const [confirmSession, setConfirmSession] = useState<GenerationSession | null>(null);
 
-  async function handleDelete(session: GenerationSession) {
-    if (!confirm(`Xóa bộ câu hỏi "${session.jobTitle}"?\nHành động này không thể hoàn tác.`)) return;
-    setDeletingId(session.id);
-    const ok = await deleteGenerationPlan(session.id);
-    if (ok) setSessions(prev => prev.filter(s => s.id !== session.id));
+  async function confirmDelete() {
+    if (!confirmSession) return;
+    const id = confirmSession.id;
+    setConfirmSession(null);
+    setDeletingId(id);
+    const ok = await deleteGenerationPlan(id);
+    if (ok) setSessions(prev => prev.filter(s => s.id !== id));
     setDeletingId(null);
   }
 
@@ -142,6 +205,14 @@ export function HistoryTable({ search = "", role = "", level = "" }: HistoryTabl
   }
 
   return (
+    <>
+    {confirmSession && (
+      <DeleteConfirmModal
+        session={confirmSession}
+        onConfirm={confirmDelete}
+        onCancel={() => setConfirmSession(null)}
+      />
+    )}
     <div className={cn(portalCard, "shadow-sm overflow-hidden animate-fade-up")}>
       <table className="w-full text-sm">
         <thead className={cn("border-b", portalDivider)}>
@@ -228,7 +299,7 @@ export function HistoryTable({ search = "", role = "", level = "" }: HistoryTabl
                     </button>
                     <button
                       type="button"
-                      onClick={() => handleDelete(session)}
+                      onClick={() => setConfirmSession(session)}
                       disabled={deletingId === session.id}
                       title="Xóa"
                       className="p-1.5 text-gray-400 dark:text-gray-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg transition-colors disabled:opacity-50"
@@ -245,5 +316,6 @@ export function HistoryTable({ search = "", role = "", level = "" }: HistoryTabl
         </tbody>
       </table>
     </div>
+    </>
   );
 }
