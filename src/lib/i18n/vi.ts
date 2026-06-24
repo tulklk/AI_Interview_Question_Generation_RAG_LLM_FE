@@ -691,6 +691,11 @@ export const vi: Translations = {
   },
 
   dashboardPage: {
+    welcomeTemplate: "{{greeting}}, {{name}} 👋",
+    greetingMorning: "Chào buổi sáng",
+    greetingAfternoon: "Chào buổi chiều",
+    greetingEvening: "Chào buổi tối",
+    greetingNight: "Xin chào",
     welcome: "Chào buổi sáng, HR Manager 👋",
     welcomeSub: "Đây là những gì đang xảy ra với bộ công cụ tuyển dụng của bạn hôm nay.",
     generateBtn: "Tạo câu hỏi",
