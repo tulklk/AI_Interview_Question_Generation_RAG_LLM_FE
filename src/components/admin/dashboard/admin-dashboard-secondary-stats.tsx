@@ -2,7 +2,7 @@
 
 import { useLanguage } from "@/context/language-context";
 import { cn } from "@/lib/utils";
-import { portalCard, portalHeadingAlt, portalSubtextAlt } from "@/lib/portal-ui";
+import { portalHeadingAlt, portalSubtextAlt } from "@/lib/portal-ui";
 
 export function AdminDashboardSecondaryStats() {
   const { t } = useLanguage();
@@ -18,7 +18,7 @@ export function AdminDashboardSecondaryStats() {
         {s.cards.map((card, i) => (
           <div
             key={`${card.label}-${i}`}
-            className={cn(portalCard, "p-5 shadow-[0_4px_6px_-1px_rgba(0,0,0,0.1),0_2px_4px_-2px_rgba(0,0,0,0.1)] dark:shadow-none animate-fade-up")}
+            className="hr-glass-card p-5 animate-fade-up"
             style={{ animationDelay: `${60 + i * 50}ms` }}
           >
             <p className={cn("text-[26px] font-bold leading-none", portalHeadingAlt)}>{card.value}</p>

@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 import { systemActivity } from "@/data/admin";
 import type { SystemActivityEvent } from "@/types/admin";
 import { useLanguage } from "@/context/language-context";
-import { portalCard, portalDivider, portalHeading, portalSubtext, portalTableRow } from "@/lib/portal-ui";
+import { portalDivider, portalHeading, portalSubtext } from "@/lib/portal-ui";
 
 const eventIcons: Record<SystemActivityEvent["type"], {
   icon: typeof UserPlus; iconBg: string; iconColor: string; badgeBg: string; badgeColor: string;
@@ -19,7 +19,7 @@ const eventIcons: Record<SystemActivityEvent["type"], {
   },
   recruiter_login: {
     icon: LogIn,
-    iconBg: "bg-gray-50 dark:bg-gray-800",
+    iconBg: "bg-gray-100 dark:bg-gray-800",
     iconColor: "text-gray-400 dark:text-gray-500",
     badgeBg: "bg-gray-100 dark:bg-gray-800",
     badgeColor: "text-gray-500 dark:text-gray-400",
@@ -45,7 +45,7 @@ export function SystemActivityTable() {
   const ra = t.adminPages.dashboard.recentActivity;
 
   return (
-    <div className={cn(portalCard, "shadow-sm p-6 animate-fade-up")}>
+    <div className="hr-glass-card p-6 animate-fade-up">
       <div className="flex items-center justify-between mb-4">
         <div>
           <h3 className={cn("text-base font-semibold", portalHeading)}>{ra.title}</h3>
@@ -71,7 +71,7 @@ export function SystemActivityTable() {
               return (
                 <tr
                   key={event.id}
-                  className={cn("transition-colors animate-fade-up", portalTableRow)}
+                  className="hr-table-row transition-colors animate-fade-up"
                   style={{ animationDelay: `${i * 40}ms` }}
                 >
                   <td className="px-4 py-3.5">

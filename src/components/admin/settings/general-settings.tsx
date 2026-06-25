@@ -164,7 +164,7 @@ export function GeneralSettings() {
       <button
         type="button"
         onClick={handleSave}
-        className="mt-6 flex w-full min-h-9 items-center justify-center gap-2 rounded-lg bg-[#6c47ff] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#5a3dd9] active:bg-[#4b2fbf]"
+        className="shimmer-button mt-6 flex w-full min-h-9 items-center justify-center gap-2 rounded-lg px-5 py-2.5 text-sm font-semibold text-white hr-cta-btn"
       >
         <Save size={14} />
         {g.saveBtn}

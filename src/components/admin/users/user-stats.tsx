@@ -5,7 +5,7 @@ import { useLanguage } from "@/context/language-context";
 import { getAdminUserStatus } from "@/lib/admin-user-display";
 import type { AdminUserListItem } from "@/types/admin-user";
 import { cn } from "@/lib/utils";
-import { portalCard, portalHeadingAlt, portalSubtextAlt } from "@/lib/portal-ui";
+import { portalHeadingAlt, portalSubtextAlt } from "@/lib/portal-ui";
 
 interface UserStatsProps {
   users: AdminUserListItem[];
@@ -25,22 +25,22 @@ export function UserStats({ users, totalCount, loading = false }: UserStatsProps
       label: s.totalUsers,
       value: loading ? "—" : totalCount,
       icon: Users2,
-      iconBg: "bg-[#f5f3ff] dark:bg-[#6c47ff]/10",
-      iconColor: "text-[#6c47ff]",
+      iconBg: "bg-violet-50 dark:bg-violet-950/40",
+      iconColor: "text-[#7C3AED] dark:text-[#a78bff]",
     },
     {
       label: s.activeUsers,
       value: loading ? "—" : active,
       icon: UserCheck,
-      iconBg: "bg-[#f5f3ff] dark:bg-[#6c47ff]/10",
-      iconColor: "text-[#6c47ff]",
+      iconBg: "bg-emerald-50 dark:bg-emerald-950/40",
+      iconColor: "text-emerald-600 dark:text-emerald-400",
     },
     {
       label: s.pendingApproval,
       value: loading ? "—" : pending,
       icon: Clock,
-      iconBg: "bg-[#f5f3ff] dark:bg-[#6c47ff]/10",
-      iconColor: "text-[#6c47ff]",
+      iconBg: "bg-amber-50 dark:bg-amber-950/40",
+      iconColor: "text-amber-600 dark:text-amber-400",
     },
   ];
 
@@ -51,11 +51,11 @@ export function UserStats({ users, totalCount, loading = false }: UserStatsProps
         return (
           <div
             key={st.label}
-            className={cn(portalCard, "flex animate-fade-up items-center gap-4 p-5 shadow-[0_4px_6px_-1px_rgba(0,0,0,0.1),0_2px_4px_-2px_rgba(0,0,0,0.1)] dark:shadow-none")}
+            className="hr-stat-card flex animate-fade-up items-center gap-4 p-5"
             style={{ animationDelay: `${i * 80}ms` }}
           >
             <div
-              className={cn(`flex h-11 w-11 shrink-0 items-center justify-center rounded-lg`, st.iconBg)}
+              className={cn("flex h-11 w-11 shrink-0 items-center justify-center rounded-xl shadow-sm ring-1 ring-black/5 dark:ring-white/10", st.iconBg)}
             >
               {loading ? (
                 <Loader2 size={18} className={cn("animate-spin", st.iconColor)} />

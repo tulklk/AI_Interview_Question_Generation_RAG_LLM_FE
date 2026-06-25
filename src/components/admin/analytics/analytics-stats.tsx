@@ -1,7 +1,7 @@
 import { Users, FileText, Zap, Download } from "lucide-react";
 import { analyticsStats } from "@/data/admin";
 import { cn } from "@/lib/utils";
-import { portalCard, portalHeading, portalSubtext } from "@/lib/portal-ui";
+import { portalHeading, portalSubtext } from "@/lib/portal-ui";
 
 const icons = [Users, FileText, Zap, Download];
 const iconBgs = [
@@ -25,11 +25,11 @@ export function AnalyticsStats() {
         return (
           <div
             key={stat.id}
-            className={cn(portalCard, "shadow-sm p-5 animate-fade-up")}
+            className="hr-stat-card p-5 animate-fade-up"
             style={{ animationDelay: `${i * 70}ms` }}
           >
             <div className="flex items-start justify-between mb-4">
-              <div className={cn(`w-11 h-11 rounded-lg flex items-center justify-center shrink-0`, iconBgs[i])}>
+              <div className={cn("w-11 h-11 rounded-xl flex items-center justify-center shrink-0 shadow-sm ring-1 ring-black/5 dark:ring-white/10", iconBgs[i])}>
                 <Icon size={20} className={iconColors[i]} />
               </div>
             </div>
