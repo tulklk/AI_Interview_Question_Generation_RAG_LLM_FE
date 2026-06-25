@@ -72,8 +72,11 @@ export function AdminAppShell({ children, breadcrumb, pageTitle }: AdminAppShell
             plan: "Admin",
           }}
         />
-        <main className="flex-1 overflow-y-auto bg-[#f5f7fb] dark:bg-[#0b0f1a]">
-          <div className="max-w-[1440px] mx-auto px-6 md:px-10 py-8">{children}</div>
+        <main className="flex-1 overflow-y-auto hr-main-bg relative">
+          <div className="hr-aurora-orb hr-aurora-orb--purple w-130 h-130 -top-20 -left-15" aria-hidden="true" />
+          <div className="hr-aurora-orb hr-aurora-orb--cyan w-100 h-100 bottom-[10%] -right-10" aria-hidden="true" />
+          <div className="hr-aurora-orb hr-aurora-orb--violet w-80 h-80 top-[40%] left-[30%]" aria-hidden="true" />
+          <div className="relative z-10 max-w-360 mx-auto px-6 md:px-10 py-8">{children}</div>
         </main>
       </div>
     </div>

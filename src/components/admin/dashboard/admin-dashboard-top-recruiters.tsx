@@ -3,14 +3,14 @@
 import { adminDashboardTopRecruiters } from "@/data/admin";
 import { useLanguage } from "@/context/language-context";
 import { cn } from "@/lib/utils";
-import { portalCard, portalDivider, portalHeadingAlt, portalSubtextAlt, portalTableRow } from "@/lib/portal-ui";
+import { portalDivider, portalHeadingAlt, portalSubtextAlt } from "@/lib/portal-ui";
 
 export function AdminDashboardTopRecruiters() {
   const { t } = useLanguage();
   const tr = t.adminPages.dashboard.topRecruiters;
 
   return (
-    <div className={cn(portalCard, "p-6 shadow-[0_4px_6px_-1px_rgba(0,0,0,0.1),0_2px_4px_-2px_rgba(0,0,0,0.1)] dark:shadow-none animate-fade-up")}>
+    <div className="hr-glass-card p-6 animate-fade-up">
       <div className="mb-4">
         <h3 className={cn("text-base font-bold", portalHeadingAlt)}>{tr.title}</h3>
         <p className={cn("mt-0.5 text-xs", portalSubtextAlt)}>{tr.subtitle}</p>
@@ -18,7 +18,7 @@ export function AdminDashboardTopRecruiters() {
 
       <div className={cn("overflow-hidden rounded-lg border", portalDivider)}>
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[520px] text-sm">
+          <table className="w-full min-w-130 text-sm">
             <thead className={cn("border-b bg-gray-50 dark:bg-gray-800/50", portalDivider)}>
               <tr>
                 <th className={cn("px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide", portalSubtextAlt)}>
@@ -39,11 +39,11 @@ export function AdminDashboardTopRecruiters() {
               {adminDashboardTopRecruiters.map((row, i) => (
                 <tr
                   key={row.email}
-                  className={cn("transition-colors animate-fade-up", portalTableRow)}
+                  className="hr-table-row transition-colors animate-fade-up"
                   style={{ animationDelay: `${i * 35}ms` }}
                 >
                   <td className="px-4 py-3.5">
-                    <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-[#f5f3ff] dark:bg-[#6c47ff]/10 text-xs font-bold text-[#6c47ff]">
+                    <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-[rgba(124,58,237,0.1)] dark:bg-[rgba(124,58,237,0.15)] text-xs font-bold text-[#7C3AED] dark:text-[#a78bff]">
                       {row.rank}
                     </span>
                   </td>

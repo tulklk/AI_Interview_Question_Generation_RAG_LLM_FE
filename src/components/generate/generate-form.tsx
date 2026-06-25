@@ -13,10 +13,11 @@ import {
   BookMarked,
 } from "lucide-react";
 import { JdInputCard } from "./jd-input-card";
-import { FileUploadArea } from "./file-upload-area";
+import { KbDocPicker } from "./kb-doc-picker";
 import { PlanEditCard } from "./plan-edit-card";
 import { ReviewQuestionsSection } from "@/components/results/review-questions-section";
 import type { PlanDraft, QuestionType, GeneratedQuestion } from "@/types/generation-session";
+import type { KnowledgeDocument } from "@/types/knowledge";
 import { useHrSubscription } from "@/context/hr-subscription-context";
 import { isOverPlanUsageQuota } from "@/data/hr-subscription";
 import { useLanguage } from "@/context/language-context";
@@ -106,6 +107,15 @@ function FlowStepIndicator({ currentStep }: { currentStep: number }) {
                     ? "hr-stepper-connector-done"
                     : "bg-gray-200 dark:bg-gray-700"
                 )}
+                style={
+                  stepNum < currentStep
+                    ? ({
+                        "--connector-delay": i === 0
+                          ? "0s"
+                          : `-${((FLOW_STEPS.length - 1 - i) * 0.9).toFixed(1)}s`,
+                      } as React.CSSProperties)
+                    : undefined
+                }
               />
             )}
           </div>
@@ -115,9 +125,30 @@ function FlowStepIndicator({ currentStep }: { currentStep: number }) {
   );
 }
 
-// ── Session persistence key ───────────────────────────────────────────────────
+// ── Session persistence keys ──────────────────────────────────────────────────
 
-const SESSION_KEY = "hr_gen_job";
+const SESSION_KEY      = "hr_gen_job";
+const SESSION_KEY_VIEW = "hr_gen_view";
+const SESSION_KEY_PLAN = "hr_gen_plan";
+const SESSION_KEY_JD   = "hr_gen_jd";
+
+function readSavedView(): FlowView {
+  if (typeof window === "undefined") return "form";
+  const v = localStorage.getItem(SESSION_KEY_VIEW);
+  return (v as FlowView) ?? "form";
+}
+
+function readSavedPlan(): PlanDraft | null {
+  if (typeof window === "undefined") return null;
+  try { return JSON.parse(localStorage.getItem(SESSION_KEY_PLAN) ?? "null"); }
+  catch { return null; }
+}
+
+function clearAllSessionKeys() {
+  [SESSION_KEY, SESSION_KEY_VIEW, SESSION_KEY_PLAN, SESSION_KEY_JD].forEach(
+    (k) => localStorage.removeItem(k)
+  );
+}
 
 // ── Main component ───────────────────────────────────────────────────────────
 
@@ -125,15 +156,15 @@ export function GenerateForm() {
   const { t }  = useLanguage();
   const { planId, limits, hasFeature } = useHrSubscription();
 
-  // ── Form inputs ──
-  const [view,    setView]    = useState<FlowView>("form");
-  const [jdText,  setJdText]  = useState("");
-  const [jdFile,  setJdFile]  = useState<File | null>(null);
-  const [note,    setNote]    = useState("");
+  // ── Form inputs — always default for SSR, restored from localStorage in useEffect ──
+  const [view,        setView]        = useState<FlowView>("form");
+  const [jdText,      setJdText]      = useState("");
+  const [selectedDoc, setSelectedDoc] = useState<KnowledgeDocument | null>(null);
+  const [note,        setNote]        = useState("");
 
   // ── Job state ──
-  const [jobId,     setJobId]     = useState<string | null>(null);
-  const [plan,      setPlan]      = useState<PlanDraft | null>(null);
+  const [jobId,  setJobId] = useState<string | null>(null);
+  const [plan,   setPlan]  = useState<PlanDraft | null>(null);
   const [questions, setQuestions] = useState<GeneratedQuestion[]>([]);
 
   // ── Polling state ──
@@ -167,21 +198,45 @@ export function GenerateForm() {
     };
   }, []);
 
-  // Persist jobId to localStorage so session survives navigation
+  // Persist session to localStorage
   useEffect(() => {
-    if (jobId) {
-      localStorage.setItem(SESSION_KEY, jobId);
-    } else {
-      localStorage.removeItem(SESSION_KEY);
-    }
+    if (jobId) localStorage.setItem(SESSION_KEY, jobId);
+    else localStorage.removeItem(SESSION_KEY);
   }, [jobId]);
 
-  // Restore session from localStorage on mount
+  useEffect(() => {
+    if (jobId && view !== "form") localStorage.setItem(SESSION_KEY_VIEW, view);
+    else localStorage.removeItem(SESSION_KEY_VIEW);
+  }, [view, jobId]);
+
+  useEffect(() => {
+    if (plan) localStorage.setItem(SESSION_KEY_PLAN, JSON.stringify(plan));
+    else localStorage.removeItem(SESSION_KEY_PLAN);
+  }, [plan]);
+
+  useEffect(() => {
+    if (jdText) localStorage.setItem(SESSION_KEY_JD, jdText);
+    else localStorage.removeItem(SESSION_KEY_JD);
+  }, [jdText]);
+
+  // Restore session on mount: read localStorage first (optimistic), then verify with API
   useEffect(() => {
     const savedId = localStorage.getItem(SESSION_KEY);
     if (!savedId) return;
 
-    setIsRestoring(true);
+    // Optimistic restore from localStorage — happens before API round-trip
+    const savedView = readSavedView();
+    const savedPlan = readSavedPlan();
+    const savedJd   = localStorage.getItem(SESSION_KEY_JD) ?? "";
+
+    setJobId(savedId);
+    if (savedJd)               setJdText(savedJd);
+    if (savedPlan)             setPlan(savedPlan);
+    if (savedView !== "form")  setView(savedView);
+
+    // Then verify actual server state (silently updates if status changed)
+    const hadView = savedView !== "form";
+    if (!hadView) setIsRestoring(true);
 
     (async () => {
       try {
@@ -196,7 +251,9 @@ export function GenerateForm() {
         const status = session.status;
 
         if (action === "REVIEW_PLAN" || status === "PLAN_PROPOSED") {
-          setPlan(session.planDraft ?? {
+          // Prefer locally-saved plan (has user edits) over server version
+          const localPlan = readSavedPlan();
+          setPlan(localPlan ?? session.planDraft ?? {
             role: "", level: "",
             questionCount: Math.min(10, limits.maxQuestionsPerRun),
             questionTypes: ["Technical", "Behavioral"] as QuestionType[],
@@ -357,12 +414,12 @@ export function GenerateForm() {
   }
 
   async function handleSubmitForm() {
-    if (!jdText.trim() && !jdFile) {
-      setFormError("Vui lòng nhập mô tả công việc hoặc tải lên file JD.");
+    if (!jdText.trim()) {
+      setFormError("Vui lòng nhập mô tả công việc.");
       return;
     }
     const wordCount = jdText.trim().split(/\s+/).filter(Boolean).length;
-    if (jdText.trim() && wordCount < 100 && !jdFile) {
+    if (wordCount < 100) {
       setFormError(`Mô tả công việc cần ít nhất 100 từ (hiện tại: ${wordCount} từ).`);
       return;
     }
@@ -371,11 +428,12 @@ export function GenerateForm() {
     setStatusLabel("Đang tạo job...");
 
     const jId = await createGenerationJob({
-      jobDescription:    jdText        || undefined,
-      hrNote:            note          || undefined,
+      jobDescription:    jdText               || undefined,
+      hrNote:            note                 || undefined,
       numberOfQuestions: Math.min(10, limits.maxQuestionsPerRun),
       difficulty:        "medium",
       questionTypes:     ["technical", "behavioral"],
+      ...(selectedDoc ? { knowledgeDocumentId: selectedDoc.id } : {}),
     });
 
     if (!jId) {
@@ -442,7 +500,7 @@ export function GenerateForm() {
 
   async function handleEditInputResubmit() {
     if (!jobId) return;
-    if (!jdText.trim() && !jdFile) {
+    if (!jdText.trim()) {
       setFormError("Vui lòng nhập JD.");
       return;
     }
@@ -458,9 +516,10 @@ export function GenerateForm() {
   function handleReset() {
     pollingActiveRef.current = false;
     if (pollingRef.current) clearTimeout(pollingRef.current);
+    clearAllSessionKeys();
     setView("form");
     setJdText("");
-    setJdFile(null);
+    setSelectedDoc(null);
     setNote("");
     setJobId(null);
     setPlan(null);
@@ -481,7 +540,7 @@ export function GenerateForm() {
 
   if (isRestoring) {
     return (
-      <div className="max-w-3xl flex flex-col items-center justify-center gap-3 py-16">
+      <div className="flex flex-col items-center justify-center gap-3 py-16">
         <Loader2 size={28} className="text-[#7C3AED] dark:text-[#a78bff] animate-spin" />
         <p className={cn("text-sm", portalSubtext)}>Đang khôi phục phiên làm việc…</p>
       </div>
@@ -492,7 +551,7 @@ export function GenerateForm() {
 
   if (view === "polling") {
     return (
-      <div className="max-w-3xl space-y-4 animate-fade-up">
+      <div className="space-y-4 animate-fade-up">
         <FlowStepIndicator currentStep={currentStep} />
         <div className="hr-glass-card p-12 flex flex-col items-center gap-5">
           <div className="w-14 h-14 rounded-2xl hr-loader-box flex items-center justify-center">
@@ -516,7 +575,7 @@ export function GenerateForm() {
 
   if (view === "plan_review" && plan) {
     return (
-      <div className="max-w-3xl space-y-4 animate-fade-up">
+      <div className="space-y-4 animate-fade-up">
         <FlowStepIndicator currentStep={currentStep} />
 
         {formError && (
@@ -541,7 +600,7 @@ export function GenerateForm() {
 
   if (view === "question_review" && jobId) {
     return (
-      <div className="max-w-3xl space-y-4 animate-fade-up">
+      <div className="space-y-4 animate-fade-up">
         <FlowStepIndicator currentStep={currentStep} />
 
         <div className="flex items-center gap-3">
@@ -582,7 +641,7 @@ export function GenerateForm() {
 
   if (view === "failed") {
     return (
-      <div className="max-w-3xl space-y-4 animate-fade-up">
+      <div className="space-y-4 animate-fade-up">
         <FlowStepIndicator currentStep={currentStep} />
 
         <div className="hr-glass-card p-8 space-y-4">
@@ -670,7 +729,7 @@ export function GenerateForm() {
 
   if (view === "draft_view") {
     return (
-      <div className="max-w-3xl space-y-4 animate-fade-up">
+      <div className="space-y-4 animate-fade-up">
         <FlowStepIndicator currentStep={5} />
         <div className="hr-glass-card p-8 flex flex-col items-center gap-4 text-center">
           <div className="w-12 h-12 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 flex items-center justify-center">
@@ -708,7 +767,7 @@ export function GenerateForm() {
   // ── Render: Form (Step 1) ─────────────────────────────────────────────────
 
   return (
-    <div className="max-w-3xl space-y-4">
+    <div className="space-y-4">
       <FlowStepIndicator currentStep={1} />
 
       {aiBlocked && (
@@ -742,7 +801,7 @@ export function GenerateForm() {
       </div>
 
       <div className="animate-fade-up" style={{ animationDelay: "60ms" }}>
-        <FileUploadArea onFileChange={setJdFile} />
+        <KbDocPicker selectedDocId={selectedDoc?.id ?? null} onSelect={setSelectedDoc} />
       </div>
 
       <div
@@ -769,9 +828,9 @@ export function GenerateForm() {
         const MIN_CHARS = 400;
         const trimmed = jdText.trim();
         const charCount = trimmed.length;
-        const tooShort = charCount > 0 && charCount < MIN_CHARS && !jdFile;
+        const tooShort = charCount > 0 && charCount < MIN_CHARS;
         const remaining = MIN_CHARS - charCount;
-        const jdValid = !!jdFile || charCount >= MIN_CHARS;
+        const jdValid = charCount >= MIN_CHARS;
         const submitDisabled = generateDisabled || !jdValid;
         return (
           <>
@@ -780,7 +839,7 @@ export function GenerateForm() {
                 {t.generatePage.jdInput.needMoreChars.replace("{{n}}", String(remaining))}
               </p>
             )}
-            {!trimmed && !jdFile && (
+            {!trimmed && (
               <p className="text-xs text-gray-400 dark:text-gray-500 -mt-1" style={{ animationDelay: "160ms" }}>
                 {t.generatePage.jdInput.minCharsHint}
               </p>

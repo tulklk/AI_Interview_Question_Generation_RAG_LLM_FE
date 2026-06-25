@@ -15,7 +15,7 @@ export default function HrGeneratePage() {
       pageTitle={gp.heading}
       breadcrumb={[{ label: "HR", href: "/hr/dashboard" }, { label: gp.heading }]}
     >
-      <div className="max-w-4xl mx-auto animate-fade-up">
+      <div className="animate-fade-up">
         <div className="mb-6">
           <h2 className={cn("text-2xl font-bold", portalHeading)}>{gp.heading}</h2>
           <p className={cn("text-sm mt-1", portalSubtext)}>{gp.subtext}</p>

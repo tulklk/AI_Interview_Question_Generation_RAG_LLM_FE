@@ -240,6 +240,7 @@ export async function createGenerationJob(payload: {
   difficulty?: string;
   questionTypes?: string[];
   skills?: string[];
+  knowledgeDocumentId?: string;
 }): Promise<string | null> {
   try {
     const { data } = await apiClient.post<CreateJobResponseData>(

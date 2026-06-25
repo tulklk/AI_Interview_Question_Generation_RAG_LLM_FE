@@ -12,14 +12,18 @@ import {
 import { cn } from "@/lib/utils";
 import { portalHeadingAlt, portalSubtextAlt } from "@/lib/portal-ui";
 import { BookOpen } from "lucide-react";
+import { useLanguage } from "@/context/language-context";
 
 export default function AdminKnowledgePage() {
+  const { t } = useLanguage();
+  const kb = t.knowledgePage;
+
   return (
     <AdminAppShell
-      pageTitle="Tài liệu kiến thức"
+      pageTitle={kb.adminTitle}
       breadcrumb={[
         { label: "Admin", href: "/admin/dashboard" },
-        { label: "Tài liệu kiến thức" },
+        { label: kb.breadcrumbLabel },
       ]}
     >
       <div className="mb-8 animate-fade-up">
@@ -28,11 +32,11 @@ export default function AdminKnowledgePage() {
             <BookOpen size={20} className="text-[#6c47ff]" />
           </div>
           <h2 className={cn("text-[30px] font-bold leading-9", portalHeadingAlt)}>
-            Tài liệu kiến thức
+            {kb.adminTitle}
           </h2>
         </div>
         <p className={cn("mt-2 text-base leading-6 ml-[52px]", portalSubtextAlt)}>
-          Quản lý tài liệu hệ thống toàn cục — AI sẽ tham chiếu khi tạo câu hỏi cho tất cả HR.
+          {kb.adminSubtext}
         </p>
       </div>
 
