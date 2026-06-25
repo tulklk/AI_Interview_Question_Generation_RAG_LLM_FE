@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { FileText, Calendar, ArrowUpDown, Eye, Download, Trash2, Inbox, Loader2, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLanguage } from "@/context/language-context";
 import { useHrSubscription } from "@/context/hr-subscription-context";
 import { getLocalSessions, toGenerationSession } from "@/lib/local-history";
-import { getGenerationPlans, deleteGenerationPlan, exportPlanQuestions } from "@/lib/api/generation";
+import { getGenerationJobs, getGenerationPlans, deleteGenerationPlan, exportPlanQuestions } from "@/lib/api/generation";
 import type { GenerationSession } from "@/types/generation-session";
 import { SessionStatusBadge } from "@/components/history/session-status-badge";
 import {
@@ -56,9 +57,9 @@ function DeleteConfirmModal({
   onCancel: () => void;
   dm: { title: string; subtitle: string; body: string; cancel: string; confirm: string };
 }) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onCancel} />
+  return createPortal(
+    <div className="fixed inset-0 z-9999 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onCancel} />
       <div className="relative w-full max-w-md rounded-2xl bg-white dark:bg-gray-900 shadow-2xl border border-gray-200 dark:border-gray-700 p-6 animate-fade-up">
         <div className="flex items-center gap-4 mb-4">
           <div className="w-11 h-11 rounded-xl bg-red-100 dark:bg-red-950/50 flex items-center justify-center shrink-0">
@@ -93,7 +94,8 @@ function DeleteConfirmModal({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
@@ -154,13 +156,37 @@ export function HistoryTable({ search = "", role = "", level = "" }: HistoryTabl
       .filter((s) => !s.backendJobId)
       .map(toGenerationSession);
 
-    // Merge with backend sessions; plans API has full metadata (jobTitle, role, level)
-    getGenerationPlans()
-      .then((backendSessions) => {
-        const merged = [...backendSessions, ...localOnly].sort(
-          (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-        );
-        setSessions(merged);
+    // Fetch all jobs (all statuses including in-progress), then enrich with
+    // level/jobTitle metadata from plans API for completed sessions.
+    getGenerationJobs()
+      .then((allJobs) => {
+        const jobMap = new Map(allJobs.map((j) => [j.id, j]));
+
+        // Enrich completed sessions with level data from plans API (best-effort)
+        getGenerationPlans()
+          .then((plans) => {
+            for (const plan of plans) {
+              const existing = jobMap.get(plan.id);
+              if (existing) {
+                jobMap.set(plan.id, {
+                  ...existing,
+                  jobTitle: plan.jobTitle || existing.jobTitle,
+                  planDraft: existing.planDraft
+                    ? { ...existing.planDraft, level: plan.planDraft?.level || existing.planDraft.level }
+                    : plan.planDraft,
+                });
+              } else {
+                jobMap.set(plan.id, plan);
+              }
+            }
+          })
+          .catch(() => { /* plans API failed — level may be empty, acceptable */ })
+          .finally(() => {
+            const merged = [...jobMap.values(), ...localOnly].sort(
+              (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+            );
+            setSessions(merged);
+          });
       })
       .catch(() => {
         // Backend unavailable — show all local sessions as fallback

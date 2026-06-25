@@ -115,6 +115,10 @@ function FlowStepIndicator({ currentStep }: { currentStep: number }) {
   );
 }
 
+// ── Session persistence key ───────────────────────────────────────────────────
+
+const SESSION_KEY = "hr_gen_job";
+
 // ── Main component ───────────────────────────────────────────────────────────
 
 export function GenerateForm() {
@@ -148,6 +152,9 @@ export function GenerateForm() {
   const [canRetryQs,     setCanRetryQs]     = useState(false);
   const [canEditInput,   setCanEditInput]   = useState(false);
 
+  // ── Session restore state ──
+  const [isRestoring, setIsRestoring] = useState(false);
+
   const quotaBlocked     = isOverPlanUsageQuota(planId);
   const aiBlocked        = !hasFeature("aiPoweredGeneration");
   const generateDisabled = quotaBlocked || aiBlocked;
@@ -158,6 +165,82 @@ export function GenerateForm() {
       pollingActiveRef.current = false;
       if (pollingRef.current) clearTimeout(pollingRef.current);
     };
+  }, []);
+
+  // Persist jobId to localStorage so session survives navigation
+  useEffect(() => {
+    if (jobId) {
+      localStorage.setItem(SESSION_KEY, jobId);
+    } else {
+      localStorage.removeItem(SESSION_KEY);
+    }
+  }, [jobId]);
+
+  // Restore session from localStorage on mount
+  useEffect(() => {
+    const savedId = localStorage.getItem(SESSION_KEY);
+    if (!savedId) return;
+
+    setIsRestoring(true);
+
+    (async () => {
+      try {
+        const session = await getGenerationJob(savedId);
+        if (!session) {
+          localStorage.removeItem(SESSION_KEY);
+          return;
+        }
+
+        setJobId(savedId);
+        const action = session.suggestedAction ?? "";
+        const status = session.status;
+
+        if (action === "REVIEW_PLAN" || status === "PLAN_PROPOSED") {
+          setPlan(session.planDraft ?? {
+            role: "", level: "",
+            questionCount: Math.min(10, limits.maxQuestionsPerRun),
+            questionTypes: ["Technical", "Behavioral"] as QuestionType[],
+            topics: [],
+          });
+          setView("plan_review");
+        } else if (action === "REVIEW_QUESTIONS" || status === "COMPLETED") {
+          const qs = await getJobQuestions(savedId);
+          setQuestions(qs.length ? qs : session.generatedQuestions ?? []);
+          setView("question_review");
+        } else if (action === "VIEW_DRAFT" || status === "DRAFT") {
+          setView("draft_view");
+        } else if (action === "RETRY_PLAN") {
+          setFailureMessage(session.failureMessage ?? "Tạo plan thất bại.");
+          setCanRetryPlan(true);
+          setView("failed");
+        } else if (action === "RETRY_QUESTIONS") {
+          setFailureMessage(session.failureMessage ?? "Tạo câu hỏi thất bại.");
+          setCanRetryQs(true);
+          setView("failed");
+        } else if (action === "EDIT_INPUT") {
+          setFailureMessage(session.failureMessage ?? "Có lỗi xảy ra với input.");
+          setCanEditInput(true);
+          setView("failed");
+        } else if (status === "FAILED") {
+          setFailureMessage(session.failureMessage ?? "Đã xảy ra lỗi.");
+          setCanRetryPlan(session.canRetryPlan ?? false);
+          setCanRetryQs(session.canRetryQuestions ?? false);
+          setCanEditInput(session.canEditInput ?? false);
+          setView("failed");
+        } else if (session.isPolling || ["QUEUED", "PLAN_QUEUED"].includes(status)) {
+          startPolling(savedId, "plan");
+        } else if (["QUESTION_QUEUED", "QUESTION_PROCESSING", "PROCESSING", "CONFIRMED"].includes(status)) {
+          startPolling(savedId, "questions");
+        } else {
+          localStorage.removeItem(SESSION_KEY);
+        }
+      } catch {
+        localStorage.removeItem(SESSION_KEY);
+      } finally {
+        setIsRestoring(false);
+      }
+    })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // ── Polling loop ──────────────────────────────────────────────────────────
@@ -393,6 +476,17 @@ export function GenerateForm() {
   // ── Computed ──────────────────────────────────────────────────────────────
 
   const currentStep = viewToStep(view, pollingPhase);
+
+  // ── Render: Restoring session ─────────────────────────────────────────────
+
+  if (isRestoring) {
+    return (
+      <div className="max-w-3xl flex flex-col items-center justify-center gap-3 py-16">
+        <Loader2 size={28} className="text-[#7C3AED] dark:text-[#a78bff] animate-spin" />
+        <p className={cn("text-sm", portalSubtext)}>Đang khôi phục phiên làm việc…</p>
+      </div>
+    );
+  }
 
   // ── Render: Polling ───────────────────────────────────────────────────────
 
