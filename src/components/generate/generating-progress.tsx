@@ -29,7 +29,7 @@ export function GeneratingProgress() {
   );
 
   return (
-    <div className={cn(portalCard, "shadow-sm px-8 py-12 flex flex-col items-center max-w-xl mx-auto w-full animate-scale-in")}>
+    <div className={cn(portalCard, "shadow-sm px-8 py-12 flex flex-col items-center w-full animate-scale-in")}>
       <div className={cn("w-16 h-16 rounded-xl flex items-center justify-center mb-5", portalIconWell, "bg-indigo-50 dark:bg-indigo-950/40")}>
         <Sparkles size={28} className="text-primary animate-pulse" />
       </div>
