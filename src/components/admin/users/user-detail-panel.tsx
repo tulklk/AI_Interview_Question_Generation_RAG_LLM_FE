@@ -127,8 +127,8 @@ export function UserDetailPanel({
 
           <div className="flex-1 overflow-y-auto px-5 py-4">
             {loading && (
-              <div className="flex min-h-[200px] items-center justify-center">
-                <Loader2 size={28} className="animate-spin text-[#6c47ff]" />
+              <div className="flex min-h-50 items-center justify-center">
+                <Loader2 size={28} className="animate-spin text-[#7C3AED]" />
               </div>
             )}
 
@@ -139,7 +139,7 @@ export function UserDetailPanel({
                   <button
                     type="button"
                     onClick={onRetry}
-                    className="mt-3 text-sm font-semibold text-[#6c47ff] hover:underline"
+                    className="mt-3 text-sm font-semibold text-[#7C3AED] dark:text-[#a78bff] hover:underline"
                   >
                     {u.retry}
                   </button>

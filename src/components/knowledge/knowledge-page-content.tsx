@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
-  Upload,
   FileText,
   Trash2,
   RotateCcw,
@@ -17,8 +16,9 @@ import {
   FilePlus2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { portalHeading, portalSubtext, portalInput, portalDivider } from "@/lib/portal-ui";
+import { portalHeading, portalSubtext, portalInput } from "@/lib/portal-ui";
 import type { KnowledgeDocument, DocumentStatus } from "@/types/knowledge";
+import { useLanguage } from "@/context/language-context";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -53,16 +53,6 @@ function formatBytes(bytes?: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-function formatDate(iso: string): string {
-  const d = new Date(iso);
-  const now = new Date();
-  const diff = Math.floor((now.getTime() - d.getTime()) / 86400000);
-  if (diff === 0) return "Hôm nay";
-  if (diff === 1) return "Hôm qua";
-  if (diff < 7) return `${diff} ngày trước`;
-  return d.toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric" });
-}
-
 function fileIcon(mimeType?: string): string {
   if (!mimeType) return "📄";
   if (mimeType.includes("pdf")) return "📕";
@@ -75,29 +65,32 @@ function fileIcon(mimeType?: string): string {
 // ---------------------------------------------------------------------------
 
 function StatusBadge({ status }: { status: DocumentStatus }) {
+  const { t } = useLanguage();
+  const kb = t.knowledgePage;
+
   const map: Record<DocumentStatus, { label: string; className: string; icon: React.ReactNode }> = {
     READY: {
-      label: "Sẵn sàng",
+      label: kb.statusReady,
       className: "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800",
       icon: <CheckCircle2 size={11} />,
     },
     INGESTING: {
-      label: "Đang xử lý",
+      label: kb.statusIngesting,
       className: "bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800",
       icon: <Loader2 size={11} className="animate-spin" />,
     },
     PROCESSING: {
-      label: "Đang xử lý",
+      label: kb.statusProcessing,
       className: "bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800",
       icon: <Loader2 size={11} className="animate-spin" />,
     },
     PENDING: {
-      label: "Chờ xử lý",
+      label: kb.statusPending,
       className: "bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-800",
       icon: <Loader2 size={11} className="animate-spin" />,
     },
     FAILED: {
-      label: "Thất bại",
+      label: kb.statusFailed,
       className: "bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400 border-red-200 dark:border-red-800",
       icon: <AlertCircle size={11} />,
     },
@@ -128,14 +121,27 @@ function DocumentCard({
   deleting: boolean;
   reingesting: boolean;
 }) {
+  const { t } = useLanguage();
+  const kb = t.knowledgePage;
+
   const isProcessing = doc.status === "INGESTING" || doc.status === "PROCESSING" || doc.status === "PENDING";
+
+  function formatDate(iso: string): string {
+    const d = new Date(iso);
+    const now = new Date();
+    const diff = Math.floor((now.getTime() - d.getTime()) / 86400000);
+    if (diff === 0) return kb.today;
+    if (diff === 1) return kb.yesterday;
+    if (diff < 7) return kb.daysAgo.replace("{{n}}", String(diff));
+    return d.toLocaleDateString(undefined, { day: "2-digit", month: "2-digit", year: "numeric" });
+  }
+
   return (
     <div className={cn(
       "group relative flex flex-col gap-3 p-4 rounded-xl border transition-all duration-200",
       "bg-white dark:bg-gray-900/80 border-gray-100 dark:border-gray-800",
       "hover:border-violet-200 dark:hover:border-violet-800 hover:shadow-md dark:hover:shadow-violet-950/20",
     )}>
-      {/* Header */}
       <div className="flex items-start gap-3">
         <div className={cn(
           "w-10 h-10 rounded-xl flex items-center justify-center shrink-0 text-lg",
@@ -158,20 +164,18 @@ function DocumentCard({
               <span className={cn("text-[11px]", portalSubtext)}>{formatBytes(doc.fileSize)}</span>
             )}
             {doc.pageCount && (
-              <span className={cn("text-[11px]", portalSubtext)}>{doc.pageCount} trang</span>
+              <span className={cn("text-[11px]", portalSubtext)}>{doc.pageCount} {kb.pages}</span>
             )}
           </div>
         </div>
       </div>
 
-      {/* Error message */}
       {doc.status === "FAILED" && doc.errorMessage && (
         <p className="text-xs text-red-500 dark:text-red-400 bg-red-50 dark:bg-red-950/30 rounded-lg px-3 py-2 line-clamp-2">
           {doc.errorMessage}
         </p>
       )}
 
-      {/* Footer */}
       <div className="flex items-center justify-between mt-auto pt-2 border-t border-gray-100 dark:border-gray-800">
         <span className={cn("text-[11px]", portalSubtext)}>{formatDate(doc.createdAt)}</span>
 
@@ -181,7 +185,7 @@ function DocumentCard({
               type="button"
               onClick={() => onReingest(doc.id)}
               disabled={reingesting}
-              title="Xử lý lại"
+              title={kb.reingestTitle}
               className="p-1.5 rounded-lg text-gray-400 hover:text-violet-600 hover:bg-violet-50 dark:hover:bg-violet-950/30 transition-colors disabled:opacity-50"
             >
               {reingesting ? <Loader2 size={13} className="animate-spin" /> : <RotateCcw size={13} />}
@@ -192,7 +196,7 @@ function DocumentCard({
               type="button"
               onClick={() => onReingest(doc.id)}
               disabled={reingesting}
-              title="Thử lại"
+              title={kb.retryTitle}
               className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/30 transition-colors disabled:opacity-50"
             >
               <RefreshCw size={13} />
@@ -202,7 +206,7 @@ function DocumentCard({
             type="button"
             onClick={() => onDelete(doc.id)}
             disabled={deleting}
-            title="Xóa tài liệu"
+            title={kb.deleteDocTitle}
             className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors disabled:opacity-50"
           >
             {deleting ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
@@ -226,6 +230,8 @@ function UploadZone({
   uploading: boolean;
   uploadingFileName: string;
 }) {
+  const { t } = useLanguage();
+  const kb = t.knowledgePage;
   const [dragging, setDragging] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -278,19 +284,18 @@ function UploadZone({
 
       {uploading ? (
         <div className="space-y-1">
-          <p className={cn("text-sm font-semibold", portalHeading)}>Đang tải lên...</p>
+          <p className={cn("text-sm font-semibold", portalHeading)}>{kb.uploadingLabel}</p>
           <p className={cn("text-xs truncate max-w-65", portalSubtext)}>{uploadingFileName}</p>
         </div>
       ) : (
         <div className="space-y-1">
-          <p className={cn("text-sm font-semibold", portalHeading)}>
-            Kéo thả tài liệu vào đây
-          </p>
+          <p className={cn("text-sm font-semibold", portalHeading)}>{kb.dragDropLabel}</p>
           <p className={cn("text-xs", portalSubtext)}>
-            hoặc <span className="text-violet-600 dark:text-violet-400 font-medium">nhấp để chọn file</span>
+            {kb.dragDropOr}{" "}
+            <span className="text-violet-600 dark:text-violet-400 font-medium">{kb.dragDropClick}</span>
           </p>
           <p className={cn("text-[11px] mt-1", portalSubtext)}>
-            PDF, DOCX, DOC, TXT · Tối đa {MAX_FILE_MB} MB mỗi file
+            {kb.dragDropHint.replace("{{n}}", String(MAX_FILE_MB))}
           </p>
         </div>
       )}
@@ -311,6 +316,9 @@ function DeleteModal({
   onConfirm: () => void;
   onCancel: () => void;
 }) {
+  const { t } = useLanguage();
+  const kb = t.knowledgePage;
+
   return createPortal(
     <div className="fixed inset-0 z-9999 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onCancel} />
@@ -323,8 +331,8 @@ function DeleteModal({
             <Trash2 size={18} className="text-red-500" />
           </div>
           <div>
-            <p className={cn("text-sm font-semibold", portalHeading)}>Xóa tài liệu?</p>
-            <p className={cn("text-xs mt-0.5", portalSubtext)}>Hành động này không thể hoàn tác.</p>
+            <p className={cn("text-sm font-semibold", portalHeading)}>{kb.deleteTitle}</p>
+            <p className={cn("text-xs mt-0.5", portalSubtext)}>{kb.deleteDesc}</p>
           </div>
         </div>
         <p className={cn("text-xs px-3 py-2 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 font-medium truncate", portalHeading)}>
@@ -332,11 +340,11 @@ function DeleteModal({
         </p>
         <div className="flex gap-2 mt-4 justify-end">
           <button onClick={onCancel} className="px-4 py-2 text-sm font-medium rounded-xl border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
-            Hủy
+            {kb.deleteCancel}
           </button>
           <button onClick={onConfirm} className="px-4 py-2 text-sm font-semibold rounded-xl bg-red-500 hover:bg-red-600 text-white transition-colors flex items-center gap-2">
             <Trash2 size={13} />
-            Xóa
+            {kb.deleteConfirm}
           </button>
         </div>
       </div>
@@ -356,6 +364,9 @@ export function KnowledgePageContent({
   onReingest,
   onRefreshDoc,
 }: KnowledgePageContentProps) {
+  const { t } = useLanguage();
+  const kb = t.knowledgePage;
+
   const [docs, setDocs] = useState<KnowledgeDocument[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -366,7 +377,6 @@ export function KnowledgePageContent({
   const [confirmDelete, setConfirmDelete] = useState<KnowledgeDocument | null>(null);
   const [search, setSearch] = useState("");
 
-  // Poll processing documents every 5s
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const loadDocs = useCallback(async () => {
@@ -407,7 +417,7 @@ export function KnowledgePageContent({
   async function handleFiles(files: File[]) {
     const tooBig = files.find((f) => f.size > MAX_FILE_MB * 1024 * 1024);
     if (tooBig) {
-      setUploadError(`File "${tooBig.name}" vượt quá ${MAX_FILE_MB} MB.`);
+      setUploadError(kb.fileTooLarge.replace("{{name}}", tooBig.name).replace("{{n}}", String(MAX_FILE_MB)));
       return;
     }
     setUploadError(null);
@@ -418,7 +428,7 @@ export function KnowledgePageContent({
       if (result) {
         setDocs((prev) => [result, ...prev]);
       } else {
-        setUploadError(`Không thể tải lên "${file.name}". Vui lòng thử lại.`);
+        setUploadError(kb.uploadFailed.replace("{{name}}", file.name));
       }
       setUploading(false);
       setUploadingFileName("");
@@ -470,9 +480,9 @@ export function KnowledgePageContent({
           {/* Stats row */}
           <div className="grid grid-cols-3 gap-2">
             {[
-              { label: "Sẵn sàng", value: readyCount, color: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-50 dark:bg-emerald-950/30" },
-              { label: "Xử lý", value: processingCount, color: "text-blue-600 dark:text-blue-400", bg: "bg-blue-50 dark:bg-blue-950/30" },
-              { label: "Lỗi", value: failedCount, color: "text-red-500 dark:text-red-400", bg: "bg-red-50 dark:bg-red-950/30" },
+              { label: kb.statsReady, value: readyCount, color: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-50 dark:bg-emerald-950/30" },
+              { label: kb.statsProcessing, value: processingCount, color: "text-blue-600 dark:text-blue-400", bg: "bg-blue-50 dark:bg-blue-950/30" },
+              { label: kb.statsFailed, value: failedCount, color: "text-red-500 dark:text-red-400", bg: "bg-red-50 dark:bg-red-950/30" },
             ].map(({ label, value, color, bg }) => (
               <div key={label} className={cn("rounded-xl p-3 text-center", bg)}>
                 <p className={cn("text-xl font-bold", color)}>{value}</p>
@@ -486,7 +496,7 @@ export function KnowledgePageContent({
             <FileText size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
             <input
               type="text"
-              placeholder="Tìm tài liệu..."
+              placeholder={kb.searchPlaceholder}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className={cn(
@@ -506,7 +516,7 @@ export function KnowledgePageContent({
               <div className="flex flex-col items-center gap-2 py-10 text-center">
                 <BookOpen size={28} className="text-gray-300 dark:text-gray-600" />
                 <p className={cn("text-sm", portalSubtext)}>
-                  {search ? "Không tìm thấy tài liệu." : "Chưa có tài liệu nào."}
+                  {search ? kb.emptySearch : kb.emptyList}
                 </p>
               </div>
             ) : (
@@ -533,7 +543,7 @@ export function KnowledgePageContent({
           <div className="hr-glass-card p-6">
             <div className="flex items-center gap-2 mb-4">
               <FilePlus2 size={18} className="text-violet-500" />
-              <h3 className={cn("text-sm font-semibold", portalHeading)}>Thêm tài liệu</h3>
+              <h3 className={cn("text-sm font-semibold", portalHeading)}>{kb.uploadSection}</h3>
             </div>
 
             {uploadError && (
@@ -554,17 +564,13 @@ export function KnowledgePageContent({
           <div className="hr-glass-card p-6">
             <div className="flex items-center gap-2 mb-4">
               <BookOpen size={18} className="text-violet-500" />
-              <h3 className={cn("text-sm font-semibold", portalHeading)}>Cách hoạt động</h3>
+              <h3 className={cn("text-sm font-semibold", portalHeading)}>{kb.howItWorksTitle}</h3>
             </div>
             <ol className="space-y-3">
-              {[
-                { n: 1, title: "Upload tài liệu", desc: "Tải lên JD, tài liệu kỹ thuật, hoặc tài liệu nội bộ định dạng PDF/DOCX." },
-                { n: 2, title: "Hệ thống xử lý", desc: "AI sẽ phân tích và lập chỉ mục nội dung tài liệu để dùng làm nguồn RAG." },
-                { n: 3, title: "Tạo câu hỏi thông minh", desc: "Khi generate câu hỏi, AI sẽ tham chiếu tài liệu để tạo câu hỏi chính xác và phù hợp hơn." },
-              ].map(({ n, title, desc }) => (
-                <li key={n} className="flex gap-3">
+              {kb.howItWorks.map(({ title, desc }, i) => (
+                <li key={i} className="flex gap-3">
                   <span className="w-6 h-6 rounded-full bg-violet-100 dark:bg-violet-900/40 text-violet-600 dark:text-violet-400 text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">
-                    {n}
+                    {i + 1}
                   </span>
                   <div>
                     <p className={cn("text-sm font-medium", portalHeading)}>{title}</p>
@@ -577,13 +583,15 @@ export function KnowledgePageContent({
 
           {/* Supported formats */}
           <div className={cn("rounded-xl border px-4 py-3 flex flex-wrap gap-2 items-center", "border-gray-100 dark:border-gray-800 bg-gray-50/60 dark:bg-gray-900/40")}>
-            <span className={cn("text-xs font-medium", portalSubtext)}>Định dạng hỗ trợ:</span>
+            <span className={cn("text-xs font-medium", portalSubtext)}>{kb.supportedFormats}</span>
             {["PDF", "DOCX", "DOC", "TXT"].map((f) => (
               <span key={f} className="text-xs font-semibold px-2 py-0.5 rounded-md bg-violet-50 dark:bg-violet-950/40 text-violet-600 dark:text-violet-400">
                 {f}
               </span>
             ))}
-            <span className={cn("text-xs ml-auto", portalSubtext)}>Tối đa {MAX_FILE_MB} MB</span>
+            <span className={cn("text-xs ml-auto", portalSubtext)}>
+              {kb.maxSize.replace("{{n}}", String(MAX_FILE_MB))}
+            </span>
           </div>
         </div>
       </div>

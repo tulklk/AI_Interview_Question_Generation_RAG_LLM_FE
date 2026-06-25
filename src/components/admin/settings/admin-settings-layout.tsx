@@ -9,7 +9,6 @@ import { PermissionsSection } from "./permissions-section";
 import { AdminNotificationsSection } from "./admin-notifications-section";
 import type { AdminSettingsTab } from "@/types/admin";
 import { useLanguage } from "@/context/language-context";
-import { portalCard } from "@/lib/portal-ui";
 
 const tabIcons: Record<AdminSettingsTab, typeof Settings> = {
   general: Settings,
@@ -42,23 +41,38 @@ export function AdminSettingsLayout() {
 
   return (
     <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[220px_1fr]">
-      <nav className={cn(portalCard, "sticky top-4 animate-slide-left p-2 shadow-[0_4px_6px_-1px_rgba(0,0,0,0.1),0_2px_4px_-2px_rgba(0,0,0,0.1)] dark:shadow-none")}>
+      <nav className="hr-glass-card sticky top-4 animate-slide-left p-2">
         <ul className="space-y-0.5">
           {tabList.map(({ id, label }) => {
             const Icon = tabIcons[id];
+            const isActive = activeTab === id;
             return (
               <li key={id}>
                 <button
                   type="button"
                   onClick={() => setActiveTab(id)}
                   className={cn(
-                    "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors text-left",
-                    activeTab === id
-                      ? "bg-[#6c47ff] text-white"
-                      : "text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-800 dark:hover:text-gray-200"
+                    "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 text-left",
+                    isActive
+                      ? "hr-nav-active text-[#7C3AED] dark:text-[#a78bff] font-semibold"
+                      : "text-gray-600 dark:text-gray-400 hover:bg-[rgba(124,58,237,0.06)] dark:hover:bg-[rgba(124,58,237,0.08)] hover:text-charcoal dark:hover:text-gray-100"
                   )}
                 >
-                  <Icon size={16} className="shrink-0" />
+                  <div
+                    className={cn(
+                      "w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-all duration-200",
+                      isActive
+                        ? "hr-icon-box"
+                        : "bg-gray-100 dark:bg-gray-800 group-hover:bg-[rgba(124,58,237,0.08)]"
+                    )}
+                  >
+                    <Icon
+                      size={15}
+                      className={cn(
+                        isActive ? "text-[#7C3AED] dark:text-[#a78bff]" : "text-gray-400 dark:text-gray-500"
+                      )}
+                    />
+                  </div>
                   {label}
                 </button>
               </li>
@@ -67,7 +81,7 @@ export function AdminSettingsLayout() {
         </ul>
       </nav>
 
-      <div key={activeTab} className={cn(portalCard, "animate-scale-in p-6 shadow-[0_4px_6px_-1px_rgba(0,0,0,0.1),0_2px_4px_-2px_rgba(0,0,0,0.1)] dark:shadow-none")}>
+      <div key={activeTab} className="hr-glass-card animate-scale-in p-6">
         <TabContent tab={activeTab} />
       </div>
     </div>

@@ -14,7 +14,7 @@ import { adminCategoryStats } from "@/data/admin";
 import { useLanguage } from "@/context/language-context";
 import { useChartTheme } from "@/hooks/use-chart-theme";
 import { cn } from "@/lib/utils";
-import { portalCard, portalHeadingAlt, portalSubtextAlt } from "@/lib/portal-ui";
+import { portalHeadingAlt, portalSubtextAlt } from "@/lib/portal-ui";
 
 const BAR_COLORS = ["#6c47ff", "#7c5cf0", "#957aed", "#a78bfa", "#c7b9ff"];
 
@@ -31,7 +31,7 @@ export function AdminDashboardCategoryMix() {
   const maxCount = Math.max(...data.map((d) => d.count), 1);
 
   return (
-    <div className={cn(portalCard, "flex flex-col p-6 shadow-[0_4px_6px_-1px_rgba(0,0,0,0.1),0_2px_4px_-2px_rgba(0,0,0,0.1)] dark:shadow-none animate-fade-up")}>
+    <div className="hr-glass-card flex flex-col p-6 animate-fade-up">
       <div className="mb-1">
         <h3 className={cn("text-base font-bold", portalHeadingAlt)}>{c.title}</h3>
         <p className={cn("mt-0.5 text-xs", portalSubtextAlt)}>{c.subtitle}</p>

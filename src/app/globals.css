@@ -1922,10 +1922,73 @@ body {
 .hr-stepper-active {
   background: linear-gradient(135deg, #7C3AED 0%, #6c47ff 100%);
   box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.18), 0 2px 8px -2px rgba(124, 58, 237, 0.42);
+  position: relative;
+}
+
+/* Pulsing ring that expands and fades out */
+.hr-stepper-active::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  border: 2px solid rgba(124, 58, 237, 0.75);
+  animation: stepper-active-ping 1.5s ease-out infinite;
+  pointer-events: none;
+}
+
+/* Second, slower ring for depth */
+.hr-stepper-active::before {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  border: 2px solid rgba(124, 58, 237, 0.4);
+  animation: stepper-active-ping 1.5s ease-out 0.5s infinite;
+  pointer-events: none;
+}
+
+@keyframes stepper-active-ping {
+  0%   { transform: scale(1);    opacity: 1; }
+  70%  { transform: scale(1.7);  opacity: 0; }
+  100% { transform: scale(1.7);  opacity: 0; }
 }
 
 .hr-stepper-connector-done {
-  background: linear-gradient(90deg, #10B981, rgba(16, 185, 129, 0.4));
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(90deg, #059669, #10B981, #34d399);
+}
+
+/*
+  Cascade shimmer — uses NEGATIVE delays so every loop stays in correct order:
+    bar 0 (i=0): delay =  0s   → sweeps at t=0.0–0.9s
+    bar 1 (i=1): delay = -2.7s → sweeps at t=0.9–1.8s
+    bar 2 (i=2): delay = -1.8s → sweeps at t=1.8–2.7s
+    bar 3 (i=3): delay = -0.9s → sweeps at t=2.7–3.6s
+  All share the same 3.6s duration, so they stay in phase permanently.
+*/
+.hr-stepper-connector-done::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.45) 40%,
+    rgba(255, 255, 255, 0.70) 50%,
+    rgba(255, 255, 255, 0.45) 60%,
+    transparent 100%
+  );
+  transform: translateX(-100%);
+  animation: stepper-sweep-cascade 3.6s ease-in-out infinite;
+  animation-delay: var(--connector-delay, 0s);
+}
+
+@keyframes stepper-sweep-cascade {
+  0%    { transform: translateX(-100%); }
+  25%   { transform: translateX(200%);  }
+  25.1% { transform: translateX(-100%); }
+  100%  { transform: translateX(-100%); }
 }
 
 /* HR Polling loader box — glow on icon container */

@@ -21,7 +21,7 @@ export function ReviewPageClient({ session, draftQuestions, isDraftView = false 
   const gsp = t.generationSessionPage;
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="space-y-6">
       {/* Page header */}
       <div className="animate-fade-up">
         <Link
