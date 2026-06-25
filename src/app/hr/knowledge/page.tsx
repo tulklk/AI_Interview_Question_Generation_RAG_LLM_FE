@@ -12,14 +12,18 @@ import {
 import { cn } from "@/lib/utils";
 import { portalHeading, portalSubtext } from "@/lib/portal-ui";
 import { BookOpen } from "lucide-react";
+import { useLanguage } from "@/context/language-context";
 
 export default function HrKnowledgePage() {
+  const { t } = useLanguage();
+  const kb = t.knowledgePage;
+
   return (
     <AppShell
-      pageTitle="Tài liệu kiến thức"
+      pageTitle={kb.hrTitle}
       breadcrumb={[
         { label: "HR", href: "/hr/dashboard" },
-        { label: "Tài liệu kiến thức" },
+        { label: kb.breadcrumbLabel },
       ]}
     >
       <div className="mb-6 animate-fade-up">
@@ -27,11 +31,9 @@ export default function HrKnowledgePage() {
           <div className="w-9 h-9 rounded-xl bg-violet-50 dark:bg-violet-950/40 flex items-center justify-center">
             <BookOpen size={18} className="text-violet-500 dark:text-violet-400" />
           </div>
-          <h2 className={cn("text-2xl font-bold", portalHeading)}>Tài liệu kiến thức</h2>
+          <h2 className={cn("text-2xl font-bold", portalHeading)}>{kb.hrTitle}</h2>
         </div>
-        <p className={cn("text-sm mt-1 ml-12", portalSubtext)}>
-          Tải lên tài liệu để AI tham chiếu khi tạo câu hỏi phỏng vấn chính xác hơn.
-        </p>
+        <p className={cn("text-sm mt-1 ml-12", portalSubtext)}>{kb.hrSubtext}</p>
       </div>
 
       <div className="animate-fade-up" style={{ animationDelay: "80ms" }}>
