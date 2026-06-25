@@ -7,6 +7,7 @@ import {
   Sparkles,
   History,
   Settings,
+  BookOpen,
 } from "lucide-react";
 import type {
   StatItem,
@@ -35,6 +36,11 @@ export const navItems: NavItem[] = [
     icon: History,
     badge: 7,
     badgeVariant: "count",
+  },
+  {
+    label: "Knowledge Base",
+    href: "/hr/knowledge",
+    icon: BookOpen,
   },
   {
     label: "Settings",
