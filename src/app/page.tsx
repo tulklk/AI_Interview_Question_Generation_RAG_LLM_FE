@@ -1,8 +1,6 @@
 import { GuestNavbar } from "@/components/guest/guest-navbar";
 import { HeroSection } from "@/components/guest/hero-section";
-import { BenefitsSection } from "@/components/guest/benefits-section";
-import { FeaturesSection } from "@/components/guest/features-section";
-import { WorkflowSection } from "@/components/guest/workflow-section";
+import { SectionCarousel } from "@/components/guest/section-carousel";
 import { PricingSection } from "@/components/guest/pricing-section";
 import { DemoPreviewSection } from "@/components/guest/demo-preview-section";
 import { TestimonialsSection } from "@/components/guest/testimonials-section";
@@ -55,9 +53,7 @@ export default function RootPage() {
       <div className="relative z-10">
         <GuestNavbar />
         <HeroSection />
-        <BenefitsSection />
-        <FeaturesSection />
-        <WorkflowSection />
+        <SectionCarousel />
         <DemoPreviewSection />
         <PricingSection />
         <TestimonialsSection />
