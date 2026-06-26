@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft, AlertCircle } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { ArrowLeft, AlertCircle, Sparkles, ArrowRight, Loader2 } from "lucide-react";
 import { SessionStatusBadge } from "@/components/history/session-status-badge";
 import { ReviewQuestionsSection } from "@/components/results/review-questions-section";
 import { useLanguage } from "@/context/language-context";
@@ -13,12 +14,24 @@ interface ReviewPageClientProps {
   session: GenerationSession;
   draftQuestions?: GeneratedQuestion[];
   isDraftView?: boolean;
+  isGenerating?: boolean;
+  isRetrying?: boolean;
 }
 
-export function ReviewPageClient({ session, draftQuestions, isDraftView = false }: ReviewPageClientProps) {
+export function ReviewPageClient({ session, draftQuestions, isDraftView = false, isGenerating = false, isRetrying = false }: ReviewPageClientProps) {
   const { t } = useLanguage();
   const rp = t.reviewPage;
   const gsp = t.generationSessionPage;
+  const router = useRouter();
+
+  function continueToGenerate() {
+    localStorage.setItem("hr_gen_job", session.id);
+    localStorage.setItem("hr_gen_view", "plan_review");
+    if (session.planDraft) {
+      localStorage.setItem("hr_gen_plan", JSON.stringify(session.planDraft));
+    }
+    router.push("/hr/generate");
+  }
 
   return (
     <div className="space-y-6">
@@ -75,6 +88,35 @@ export function ReviewPageClient({ session, draftQuestions, isDraftView = false 
         </div>
       )}
 
+      {/* Plan proposed CTA */}
+      {session.status === "PLAN_PROPOSED" && (
+        <div
+          className="animate-fade-up rounded-xl border border-violet-200 dark:border-violet-800 bg-violet-50 dark:bg-violet-950/30 px-5 py-4 flex items-center justify-between gap-4"
+          style={{ animationDelay: "80ms" }}
+        >
+          <div className="flex items-start gap-3">
+            <div className="w-8 h-8 rounded-lg bg-violet-600 flex items-center justify-center shrink-0 mt-0.5">
+              <Sparkles size={14} className="text-white" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-violet-800 dark:text-violet-300">
+                {rp.planReadyTitle}
+              </p>
+              <p className="text-xs text-violet-600 dark:text-violet-400 mt-0.5">
+                {rp.planReadySubtext}
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={continueToGenerate}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-violet-600 hover:bg-violet-700 text-white text-xs font-semibold transition-colors shrink-0"
+          >
+            {rp.continuePlanReview}
+            <ArrowRight size={13} />
+          </button>
+        </div>
+      )}
+
       {/* Error banner for failed sessions */}
       {session.status === "FAILED" && session.failureMessage && (
         <div
@@ -108,16 +150,76 @@ export function ReviewPageClient({ session, draftQuestions, isDraftView = false 
         </div>
       )}
 
-      {/* Review questions section */}
-      <div className="animate-fade-up" style={{ animationDelay: "120ms" }}>
-        <ReviewQuestionsSection
-          sessionId={session.id}
-          initialQuestions={draftQuestions ?? session.generatedQuestions ?? []}
-          status={session.status}
-          failureMessage={session.failureMessage}
-          readOnly={isDraftView}
-        />
-      </div>
+      {/* Loading animation while generating questions */}
+      {isGenerating && (
+        <div
+          className="animate-fade-up rounded-2xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 p-10 flex flex-col items-center justify-center gap-5"
+          style={{ animationDelay: "120ms" }}
+        >
+          <div className="relative w-16 h-16">
+            <div className="absolute inset-0 rounded-full bg-violet-100 dark:bg-violet-950/40 animate-pulse" />
+            <div className="absolute inset-0 flex items-center justify-center">
+              <Sparkles size={28} className="text-violet-600 dark:text-violet-400" />
+            </div>
+            <svg className="absolute inset-0 w-full h-full -rotate-90" viewBox="0 0 64 64">
+              <circle
+                cx="32" cy="32" r="28"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="3"
+                strokeDasharray="175"
+                strokeLinecap="round"
+                className="text-violet-500 dark:text-violet-400 origin-center animate-[spin_2s_linear_infinite]"
+                style={{ strokeDashoffset: "44" }}
+              />
+            </svg>
+          </div>
+          <div className="text-center">
+            <p className={cn("text-base font-semibold", portalHeading)}>
+              AI đang tạo câu hỏi phỏng vấn...
+            </p>
+            <p className={cn("text-sm mt-1.5", portalSubtext)}>
+              Câu hỏi sẽ tự động hiển thị khi hoàn thành. Vui lòng chờ.
+            </p>
+          </div>
+          <div className="flex items-center gap-1.5">
+            {[0, 1, 2].map((i) => (
+              <span
+                key={i}
+                className="w-1.5 h-1.5 rounded-full bg-violet-500 dark:bg-violet-400 animate-bounce"
+                style={{ animationDelay: `${i * 150}ms` }}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Retrying: COMPLETED but 0 questions — show brief spinner */}
+      {isRetrying && !isGenerating && session.status !== "PLAN_PROPOSED" && (
+        <div
+          className="animate-fade-up rounded-2xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 px-6 py-8 flex items-center gap-4"
+          style={{ animationDelay: "120ms" }}
+        >
+          <Loader2 size={20} className="animate-spin text-violet-500 shrink-0" />
+          <div>
+            <p className={cn("text-sm font-semibold", portalHeading)}>{rp.loadingQuestionsTitle}</p>
+            <p className={cn("text-xs mt-0.5", portalSubtext)}>{rp.loadingQuestionsSubtext}</p>
+          </div>
+        </div>
+      )}
+
+      {/* Review questions section — hidden when plan pending or actively generating or retrying */}
+      {!isGenerating && !isRetrying && session.status !== "PLAN_PROPOSED" && (
+        <div className="animate-fade-up" style={{ animationDelay: "120ms" }}>
+          <ReviewQuestionsSection
+            sessionId={session.id}
+            initialQuestions={draftQuestions ?? session.generatedQuestions ?? []}
+            status={session.status}
+            failureMessage={session.failureMessage}
+            readOnly={isDraftView}
+          />
+        </div>
+      )}
     </div>
   );
 }
