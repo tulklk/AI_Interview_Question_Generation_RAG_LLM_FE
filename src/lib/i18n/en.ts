@@ -876,6 +876,12 @@ export const en = {
       searchPlaceholder: "Search by job title...",
       allRoles: "All Roles",
       allLevels: "All Levels",
+      allExperiences: "All Experience",
+      allStatuses: "All Statuses",
+      statusCompleted: "Completed",
+      statusPlanProposed: "Plan Proposed",
+      statusInProgress: "In Progress",
+      statusFailed: "Failed",
       exportAll: "Export All",
     },
     table: {
@@ -1973,6 +1979,19 @@ export const en = {
     continuePlanReview: "Continue to Review Plan",
     loadingQuestionsTitle: "Loading questions...",
     loadingQuestionsSubtext: "Please wait a moment.",
+  },
+  generationProgressBadge: {
+    generatingPlanTitle: "Creating Plan...",
+    generatingPlanSubtitle: "AI is analyzing the job description",
+    generatingQuestionsTitle: "Generating Questions...",
+    generatingQuestionsSubtitle: "AI is generating interview questions",
+    planReviewTitle: "Plan Ready for Review",
+    planReviewSubtitle: "Click to view and edit the plan",
+    questionsReadyTitle: "Questions Ready!",
+    questionsReadySubtitle: "Click to view the results",
+    failedTitle: "Generation Failed",
+    failedSubtitle: "Click to view error details",
+    processing: "Processing...",
   },
 };
 
