@@ -1,15 +1,23 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { Loader2, AlertCircle } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
 import { ReviewPageClient } from "@/components/results/review-page-client";
 import { getGenerationSession, getGenerationJob, getJobQuestions, getDraft } from "@/lib/api/generation";
 import { getLocalSession, toGenerationSession } from "@/lib/local-history";
-import type { GenerationSession, DraftQuestionSet } from "@/types/generation-session";
+import type { GenerationSession, DraftQuestionSet, GenerationStatus } from "@/types/generation-session";
 import { cn } from "@/lib/utils";
 import { portalHeading, portalSubtext } from "@/lib/portal-ui";
+
+const QUESTION_GENERATING_STATUSES: GenerationStatus[] = [
+  "CONFIRMED", "QUEUED", "QUESTION_QUEUED", "QUESTION_PROCESSING", "PROCESSING",
+];
+
+function isGeneratingQuestions(status: GenerationStatus): boolean {
+  return QUESTION_GENERATING_STATUSES.includes(status);
+}
 
 function getRealId(paramId: string): string {
   if (paramId && paramId !== "placeholder") return paramId;
@@ -25,10 +33,66 @@ export function HrReviewPageClient() {
   const [draft, setDraft] = useState<DraftQuestionSet | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [retrying, setRetrying] = useState(false);
+  const pollingRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pollingActiveRef = useRef(false);
+  const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  async function loadJob(jobId: string): Promise<GenerationSession | null> {
+    const job = await getGenerationJob(jobId);
+    if (!job) return getGenerationSession(jobId);
+
+    if (job.status === "COMPLETED") {
+      // Primary: questions endpoint
+      const qs = await getJobQuestions(jobId);
+      if (qs.length > 0) return { ...job, generatedQuestions: qs };
+
+      // Fallback 1: inline questions from job GET response (filter out stubs)
+      const inlineQs = (job.generatedQuestions ?? []).filter(q => q.question.trim() !== "");
+      if (inlineQs.length > 0) return { ...job, generatedQuestions: inlineQs };
+
+      // Fallback 2: draft endpoint (try even if hasDraft is not set, questionSetId may exist)
+      const qSetId = job.questionSetId;
+      if (qSetId) {
+        const d = await getDraft(qSetId);
+        if (d?.questions && d.questions.length > 0) {
+          setDraft(d);
+          return job;
+        }
+      }
+
+      // Return job as-is — empty questions will trigger retry flow
+      return job;
+    }
+
+    if (job.hasDraft && job.questionSetId) {
+      const d = await getDraft(job.questionSetId);
+      if (d) setDraft(d);
+    }
+
+    return job;
+  }
+
+  function scheduleNextPoll(jobId: string) {
+    if (!pollingActiveRef.current) return;
+    pollingRef.current = setTimeout(async () => {
+      try {
+        const updated = await loadJob(jobId);
+        if (!updated || !pollingActiveRef.current) return;
+        setSession(updated);
+        if (isGeneratingQuestions(updated.status)) {
+          scheduleNextPoll(jobId);
+        }
+      } catch {
+        if (pollingActiveRef.current) scheduleNextPoll(jobId);
+      }
+    }, 3000);
+  }
 
   useEffect(() => {
     if (!id || id === "placeholder") return;
     setLoading(true);
+    pollingActiveRef.current = true;
 
     if (id.startsWith("local-")) {
       const local = getLocalSession(id);
@@ -38,28 +102,40 @@ export function HrReviewPageClient() {
       return;
     }
 
-    getGenerationJob(id)
-      .then(async (job) => {
-        if (!job) {
-          return getGenerationSession(id).then(setSession);
-        }
+    function hasQuestions(job: GenerationSession): boolean {
+      const qs = job.generatedQuestions ?? [];
+      return qs.some(q => q.question.trim() !== "");
+    }
 
-        if (job.status === "COMPLETED") {
-          const qs = await getJobQuestions(id);
-          if (qs.length > 0) {
-            job = { ...job, generatedQuestions: qs };
-          }
-        }
-
-        if (job.hasDraft && job.questionSetId) {
-          const d = await getDraft(job.questionSetId);
-          if (d) setDraft(d);
-        }
-
+    loadJob(id)
+      .then((job) => {
+        if (!job) { setError("Session not found."); return; }
         setSession(job);
+        if (isGeneratingQuestions(job.status)) {
+          scheduleNextPoll(id);
+        }
+        // COMPLETED but 0 questions — auto-retry once after 2.5s (BE may still be saving)
+        if (job.status === "COMPLETED" && !hasQuestions(job)) {
+          setRetrying(true);
+          retryTimerRef.current = setTimeout(async () => {
+            try {
+              const updated = await loadJob(id);
+              if (updated) setSession(updated);
+            } catch { /* silent */ } finally {
+              setRetrying(false);
+            }
+          }, 2500);
+        }
       })
       .catch(() => setError("Failed to load session."))
       .finally(() => setLoading(false));
+
+    return () => {
+      pollingActiveRef.current = false;
+      if (pollingRef.current) clearTimeout(pollingRef.current);
+      if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   return (
@@ -90,6 +166,8 @@ export function HrReviewPageClient() {
           session={session}
           draftQuestions={draft?.questions}
           isDraftView={!!draft}
+          isGenerating={isGeneratingQuestions(session.status)}
+          isRetrying={retrying}
         />
       )}
     </AppShell>

@@ -42,14 +42,6 @@ import {
 
 // ── Step indicator ───────────────────────────────────────────────────────────
 
-const FLOW_STEPS = [
-  "Nhập JD",
-  "Tạo Plan",
-  "Review Plan",
-  "Generate",
-  "Review Kết quả",
-];
-
 type FlowView = "form" | "polling" | "plan_review" | "question_review" | "failed" | "draft_view";
 
 function viewToStep(view: FlowView, pollingPhase: "plan" | "questions"): number {
@@ -64,15 +56,15 @@ function viewToStep(view: FlowView, pollingPhase: "plan" | "questions"): number 
   }
 }
 
-function FlowStepIndicator({ currentStep }: { currentStep: number }) {
+function FlowStepIndicator({ currentStep, steps }: { currentStep: number; steps: string[] }) {
   return (
     <div className="flex items-center w-full mb-6 select-none">
-      {FLOW_STEPS.map((label, i) => {
+      {steps.map((label, i) => {
         const stepNum = i + 1;
         const done   = stepNum < currentStep;
         const active = stepNum === currentStep;
         return (
-          <div key={i} className={cn("flex items-center", i < FLOW_STEPS.length - 1 && "flex-1")}>
+          <div key={i} className={cn("flex items-center", i < steps.length - 1 && "flex-1")}>
             <div className="flex flex-col items-center gap-1 shrink-0">
               <div
                 className={cn(
@@ -99,7 +91,7 @@ function FlowStepIndicator({ currentStep }: { currentStep: number }) {
                 {label}
               </span>
             </div>
-            {i < FLOW_STEPS.length - 1 && (
+            {i < steps.length - 1 && (
               <div
                 className={cn(
                   "flex-1 h-0.5 mx-2 mb-4 transition-all duration-300",
@@ -112,7 +104,7 @@ function FlowStepIndicator({ currentStep }: { currentStep: number }) {
                     ? ({
                         "--connector-delay": i === 0
                           ? "0s"
-                          : `-${((FLOW_STEPS.length - 1 - i) * 0.9).toFixed(1)}s`,
+                          : `-${((steps.length - 1 - i) * 0.9).toFixed(1)}s`,
                       } as React.CSSProperties)
                     : undefined
                 }
@@ -127,10 +119,11 @@ function FlowStepIndicator({ currentStep }: { currentStep: number }) {
 
 // ── Session persistence keys ──────────────────────────────────────────────────
 
-const SESSION_KEY      = "hr_gen_job";
-const SESSION_KEY_VIEW = "hr_gen_view";
-const SESSION_KEY_PLAN = "hr_gen_plan";
-const SESSION_KEY_JD   = "hr_gen_jd";
+const SESSION_KEY       = "hr_gen_job";
+const SESSION_KEY_VIEW  = "hr_gen_view";
+const SESSION_KEY_PLAN  = "hr_gen_plan";
+const SESSION_KEY_JD    = "hr_gen_jd";
+const SESSION_KEY_PHASE = "hr_gen_polling_phase";
 
 function readSavedView(): FlowView {
   if (typeof window === "undefined") return "form";
@@ -145,7 +138,7 @@ function readSavedPlan(): PlanDraft | null {
 }
 
 function clearAllSessionKeys() {
-  [SESSION_KEY, SESSION_KEY_VIEW, SESSION_KEY_PLAN, SESSION_KEY_JD].forEach(
+  [SESSION_KEY, SESSION_KEY_VIEW, SESSION_KEY_PLAN, SESSION_KEY_JD, SESSION_KEY_PHASE].forEach(
     (k) => localStorage.removeItem(k)
   );
 }
@@ -185,6 +178,8 @@ export function GenerateForm() {
 
   // ── Session restore state ──
   const [isRestoring, setIsRestoring] = useState(false);
+  // Guard: persistence effects must not clear localStorage before restore runs
+  const hasRestoredRef = useRef(false);
 
   const quotaBlocked     = isOverPlanUsageQuota(planId);
   const aiBlocked        = !hasFeature("aiPoweredGeneration");
@@ -198,29 +193,36 @@ export function GenerateForm() {
     };
   }, []);
 
-  // Persist session to localStorage
+  // Persist session to localStorage — skip until restore has run to avoid wiping saved data
   useEffect(() => {
+    if (!hasRestoredRef.current) return;
     if (jobId) localStorage.setItem(SESSION_KEY, jobId);
     else localStorage.removeItem(SESSION_KEY);
   }, [jobId]);
 
   useEffect(() => {
+    if (!hasRestoredRef.current) return;
     if (jobId && view !== "form") localStorage.setItem(SESSION_KEY_VIEW, view);
     else localStorage.removeItem(SESSION_KEY_VIEW);
   }, [view, jobId]);
 
   useEffect(() => {
+    if (!hasRestoredRef.current) return;
     if (plan) localStorage.setItem(SESSION_KEY_PLAN, JSON.stringify(plan));
     else localStorage.removeItem(SESSION_KEY_PLAN);
   }, [plan]);
 
   useEffect(() => {
+    if (!hasRestoredRef.current) return;
     if (jdText) localStorage.setItem(SESSION_KEY_JD, jdText);
     else localStorage.removeItem(SESSION_KEY_JD);
   }, [jdText]);
 
   // Restore session on mount: read localStorage first (optimistic), then verify with API
   useEffect(() => {
+    // Mark restore as started so persistence effects no longer clear localStorage
+    hasRestoredRef.current = true;
+
     const savedId = localStorage.getItem(SESSION_KEY);
     if (!savedId) return;
 
@@ -228,11 +230,103 @@ export function GenerateForm() {
     const savedView = readSavedView();
     const savedPlan = readSavedPlan();
     const savedJd   = localStorage.getItem(SESSION_KEY_JD) ?? "";
+    const savedPhase = (localStorage.getItem(SESSION_KEY_PHASE) ?? "plan") as "plan" | "questions";
 
     setJobId(savedId);
     if (savedJd)               setJdText(savedJd);
     if (savedPlan)             setPlan(savedPlan);
     if (savedView !== "form")  setView(savedView);
+
+    // If the saved view is polling, do an initial server check first.
+    // The plan may already be ready (badge updated localStorage after user left),
+    // so we check immediately rather than blindly starting the polling loop.
+    if (savedView === "polling") {
+      setPollingPhase(savedPhase);
+      pollingPhaseRef.current = savedPhase;
+      setStatusLabel(savedPhase === "questions" ? t.generatePage.statusGeneratingQuestions : t.generatePage.statusGeneratingPlan);
+      pollingActiveRef.current = true;
+
+      (async () => {
+        try {
+          const session = await getGenerationJob(savedId);
+          if (!session || !pollingActiveRef.current) return;
+
+          // BE still working — keep polling instead of showing an empty plan early
+          if (session.isPolling) {
+            pollJob(savedId);
+            return;
+          }
+
+          const action = session.suggestedAction ?? "";
+          const status = session.status;
+
+          // Plan already ready — show review immediately with same merge logic
+          if ((action === "REVIEW_PLAN" || status === "PLAN_PROPOSED") && savedPhase !== "questions") {
+            pollingActiveRef.current = false;
+            const localPlan = readSavedPlan();
+            const serverPlan = session.planDraft;
+            const merged = localPlan
+              ? {
+                  ...localPlan,
+                  role:          localPlan.role          || serverPlan?.role          || "",
+                  level:         localPlan.level         || serverPlan?.level         || "",
+                  difficulty:    localPlan.difficulty    || serverPlan?.difficulty    || "",
+                  questionCount: localPlan.questionCount || serverPlan?.questionCount || Math.min(10, limits.maxQuestionsPerRun),
+                  questionTypes: localPlan.questionTypes?.length ? localPlan.questionTypes : (serverPlan?.questionTypes ?? ["Technical", "Behavioral"] as QuestionType[]),
+                  topics:        localPlan.topics?.length        ? localPlan.topics        : (serverPlan?.topics ?? []),
+                }
+              : serverPlan;
+            setPlan(merged ?? {
+              role: "", level: "",
+              questionCount: Math.min(10, limits.maxQuestionsPerRun),
+              questionTypes: ["Technical", "Behavioral"] as QuestionType[],
+              topics: [],
+            });
+            setView("plan_review");
+            return;
+          }
+
+          // Questions already ready — show review immediately
+          if ((action === "REVIEW_QUESTIONS" || status === "COMPLETED") && savedPhase === "questions") {
+            pollingActiveRef.current = false;
+            const qs = await getJobQuestions(savedId);
+            setQuestions(qs.length ? qs : session.generatedQuestions ?? []);
+            setView("question_review");
+            return;
+          }
+
+          // Still processing — start the polling loop
+          pollJob(savedId);
+        } catch {
+          // Network error — fall back to polling loop
+          if (pollingActiveRef.current) pollJob(savedId);
+        }
+      })();
+      return;
+    }
+
+    // If the saved view is question_review (badge updated localStorage), load questions and show immediately
+    if (savedView === "question_review") {
+      setIsRestoring(true);
+      (async () => {
+        try {
+          const qs = await getJobQuestions(savedId);
+          if (qs.length > 0) {
+            setQuestions(qs);
+            setView("question_review");
+          } else {
+            // Fallback to API verification
+            const session = await getGenerationJob(savedId);
+            if (session) {
+              setQuestions(session.generatedQuestions ?? []);
+              setView("question_review");
+            }
+          }
+        } catch { /* keep current view */ }
+        finally { setIsRestoring(false); }
+      })();
+      return;
+    }
 
     // Then verify actual server state (silently updates if status changed)
     const hadView = savedView !== "form";
@@ -250,10 +344,28 @@ export function GenerateForm() {
         const action = session.suggestedAction ?? "";
         const status = session.status;
 
+        // BE still working — start polling instead of showing a plan with empty fields
+        if (session.isPolling) {
+          startPolling(savedId, savedPhase);
+          return;
+        }
+
         if (action === "REVIEW_PLAN" || status === "PLAN_PROPOSED") {
-          // Prefer locally-saved plan (has user edits) over server version
+          // Merge: keep user edits from localStorage but fill empty BE-derived fields from server
           const localPlan = readSavedPlan();
-          setPlan(localPlan ?? session.planDraft ?? {
+          const serverPlan = session.planDraft;
+          const merged = localPlan
+            ? {
+                ...localPlan,
+                role:          localPlan.role          || serverPlan?.role          || "",
+                level:         localPlan.level         || serverPlan?.level         || "",
+                difficulty:    localPlan.difficulty    || serverPlan?.difficulty    || "",
+                questionCount: localPlan.questionCount || serverPlan?.questionCount || Math.min(10, limits.maxQuestionsPerRun),
+                questionTypes: localPlan.questionTypes?.length ? localPlan.questionTypes : (serverPlan?.questionTypes ?? ["Technical", "Behavioral"] as QuestionType[]),
+                topics:        localPlan.topics?.length        ? localPlan.topics        : (serverPlan?.topics ?? []),
+              }
+            : serverPlan;
+          setPlan(merged ?? {
             role: "", level: "",
             questionCount: Math.min(10, limits.maxQuestionsPerRun),
             questionTypes: ["Technical", "Behavioral"] as QuestionType[],
@@ -267,11 +379,11 @@ export function GenerateForm() {
         } else if (action === "VIEW_DRAFT" || status === "DRAFT") {
           setView("draft_view");
         } else if (action === "RETRY_PLAN") {
-          setFailureMessage(session.failureMessage ?? "Tạo plan thất bại.");
+          setFailureMessage(session.failureMessage ?? t.generatePage.defaultPlanFailed);
           setCanRetryPlan(true);
           setView("failed");
         } else if (action === "RETRY_QUESTIONS") {
-          setFailureMessage(session.failureMessage ?? "Tạo câu hỏi thất bại.");
+          setFailureMessage(session.failureMessage ?? t.generatePage.defaultQuestionsFailed);
           setCanRetryQs(true);
           setView("failed");
         } else if (action === "EDIT_INPUT") {
@@ -279,7 +391,7 @@ export function GenerateForm() {
           setCanEditInput(true);
           setView("failed");
         } else if (status === "FAILED") {
-          setFailureMessage(session.failureMessage ?? "Đã xảy ra lỗi.");
+          setFailureMessage(session.failureMessage ?? t.generatePage.defaultError);
           setCanRetryPlan(session.canRetryPlan ?? false);
           setCanRetryQs(session.canRetryQuestions ?? false);
           setCanEditInput(session.canEditInput ?? false);
@@ -342,7 +454,7 @@ export function GenerateForm() {
       }
 
       if (action === "RETRY_PLAN" && !inQuestionsPhase) {
-        setFailureMessage(session.failureMessage ?? "Tạo plan thất bại.");
+        setFailureMessage(session.failureMessage ?? t.generatePage.defaultPlanFailed);
         setCanRetryPlan(true);
         setCanEditInput(false);
         setCanRetryQs(false);
@@ -351,7 +463,7 @@ export function GenerateForm() {
       }
 
       if (action === "RETRY_QUESTIONS") {
-        setFailureMessage(session.failureMessage ?? "Tạo câu hỏi thất bại.");
+        setFailureMessage(session.failureMessage ?? t.generatePage.defaultQuestionsFailed);
         setCanRetryQs(true);
         setCanRetryPlan(false);
         setCanEditInput(false);
@@ -371,7 +483,7 @@ export function GenerateForm() {
         setQuestions(qs.length ? qs : session.generatedQuestions ?? []);
         setView("question_review");
       } else if (s === "FAILED") {
-        setFailureMessage(session.failureMessage ?? "Đã xảy ra lỗi.");
+        setFailureMessage(session.failureMessage ?? t.generatePage.defaultError);
         setCanRetryPlan(session.canRetryPlan ?? false);
         setCanRetryQs(session.canRetryQuestions ?? false);
         setCanEditInput(session.canEditInput ?? false);
@@ -397,6 +509,7 @@ export function GenerateForm() {
     pollingPhaseRef.current = phase;
     setPollingPhase(phase);
     setView("polling");
+    localStorage.setItem(SESSION_KEY_PHASE, phase);
     pollJob(jId);
   }
 
@@ -453,13 +566,19 @@ export function GenerateForm() {
     setFormError(null);
 
     try {
-      // Push edited plan fields to BE first (notes must be a string, not null)
+      // Push edited plan fields to BE first
+      // level = difficulty (easy/medium/hard), experienceLevel = experience (intern/junior/mid...)
+      const experienceLevelBE = plan.level
+        ? plan.level.toLowerCase().replace("-level", "").replace("-", "")
+        : "mid";
       await updateJobPlan(jobId, {
-        roleTitle:      plan.role,
-        totalQuestions: plan.questionCount,
-        questionTypes:  plan.questionTypes,
-        skills:         plan.topics,
-        notes:          plan.constraints ?? "",
+        roleTitle:       plan.role,
+        totalQuestions:  plan.questionCount,
+        questionTypes:   plan.questionTypes,
+        skills:          plan.topics,
+        notes:           plan.constraints ?? "",
+        level:           plan.difficulty?.toLowerCase() ?? "medium",
+        experienceLevel: experienceLevelBE,
       });
       await approvePlan(jobId);
       startPolling(jobId, "questions");
@@ -487,7 +606,7 @@ export function GenerateForm() {
     setFormError(null);
     const ok = await retryPlan(jobId);
     if (ok) startPolling(jobId, "plan");
-    else setFormError("Retry thất bại.");
+    else setFormError(t.generatePage.retryFailed);
   }
 
   async function handleRetryQuestionsFromFailed() {
@@ -495,7 +614,7 @@ export function GenerateForm() {
     setFormError(null);
     const ok = await retryQuestions(jobId);
     if (ok) startPolling(jobId, "questions");
-    else setFormError("Retry thất bại.");
+    else setFormError(t.generatePage.retryFailed);
   }
 
   async function handleEditInputResubmit() {
@@ -552,7 +671,7 @@ export function GenerateForm() {
   if (view === "polling") {
     return (
       <div className="space-y-4 animate-fade-up">
-        <FlowStepIndicator currentStep={currentStep} />
+        <FlowStepIndicator currentStep={currentStep} steps={t.generatePage.flowSteps} />
         <div className="hr-glass-card p-12 flex flex-col items-center gap-5">
           <div className="w-14 h-14 rounded-2xl hr-loader-box flex items-center justify-center">
             <Sparkles size={26} className="text-[#7C3AED] dark:text-[#a78bff] animate-pulse" />
@@ -560,8 +679,8 @@ export function GenerateForm() {
           <div className="text-center space-y-1">
             <p className={cn("text-base font-semibold", portalHeading)}>
               {pollingPhase === "plan"
-                ? "AI đang phân tích mô tả công việc…"
-                : "AI đang tạo câu hỏi phỏng vấn…"}
+                ? t.generatePage.pollingPlanTitle
+                : t.generatePage.pollingQuestionsTitle}
             </p>
             <p className={cn("text-sm", portalSubtext)}>{statusLabel}</p>
           </div>
@@ -576,7 +695,7 @@ export function GenerateForm() {
   if (view === "plan_review" && plan) {
     return (
       <div className="space-y-4 animate-fade-up">
-        <FlowStepIndicator currentStep={currentStep} />
+        <FlowStepIndicator currentStep={currentStep} steps={t.generatePage.flowSteps} />
 
         {formError && (
           <div className="rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/30 px-4 py-3 text-sm text-red-700 dark:text-red-400">
@@ -601,7 +720,7 @@ export function GenerateForm() {
   if (view === "question_review" && jobId) {
     return (
       <div className="space-y-4 animate-fade-up">
-        <FlowStepIndicator currentStep={currentStep} />
+        <FlowStepIndicator currentStep={currentStep} steps={t.generatePage.flowSteps} />
 
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 flex items-center justify-center">
@@ -642,7 +761,7 @@ export function GenerateForm() {
   if (view === "failed") {
     return (
       <div className="space-y-4 animate-fade-up">
-        <FlowStepIndicator currentStep={currentStep} />
+        <FlowStepIndicator currentStep={currentStep} steps={t.generatePage.flowSteps} />
 
         <div className="hr-glass-card p-8 space-y-4">
           <div className="flex items-start gap-3">
@@ -666,7 +785,7 @@ export function GenerateForm() {
           {canEditInput && (
             <div className="space-y-3 border-t pt-4">
               <p className={cn("text-sm font-medium", portalHeading)}>
-                Chỉnh sửa JD và thử lại:
+                {t.generatePage.editJdRetry}
               </p>
               <textarea
                 value={jdText}
@@ -696,7 +815,7 @@ export function GenerateForm() {
                 className="flex items-center gap-2 px-5 py-2.5 text-sm font-semibold rounded-lg border border-violet-200 dark:border-violet-800 text-violet-600 dark:text-violet-400 hover:bg-violet-50 dark:hover:bg-violet-950/40 transition-colors"
               >
                 <RotateCcw size={14} />
-                Retry Tạo Plan
+                {t.generatePage.retryPlanBtn}
               </button>
             )}
             {canRetryQs && (
@@ -706,7 +825,7 @@ export function GenerateForm() {
                 className="flex items-center gap-2 px-5 py-2.5 text-sm font-semibold rounded-lg bg-primary text-white hover:bg-[#5535dd] transition-colors"
               >
                 <RotateCcw size={14} />
-                Retry Tạo Câu Hỏi
+                {t.generatePage.retryQuestionsBtn}
               </button>
             )}
             <button
@@ -730,7 +849,7 @@ export function GenerateForm() {
   if (view === "draft_view") {
     return (
       <div className="space-y-4 animate-fade-up">
-        <FlowStepIndicator currentStep={5} />
+        <FlowStepIndicator currentStep={5} steps={t.generatePage.flowSteps} />
         <div className="hr-glass-card p-8 flex flex-col items-center gap-4 text-center">
           <div className="w-12 h-12 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 flex items-center justify-center">
             <BookMarked size={22} className="text-emerald-500" />
@@ -768,7 +887,7 @@ export function GenerateForm() {
 
   return (
     <div className="space-y-4">
-      <FlowStepIndicator currentStep={1} />
+      <FlowStepIndicator currentStep={1} steps={t.generatePage.flowSteps} />
 
       {aiBlocked && (
         <div className="rounded-xl border border-indigo-200 dark:border-indigo-800 bg-indigo-50/90 dark:bg-indigo-950/40 px-4 py-3 text-sm text-indigo-950 dark:text-indigo-200 animate-fade-up">
@@ -809,13 +928,13 @@ export function GenerateForm() {
         style={{ animationDelay: "120ms" }}
       >
         <div className="flex items-center gap-2 mb-1">
-          <span className={cn("text-base font-semibold", portalHeading)}>Ghi chú cho AI</span>
-          <span className={cn("text-xs", portalSubtext)}>(tùy chọn)</span>
+          <span className={cn("text-base font-semibold", portalHeading)}>{t.generatePage.aiNoteSection.title}</span>
+          <span className={cn("text-xs", portalSubtext)}>{t.generatePage.aiNoteSection.optional}</span>
         </div>
         <textarea
           value={note}
           onChange={(e) => setNote(e.target.value)}
-          placeholder="VD: Tập trung vào System Design, phỏng vấn bằng tiếng Anh, ưu tiên câu hỏi thực tế..."
+          placeholder={t.generatePage.aiNoteSection.placeholder}
           rows={3}
           className={cn(
             "w-full resize-none rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors",
@@ -857,7 +976,7 @@ export function GenerateForm() {
               style={{ animationDelay: "180ms" }}
             >
               <Sparkles size={15} />
-              Tạo Plan
+              {t.generatePage.createPlanBtn}
             </button>
           </>
         );

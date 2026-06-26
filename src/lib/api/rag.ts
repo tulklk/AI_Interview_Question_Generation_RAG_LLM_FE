@@ -263,7 +263,8 @@ function planDraftToV1Body(ownerId: string, plan: PlanDraft): Record<string, unk
   return {
     owner_id: ownerId,
     role: plan.role,
-    level: plan.level,
+    level: plan.difficulty?.toLowerCase() ?? "",
+    experience_level: plan.level.toLowerCase().replace("-", ""),
     question_count: plan.questionCount,
     question_types: plan.questionTypes.map((t) => t.toLowerCase()),
     topics: plan.topics ?? [],

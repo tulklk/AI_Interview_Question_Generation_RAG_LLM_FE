@@ -31,7 +31,11 @@ export function HistoryFilters({
   const roles = [{ value: "", label: hf.allRoles }, ...roleKeys.map((r) => ({ value: r, label: r }))];
   const levels = [{ value: "", label: hf.allLevels }, ...levelKeys.map((l) => ({ value: l, label: l }))];
 
-  const filterBox = cn("flex items-center gap-2 rounded-lg px-3 py-2", portalInput);
+  const filterBox = cn(
+    "flex items-center gap-2 rounded-lg px-3 py-2 transition-colors",
+    "bg-white dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700/60",
+    "text-gray-900 dark:text-gray-100"
+  );
 
   return (
     <div className="flex items-center gap-3 mb-4 animate-fade-up">
@@ -46,8 +50,10 @@ export function HistoryFilters({
           onChange={(e) => onSearchChange(e.target.value)}
           placeholder={hf.searchPlaceholder}
           className={cn(
-            "w-full pl-9 pr-4 py-2 text-sm rounded-lg focus:outline-none focus:ring-2 focus:ring-[#6c47ff]/20 focus:border-[#6c47ff] transition-colors",
-            portalInput
+            "w-full pl-9 pr-4 py-2 text-sm rounded-lg transition-colors",
+            "focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500 dark:focus:ring-violet-400/20 dark:focus:border-violet-400",
+            "bg-white dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700/60",
+            "text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500"
           )}
         />
       </div>
@@ -81,9 +87,10 @@ export function HistoryFilters({
       <button
         type="button"
         className={cn(
-          "ml-auto flex items-center gap-2 text-sm font-medium rounded-lg px-4 py-2 transition-colors",
-          portalInput,
-          "hover:border-gray-300 dark:hover:border-gray-600"
+          "ml-auto flex items-center gap-2 text-sm font-semibold rounded-lg px-4 py-2 transition-colors",
+          "bg-white dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700/60",
+          "text-gray-700 dark:text-gray-300",
+          "hover:border-violet-300 dark:hover:border-violet-700 hover:text-violet-600 dark:hover:text-violet-400"
         )}
       >
         <Download size={14} />

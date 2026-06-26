@@ -5,6 +5,7 @@ import { useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 import { Sidebar } from "./sidebar";
 import { TopHeader } from "./top-header";
+import { GenerationProgressBadge } from "@/components/generate/generation-progress-badge";
 import { useLanguage } from "@/context/language-context";
 import { useToast } from "@/context/toast-context";
 import { useHrSubscription } from "@/context/hr-subscription-context";
@@ -83,6 +84,7 @@ export function AppShell({ children, breadcrumb, pageTitle }: AppShellProps) {
           <div className="hr-aurora-orb hr-aurora-orb--violet w-87.5 h-87.5 -bottom-20 left-[30%]" aria-hidden="true" />
           <div className="relative max-w-350 mx-auto px-8 py-7">{children}</div>
         </main>
+        <GenerationProgressBadge />
       </div>
     </div>
   );
