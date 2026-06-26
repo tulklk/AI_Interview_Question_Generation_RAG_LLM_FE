@@ -44,7 +44,7 @@ export function HistoryBoard() {
   return (
     <div>
       {/* Stats */}
-      <div className="grid grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         {statCards.map((s, i) => (
           <motion.div
             key={s.label}
@@ -62,7 +62,7 @@ export function HistoryBoard() {
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2 }}
-        className="hr-glass-card p-4 mb-4 flex items-center gap-3"
+        className="hr-glass-card p-4 mb-4 flex flex-col sm:flex-row items-stretch sm:items-center gap-3"
       >
         <div className={cn(
           "flex items-center gap-2 flex-1 rounded-lg px-3 h-[38px] focus-within:border-primary focus-within:shadow-[0_0_0_3px_rgba(108,71,255,0.1)] transition-all",
@@ -77,12 +77,12 @@ export function HistoryBoard() {
             className="flex-1 text-[12px] bg-transparent outline-none"
           />
         </div>
-        <div className="relative">
+        <div className="relative shrink-0">
           <select
             value={timeFilter}
             onChange={(e) => setTimeFilter(e.target.value)}
             className={cn(
-              "appearance-none rounded-lg pl-3 pr-8 h-[38px] text-[12px] outline-none cursor-pointer focus:border-primary transition-all",
+              "appearance-none w-full sm:w-auto rounded-lg pl-3 pr-8 h-[38px] text-[12px] outline-none cursor-pointer focus:border-primary transition-all",
               portalInput
             )}
           >
@@ -94,12 +94,12 @@ export function HistoryBoard() {
         </div>
       </motion.div>
 
-      {/* Table */}
+      {/* Table — desktop (md+) */}
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.25 }}
-        className="hr-glass-card overflow-hidden"
+        className="hr-glass-card overflow-hidden hidden md:block"
       >
         {/* Header */}
         <div className={cn("grid grid-cols-[2.5fr_1fr_1fr_1fr_2fr_auto] gap-4 px-6 py-3 border-b", portalIconWell, portalDivider)}>
@@ -178,6 +178,78 @@ export function HistoryBoard() {
           </ul>
         )}
       </motion.div>
+
+      {/* Card list — mobile (below md) */}
+      <div className="md:hidden flex flex-col gap-3">
+        {filtered.length === 0 ? (
+          <p className={cn("text-center py-12 text-[14px]", portalSubtextAlt)}>{p.noHistory}</p>
+        ) : (
+          filtered.map((session, i) => (
+            <motion.div
+              key={session.id}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 + i * 0.05 }}
+              className="hr-glass-card p-4 flex flex-col gap-3"
+            >
+              {/* Header row: company icon + title + score */}
+              <div className="flex items-start gap-3">
+                <div className={cn("w-9 h-9 rounded-lg text-white text-[11px] font-bold flex items-center justify-center shrink-0", session.companyColor)}>
+                  {session.companyInitials}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className={cn("text-[13px] font-[600] truncate", portalHeadingAlt)}>{session.setTitle}</p>
+                  <p className={cn("text-[11px] mt-0.5", portalSubtextAlt)}>{session.company}</p>
+                </div>
+                <Pill className={cn("text-[13px] font-[700] px-2.5 py-1 shrink-0", getScoreBadgeClass(session.score))}>
+                  {session.score}%
+                </Pill>
+              </div>
+
+              {/* Meta: date · duration */}
+              <div className={cn("flex items-center gap-3 text-[12px]", portalSubtextAlt)}>
+                <span className="flex items-center gap-1">
+                  <Clock size={11} className="shrink-0" />
+                  {session.date}
+                </span>
+                <span>·</span>
+                <span>{session.duration}</span>
+              </div>
+
+              {/* Skills */}
+              <div className="flex flex-wrap gap-1.5">
+                {session.skills.slice(0, 4).map((skill) => (
+                  <span key={skill} className={cn("text-[11px] font-[500] px-2 py-0.5 rounded-[4px]", portalMutedBg, portalHeadingAlt)}>
+                    {skill}
+                  </span>
+                ))}
+              </div>
+
+              {/* Action buttons */}
+              <div className="flex items-center gap-2 pt-1">
+                <Link
+                  href={`/jobseeker/practice/${session.setId}/result`}
+                  className={cn(
+                    "flex-1 flex items-center justify-center gap-1.5 h-[34px] text-[12px] font-[600] rounded-lg border transition-colors hover:text-primary hover:bg-[#F5F3FF] dark:hover:bg-purple-950/30",
+                    portalSubtextAlt,
+                    portalIconWell
+                  )}
+                >
+                  <Eye size={13} />
+                  {p.viewBtn}
+                </Link>
+                <Link
+                  href={`/jobseeker/practice/${session.setId}`}
+                  className="flex-1 shimmer-button flex items-center justify-center gap-1.5 h-[34px] text-[12px] font-semibold text-white hr-cta-btn rounded-lg"
+                >
+                  <RefreshCw size={12} />
+                  {p.retryBtn}
+                </Link>
+              </div>
+            </motion.div>
+          ))
+        )}
+      </div>
     </div>
   );
 }

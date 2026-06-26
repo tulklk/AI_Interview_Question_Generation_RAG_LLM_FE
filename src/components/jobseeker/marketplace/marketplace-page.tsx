@@ -51,7 +51,7 @@ export function MarketplacePage() {
         initial={{ opacity: 0, y: 24 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="hr-quick-generate rounded-xl px-10 py-12 mb-8"
+        className="hr-quick-generate rounded-xl px-5 sm:px-10 py-8 sm:py-12 mb-8"
       >
         <div className="max-w-2xl">
           {/* Badge */}
@@ -61,7 +61,7 @@ export function MarketplacePage() {
           </div>
 
           {/* Headline */}
-          <h1 className={cn("text-[48px] font-[800] leading-[52px] mb-4", portalHeadingAlt)}>
+          <h1 className={cn("text-[28px] sm:text-[48px] font-[800] leading-[34px] sm:leading-[52px] mb-4", portalHeadingAlt)}>
             {p.heroTitle}{" "}
             <span className="text-primary">{p.heroTitleAccent}</span>
           </h1>
@@ -70,7 +70,7 @@ export function MarketplacePage() {
           </p>
 
           {/* CTAs */}
-          <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center gap-4">
             <button
               className="shimmer-button h-11 px-6 text-[14px] font-semibold text-white hr-cta-btn rounded-xl"
             >
@@ -104,16 +104,16 @@ export function MarketplacePage() {
           <SlidersHorizontal size={14} className="text-gray-400 dark:text-gray-500 shrink-0" />
         </div>
 
-        {/* Filter pills row */}
-        <div className="flex items-center gap-2 flex-wrap">
-          {/* Categories */}
-          <div className="flex items-center gap-1.5 flex-wrap">
+        {/* Filter pills row — scrollable on mobile */}
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+          {/* Categories — scroll on mobile */}
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden flex-nowrap sm:flex-wrap">
             {CATEGORIES.map((cat) => (
               <button
                 key={cat}
                 onClick={() => setCategory(cat)}
                 className={cn(
-                  "text-[12px] font-[500] px-3 py-1.5 rounded-[6px] transition-colors",
+                  "text-[12px] font-[500] px-3 py-1.5 rounded-[6px] transition-colors shrink-0",
                   category === cat
                     ? "hr-nav-active text-[#7C3AED] dark:text-[#a78bff] font-semibold"
                     : cn(portalMutedBg, portalSubtextAlt, "hover:bg-gray-200 dark:hover:bg-gray-700")
@@ -124,16 +124,16 @@ export function MarketplacePage() {
             ))}
           </div>
 
-          <div className="w-px h-5 bg-gray-200 dark:bg-gray-700 mx-1" />
+          <div className="hidden sm:block w-px h-5 bg-gray-200 dark:bg-gray-700 mx-1 shrink-0" />
 
           {/* Difficulty */}
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 flex-wrap">
             {DIFFICULTIES.map((d) => (
               <button
                 key={d}
                 onClick={() => setDifficulty(d)}
                 className={cn(
-                  "text-[12px] font-[500] px-3 py-1.5 rounded-[6px] transition-colors",
+                  "text-[12px] font-[500] px-3 py-1.5 rounded-[6px] transition-colors shrink-0",
                   difficulty === d
                     ? d === "Easy"   ? "bg-emerald-500 text-white"
                     : d === "Medium" ? "bg-amber-500 text-white"
@@ -164,7 +164,7 @@ export function MarketplacePage() {
       {filtered.length === 0 ? (
         <p className={cn("text-center py-16 text-[14px]", portalSubtextAlt)}>{p.noResults}</p>
       ) : (
-        <div className="grid grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {filtered.map((set, i) => (
             <motion.div
               key={set.id}
