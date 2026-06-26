@@ -58,7 +58,7 @@ function viewToStep(view: FlowView, pollingPhase: "plan" | "questions"): number 
 
 function FlowStepIndicator({ currentStep, steps }: { currentStep: number; steps: string[] }) {
   return (
-    <div className="flex items-center w-full mb-6 select-none">
+    <div className="flex items-center w-full mb-6 select-none overflow-x-auto min-w-0">
       {steps.map((label, i) => {
         const stepNum = i + 1;
         const done   = stepNum < currentStep;
