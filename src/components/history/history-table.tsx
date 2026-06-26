@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { FileText, Calendar, ArrowUpDown, Eye, Download, Trash2, Inbox, Loader2, AlertTriangle } from "lucide-react";
@@ -9,7 +9,7 @@ import { useLanguage } from "@/context/language-context";
 import { useHrSubscription } from "@/context/hr-subscription-context";
 import { getLocalSessions, toGenerationSession } from "@/lib/local-history";
 import { getGenerationJobs, getGenerationPlans, deleteGenerationPlan, exportPlanQuestions } from "@/lib/api/generation";
-import type { GenerationSession } from "@/types/generation-session";
+import type { GenerationSession, GenerationStatus } from "@/types/generation-session";
 import { SessionStatusBadge } from "@/components/history/session-status-badge";
 import {
   portalCard,
@@ -129,6 +129,9 @@ export function HistoryTable({ search = "", role = "", level = "" }: HistoryTabl
   const [exportingId, setExportingId] = useState<string | null>(null);
   const [confirmSession, setConfirmSession] = useState<GenerationSession | null>(null);
 
+  // Always-current ref so effects with [] deps never get a stale loadData
+  const loadDataRef = useRef<() => void>(null!);
+
   async function confirmDelete() {
     if (!confirmSession) return;
     const id = confirmSession.id;
@@ -149,7 +152,7 @@ export function HistoryTable({ search = "", role = "", level = "" }: HistoryTabl
     }
   }
 
-  useEffect(() => {
+  function loadData() {
     const localSessions = getLocalSessions();
     // Sessions where backend save failed (no backendJobId) — show from local only
     const localOnly = localSessions
@@ -192,7 +195,44 @@ export function HistoryTable({ search = "", role = "", level = "" }: HistoryTabl
         // Backend unavailable — show all local sessions as fallback
         setSessions(localSessions.map(toGenerationSession));
       });
+  }
+  // Keep ref up-to-date so stale-closure effects always call the latest version
+  loadDataRef.current = loadData;
+
+  // ── Initial load + badge event listener ────────────────────────────────────
+  useEffect(() => {
+    loadDataRef.current();
+
+    // When badge detects a status change: optimistically update the row IMMEDIATELY,
+    // then reload from API to get fresh question counts.
+    function handleJobStatusChanged(e: Event) {
+      const { jobId, newStatus } = (e as CustomEvent<{ jobId: string | null; newStatus: GenerationStatus }>).detail ?? {};
+      if (jobId && newStatus) {
+        setSessions(prev =>
+          prev.map(s => (s.id === jobId ? { ...s, status: newStatus } : s))
+        );
+      }
+      // Full reload after 1s so question counts refresh too
+      setTimeout(() => loadDataRef.current(), 1000);
+    }
+
+    window.addEventListener("hr:job-status-changed", handleJobStatusChanged);
+    return () => window.removeEventListener("hr:job-status-changed", handleJobStatusChanged);
   }, []);
+
+  // ── Self-polling: auto-refresh when in-progress sessions exist ─────────────
+  const IN_PROGRESS_STATUSES = new Set([
+    "QUEUED", "PROCESSING", "CONFIRMED",
+    "QUESTION_QUEUED", "QUESTION_PROCESSING",
+  ]);
+
+  useEffect(() => {
+    const hasActive = sessions.some(s => IN_PROGRESS_STATUSES.has(s.status as string));
+    if (!hasActive) return;
+    const t = setTimeout(() => loadDataRef.current(), 4000);
+    return () => clearTimeout(t);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessions]);
 
   const filtered = sessions.filter((s) => {
     const sRole = s.planDraft?.role ?? "";
@@ -235,7 +275,7 @@ export function HistoryTable({ search = "", role = "", level = "" }: HistoryTabl
     )}
     <div className="hr-glass-card overflow-hidden animate-fade-up">
       <table className="w-full text-sm">
-        <thead className={cn("border-b", portalDivider)}>
+        <thead className={cn("border-b bg-gray-50/80 dark:bg-white/3", portalDivider)}>
           <tr>
             <ColumnHeader label={ht.jobTitle} />
             <th className={cn("px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide", portalSubtext)}>{ht.role}</th>
@@ -246,7 +286,7 @@ export function HistoryTable({ search = "", role = "", level = "" }: HistoryTabl
             <th className={cn("px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide", portalSubtext)}>{ht.actions}</th>
           </tr>
         </thead>
-        <tbody className={cn("divide-y", portalDivider)}>
+        <tbody className="divide-y divide-gray-100 dark:divide-gray-800/70">
           {filtered.length === 0 && (
             <tr>
               <td colSpan={7} className={cn("px-4 py-10 text-center text-sm", portalSubtext)}>
@@ -254,50 +294,66 @@ export function HistoryTable({ search = "", role = "", level = "" }: HistoryTabl
               </td>
             </tr>
           )}
-          {filtered.map((session) => {
-            const sessionRole = session.planDraft?.role ?? "—";
-            const sessionLevel = session.planDraft?.level ?? "—";
-            const palette = rolePalette(sessionRole);
+          {filtered.map((session, rowIdx) => {
+            const sessionRole = session.planDraft?.role ?? "";
+            const sessionLevel = session.planDraft?.level ?? "";
+            const palette = rolePalette(sessionRole || "a");
             const questionsCount = session.generatedQuestions?.length ?? 0;
-            const title = session.jobTitle || (sessionRole !== "—" ? `${sessionRole} Interview` : "Untitled");
+            const title = session.jobTitle || (sessionRole ? `${sessionRole} Interview` : "Untitled");
+            const isEven = rowIdx % 2 === 1;
 
             return (
-              <tr key={session.id} className="hr-table-row">
+              <tr
+                key={session.id}
+                className={cn(
+                  "hr-table-row transition-colors",
+                  isEven && "bg-gray-50/40 dark:bg-gray-800/30"
+                )}
+              >
                 <td className="px-4 py-3.5">
                   <div className="flex items-center gap-3">
                     <div className="w-7 h-7 rounded-lg hr-icon-box flex items-center justify-center shrink-0">
                       <FileText size={13} className="text-[#7C3AED] dark:text-[#a78bff]" />
                     </div>
-                    <span className={cn("font-medium", portalHeading)}>{title}</span>
+                    <span className={cn("font-medium text-sm", portalHeading)}>{title}</span>
                   </div>
                 </td>
                 <td className="px-4 py-3.5">
-                  <span className={cn("text-xs font-semibold px-2 py-0.5 rounded-md", palette.bg, palette.text)}>
-                    {sessionRole}
-                  </span>
+                  {sessionRole ? (
+                    <span className={cn("text-xs font-semibold px-2.5 py-1 rounded-md", palette.bg, palette.text)}>
+                      {sessionRole}
+                    </span>
+                  ) : (
+                    <span className="text-xs text-gray-300 dark:text-gray-600">—</span>
+                  )}
                 </td>
                 <td className="px-4 py-3.5">
-                  <span className="text-xs font-semibold px-2 py-0.5 rounded-md bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300">
-                    {sessionLevel}
-                  </span>
+                  {sessionLevel ? (
+                    <span className="text-xs font-semibold px-2.5 py-1 rounded-md bg-gray-100 dark:bg-gray-700/60 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-600/40">
+                      {sessionLevel}
+                    </span>
+                  ) : (
+                    <span className="text-xs text-gray-300 dark:text-gray-600">—</span>
+                  )}
                 </td>
                 <td className="px-4 py-3.5">
-                  <div className={cn("flex items-center gap-1.5", portalSubtext)}>
-                    <Calendar size={13} className="text-gray-300 dark:text-gray-600 shrink-0" />
+                  <div className={cn("flex items-center gap-1.5 text-sm", portalSubtext)}>
+                    <Calendar size={13} className="text-gray-400 dark:text-gray-500 shrink-0" />
                     {formatDate(session.createdAt)}
                   </div>
                 </td>
                 <td className="px-4 py-3.5">
-                  <span className={cn("text-xs font-medium", portalSubtext)}>{questionsCount}</span>
+                  <span className={cn("text-sm font-medium tabular-nums", portalHeading)}>{questionsCount}</span>
                 </td>
                 <td className="px-4 py-3.5">
                   <SessionStatusBadge status={session.status} />
                 </td>
                 <td className="px-4 py-3.5">
-                  <div className="flex items-center justify-end gap-1">
+                  <div className="flex items-center justify-end gap-0.5">
                     <Link
                       href={`/hr/history/${session.id}`}
-                      className="p-1.5 text-gray-400 dark:text-gray-500 hover:text-[#7C3AED] dark:hover:text-[#a78bff] hover:bg-violet-50 dark:hover:bg-violet-950/30 rounded-lg transition-colors inline-flex"
+                      className="p-2 text-gray-400 dark:text-gray-500 hover:text-[#7C3AED] dark:hover:text-[#a78bff] hover:bg-violet-50 dark:hover:bg-violet-950/40 rounded-lg transition-colors inline-flex"
+                      title={ht.viewTitle ?? "Xem"}
                     >
                       <Eye size={14} />
                     </Link>
@@ -307,9 +363,9 @@ export function HistoryTable({ search = "", role = "", level = "" }: HistoryTabl
                       disabled={session.status !== "COMPLETED" || exportingId === session.id}
                       title={session.status !== "COMPLETED" ? ht.exportDisabledTitle : ht.exportTitle}
                       className={cn(
-                        "p-1.5 rounded-lg transition-colors",
+                        "p-2 rounded-lg transition-colors",
                         session.status === "COMPLETED"
-                          ? "text-gray-400 dark:text-gray-500 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 disabled:opacity-50"
+                          ? "text-gray-400 dark:text-gray-500 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 disabled:opacity-40"
                           : "text-gray-200 dark:text-gray-700 cursor-not-allowed"
                       )}
                     >
@@ -322,7 +378,7 @@ export function HistoryTable({ search = "", role = "", level = "" }: HistoryTabl
                       onClick={() => setConfirmSession(session)}
                       disabled={deletingId === session.id}
                       title={ht.deleteTitle}
-                      className="p-1.5 text-gray-400 dark:text-gray-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg transition-colors disabled:opacity-50"
+                      className="p-2 text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-lg transition-colors disabled:opacity-40"
                     >
                       {deletingId === session.id
                         ? <Loader2 size={14} className="animate-spin" />
