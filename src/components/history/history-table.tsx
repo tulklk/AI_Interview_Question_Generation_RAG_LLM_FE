@@ -353,7 +353,7 @@ export function HistoryTable({ search = "", role = "", level = "" }: HistoryTabl
                     <Link
                       href={`/hr/history/${session.id}`}
                       className="p-2 text-gray-400 dark:text-gray-500 hover:text-[#7C3AED] dark:hover:text-[#a78bff] hover:bg-violet-50 dark:hover:bg-violet-950/40 rounded-lg transition-colors inline-flex"
-                      title={ht.viewTitle ?? "Xem"}
+                      title={ht.viewTitle}
                     >
                       <Eye size={14} />
                     </Link>

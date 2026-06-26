@@ -887,6 +887,7 @@ export const en = {
       actions: "Actions",
       exportDisabledTitle: "Export only available for completed jobs",
       exportTitle: "Download Excel",
+      viewTitle: "View",
       deleteTitle: "Delete",
     },
     deleteModal: {

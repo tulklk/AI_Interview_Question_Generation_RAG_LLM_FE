@@ -889,6 +889,7 @@ export const vi: Translations = {
       actions: "Thao tác",
       exportDisabledTitle: "Chỉ export được khi hoàn thành",
       exportTitle: "Tải xuống Excel",
+      viewTitle: "Xem",
       deleteTitle: "Xóa",
     },
     deleteModal: {
