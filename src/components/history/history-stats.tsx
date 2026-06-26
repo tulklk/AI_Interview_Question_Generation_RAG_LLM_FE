@@ -72,21 +72,22 @@ export function HistoryStats() {
   const values = [String(stats.total), String(stats.questions), String(stats.thisMonth)];
 
   return (
-    <div className="grid grid-cols-3 gap-4 mb-6">
+    <div className="grid grid-cols-3 gap-3 sm:gap-4 mb-6">
       {values.map((value, i) => {
         const Icon = icons[i];
         return (
           <div
             key={i}
-            className="hr-glass-card p-5 flex items-center gap-4 animate-fade-up"
+            className="hr-glass-card p-3 sm:p-5 flex flex-col sm:flex-row items-center sm:items-center sm:gap-4 gap-2 animate-fade-up text-center sm:text-left"
             style={{ animationDelay: `${i * 80}ms` }}
           >
-            <div className={`w-11 h-11 rounded-lg flex items-center justify-center shrink-0 ${iconBgs[i]}`}>
-              <Icon size={20} className={iconColors[i]} />
+            <div className={`w-8 h-8 sm:w-11 sm:h-11 rounded-lg flex items-center justify-center shrink-0 ${iconBgs[i]}`}>
+              <Icon size={16} className={cn("sm:hidden", iconColors[i])} />
+              <Icon size={20} className={cn("hidden sm:block", iconColors[i])} />
             </div>
-            <div>
-              <p className={cn("text-2xl font-bold leading-none", portalHeading)}>{value}</p>
-              <p className={cn("text-sm mt-1", portalSubtext)}>{labels[i]}</p>
+            <div className="min-w-0">
+              <p className={cn("text-lg sm:text-2xl font-bold leading-none", portalHeading)}>{value}</p>
+              <p className={cn("text-[11px] sm:text-sm mt-0.5 sm:mt-1 leading-tight", portalSubtext)}>{labels[i]}</p>
             </div>
           </div>
         );

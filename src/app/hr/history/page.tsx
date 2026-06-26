@@ -16,6 +16,8 @@ export default function HrHistoryPage() {
   const [search, setSearch] = useState("");
   const [role, setRole] = useState("");
   const [level, setLevel] = useState("");
+  const [experience, setExperience] = useState("");
+  const [status, setStatus] = useState("");
 
   return (
     <AppShell
@@ -27,22 +29,20 @@ export default function HrHistoryPage() {
         <p className={cn("text-sm mt-1", portalSubtext)}>{hp.subtext}</p>
       </div>
 
-      <div className="animate-fade-up" style={{ animationDelay: "80ms" }}>
-        <HistoryStats />
-      </div>
-      <div className="animate-fade-up" style={{ animationDelay: "160ms" }}>
-        <HistoryFilters
-          search={search}
-          onSearchChange={setSearch}
-          role={role}
-          onRoleChange={setRole}
-          level={level}
-          onLevelChange={setLevel}
-        />
-      </div>
-      <div className="animate-fade-up" style={{ animationDelay: "240ms" }}>
-        <HistoryTable search={search} role={role} level={level} />
-      </div>
+      <HistoryStats />
+      <HistoryFilters
+        search={search}
+        onSearchChange={setSearch}
+        role={role}
+        onRoleChange={setRole}
+        level={level}
+        onLevelChange={setLevel}
+        experience={experience}
+        onExperienceChange={setExperience}
+        status={status}
+        onStatusChange={setStatus}
+      />
+      <HistoryTable search={search} role={role} level={level} experience={experience} status={status} />
     </AppShell>
   );
 }
