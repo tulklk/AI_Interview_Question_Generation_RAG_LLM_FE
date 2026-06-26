@@ -105,7 +105,7 @@ export function FeedbackPage({ session }: FeedbackPageProps) {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="hr-glass-card p-8 mb-6 flex items-center gap-10"
+        className="hr-glass-card p-5 sm:p-8 mb-6 flex flex-col sm:flex-row items-center sm:items-start gap-5 sm:gap-10"
       >
         <ScoreRing score={session.score} trackStroke={chart.isDark ? "#374151" : "#F3F4F6"} />
 
@@ -135,7 +135,7 @@ export function FeedbackPage({ session }: FeedbackPageProps) {
         </div>
 
         {/* Action buttons */}
-        <div className="flex flex-col gap-2 shrink-0">
+        <div className="flex sm:flex-col gap-2 shrink-0 w-full sm:w-auto">
           <Link
             href={`/jobseeker/practice/${session.setId}`}
             className="shimmer-button flex items-center gap-2 h-9 px-4 text-[13px] font-semibold text-white hr-cta-btn rounded-lg"
@@ -153,7 +153,7 @@ export function FeedbackPage({ session }: FeedbackPageProps) {
         </div>
       </motion.div>
 
-      <div className="grid grid-cols-[1fr_320px] gap-6 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[1fr_320px] gap-6 mb-6">
         {/* ── Skill Breakdown ───────────────────────────────────────── */}
         <motion.div
           initial={{ opacity: 0, y: 16 }}
@@ -293,7 +293,7 @@ export function FeedbackPage({ session }: FeedbackPageProps) {
                           <p className={cn("text-[13px] leading-[22px]", portalHeadingAlt)}>{ans.answer}</p>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-4 mb-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                           {/* Strengths */}
                           <div>
                             <div className="flex items-center gap-1.5 mb-2">

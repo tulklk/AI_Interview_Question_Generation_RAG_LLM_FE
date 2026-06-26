@@ -116,7 +116,7 @@ export function QuestionEditCard({
   return (
     <div className={cn("rounded-xl border transition-colors", isEditing ? "border-[#6c47ff]/50 shadow-sm" : "border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900")}>
       {/* Main Card */}
-      <div className="p-5">
+      <div className="p-4 sm:p-5">
         <div className="flex items-start gap-3">
           {/* Drag handle + index */}
           <div className="flex flex-col items-center gap-1 shrink-0 mt-0.5">
@@ -154,7 +154,7 @@ export function QuestionEditCard({
             {/* Question text or Edit form */}
             {isEditing ? (
               <div className="space-y-3">
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className={cn("text-xs font-medium mb-1 block", portalHeading)}>
                       {rp.questionFields.questionType}
@@ -306,9 +306,9 @@ export function QuestionEditCard({
             )}
           </div>
 
-          {/* Action buttons */}
+          {/* Action buttons — vertical on desktop, hidden here on mobile (shown below) */}
           {!isEditing && (
-            <div className="flex flex-col items-center gap-1 shrink-0">
+            <div className="hidden sm:flex flex-col items-center gap-1 shrink-0">
               <button
                 type="button"
                 onClick={() => setShowAskAI(!showAskAI)}
@@ -359,6 +359,61 @@ export function QuestionEditCard({
             </div>
           )}
         </div>
+
+        {/* Mobile action bar — horizontal row, hidden on sm+ (handled by vertical column above) */}
+        {!isEditing && (
+          <div className="sm:hidden flex items-center gap-1 mt-3 pt-2.5 border-t border-gray-100 dark:border-gray-800">
+            <button
+              type="button"
+              onClick={() => setShowAskAI(!showAskAI)}
+              title={rp.questionActions.askAI}
+              className={cn(
+                "flex-1 flex items-center justify-center gap-1.5 py-1.5 text-xs rounded-lg transition-colors",
+                showAskAI
+                  ? "bg-primary/10 text-primary"
+                  : "text-gray-500 dark:text-gray-400 hover:text-primary hover:bg-primary/10"
+              )}
+            >
+              <Sparkles size={12} />
+              <span>{rp.questionActions.askAI}</span>
+            </button>
+            <button
+              type="button"
+              onClick={startEdit}
+              title={rp.questionActions.edit}
+              className="flex-1 flex items-center justify-center gap-1.5 py-1.5 text-xs rounded-lg text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            >
+              <Pencil size={12} />
+              <span>{rp.questionActions.edit}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => !isFirst && onMoveUp()}
+              disabled={isFirst}
+              title={rp.questionActions.moveUp}
+              className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+            >
+              <ChevronUp size={14} />
+            </button>
+            <button
+              type="button"
+              onClick={() => !isLast && onMoveDown()}
+              disabled={isLast}
+              title={rp.questionActions.moveDown}
+              className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+            >
+              <ChevronDown size={14} />
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowDeleteConfirm(true)}
+              title={rp.questionActions.delete}
+              className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 dark:text-gray-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
+            >
+              <Trash2 size={13} />
+            </button>
+          </div>
+        )}
 
         {/* Delete confirm inline */}
         {showDeleteConfirm && (

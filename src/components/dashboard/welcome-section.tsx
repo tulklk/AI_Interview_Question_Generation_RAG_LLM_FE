@@ -23,7 +23,7 @@ export function WelcomeSection() {
   const welcomeHeading = buildWelcomeMessage(dp.welcomeTemplate, greeting, displayName);
 
   return (
-    <div className="flex items-start justify-between mb-6 animate-fade-up">
+    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6 animate-fade-up">
       <div>
         <h2 className={cn("text-2xl font-bold", portalHeading)}>{welcomeHeading}</h2>
         <p className={cn("text-sm mt-1", portalSubtext)}>{dp.welcomeSub}</p>

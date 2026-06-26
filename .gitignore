@@ -66,6 +66,9 @@ $RECYCLE.BIN/
 # Cursor AI editor
 .cursor/
 
+# Claude Code / local agent worktrees
+.claude/
+
 # AI agent instruction files (local only)
 AGENTS.md
 CLAUDE.md

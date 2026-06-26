@@ -100,20 +100,20 @@ export function PracticeSession({ set }: PracticeSessionProps) {
     />
     <div className="min-h-screen hr-main-bg flex flex-col">
       {/* ── Top bar ─────────────────────────────────────────────────── */}
-      <header className={cn("hr-topbar px-8 h-14 flex items-center justify-between shrink-0 border-b", portalDivider)}>
+      <header className={cn("hr-topbar px-4 md:px-8 h-14 flex items-center justify-between shrink-0 border-b gap-2", portalDivider)}>
         {/* Left: set info */}
-        <div className="flex items-center gap-3">
-          <div className={cn("w-7 h-7 rounded-lg text-white text-[11px] font-bold flex items-center justify-center", set.companyColor)}>
+        <div className="flex items-center gap-2 min-w-0">
+          <div className={cn("w-7 h-7 rounded-lg text-white text-[11px] font-bold flex items-center justify-center shrink-0", set.companyColor)}>
             {set.companyInitials}
           </div>
-          <div>
-            <p className={cn("text-[13px] font-[600] leading-none", portalHeadingAlt)}>{set.title}</p>
+          <div className="min-w-0 hidden sm:block">
+            <p className={cn("text-[13px] font-[600] leading-none truncate", portalHeadingAlt)}>{set.title}</p>
             <p className={cn("text-[11px] mt-0.5", portalSubtextAlt)}>{set.company}</p>
           </div>
         </div>
 
         {/* Center: progress */}
-        <div className="flex items-center gap-3 flex-1 mx-10">
+        <div className="flex items-center gap-2 sm:gap-3 flex-1 mx-2 sm:mx-6 md:mx-10">
           <div className="flex-1 h-1.5 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
             <motion.div
               className="h-full bg-primary rounded-full"
@@ -122,18 +122,18 @@ export function PracticeSession({ set }: PracticeSessionProps) {
               transition={{ duration: 0.4 }}
             />
           </div>
-          <span className={cn("text-[12px] font-[600] shrink-0 tabular-nums", portalSubtextAlt)}>
+          <span className={cn("text-[11px] sm:text-[12px] font-[600] shrink-0 tabular-nums", portalSubtextAlt)}>
             {p.question} {currentIdx + 1} {p.of} {totalQuestions}
           </span>
         </div>
 
         {/* Right: timer + exit */}
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 sm:gap-4 shrink-0">
           <div className={cn(
-            "flex items-center gap-1.5 text-[13px] font-[600] tabular-nums",
+            "flex items-center gap-1.5 text-[12px] sm:text-[13px] font-[600] tabular-nums",
             timeLeft < 300 ? "text-red-500" : portalSubtextAlt
           )}>
-            <Timer size={14} />
+            <Timer size={13} />
             {formatTime(timeLeft)}
           </div>
           <button
@@ -148,7 +148,7 @@ export function PracticeSession({ set }: PracticeSessionProps) {
       </header>
 
       {/* ── Main ────────────────────────────────────────────────────── */}
-      <main className="flex-1 flex items-start justify-center px-6 py-10">
+      <main className="flex-1 flex items-start justify-center px-3 sm:px-6 py-6 sm:py-10">
         <div className="w-full max-w-[760px] flex flex-col gap-5">
 
           {/* Question card */}
@@ -161,7 +161,7 @@ export function PracticeSession({ set }: PracticeSessionProps) {
               animate="center"
               exit="exit"
               transition={{ duration: 0.25, ease: "easeInOut" }}
-              className="hr-glass-card p-8"
+              className="hr-glass-card p-5 sm:p-8"
             >
               {/* Category + difficulty badges */}
               <div className="flex items-center gap-2 mb-5">
@@ -170,14 +170,14 @@ export function PracticeSession({ set }: PracticeSessionProps) {
               </div>
 
               {/* Question text */}
-              <p className={cn("text-[20px] font-[700] leading-[30px]", portalHeadingAlt)}>
+              <p className={cn("text-[17px] sm:text-[20px] font-[700] leading-[26px] sm:leading-[30px]", portalHeadingAlt)}>
                 {question.text}
               </p>
             </motion.div>
           </AnimatePresence>
 
           {/* Answer area */}
-          <div className="hr-glass-card p-6">
+          <div className="hr-glass-card p-4 sm:p-6">
             {isSubmitted ? (
               /* Submitted state */
               <motion.div
@@ -202,7 +202,7 @@ export function PracticeSession({ set }: PracticeSessionProps) {
                   placeholder={p.answerPlaceholder}
                   disabled={evaluating}
                   className={cn(
-                    "w-full min-h-[180px] text-[14px] font-[400] bg-transparent outline-none resize-none leading-[24px]",
+                    "w-full min-h-[140px] sm:min-h-[180px] text-[14px] font-[400] bg-transparent outline-none resize-none leading-[24px]",
                     portalHeadingAlt,
                     "placeholder:text-gray-400 dark:placeholder:text-gray-500"
                   )}

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Sparkles } from "lucide-react";
+import { Sparkles, X } from "lucide-react";
 import { cn, isHrNavActive } from "@/lib/utils";
 import { navItems } from "@/data/dashboard";
 import { useLanguage } from "@/context/language-context";
@@ -11,7 +11,12 @@ import { BrandLogo } from "@/components/shared/brand-logo";
 import { SidebarUserFooter } from "@/components/layout/sidebar-user-footer";
 import type { HrPlanId } from "@/types/hr-subscription";
 
-export function Sidebar() {
+interface SidebarProps {
+  open?: boolean;
+  onClose?: () => void;
+}
+
+export function Sidebar({ open = false, onClose }: SidebarProps) {
   const pathname = usePathname();
   const { t } = useLanguage();
   const { planId } = useHrSubscription();
@@ -19,13 +24,26 @@ export function Sidebar() {
   const short = planShortBadge[planId]?.trim();
   const s = t.sidebar;
 
-  return (
-    <aside className="hr-sidebar flex flex-col w-[250px] shrink-0 h-screen overflow-y-auto">
-      <div className="px-5 pt-6 pb-2">
+  const handleNavClick = () => {
+    if (onClose) onClose();
+  };
+
+  const sidebarContent = (
+    <aside className="flex flex-col w-full h-full overflow-y-auto hr-sidebar">
+      <div className="px-5 pt-6 pb-2 flex items-center justify-between">
         <BrandLogo
           logoClassName="w-9 h-9"
           subtitleClassName="text-gray-400 dark:text-gray-500 text-[11px]"
         />
+        {/* Close button — mobile only */}
+        <button
+          type="button"
+          onClick={onClose}
+          className="lg:hidden w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+          aria-label="Close menu"
+        >
+          <X size={18} />
+        </button>
       </div>
 
       <nav className="flex-1 px-4 mt-6">
@@ -40,6 +58,7 @@ export function Sidebar() {
               <li key={item.href}>
                 <Link
                   href={item.href}
+                  onClick={handleNavClick}
                   className={cn(
                     "flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 text-base font-normal",
                     isActive
@@ -93,6 +112,7 @@ export function Sidebar() {
           <p className="text-gray-500 dark:text-gray-400 text-xs mt-1 leading-relaxed">{s.quickGenerate.desc}</p>
           <Link
             href="/hr/generate"
+            onClick={handleNavClick}
             className="mt-3 shimmer-button inline-block text-xs font-semibold text-white hr-cta-btn px-4 py-2 rounded-lg w-full text-center"
           >
             {s.quickGenerate.btn}
@@ -119,5 +139,38 @@ export function Sidebar() {
         }
       />
     </aside>
+  );
+
+  return (
+    <>
+      {/* Desktop sidebar — always visible on lg+ */}
+      <div className="hidden lg:flex w-62.5 shrink-0 h-screen">
+        {sidebarContent}
+      </div>
+
+      {/* Mobile drawer overlay */}
+      <div
+        className={cn(
+          "lg:hidden fixed inset-0 z-40 transition-opacity duration-300",
+          open ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+        )}
+        aria-hidden={!open}
+      >
+        {/* Backdrop */}
+        <div
+          className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+          onClick={onClose}
+        />
+        {/* Drawer panel */}
+        <div
+          className={cn(
+            "absolute left-0 top-0 h-full w-70 max-w-[82vw] transition-transform duration-300 ease-in-out",
+            open ? "translate-x-0" : "-translate-x-full"
+          )}
+        >
+          {sidebarContent}
+        </div>
+      </div>
+    </>
   );
 }
