@@ -21,7 +21,7 @@ export default function HrDashboardPage() {
       </div>
 
       <div
-        className="grid grid-cols-[1fr_420px] gap-4 mt-5 animate-fade-up"
+        className="grid grid-cols-1 lg:grid-cols-[1fr_420px] gap-4 mt-5 animate-fade-up"
         style={{ animationDelay: "160ms" }}
       >
         <WeeklyActivityCard />
@@ -29,7 +29,7 @@ export default function HrDashboardPage() {
       </div>
 
       <div
-        className="grid grid-cols-[1fr_420px] gap-4 mt-4 animate-fade-up"
+        className="grid grid-cols-1 lg:grid-cols-[1fr_420px] gap-4 mt-4 animate-fade-up"
         style={{ animationDelay: "240ms" }}
       >
         <QuickGenerateCard />

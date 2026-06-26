@@ -183,64 +183,62 @@ export function ReviewQuestionsSection({
   return (
     <div className="space-y-4">
       {/* Toolbar */}
-      <div className="flex items-center justify-between gap-3 flex-wrap">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <p className={cn("text-sm", portalSubtext)}>
           {rp.questionCount.replace("{{count}}", String(questions.length))}
         </p>
-        <div className="flex items-center gap-2">
-          {!readOnly && (
-            <>
-              <button
-                type="button"
-                onClick={() => setShowAddDialog(true)}
-                className={cn(
-                  "flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-lg border transition-colors",
-                  portalCard,
-                  portalHeading,
-                  "hover:bg-gray-50 dark:hover:bg-gray-800"
-                )}
-              >
-                <Plus size={14} />
-                {rp.addQuestion}
-              </button>
-              <button
-                type="button"
-                onClick={handleSaveDraft}
-                disabled={saveState === "saving"}
-                className={cn(
-                  "flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-lg transition-colors",
-                  saveState === "saved"
-                    ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800"
-                    : saveState === "error"
-                      ? "bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800"
-                      : "bg-[#6c47ff] text-white hover:bg-[#5535dd] disabled:opacity-70"
-                )}
-              >
-                {saveState === "saving" ? (
-                  <>
-                    <Loader2 size={14} className="animate-spin" />
-                    {rp.saving}
-                  </>
-                ) : saveState === "saved" ? (
-                  <>
-                    <CheckCircle2 size={14} />
-                    {rp.savedSuccess}
-                  </>
-                ) : saveState === "error" ? (
-                  <>
-                    <AlertCircle size={14} />
-                    {rp.savedFailed}
-                  </>
-                ) : (
-                  <>
-                    <BookMarked size={14} />
-                    {rp.saveDraft}
-                  </>
-                )}
-              </button>
-            </>
-          )}
-        </div>
+        {!readOnly && (
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setShowAddDialog(true)}
+              className={cn(
+                "flex-1 sm:flex-none flex items-center justify-center gap-2 text-sm font-semibold px-4 py-2 rounded-lg border transition-colors",
+                portalCard,
+                portalHeading,
+                "hover:bg-gray-50 dark:hover:bg-gray-800"
+              )}
+            >
+              <Plus size={14} />
+              {rp.addQuestion}
+            </button>
+            <button
+              type="button"
+              onClick={handleSaveDraft}
+              disabled={saveState === "saving"}
+              className={cn(
+                "flex-1 sm:flex-none flex items-center justify-center gap-2 text-sm font-semibold px-4 py-2 rounded-lg transition-colors",
+                saveState === "saved"
+                  ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800"
+                  : saveState === "error"
+                    ? "bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800"
+                    : "bg-[#6c47ff] text-white hover:bg-[#5535dd] disabled:opacity-70"
+              )}
+            >
+              {saveState === "saving" ? (
+                <>
+                  <Loader2 size={14} className="animate-spin" />
+                  {rp.saving}
+                </>
+              ) : saveState === "saved" ? (
+                <>
+                  <CheckCircle2 size={14} />
+                  {rp.savedSuccess}
+                </>
+              ) : saveState === "error" ? (
+                <>
+                  <AlertCircle size={14} />
+                  {rp.savedFailed}
+                </>
+              ) : (
+                <>
+                  <BookMarked size={14} />
+                  {rp.saveDraft}
+                </>
+              )}
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Questions List */}
