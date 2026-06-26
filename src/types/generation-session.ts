@@ -29,7 +29,8 @@ export interface GenerationNote {
 
 export interface PlanDraft {
   role: string;
-  level: string;
+  level: string;       // Experience level: Intern, Junior, Mid-level, Senior, Lead, Manager
+  difficulty?: string; // Plan difficulty: Easy, Medium, Hard
   questionCount: number;
   questionTypes: QuestionType[];
   topics: string[];

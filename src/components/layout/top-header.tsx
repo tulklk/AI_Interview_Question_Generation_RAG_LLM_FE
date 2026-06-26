@@ -58,7 +58,6 @@ export function TopHeader({
           <nav
             className={cn(
               "flex items-center gap-1",
-              !isAdmin && "mb-0.5",
               isAdmin
                 ? "text-sm font-medium text-[#6b7280] dark:text-gray-400"
                 : "text-xs text-gray-400 dark:text-gray-500"
@@ -92,9 +91,6 @@ export function TopHeader({
               </span>
             ))}
           </nav>
-        )}
-        {!isAdmin && (
-          <h1 className="text-sm font-semibold text-gray-800 dark:text-gray-100 leading-tight">{pageTitle}</h1>
         )}
       </div>
 

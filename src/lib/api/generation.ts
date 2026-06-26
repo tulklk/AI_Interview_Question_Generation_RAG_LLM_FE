@@ -30,10 +30,21 @@ interface BackendJobQuestion {
   order?: number;
 }
 
+interface BackendJobSummary {
+  role?: string;
+  level?: string;
+  experience_level?: string;
+  numberOfQuestions?: number;
+  questionTypes?: string[];
+  skills?: string[];
+}
+
 interface BackendJobPlan {
   roleTitle?: string;
   summary?: string;
   difficulty?: string;
+  level?: string;
+  experienceLevel?: string;
   totalQuestions?: number;
   skills?: string[];
 }
@@ -79,6 +90,7 @@ interface BackendJob {
   skills?: string[];
   phase?: string;
   status?: string;
+  summary?: BackendJobSummary;
   plan?: BackendJobPlan;
   questions?: BackendJobQuestion[];
   questionCount?: number;
@@ -144,6 +156,23 @@ function normalizeQuestionType(raw?: string): QuestionType {
   return ALLOWED_QUESTION_TYPES.includes(titled) ? titled : "Technical";
 }
 
+function normalizeLevel(raw?: string): string {
+  if (!raw) return "";
+  const map: Record<string, string> = {
+    intern: "Intern",
+    junior: "Junior",
+    mid: "Mid-level",
+    medium: "Mid-level",
+    "mid-level": "Mid-level",
+    "mid level": "Mid-level",
+    senior: "Senior",
+    lead: "Lead",
+    manager: "Manager",
+  };
+  const key = raw.toLowerCase().trim();
+  return map[key] ?? (raw.charAt(0).toUpperCase() + raw.slice(1));
+}
+
 function normalizeDifficulty(raw?: string): DifficultyLevel {
   const allowed: DifficultyLevel[] = ["Easy", "Medium", "Hard"];
   const normalized = raw
@@ -169,7 +198,8 @@ function mapJobPhaseToStatus(phase: string): GenerationStatus {
 }
 
 function mapJobToSession(job: BackendJob): GenerationSession {
-  const role = job.plan?.roleTitle ?? "";
+  const summ = job.summary;
+  const role = job.plan?.roleTitle ?? summ?.role ?? "";
   const id = job.jobId ?? job.id ?? "";
   const ui = job.ui;
   const meta = job.meta;
@@ -182,14 +212,23 @@ function mapJobToSession(job: BackendJob): GenerationSession {
     status: mapJobPhaseToStatus(job.phase ?? job.status ?? "COMPLETED"),
     planDraft: {
       role,
-      level: "",
+      level: normalizeLevel(
+        job.plan?.experienceLevel ??
+        summ?.experience_level
+      ),
+      difficulty: normalizeDifficulty(
+        job.plan?.difficulty ??
+        job.plan?.level ??
+        summ?.level
+      ),
       questionCount:
         job.numberOfQuestions ??
+        summ?.numberOfQuestions ??
         job.plan?.totalQuestions ??
         job.questionCount ??
         (job.questions?.length ?? 0),
-      questionTypes: (job.questionTypes ?? ["Technical"]).map(normalizeQuestionType),
-      topics: job.plan?.skills ?? job.skills ?? [],
+      questionTypes: (job.questionTypes ?? summ?.questionTypes ?? ["Technical"]).map(normalizeQuestionType),
+      topics: job.plan?.skills ?? summ?.skills ?? job.skills ?? [],
       summary: job.plan?.summary,
     },
     generatedQuestions: job.questions?.length
@@ -291,7 +330,7 @@ function mapPlanToSession(p: BackendPlanItem): GenerationSession {
     status,
     planDraft: {
       role: p.jobTitle ?? "",
-      level: p.level ? (p.level.charAt(0).toUpperCase() + p.level.slice(1)) : "",
+      level: normalizeLevel(p.level),
       questionCount: count,
       questionTypes: ["Technical"],
       topics: [],
@@ -359,7 +398,7 @@ export async function getGenerationSession(id: string): Promise<GenerationSessio
 
 export async function updateJobPlan(
   jobId: string,
-  plan: Partial<PlanDraft> & { roleTitle?: string; totalQuestions?: number; skills?: string[]; notes?: string }
+  plan: Partial<PlanDraft> & { roleTitle?: string; totalQuestions?: number; skills?: string[]; notes?: string; level?: string; experienceLevel?: string }
 ): Promise<boolean> {
   try {
     await apiClient.put(`/api/hr/question-generation-jobs/${jobId}/plan`, plan);

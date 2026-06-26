@@ -14,6 +14,7 @@ import {
   X,
   RefreshCw,
   FilePlus2,
+  MoreHorizontal,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { portalHeading, portalSubtext, portalInput } from "@/lib/portal-ui";
@@ -53,11 +54,64 @@ function formatBytes(bytes?: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-function fileIcon(mimeType?: string): string {
-  if (!mimeType) return "📄";
-  if (mimeType.includes("pdf")) return "📕";
-  if (mimeType.includes("word") || mimeType.includes("document")) return "📘";
-  return "📄";
+// ---------------------------------------------------------------------------
+// File type icon
+// ---------------------------------------------------------------------------
+
+type FileType = "pdf" | "docx" | "doc" | "txt" | "unknown";
+
+function getFileType(fileName: string, mimeType?: string): FileType {
+  const ext = fileName.toLowerCase().split(".").pop() ?? "";
+  const mime = (mimeType ?? "").toLowerCase();
+  if (ext === "pdf" || mime.includes("pdf")) return "pdf";
+  if (ext === "docx" || mime.includes("openxmlformats")) return "docx";
+  if (ext === "doc" || mime.includes("msword")) return "doc";
+  if (ext === "txt" || mime.includes("plain")) return "txt";
+  return "unknown";
+}
+
+const FILE_TYPE_CONFIG: Record<FileType, { bg: string; accent: string; label: string }> = {
+  pdf:     { bg: "bg-red-50 dark:bg-red-950/40",       accent: "#ef4444", label: "PDF"  },
+  docx:    { bg: "bg-blue-50 dark:bg-blue-950/40",     accent: "#3b82f6", label: "DOCX" },
+  doc:     { bg: "bg-sky-50 dark:bg-sky-950/40",       accent: "#0ea5e9", label: "DOC"  },
+  txt:     { bg: "bg-gray-100 dark:bg-gray-800",       accent: "#6b7280", label: "TXT"  },
+  unknown: { bg: "bg-violet-50 dark:bg-violet-950/40", accent: "#7c3aed", label: "FILE" },
+};
+
+function FileTypeIcon({ fileName, mimeType }: { fileName: string; mimeType?: string }) {
+  const type = getFileType(fileName, mimeType);
+  const { bg, accent, label } = FILE_TYPE_CONFIG[type];
+  const small = label.length > 3;
+
+  return (
+    <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center shrink-0", bg)}>
+      <svg width="24" height="28" viewBox="0 0 24 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+        {/* Document body */}
+        <rect x="1" y="0.5" width="22" height="27" rx="2" fill="white" stroke={accent} strokeWidth="0.7" strokeOpacity="0.2"/>
+        {/* Folded corner */}
+        <path d="M15.5 0.5 L22.5 7.5 H16 C15.7 7.5 15.5 7.3 15.5 7 V0.5Z" fill={accent} fillOpacity="0.18"/>
+        <path d="M15.5 0.5 L15.5 7 C15.5 7.3 15.7 7.5 16 7.5 L22.5 7.5" stroke={accent} strokeWidth="0.7" strokeOpacity="0.2" fill="none"/>
+        {/* Content lines */}
+        <line x1="3.5" y1="11" x2="15" y2="11" stroke={accent} strokeOpacity="0.28" strokeWidth="1.3" strokeLinecap="round"/>
+        <line x1="3.5" y1="14" x2="11" y2="14" stroke={accent} strokeOpacity="0.28" strokeWidth="1.3" strokeLinecap="round"/>
+        {/* Footer strip */}
+        <path d="M1 19.5 H23 V26 C23 27.1 22.1 27.5 21 27.5 H3 C1.9 27.5 1 27.1 1 26 V19.5Z" fill={accent}/>
+        {/* Extension label */}
+        <text
+          x="12"
+          y="25.5"
+          textAnchor="middle"
+          fill="white"
+          fontSize={small ? "4.8" : "6"}
+          fontWeight="800"
+          fontFamily="system-ui, -apple-system, 'Segoe UI', sans-serif"
+          letterSpacing="0.3"
+        >
+          {label}
+        </text>
+      </svg>
+    </div>
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -105,7 +159,7 @@ function StatusBadge({ status }: { status: DocumentStatus }) {
 }
 
 // ---------------------------------------------------------------------------
-// Document card
+// Document row
 // ---------------------------------------------------------------------------
 
 function DocumentCard({
@@ -123,8 +177,42 @@ function DocumentCard({
 }) {
   const { t } = useLanguage();
   const kb = t.knowledgePage;
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [menuPos, setMenuPos] = useState({ top: 0, right: 0 });
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const dropRef = useRef<HTMLDivElement>(null);
 
   const isProcessing = doc.status === "INGESTING" || doc.status === "PROCESSING" || doc.status === "PENDING";
+
+  // Close on outside click or scroll
+  useEffect(() => {
+    if (!menuOpen) return;
+    function close(e: MouseEvent) {
+      if (
+        dropRef.current && !dropRef.current.contains(e.target as Node) &&
+        btnRef.current  && !btnRef.current.contains(e.target as Node)
+      ) setMenuOpen(false);
+    }
+    document.addEventListener("mousedown", close);
+    document.addEventListener("scroll", () => setMenuOpen(false), true);
+    return () => {
+      document.removeEventListener("mousedown", close);
+      document.removeEventListener("scroll", () => setMenuOpen(false), true);
+    };
+  }, [menuOpen]);
+
+  function openMenu(e: React.MouseEvent) {
+    e.stopPropagation();
+    if (menuOpen) { setMenuOpen(false); return; }
+    const rect = btnRef.current?.getBoundingClientRect();
+    if (rect) {
+      setMenuPos({
+        top: rect.bottom + 6,
+        right: window.innerWidth - rect.right,
+      });
+    }
+    setMenuOpen(true);
+  }
 
   function formatDate(iso: string): string {
     const d = new Date(iso);
@@ -138,81 +226,81 @@ function DocumentCard({
 
   return (
     <div className={cn(
-      "group relative flex flex-col gap-3 p-4 rounded-xl border transition-all duration-200",
-      "bg-white dark:bg-gray-900/80 border-gray-100 dark:border-gray-800",
-      "hover:border-violet-200 dark:hover:border-violet-800 hover:shadow-md dark:hover:shadow-violet-950/20",
+      "group flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors",
+      "hover:bg-gray-50 dark:hover:bg-gray-800/60",
     )}>
-      <div className="flex items-start gap-3">
-        <div className={cn(
-          "w-10 h-10 rounded-xl flex items-center justify-center shrink-0 text-lg",
-          doc.status === "READY"
-            ? "bg-emerald-50 dark:bg-emerald-950/40"
-            : doc.status === "FAILED"
-            ? "bg-red-50 dark:bg-red-950/30"
-            : "bg-blue-50 dark:bg-blue-950/30",
-        )}>
-          {fileIcon(doc.mimeType)}
-        </div>
+      {/* File type icon */}
+      <FileTypeIcon fileName={doc.fileName} mimeType={doc.mimeType} />
 
-        <div className="flex-1 min-w-0">
-          <p className={cn("text-sm font-semibold leading-snug truncate", portalHeading)} title={doc.fileName}>
-            {doc.fileName}
-          </p>
-          <div className="flex items-center gap-2 mt-1 flex-wrap">
-            <StatusBadge status={doc.status} />
-            {doc.fileSize && (
-              <span className={cn("text-[11px]", portalSubtext)}>{formatBytes(doc.fileSize)}</span>
-            )}
-            {doc.pageCount && (
-              <span className={cn("text-[11px]", portalSubtext)}>{doc.pageCount} {kb.pages}</span>
-            )}
-          </div>
+      {/* Info */}
+      <div className="flex-1 min-w-0">
+        <p className={cn("text-sm font-medium leading-snug truncate", portalHeading)} title={doc.fileName}>
+          {doc.fileName}
+        </p>
+        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+          <StatusBadge status={doc.status} />
+          {doc.fileSize && (
+            <span className={cn("text-[11px]", portalSubtext)}>{formatBytes(doc.fileSize)}</span>
+          )}
+          <span className={cn("text-[11px]", portalSubtext)}>{formatDate(doc.createdAt)}</span>
         </div>
+        {doc.status === "FAILED" && doc.errorMessage && (
+          <p className="text-[11px] text-red-500 dark:text-red-400 mt-1 line-clamp-1">
+            {doc.errorMessage}
+          </p>
+        )}
       </div>
 
-      {doc.status === "FAILED" && doc.errorMessage && (
-        <p className="text-xs text-red-500 dark:text-red-400 bg-red-50 dark:bg-red-950/30 rounded-lg px-3 py-2 line-clamp-2">
-          {doc.errorMessage}
-        </p>
-      )}
+      {/* Three-dot button */}
+      <button
+        ref={btnRef}
+        type="button"
+        onClick={openMenu}
+        className={cn(
+          "shrink-0 p-1.5 rounded-lg transition-all",
+          "text-gray-400 hover:text-gray-600 dark:hover:text-gray-200",
+          "hover:bg-gray-100 dark:hover:bg-gray-700",
+          menuOpen
+            ? "opacity-100 bg-gray-100 dark:bg-gray-700"
+            : "opacity-0 group-hover:opacity-100"
+        )}
+      >
+        {(deleting || reingesting)
+          ? <Loader2 size={14} className="animate-spin" />
+          : <MoreHorizontal size={14} />
+        }
+      </button>
 
-      <div className="flex items-center justify-between mt-auto pt-2 border-t border-gray-100 dark:border-gray-800">
-        <span className={cn("text-[11px]", portalSubtext)}>{formatDate(doc.createdAt)}</span>
-
-        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-          {doc.status === "FAILED" && (
+      {/* Dropdown — rendered via portal so it escapes overflow container */}
+      {menuOpen && createPortal(
+        <div
+          ref={dropRef}
+          style={{ position: "fixed", top: menuPos.top, right: menuPos.right, zIndex: 9999 }}
+          className="w-48 rounded-xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-2xl py-1 animate-in fade-in slide-in-from-top-1 duration-150"
+        >
+          {(doc.status === "FAILED" || isProcessing) && (
             <button
               type="button"
-              onClick={() => onReingest(doc.id)}
               disabled={reingesting}
-              title={kb.reingestTitle}
-              className="p-1.5 rounded-lg text-gray-400 hover:text-violet-600 hover:bg-violet-50 dark:hover:bg-violet-950/30 transition-colors disabled:opacity-50"
+              onClick={() => { onReingest(doc.id); setMenuOpen(false); }}
+              className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors disabled:opacity-50"
             >
-              {reingesting ? <Loader2 size={13} className="animate-spin" /> : <RotateCcw size={13} />}
-            </button>
-          )}
-          {isProcessing && (
-            <button
-              type="button"
-              onClick={() => onReingest(doc.id)}
-              disabled={reingesting}
-              title={kb.retryTitle}
-              className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/30 transition-colors disabled:opacity-50"
-            >
-              <RefreshCw size={13} />
+              <RotateCcw size={13} className="text-gray-400" />
+              {doc.status === "FAILED" ? kb.reingestTitle : kb.retryTitle}
             </button>
           )}
           <button
             type="button"
-            onClick={() => onDelete(doc.id)}
             disabled={deleting}
-            title={kb.deleteDocTitle}
-            className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors disabled:opacity-50"
+            onClick={() => { onDelete(doc.id); setMenuOpen(false); }}
+            className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors disabled:opacity-50"
           >
-            {deleting ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
+            <Trash2 size={13} className="text-red-400" />
+            Xoá nguồn
           </button>
-        </div>
-      </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 }
@@ -507,7 +595,7 @@ export function KnowledgePageContent({
           </div>
 
           {/* Document list */}
-          <div className="flex flex-col gap-2 overflow-y-auto max-h-[calc(100vh-340px)]">
+          <div className="flex flex-col overflow-y-auto max-h-[calc(100vh-340px)]">
             {loading ? (
               <div className="flex justify-center py-10">
                 <Loader2 size={22} className="text-violet-500 animate-spin" />
