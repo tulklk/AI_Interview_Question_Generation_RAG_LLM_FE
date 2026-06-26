@@ -83,10 +83,10 @@ export function PreferencesSection() {
 
         <div className={cn("border-t pt-5", portalDivider)}>
           <div className="flex items-center gap-2 mb-4">
-            <Sparkles size={14} className="text-[#6c47ff]" />
+            <Sparkles size={14} className="text-primary" />
             <p className={cn("text-sm font-semibold", portalHeading)}>{pref.aiSettings}</p>
           </div>
-          <div className="grid grid-cols-2 gap-4 mb-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
             <div>
               <SelectField
                 label={pref.aiModel}
@@ -105,7 +105,7 @@ export function PreferencesSection() {
               options={outputLanguages}
             />
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <SelectField
               label={pref.questionsPerCategory}
               value={questionsCount}

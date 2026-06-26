@@ -246,7 +246,7 @@ export function CandidateProfile() {
   }
 
   return (
-    <div className="grid grid-cols-[300px_1fr] gap-6 items-start">
+    <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-6 items-start">
       <div className="flex flex-col gap-5">
         <motion.div
           initial={{ opacity: 0, x: -16 }}
@@ -308,7 +308,7 @@ export function CandidateProfile() {
           className="hr-glass-card p-5"
         >
           <h3 className={cn("text-[14px] font-[700] mb-4", portalHeadingAlt)}>{p.achievements}</h3>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-3 sm:grid-cols-3 gap-2">
             {achievements.map((ach) => (
               <div
                 key={ach.id}
@@ -335,7 +335,7 @@ export function CandidateProfile() {
         transition={{ delay: 0.05 }}
         className="flex flex-col gap-5"
       >
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <h1 className={cn("text-[24px] font-[800]", portalHeadingAlt)}>{p.heading}</h1>
           {editing ? (
             <div className="flex items-center gap-2">

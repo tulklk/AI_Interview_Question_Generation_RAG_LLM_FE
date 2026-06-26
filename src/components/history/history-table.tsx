@@ -15,25 +15,8 @@ import {
   portalCard,
   portalDivider,
   portalHeading,
-  portalIconWell,
   portalSubtext,
-  portalTableRow,
 } from "@/lib/portal-ui";
-
-const ROLE_PALETTES = [
-  { text: "text-blue-600 dark:text-blue-400", bg: "bg-blue-50 dark:bg-blue-950/40" },
-  { text: "text-violet-600 dark:text-violet-400", bg: "bg-violet-50 dark:bg-violet-950/40" },
-  { text: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-50 dark:bg-emerald-950/40" },
-  { text: "text-amber-600 dark:text-amber-400", bg: "bg-amber-50 dark:bg-amber-950/40" },
-  { text: "text-rose-600 dark:text-rose-400", bg: "bg-rose-50 dark:bg-rose-950/40" },
-  { text: "text-cyan-600 dark:text-cyan-400", bg: "bg-cyan-50 dark:bg-cyan-950/40" },
-];
-
-function rolePalette(role: string) {
-  if (!role) return ROLE_PALETTES[0];
-  const idx = Math.abs(role.charCodeAt(0)) % ROLE_PALETTES.length;
-  return ROLE_PALETTES[idx];
-}
 
 function formatDate(iso: string): string {
   const d = new Date(iso);
@@ -110,13 +93,25 @@ function ColumnHeader({ label }: { label: string }) {
   );
 }
 
+// Module-level constants — avoid re-creating on every render
+function normalizeLevel(val: string): string {
+  return val.toLowerCase() === "mid-level" ? "Medium" : val;
+}
+
+const IN_PROGRESS_STATUSES = new Set([
+  "DRAFT", "PLAN_QUEUED", "CONFIRMED", "QUEUED",
+  "QUESTION_QUEUED", "QUESTION_PROCESSING", "PROCESSING",
+]);
+
 interface HistoryTableProps {
   search?: string;
   role?: string;
   level?: string;
+  experience?: string;
+  status?: string;
 }
 
-export function HistoryTable({ search = "", role = "", level = "" }: HistoryTableProps) {
+export function HistoryTable({ search = "", role = "", level = "", experience = "", status = "" }: HistoryTableProps) {
   const { t } = useLanguage();
   const { hasFeature } = useHrSubscription();
   const ht = t.historyPage.table;
@@ -125,6 +120,7 @@ export function HistoryTable({ search = "", role = "", level = "" }: HistoryTabl
   const canExport = hasFeature("pdfExport");
 
   const [sessions, setSessions] = useState<GenerationSession[]>([]);
+  const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [exportingId, setExportingId] = useState<string | null>(null);
   const [confirmSession, setConfirmSession] = useState<GenerationSession | null>(null);
@@ -189,11 +185,13 @@ export function HistoryTable({ search = "", role = "", level = "" }: HistoryTabl
               (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
             );
             setSessions(merged);
+            setLoading(false);
           });
       })
       .catch(() => {
         // Backend unavailable — show all local sessions as fallback
         setSessions(localSessions.map(toGenerationSession));
+        setLoading(false);
       });
   }
   // Keep ref up-to-date so stale-closure effects always call the latest version
@@ -235,16 +233,82 @@ export function HistoryTable({ search = "", role = "", level = "" }: HistoryTabl
   }, [sessions]);
 
   const filtered = sessions.filter((s) => {
-    const sRole = s.planDraft?.role ?? "";
+    const sRole = (s.planDraft?.role ?? "").toLowerCase();
     const sLevel = s.planDraft?.level ?? "";
-    const sTitle = s.jobTitle ?? "";
+    const sTitle = (s.jobTitle ?? "").toLowerCase();
     const q = search.trim().toLowerCase();
-    if (q && !sTitle.toLowerCase().includes(q) && !sRole.toLowerCase().includes(q)) return false;
-    if (role && !sRole.toLowerCase().includes(role.toLowerCase())) return false;
-    if (level && sLevel.toLowerCase() !== level.toLowerCase()) return false;
+    const normalizedLevel = normalizeLevel(sLevel);
+
+    if (q && !sTitle.includes(q) && !sRole.includes(q)) return false;
+    // Role: search planDraft.role OR jobTitle (BE may leave role empty)
+    if (role && !sRole.includes(role.toLowerCase()) && !sTitle.includes(role.toLowerCase())) return false;
+    // Difficulty: planDraft.level (normalized) is the source of truth
+    if (level && normalizedLevel.toLowerCase() !== level.toLowerCase()) return false;
+    // Experience: planDraft.level when it contains experience-level values
+    if (experience && sLevel.toLowerCase() !== experience.toLowerCase()) return false;
+    // Status: "IN_PROGRESS" groups all processing states
+    if (status) {
+      if (status === "IN_PROGRESS") {
+        if (!IN_PROGRESS_STATUSES.has(s.status)) return false;
+      } else {
+        if (s.status !== status) return false;
+      }
+    }
     return true;
   });
 
+  // ── Loading skeleton ──────────────────────────────────────────────────────
+  if (loading) {
+    return (
+      <div className="hr-glass-card overflow-hidden animate-fade-up">
+        <table className="w-full text-sm">
+          <thead className={cn("border-b bg-gray-50/80 dark:bg-white/3", portalDivider)}>
+            <tr>
+              <ColumnHeader label={ht.jobTitle} />
+              <th className={cn("px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide", portalSubtext)}>{ht.level}</th>
+              <ColumnHeader label={ht.date} />
+              <ColumnHeader label={ht.questions} />
+              <th className={cn("px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide", portalSubtext)}>Status</th>
+              <th className={cn("px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide", portalSubtext)}>{ht.actions}</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-100 dark:divide-gray-800/70">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <tr key={i} className={i % 2 === 1 ? "bg-gray-50/40 dark:bg-gray-800/30" : ""}>
+                <td className="px-4 py-3.5">
+                  <div className="flex items-center gap-3">
+                    <div className="w-7 h-7 rounded-lg bg-gray-100 dark:bg-gray-800 animate-pulse shrink-0" />
+                    <div className="h-3.5 bg-gray-100 dark:bg-gray-800 rounded animate-pulse" style={{ width: `${120 + (i % 3) * 40}px` }} />
+                  </div>
+                </td>
+                <td className="px-4 py-3.5">
+                  <div className="h-5 w-16 bg-gray-100 dark:bg-gray-800 rounded-md animate-pulse" />
+                </td>
+                <td className="px-4 py-3.5">
+                  <div className="h-3.5 w-16 bg-gray-100 dark:bg-gray-800 rounded animate-pulse" />
+                </td>
+                <td className="px-4 py-3.5">
+                  <div className="h-3.5 w-6 bg-gray-100 dark:bg-gray-800 rounded animate-pulse" />
+                </td>
+                <td className="px-4 py-3.5">
+                  <div className="h-5 w-20 bg-gray-100 dark:bg-gray-800 rounded-md animate-pulse" />
+                </td>
+                <td className="px-4 py-3.5">
+                  <div className="flex justify-end gap-1">
+                    <div className="w-7 h-7 rounded-lg bg-gray-100 dark:bg-gray-800 animate-pulse" />
+                    <div className="w-7 h-7 rounded-lg bg-gray-100 dark:bg-gray-800 animate-pulse" />
+                    <div className="w-7 h-7 rounded-lg bg-gray-100 dark:bg-gray-800 animate-pulse" />
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+  }
+
+  // ── Empty state ───────────────────────────────────────────────────────────
   if (sessions.length === 0) {
     return (
       <div className="hr-glass-card p-12 flex flex-col items-center gap-3 text-center animate-fade-up">
@@ -263,6 +327,72 @@ export function HistoryTable({ search = "", role = "", level = "" }: HistoryTabl
     );
   }
 
+  // Shared action buttons for both table and card views
+  function ActionButtons({ session }: { session: GenerationSession }) {
+    return (
+      <>
+        <Link
+          href={`/hr/history/${session.id}`}
+          className="p-2 text-gray-400 dark:text-gray-500 hover:text-[#7C3AED] dark:hover:text-[#a78bff] hover:bg-violet-50 dark:hover:bg-violet-950/40 rounded-lg transition-colors inline-flex"
+          title={ht.viewTitle}
+        >
+          <Eye size={14} />
+        </Link>
+        <button
+          type="button"
+          onClick={() => handleExport(session)}
+          disabled={session.status !== "COMPLETED" || exportingId === session.id}
+          title={session.status !== "COMPLETED" ? ht.exportDisabledTitle : ht.exportTitle}
+          className={cn(
+            "p-2 rounded-lg transition-colors",
+            session.status === "COMPLETED"
+              ? "text-gray-400 dark:text-gray-500 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 disabled:opacity-40"
+              : "text-gray-200 dark:text-gray-700 cursor-not-allowed"
+          )}
+        >
+          {exportingId === session.id
+            ? <Loader2 size={14} className="animate-spin" />
+            : <Download size={14} />}
+        </button>
+        <button
+          type="button"
+          onClick={() => setConfirmSession(session)}
+          disabled={deletingId === session.id}
+          title={ht.deleteTitle}
+          className="p-2 text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-lg transition-colors disabled:opacity-40"
+        >
+          {deletingId === session.id
+            ? <Loader2 size={14} className="animate-spin" />
+            : <Trash2 size={14} />}
+        </button>
+      </>
+    );
+  }
+
+  function LevelBadge({ level }: { level: string }) {
+    if (!level) return <span className="text-xs text-gray-300 dark:text-gray-600">—</span>;
+    return (
+      <span className={cn(
+        "text-xs font-semibold px-2.5 py-1 rounded-md border",
+        level === "Easy"
+          ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800/40"
+          : level === "Medium"
+          ? "bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800/40"
+          : level === "Hard"
+          ? "bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-400 border-rose-200 dark:border-rose-800/40"
+          : "bg-gray-100 dark:bg-gray-700/60 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-600/40"
+      )}>
+        {level}
+      </span>
+    );
+  }
+
+  const emptyFilterRow = (
+    <p className={cn("px-4 py-10 text-center text-sm", portalSubtext)}>
+      Không tìm thấy kết quả phù hợp.
+    </p>
+  );
+
   return (
     <>
     {confirmSession && (
@@ -273,12 +403,67 @@ export function HistoryTable({ search = "", role = "", level = "" }: HistoryTabl
         dm={dm}
       />
     )}
-    <div className="hr-glass-card overflow-hidden animate-fade-up">
+
+    {/* ── Mobile card list (< md) ──────────────────────────────────────────── */}
+    <div className="md:hidden space-y-3 animate-fade-up">
+      {filtered.length === 0 ? emptyFilterRow : filtered.map((session) => {
+        const sessionRole = session.planDraft?.role ?? "";
+        const sessionLevel = normalizeLevel(session.planDraft?.level ?? "");
+        const questionsCount = session.generatedQuestions?.length ?? 0;
+        const title = session.jobTitle || (sessionRole ? `${sessionRole} Interview` : "Untitled");
+
+        return (
+          <div key={session.id} className={cn("rounded-xl p-4 border", portalCard)}>
+            {/* Title row */}
+            <div className="flex items-start gap-3 mb-2">
+              <div className="w-8 h-8 rounded-lg hr-icon-box flex items-center justify-center shrink-0 mt-0.5">
+                <FileText size={14} className="text-[#7C3AED] dark:text-[#a78bff]" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <span className={cn("font-semibold text-sm leading-snug block", portalHeading)}>{title}</span>
+                <div className="mt-1">
+                  <SessionStatusBadge status={session.status} />
+                </div>
+              </div>
+            </div>
+
+            <div className="mb-3 space-y-1.5">
+              {/* Level + role badges */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <LevelBadge level={sessionLevel} />
+                {sessionRole && (
+                  <span className="text-xs px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300">
+                    {sessionRole}
+                  </span>
+                )}
+              </div>
+              {/* Date · question count */}
+              <div className="flex items-center gap-2">
+                <span className={cn("text-xs flex items-center gap-1", portalSubtext)}>
+                  <Calendar size={11} />
+                  {formatDate(session.createdAt)}
+                </span>
+                <span className="text-gray-300 dark:text-gray-600 text-xs select-none">·</span>
+                <span className={cn("text-xs font-medium", portalSubtext)}>
+                  {questionsCount} {ht.questions}
+                </span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1 pt-2 border-t border-gray-100 dark:border-gray-800">
+              <ActionButtons session={session} />
+            </div>
+          </div>
+        );
+      })}
+    </div>
+
+    {/* ── Desktop table (≥ md) ─────────────────────────────────────────────── */}
+    <div className="hidden md:block hr-glass-card overflow-x-auto animate-fade-up">
       <table className="w-full text-sm">
         <thead className={cn("border-b bg-gray-50/80 dark:bg-white/3", portalDivider)}>
           <tr>
             <ColumnHeader label={ht.jobTitle} />
-            <th className={cn("px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide", portalSubtext)}>{ht.role}</th>
             <th className={cn("px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide", portalSubtext)}>{ht.level}</th>
             <ColumnHeader label={ht.date} />
             <ColumnHeader label={ht.questions} />
@@ -289,15 +474,14 @@ export function HistoryTable({ search = "", role = "", level = "" }: HistoryTabl
         <tbody className="divide-y divide-gray-100 dark:divide-gray-800/70">
           {filtered.length === 0 && (
             <tr>
-              <td colSpan={7} className={cn("px-4 py-10 text-center text-sm", portalSubtext)}>
+              <td colSpan={6} className={cn("px-4 py-10 text-center text-sm", portalSubtext)}>
                 Không tìm thấy kết quả phù hợp.
               </td>
             </tr>
           )}
           {filtered.map((session, rowIdx) => {
             const sessionRole = session.planDraft?.role ?? "";
-            const sessionLevel = session.planDraft?.level ?? "";
-            const palette = rolePalette(sessionRole || "a");
+            const sessionLevel = normalizeLevel(session.planDraft?.level ?? "");
             const questionsCount = session.generatedQuestions?.length ?? 0;
             const title = session.jobTitle || (sessionRole ? `${sessionRole} Interview` : "Untitled");
             const isEven = rowIdx % 2 === 1;
@@ -319,22 +503,7 @@ export function HistoryTable({ search = "", role = "", level = "" }: HistoryTabl
                   </div>
                 </td>
                 <td className="px-4 py-3.5">
-                  {sessionRole ? (
-                    <span className={cn("text-xs font-semibold px-2.5 py-1 rounded-md", palette.bg, palette.text)}>
-                      {sessionRole}
-                    </span>
-                  ) : (
-                    <span className="text-xs text-gray-300 dark:text-gray-600">—</span>
-                  )}
-                </td>
-                <td className="px-4 py-3.5">
-                  {sessionLevel ? (
-                    <span className="text-xs font-semibold px-2.5 py-1 rounded-md bg-gray-100 dark:bg-gray-700/60 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-600/40">
-                      {sessionLevel}
-                    </span>
-                  ) : (
-                    <span className="text-xs text-gray-300 dark:text-gray-600">—</span>
-                  )}
+                  <LevelBadge level={sessionLevel} />
                 </td>
                 <td className="px-4 py-3.5">
                   <div className={cn("flex items-center gap-1.5 text-sm", portalSubtext)}>
@@ -350,40 +519,7 @@ export function HistoryTable({ search = "", role = "", level = "" }: HistoryTabl
                 </td>
                 <td className="px-4 py-3.5">
                   <div className="flex items-center justify-end gap-0.5">
-                    <Link
-                      href={`/hr/history/${session.id}`}
-                      className="p-2 text-gray-400 dark:text-gray-500 hover:text-[#7C3AED] dark:hover:text-[#a78bff] hover:bg-violet-50 dark:hover:bg-violet-950/40 rounded-lg transition-colors inline-flex"
-                      title={ht.viewTitle}
-                    >
-                      <Eye size={14} />
-                    </Link>
-                    <button
-                      type="button"
-                      onClick={() => handleExport(session)}
-                      disabled={session.status !== "COMPLETED" || exportingId === session.id}
-                      title={session.status !== "COMPLETED" ? ht.exportDisabledTitle : ht.exportTitle}
-                      className={cn(
-                        "p-2 rounded-lg transition-colors",
-                        session.status === "COMPLETED"
-                          ? "text-gray-400 dark:text-gray-500 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 disabled:opacity-40"
-                          : "text-gray-200 dark:text-gray-700 cursor-not-allowed"
-                      )}
-                    >
-                      {exportingId === session.id
-                        ? <Loader2 size={14} className="animate-spin" />
-                        : <Download size={14} />}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setConfirmSession(session)}
-                      disabled={deletingId === session.id}
-                      title={ht.deleteTitle}
-                      className="p-2 text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-lg transition-colors disabled:opacity-40"
-                    >
-                      {deletingId === session.id
-                        ? <Loader2 size={14} className="animate-spin" />
-                        : <Trash2 size={14} />}
-                    </button>
+                    <ActionButtons session={session} />
                   </div>
                 </td>
               </tr>

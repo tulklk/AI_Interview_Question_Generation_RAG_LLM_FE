@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import { JobseekerSidebar } from "./jobseeker-sidebar";
 import { TopHeader } from "@/components/layout/top-header";
@@ -30,6 +30,16 @@ export function JobseekerAppShell({
   const { addToast } = useToast();
   const { user, loading } = useUser();
   const welcomedRef = useRef(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // Body scroll lock when mobile sidebar is open
+  useEffect(() => {
+    document.body.style.overflow = sidebarOpen ? "hidden" : "";
+    return () => { document.body.style.overflow = ""; };
+  }, [sidebarOpen]);
+
+  // Close sidebar on route change
+  useEffect(() => { setSidebarOpen(false); }, [pathname]);
 
   useEffect(() => {
     if (loading || welcomedRef.current || !hasLoginWelcomePending("jobseeker")) return;
@@ -65,11 +75,12 @@ export function JobseekerAppShell({
 
   return (
     <div className="flex h-screen overflow-hidden">
-      <JobseekerSidebar />
+      <JobseekerSidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
         <TopHeader
           breadcrumb={translatedBreadcrumb}
           pageTitle={translatedTitle}
+          onMenuToggle={() => setSidebarOpen((v) => !v)}
           user={{
             initials: user?.fullName ? getInitials(user.fullName) : loading ? "..." : "??",
             name: user?.fullName ?? (loading ? "..." : "User"),
@@ -82,7 +93,7 @@ export function JobseekerAppShell({
           <div className="hr-aurora-orb hr-aurora-orb--purple w-130 h-130 -top-20 -left-15" aria-hidden="true" />
           <div className="hr-aurora-orb hr-aurora-orb--cyan w-100 h-100 bottom-[10%] -right-10" aria-hidden="true" />
           <div className="hr-aurora-orb hr-aurora-orb--violet w-80 h-80 top-[40%] left-[30%]" aria-hidden="true" />
-          <div className="relative z-10 max-w-350 mx-auto px-8 py-7">{children}</div>
+          <div className="relative z-10 max-w-350 mx-auto px-4 sm:px-6 md:px-8 py-5 md:py-7">{children}</div>
         </main>
       </div>
     </div>

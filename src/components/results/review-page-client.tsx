@@ -91,7 +91,7 @@ export function ReviewPageClient({ session, draftQuestions, isDraftView = false,
       {/* Plan proposed CTA */}
       {session.status === "PLAN_PROPOSED" && (
         <div
-          className="animate-fade-up rounded-xl border border-violet-200 dark:border-violet-800 bg-violet-50 dark:bg-violet-950/30 px-5 py-4 flex items-center justify-between gap-4"
+          className="animate-fade-up rounded-xl border border-violet-200 dark:border-violet-800 bg-violet-50 dark:bg-violet-950/30 px-4 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
           style={{ animationDelay: "80ms" }}
         >
           <div className="flex items-start gap-3">
@@ -109,7 +109,7 @@ export function ReviewPageClient({ session, draftQuestions, isDraftView = false,
           </div>
           <button
             onClick={continueToGenerate}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-violet-600 hover:bg-violet-700 text-white text-xs font-semibold transition-colors shrink-0"
+            className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-700 text-white text-xs font-semibold transition-colors w-full sm:w-auto sm:shrink-0"
           >
             {rp.continuePlanReview}
             <ArrowRight size={13} />

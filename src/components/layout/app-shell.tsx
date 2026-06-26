@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { Sidebar } from "./sidebar";
 import { TopHeader } from "./top-header";
@@ -29,6 +29,25 @@ export function AppShell({ children, breadcrumb, pageTitle }: AppShellProps) {
   const { addToast } = useToast();
   const welcomedRef = useRef(false);
 
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // Close sidebar on route change
+  useEffect(() => {
+    setSidebarOpen(false);
+  }, [pathname]);
+
+  // Lock body scroll when mobile sidebar is open
+  useEffect(() => {
+    if (sidebarOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [sidebarOpen]);
+
   useEffect(() => {
     if (loading || welcomedRef.current || !hasLoginWelcomePending("hr")) return;
 
@@ -47,6 +66,7 @@ export function AppShell({ children, breadcrumb, pageTitle }: AppShellProps) {
     });
     addToast("success", buildWelcomeMessage(d.welcomeTemplate, greeting, displayName));
   }, [addToast, loading, t.dashboardPage, user?.fullName]);
+
   const planNames = t.settingsPage.subscription.planNames as Record<HrPlanId, string>;
   const planDisplay = t.settingsPage.subscription.userPlanTemplate.replace(
     "{{plan}}",
@@ -66,11 +86,15 @@ export function AppShell({ children, breadcrumb, pageTitle }: AppShellProps) {
 
   return (
     <div className="flex h-screen overflow-hidden">
-      <Sidebar />
+      <Sidebar
+        open={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+      />
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
         <TopHeader
           breadcrumb={translatedBreadcrumb}
           pageTitle={translatedTitle}
+          onMenuToggle={() => setSidebarOpen((v) => !v)}
           user={{
             initials: user?.fullName ? getInitials(user.fullName) : loading ? "..." : "??",
             name: user?.fullName ?? (loading ? "..." : "User"),
@@ -82,7 +106,7 @@ export function AppShell({ children, breadcrumb, pageTitle }: AppShellProps) {
           <div className="hr-aurora-orb hr-aurora-orb--purple w-125 h-125 -top-30 -left-20" aria-hidden="true" />
           <div className="hr-aurora-orb hr-aurora-orb--cyan w-100 h-100 top-[30%] -right-15" aria-hidden="true" />
           <div className="hr-aurora-orb hr-aurora-orb--violet w-87.5 h-87.5 -bottom-20 left-[30%]" aria-hidden="true" />
-          <div className="relative max-w-350 mx-auto px-8 py-7">{children}</div>
+          <div className="relative max-w-350 mx-auto px-4 sm:px-6 md:px-8 py-5 md:py-7">{children}</div>
         </main>
         <GenerationProgressBadge />
       </div>

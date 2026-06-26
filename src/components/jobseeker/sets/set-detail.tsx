@@ -49,7 +49,7 @@ export function SetDetail({ set }: SetDetailProps) {
         {p.backToSets}
       </Link>
 
-      <div className="grid grid-cols-[1fr_340px] gap-8 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-8 items-start">
         {/* ── Left content ──────────────────────────────────────────── */}
         <motion.div
           initial={{ opacity: 0, y: 16 }}
@@ -77,7 +77,7 @@ export function SetDetail({ set }: SetDetailProps) {
             <p className={cn("text-[15px] leading-[24px] mb-5", portalSubtextAlt)}>{set.description}</p>
 
             {/* Meta pills */}
-            <div className={cn("flex items-center gap-6 text-[13px]", portalSubtextAlt)}>
+            <div className={cn("flex flex-wrap items-center gap-4 text-[13px]", portalSubtextAlt)}>
               <span className="flex items-center gap-1.5">
                 <BarChart2 size={14} className="text-primary" />
                 {set.totalQuestions} {p.questions}
@@ -185,7 +185,7 @@ export function SetDetail({ set }: SetDetailProps) {
           initial={{ opacity: 0, x: 16 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.4, delay: 0.1 }}
-          className="sticky top-6"
+          className="lg:sticky lg:top-6"
         >
           <div
             className="hr-glass-card overflow-hidden"

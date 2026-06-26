@@ -3,7 +3,7 @@
 import { motion, type Variants } from "framer-motion";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BookOpen } from "lucide-react";
+import { BookOpen, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { jobseekerNavItems } from "@/data/jobseeker";
 import { useLanguage } from "@/context/language-context";
@@ -20,13 +20,18 @@ const itemVariants: Variants = {
   show: { opacity: 1, x: 0, transition: { duration: 0.22 } },
 };
 
-export function JobseekerSidebar() {
+interface JobseekerSidebarProps {
+  open?: boolean;
+  onClose?: () => void;
+}
+
+export function JobseekerSidebar({ open, onClose }: JobseekerSidebarProps) {
   const pathname = usePathname();
   const { t } = useLanguage();
   const s = t.jobseekerSidebar;
 
-  return (
-    <aside className="flex flex-col w-[250px] shrink-0 h-screen hr-sidebar overflow-y-auto">
+  const sidebarContent = (
+    <>
       <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
@@ -68,6 +73,7 @@ export function JobseekerSidebar() {
               <motion.li key={item.href} variants={itemVariants}>
                 <Link
                   href={item.href}
+                  onClick={() => onClose?.()}
                   className={cn(
                     "flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group",
                     isActive
@@ -137,6 +143,7 @@ export function JobseekerSidebar() {
           </p>
           <Link
             href="/jobseeker"
+            onClick={() => onClose?.()}
             className="shimmer-button mt-3 inline-block text-xs font-semibold text-white hr-cta-btn px-4 py-2 rounded-lg w-full text-center"
           >
             {s.practiceNow.btn}
@@ -158,6 +165,46 @@ export function JobseekerSidebar() {
           }
         />
       </motion.div>
-    </aside>
+    </>
+  );
+
+  return (
+    <>
+      {/* Desktop sidebar */}
+      <aside className="hidden lg:flex flex-col w-[250px] shrink-0 h-screen hr-sidebar overflow-y-auto">
+        {sidebarContent}
+      </aside>
+
+      {/* Mobile drawer */}
+      <div
+        className={cn(
+          "lg:hidden fixed inset-0 z-40 transition-opacity duration-300",
+          open ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+        )}
+      >
+        {/* Overlay */}
+        <div
+          className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+          onClick={onClose}
+        />
+        {/* Drawer */}
+        <aside
+          className={cn(
+            "absolute left-0 top-0 h-full w-72 max-w-[82vw] hr-sidebar overflow-y-auto transition-transform duration-300 ease-in-out flex flex-col",
+            open ? "translate-x-0" : "-translate-x-full"
+          )}
+        >
+          {/* Close button */}
+          <button
+            type="button"
+            onClick={onClose}
+            className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
+          >
+            <X size={16} />
+          </button>
+          {sidebarContent}
+        </aside>
+      </div>
+    </>
   );
 }

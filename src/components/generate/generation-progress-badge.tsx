@@ -5,6 +5,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { Loader2, CheckCircle2, AlertCircle, Clock, Sparkles, ArrowRight, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getGenerationJob } from "@/lib/api/generation";
+import { useLanguage } from "@/context/language-context";
 
 type FlowView = "form" | "polling" | "plan_review" | "question_review" | "failed" | "draft_view";
 
@@ -16,66 +17,20 @@ interface StatusInfo {
   pulse: boolean;
 }
 
-function getStatusInfo(view: FlowView, phase: string | null): StatusInfo | null {
-  switch (view) {
-    case "polling":
-      return phase === "questions"
-        ? {
-            title: "Đang tạo câu hỏi...",
-            subtitle: "AI đang sinh câu hỏi phỏng vấn",
-            icon: <Loader2 size={16} className="animate-spin text-white" />,
-            iconBg: "bg-violet-600",
-            pulse: true,
-          }
-        : {
-            title: "Đang tạo Plan...",
-            subtitle: "AI đang phân tích mô tả công việc",
-            icon: <Loader2 size={16} className="animate-spin text-white" />,
-            iconBg: "bg-violet-600",
-            pulse: true,
-          };
-    case "plan_review":
-      return {
-        title: "Cần review Plan",
-        subtitle: "Nhấn để xem và chỉnh sửa plan",
-        icon: <Clock size={16} className="text-white" />,
-        iconBg: "bg-amber-500",
-        pulse: false,
-      };
-    case "question_review":
-      return {
-        title: "Câu hỏi đã sẵn sàng!",
-        subtitle: "Nhấn để xem kết quả",
-        icon: <CheckCircle2 size={16} className="text-white" />,
-        iconBg: "bg-emerald-500",
-        pulse: false,
-      };
-    case "failed":
-      return {
-        title: "Tạo thất bại",
-        subtitle: "Nhấn để xem chi tiết lỗi",
-        icon: <AlertCircle size={16} className="text-white" />,
-        iconBg: "bg-red-500",
-        pulse: false,
-      };
-    default:
-      return null;
-  }
-}
-
-const ANIM_DURATION = 350; // ms — must match transition duration below
+const ANIM_DURATION = 350;
 
 export function GenerationProgressBadge() {
   const pathname = usePathname();
   const router = useRouter();
+  const { t } = useLanguage();
+  const b = t.generationProgressBadge;
 
   const [view, setView] = useState<FlowView | null>(null);
   const [phase, setPhase] = useState<string | null>(null);
   const [dismissed, setDismissed] = useState(false);
 
-  // Animation states
-  const [mounted, setMounted] = useState(false);   // actually in DOM
-  const [visible, setVisible] = useState(false);   // drives CSS enter/exit
+  const [mounted, setMounted] = useState(false);
+  const [visible, setVisible] = useState(false);
 
   const prevViewRef = useRef<FlowView | null>(null);
   const exitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -83,20 +38,73 @@ export function GenerationProgressBadge() {
   const serverPollActiveRef = useRef(false);
   const planReadyRetryRef = useRef(0);
 
+  function getStatusInfo(v: FlowView, p: string | null): StatusInfo | null {
+    switch (v) {
+      case "polling":
+        return p === "questions"
+          ? {
+              title: b.generatingQuestionsTitle,
+              subtitle: b.generatingQuestionsSubtitle,
+              icon: <Loader2 size={16} className="animate-spin text-white" />,
+              iconBg: "bg-violet-600",
+              pulse: true,
+            }
+          : {
+              title: b.generatingPlanTitle,
+              subtitle: b.generatingPlanSubtitle,
+              icon: <Loader2 size={16} className="animate-spin text-white" />,
+              iconBg: "bg-violet-600",
+              pulse: true,
+            };
+      case "plan_review":
+        return {
+          title: b.planReviewTitle,
+          subtitle: b.planReviewSubtitle,
+          icon: <Clock size={16} className="text-white" />,
+          iconBg: "bg-amber-500",
+          pulse: false,
+        };
+      case "question_review":
+        return {
+          title: b.questionsReadyTitle,
+          subtitle: b.questionsReadySubtitle,
+          icon: <CheckCircle2 size={16} className="text-white" />,
+          iconBg: "bg-emerald-500",
+          pulse: false,
+        };
+      case "failed":
+        return {
+          title: b.failedTitle,
+          subtitle: b.failedSubtitle,
+          icon: <AlertCircle size={16} className="text-white" />,
+          iconBg: "bg-red-500",
+          pulse: false,
+        };
+      default:
+        return null;
+    }
+  }
+
   // ── Sync view from localStorage ───────────────────────────────────────────
   useEffect(() => {
     function sync() {
       const job = localStorage.getItem("hr_gen_job");
       const v   = localStorage.getItem("hr_gen_view") as FlowView | null;
       const p   = localStorage.getItem("hr_gen_polling_phase");
+      // hr_gen_badge_dismissed persists across navigation so dismiss survives page changes
+      const dismissedForJob = localStorage.getItem("hr_gen_badge_dismissed");
+
       if (job && v && v !== "form") {
+        const shouldBeDismissed = dismissedForJob === job;
+        // Use functional updater to avoid re-render when value unchanged
+        setDismissed(prev => prev === shouldBeDismissed ? prev : shouldBeDismissed);
         if (v !== prevViewRef.current) {
-          setDismissed(false);
           prevViewRef.current = v;
         }
         setView(v);
         setPhase(p);
       } else {
+        setDismissed(false);
         setView(null);
         setPhase(null);
         prevViewRef.current = null;
@@ -116,10 +124,8 @@ export function GenerationProgressBadge() {
 
     if (shouldShow) {
       setMounted(true);
-      // Slight delay so the DOM node is painted before we add the visible class
       requestAnimationFrame(() => requestAnimationFrame(() => setVisible(true)));
     } else {
-      // Trigger exit animation then remove from DOM
       setVisible(false);
       exitTimerRef.current = setTimeout(() => setMounted(false), ANIM_DURATION);
     }
@@ -146,9 +152,6 @@ export function GenerationProgressBadge() {
         const session = await getGenerationJob(jobId!);
         if (!session || !serverPollActiveRef.current) return;
 
-        // BE is still working (e.g. PLAN_PROCESSING maps to PLAN_PROPOSED on FE).
-        // Keep showing the "processing" state until the BE clears the polling flag,
-        // otherwise the badge flips to "review" before plan fields are populated.
         if (session.isPolling) {
           serverPollRef.current = setTimeout(checkServer, 3000);
           return;
@@ -163,20 +166,16 @@ export function GenerationProgressBadge() {
           setView("question_review");
           setPhase(null);
           prevViewRef.current = "question_review";
-          setDismissed(false);
           window.dispatchEvent(new CustomEvent("hr:job-status-changed", {
             detail: { jobId, newStatus: "COMPLETED" },
           }));
         } else if (action === "REVIEW_PLAN" || status === "PLAN_PROPOSED") {
-          // Wait until plan fields are actually populated on the BE before showing the badge.
-          // The BE may set PLAN_PROPOSED status before plan.roleTitle etc. are saved.
           if (!session.planDraft?.role && planReadyRetryRef.current < 4) {
             planReadyRetryRef.current += 1;
             serverPollRef.current = setTimeout(checkServer, 2000);
             return;
           }
           planReadyRetryRef.current = 0;
-          // Cache plan data so generate page can restore fields immediately on navigation
           if (session.planDraft) {
             localStorage.setItem("hr_gen_plan", JSON.stringify(session.planDraft));
           }
@@ -185,7 +184,6 @@ export function GenerationProgressBadge() {
           setView("plan_review");
           setPhase(null);
           prevViewRef.current = "plan_review";
-          setDismissed(false);
           window.dispatchEvent(new CustomEvent("hr:job-status-changed", {
             detail: { jobId, newStatus: "PLAN_PROPOSED" },
           }));
@@ -230,6 +228,11 @@ export function GenerationProgressBadge() {
 
   function handleDismiss(e: React.MouseEvent) {
     e.stopPropagation();
+    const jobId = localStorage.getItem("hr_gen_job");
+    if (jobId) {
+      // Persist dismissed state in localStorage so it survives page navigation
+      localStorage.setItem("hr_gen_badge_dismissed", jobId);
+    }
     setDismissed(true);
   }
 
@@ -264,7 +267,7 @@ export function GenerationProgressBadge() {
           </span>
         )}
 
-        {/* Status transition overlay — flashes when view changes */}
+        {/* Status transition overlay */}
         <div
           key={view}
           className="absolute inset-0 rounded-2xl bg-white/30 dark:bg-white/5 animate-[ping_0.4s_ease-out_1]"

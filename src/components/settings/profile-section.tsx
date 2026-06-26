@@ -168,29 +168,29 @@ export function ProfileSection() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-5">
+      <div className={cn("flex items-center justify-between mb-5", editing && "flex-col sm:flex-row items-start sm:items-center gap-3")}>
         <h3 className={cn("text-base font-semibold", portalHeading)}>{sp.title}</h3>
         {editing ? (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 w-full sm:w-auto">
             <button
               type="button"
               onClick={handleCancel}
               disabled={saving || uploadingAvatar}
-              className={cn("flex items-center gap-1.5 h-8 px-3 text-xs font-semibold border rounded-lg disabled:opacity-50", portalInput, "hover:bg-gray-50 dark:hover:bg-gray-800")}
+              className={cn("flex-1 sm:flex-none flex items-center justify-center gap-1.5 h-9 px-4 text-sm font-semibold border rounded-lg disabled:opacity-50", portalInput, "hover:bg-gray-50 dark:hover:bg-gray-800")}
             >
-              <X size={13} />
+              <X size={14} />
               {sp.cancelBtn}
             </button>
             <button
               type="button"
               onClick={() => void handleSave()}
               disabled={saving || uploadingAvatar}
-              className="shimmer-button flex items-center gap-1.5 h-8 px-3 text-xs font-semibold text-white hr-cta-btn rounded-lg disabled:opacity-60"
+              className="shimmer-button flex-1 sm:flex-none flex items-center justify-center gap-1.5 h-9 px-4 text-sm font-semibold text-white hr-cta-btn rounded-lg disabled:opacity-60"
             >
               {saving ? (
                 <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
               ) : (
-                <Save size={13} />
+                <Save size={14} />
               )}
               {sp.save}
             </button>
@@ -263,7 +263,7 @@ export function ProfileSection() {
             <p className={cn("text-xs mt-1", portalSubtext)}>{sp.emailReadOnly}</p>
           </FormField>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <FormField label={sp.company} htmlFor="company">
               <input
                 id="company"

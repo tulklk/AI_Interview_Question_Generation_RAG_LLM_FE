@@ -54,7 +54,7 @@ export function CandidateDashboard() {
         <p className={cn("text-[16px] leading-[24px] mt-1", portalSubtextAlt)}>{p.welcomeSub}</p>
       </motion.div>
 
-      <motion.div {...fadeUp(0.06)} className="grid grid-cols-4 gap-4 mb-6">
+      <motion.div {...fadeUp(0.06)} className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         {candidateStats.map((stat, i) => (
           <StatCard
             key={stat.id}
@@ -68,7 +68,7 @@ export function CandidateDashboard() {
         ))}
       </motion.div>
 
-      <div className="grid grid-cols-[1fr_320px] gap-6 mb-6">
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6 mb-6">
         <div className="flex flex-col gap-6">
           <motion.div
             {...fadeUp(0.12)}
@@ -204,7 +204,7 @@ export function CandidateDashboard() {
             <BarChart2 size={13} />
           </Link>
         </div>
-        <div className="grid grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
           {questionSets.slice(0, 3).map((set, i) => (
             <motion.div
               key={set.id}
