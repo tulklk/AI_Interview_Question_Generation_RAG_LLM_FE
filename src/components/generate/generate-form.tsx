@@ -58,13 +58,13 @@ function viewToStep(view: FlowView, pollingPhase: "plan" | "questions"): number 
 
 function FlowStepIndicator({ currentStep, steps }: { currentStep: number; steps: string[] }) {
   return (
-    <div className="flex items-center w-full mb-6 select-none overflow-x-auto min-w-0">
+    <div className="flex items-center w-full mb-6 select-none">
       {steps.map((label, i) => {
         const stepNum = i + 1;
         const done   = stepNum < currentStep;
         const active = stepNum === currentStep;
         return (
-          <div key={i} className={cn("flex items-center", i < steps.length - 1 && "flex-1")}>
+          <div key={i} className={cn("flex items-center min-w-0", i < steps.length - 1 && "flex-1")}>
             <div className="flex flex-col items-center gap-1 shrink-0">
               <div
                 className={cn(
@@ -80,7 +80,7 @@ function FlowStepIndicator({ currentStep, steps }: { currentStep: number; steps:
               </div>
               <span
                 className={cn(
-                  "text-[9px] font-medium text-center leading-tight whitespace-nowrap",
+                  "hidden sm:block text-[9px] font-medium text-center leading-tight whitespace-nowrap",
                   active
                     ? "text-[#7C3AED] dark:text-[#a78bff]"
                     : done
