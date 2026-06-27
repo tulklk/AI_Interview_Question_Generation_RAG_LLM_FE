@@ -10,6 +10,7 @@ import { getLocalSession, toGenerationSession } from "@/lib/local-history";
 import type { GenerationSession, DraftQuestionSet, GenerationStatus } from "@/types/generation-session";
 import { cn } from "@/lib/utils";
 import { portalHeading, portalSubtext } from "@/lib/portal-ui";
+import { useLanguage } from "@/context/language-context";
 
 const QUESTION_GENERATING_STATUSES: GenerationStatus[] = [
   "CONFIRMED", "QUEUED", "QUESTION_QUEUED", "QUESTION_PROCESSING", "PROCESSING",
@@ -29,6 +30,8 @@ function getRealId(paramId: string): string {
 export function HrReviewPageClient() {
   const params = useParams<{ id: string }>();
   const id = getRealId(params.id ?? "");
+  const { t } = useLanguage();
+  const rp = t.reviewPage;
   const [session, setSession] = useState<GenerationSession | null>(null);
   const [draft, setDraft] = useState<DraftQuestionSet | null>(null);
   const [loading, setLoading] = useState(true);
@@ -109,7 +112,7 @@ export function HrReviewPageClient() {
 
     loadJob(id)
       .then((job) => {
-        if (!job) { setError("Session not found."); return; }
+        if (!job) { setError(rp.sessionNotFound); return; }
         setSession(job);
         if (isGeneratingQuestions(job.status)) {
           scheduleNextPoll(id);
@@ -127,7 +130,7 @@ export function HrReviewPageClient() {
           }, 2500);
         }
       })
-      .catch(() => setError("Failed to load session."))
+      .catch(() => setError(rp.sessionLoadFailed))
       .finally(() => setLoading(false));
 
     return () => {
@@ -142,15 +145,20 @@ export function HrReviewPageClient() {
     <AppShell
       breadcrumb={[
         { label: "HR", href: "/hr/dashboard" },
-        { label: "History", href: "/hr/history" },
-        { label: "Review" },
+        { label: rp.breadcrumbHistory, href: "/hr/history" },
+        { label: rp.breadcrumbReview },
       ]}
-      pageTitle="Review"
+      pageTitle={rp.breadcrumbReview}
     >
       {loading && (
-        <div className="flex items-center justify-center py-24 gap-3">
-          <Loader2 size={20} className="animate-spin text-primary" />
-          <span className={cn("text-sm", portalSubtext)}>Loading session…</span>
+        <div className="fixed inset-0 flex flex-col items-center justify-center gap-3 pointer-events-none">
+          <div className="w-14 h-14 rounded-2xl bg-violet-50 dark:bg-violet-950/40 flex items-center justify-center">
+            <Loader2 size={26} className="animate-spin text-[#7C3AED] dark:text-[#a78bff]" />
+          </div>
+          <div className="text-center">
+            <p className={cn("text-sm font-semibold", portalHeading)}>{rp.loadingSession}</p>
+            <p className={cn("text-xs mt-1", portalSubtext)}>{rp.loadingSessionSub}</p>
+          </div>
         </div>
       )}
 
