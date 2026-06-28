@@ -288,7 +288,10 @@ export async function createGenerationJob(payload: {
     );
     const id = data?.data?.jobId ?? data?.data?.id ?? data?.jobId ?? data?.id;
     return id ?? null;
-  } catch {
+  } catch (err) {
+    const respData = (err as { response?: { data?: { detail?: string; error?: string; errors?: string[] } } })?.response?.data;
+    const detail = respData?.detail ?? respData?.errors?.[0] ?? respData?.error;
+    if (detail) throw new Error(detail);
     return null;
   }
 }
