@@ -540,14 +540,20 @@ export function GenerateForm() {
     setFormError(null);
     setStatusLabel("Đang tạo job...");
 
-    const jId = await createGenerationJob({
-      jobDescription:    jdText               || undefined,
-      hrNote:            note                 || undefined,
-      numberOfQuestions: Math.min(10, limits.maxQuestionsPerRun),
-      difficulty:        "medium",
-      questionTypes:     ["technical", "behavioral"],
-      ...(selectedDoc ? { knowledgeDocumentId: selectedDoc.id } : {}),
-    });
+    let jId: string | null = null;
+    try {
+      jId = await createGenerationJob({
+        jobDescription:    jdText               || undefined,
+        hrNote:            note                 || undefined,
+        numberOfQuestions: Math.min(10, limits.maxQuestionsPerRun),
+        difficulty:        "medium",
+        questionTypes:     ["technical", "behavioral"],
+        ...(selectedDoc ? { knowledgeDocumentId: selectedDoc.id } : {}),
+      });
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : "Không thể tạo job. Vui lòng kiểm tra lại nội dung JD và thử lại.");
+      return;
+    }
 
     if (!jId) {
       setFormError("Không thể tạo job. Vui lòng kiểm tra lại nội dung JD và thử lại.");
