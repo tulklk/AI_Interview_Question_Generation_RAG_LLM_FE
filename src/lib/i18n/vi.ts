@@ -746,6 +746,31 @@ export const vi: Translations = {
       clear: "Xóa",
       minCharsHint: "Nhập ít nhất 400 ký tự hoặc tải lên file JD để tiếp tục.",
       needMoreChars: "Cần thêm {{n}} ký tự nữa để đủ yêu cầu tối thiểu (400 ký tự).",
+      sampleBtn: "Form mẫu",
+      sampleModal: {
+        title: "Mô tả công việc mẫu",
+        subtitle: "Fullstack Developer · 1–3 năm kinh nghiệm",
+        useBtn: "Dùng mẫu này",
+        closeBtn: "Đóng",
+        content: `Chúng tôi đang tìm kiếm một Fullstack Developer có 1–3 năm kinh nghiệm để phát triển ứng dụng web hoàn chỉnh từ frontend đến backend.
+
+Trách nhiệm:
+- Xây dựng RESTful API bằng ASP.NET Core hoặc Node.js.
+- Phát triển giao diện người dùng bằng React.js hoặc Next.js.
+- Thiết kế và làm việc với cơ sở dữ liệu PostgreSQL, SQL Server hoặc MySQL.
+- Tích hợp xác thực người dùng, phân quyền và bảo mật hệ thống.
+- Phối hợp với QA, UI/UX Designer và Product Team để phát triển tính năng.
+- Debug lỗi trên cả frontend, backend và database.
+
+Yêu cầu:
+- Có kinh nghiệm với C#, ASP.NET Core hoặc Node.js.
+- Thành thạo React.js, TypeScript, HTML, CSS.
+- Hiểu REST API, JWT, database design, DTO, service layer.
+- Biết sử dụng Git, Swagger, Postman, Docker là lợi thế.
+- Có tư duy hệ thống và khả năng xử lý lỗi thực tế.
+
+Ứng viên cần có khả năng giải thích kiến trúc fullstack, luồng frontend-backend, bảo mật API, tối ưu database và xử lý lỗi production.`,
+      },
     },
     fileUpload: {
       label: "Kéo & thả tệp, hoặc nhấp để chọn",
@@ -803,6 +828,7 @@ export const vi: Translations = {
     editJdRetry: "Chỉnh sửa JD và thử lại:",
     retryPlanBtn: "Tạo lại Plan",
     retryQuestionsBtn: "Tạo lại Câu Hỏi",
+    startNewJobBtn: "Tạo bộ câu hỏi khác",
     createPlanBtn: "Tạo Plan",
     defaultPlanFailed: "Tạo plan thất bại.",
     defaultQuestionsFailed: "Tạo câu hỏi thất bại.",

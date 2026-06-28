@@ -18,8 +18,8 @@ export function GuestFooter() {
   ];
 
   const legalLinks = [
-    { label: f.privacy, href: "#" },
-    { label: f.terms, href: "#" },
+    { label: f.privacy, href: "/privacy" },
+    { label: f.terms, href: "/terms" },
     { label: f.cookies, href: "#" },
   ];
 
@@ -40,11 +40,11 @@ export function GuestFooter() {
               {quickLinks.map((link) => (
                 <li key={link.label}>
                   {link.href.startsWith("#") ? (
-                    <a href={link.href} className="text-sm text-gray-500 dark:text-gray-400 hover:text-[#6c47ff] dark:hover:text-[#a78bff] transition-colors">
+                    <a href={link.href} className="text-sm text-gray-500 dark:text-gray-400 hover:text-primary dark:hover:text-[#a78bff] transition-colors">
                       {link.label}
                     </a>
                   ) : (
-                    <Link href={link.href} className="text-sm text-gray-500 dark:text-gray-400 hover:text-[#6c47ff] dark:hover:text-[#a78bff] transition-colors">
+                    <Link href={link.href} className="text-sm text-gray-500 dark:text-gray-400 hover:text-primary dark:hover:text-[#a78bff] transition-colors">
                       {link.label}
                     </Link>
                   )}
@@ -60,9 +60,15 @@ export function GuestFooter() {
             <ul className="space-y-2.5">
               {legalLinks.map((link) => (
                 <li key={link.label}>
-                  <a href={link.href} className="text-sm text-gray-500 hover:text-[#6c47ff] transition-colors">
-                    {link.label}
-                  </a>
+                  {link.href.startsWith("#") ? (
+                    <a href={link.href} className="text-sm text-gray-500 dark:text-gray-400 hover:text-primary dark:hover:text-[#a78bff] transition-colors">
+                      {link.label}
+                    </a>
+                  ) : (
+                    <Link href={link.href} className="text-sm text-gray-500 dark:text-gray-400 hover:text-primary dark:hover:text-[#a78bff] transition-colors">
+                      {link.label}
+                    </Link>
+                  )}
                 </li>
               ))}
             </ul>
@@ -73,7 +79,6 @@ export function GuestFooter() {
           <p className="text-xs text-gray-400 dark:text-gray-500">
             © {new Date().getFullYear()} HireGen AI. {f.copyright}
           </p>
-          <p className="text-xs text-gray-400 dark:text-gray-500">{f.builtWith}</p>
         </div>
       </ScrollReveal>
     </footer>

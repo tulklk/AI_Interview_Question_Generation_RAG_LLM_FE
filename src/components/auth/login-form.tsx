@@ -431,13 +431,13 @@ export function LoginForm() {
         className="text-center text-[11px] text-gray-400 dark:text-gray-500 mt-3 leading-relaxed"
       >
         {lp.legal}{" "}
-        <button type="button" className="underline hover:text-gray-600 dark:hover:text-gray-300">
+        <a href="/terms" target="_blank" rel="noopener noreferrer" className="underline hover:text-gray-600 dark:hover:text-gray-300">
           {lp.terms}
-        </button>
+        </a>
         {" "}&amp;{" "}
-        <button type="button" className="underline hover:text-gray-600 dark:hover:text-gray-300">
+        <a href="/privacy" target="_blank" rel="noopener noreferrer" className="underline hover:text-gray-600 dark:hover:text-gray-300">
           {lp.privacyPolicy}
-        </button>
+        </a>
       </motion.p>
     </motion.div>
     </>

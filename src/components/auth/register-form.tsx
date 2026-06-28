@@ -777,9 +777,9 @@ export function RegisterForm({ registerRole = "hr" }: RegisterFormProps) {
                   </button>
                   <p className="text-sm text-gray-600 dark:text-gray-400 leading-snug">
                     {rp.agreeText}{" "}
-                    <button type="button" className="text-primary font-semibold hover:underline">{rp.terms}</button>{" "}
+                    <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-primary font-semibold hover:underline">{rp.terms}</a>{" "}
                     {rp.andText}{" "}
-                    <button type="button" className="text-primary font-semibold hover:underline">{rp.privacyPolicy}</button>
+                    <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-primary font-semibold hover:underline">{rp.privacyPolicy}</a>
                   </p>
                 </motion.div>
 

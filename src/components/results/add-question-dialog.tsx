@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { X, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLanguage } from "@/context/language-context";
@@ -49,9 +50,9 @@ export function AddQuestionDialog({ totalCount, onAdd, onClose }: AddQuestionDia
     onClose();
   }
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fade-up"
+      className="fixed inset-0 z-200 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fade-up"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div
@@ -189,6 +190,7 @@ export function AddQuestionDialog({ totalCount, onAdd, onClose }: AddQuestionDia
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
