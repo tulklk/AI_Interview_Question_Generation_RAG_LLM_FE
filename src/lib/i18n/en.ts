@@ -744,6 +744,31 @@ export const en = {
       clear: "Clear",
       minCharsHint: "Enter at least 400 characters or upload a JD file to continue.",
       needMoreChars: "Need {{n}} more characters to meet the minimum (400 characters).",
+      sampleBtn: "Sample JD",
+      sampleModal: {
+        title: "Sample Job Description",
+        subtitle: "Fullstack Developer · 1–3 years of experience",
+        useBtn: "Use this sample",
+        closeBtn: "Close",
+        content: `We are looking for a Fullstack Developer with 1–3 years of experience to build complete web applications from frontend to backend.
+
+Responsibilities:
+- Build RESTful APIs using ASP.NET Core or Node.js.
+- Develop user interfaces using React.js or Next.js.
+- Design and work with PostgreSQL, SQL Server, or MySQL databases.
+- Integrate user authentication, authorization, and system security.
+- Collaborate with QA, UI/UX Designers, and the Product Team to develop features.
+- Debug issues across frontend, backend, and database layers.
+
+Requirements:
+- Experience with C#, ASP.NET Core, or Node.js.
+- Proficient in React.js, TypeScript, HTML, CSS.
+- Understanding of REST API, JWT, database design, DTOs, and service layers.
+- Familiarity with Git, Swagger, Postman, Docker is a plus.
+- Systematic thinking and ability to handle real-world production errors.
+
+Candidates should be able to explain fullstack architecture, frontend-backend flow, API security, database optimization, and production error handling.`,
+      },
     },
     fileUpload: {
       label: "Drag & drop a file, or click to browse",
@@ -801,6 +826,7 @@ export const en = {
     editJdRetry: "Edit JD and retry:",
     retryPlanBtn: "Retry Plan",
     retryQuestionsBtn: "Retry Questions",
+    startNewJobBtn: "Create another question set",
     createPlanBtn: "Create Plan",
     defaultPlanFailed: "Plan generation failed.",
     defaultQuestionsFailed: "Question generation failed.",
