@@ -10,12 +10,5 @@
   "assets": {
     "directory": ".open-next/assets",
     "binding": "ASSETS"
-  },
-  "vars": {
-    "NEXT_PUBLIC_API_BASE_URL": "https://iqgs-be-e2eefsdvd9fydtfx.eastasia-01.azurewebsites.net",
-    "NEXT_PUBLIC_APP_LOGIN_PATH": "/login",
-    "NEXT_PUBLIC_AUTH_REFRESH_PATH": "/api/auth/refresh-token",
-    "NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME": "dtt358ri7",
-    "NEXT_PUBLIC_GOOGLE_CLIENT_ID": "593842710212-vg9t701m2prpeh0g4sq5maspreuvjmm7.apps.googleusercontent.com"
   }
 }
