@@ -17,6 +17,11 @@
 /.next/
 /out/
 
+# OpenNext / Cloudflare Workers build output
+/.open-next/
+.dev.vars
+.wrangler/
+
 # production
 /build
 /dist

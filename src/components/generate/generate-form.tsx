@@ -144,13 +144,25 @@ function clearAllSessionKeys() {
   );
 }
 
-// ── Background job slot (for multi-job creation) ──────────────────────────────
-const BG_JOB_KEY   = "hr_gen_bg_job";
-const BG_JOB_VIEW  = "hr_gen_bg_view";
-const BG_JOB_PHASE = "hr_gen_bg_phase";
+// ── Background jobs list (for multi-job creation) ────────────────────────────
+const BG_JOBS_KEY = "hr_gen_bg_jobs";
+
+interface BgJobEntry { id: string; view: string; phase: string | null; plan?: string | null }
+
+function readBgJobs(): BgJobEntry[] {
+  try { return JSON.parse(localStorage.getItem(BG_JOBS_KEY) ?? "[]"); } catch { return []; }
+}
+
+function writeBgJobs(jobs: BgJobEntry[]) {
+  if (jobs.length === 0) localStorage.removeItem(BG_JOBS_KEY);
+  else localStorage.setItem(BG_JOBS_KEY, JSON.stringify(jobs));
+}
 
 function clearBgJobKeys() {
-  [BG_JOB_KEY, BG_JOB_VIEW, BG_JOB_PHASE].forEach(k => localStorage.removeItem(k));
+  localStorage.removeItem(BG_JOBS_KEY);
+  localStorage.removeItem("hr_gen_badge_dismissed_bg");
+  // Clean up legacy single-slot keys
+  ["hr_gen_bg_job", "hr_gen_bg_view", "hr_gen_bg_phase", "hr_gen_bg_plan"].forEach(k => localStorage.removeItem(k));
 }
 
 // ── Main component ───────────────────────────────────────────────────────────
@@ -201,6 +213,65 @@ export function GenerateForm() {
       pollingActiveRef.current = false;
       if (pollingRef.current) clearTimeout(pollingRef.current);
     };
+  }, []);
+
+  // Handle session swap: badge promoted a bg job into the main slot
+  useEffect(() => {
+    async function handleSessionSwap() {
+      pollingActiveRef.current = false;
+      if (pollingRef.current) clearTimeout(pollingRef.current);
+
+      const savedId = localStorage.getItem(SESSION_KEY);
+      if (!savedId) { handleReset(); return; }
+
+      const savedView  = readSavedView();
+      const savedPlan  = readSavedPlan();
+      const savedPhase = (localStorage.getItem(SESSION_KEY_PHASE) ?? "plan") as "plan" | "questions";
+
+      setJobId(savedId);
+      setJdText(localStorage.getItem(SESSION_KEY_JD) ?? "");
+      setSelectedDoc(null);
+      setNote("");
+      setFormError(null);
+      setFailureMessage(null);
+      setCanRetryPlan(false);
+      setCanRetryQs(false);
+      setCanEditInput(false);
+
+      if (savedView === "plan_review") {
+        if (savedPlan) {
+          setPlan(savedPlan);
+          setView("plan_review");
+        } else {
+          try {
+            const session = await getGenerationJob(savedId);
+            setPlan(session?.planDraft ?? buildDefaultPlan());
+          } catch { setPlan(buildDefaultPlan()); }
+          setView("plan_review");
+        }
+      } else if (savedView === "polling") {
+        pollingPhaseRef.current = savedPhase;
+        setPollingPhase(savedPhase);
+        setStatusLabel(savedPhase === "questions"
+          ? t.generatePage.statusGeneratingQuestions
+          : t.generatePage.statusGeneratingPlan);
+        startPolling(savedId, savedPhase);
+      } else if (savedView === "question_review") {
+        try {
+          const qs = await getJobQuestions(savedId);
+          setQuestions(qs.length ? qs : []);
+        } catch { /* ignore */ }
+        setView("question_review");
+      } else if (savedView === "failed") {
+        setView("failed");
+      } else {
+        setView("form");
+      }
+    }
+
+    window.addEventListener("hr:session-swap", handleSessionSwap);
+    return () => window.removeEventListener("hr:session-swap", handleSessionSwap);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Persist session to localStorage — skip until restore has run to avoid wiping saved data
@@ -650,12 +721,9 @@ export function GenerateForm() {
 
   function handleStartNewJob() {
     if (jobId) {
-      localStorage.setItem(BG_JOB_KEY, jobId);
-      localStorage.setItem(BG_JOB_VIEW, view);
-      const curPhase = pollingPhaseRef.current;
-      if (curPhase) localStorage.setItem(BG_JOB_PHASE, curPhase);
+      const existing = readBgJobs().filter(e => e.id !== jobId);
+      writeBgJobs([...existing, { id: jobId, view, phase: pollingPhaseRef.current ?? null, plan: null }]);
       localStorage.removeItem("hr_gen_badge_dismissed");
-      // Signal the badge to sync immediately instead of waiting for next 800ms tick
       window.dispatchEvent(new CustomEvent("hr:bg-job-updated"));
     }
     pollingActiveRef.current = false;
@@ -730,16 +798,14 @@ export function GenerateForm() {
             <p className={cn("text-sm", portalSubtext)}>{statusLabel}</p>
           </div>
           <Loader2 size={22} className="text-[#7C3AED] dark:text-[#a78bff] animate-spin" />
-          {pollingPhase === "questions" && (
-            <button
-              type="button"
-              onClick={handleStartNewJob}
-              className="flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg border border-violet-200 dark:border-violet-800 text-violet-600 dark:text-violet-400 hover:bg-violet-50 dark:hover:bg-violet-950/40 transition-colors"
-            >
-              <Plus size={14} />
-              {t.generatePage.startNewJobBtn}
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={handleStartNewJob}
+            className="flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg border border-violet-200 dark:border-violet-800 text-violet-600 dark:text-violet-400 hover:bg-violet-50 dark:hover:bg-violet-950/40 transition-colors"
+          >
+            <Plus size={14} />
+            {t.generatePage.startNewJobBtn}
+          </button>
         </div>
       </div>
     );
