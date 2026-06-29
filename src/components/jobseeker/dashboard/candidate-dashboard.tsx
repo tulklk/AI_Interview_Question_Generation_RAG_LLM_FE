@@ -6,21 +6,17 @@ import {
   Sparkles, ChevronRight,
   BarChart2, Clock, RefreshCw,
 } from "lucide-react";
-import {
-  RadarChart, PolarGrid, PolarAngleAxis, Radar,
-  ResponsiveContainer,
-} from "recharts";
 import { cn } from "@/lib/utils";
 import {
-  candidateStats, practiceSessions, questionSets, skillRadarData,
+  candidateStats, practiceSessions, questionSets,
 } from "@/data/jobseeker";
 import { QuestionSetCard } from "@/components/jobseeker/marketplace/question-set-card";
+import { SkillRadarChart } from "@/components/jobseeker/dashboard/skill-radar-chart";
 import { useLanguage } from "@/context/language-context";
 import { useUser } from "@/context/user-context";
 import { buildWelcomeMessage, getTimeOfDayGreeting } from "@/lib/greeting";
 import { StatCard } from "@/components/jobseeker/ui/stat-card";
 import { Pill, getScoreBadgeClass } from "@/components/jobseeker/ui/pill";
-import { useChartTheme } from "@/hooks/use-chart-theme";
 import { portalDivider, portalHeadingAlt, portalSubtextAlt } from "@/lib/portal-ui";
 
 const fadeUp = (delay = 0) => ({
@@ -35,7 +31,6 @@ const weakSkills  = ["Situational Questions", "System Design", "SQL"];
 export function CandidateDashboard() {
   const { t } = useLanguage();
   const { user, loading } = useUser();
-  const chart = useChartTheme();
   const p = t.jobseekerDashboardPage;
 
   const greeting = getTimeOfDayGreeting({
@@ -75,18 +70,7 @@ export function CandidateDashboard() {
             className="hr-glass-card p-6"
           >
             <h2 className={cn("text-[16px] font-[700] mb-4", portalHeadingAlt)}>{p.analyticsTitle}</h2>
-            <ResponsiveContainer width="100%" height={220}>
-              <RadarChart data={skillRadarData}>
-                <PolarGrid stroke={chart.gridStroke} />
-                <PolarAngleAxis
-                  dataKey="skill"
-                  tick={{ fontSize: 11, fontFamily: "Be Vietnam Pro", fill: chart.axisTickFill }}
-                />
-                <Radar
-                  dataKey="score" stroke="#6C47FF" fill="#6C47FF" fillOpacity={0.12} strokeWidth={2}
-                />
-              </RadarChart>
-            </ResponsiveContainer>
+            <SkillRadarChart />
           </motion.div>
 
           <motion.div
