@@ -20,16 +20,9 @@ function isGeneratingQuestions(status: GenerationStatus): boolean {
   return QUESTION_GENERATING_STATUSES.includes(status);
 }
 
-function getRealId(paramId: string): string {
-  if (paramId && paramId !== "placeholder") return paramId;
-  if (typeof window === "undefined") return paramId;
-  const segments = window.location.pathname.split("/").filter(Boolean);
-  return segments[segments.length - 1] || paramId;
-}
-
 export function HrReviewPageClient() {
   const params = useParams<{ id: string }>();
-  const id = getRealId(params.id ?? "");
+  const id = params.id ?? "";
   const { t } = useLanguage();
   const rp = t.reviewPage;
   const [session, setSession] = useState<GenerationSession | null>(null);
@@ -93,7 +86,7 @@ export function HrReviewPageClient() {
   }
 
   useEffect(() => {
-    if (!id || id === "placeholder") return;
+    if (!id) return;
     setLoading(true);
     pollingActiveRef.current = true;
 

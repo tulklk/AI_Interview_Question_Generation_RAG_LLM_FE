@@ -1,11 +1,9 @@
 import type { NextConfig } from "next";
 
-const isDev = process.env.NODE_ENV === "development";
-
+// Deployed to Cloudflare Workers via @opennextjs/cloudflare (server mode).
+// No static export — dynamic routes like /hr/history/[id] render on demand,
+// so no _redirects placeholder hack is required.
 const nextConfig: NextConfig = {
-  // Static export only for production (Cloudflare Pages).
-  // In dev mode, omit output so dynamic routes work without generateStaticParams constraints.
-  ...(!isDev && { output: "export" }),
   trailingSlash: true,
   images: {
     unoptimized: true,
