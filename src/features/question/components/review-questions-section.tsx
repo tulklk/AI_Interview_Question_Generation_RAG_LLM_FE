@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, BookMarked, CheckCircle2, Loader2, AlertCircle, RefreshCw } from "lucide-react";
+import { Plus, BookMarked, CheckCircle2, Loader2, AlertCircle, RefreshCw, ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { useLanguage } from "@/shared/providers/language-context";
 import {
@@ -26,6 +26,8 @@ interface ReviewQuestionsSectionProps {
 
 type SaveState = "idle" | "saving" | "saved" | "error";
 
+const PAGE_SIZE = 5;
+
 export function ReviewQuestionsSection({
   sessionId,
   initialQuestions,
@@ -39,6 +41,7 @@ export function ReviewQuestionsSection({
   const [deletedIds, setDeletedIds] = useState<string[]>([]);
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [saveState, setSaveState] = useState<SaveState>("idle");
+  const [page, setPage] = useState(1);
 
   const isEditable = status === "COMPLETED" && !readOnly;
 
@@ -49,8 +52,13 @@ export function ReviewQuestionsSection({
   }
 
   function handleDelete(id: string) {
-    setQuestions((prev) => prev.filter((q) => q.id !== id));
-    // Only track backend question IDs for deletion — manually-added ones were never saved
+    setQuestions((prev) => {
+      const next = prev.filter((q) => q.id !== id);
+      // If deleting the last item on this page, go back one page
+      const newTotalPages = Math.max(1, Math.ceil(next.length / PAGE_SIZE));
+      setPage((p) => Math.min(p, newTotalPages));
+      return next;
+    });
     if (!id.startsWith("manual-")) {
       setDeletedIds((prev) => [...prev, id]);
     }
@@ -80,7 +88,12 @@ export function ReviewQuestionsSection({
       id: `manual-${Date.now()}`,
       orderIndex: questions.length,
     };
-    setQuestions((prev) => [...prev, question]);
+    setQuestions((prev) => {
+      const next = [...prev, question];
+      // Jump to the last page so user sees the newly added question
+      setPage(Math.ceil(next.length / PAGE_SIZE));
+      return next;
+    });
   }
 
   async function handleSaveDraft() {
@@ -257,25 +270,92 @@ export function ReviewQuestionsSection({
             {rp.addQuestion}
           </button>
         </div>
-      ) : (
-        <div className="flex flex-col gap-3">
-          {questions.map((q, idx) => (
-            <div key={q.id} className="animate-fade-up" style={{ animationDelay: `${idx * 40}ms` }}>
-              <QuestionEditCard
-                question={q}
-                index={idx + 1}
-                sessionId={sessionId}
-                isFirst={idx === 0}
-                isLast={idx === questions.length - 1}
-                onUpdate={(changes) => handleUpdate(q.id, changes)}
-                onDelete={() => handleDelete(q.id)}
-                onMoveUp={() => handleMoveUp(idx)}
-                onMoveDown={() => handleMoveDown(idx)}
-              />
+      ) : (() => {
+        const totalPages = Math.max(1, Math.ceil(questions.length / PAGE_SIZE));
+        const safePage = Math.min(page, totalPages);
+        const startIdx = (safePage - 1) * PAGE_SIZE;
+        const paginated = questions.slice(startIdx, startIdx + PAGE_SIZE);
+
+        return (
+          <>
+            <div className="flex flex-col gap-3">
+              {paginated.map((q, idx) => {
+                const globalIdx = startIdx + idx;
+                return (
+                  <div key={q.id} className="animate-fade-up" style={{ animationDelay: `${idx * 40}ms` }}>
+                    <QuestionEditCard
+                      question={q}
+                      index={globalIdx + 1}
+                      sessionId={sessionId}
+                      isFirst={globalIdx === 0}
+                      isLast={globalIdx === questions.length - 1}
+                      onUpdate={(changes) => handleUpdate(q.id, changes)}
+                      onDelete={() => handleDelete(q.id)}
+                      onMoveUp={() => handleMoveUp(globalIdx)}
+                      onMoveDown={() => handleMoveDown(globalIdx)}
+                    />
+                  </div>
+                );
+              })}
             </div>
-          ))}
-        </div>
-      )}
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between gap-4 pt-2">
+                <p className={cn("text-xs", portalSubtext)}>
+                  Câu {startIdx + 1}–{Math.min(safePage * PAGE_SIZE, questions.length)} / {questions.length} câu hỏi
+                </p>
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    disabled={safePage === 1}
+                    className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <ChevronLeft size={15} />
+                  </button>
+
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => {
+                    const isFirst = p === 1;
+                    const isLast = p === totalPages;
+                    const nearCurrent = Math.abs(p - safePage) <= 1;
+                    if (!isFirst && !isLast && !nearCurrent) {
+                      if (p === 2 || p === totalPages - 1) {
+                        return <span key={p} className={cn("text-xs px-0.5", portalSubtext)}>…</span>;
+                      }
+                      return null;
+                    }
+                    return (
+                      <button
+                        key={p}
+                        type="button"
+                        onClick={() => setPage(p)}
+                        className={cn(
+                          "inline-flex h-8 min-w-8 px-2 items-center justify-center rounded-lg text-xs font-medium transition-colors",
+                          p === safePage
+                            ? "bg-primary text-white shadow-sm"
+                            : "border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
+                        )}
+                      >
+                        {p}
+                      </button>
+                    );
+                  })}
+
+                  <button
+                    type="button"
+                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={safePage === totalPages}
+                    className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <ChevronRight size={15} />
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
+        );
+      })()}
 
       {/* Add Question Dialog */}
       {showAddDialog && (

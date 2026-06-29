@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
-import { FileText, Calendar, ArrowUpDown, Eye, Download, Trash2, Inbox, Loader2, AlertTriangle } from "lucide-react";
+import { FileText, Calendar, ArrowUpDown, Eye, Download, Trash2, Inbox, Loader2, AlertTriangle, ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { useLanguage } from "@/shared/providers/language-context";
 import { useHrSubscription } from "@/features/hr/context/hr-subscription-context";
@@ -93,6 +93,8 @@ function ColumnHeader({ label }: { label: string }) {
   );
 }
 
+const PAGE_SIZE = 10;
+
 // Module-level constants — avoid re-creating on every render
 function normalizeLevel(val: string): string {
   return val.toLowerCase() === "mid-level" ? "Medium" : val;
@@ -124,6 +126,7 @@ export function HistoryTable({ search = "", role = "", level = "", experience = 
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [exportingId, setExportingId] = useState<string | null>(null);
   const [confirmSession, setConfirmSession] = useState<GenerationSession | null>(null);
+  const [page, setPage] = useState(1);
 
   // Always-current ref so effects with [] deps never get a stale loadData
   const loadDataRef = useRef<() => void>(null!);
@@ -232,6 +235,10 @@ export function HistoryTable({ search = "", role = "", level = "", experience = 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessions]);
 
+  // Reset to page 1 whenever any filter changes
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { setPage(1); }, [search, role, level, experience, status]);
+
   const filtered = sessions.filter((s) => {
     const sRole = (s.planDraft?.role ?? "").toLowerCase();
     const sLevel = s.planDraft?.level ?? "";
@@ -256,6 +263,10 @@ export function HistoryTable({ search = "", role = "", level = "", experience = 
     }
     return true;
   });
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const paginated = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
   // ── Loading skeleton ──────────────────────────────────────────────────────
   if (loading) {
@@ -406,7 +417,7 @@ export function HistoryTable({ search = "", role = "", level = "", experience = 
 
     {/* ── Mobile card list (< md) ──────────────────────────────────────────── */}
     <div className="md:hidden space-y-3 animate-fade-up">
-      {filtered.length === 0 ? emptyFilterRow : filtered.map((session) => {
+      {filtered.length === 0 ? emptyFilterRow : paginated.map((session) => {
         const sessionRole = session.planDraft?.role ?? "";
         const sessionLevel = normalizeLevel(session.planDraft?.level ?? "");
         const questionsCount = session.generatedQuestions?.length ?? 0;
@@ -479,7 +490,7 @@ export function HistoryTable({ search = "", role = "", level = "", experience = 
               </td>
             </tr>
           )}
-          {filtered.map((session, rowIdx) => {
+          {paginated.map((session, rowIdx) => {
             const sessionRole = session.planDraft?.role ?? "";
             const sessionLevel = normalizeLevel(session.planDraft?.level ?? "");
             const questionsCount = session.generatedQuestions?.length ?? 0;
@@ -528,6 +539,61 @@ export function HistoryTable({ search = "", role = "", level = "", experience = 
         </tbody>
       </table>
     </div>
+
+    {/* ── Pagination bar ───────────────────────────────────────────────────── */}
+    {totalPages > 1 && (
+      <div className="flex items-center justify-between gap-4 px-1 py-2">
+        <p className={cn("text-xs", portalSubtext)}>
+          {(safePage - 1) * PAGE_SIZE + 1}–{Math.min(safePage * PAGE_SIZE, filtered.length)} / {filtered.length} kết quả
+        </p>
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => setPage(p => Math.max(1, p - 1))}
+            disabled={safePage === 1}
+            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          >
+            <ChevronLeft size={15} />
+          </button>
+
+          {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => {
+            const isFirst = p === 1;
+            const isLast = p === totalPages;
+            const nearCurrent = Math.abs(p - safePage) <= 1;
+            if (!isFirst && !isLast && !nearCurrent) {
+              if (p === 2 || p === totalPages - 1) {
+                return <span key={p} className={cn("text-xs px-0.5", portalSubtext)}>…</span>;
+              }
+              return null;
+            }
+            return (
+              <button
+                key={p}
+                type="button"
+                onClick={() => setPage(p)}
+                className={cn(
+                  "inline-flex h-8 min-w-8 px-2 items-center justify-center rounded-lg text-xs font-medium transition-colors",
+                  p === safePage
+                    ? "bg-[#7C3AED] text-white shadow-sm"
+                    : "border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
+                )}
+              >
+                {p}
+              </button>
+            );
+          })}
+
+          <button
+            type="button"
+            onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+            disabled={safePage === totalPages}
+            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          >
+            <ChevronRight size={15} />
+          </button>
+        </div>
+      </div>
+    )}
     </>
   );
 }
