@@ -1,14 +1,14 @@
 "use client";
 
 import { useMemo, useState, useCallback } from "react";
-import { AdminAppShell } from "@/components/admin/layout/admin-app-shell";
-import { ContentFilters } from "@/components/admin/content/content-filters";
-import { ContentTable } from "@/components/admin/content/content-table";
-import { contentSessions } from "@/data/admin";
-import type { ContentSession } from "@/types/admin";
-import { useLanguage } from "@/context/language-context";
-import { cn } from "@/lib/utils";
-import { portalHeadingAlt, portalSubtextAlt } from "@/lib/portal-ui";
+import { AdminAppShell } from "@/features/admin/components/layout/admin-app-shell";
+import { ContentFilters } from "@/features/admin/components/content/content-filters";
+import { ContentTable } from "@/features/admin/components/content/content-table";
+import { contentSessions } from "@/features/admin/data/admin";
+import type { ContentSession } from "@/features/admin/types/admin";
+import { useLanguage } from "@/shared/providers/language-context";
+import { cn } from "@/lib/cn";
+import { portalHeadingAlt, portalSubtextAlt } from "@/shared/utils/portal-ui";
 
 function matchesDateRange(
   daysAgo: number,

@@ -1,5 +1,5 @@
-import { JobseekerAppShell } from "@/components/jobseeker/layout/jobseeker-app-shell";
-import { CandidateProfile } from "@/components/jobseeker/profile/candidate-profile";
+import { JobseekerAppShell } from "@/features/candidate/components/layout/jobseeker-app-shell";
+import { CandidateProfile } from "@/features/candidate/components/profile/candidate-profile";
 
 export default function ProfilePage() {
   return (

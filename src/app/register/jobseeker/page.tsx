@@ -1,5 +1,5 @@
-import { RegisterJobSeekerForm } from "@/components/auth/register-jobseeker-form";
-import { AuthLayout } from "@/components/auth/auth-layout";
+import { RegisterJobSeekerForm } from "@/features/auth/components/register-jobseeker-form";
+import { AuthLayout } from "@/features/auth/components/auth-layout";
 
 export const metadata = {
   title: "Sign Up — HireGen AI",

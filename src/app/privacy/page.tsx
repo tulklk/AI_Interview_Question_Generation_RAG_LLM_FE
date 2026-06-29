@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { GuestNavbar } from "@/components/guest/guest-navbar";
-import { GuestFooter } from "@/components/guest/guest-footer";
-import { useLanguage } from "@/context/language-context";
+import { GuestNavbar } from "@/features/guest/components/guest-navbar";
+import { GuestFooter } from "@/features/guest/components/guest-footer";
+import { useLanguage } from "@/shared/providers/language-context";
 
 export default function PrivacyPage() {
   const { lang } = useLanguage();

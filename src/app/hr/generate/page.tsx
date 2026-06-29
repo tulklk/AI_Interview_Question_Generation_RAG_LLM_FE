@@ -1,10 +1,10 @@
 "use client";
 
-import { AppShell } from "@/components/layout/app-shell";
-import { GenerateForm } from "@/components/generate/generate-form";
-import { useLanguage } from "@/context/language-context";
-import { cn } from "@/lib/utils";
-import { portalHeading, portalSubtext } from "@/lib/portal-ui";
+import { AppShell } from "@/features/hr/components/layout/app-shell";
+import { GenerateForm } from "@/features/interview/components/generate/generate-form";
+import { useLanguage } from "@/shared/providers/language-context";
+import { cn } from "@/lib/cn";
+import { portalHeading, portalSubtext } from "@/shared/utils/portal-ui";
 
 export default function HrGeneratePage() {
   const { t } = useLanguage();

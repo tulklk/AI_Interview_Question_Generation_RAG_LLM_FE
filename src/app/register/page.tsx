@@ -1,5 +1,5 @@
-import { RegisterRoleTabs } from "@/components/auth/register-role-tabs";
-import { AuthLayout } from "@/components/auth/auth-layout";
+import { RegisterRoleTabs } from "@/features/auth/components/register-role-tabs";
+import { AuthLayout } from "@/features/auth/components/auth-layout";
 
 export const metadata = {
   title: "Sign Up — HireGen AI",

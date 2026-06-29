@@ -1,10 +1,10 @@
-import { AppShell } from "@/components/layout/app-shell";
-import { WelcomeSection } from "@/components/dashboard/welcome-section";
-import { StatsGrid } from "@/components/dashboard/stats-grid";
-import { WeeklyActivityCard } from "@/components/dashboard/weekly-activity-card";
-import { CategoryBreakdownCard } from "@/components/dashboard/category-breakdown-card";
-import { QuickGenerateCard } from "@/components/dashboard/quick-generate-card";
-import { RecentSessions } from "@/components/dashboard/recent-sessions";
+import { AppShell } from "@/features/hr/components/layout/app-shell";
+import { WelcomeSection } from "@/features/dashboard/components/welcome-section";
+import { StatsGrid } from "@/features/dashboard/components/stats-grid";
+import { WeeklyActivityCard } from "@/features/dashboard/components/weekly-activity-card";
+import { CategoryBreakdownCard } from "@/features/dashboard/components/category-breakdown-card";
+import { QuickGenerateCard } from "@/features/dashboard/components/quick-generate-card";
+import { RecentSessions } from "@/features/dashboard/components/recent-sessions";
 
 export default function HrDashboardPage() {
   return (

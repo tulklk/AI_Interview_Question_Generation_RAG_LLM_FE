@@ -4,11 +4,11 @@ import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Mail, ArrowLeft, CheckCircle2, AlertCircle } from "lucide-react";
-import { verifyEmail, resendVerification } from "@/lib/api/auth";
+import { verifyEmail, resendVerification } from "@/features/auth/services/auth.service";
 import type { AxiosError } from "axios";
-import { useLanguage } from "@/context/language-context";
-import { useToast } from "@/context/toast-context";
-import { AuthPageToolbar } from "@/components/auth/auth-page-toolbar";
+import { useLanguage } from "@/shared/providers/language-context";
+import { useToast } from "@/shared/providers/toast-context";
+import { AuthPageToolbar } from "@/features/auth/components/auth-page-toolbar";
 
 const COOLDOWN = 60;
 

@@ -1,13 +1,13 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { AdminAppShell } from "@/components/admin/layout/admin-app-shell";
-import { AuditLogFilters, AUDIT_FILTER_ALL } from "@/components/admin/audit/audit-log-filters";
-import { AuditLogTable } from "@/components/admin/audit/audit-log-table";
-import { auditLogEntries } from "@/data/admin";
-import { useLanguage } from "@/context/language-context";
-import { cn } from "@/lib/utils";
-import { portalHeadingAlt, portalSubtextAlt } from "@/lib/portal-ui";
+import { AdminAppShell } from "@/features/admin/components/layout/admin-app-shell";
+import { AuditLogFilters, AUDIT_FILTER_ALL } from "@/features/admin/components/audit/audit-log-filters";
+import { AuditLogTable } from "@/features/admin/components/audit/audit-log-table";
+import { auditLogEntries } from "@/features/admin/data/admin";
+import { useLanguage } from "@/shared/providers/language-context";
+import { cn } from "@/lib/cn";
+import { portalHeadingAlt, portalSubtextAlt } from "@/shared/utils/portal-ui";
 
 export default function AdminAuditPage() {
   const { t } = useLanguage();

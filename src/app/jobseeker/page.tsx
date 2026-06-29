@@ -1,5 +1,5 @@
-import { JobseekerAppShell } from "@/components/jobseeker/layout/jobseeker-app-shell";
-import { MarketplacePage } from "@/components/jobseeker/marketplace/marketplace-page";
+import { JobseekerAppShell } from "@/features/candidate/components/layout/jobseeker-app-shell";
+import { MarketplacePage } from "@/features/candidate/components/marketplace/marketplace-page";
 
 export default function JobseekerMarketplace() {
   return (

@@ -1,15 +1,15 @@
 "use client";
 
-import { AdminAppShell } from "@/components/admin/layout/admin-app-shell";
-import { AdminWelcomeSection } from "@/components/admin/dashboard/admin-welcome-section";
-import { AdminStatsGrid } from "@/components/admin/dashboard/admin-stats-grid";
-import { AdminDashboardSecondaryStats } from "@/components/admin/dashboard/admin-dashboard-secondary-stats";
-import { AdminDashboardWeeklyOverview } from "@/components/admin/dashboard/admin-dashboard-weekly-overview";
-import { AdminDashboardCategoryMix } from "@/components/admin/dashboard/admin-dashboard-category-mix";
-import { AdminDashboardTopRecruiters } from "@/components/admin/dashboard/admin-dashboard-top-recruiters";
-import { UserGrowthChart } from "@/components/admin/dashboard/user-growth-chart";
-import { QuestionsTrendChart } from "@/components/admin/dashboard/questions-trend-chart";
-import { SystemActivityTable } from "@/components/admin/dashboard/system-activity-table";
+import { AdminAppShell } from "@/features/admin/components/layout/admin-app-shell";
+import { AdminWelcomeSection } from "@/features/admin/components/dashboard/admin-welcome-section";
+import { AdminStatsGrid } from "@/features/admin/components/dashboard/admin-stats-grid";
+import { AdminDashboardSecondaryStats } from "@/features/admin/components/dashboard/admin-dashboard-secondary-stats";
+import { AdminDashboardWeeklyOverview } from "@/features/admin/components/dashboard/admin-dashboard-weekly-overview";
+import { AdminDashboardCategoryMix } from "@/features/admin/components/dashboard/admin-dashboard-category-mix";
+import { AdminDashboardTopRecruiters } from "@/features/admin/components/dashboard/admin-dashboard-top-recruiters";
+import { UserGrowthChart } from "@/features/admin/components/dashboard/user-growth-chart";
+import { QuestionsTrendChart } from "@/features/admin/components/dashboard/questions-trend-chart";
+import { SystemActivityTable } from "@/features/admin/components/dashboard/system-activity-table";
 
 export default function AdminDashboardPage() {
   return (

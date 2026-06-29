@@ -1,5 +1,5 @@
-import { JobseekerAppShell } from "@/components/jobseeker/layout/jobseeker-app-shell";
-import { SettingsPage } from "@/components/jobseeker/settings/settings-page";
+import { JobseekerAppShell } from "@/features/candidate/components/layout/jobseeker-app-shell";
+import { SettingsPage } from "@/features/candidate/components/settings/settings-page";
 
 export default function JobseekerSettingsPage() {
   return (

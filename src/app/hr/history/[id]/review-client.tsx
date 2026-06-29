@@ -3,14 +3,14 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { Loader2, AlertCircle } from "lucide-react";
-import { AppShell } from "@/components/layout/app-shell";
-import { ReviewPageClient } from "@/components/results/review-page-client";
-import { getGenerationSession, getGenerationJob, getJobQuestions, getDraft } from "@/lib/api/generation";
-import { getLocalSession, toGenerationSession } from "@/lib/local-history";
-import type { GenerationSession, DraftQuestionSet, GenerationStatus } from "@/types/generation-session";
-import { cn } from "@/lib/utils";
-import { portalHeading, portalSubtext } from "@/lib/portal-ui";
-import { useLanguage } from "@/context/language-context";
+import { AppShell } from "@/features/hr/components/layout/app-shell";
+import { ReviewPageClient } from "@/features/question/components/review-page-client";
+import { getGenerationSession, getGenerationJob, getJobQuestions, getDraft } from "@/features/interview/services/interview.service";
+import { getLocalSession, toGenerationSession } from "@/features/interview/utils/local-history";
+import type { GenerationSession, DraftQuestionSet, GenerationStatus } from "@/features/interview/types/generation-session";
+import { cn } from "@/lib/cn";
+import { portalHeading, portalSubtext } from "@/shared/utils/portal-ui";
+import { useLanguage } from "@/shared/providers/language-context";
 
 const QUESTION_GENERATING_STATUSES: GenerationStatus[] = [
   "CONFIRMED", "QUEUED", "QUESTION_QUEUED", "QUESTION_PROCESSING", "PROCESSING",
