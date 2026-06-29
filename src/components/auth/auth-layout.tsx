@@ -61,8 +61,9 @@ export function AuthLayout({ children, formAreaClassName = "items-center justify
           <div className="auth-panel-orb auth-panel-orb--3" style={{ width: 220, height: 220, top: "40%", right: "16%" }} />
         </div>
 
-        <div className="absolute top-6 right-6 sm:right-8 z-10 animate-fade-in">
+        <div className="absolute top-6 right-6 sm:right-8 z-20 animate-fade-in">
           <BrandLogo
+            href="/"
             className="justify-end max-w-[min(100%,280px)]"
             logoClassName="w-10 h-10 auth-logo-pulse"
             titleClassName="text-[16px]"
