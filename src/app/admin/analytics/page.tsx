@@ -1,13 +1,13 @@
 "use client";
 
-import { AdminAppShell } from "@/components/admin/layout/admin-app-shell";
-import { AnalyticsStats } from "@/components/admin/analytics/analytics-stats";
-import { WeeklyUsageChart } from "@/components/admin/analytics/weekly-usage-chart";
-import { CategoryChart } from "@/components/admin/analytics/category-chart";
-import { RoleDistribution } from "@/components/admin/analytics/role-distribution";
-import { useLanguage } from "@/context/language-context";
-import { cn } from "@/lib/utils";
-import { portalHeadingAlt, portalSubtextAlt } from "@/lib/portal-ui";
+import { AdminAppShell } from "@/features/admin/components/layout/admin-app-shell";
+import { AnalyticsStats } from "@/features/admin/components/analytics/analytics-stats";
+import { WeeklyUsageChart } from "@/features/admin/components/analytics/weekly-usage-chart";
+import { CategoryChart } from "@/features/admin/components/analytics/category-chart";
+import { RoleDistribution } from "@/features/admin/components/analytics/role-distribution";
+import { useLanguage } from "@/shared/providers/language-context";
+import { cn } from "@/lib/cn";
+import { portalHeadingAlt, portalSubtextAlt } from "@/shared/utils/portal-ui";
 
 export default function SystemAnalyticsPage() {
   const { t } = useLanguage();

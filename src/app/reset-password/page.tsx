@@ -1,8 +1,8 @@
 "use client";
 
 import { Suspense } from "react";
-import { AuthPageToolbar } from "@/components/auth/auth-page-toolbar";
-import { ResetPasswordContent } from "@/components/auth/reset-password-content";
+import { AuthPageToolbar } from "@/features/auth/components/auth-page-toolbar";
+import { ResetPasswordContent } from "@/features/auth/components/reset-password-content";
 
 export default function ResetPasswordPage() {
   return (

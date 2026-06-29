@@ -3,10 +3,10 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Mail, ArrowLeft, CheckCircle2 } from "lucide-react";
-import { forgotPassword } from "@/lib/api/auth";
-import { useLanguage } from "@/context/language-context";
-import { useToast } from "@/context/toast-context";
-import { BrandLogo } from "@/components/shared/brand-logo";
+import { forgotPassword } from "@/features/auth/services/auth.service";
+import { useLanguage } from "@/shared/providers/language-context";
+import { useToast } from "@/shared/providers/toast-context";
+import { BrandLogo } from "@/shared/components/common/brand-logo";
 
 const COOLDOWN = 60;
 

@@ -1,12 +1,12 @@
-import { GuestNavbar } from "@/components/guest/guest-navbar";
-import { HeroSection } from "@/components/guest/hero-section";
-import { SectionCarousel } from "@/components/guest/section-carousel";
-import { PricingSection } from "@/components/guest/pricing-section";
-import { DemoPreviewSection } from "@/components/guest/demo-preview-section";
-import { TestimonialsSection } from "@/components/guest/testimonials-section";
-import { FinalCtaSection } from "@/components/guest/final-cta-section";
-import { GuestFooter } from "@/components/guest/guest-footer";
-import { FloatingWidgets } from "@/components/guest/floating-widgets";
+import { GuestNavbar } from "@/features/guest/components/guest-navbar";
+import { HeroSection } from "@/features/guest/components/hero-section";
+import { SectionCarousel } from "@/features/guest/components/section-carousel";
+import { PricingSection } from "@/features/guest/components/pricing-section";
+import { DemoPreviewSection } from "@/features/guest/components/demo-preview-section";
+import { TestimonialsSection } from "@/features/guest/components/testimonials-section";
+import { FinalCtaSection } from "@/features/guest/components/final-cta-section";
+import { GuestFooter } from "@/features/guest/components/guest-footer";
+import { FloatingWidgets } from "@/features/guest/components/floating-widgets";
 
 export default function RootPage() {
   return (

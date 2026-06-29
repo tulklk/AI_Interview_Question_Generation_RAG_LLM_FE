@@ -1,11 +1,11 @@
 "use client";
 
 import { GoogleOAuthProvider } from "@react-oauth/google";
-import { LanguageProvider } from "@/context/language-context";
-import { ThemeProvider } from "@/context/theme-context";
-import { ToastProvider } from "@/context/toast-context";
-import { UserProvider } from "@/context/user-context";
-import { ToastContainer } from "@/components/ui/toast-container";
+import { LanguageProvider } from "@/shared/providers/language-context";
+import { ThemeProvider } from "@/shared/providers/theme-context";
+import { ToastProvider } from "@/shared/providers/toast-context";
+import { UserProvider } from "@/features/auth/context/user-context";
+import { ToastContainer } from "@/shared/components/ui/toast-container";
 import type { ReactNode } from "react";
 
 export function Providers({ children }: { children: ReactNode }) {

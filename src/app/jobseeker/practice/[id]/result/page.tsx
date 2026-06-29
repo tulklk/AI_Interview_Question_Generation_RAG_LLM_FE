@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
-import { JobseekerAppShell } from "@/components/jobseeker/layout/jobseeker-app-shell";
-import { FeedbackPage } from "@/components/jobseeker/feedback/feedback-page";
-import { practiceSessions, questionSets } from "@/data/jobseeker";
+import { JobseekerAppShell } from "@/features/candidate/components/layout/jobseeker-app-shell";
+import { FeedbackPage } from "@/features/candidate/components/feedback/feedback-page";
+import { practiceSessions, questionSets } from "@/features/candidate/data/jobseeker";
 
 export function generateStaticParams() {
   return questionSets.map((s) => ({ id: s.id }));

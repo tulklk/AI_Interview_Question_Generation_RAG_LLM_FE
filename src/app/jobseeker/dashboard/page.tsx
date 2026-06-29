@@ -1,5 +1,5 @@
-import { JobseekerAppShell } from "@/components/jobseeker/layout/jobseeker-app-shell";
-import { CandidateDashboard } from "@/components/jobseeker/dashboard/candidate-dashboard";
+import { JobseekerAppShell } from "@/features/candidate/components/layout/jobseeker-app-shell";
+import { CandidateDashboard } from "@/features/candidate/components/dashboard/candidate-dashboard";
 
 export default function JobseekerDashboardPage() {
   return (

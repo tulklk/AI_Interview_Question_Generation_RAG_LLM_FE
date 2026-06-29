@@ -1,18 +1,18 @@
 "use client";
 
-import { AppShell } from "@/components/layout/app-shell";
-import { KnowledgePageContent } from "@/components/knowledge/knowledge-page-content";
+import { AppShell } from "@/features/hr/components/layout/app-shell";
+import { KnowledgePageContent } from "@/features/knowledge/components/knowledge-page-content";
 import {
   getHrKnowledgeDocs,
   uploadHrKnowledgeDoc,
   deleteHrKnowledgeDoc,
   reingestHrKnowledgeDoc,
   getHrKnowledgeDoc,
-} from "@/lib/api/knowledge";
-import { cn } from "@/lib/utils";
-import { portalHeading, portalSubtext } from "@/lib/portal-ui";
+} from "@/features/knowledge/services/knowledge.service";
+import { cn } from "@/lib/cn";
+import { portalHeading, portalSubtext } from "@/shared/utils/portal-ui";
 import { BookOpen } from "lucide-react";
-import { useLanguage } from "@/context/language-context";
+import { useLanguage } from "@/shared/providers/language-context";
 
 export default function HrKnowledgePage() {
   const { t } = useLanguage();
