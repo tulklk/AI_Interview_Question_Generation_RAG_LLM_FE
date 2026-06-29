@@ -1,20 +1,20 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { AdminAppShell } from "@/components/admin/layout/admin-app-shell";
-import { AdminRouteGuard } from "@/components/admin/guards/admin-route-guard";
-import { UserStats } from "@/components/admin/users/user-stats";
-import { UserFilters, type RoleFilterValue, type StatusFilterValue } from "@/components/admin/users/user-filters";
-import { UserTable } from "@/components/admin/users/user-table";
-import { UserDetailPanel } from "@/components/admin/users/user-detail-panel";
-import { UserPagination } from "@/components/admin/users/user-pagination";
-import { getAdminUserStatus } from "@/lib/admin-user-display";
-import { getUserById, listUsers, updateUserStatus } from "@/lib/api/admin-users";
-import { useLanguage } from "@/context/language-context";
-import { cn } from "@/lib/utils";
-import { portalHeadingAlt, portalSubtextAlt } from "@/lib/portal-ui";
-import { useToast } from "@/context/toast-context";
-import type { AdminUserDetail, AdminUserListItem } from "@/types/admin-user";
+import { AdminAppShell } from "@/features/admin/components/layout/admin-app-shell";
+import { AdminRouteGuard } from "@/features/admin/components/guards/admin-route-guard";
+import { UserStats } from "@/features/admin/components/users/user-stats";
+import { UserFilters, type RoleFilterValue, type StatusFilterValue } from "@/features/admin/components/users/user-filters";
+import { UserTable } from "@/features/admin/components/users/user-table";
+import { UserDetailPanel } from "@/features/admin/components/users/user-detail-panel";
+import { UserPagination } from "@/features/admin/components/users/user-pagination";
+import { getAdminUserStatus } from "@/features/admin/utils/admin-user-display";
+import { getUserById, listUsers, updateUserStatus } from "@/features/admin/services/admin-users.service";
+import { useLanguage } from "@/shared/providers/language-context";
+import { cn } from "@/lib/cn";
+import { portalHeadingAlt, portalSubtextAlt } from "@/shared/utils/portal-ui";
+import { useToast } from "@/shared/providers/toast-context";
+import type { AdminUserDetail, AdminUserListItem } from "@/features/admin/types/admin-user";
 
 const SEARCH_DEBOUNCE_MS = 300;
 const DEFAULT_PAGE_SIZE = 10;

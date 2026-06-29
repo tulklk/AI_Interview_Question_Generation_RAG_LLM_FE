@@ -1,10 +1,10 @@
 "use client";
 
-import { AdminAppShell } from "@/components/admin/layout/admin-app-shell";
-import { AdminSettingsLayout } from "@/components/admin/settings/admin-settings-layout";
-import { useLanguage } from "@/context/language-context";
-import { cn } from "@/lib/utils";
-import { portalHeadingAlt, portalSubtextAlt } from "@/lib/portal-ui";
+import { AdminAppShell } from "@/features/admin/components/layout/admin-app-shell";
+import { AdminSettingsLayout } from "@/features/admin/components/settings/admin-settings-layout";
+import { useLanguage } from "@/shared/providers/language-context";
+import { cn } from "@/lib/cn";
+import { portalHeadingAlt, portalSubtextAlt } from "@/shared/utils/portal-ui";
 
 export default function AdminSettingsPage() {
   const { t } = useLanguage();

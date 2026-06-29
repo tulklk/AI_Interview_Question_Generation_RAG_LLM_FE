@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
-import { PracticeSession } from "@/components/jobseeker/practice/practice-session";
-import { questionSets } from "@/data/jobseeker";
+import { PracticeSession } from "@/features/candidate/components/practice/practice-session";
+import { questionSets } from "@/features/candidate/data/jobseeker";
 
 export function generateStaticParams() {
   return questionSets.map((s) => ({ id: s.id }));

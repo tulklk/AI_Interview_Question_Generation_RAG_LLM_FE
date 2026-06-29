@@ -1,18 +1,18 @@
 "use client";
 
-import { AdminAppShell } from "@/components/admin/layout/admin-app-shell";
-import { KnowledgePageContent } from "@/components/knowledge/knowledge-page-content";
+import { AdminAppShell } from "@/features/admin/components/layout/admin-app-shell";
+import { KnowledgePageContent } from "@/features/knowledge/components/knowledge-page-content";
 import {
   getAdminKnowledgeDocs,
   uploadAdminKnowledgeDoc,
   deleteAdminKnowledgeDoc,
   reingestAdminKnowledgeDoc,
   getAdminKnowledgeDoc,
-} from "@/lib/api/knowledge";
-import { cn } from "@/lib/utils";
-import { portalHeadingAlt, portalSubtextAlt } from "@/lib/portal-ui";
+} from "@/features/knowledge/services/knowledge.service";
+import { cn } from "@/lib/cn";
+import { portalHeadingAlt, portalSubtextAlt } from "@/shared/utils/portal-ui";
 import { BookOpen } from "lucide-react";
-import { useLanguage } from "@/context/language-context";
+import { useLanguage } from "@/shared/providers/language-context";
 
 export default function AdminKnowledgePage() {
   const { t } = useLanguage();

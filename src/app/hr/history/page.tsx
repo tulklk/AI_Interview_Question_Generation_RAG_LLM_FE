@@ -1,13 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { AppShell } from "@/components/layout/app-shell";
-import { HistoryStats } from "@/components/history/history-stats";
-import { HistoryFilters } from "@/components/history/history-filters";
-import { HistoryTable } from "@/components/history/history-table";
-import { useLanguage } from "@/context/language-context";
-import { cn } from "@/lib/utils";
-import { portalHeading, portalSubtext } from "@/lib/portal-ui";
+import { AppShell } from "@/features/hr/components/layout/app-shell";
+import { HistoryStats } from "@/features/interview/components/history/history-stats";
+import { HistoryFilters } from "@/features/interview/components/history/history-filters";
+import { HistoryTable } from "@/features/interview/components/history/history-table";
+import { useLanguage } from "@/shared/providers/language-context";
+import { cn } from "@/lib/cn";
+import { portalHeading, portalSubtext } from "@/shared/utils/portal-ui";
 
 export default function HrHistoryPage() {
   const { t } = useLanguage();

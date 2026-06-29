@@ -1,4 +1,4 @@
-import { historySessions } from "@/data/history";
+import { historySessions } from "@/features/interview/data/history";
 import { LegacyHistoryIdRedirect } from "./legacy-history-id-redirect";
 
 export function generateStaticParams() {
