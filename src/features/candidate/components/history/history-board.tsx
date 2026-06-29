@@ -10,11 +10,8 @@ import { useLanguage } from "@/shared/providers/language-context";
 import { StatCard } from "@/features/candidate/components/ui/stat-card";
 import { Pill, getScoreBadgeClass } from "@/features/candidate/components/ui/pill";
 import {
-  portalDivider,
   portalHeadingAlt,
-  portalIconWell,
   portalInput,
-  portalMutedBg,
   portalSubtextAlt,
 } from "@/shared/utils/portal-ui";
 
@@ -62,7 +59,7 @@ export function HistoryBoard() {
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2 }}
-        className="hr-glass-card p-4 mb-4 flex flex-col sm:flex-row items-stretch sm:items-center gap-3"
+        className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm p-4 mb-4 flex flex-col sm:flex-row items-stretch sm:items-center gap-3"
       >
         <div className={cn(
           "flex items-center gap-2 flex-1 rounded-lg px-3 h-[38px] focus-within:border-primary focus-within:shadow-[0_0_0_3px_rgba(108,71,255,0.1)] transition-all",
@@ -99,10 +96,10 @@ export function HistoryBoard() {
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.25 }}
-        className="hr-glass-card overflow-hidden hidden md:block"
+        className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm overflow-hidden hidden md:block"
       >
         {/* Header */}
-        <div className={cn("grid grid-cols-[2.5fr_1fr_1fr_1fr_2fr_auto] gap-4 px-6 py-3 border-b", portalIconWell, portalDivider)}>
+        <div className="grid grid-cols-[2.5fr_1fr_1fr_1fr_2fr_auto] gap-4 px-6 py-3 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/60">
           {[p.table.session, p.table.date, p.table.score, p.table.duration, p.table.skills, p.table.actions].map((col) => (
             <span key={col} className={cn("text-[11px] font-[700] uppercase tracking-wide", portalSubtextAlt)}>{col}</span>
           ))}
@@ -111,7 +108,7 @@ export function HistoryBoard() {
         {filtered.length === 0 ? (
           <p className={cn("text-center py-12 text-[14px]", portalSubtextAlt)}>{p.noHistory}</p>
         ) : (
-          <ul className={cn("divide-y", portalDivider)}>
+          <ul className="divide-y divide-gray-200 dark:divide-gray-800">
             {filtered.map((session, i) => (
               <motion.li
                 key={session.id}
@@ -145,7 +142,7 @@ export function HistoryBoard() {
                 {/* Skills */}
                 <div className="flex flex-wrap gap-1.5">
                   {session.skills.slice(0, 3).map((skill) => (
-                    <span key={skill} className={cn("text-[11px] font-[500] px-2 py-0.5 rounded-[4px]", portalMutedBg, portalHeadingAlt)}>
+                    <span key={skill} className="text-[11px] font-medium px-2 py-0.5 rounded-md bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700">
                       {skill}
                     </span>
                   ))}
@@ -190,7 +187,7 @@ export function HistoryBoard() {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3 + i * 0.05 }}
-              className="hr-glass-card p-4 flex flex-col gap-3"
+              className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm p-4 flex flex-col gap-3"
             >
               {/* Header row: company icon + title + score */}
               <div className="flex items-start gap-3">
@@ -219,7 +216,7 @@ export function HistoryBoard() {
               {/* Skills */}
               <div className="flex flex-wrap gap-1.5">
                 {session.skills.slice(0, 4).map((skill) => (
-                  <span key={skill} className={cn("text-[11px] font-[500] px-2 py-0.5 rounded-[4px]", portalMutedBg, portalHeadingAlt)}>
+                  <span key={skill} className="text-[11px] font-medium px-2 py-0.5 rounded-md bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700">
                     {skill}
                   </span>
                 ))}
@@ -230,9 +227,8 @@ export function HistoryBoard() {
                 <Link
                   href={`/jobseeker/practice/${session.setId}/result`}
                   className={cn(
-                    "flex-1 flex items-center justify-center gap-1.5 h-[34px] text-[12px] font-[600] rounded-lg border transition-colors hover:text-primary hover:bg-[#F5F3FF] dark:hover:bg-purple-950/30",
-                    portalSubtextAlt,
-                    portalIconWell
+                    "flex-1 flex items-center justify-center gap-1.5 h-[34px] text-[12px] font-[600] rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 transition-colors hover:text-primary hover:bg-violet-50 dark:hover:bg-violet-950/30 hover:border-violet-200 dark:hover:border-violet-800",
+                    portalSubtextAlt
                   )}
                 >
                   <Eye size={13} />

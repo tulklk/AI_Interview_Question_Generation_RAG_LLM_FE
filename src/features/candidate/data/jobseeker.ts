@@ -2,7 +2,6 @@ import {
   LayoutDashboard,
   BookOpen,
   History,
-  UserCircle2,
   Settings,
   Target,
   Brain,
@@ -28,7 +27,6 @@ export const jobseekerNavItems: JobseekerNavItem[] = [
     badge: 8,
     badgeVariant: "count",
   },
-  { label: "Profile", href: "/jobseeker/profile", icon: UserCircle2 },
   { label: "Settings", href: "/jobseeker/settings", icon: Settings },
 ];
 
