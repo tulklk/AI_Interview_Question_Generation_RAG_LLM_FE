@@ -137,8 +137,8 @@ export function PlanEditCard({
       {/* Editable fields */}
       <div className="space-y-4">
         {/* Role + Difficulty + Experience */}
-        <div className="grid grid-cols-3 gap-4">
-          <div className="space-y-1.5">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
+          <div className="col-span-2 sm:col-span-1 space-y-1.5">
             <label className={cn("text-sm font-medium", portalHeading)}>
               {pec.roleLabel} <span className="text-red-500">*</span>
             </label>
@@ -304,13 +304,13 @@ export function PlanEditCard({
           </div>
         )}
 
-        <div className="flex gap-3">
+        <div className="grid grid-cols-2 gap-2 sm:flex sm:gap-3">
           <button
             type="button"
             onClick={onBack}
             disabled={isApproving}
             className={cn(
-              "flex items-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-lg border border-gray-200 dark:border-gray-700 transition-colors",
+              "flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-lg border border-gray-200 dark:border-gray-700 transition-colors",
               portalHeading,
               "hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50"
             )}
@@ -323,7 +323,7 @@ export function PlanEditCard({
             type="button"
             onClick={onRetryPlan}
             disabled={isApproving}
-            className="flex items-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-lg border border-violet-200 dark:border-violet-800 text-violet-600 dark:text-violet-400 hover:bg-violet-50 dark:hover:bg-violet-950/40 transition-colors disabled:opacity-50"
+            className="flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-lg border border-violet-200 dark:border-violet-800 text-violet-600 dark:text-violet-400 hover:bg-violet-50 dark:hover:bg-violet-950/40 transition-colors disabled:opacity-50"
           >
             <RotateCcw size={14} />
             {pec.retryPlanBtn}
@@ -334,7 +334,7 @@ export function PlanEditCard({
             onClick={handleApprove}
             disabled={isApproving}
             className={cn(
-              "flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-lg transition-colors",
+              "col-span-2 sm:flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-lg transition-colors",
               canApprove
                 ? "shimmer-button hr-cta-btn text-white"
                 : "bg-gray-200 dark:bg-gray-800 text-gray-400 dark:text-gray-500 cursor-not-allowed"

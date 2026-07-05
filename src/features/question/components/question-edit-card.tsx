@@ -48,6 +48,7 @@ interface QuestionEditCardProps {
   sessionId: string;
   isFirst?: boolean;
   isLast?: boolean;
+  isDragging?: boolean;
   onUpdate: (updated: Partial<GeneratedQuestion>) => void;
   onDelete: () => void;
   onMoveUp: () => void;
@@ -60,6 +61,7 @@ export function QuestionEditCard({
   sessionId,
   isFirst = false,
   isLast = false,
+  isDragging = false,
   onUpdate,
   onDelete,
   onMoveUp,
@@ -105,28 +107,36 @@ export function QuestionEditCard({
   }
 
   function handleApplyAISuggestion(suggestion: string) {
-    // Apply AI suggestion by updating the question text
-    onUpdate({
-      question: suggestion,
-      isEdited: true,
-    });
+    // Pre-fill edit form with AI suggestion so HR can review/adjust before saving
+    setEditQuestion(suggestion);
+    setEditType(question.questionType);
+    setEditDifficulty(question.difficulty);
+    setEditRationale(question.rationale ?? "");
+    setEditSampleAnswer(question.sampleAnswer ?? "");
+    setIsEditing(true);
     setShowAskAI(false);
   }
 
   return (
-    <div className={cn("rounded-xl border transition-colors", isEditing ? "border-[#6c47ff]/50 shadow-sm" : "border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900")}>
-      {/* Main Card */}
-      <div className="p-4 sm:p-5">
+    <div className={cn(
+      "rounded-xl border transition-colors",
+      isDragging
+        ? "border-primary/40 shadow-2xl bg-white dark:bg-gray-900"
+        : isEditing
+          ? "border-primary/50 shadow-sm"
+          : "border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900"
+    )}>
+      {/* Main Card — stop pointer propagation when editing so text inputs work freely */}
+      <div
+        className="p-4 sm:p-5"
+        onPointerDown={isEditing ? (e) => e.stopPropagation() : undefined}
+      >
         <div className="flex items-start gap-3">
           {/* Drag handle + index */}
           <div className="flex flex-col items-center gap-1 shrink-0 mt-0.5">
-            <button
-              type="button"
-              title="Drag to reorder"
-              className="text-gray-300 dark:text-gray-700 cursor-grab active:cursor-grabbing"
-            >
+            <div className="text-gray-300 dark:text-gray-600 pointer-events-none select-none">
               <GripVertical size={14} />
-            </button>
+            </div>
             <div className={cn("flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-bold", portalMutedBg, portalHeading)}>
               {index}
             </div>
@@ -163,7 +173,7 @@ export function QuestionEditCard({
                       value={editType}
                       onChange={(e) => setEditType(e.target.value as QuestionType)}
                       className={cn(
-                        "w-full rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#6c47ff]/20 focus:border-[#6c47ff]",
+                        "w-full rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary",
                         portalInput
                       )}
                     >
@@ -180,7 +190,7 @@ export function QuestionEditCard({
                       value={editDifficulty}
                       onChange={(e) => setEditDifficulty(e.target.value as DifficultyLevel)}
                       className={cn(
-                        "w-full rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#6c47ff]/20 focus:border-[#6c47ff]",
+                        "w-full rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary",
                         portalInput
                       )}
                     >
@@ -199,7 +209,7 @@ export function QuestionEditCard({
                     onChange={(e) => setEditQuestion(e.target.value)}
                     rows={3}
                     className={cn(
-                      "w-full resize-none rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#6c47ff]/20 focus:border-[#6c47ff]",
+                      "w-full resize-none rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary",
                       portalInput
                     )}
                   />
@@ -213,7 +223,7 @@ export function QuestionEditCard({
                     onChange={(e) => setEditRationale(e.target.value)}
                     rows={2}
                     className={cn(
-                      "w-full resize-none rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#6c47ff]/20 focus:border-[#6c47ff]",
+                      "w-full resize-none rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary",
                       portalInput
                     )}
                   />
@@ -227,7 +237,7 @@ export function QuestionEditCard({
                     onChange={(e) => setEditSampleAnswer(e.target.value)}
                     rows={3}
                     className={cn(
-                      "w-full resize-none rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#6c47ff]/20 focus:border-[#6c47ff]",
+                      "w-full resize-none rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary",
                       portalInput
                     )}
                   />
@@ -237,7 +247,7 @@ export function QuestionEditCard({
                     type="button"
                     onClick={saveEdit}
                     disabled={!editQuestion.trim()}
-                    className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold rounded-lg bg-[#6c47ff] text-white hover:bg-[#5535dd] disabled:opacity-50 transition-colors"
+                    className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold rounded-lg bg-primary text-white hover:bg-primary/90 disabled:opacity-50 transition-colors"
                   >
                     <Check size={13} />
                     {rp.questionActions.save}
@@ -266,7 +276,7 @@ export function QuestionEditCard({
                 {/* Toggle answer */}
                 <button
                   onClick={() => setIsAnswerOpen(!isAnswerOpen)}
-                  className="flex items-center gap-1 mt-3 text-xs font-semibold text-[#6c47ff] hover:text-[#5535dd] transition-colors"
+                  className="flex items-center gap-1 mt-3 text-xs font-semibold text-primary hover:text-[#5535dd] transition-colors"
                 >
                   {isAnswerOpen ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
                   {isAnswerOpen ? "Hide Sample Answer" : "Show Sample Answer"}
@@ -275,8 +285,8 @@ export function QuestionEditCard({
                 {isAnswerOpen && (
                   <div className={cn("mt-3 rounded-lg p-4 animate-fade-up", portalBanner)}>
                     <div className="flex items-center gap-1.5 mb-2">
-                      <Sparkles size={13} className="text-[#6c47ff]" />
-                      <span className="text-xs font-semibold text-[#6c47ff]">
+                      <Sparkles size={13} className="text-primary" />
+                      <span className="text-xs font-semibold text-primary">
                         {t.resultsPage.questionCard.aiAnswerLabel}
                       </span>
                     </div>
@@ -316,8 +326,8 @@ export function QuestionEditCard({
                 className={cn(
                   "w-7 h-7 flex items-center justify-center rounded-lg transition-colors",
                   showAskAI
-                    ? "bg-[#6c47ff]/10 text-[#6c47ff]"
-                    : "text-gray-400 dark:text-gray-500 hover:text-[#6c47ff] hover:bg-[#6c47ff]/10"
+                    ? "bg-primary/10 text-primary"
+                    : "text-gray-400 dark:text-gray-500 hover:text-primary hover:bg-primary/10"
                 )}
               >
                 <Sparkles size={13} />
