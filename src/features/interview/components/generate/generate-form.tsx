@@ -81,7 +81,7 @@ function FlowStepIndicator({ currentStep, steps }: { currentStep: number; steps:
               </div>
               <span
                 className={cn(
-                  "hidden sm:block text-[9px] font-medium text-center leading-tight whitespace-nowrap",
+                  "hidden sm:block text-[10px] font-medium text-center leading-tight whitespace-nowrap",
                   active
                     ? "text-[#7C3AED] dark:text-[#a78bff]"
                     : done
@@ -95,7 +95,7 @@ function FlowStepIndicator({ currentStep, steps }: { currentStep: number; steps:
             {i < steps.length - 1 && (
               <div
                 className={cn(
-                  "flex-1 h-0.5 mx-2 mb-4 transition-all duration-300",
+                  "flex-1 h-0.5 mx-2 sm:mb-4 transition-all duration-300",
                   stepNum < currentStep
                     ? "hr-stepper-connector-done"
                     : "bg-gray-200 dark:bg-gray-700"
@@ -772,9 +772,17 @@ export function GenerateForm() {
 
   if (isRestoring) {
     return (
-      <div className="flex flex-col items-center justify-center gap-3 py-16">
-        <Loader2 size={28} className="text-[#7C3AED] dark:text-[#a78bff] animate-spin" />
-        <p className={cn("text-sm", portalSubtext)}>Đang khôi phục phiên làm việc…</p>
+      <div className="hr-glass-card overflow-hidden animate-fade-up">
+        <div className="h-0.5 bg-linear-to-r from-violet-400 via-purple-500 to-cyan-400" />
+        <div className="p-8 flex flex-col items-center gap-4">
+          <div className="w-12 h-12 rounded-2xl hr-loader-box flex items-center justify-center">
+            <Loader2 size={20} className="text-[#7C3AED] dark:text-[#a78bff] animate-spin" />
+          </div>
+          <div className="text-center">
+            <p className={cn("text-sm font-semibold", portalHeading)}>Đang khôi phục phiên làm việc…</p>
+            <p className={cn("text-xs mt-1", portalSubtext)}>Vui lòng đợi trong giây lát</p>
+          </div>
+        </div>
       </div>
     );
   }
@@ -783,27 +791,27 @@ export function GenerateForm() {
 
   if (view === "polling") {
     return (
-      <div className="space-y-4 animate-fade-up">
+      <div className="animate-fade-up flex flex-col">
         <FlowStepIndicator currentStep={currentStep} steps={t.generatePage.flowSteps} />
-        <div className="hr-glass-card p-12 flex flex-col items-center gap-5">
-          <div className="w-14 h-14 rounded-2xl hr-loader-box flex items-center justify-center">
-            <Sparkles size={26} className="text-[#7C3AED] dark:text-[#a78bff] animate-pulse" />
+
+        <div className="flex flex-col items-center justify-center gap-7 min-h-[55vh]">
+          {/* Dual-ring counter-rotating spinner with soft glow */}
+          <div className="relative flex items-center justify-center">
+            <div className="ai-spin-glow" />
+            <div className="ai-spin-outer" />
+            <div className="absolute ai-spin-inner" />
           </div>
-          <div className="text-center space-y-1">
-            <p className={cn("text-base font-semibold", portalHeading)}>
-              {pollingPhase === "plan"
-                ? t.generatePage.pollingPlanTitle
-                : t.generatePage.pollingQuestionsTitle}
-            </p>
-            <p className={cn("text-sm", portalSubtext)}>{statusLabel}</p>
-          </div>
-          <Loader2 size={22} className="text-[#7C3AED] dark:text-[#a78bff] animate-spin" />
+
+          {/* Status label with shimmer gradient */}
+          <p className="text-[15px] font-semibold ai-status-text">{statusLabel}</p>
+
+          {/* Minimal "create another" action */}
           <button
             type="button"
             onClick={handleStartNewJob}
-            className="flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg border border-violet-200 dark:border-violet-800 text-violet-600 dark:text-violet-400 hover:bg-violet-50 dark:hover:bg-violet-950/40 transition-colors"
+            className="flex items-center gap-1.5 text-xs font-medium text-gray-400 dark:text-gray-500 hover:text-violet-600 dark:hover:text-violet-400 transition-colors"
           >
-            <Plus size={14} />
+            <Plus size={11} />
             {t.generatePage.startNewJobBtn}
           </button>
         </div>
@@ -843,20 +851,6 @@ export function GenerateForm() {
       <div className="space-y-4 animate-fade-up">
         <FlowStepIndicator currentStep={currentStep} steps={t.generatePage.flowSteps} />
 
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 flex items-center justify-center">
-            <CheckCircle2 size={20} className="text-emerald-500" />
-          </div>
-          <div>
-            <h2 className={cn("text-base font-semibold", portalHeading)}>
-              {questions.length} câu hỏi đã được tạo
-            </h2>
-            <p className={cn("text-xs", portalSubtext)}>
-              Review và chỉnh sửa trước khi lưu bản nháp
-            </p>
-          </div>
-        </div>
-
         <ReviewQuestionsSection
           sessionId={jobId}
           initialQuestions={questions}
@@ -867,7 +861,7 @@ export function GenerateForm() {
           type="button"
           onClick={handleReset}
           className={cn(
-            "w-full py-2.5 text-sm font-semibold rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors",
+            "w-full py-2.5 text-sm font-semibold rounded-xl border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors",
             portalHeading
           )}
         >
@@ -884,81 +878,82 @@ export function GenerateForm() {
       <div className="space-y-4 animate-fade-up">
         <FlowStepIndicator currentStep={currentStep} steps={t.generatePage.flowSteps} />
 
-        <div className="hr-glass-card p-8 space-y-4">
-          <div className="flex items-start gap-3">
-            <AlertCircle size={22} className="text-red-500 shrink-0 mt-0.5" />
-            <div>
-              <p className={cn("text-base font-semibold", portalHeading)}>
-                Đã xảy ra lỗi
-              </p>
-              {failureMessage && (
-                <p className={cn("text-sm mt-1", portalSubtext)}>{failureMessage}</p>
-              )}
-            </div>
-          </div>
-
-          {formError && (
-            <div className="rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/30 px-3 py-2 text-sm text-red-700 dark:text-red-400">
-              {formError}
-            </div>
-          )}
-
-          {canEditInput && (
-            <div className="space-y-3 border-t pt-4">
-              <p className={cn("text-sm font-medium", portalHeading)}>
-                {t.generatePage.editJdRetry}
-              </p>
-              <textarea
-                value={jdText}
-                onChange={(e) => setJdText(e.target.value)}
-                rows={6}
-                className={cn(
-                  "w-full resize-none rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors",
-                  portalInput
+        <div className="hr-glass-card overflow-hidden">
+          <div className="h-0.5 bg-linear-to-r from-red-500 to-orange-400" />
+          <div className="p-6 space-y-4">
+            <div className="flex items-start gap-3">
+              <div className="w-9 h-9 rounded-xl bg-red-50 dark:bg-red-950/40 border border-red-100 dark:border-red-900/40 flex items-center justify-center shrink-0">
+                <AlertCircle size={17} className="text-red-500" />
+              </div>
+              <div className="pt-0.5">
+                <p className={cn("text-sm font-semibold", portalHeading)}>Đã xảy ra lỗi</p>
+                {failureMessage && (
+                  <p className={cn("text-sm mt-1", portalSubtext)}>{failureMessage}</p>
                 )}
-              />
+              </div>
+            </div>
+
+            {formError && (
+              <div className="rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/30 px-3 py-2.5 text-sm text-red-700 dark:text-red-400">
+                {formError}
+              </div>
+            )}
+
+            {canEditInput && (
+              <div className="space-y-3 border-t border-gray-100 dark:border-gray-800 pt-4">
+                <p className={cn("text-sm font-medium", portalHeading)}>{t.generatePage.editJdRetry}</p>
+                <textarea
+                  value={jdText}
+                  onChange={(e) => setJdText(e.target.value)}
+                  rows={6}
+                  className={cn(
+                    "w-full resize-none rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors",
+                    portalInput
+                  )}
+                />
+                <button
+                  type="button"
+                  onClick={handleEditInputResubmit}
+                  className="flex items-center gap-2 px-5 py-2.5 text-sm font-semibold rounded-xl bg-primary text-white hover:bg-[#5535dd] transition-colors"
+                >
+                  <RotateCcw size={14} />
+                  Gửi lại
+                </button>
+              </div>
+            )}
+
+            <div className="flex gap-2.5 flex-wrap">
+              {canRetryPlan && (
+                <button
+                  type="button"
+                  onClick={handleRetryPlanFromFailed}
+                  className="flex items-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-xl border border-violet-200 dark:border-violet-800 text-violet-600 dark:text-violet-400 hover:bg-violet-50 dark:hover:bg-violet-950/40 transition-colors"
+                >
+                  <RotateCcw size={13} />
+                  {t.generatePage.retryPlanBtn}
+                </button>
+              )}
+              {canRetryQs && (
+                <button
+                  type="button"
+                  onClick={handleRetryQuestionsFromFailed}
+                  className="flex items-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-xl bg-primary text-white hover:bg-[#5535dd] transition-colors"
+                >
+                  <RotateCcw size={13} />
+                  {t.generatePage.retryQuestionsBtn}
+                </button>
+              )}
               <button
                 type="button"
-                onClick={handleEditInputResubmit}
-                className="flex items-center gap-2 px-5 py-2.5 text-sm font-semibold rounded-lg bg-primary text-white hover:bg-[#5535dd] transition-colors"
+                onClick={handleReset}
+                className={cn(
+                  "px-4 py-2.5 text-sm font-semibold rounded-xl border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors",
+                  portalHeading
+                )}
               >
-                <RotateCcw size={14} />
-                Gửi lại
+                Bắt đầu lại
               </button>
             </div>
-          )}
-
-          <div className="flex gap-3 flex-wrap">
-            {canRetryPlan && (
-              <button
-                type="button"
-                onClick={handleRetryPlanFromFailed}
-                className="flex items-center gap-2 px-5 py-2.5 text-sm font-semibold rounded-lg border border-violet-200 dark:border-violet-800 text-violet-600 dark:text-violet-400 hover:bg-violet-50 dark:hover:bg-violet-950/40 transition-colors"
-              >
-                <RotateCcw size={14} />
-                {t.generatePage.retryPlanBtn}
-              </button>
-            )}
-            {canRetryQs && (
-              <button
-                type="button"
-                onClick={handleRetryQuestionsFromFailed}
-                className="flex items-center gap-2 px-5 py-2.5 text-sm font-semibold rounded-lg bg-primary text-white hover:bg-[#5535dd] transition-colors"
-              >
-                <RotateCcw size={14} />
-                {t.generatePage.retryQuestionsBtn}
-              </button>
-            )}
-            <button
-              type="button"
-              onClick={handleReset}
-              className={cn(
-                "px-5 py-2.5 text-sm font-semibold rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors",
-                portalHeading
-              )}
-            >
-              Bắt đầu lại
-            </button>
           </div>
         </div>
       </div>
@@ -971,33 +966,36 @@ export function GenerateForm() {
     return (
       <div className="space-y-4 animate-fade-up">
         <FlowStepIndicator currentStep={5} steps={t.generatePage.flowSteps} />
-        <div className="hr-glass-card p-8 flex flex-col items-center gap-4 text-center">
-          <div className="w-12 h-12 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 flex items-center justify-center">
-            <BookMarked size={22} className="text-emerald-500" />
-          </div>
-          <p className={cn("text-base font-semibold", portalHeading)}>
-            Bản nháp đã được lưu
-          </p>
-          <p className={cn("text-sm", portalSubtext)}>
-            Câu hỏi đã lưu vào lịch sử. Bạn có thể xem lại ở trang History.
-          </p>
-          <div className="flex gap-3">
-            <Link
-              href="/hr/history"
-              className="flex items-center gap-2 px-5 py-2.5 text-sm font-semibold rounded-lg bg-primary text-white hover:bg-[#5535dd] transition-colors"
-            >
-              Xem History
-            </Link>
-            <button
-              type="button"
-              onClick={handleReset}
-              className={cn(
-                "px-5 py-2.5 text-sm font-semibold rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors",
-                portalHeading
-              )}
-            >
-              Tạo mới
-            </button>
+        <div className="hr-glass-card overflow-hidden">
+          <div className="h-0.5 bg-linear-to-r from-emerald-400 to-teal-400" />
+          <div className="p-8 flex flex-col items-center gap-4 text-center">
+            <div className="w-12 h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-100 dark:border-emerald-900/40 flex items-center justify-center">
+              <BookMarked size={20} className="text-emerald-500" />
+            </div>
+            <div className="space-y-1">
+              <p className={cn("text-base font-semibold", portalHeading)}>Bản nháp đã được lưu</p>
+              <p className={cn("text-sm max-w-xs", portalSubtext)}>
+                Câu hỏi đã lưu vào lịch sử. Bạn có thể xem lại ở trang History.
+              </p>
+            </div>
+            <div className="flex gap-2.5 mt-1">
+              <Link
+                href="/hr/history"
+                className="flex items-center gap-2 px-5 py-2.5 text-sm font-semibold rounded-xl bg-primary text-white hover:bg-[#5535dd] transition-colors"
+              >
+                Xem History
+              </Link>
+              <button
+                type="button"
+                onClick={handleReset}
+                className={cn(
+                  "px-5 py-2.5 text-sm font-semibold rounded-xl border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors",
+                  portalHeading
+                )}
+              >
+                Tạo mới
+              </button>
+            </div>
           </div>
         </div>
       </div>
