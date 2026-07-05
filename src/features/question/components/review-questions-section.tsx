@@ -1,7 +1,27 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, BookMarked, CheckCircle2, Loader2, AlertCircle, RefreshCw, ChevronLeft, ChevronRight } from "lucide-react";
+import { createPortal } from "react-dom";
+import { Plus, BookMarked, CheckCircle2, Loader2, AlertCircle, RefreshCw, ChevronLeft, ChevronRight, X } from "lucide-react";
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  KeyboardSensor,
+  useSensor,
+  useSensors,
+  DragOverlay,
+  type DragEndEvent,
+  type DragStartEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  useSortable,
+  arrayMove,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { cn } from "@/lib/cn";
 import { useLanguage } from "@/shared/providers/language-context";
 import {
@@ -15,6 +35,68 @@ import { updateLocalSessionQuestions } from "@/features/interview/utils/local-hi
 import { updateJobQuestion, deleteJobQuestion, addJobQuestion, saveJobDraft } from "@/features/interview/services/interview.service";
 import { QuestionEditCard } from "./question-edit-card";
 import { AddQuestionDialog } from "./add-question-dialog";
+
+// ── Sortable wrapper ──────────────────────────────────────────────────────────
+
+interface SortableCardProps {
+  q: GeneratedQuestion;
+  index: number;
+  sessionId: string;
+  isFirst: boolean;
+  isLast: boolean;
+  onUpdate: (changes: Partial<GeneratedQuestion>) => void;
+  onDelete: () => void;
+  onMoveUp: () => void;
+  onMoveDown: () => void;
+}
+
+function SortableCard({
+  q,
+  index,
+  sessionId,
+  isFirst,
+  isLast,
+  onUpdate,
+  onDelete,
+  onMoveUp,
+  onMoveDown,
+}: SortableCardProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: q.id });
+
+  return (
+    <div
+      ref={setNodeRef}
+      {...attributes}
+      {...listeners}
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+        position: "relative",
+        cursor: isDragging ? "grabbing" : "grab",
+        opacity: isDragging ? 0.25 : 1,
+      }}
+    >
+      <QuestionEditCard
+        question={q}
+        index={index}
+        sessionId={sessionId}
+        isFirst={isFirst}
+        isLast={isLast}
+        onUpdate={onUpdate}
+        onDelete={onDelete}
+        onMoveUp={onMoveUp}
+        onMoveDown={onMoveDown}
+      />
+    </div>
+  );
+}
 
 interface ReviewQuestionsSectionProps {
   sessionId: string;
@@ -40,10 +122,33 @@ export function ReviewQuestionsSection({
   const [questions, setQuestions] = useState<GeneratedQuestion[]>(initialQuestions);
   const [deletedIds, setDeletedIds] = useState<string[]>([]);
   const [showAddDialog, setShowAddDialog] = useState(false);
+  const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [page, setPage] = useState(1);
 
   const isEditable = status === "COMPLETED" && !readOnly;
+  const [activeId, setActiveId] = useState<string | null>(null);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+
+  function handleDragStart(event: DragStartEvent) {
+    setActiveId(String(event.active.id));
+  }
+
+  function handleDragEnd(event: DragEndEvent) {
+    setActiveId(null);
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    setQuestions((prev) => {
+      const oldIdx = prev.findIndex((q) => q.id === active.id);
+      const newIdx = prev.findIndex((q) => q.id === over.id);
+      if (oldIdx === -1 || newIdx === -1) return prev;
+      return arrayMove(prev, oldIdx, newIdx).map((q, i) => ({ ...q, orderIndex: i }));
+    });
+  }
 
   function handleUpdate(id: string, changes: Partial<GeneratedQuestion>) {
     setQuestions((prev) =>
@@ -155,7 +260,7 @@ export function ReviewQuestionsSection({
   if (status === "PROCESSING" || status === "QUEUED" || status === "CONFIRMED") {
     return (
       <div className={cn(portalCard, "p-8 flex flex-col items-center gap-4 text-center")}>
-        <div className="w-12 h-12 rounded-full border-4 border-[#6c47ff] border-t-transparent animate-spin" />
+        <div className="w-12 h-12 rounded-full border-4 border-primary border-t-transparent animate-spin" />
         <p className={cn("text-sm font-medium", portalHeading)}>{rp.processingBanner}</p>
       </div>
     );
@@ -217,7 +322,7 @@ export function ReviewQuestionsSection({
             </button>
             <button
               type="button"
-              onClick={handleSaveDraft}
+              onClick={() => saveState === "idle" && setShowSaveDialog(true)}
               disabled={saveState === "saving"}
               className={cn(
                 "flex-1 sm:flex-none flex items-center justify-center gap-2 text-sm font-semibold px-4 py-2 rounded-lg transition-colors",
@@ -225,7 +330,7 @@ export function ReviewQuestionsSection({
                   ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800"
                   : saveState === "error"
                     ? "bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800"
-                    : "bg-[#6c47ff] text-white hover:bg-[#5535dd] disabled:opacity-70"
+                    : "bg-primary text-white hover:bg-[#5535dd] disabled:opacity-70"
               )}
             >
               {saveState === "saving" ? (
@@ -264,7 +369,7 @@ export function ReviewQuestionsSection({
           <button
             type="button"
             onClick={() => setShowAddDialog(true)}
-            className="flex items-center gap-2 text-sm font-semibold text-[#6c47ff] hover:underline"
+            className="flex items-center gap-2 text-sm font-semibold text-primary hover:underline"
           >
             <Plus size={14} />
             {rp.addQuestion}
@@ -278,26 +383,63 @@ export function ReviewQuestionsSection({
 
         return (
           <>
-            <div className="flex flex-col gap-3">
-              {paginated.map((q, idx) => {
-                const globalIdx = startIdx + idx;
-                return (
-                  <div key={q.id} className="animate-fade-up" style={{ animationDelay: `${idx * 40}ms` }}>
-                    <QuestionEditCard
-                      question={q}
-                      index={globalIdx + 1}
-                      sessionId={sessionId}
-                      isFirst={globalIdx === 0}
-                      isLast={globalIdx === questions.length - 1}
-                      onUpdate={(changes) => handleUpdate(q.id, changes)}
-                      onDelete={() => handleDelete(q.id)}
-                      onMoveUp={() => handleMoveUp(globalIdx)}
-                      onMoveDown={() => handleMoveDown(globalIdx)}
-                    />
-                  </div>
-                );
-              })}
-            </div>
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragStart={handleDragStart}
+              onDragEnd={handleDragEnd}
+            >
+              <SortableContext
+                items={paginated.map((q) => q.id)}
+                strategy={verticalListSortingStrategy}
+              >
+                <div className="flex flex-col gap-3">
+                  {paginated.map((q, idx) => {
+                    const globalIdx = startIdx + idx;
+                    return (
+                      <div key={q.id} className="animate-fade-up" style={{ animationDelay: `${idx * 40}ms` }}>
+                        <SortableCard
+                          q={q}
+                          index={globalIdx + 1}
+                          sessionId={sessionId}
+                          isFirst={globalIdx === 0}
+                          isLast={globalIdx === questions.length - 1}
+                          onUpdate={(changes) => handleUpdate(q.id, changes)}
+                          onDelete={() => handleDelete(q.id)}
+                          onMoveUp={() => handleMoveUp(globalIdx)}
+                          onMoveDown={() => handleMoveDown(globalIdx)}
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+              </SortableContext>
+
+              {/* Drag overlay — shows the card floating while dragging */}
+              <DragOverlay dropAnimation={{ duration: 180, easing: "ease" }}>
+                {activeId ? (() => {
+                  const dragged = questions.find((q) => q.id === activeId);
+                  if (!dragged) return null;
+                  const globalIdx = questions.indexOf(dragged);
+                  return (
+                    <div className="shadow-2xl rounded-xl rotate-1 scale-[1.02] opacity-95">
+                      <QuestionEditCard
+                        question={dragged}
+                        index={globalIdx + 1}
+                        sessionId={sessionId}
+                        isFirst={false}
+                        isLast={false}
+                        isDragging
+                        onUpdate={() => {}}
+                        onDelete={() => {}}
+                        onMoveUp={() => {}}
+                        onMoveDown={() => {}}
+                      />
+                    </div>
+                  );
+                })() : null}
+              </DragOverlay>
+            </DndContext>
 
             {/* Pagination */}
             {totalPages > 1 && (
@@ -364,6 +506,79 @@ export function ReviewQuestionsSection({
           onAdd={handleAdd}
           onClose={() => setShowAddDialog(false)}
         />
+      )}
+
+      {/* Save Draft Confirmation Dialog — rendered via portal to escape ancestor transforms */}
+      {showSaveDialog && createPortal(
+        <div
+          className="fixed inset-0 z-9999 flex items-center justify-center p-4"
+          onClick={(e) => { if (e.target === e.currentTarget) setShowSaveDialog(false); }}
+        >
+          {/* Backdrop */}
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowSaveDialog(false)} />
+
+          {/* Dialog */}
+          <div className="relative z-10 w-full max-w-sm animate-fade-up">
+            <div className="hr-glass-card overflow-hidden">
+              {/* Gradient stripe */}
+              <div className="h-0.5 bg-linear-to-r from-violet-500 via-purple-500 to-cyan-500" />
+
+              <div className="p-6">
+                {/* Header */}
+                <div className="flex items-start justify-between gap-3 mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-violet-50 dark:bg-violet-950/40 border border-violet-100 dark:border-violet-900/40 flex items-center justify-center shrink-0">
+                      <BookMarked size={18} className="text-violet-600 dark:text-violet-400" />
+                    </div>
+                    <div>
+                      <h3 className={cn("text-sm font-semibold", portalHeading)}>Lưu bản nháp</h3>
+                      <p className={cn("text-xs mt-0.5", portalSubtext)}>Xác nhận lưu câu hỏi</p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowSaveDialog(false)}
+                    className={cn("p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors shrink-0", portalSubtext)}
+                  >
+                    <X size={15} />
+                  </button>
+                </div>
+
+                {/* Body */}
+                <div className="rounded-xl bg-violet-50/60 dark:bg-violet-950/20 border border-violet-100 dark:border-violet-900/30 px-4 py-3 mb-5">
+                  <p className={cn("text-sm leading-relaxed", portalHeading)}>
+                    Bộ câu hỏi gồm{" "}
+                    <span className="font-bold text-violet-600 dark:text-violet-400">{questions.length} câu</span>{" "}
+                    sẽ được lưu vào lịch sử. Bạn vẫn có thể chỉnh sửa sau.
+                  </p>
+                </div>
+
+                {/* Actions */}
+                <div className="flex gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => setShowSaveDialog(false)}
+                    className={cn(
+                      "flex-1 py-2.5 text-sm font-semibold rounded-xl border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors",
+                      portalHeading
+                    )}
+                  >
+                    Hủy
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setShowSaveDialog(false); handleSaveDraft(); }}
+                    className="flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-semibold rounded-xl shimmer-button hr-cta-btn text-white"
+                  >
+                    <BookMarked size={14} />
+                    Lưu ngay
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>,
+        document.body
       )}
     </div>
   );
