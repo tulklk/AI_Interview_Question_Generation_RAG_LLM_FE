@@ -7,6 +7,7 @@ import type {
   DifficultyLevel,
   PlanDraft,
   DraftQuestionSet,
+  QuestionAIChat,
 } from "@/features/interview/types/generation-session";
 
 // ---------------------------------------------------------------------------
@@ -641,6 +642,50 @@ export async function getDrafts(): Promise<DraftQuestionSet[]> {
   } catch {
     return [];
   }
+}
+
+// ---------------------------------------------------------------------------
+// Legacy helpers (used by history detail page / results section)
+// ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// Question-level Ask AI
+// ---------------------------------------------------------------------------
+
+export async function askAIAboutQuestion(
+  jobId: string,
+  questionId: string,
+  prompt: string
+): Promise<string> {
+  const { data } = await apiClient.post(
+    `/api/hr/question-generation-jobs/${jobId}/questions/${questionId}/ask-ai`,
+    { message: prompt }
+  );
+  const inner = (data as Record<string, unknown>)?.data ?? data;
+  if (typeof inner === "string") return inner;
+  const obj = inner as Record<string, unknown> | null;
+  const text =
+    obj?.reply ?? obj?.response ?? obj?.message ?? obj?.content ?? obj?.answer ?? obj?.aiResponse;
+  if (typeof text === "string") return text;
+  throw new Error("Unexpected response format from ask-ai endpoint");
+}
+
+export async function getQuestionAIChat(
+  jobId: string,
+  questionId: string
+): Promise<QuestionAIChat[]> {
+  const { data } = await apiClient.get(
+    `/api/hr/question-generation-jobs/${jobId}/questions/${questionId}/ai-chat`
+  );
+  const inner = (data as Record<string, unknown>)?.data ?? data;
+  if (!Array.isArray(inner)) return [];
+  return (inner as Record<string, unknown>[]).map((item) => ({
+    id: String(item.id ?? item.Id ?? `${Date.now()}-${Math.random()}`),
+    questionId,
+    role: (item.role as "ai" | "hr") ?? "ai",
+    content: String(item.content ?? item.message ?? item.response ?? ""),
+    timestamp: String(item.timestamp ?? item.createdAt ?? new Date().toISOString()),
+  }));
 }
 
 // ---------------------------------------------------------------------------

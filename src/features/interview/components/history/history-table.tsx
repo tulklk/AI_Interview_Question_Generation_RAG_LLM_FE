@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { FileText, Calendar, ArrowUpDown, Eye, Download, Trash2, Inbox, Loader2, AlertTriangle, ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { useLanguage } from "@/shared/providers/language-context";
@@ -113,9 +114,39 @@ interface HistoryTableProps {
   status?: string;
 }
 
+function resolveSessionDestination(session: GenerationSession): { type: "history" } | { type: "generate"; view: string; phase: string } {
+  const status = session.status as string;
+
+  // COMPLETED → always go to history review; questions are fetched on the detail page
+  if (status === "COMPLETED") return { type: "history" };
+
+  // Determine which Generate step to resume at
+  let view = "polling";
+  let phase = "plan";
+
+  if (status === "PLAN_PROPOSED") {
+    view = "plan_review"; phase = "plan";
+  } else if (status === "DRAFT") {
+    view = "draft_view"; phase = "questions";
+  } else if (["CONFIRMED", "QUESTION_QUEUED", "QUESTION_PROCESSING"].includes(status)) {
+    view = "polling"; phase = "questions";
+  } else if (["QUEUED", "PROCESSING", "PLAN_QUEUED"].includes(status)) {
+    view = "polling"; phase = "plan";
+  } else if (status === "FAILED") {
+    // If plan was already created before failure, it failed during question generation
+    view = "failed"; phase = session.planDraft ? "questions" : "plan";
+  } else {
+    // COMPLETED but no questions yet (BE still saving) — wait in polling
+    view = "polling"; phase = "questions";
+  }
+
+  return { type: "generate", view, phase };
+}
+
 export function HistoryTable({ search = "", role = "", level = "", experience = "", status = "" }: HistoryTableProps) {
   const { t } = useLanguage();
   const { hasFeature } = useHrSubscription();
+  const router = useRouter();
   const ht = t.historyPage.table;
   const hs = t.hrSubscription;
   const dm = t.historyPage.deleteModal;
@@ -139,6 +170,22 @@ export function HistoryTable({ search = "", role = "", level = "", experience = 
     const ok = await deleteGenerationPlan(id);
     if (ok) setSessions(prev => prev.filter(s => s.id !== id));
     setDeletingId(null);
+  }
+
+  function handleViewSession(session: GenerationSession) {
+    const dest = resolveSessionDestination(session);
+    if (dest.type === "history") {
+      router.push(`/hr/history/${session.id}`);
+      return;
+    }
+    // Resume in Generate wizard — write session keys then navigate
+    localStorage.setItem("hr_gen_job",           session.id);
+    localStorage.setItem("hr_gen_view",          dest.view);
+    localStorage.setItem("hr_gen_polling_phase", dest.phase);
+    if (session.planDraft) {
+      localStorage.setItem("hr_gen_plan", JSON.stringify(session.planDraft));
+    }
+    router.push("/hr/generate");
   }
 
   async function handleExport(session: GenerationSession) {
@@ -342,13 +389,14 @@ export function HistoryTable({ search = "", role = "", level = "", experience = 
   function ActionButtons({ session }: { session: GenerationSession }) {
     return (
       <>
-        <Link
-          href={`/hr/history/${session.id}`}
+        <button
+          type="button"
+          onClick={() => handleViewSession(session)}
           className="p-2 text-gray-400 dark:text-gray-500 hover:text-[#7C3AED] dark:hover:text-[#a78bff] hover:bg-violet-50 dark:hover:bg-violet-950/40 rounded-lg transition-colors inline-flex"
           title={ht.viewTitle}
         >
           <Eye size={14} />
-        </Link>
+        </button>
         <button
           type="button"
           onClick={() => handleExport(session)}

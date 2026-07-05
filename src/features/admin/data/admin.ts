@@ -8,6 +8,7 @@ import {
   Users2,
   Zap,
   BookOpen,
+  Building2,
 } from "lucide-react";
 import type {
   AdminNavItem,
@@ -29,6 +30,7 @@ export const adminNavItems: AdminNavItem[] = [
   { label: "System Analytics", href: "/admin/analytics", icon: BarChart3 },
   { label: "Generated Content", href: "/admin/content", icon: FileText },
   { label: "Knowledge Base", href: "/admin/knowledge", icon: BookOpen },
+  { label: "Company Management", href: "/admin/companies", icon: Building2 },
   { label: "Audit Log", href: "/admin/audit", icon: ScrollText },
   { label: "Settings", href: "/admin/settings", icon: Settings },
 ];

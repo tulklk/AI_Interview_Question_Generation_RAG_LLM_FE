@@ -3,7 +3,7 @@
 import { motion, type Variants } from "framer-motion";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LogOut, ShieldCheck } from "lucide-react";
+import { LogOut } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { isAdminNavActive } from "@/shared/utils/nav";
 import { adminNavItems } from "@/features/admin/data/admin";
@@ -112,32 +112,6 @@ export function AdminSidebar() {
           })}
         </motion.ul>
       </nav>
-
-      {/* System Status Card */}
-      <motion.div
-        initial={{ opacity: 0, y: 14 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.35, duration: 0.3, ease: "easeOut" }}
-        className="px-4 mb-4"
-      >
-        <div className="hr-quick-generate rounded-xl p-4">
-          <div className="w-8 h-8 rounded-lg hr-icon-box flex items-center justify-center mb-3">
-            <ShieldCheck size={15} className="text-[#7C3AED] dark:text-[#a78bff]" />
-          </div>
-          <p className="text-gray-800 dark:text-gray-100 font-semibold text-sm leading-snug">
-            {s.systemStatus.title}
-          </p>
-          <p className="text-gray-500 dark:text-gray-400 text-xs mt-1 leading-relaxed">
-            {s.systemStatus.desc}
-          </p>
-          <div className="mt-3 flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block animate-pulse" />
-            <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">
-              {s.systemStatus.online}
-            </span>
-          </div>
-        </div>
-      </motion.div>
 
       {/* User Footer */}
       <motion.div

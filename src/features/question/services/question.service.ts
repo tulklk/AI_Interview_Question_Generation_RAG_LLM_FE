@@ -14,4 +14,6 @@ export {
   getDrafts,
   saveGenerationResult,
   exportPlanQuestions,
+  askAIAboutQuestion,
+  getQuestionAIChat,
 } from "@/features/interview/services/interview.service";
