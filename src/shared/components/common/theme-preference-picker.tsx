@@ -2,7 +2,8 @@
 
 import { Check, Monitor, Moon, Sun } from "lucide-react";
 import { cn } from "@/lib/cn";
-import { useTheme, type ThemePreference } from "@/shared/providers/theme-context";
+import { useTheme, type ThemePreference, type ThemeMode } from "@/shared/providers/theme-context";
+import { useThemeTransition } from "@/shared/providers/theme-transition-context";
 import { Toggle } from "@/shared/components/ui/toggle";
 import { portalCard, portalHeading, portalHeadingAlt, portalInput, portalSubtext, portalSubtextAlt } from "@/shared/utils/portal-ui";
 
@@ -26,6 +27,22 @@ export function ThemePreferencePicker({
   showToggle = false,
 }: ThemePreferencePickerProps) {
   const { preference, theme, setPreference } = useTheme();
+  const { triggerTransition, isTransitioning } = useThemeTransition();
+
+  function resolveNextTheme(pref: ThemePreference): ThemeMode {
+    if (pref === "dark") return "dark";
+    if (pref === "light") return "light";
+    return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  }
+
+  function handleSetPreference(id: ThemePreference) {
+    const next = resolveNextTheme(id);
+    if (next === theme) {
+      setPreference(id);
+      return;
+    }
+    triggerTransition(() => setPreference(id), next);
+  }
 
   const options: { id: ThemePreference; label: string; Icon: typeof Sun }[] = [
     { id: "light", label: labels.light, Icon: Sun },
@@ -48,7 +65,7 @@ export function ThemePreferencePicker({
               <Sun size={13} />
               <Toggle
                 checked={theme === "dark"}
-                onChange={(v) => setPreference(v ? "dark" : "light")}
+                onChange={(v) => handleSetPreference(v ? "dark" : "light")}
               />
               <Moon size={13} />
             </div>
@@ -59,9 +76,10 @@ export function ThemePreferencePicker({
             <button
               key={id}
               type="button"
-              onClick={() => setPreference(id)}
+              onClick={() => handleSetPreference(id)}
+              disabled={isTransitioning}
               className={cn(
-                "flex items-center justify-center gap-2 py-3 rounded-lg border text-sm font-medium transition-colors relative",
+                "flex items-center justify-center gap-2 py-3 rounded-lg border text-sm font-medium transition-colors relative disabled:cursor-not-allowed",
                 preference === id
                   ? "border-[#7C3AED] text-[#7C3AED] dark:text-[#a78bff] bg-violet-50 dark:bg-violet-950/40"
                   : cn(portalInput, "hover:border-[#7C3AED]/40 dark:hover:border-[#7C3AED]/40", portalSubtext)
@@ -85,9 +103,10 @@ export function ThemePreferencePicker({
         <button
           key={id}
           type="button"
-          onClick={() => setPreference(id)}
+          onClick={() => handleSetPreference(id)}
+          disabled={isTransitioning}
           className={cn(
-            "flex items-center gap-1.5 h-[34px] px-3.5 text-[12px] font-semibold rounded-lg border transition-all",
+            "flex items-center gap-1.5 h-[34px] px-3.5 text-[12px] font-semibold rounded-lg border transition-all disabled:cursor-not-allowed",
             preference === id
               ? "bg-primary text-white border-primary"
               : cn(portalCard, portalHeadingAlt, "hover:border-primary hover:text-primary")
