@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { Edit2, Save, X } from "lucide-react";
+import { AiLoadingSpinner } from "@/shared/components/common/ai-loading-spinner";
 import { cn } from "@/lib/cn";
 import { FormField } from "@/shared/components/ui/form-field";
 import { useLanguage } from "@/shared/providers/language-context";
@@ -159,9 +160,8 @@ export function ProfileSection() {
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[calc(100vh-16rem)] gap-4">
-        <span className="w-14 h-14 border-[3px] border-[#6c47ff]/25 border-t-[#6c47ff] rounded-full animate-spin" />
-        <span className={cn("text-sm font-medium", portalSubtext)}>{sp.loading}</span>
+      <div className="flex items-center justify-center min-h-[calc(100vh-16rem)]">
+        <AiLoadingSpinner text={sp.loading} />
       </div>
     );
   }
