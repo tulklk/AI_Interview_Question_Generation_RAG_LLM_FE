@@ -31,11 +31,13 @@ export function HistoryBoard() {
   const bestScore = Math.max(...practiceSessions.map((s) => s.score));
   const totalTime = practiceSessions.reduce((a, s) => a + parseInt(s.duration), 0);
 
+  const iconBg = "bg-gray-100 dark:bg-gray-800 shadow-sm ring-1 ring-black/5 dark:ring-white/10";
+  const iconColor = "text-gray-900 dark:text-gray-100";
   const statCards = [
-    { icon: BookOpen, label: p.statLabels[0], value: practiceSessions.length.toString(), bg: "bg-blue-50 dark:bg-blue-950/40", color: "text-blue-500 dark:text-blue-400" },
-    { icon: BarChart2, label: p.statLabels[1], value: `${avgScore}%`, bg: "bg-violet-50 dark:bg-violet-950/40", color: "text-violet-500 dark:text-violet-400" },
-    { icon: Trophy, label: p.statLabels[2], value: `${bestScore}%`, bg: "bg-amber-50 dark:bg-amber-950/40", color: "text-amber-500 dark:text-amber-400" },
-    { icon: Clock, label: p.statLabels[3], value: `${totalTime} min`, bg: "bg-emerald-50 dark:bg-emerald-950/40", color: "text-emerald-500 dark:text-emerald-400" },
+    { icon: BookOpen, label: p.statLabels[0], value: practiceSessions.length.toString(), bg: iconBg, color: iconColor },
+    { icon: BarChart2, label: p.statLabels[1], value: `${avgScore}%`, bg: iconBg, color: iconColor },
+    { icon: Trophy, label: p.statLabels[2], value: `${bestScore}%`, bg: iconBg, color: iconColor },
+    { icon: Clock, label: p.statLabels[3], value: `${totalTime} min`, bg: iconBg, color: iconColor },
   ];
 
   return (
