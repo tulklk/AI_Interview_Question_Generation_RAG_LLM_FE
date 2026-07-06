@@ -17,3 +17,4 @@ export {
   askAIAboutQuestion,
   getQuestionAIChat,
 } from "@/features/interview/services/interview.service";
+export type { QuestionSuggestion } from "@/features/interview/types/generation-session";

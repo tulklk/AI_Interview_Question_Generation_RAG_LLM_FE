@@ -58,19 +58,19 @@ export function GoogleOAuthButton({
 
   return (
     <div className="auth-social-button relative h-10 min-w-0">
-      {loading && (
-        <div className="absolute inset-0 z-20 flex items-center justify-center rounded-lg bg-white/70 dark:bg-gray-900/70">
-          <span className="h-4 w-4 animate-spin rounded-full border-2 border-primary/30 border-t-primary" />
-        </div>
-      )}
-
       {/* Visual layer (not clickable) */}
       <div
         className={`${oauthBtnClass} pointer-events-none select-none ${disabled ? "opacity-60" : ""}`}
         aria-hidden
       >
-        <GoogleIcon />
-        Google
+        {loading ? (
+          <span className="h-4 w-4 animate-spin rounded-full border-2 border-primary/30 border-t-primary" />
+        ) : (
+          <>
+            <GoogleIcon />
+            Google
+          </>
+        )}
       </div>
 
       {/* Real Google button — transparent overlay receives user clicks */}

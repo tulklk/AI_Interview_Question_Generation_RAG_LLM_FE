@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, AlertCircle, Sparkles, ArrowRight, Loader2 } from "lucide-react";
+import { ArrowLeft, AlertCircle, Sparkles, ArrowRight } from "lucide-react";
+import { AiLoadingSpinner } from "@/shared/components/common/ai-loading-spinner";
 import { SessionStatusBadge } from "@/features/interview/components/history/session-status-badge";
 import { ReviewQuestionsSection } from "@/features/question/components/review-questions-section";
 import { useLanguage } from "@/shared/providers/language-context";
@@ -78,7 +79,7 @@ export function ReviewPageClient({ session, draftQuestions, isDraftView = false,
               {session.planDraft.questionTypes.map((qt) => (
                 <span
                   key={qt}
-                  className="text-xs font-semibold px-2 py-0.5 rounded-md bg-[#6c47ff]/10 text-[#6c47ff]"
+                  className="text-xs font-semibold px-2 py-0.5 rounded-md bg-primary/10 text-primary"
                 >
                   {qt}
                 </span>
@@ -153,58 +154,26 @@ export function ReviewPageClient({ session, draftQuestions, isDraftView = false,
       {/* Loading animation while generating questions */}
       {isGenerating && (
         <div
-          className="animate-fade-up rounded-2xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 p-10 flex flex-col items-center justify-center gap-5"
+          className="animate-fade-up rounded-2xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 p-10"
           style={{ animationDelay: "120ms" }}
         >
-          <div className="relative w-16 h-16">
-            <div className="absolute inset-0 rounded-full bg-violet-100 dark:bg-violet-950/40 animate-pulse" />
-            <div className="absolute inset-0 flex items-center justify-center">
-              <Sparkles size={28} className="text-violet-600 dark:text-violet-400" />
-            </div>
-            <svg className="absolute inset-0 w-full h-full -rotate-90" viewBox="0 0 64 64">
-              <circle
-                cx="32" cy="32" r="28"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="3"
-                strokeDasharray="175"
-                strokeLinecap="round"
-                className="text-violet-500 dark:text-violet-400 origin-center animate-[spin_2s_linear_infinite]"
-                style={{ strokeDashoffset: "44" }}
-              />
-            </svg>
-          </div>
-          <div className="text-center">
-            <p className={cn("text-base font-semibold", portalHeading)}>
-              AI đang tạo câu hỏi phỏng vấn...
-            </p>
-            <p className={cn("text-sm mt-1.5", portalSubtext)}>
-              Câu hỏi sẽ tự động hiển thị khi hoàn thành. Vui lòng chờ.
-            </p>
-          </div>
-          <div className="flex items-center gap-1.5">
-            {[0, 1, 2].map((i) => (
-              <span
-                key={i}
-                className="w-1.5 h-1.5 rounded-full bg-violet-500 dark:bg-violet-400 animate-bounce"
-                style={{ animationDelay: `${i * 150}ms` }}
-              />
-            ))}
-          </div>
+          <AiLoadingSpinner
+            text="AI đang tạo câu hỏi phỏng vấn..."
+            subtext="Câu hỏi sẽ tự động hiển thị khi hoàn thành. Vui lòng chờ."
+          />
         </div>
       )}
 
       {/* Retrying: COMPLETED but 0 questions — show brief spinner */}
       {isRetrying && !isGenerating && session.status !== "PLAN_PROPOSED" && (
         <div
-          className="animate-fade-up rounded-2xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 px-6 py-8 flex items-center gap-4"
+          className="animate-fade-up rounded-2xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 p-8"
           style={{ animationDelay: "120ms" }}
         >
-          <Loader2 size={20} className="animate-spin text-violet-500 shrink-0" />
-          <div>
-            <p className={cn("text-sm font-semibold", portalHeading)}>{rp.loadingQuestionsTitle}</p>
-            <p className={cn("text-xs mt-0.5", portalSubtext)}>{rp.loadingQuestionsSubtext}</p>
-          </div>
+          <AiLoadingSpinner
+            text={rp.loadingQuestionsTitle}
+            subtext={rp.loadingQuestionsSubtext}
+          />
         </div>
       )}
 

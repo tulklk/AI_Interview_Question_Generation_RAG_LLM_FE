@@ -19,6 +19,14 @@ export type QuestionType =
 
 export type DifficultyLevel = "Easy" | "Medium" | "Hard";
 
+export interface QuestionSuggestion {
+  question: string;
+  rationale?: string;
+  sampleAnswer?: string;
+  difficulty?: string;
+  questionType?: string;
+}
+
 export interface GenerationNote {
   questionCount?: number;
   questionTypes?: QuestionType[];

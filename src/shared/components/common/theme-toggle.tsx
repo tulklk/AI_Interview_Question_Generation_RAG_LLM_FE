@@ -4,6 +4,7 @@ import { Moon, Sun } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { useLanguage } from "@/shared/providers/language-context";
 import { useTheme } from "@/shared/providers/theme-context";
+import { useThemeTransition } from "@/shared/providers/theme-transition-context";
 
 interface ThemeToggleProps {
   variant?: "ghost" | "light";
@@ -12,14 +13,20 @@ interface ThemeToggleProps {
 
 export function ThemeToggle({ variant = "ghost", className }: ThemeToggleProps) {
   const { theme, toggleTheme } = useTheme();
+  const { triggerTransition, isTransitioning } = useThemeTransition();
   const { t } = useLanguage();
   const isDark = theme === "dark";
   const label = isDark ? t.common.switchToLight : t.common.switchToDark;
 
+  function handleClick() {
+    triggerTransition(toggleTheme, isDark ? "light" : "dark");
+  }
+
   return (
     <button
       type="button"
-      onClick={toggleTheme}
+      onClick={handleClick}
+      disabled={isTransitioning}
       aria-label={label}
       title={label}
       className={cn(

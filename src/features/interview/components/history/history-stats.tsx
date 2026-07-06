@@ -10,12 +10,8 @@ import { useLanguage } from "@/shared/providers/language-context";
 import { portalHeading, portalSubtext } from "@/shared/utils/portal-ui";
 
 const icons = [FileText, Zap, BarChart3];
-const iconBgs = [
-  "bg-blue-50 dark:bg-blue-950/40",
-  "bg-violet-50 dark:bg-violet-950/40",
-  "bg-emerald-50 dark:bg-emerald-950/40",
-];
-const iconColors = ["text-blue-500 dark:text-blue-400", "text-violet-500 dark:text-violet-400", "text-emerald-500 dark:text-emerald-400"];
+const iconBg = "bg-gray-100 dark:bg-gray-800 shadow-sm ring-1 ring-black/5 dark:ring-white/10";
+const iconColor = "text-gray-900 dark:text-gray-100";
 
 export function HistoryStats() {
   const { t } = useLanguage();
@@ -81,9 +77,9 @@ export function HistoryStats() {
             className="hr-glass-card p-3 sm:p-5 flex flex-col sm:flex-row items-center sm:items-center sm:gap-4 gap-2 animate-fade-up text-center sm:text-left"
             style={{ animationDelay: `${i * 80}ms` }}
           >
-            <div className={`w-8 h-8 sm:w-11 sm:h-11 rounded-lg flex items-center justify-center shrink-0 ${iconBgs[i]}`}>
-              <Icon size={16} className={cn("sm:hidden", iconColors[i])} />
-              <Icon size={20} className={cn("hidden sm:block", iconColors[i])} />
+            <div className={`w-8 h-8 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center shrink-0 ${iconBg}`}>
+              <Icon size={16} className={cn("sm:hidden", iconColor)} />
+              <Icon size={20} className={cn("hidden sm:block", iconColor)} />
             </div>
             <div className="min-w-0">
               <p className={cn("text-lg sm:text-2xl font-bold leading-none", portalHeading)}>{value}</p>

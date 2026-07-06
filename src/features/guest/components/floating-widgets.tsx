@@ -268,14 +268,19 @@ export function FloatingWidgets() {
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [botReady, setBotReady] = useState(false);
 
   useEffect(() => {
     setMounted(true);
+    const t = setTimeout(() => setBotReady(true), 500);
     function onScroll() {
       setShowScrollTop(window.scrollY > 300);
     }
     window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      clearTimeout(t);
+    };
   }, []);
 
   function scrollToTop() {
@@ -290,26 +295,46 @@ export function FloatingWidgets() {
       <div className="relative">
         <ChatPanel isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} />
 
-        {/* Chat FAB */}
-        <button
-          onClick={() => setIsChatOpen((v) => !v)}
-          className={cn(
-            "w-14 h-14 rounded-full bg-[#6c47ff] hover:bg-[#5535dd] text-white shadow-xl",
-            "flex items-center justify-center transition-all duration-200",
-            "hover:scale-105 active:scale-95",
-            mounted ? "animate-scale-in" : "opacity-0"
-          )}
-          aria-label="Open AI chat"
-        >
-          <div
-            className={cn(
-              "transition-transform duration-300",
-              isChatOpen ? "rotate-90 scale-90" : "rotate-0 scale-100"
-            )}
-          >
-            {isChatOpen ? <X size={22} /> : <Bot size={22} />}
+        {/* FAB area */}
+        <div className="relative w-14 h-14">
+
+          {/* Glow wrapper */}
+          <div className={cn("rounded-full", !isChatOpen && botReady && "animate-bot-glow")}>
+            {/* Chat FAB */}
+            <button
+              onClick={() => setIsChatOpen((v) => !v)}
+              className={cn(
+                "w-14 h-14 rounded-full bg-primary hover:bg-[#5535dd] text-white shadow-xl",
+                "flex items-center justify-center transition-all duration-200 relative overflow-hidden",
+                "hover:scale-105 active:scale-95",
+                mounted ? "animate-scale-in" : "opacity-0"
+              )}
+              aria-label="Open AI chat"
+            >
+              {/* Scan line */}
+              {!isChatOpen && (
+                <span
+                  className="absolute left-0 right-0 h-0.5 pointer-events-none animate-bot-scan"
+                  style={{
+                    top: 0,
+                    background: "linear-gradient(to right, transparent, rgba(255,255,255,0.55), transparent)",
+                    boxShadow: "0 0 8px 2px rgba(255,255,255,0.22)",
+                  }}
+                />
+              )}
+              {/* Icon */}
+              <div
+                className={cn(
+                  "relative z-10 transition-transform duration-300",
+                  isChatOpen ? "rotate-90 scale-90" : "rotate-0 scale-100",
+                  !isChatOpen && botReady && "animate-bot-icon-glow"
+                )}
+              >
+                {isChatOpen ? <X size={22} /> : <Bot size={22} />}
+              </div>
+            </button>
           </div>
-        </button>
+        </div>
       </div>
 
       {/* Scroll-to-top FAB */}

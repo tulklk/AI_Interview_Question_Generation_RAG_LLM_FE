@@ -8,6 +8,7 @@ import type {
   PlanDraft,
   DraftQuestionSet,
   QuestionAIChat,
+  QuestionSuggestion,
 } from "@/features/interview/types/generation-session";
 
 // ---------------------------------------------------------------------------
@@ -23,12 +24,14 @@ interface CreateJobResponseData {
 
 interface BackendJobQuestion {
   id?: string;
+  questionId?: string;  // some BE responses use this instead of id
   question: string;
   questionType?: string;
   difficulty?: string;
   rationale?: string;
   sampleAnswer?: string;
   order?: number;
+  orderIndex?: number;
 }
 
 interface BackendJobSummary {
@@ -234,14 +237,14 @@ function mapJobToSession(job: BackendJob): GenerationSession {
     },
     generatedQuestions: job.questions?.length
       ? job.questions.map((q, i) => ({
-          id: q.id ?? `q-${i}`,
+          id: q.id ?? q.questionId ?? `q-${i}`,
           question: q.question,
           questionType: normalizeQuestionType(q.questionType),
           difficulty: normalizeDifficulty(q.difficulty),
           rationale: q.rationale,
           sampleAnswer: q.sampleAnswer,
           citations: [],
-          orderIndex: q.order ?? i,
+          orderIndex: q.order ?? q.orderIndex ?? i,
         }))
       // Use actual generated count from BE (meta or top-level) for the list count display
       : Array.from({ length: meta?.questionCount ?? job.questionCount ?? 0 }, (_, i) => ({
@@ -485,16 +488,18 @@ export async function getJobQuestions(jobId: string): Promise<GeneratedQuestion[
     } else if (data?.items) {
       items = data.items;
     }
-    return items.map((q, i) => ({
-      id: q.id ?? `q-${i}`,
-      question: q.question,
-      questionType: normalizeQuestionType(q.questionType),
-      difficulty: normalizeDifficulty(q.difficulty),
-      rationale: q.rationale,
-      sampleAnswer: q.sampleAnswer,
-      citations: [],
-      orderIndex: q.order ?? i,
-    }));
+    return items
+      .map((q, i) => ({
+        id: q.id ?? q.questionId ?? `q-${i}`,
+        question: q.question,
+        questionType: normalizeQuestionType(q.questionType),
+        difficulty: normalizeDifficulty(q.difficulty),
+        rationale: q.rationale,
+        sampleAnswer: q.sampleAnswer,
+        citations: [],
+        orderIndex: q.order ?? q.orderIndex ?? i,
+      }))
+      .sort((a, b) => a.orderIndex - b.orderIndex);
   } catch {
     return [];
   }
@@ -558,10 +563,13 @@ export async function reorderJobQuestions(
 ): Promise<boolean> {
   try {
     await apiClient.put(`/api/hr/question-generation-jobs/${jobId}/questions/reorder`, {
-      questions: order,
+      items: order.map((o) => ({ questionId: o.id, order: o.order })),
     });
     return true;
-  } catch {
+  } catch (err) {
+    const status = (err as { response?: { status?: number } })?.response?.status;
+    if (status === 409) return false; // job already in a state that prevents reorder — not an error
+    console.warn("[reorderJobQuestions] failed:", err);
     return false;
   }
 }
@@ -656,18 +664,36 @@ export async function askAIAboutQuestion(
   jobId: string,
   questionId: string,
   prompt: string
-): Promise<string> {
+): Promise<{ reply: string; suggestion: QuestionSuggestion | null }> {
   const { data } = await apiClient.post(
     `/api/hr/question-generation-jobs/${jobId}/questions/${questionId}/ask-ai`,
     { message: prompt }
   );
   const inner = (data as Record<string, unknown>)?.data ?? data;
-  if (typeof inner === "string") return inner;
+  if (typeof inner === "string") return { reply: inner, suggestion: null };
   const obj = inner as Record<string, unknown> | null;
   const text =
     obj?.reply ?? obj?.response ?? obj?.message ?? obj?.content ?? obj?.answer ?? obj?.aiResponse;
-  if (typeof text === "string") return text;
-  throw new Error("Unexpected response format from ask-ai endpoint");
+  if (typeof text !== "string") throw new Error("Unexpected response format from ask-ai endpoint");
+
+  let suggestion: QuestionSuggestion | null = null;
+  const raw = obj?.suggestion;
+  if (raw && typeof raw === "object") {
+    const s = raw as Record<string, unknown>;
+    if (typeof s.question === "string" && s.question.trim()) {
+      suggestion = {
+        question: s.question.trim(),
+        rationale: typeof s.rationale === "string" ? s.rationale : undefined,
+        sampleAnswer: typeof s.sampleAnswer === "string" ? s.sampleAnswer : undefined,
+        difficulty: typeof s.difficulty === "string" ? s.difficulty : undefined,
+        questionType: typeof s.questionType === "string" ? s.questionType : undefined,
+      };
+    }
+  } else if (typeof raw === "string" && raw.trim()) {
+    suggestion = { question: raw.trim() };
+  }
+
+  return { reply: text, suggestion };
 }
 
 export async function getQuestionAIChat(

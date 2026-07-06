@@ -163,6 +163,22 @@
   to   { opacity: 1; transform: translateX(0)     rotate(0deg) scale(1);   }
 }
 
+/* ── AI chat bot FAB ── */
+@keyframes botGlow {
+  0%, 100% { filter: drop-shadow(0 4px 10px rgba(108,71,255,0.35)) drop-shadow(0 0  0px rgba(108,71,255,0)); }
+  50%       { filter: drop-shadow(0 4px 22px rgba(108,71,255,0.70)) drop-shadow(0 0 20px rgba(108,71,255,0.30)); }
+}
+@keyframes botScan {
+  0%   { transform: translateY(-56px); opacity: 0;   }
+  8%   {                               opacity: 0.8; }
+  92%  {                               opacity: 0.8; }
+  100% { transform: translateY(56px);  opacity: 0;   }
+}
+@keyframes botIconGlow {
+  0%, 100% { filter: drop-shadow(0 0  0px rgba(255,255,255,0));    }
+  50%       { filter: drop-shadow(0 0  5px rgba(255,255,255,0.85)); }
+}
+
 @theme {
   /* Design system — see .cursor/skills/design-system/DESIGN.md */
   --color-primary: #6c47ff;
@@ -195,6 +211,9 @@
   --animate-particle-drift: particleDrift 4s ease-out infinite;
   --animate-gradient-text: gradientText 4s ease-in-out infinite;
   --animate-shimmer-sweep: shimmerSweep 2.8s ease-in-out infinite;
+  --animate-bot-glow:      botGlow    3s   ease-in-out   infinite;
+  --animate-bot-scan:      botScan    2.2s linear         infinite;
+  --animate-bot-icon-glow: botIconGlow 2.5s ease-in-out  infinite;
 }
 
 :root {

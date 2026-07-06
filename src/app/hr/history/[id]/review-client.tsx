@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Loader2, AlertCircle } from "lucide-react";
+import { AlertCircle } from "lucide-react";
+import { AiLoadingSpinner } from "@/shared/components/common/ai-loading-spinner";
 import { AppShell } from "@/features/hr/components/layout/app-shell";
 import { ReviewPageClient } from "@/features/question/components/review-page-client";
 import { getGenerationSession, getGenerationJob, getJobQuestions, getDraft } from "@/features/interview/services/interview.service";
@@ -198,14 +199,8 @@ export function HrReviewPageClient() {
       pageTitle={rp.breadcrumbReview}
     >
       {loading && (
-        <div className="fixed inset-0 flex flex-col items-center justify-center gap-3 pointer-events-none">
-          <div className="w-14 h-14 rounded-2xl bg-violet-50 dark:bg-violet-950/40 flex items-center justify-center">
-            <Loader2 size={26} className="animate-spin text-[#7C3AED] dark:text-[#a78bff]" />
-          </div>
-          <div className="text-center">
-            <p className={cn("text-sm font-semibold", portalHeading)}>{rp.loadingSession}</p>
-            <p className={cn("text-xs mt-1", portalSubtext)}>{rp.loadingSessionSub}</p>
-          </div>
+        <div className="fixed inset-0 flex items-center justify-center pointer-events-none">
+          <AiLoadingSpinner text={rp.loadingSession} subtext={rp.loadingSessionSub} />
         </div>
       )}
 
@@ -218,7 +213,7 @@ export function HrReviewPageClient() {
 
       {!loading && !error && session && (
         <ReviewPageClient
-          session={session}
+          session={{ ...session, id }}
           draftQuestions={draft?.questions}
           isDraftView={!!draft}
           isGenerating={isGeneratingQuestions(session.status)}

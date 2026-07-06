@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Sparkles, X } from "lucide-react";
@@ -25,7 +26,53 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
   const short = planShortBadge[planId]?.trim();
   const s = t.sidebar;
 
-  const handleNavClick = () => {
+  const SEEN_KEY = "hg_nav_seen";
+
+  // SSR-safe: default all-seen to avoid hydration mismatch
+  const [seenTabs, setSeenTabs] = useState<Set<string>>(
+    () => new Set(navItems.map((i) => i.href))
+  );
+  const [newBadgeReady, setNewBadgeReady] = useState(false);
+
+  // Load from localStorage after mount
+  useEffect(() => {
+    const stored = localStorage.getItem(SEEN_KEY);
+    if (stored === null) {
+      setSeenTabs(new Set()); // first visit — nothing seen yet
+    } else {
+      try {
+        setSeenTabs(new Set(JSON.parse(stored) as string[]));
+      } catch {
+        setSeenTabs(new Set(navItems.map((i) => i.href)));
+      }
+    }
+    setNewBadgeReady(true);
+  }, []);
+
+  // Auto-mark current page as seen on every navigation
+  useEffect(() => {
+    if (!newBadgeReady) return;
+    setSeenTabs((prev) => {
+      if (prev.has(pathname)) return prev;
+      const next = new Set(prev);
+      next.add(pathname);
+      localStorage.setItem(SEEN_KEY, JSON.stringify([...next]));
+      return next;
+    });
+  }, [pathname, newBadgeReady]);
+
+  function markSeen(href: string) {
+    setSeenTabs((prev) => {
+      if (prev.has(href)) return prev;
+      const next = new Set(prev);
+      next.add(href);
+      localStorage.setItem(SEEN_KEY, JSON.stringify([...next]));
+      return next;
+    });
+  }
+
+  const handleNavClick = (href: string) => {
+    markSeen(href);
     if (onClose) onClose();
   };
 
@@ -55,24 +102,24 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
           {navItems.map((item) => {
             const isActive = isHrNavActive(item.href, pathname);
             const label = s.nav[item.href as keyof typeof s.nav] ?? item.label;
+            const isNew = newBadgeReady && !seenTabs.has(item.href);
+            const badgeLabel = isNew ? "New" : typeof item.badge === "number" ? String(item.badge) : null;
             return (
               <li key={item.href}>
                 <Link
                   href={item.href}
-                  onClick={handleNavClick}
+                  onClick={() => handleNavClick(item.href)}
                   className={cn(
                     "flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 text-base font-normal",
                     isActive
                       ? "hr-nav-active text-[#7C3AED] dark:text-[#a78bff] font-semibold"
-                      : "text-[#6b7280] dark:text-gray-400 hover:bg-[rgba(124,58,237,0.06)] dark:hover:bg-[rgba(124,58,237,0.08)] hover:text-[#111827] dark:hover:text-gray-100"
+                      : "text-[#6b7280] dark:text-gray-400 hover:bg-[rgba(124,58,237,0.06)] dark:hover:bg-[rgba(124,58,237,0.08)] hover:text-charcoal dark:hover:text-gray-100"
                   )}
                 >
                   <div
                     className={cn(
                       "w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-all duration-200",
-                      isActive
-                        ? "hr-icon-box"
-                        : "bg-gray-100 dark:bg-gray-800"
+                      isActive ? "hr-icon-box" : "bg-gray-100 dark:bg-gray-800"
                     )}
                   >
                     <item.icon
@@ -83,16 +130,16 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
                     />
                   </div>
                   <span className="text-sm font-medium flex-1">{label}</span>
-                  {item.badge !== undefined && (
+                  {badgeLabel && (
                     <span
                       className={cn(
                         "text-[10px] font-semibold px-1.5 py-0.5 rounded-md leading-none",
                         isActive
                           ? "bg-[rgba(124,58,237,0.12)] dark:bg-[rgba(124,58,237,0.2)] text-[#7C3AED] dark:text-[#a78bff]"
-                          : "bg-[#f5f7fb] dark:bg-gray-800 text-[#6b7280] dark:text-gray-400"
+                          : "bg-page-bg dark:bg-gray-800 text-[#6b7280] dark:text-gray-400"
                       )}
                     >
-                      {item.badge}
+                      {badgeLabel}
                     </span>
                   )}
                 </Link>
@@ -113,7 +160,7 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
           <p className="text-gray-500 dark:text-gray-400 text-xs mt-1 leading-relaxed">{s.quickGenerate.desc}</p>
           <Link
             href="/hr/generate"
-            onClick={handleNavClick}
+            onClick={() => handleNavClick("/hr/generate")}
             className="mt-3 shimmer-button inline-block text-xs font-semibold text-white hr-cta-btn px-4 py-2 rounded-lg w-full text-center"
           >
             {s.quickGenerate.btn}
