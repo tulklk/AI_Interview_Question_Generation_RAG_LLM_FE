@@ -69,7 +69,7 @@ The application supports **two user roles**:
 | Font | [Be Vietnam Pro](https://fonts.google.com/specimen/Be+Vietnam+Pro) via `next/font/google` |
 | State | React Context API (`LanguageContext`) |
 | i18n | Custom dictionary-based (`en.ts` / `vi.ts`) |
-| Deployment | Cloudflare Pages (static export) |
+| Deployment | [Vercel](https://vercel.com) (Next.js) |
 
 ---
 
@@ -204,38 +204,42 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ## Build & Deploy
 
-### Production Build (Static Export)
+### Production Build
 
 ```bash
 npm run build
 ```
 
-Generates a fully static site in the `out/` directory. All 22 pages are pre-rendered as static HTML.
+### Vercel
 
-### Cloudflare Pages
-
-This project is configured for **Cloudflare Pages** deployment:
+This project is configured for **Vercel** deployment (zero-config Next.js):
 
 | Setting | Value |
 |---------|-------|
-| Framework preset | `Next.js (Static HTML Export)` |
+| Framework preset | `Next.js` |
 | Build command | `npm run build` |
-| Output directory | `out` |
+| Output directory | *(auto — managed by Vercel)* |
 | Node.js version | `20` |
 
-Every push to `main` triggers an automatic rebuild and deployment.
+**Deploy steps:**
+
+1. Push this repo to GitHub.
+2. In [Vercel](https://vercel.com/new), import the repository.
+3. Add environment variables from `.env.example` under **Settings → Environment Variables**.
+4. Deploy — every push to the connected branch triggers a new deployment.
+
+**CLI (optional):**
+
+```bash
+npx vercel          # preview deploy
+npx vercel --prod   # production deploy
+```
 
 ---
 
 ## Environment
 
-This is a **frontend-only** project using mock data. No environment variables are required for local development or static deployment.
-
-When integrating with a real backend API, add a `.env.local` file:
-
-```env
-NEXT_PUBLIC_API_URL=https://your-api-url.com
-```
+Copy `.env.example` to `.env.local` for local development. See `.env.example` for required `NEXT_PUBLIC_*` variables when connecting to the backend API.
 
 > `.env*` files are gitignored by default.
 

@@ -17,10 +17,10 @@
 /.next/
 /out/
 
-# OpenNext / Cloudflare Workers build output
+# legacy Cloudflare / OpenNext build output (safe to delete if present)
 /.open-next/
+/.wrangler/
 .dev.vars
-.wrangler/
 
 # production
 /build
