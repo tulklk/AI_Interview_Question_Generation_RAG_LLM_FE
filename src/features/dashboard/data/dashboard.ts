@@ -27,8 +27,6 @@ export const navItems: NavItem[] = [
     label: "Generate Questions",
     href: "/hr/generate",
     icon: Sparkles,
-    badge: "New",
-    badgeVariant: "new",
   },
   {
     label: "History",
@@ -57,8 +55,8 @@ export const stats: StatItem[] = [
     trend: "+12%",
     trendPositive: true,
     icon: FileText,
-    iconBg: "bg-blue-50 dark:bg-blue-950/40",
-    iconColor: "text-blue-500 dark:text-blue-400",
+    iconBg: "bg-gray-100 dark:bg-gray-800",
+    iconColor: "text-gray-900 dark:text-gray-100",
   },
   {
     id: "questions-generated",
@@ -67,8 +65,8 @@ export const stats: StatItem[] = [
     trend: "+28%",
     trendPositive: true,
     icon: Zap,
-    iconBg: "bg-violet-50 dark:bg-violet-950/40",
-    iconColor: "text-violet-500 dark:text-violet-400",
+    iconBg: "bg-gray-100 dark:bg-gray-800",
+    iconColor: "text-gray-900 dark:text-gray-100",
   },
   {
     id: "this-week",
@@ -77,8 +75,8 @@ export const stats: StatItem[] = [
     trend: "+4",
     trendPositive: true,
     icon: TrendingUp,
-    iconBg: "bg-emerald-50 dark:bg-emerald-950/40",
-    iconColor: "text-emerald-500 dark:text-emerald-400",
+    iconBg: "bg-gray-100 dark:bg-gray-800",
+    iconColor: "text-gray-900 dark:text-gray-100",
   },
   {
     id: "avg-questions",
@@ -87,8 +85,8 @@ export const stats: StatItem[] = [
     trend: "+0.5",
     trendPositive: true,
     icon: BarChart3,
-    iconBg: "bg-orange-50 dark:bg-orange-950/40",
-    iconColor: "text-orange-500 dark:text-orange-400",
+    iconBg: "bg-gray-100 dark:bg-gray-800",
+    iconColor: "text-gray-900 dark:text-gray-100",
   },
 ];
 
