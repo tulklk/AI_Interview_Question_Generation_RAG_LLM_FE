@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Send, Sparkles, AlertCircle, Loader2, X, RefreshCw } from "lucide-react";
+import { Send, Sparkles, AlertCircle, Loader2, X, RefreshCw, CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { useLanguage } from "@/shared/providers/language-context";
 import {
@@ -13,12 +13,12 @@ import {
   portalSubtext,
 } from "@/shared/utils/portal-ui";
 import { askAIAboutQuestion, getQuestionAIChat } from "@/features/question/services/question.service";
-import type { GeneratedQuestion } from "@/features/interview/types/generation-session";
+import type { GeneratedQuestion, QuestionSuggestion } from "@/features/interview/types/generation-session";
 
 interface AskAIPanelProps {
   question: GeneratedQuestion;
   sessionId: string;
-  onApplySuggestion: (suggestion: string) => void;
+  onApplySuggestion: (suggestion: QuestionSuggestion) => void;
   onClose: () => void;
 }
 
@@ -26,6 +26,67 @@ interface ChatMessage {
   id: string;
   role: "ai" | "hr";
   content: string;
+  suggestion?: QuestionSuggestion | null;
+}
+
+function SuggestionCard({
+  suggestion,
+  onApply,
+}: {
+  suggestion: QuestionSuggestion;
+  onApply: () => void;
+}) {
+  return (
+    <div className="mt-3 rounded-xl border border-primary/25 bg-primary/5 dark:bg-primary/10 overflow-hidden">
+      {/* Card header */}
+      <div className="flex items-center gap-1.5 px-3 py-2 border-b border-primary/15">
+        <Sparkles size={11} className="text-primary shrink-0" />
+        <span className="text-[10px] font-semibold text-primary uppercase tracking-wide">Câu hỏi đề xuất</span>
+      </div>
+
+      {/* Question text */}
+      <div className="px-3 py-2.5">
+        <p className="text-xs leading-relaxed text-gray-800 dark:text-gray-200 whitespace-pre-wrap">
+          {suggestion.question}
+        </p>
+
+        {/* Optional metadata badges */}
+        {(suggestion.difficulty || suggestion.questionType) && (
+          <div className="flex flex-wrap gap-1.5 mt-2">
+            {suggestion.questionType && (
+              <span className="text-[10px] px-2 py-0.5 rounded bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border border-indigo-100 dark:border-indigo-800/40">
+                {suggestion.questionType}
+              </span>
+            )}
+            {suggestion.difficulty && (
+              <span className={cn(
+                "text-[10px] px-2 py-0.5 rounded border",
+                suggestion.difficulty.toLowerCase() === "hard"
+                  ? "bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border-rose-100 dark:border-rose-800/40"
+                  : suggestion.difficulty.toLowerCase() === "medium"
+                  ? "bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-100 dark:border-amber-800/40"
+                  : "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-100 dark:border-emerald-800/40"
+              )}>
+                {suggestion.difficulty}
+              </span>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Apply button */}
+      <div className="px-3 pb-2.5">
+        <button
+          type="button"
+          onClick={onApply}
+          className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg bg-primary text-white text-xs font-semibold hover:bg-primary/90 transition-colors"
+        >
+          <CheckCircle2 size={12} />
+          Áp dụng câu hỏi này
+        </button>
+      </div>
+    </div>
+  );
 }
 
 export function AskAIPanel({
@@ -44,8 +105,7 @@ export function AskAIPanel({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastAIMessageId, setLastAIMessageId] = useState<string | null>(null);
-  const [lastAIContent, setLastAIContent] = useState<string | null>(null);
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
 
   // Load existing chat history when panel opens
   useEffect(() => {
@@ -59,12 +119,8 @@ export function AskAIPanel({
         const history = await getQuestionAIChat(sessionId, question.id);
         if (cancelled) return;
         if (history.length > 0) {
-          setMessages(history.map((h) => ({ id: h.id, role: h.role, content: h.content })));
-          const lastAI = [...history].reverse().find((h) => h.role === "ai");
-          if (lastAI) {
-            setLastAIMessageId(lastAI.id);
-            setLastAIContent(lastAI.content);
-          }
+          setMessages(history.map((h) => ({ id: h.id, role: h.role, content: h.content, suggestion: null })));
+          // History responses don't carry suggestion metadata — Apply button stays hidden
         }
       } catch {
         // Non-fatal — start with empty chat if history fails
@@ -77,12 +133,16 @@ export function AskAIPanel({
   }, [sessionId, question.id]);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    const el = messagesContainerRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
   }, [messages, loading]);
+
+  // Synthetic IDs (q-0, stub-xxx, manual-xxx) mean the BE question ID isn't available
+  const questionIdValid = !question.id.startsWith("q-") && !question.id.startsWith("stub-") && !question.id.startsWith("manual-");
 
   async function handleSend() {
     const trimmed = draft.trim();
-    if (!trimmed || loading) return;
+    if (!trimmed || loading || !questionIdValid) return;
     setError(null);
     setDraft("");
 
@@ -91,12 +151,11 @@ export function AskAIPanel({
     setLoading(true);
 
     try {
-      const response = await askAIAboutQuestion(sessionId, question.id, trimmed);
+      const { reply, suggestion } = await askAIAboutQuestion(sessionId, question.id, trimmed);
       const msgId = `ai-${Date.now()}`;
-      const aiMsg: ChatMessage = { id: msgId, role: "ai", content: response };
+      const aiMsg: ChatMessage = { id: msgId, role: "ai", content: reply, suggestion };
       setMessages((prev) => [...prev, aiMsg]);
       setLastAIMessageId(msgId);
-      setLastAIContent(response);
     } catch {
       setError(ai.errorMsg);
     } finally {
@@ -159,7 +218,7 @@ export function AskAIPanel({
 
       {/* Messages */}
       {!historyLoading && messages.length > 0 && (
-        <div className="px-4 py-3 space-y-3 max-h-60 overflow-y-auto">
+        <div ref={messagesContainerRef} className="px-4 py-3 space-y-3 max-h-72 overflow-y-auto">
           {messages.map((msg) => {
             const isAI = msg.role === "ai";
             const isLastAI = isAI && msg.id === lastAIMessageId;
@@ -173,24 +232,24 @@ export function AskAIPanel({
                 >
                   {isAI ? "AI" : "HR"}
                 </div>
-                <div
-                  className={cn(
-                    "max-w-[85%] rounded-xl px-3 py-2 text-xs leading-relaxed",
-                    isAI
-                      ? cn(portalBanner, "text-indigo-900 dark:text-indigo-100")
-                      : cn(portalMutedBg, portalHeading)
-                  )}
-                >
-                  <p className="whitespace-pre-wrap">{msg.content}</p>
-                  {isLastAI && lastAIContent && (
-                    <button
-                      type="button"
-                      onClick={() => onApplySuggestion(lastAIContent)}
-                      className="mt-2 flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
-                    >
-                      <Sparkles size={11} />
-                      {ai.applyBtn}
-                    </button>
+                <div className={cn("max-w-[85%] text-xs leading-relaxed", isAI ? "flex-1" : "")}>
+                  <div
+                    className={cn(
+                      "rounded-xl px-3 py-2",
+                      isAI
+                        ? cn(portalBanner, "text-indigo-900 dark:text-indigo-100")
+                        : cn(portalMutedBg, portalHeading)
+                    )}
+                  >
+                    <p className="whitespace-pre-wrap">{msg.content}</p>
+                  </div>
+
+                  {/* Suggestion card — shown below the AI bubble for the most recent AI reply */}
+                  {isLastAI && msg.suggestion && (
+                    <SuggestionCard
+                      suggestion={msg.suggestion}
+                      onApply={() => onApplySuggestion(msg.suggestion!)}
+                    />
                   )}
                 </div>
               </div>
@@ -226,7 +285,6 @@ export function AskAIPanel({
             </div>
           )}
 
-          <div ref={bottomRef} />
         </div>
       )}
 
@@ -240,6 +298,12 @@ export function AskAIPanel({
 
       {/* Input */}
       <div className="px-4 py-3 border-t border-gray-100 dark:border-gray-800">
+        {!questionIdValid && (
+          <p className="text-xs text-amber-600 dark:text-amber-400 mb-2 flex items-center gap-1.5">
+            <AlertCircle size={12} className="shrink-0" />
+            Câu hỏi này chưa được lưu lên server. Vui lòng lưu bản nháp trước khi hỏi AI.
+          </p>
+        )}
         <div className="flex gap-2">
           <textarea
             value={draft}
@@ -247,17 +311,17 @@ export function AskAIPanel({
             onKeyDown={handleKeyDown}
             placeholder={ai.placeholder}
             rows={2}
-            disabled={loading || historyLoading}
+            disabled={loading || historyLoading || !questionIdValid}
             className={cn(
               "flex-1 resize-none rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors",
               portalInput,
-              (loading || historyLoading) && "opacity-50 cursor-not-allowed"
+              (loading || historyLoading || !questionIdValid) && "opacity-50 cursor-not-allowed"
             )}
           />
           <button
             type="button"
             onClick={() => void handleSend()}
-            disabled={!draft.trim() || loading || historyLoading}
+            disabled={!draft.trim() || loading || historyLoading || !questionIdValid}
             className="shrink-0 w-9 h-9 self-end rounded-lg bg-primary text-white flex items-center justify-center transition-opacity disabled:opacity-40 hover:bg-primary/90"
           >
             {loading ? (

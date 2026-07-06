@@ -11,6 +11,7 @@ import {
   Check,
   X,
   ChevronUp,
+  Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { useLanguage } from "@/shared/providers/language-context";
@@ -22,7 +23,7 @@ import {
   portalMutedBg,
   portalSubtext,
 } from "@/shared/utils/portal-ui";
-import type { GeneratedQuestion, DifficultyLevel, QuestionType } from "@/features/interview/types/generation-session";
+import type { GeneratedQuestion, DifficultyLevel, QuestionType, QuestionSuggestion } from "@/features/interview/types/generation-session";
 import { AskAIPanel } from "./ask-ai-panel";
 
 const QUESTION_TYPES: QuestionType[] = ["Technical", "Behavioral", "Situational", "System-design", "Problem-solving"];
@@ -49,7 +50,10 @@ interface QuestionEditCardProps {
   isFirst?: boolean;
   isLast?: boolean;
   isDragging?: boolean;
-  onUpdate: (updated: Partial<GeneratedQuestion>) => void;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  dragHandleListeners?: Record<string, any>;
+  onSave: (updated: Partial<GeneratedQuestion>) => Promise<boolean>;
+  onEditingChange?: (editing: boolean) => void;
   onDelete: () => void;
   onMoveUp: () => void;
   onMoveDown: () => void;
@@ -62,7 +66,9 @@ export function QuestionEditCard({
   isFirst = false,
   isLast = false,
   isDragging = false,
-  onUpdate,
+  dragHandleListeners,
+  onSave,
+  onEditingChange,
   onDelete,
   onMoveUp,
   onMoveDown,
@@ -71,6 +77,7 @@ export function QuestionEditCard({
   const rp = t.reviewPage;
   const [isAnswerOpen, setIsAnswerOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [showAskAI, setShowAskAI] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
@@ -88,31 +95,37 @@ export function QuestionEditCard({
     setEditRationale(question.rationale ?? "");
     setEditSampleAnswer(question.sampleAnswer ?? "");
     setIsEditing(true);
+    onEditingChange?.(true);
   }
 
   function cancelEdit() {
     setIsEditing(false);
+    onEditingChange?.(false);
   }
 
-  function saveEdit() {
-    onUpdate({
+  async function saveEdit() {
+    if (isSaving) return;
+    setIsSaving(true);
+    const ok = await onSave({
       question: editQuestion,
       questionType: editType,
       difficulty: editDifficulty,
       rationale: editRationale,
       sampleAnswer: editSampleAnswer,
-      isEdited: true,
     });
-    setIsEditing(false);
+    setIsSaving(false);
+    if (ok) {
+      setIsEditing(false);
+      onEditingChange?.(false);
+    }
   }
 
-  function handleApplyAISuggestion(suggestion: string) {
-    // Pre-fill edit form with AI suggestion so HR can review/adjust before saving
-    setEditQuestion(suggestion);
-    setEditType(question.questionType);
-    setEditDifficulty(question.difficulty);
-    setEditRationale(question.rationale ?? "");
-    setEditSampleAnswer(question.sampleAnswer ?? "");
+  function handleApplyAISuggestion(suggestion: QuestionSuggestion) {
+    setEditQuestion(suggestion.question);
+    setEditType((suggestion.questionType as QuestionType) ?? question.questionType);
+    setEditDifficulty((suggestion.difficulty as DifficultyLevel) ?? question.difficulty);
+    setEditRationale(suggestion.rationale ?? question.rationale ?? "");
+    setEditSampleAnswer(suggestion.sampleAnswer ?? question.sampleAnswer ?? "");
     setIsEditing(true);
     setShowAskAI(false);
   }
@@ -126,15 +139,17 @@ export function QuestionEditCard({
           ? "border-primary/50 shadow-sm"
           : "border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900"
     )}>
-      {/* Main Card — stop pointer propagation when editing so text inputs work freely */}
-      <div
-        className="p-4 sm:p-5"
-        onPointerDown={isEditing ? (e) => e.stopPropagation() : undefined}
-      >
+      <div className="p-4 sm:p-5">
         <div className="flex items-start gap-3">
           {/* Drag handle + index */}
           <div className="flex flex-col items-center gap-1 shrink-0 mt-0.5">
-            <div className="text-gray-300 dark:text-gray-600 pointer-events-none select-none">
+            <div
+              className={cn(
+                "text-gray-300 dark:text-gray-600 select-none touch-none",
+                dragHandleListeners ? "cursor-grab active:cursor-grabbing" : "pointer-events-none"
+              )}
+              {...(dragHandleListeners ?? {})}
+            >
               <GripVertical size={14} />
             </div>
             <div className={cn("flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-bold", portalMutedBg, portalHeading)}>
@@ -245,21 +260,29 @@ export function QuestionEditCard({
                 <div className="flex gap-2">
                   <button
                     type="button"
-                    onClick={saveEdit}
-                    disabled={!editQuestion.trim()}
-                    className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold rounded-lg bg-primary text-white hover:bg-primary/90 disabled:opacity-50 transition-colors"
+                    onClick={() => void saveEdit()}
+                    disabled={!editQuestion.trim() || isSaving}
+                    className="relative flex items-center gap-1.5 px-4 py-2 text-sm font-semibold rounded-lg bg-primary text-white hover:bg-primary/90 disabled:opacity-50 transition-colors overflow-hidden"
                   >
-                    <Check size={13} />
-                    {rp.questionActions.save}
+                    {!isSaving && (
+                      <span className="absolute inset-0 rounded-lg bg-white/20 animate-ping pointer-events-none" />
+                    )}
+                    {isSaving ? (
+                      <Loader2 size={13} className="animate-spin" />
+                    ) : (
+                      <Check size={13} />
+                    )}
+                    {isSaving ? "Đang lưu..." : rp.questionActions.save}
                   </button>
                   <button
                     type="button"
                     onClick={cancelEdit}
+                    disabled={isSaving}
                     className={cn(
                       "flex items-center gap-1.5 px-4 py-2 text-sm font-semibold rounded-lg border transition-colors",
                       portalCard,
                       portalHeading,
-                      "hover:bg-gray-50 dark:hover:bg-gray-800"
+                      "hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50"
                     )}
                   >
                     <X size={13} />
