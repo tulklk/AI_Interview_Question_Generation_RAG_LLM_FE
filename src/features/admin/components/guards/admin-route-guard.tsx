@@ -2,8 +2,8 @@
 
 import { useEffect, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2 } from "lucide-react";
 import { useUser } from "@/features/auth/context/user-context";
+import { AiLoadingSpinner } from "@/shared/components/common/ai-loading-spinner";
 import { useToast } from "@/shared/providers/toast-context";
 import { useLanguage } from "@/shared/providers/language-context";
 import { getUserRole, isAuthenticated, getRoleRedirect } from "@/core/auth/permissions";
@@ -40,7 +40,7 @@ export function AdminRouteGuard({ children }: AdminRouteGuardProps) {
   if (loading) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
-        <Loader2 size={32} className="animate-spin text-[#6c47ff]" />
+        <AiLoadingSpinner />
       </div>
     );
   }

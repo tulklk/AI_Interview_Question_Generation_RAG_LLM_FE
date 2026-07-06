@@ -53,7 +53,7 @@ function applyTheme(theme: ThemeMode) {
   const style = document.createElement("style");
   style.appendChild(
     document.createTextNode(
-      "*,*::before,*::after{transition:none !important;animation:none !important}"
+      "*,*::before,*::after{transition:none !important}"
     )
   );
   document.head.appendChild(style);

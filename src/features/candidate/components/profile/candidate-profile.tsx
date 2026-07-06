@@ -28,6 +28,7 @@ import { getCurrentUser, updateCandidateProfile } from "@/features/auth/services
 import { AvatarUpload } from "@/shared/components/common/avatar-upload";
 import { uploadAvatarToCloudinary } from "@/shared/utils/cloudinary";
 import { mapAvatarUploadError } from "@/shared/utils/avatar-upload-messages";
+import { AiLoadingSpinner } from "@/shared/components/common/ai-loading-spinner";
 import { SectionCard, Field } from "@/features/candidate/components/ui/section-card";
 import {
   portalCard,
@@ -238,9 +239,8 @@ export function CandidateProfile() {
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[calc(100vh-12rem)] gap-4">
-        <span className="w-14 h-14 border-[3px] border-primary/25 border-t-primary rounded-full animate-spin" />
-        <span className={cn("text-sm font-medium", portalSubtextAlt)}>{p.loading}</span>
+      <div className="flex items-center justify-center min-h-[calc(100vh-12rem)]">
+        <AiLoadingSpinner text={p.loading} />
       </div>
     );
   }

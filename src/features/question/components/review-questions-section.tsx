@@ -1,8 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
-import { Plus, BookMarked, CheckCircle2, Loader2, AlertCircle, RefreshCw, ChevronLeft, ChevronRight, X } from "lucide-react";
+import { Plus, BookMarked, CheckCircle2, Loader2, AlertCircle, RefreshCw, ChevronLeft, ChevronRight, X, Check } from "lucide-react";
+import { AiLoadingSpinner } from "@/shared/components/common/ai-loading-spinner";
 import {
   DndContext,
   closestCenter,
@@ -32,7 +34,7 @@ import {
 } from "@/shared/utils/portal-ui";
 import type { GeneratedQuestion, GenerationStatus } from "@/features/interview/types/generation-session";
 import { updateLocalSessionQuestions } from "@/features/interview/utils/local-history";
-import { updateJobQuestion, deleteJobQuestion, addJobQuestion, saveJobDraft } from "@/features/interview/services/interview.service";
+import { updateJobQuestion, deleteJobQuestion, addJobQuestion, saveJobDraft, reorderJobQuestions } from "@/features/interview/services/interview.service";
 import { QuestionEditCard } from "./question-edit-card";
 import { AddQuestionDialog } from "./add-question-dialog";
 
@@ -44,7 +46,8 @@ interface SortableCardProps {
   sessionId: string;
   isFirst: boolean;
   isLast: boolean;
-  onUpdate: (changes: Partial<GeneratedQuestion>) => void;
+  onSave: (changes: Partial<GeneratedQuestion>) => Promise<boolean>;
+  onEditingChange: (editing: boolean) => void;
   onDelete: () => void;
   onMoveUp: () => void;
   onMoveDown: () => void;
@@ -56,7 +59,8 @@ function SortableCard({
   sessionId,
   isFirst,
   isLast,
-  onUpdate,
+  onSave,
+  onEditingChange,
   onDelete,
   onMoveUp,
   onMoveDown,
@@ -74,12 +78,10 @@ function SortableCard({
     <div
       ref={setNodeRef}
       {...attributes}
-      {...listeners}
       style={{
         transform: CSS.Transform.toString(transform),
         transition,
         position: "relative",
-        cursor: isDragging ? "grabbing" : "grab",
         opacity: isDragging ? 0.25 : 1,
       }}
     >
@@ -89,7 +91,9 @@ function SortableCard({
         sessionId={sessionId}
         isFirst={isFirst}
         isLast={isLast}
-        onUpdate={onUpdate}
+        dragHandleListeners={listeners}
+        onSave={onSave}
+        onEditingChange={onEditingChange}
         onDelete={onDelete}
         onMoveUp={onMoveUp}
         onMoveDown={onMoveDown}
@@ -121,12 +125,22 @@ export function ReviewQuestionsSection({
   const rp = t.reviewPage;
   const [questions, setQuestions] = useState<GeneratedQuestion[]>(initialQuestions);
   const [deletedIds, setDeletedIds] = useState<string[]>([]);
+  const [editingIds, setEditingIds] = useState<string[]>([]);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [toastVariant, setToastVariant] = useState<"success" | "delete">("success");
+  const [toastVisible, setToastVisible] = useState(false);
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showSaveDialog, setShowSaveDialog] = useState(false);
+  const [showNavWarning, setShowNavWarning] = useState(false);
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [page, setPage] = useState(1);
 
+  const router = useRouter();
   const isEditable = status === "COMPLETED" && !readOnly;
+  const bypassGuardRef = useRef(false);
+  const [pendingHref, setPendingHref] = useState<string | null>(null);
+
+  const hasOpenEdits = isEditable && editingIds.length > 0;
   const [activeId, setActiveId] = useState<string | null>(null);
 
   const sensors = useSensors(
@@ -134,32 +148,149 @@ export function ReviewQuestionsSection({
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
+  // Warn browser close / hard refresh
+  useEffect(() => {
+    if (!hasOpenEdits) return;
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [hasOpenEdits]);
+
+  // Block browser back button and show in-app dialog
+  useEffect(() => {
+    if (!hasOpenEdits) return;
+    bypassGuardRef.current = false;
+    window.history.pushState({ __rqs_guard__: 1 }, "");
+
+    const handler = () => {
+      if (bypassGuardRef.current) return;
+      window.history.pushState({ __rqs_guard__: 1 }, "");
+      setShowNavWarning(true);
+    };
+
+    window.addEventListener("popstate", handler);
+    return () => window.removeEventListener("popstate", handler);
+  }, [hasOpenEdits]);
+
+  // Intercept Next.js <Link> / sidebar navigation
+  useEffect(() => {
+    if (!hasOpenEdits) return;
+
+    function onLinkClick(e: MouseEvent) {
+      const anchor = (e.target as Element).closest("a[href]");
+      if (!anchor) return;
+      const href = anchor.getAttribute("href") ?? "";
+      if (!href.startsWith("/")) return;
+      const targetPath = href.split("?")[0].split("#")[0];
+      if (targetPath === window.location.pathname) return;
+      e.preventDefault();
+      e.stopPropagation();
+      setPendingHref(href);
+      setShowNavWarning(true);
+    }
+
+    document.addEventListener("click", onLinkClick, true);
+    return () => document.removeEventListener("click", onLinkClick, true);
+  }, [hasOpenEdits]);
+
+  function handleLeaveAnyway() {
+    bypassGuardRef.current = true;
+    setShowNavWarning(false);
+    if (pendingHref) {
+      router.push(pendingHref);
+      setPendingHref(null);
+    } else {
+      window.history.go(-2);
+    }
+  }
+
+  function handleStayToSave() {
+    setShowNavWarning(false);
+    setPendingHref(null);
+  }
+
   function handleDragStart(event: DragStartEvent) {
     setActiveId(String(event.active.id));
+  }
+
+  // Build an order payload from questions that have real BE IDs.
+  // Synthetic IDs (manual-, q-, stub-) are filtered out; their on-disk order is set by position.
+  function buildReorderPayload(next: GeneratedQuestion[]) {
+    return next
+      .filter(
+        (q) =>
+          !q.id.startsWith("manual-") &&
+          !q.id.startsWith("q-") &&
+          !q.id.startsWith("stub-")
+      )
+      .map((q) => ({ id: q.id, order: next.indexOf(q) + 1 }));
+  }
+
+  function persistReorder(next: GeneratedQuestion[]) {
+    if (sessionId.startsWith("local-")) return;
+    const items = buildReorderPayload(next);
+    if (items.length === 0) {
+      console.warn("[persistReorder] no valid question IDs — reorder skipped. IDs:", next.map(q => q.id));
+      return;
+    }
+    void reorderJobQuestions(sessionId, items);
   }
 
   function handleDragEnd(event: DragEndEvent) {
     setActiveId(null);
     const { active, over } = event;
     if (!over || active.id === over.id) return;
-    setQuestions((prev) => {
-      const oldIdx = prev.findIndex((q) => q.id === active.id);
-      const newIdx = prev.findIndex((q) => q.id === over.id);
-      if (oldIdx === -1 || newIdx === -1) return prev;
-      return arrayMove(prev, oldIdx, newIdx).map((q, i) => ({ ...q, orderIndex: i }));
-    });
+    const oldIdx = questions.findIndex((q) => q.id === String(active.id));
+    const newIdx = questions.findIndex((q) => q.id === String(over.id));
+    if (oldIdx === -1 || newIdx === -1) return;
+    const next = arrayMove(questions, oldIdx, newIdx).map((q, i) => ({ ...q, orderIndex: i }));
+    setQuestions(next);
+    persistReorder(next);
   }
 
-  function handleUpdate(id: string, changes: Partial<GeneratedQuestion>) {
-    setQuestions((prev) =>
-      prev.map((q) => (q.id === id ? { ...q, ...changes } : q))
-    );
+  function showToast(message: string, variant: "success" | "delete" = "success") {
+    setToastMessage(message);
+    setToastVariant(variant);
+    setToastVisible(false);
+    setTimeout(() => setToastVisible(true), 16);
+    setTimeout(() => setToastVisible(false), 2700);
+    setTimeout(() => setToastMessage(null), 3000);
+  }
+
+  async function handleSaveQuestion(id: string, changes: Partial<GeneratedQuestion>): Promise<boolean> {
+    const isSynthetic = id.startsWith("manual-") || id.startsWith("q-") || id.startsWith("stub-");
+    const isLocalSession = sessionId.startsWith("local-");
+
+    if (isLocalSession || isSynthetic) {
+      setQuestions((prev) => prev.map((q) => (q.id === id ? { ...q, ...changes } : q)));
+      return true;
+    }
+
+    const ok = await updateJobQuestion(sessionId, id, {
+      question: changes.question,
+      questionType: changes.questionType,
+      difficulty: changes.difficulty,
+      rationale: changes.rationale ?? null,
+      sampleAnswer: changes.sampleAnswer ?? null,
+    });
+
+    if (ok) {
+      setQuestions((prev) => prev.map((q) => (q.id === id ? { ...q, ...changes } : q)));
+      showToast("Chỉnh sửa câu hỏi thành công");
+    }
+    return ok;
+  }
+
+  function handleEditingChange(id: string, editing: boolean) {
+    setEditingIds((prev) => editing ? [...prev, id] : prev.filter((x) => x !== id));
   }
 
   function handleDelete(id: string) {
     setQuestions((prev) => {
       const next = prev.filter((q) => q.id !== id);
-      // If deleting the last item on this page, go back one page
       const newTotalPages = Math.max(1, Math.ceil(next.length / PAGE_SIZE));
       setPage((p) => Math.min(p, newTotalPages));
       return next;
@@ -167,24 +298,25 @@ export function ReviewQuestionsSection({
     if (!id.startsWith("manual-")) {
       setDeletedIds((prev) => [...prev, id]);
     }
+    showToast("Đã xóa câu hỏi", "delete");
   }
 
   function handleMoveUp(index: number) {
     if (index === 0) return;
-    setQuestions((prev) => {
-      const next = [...prev];
-      [next[index - 1], next[index]] = [next[index], next[index - 1]];
-      return next.map((q, i) => ({ ...q, orderIndex: i }));
-    });
+    const next = [...questions];
+    [next[index - 1], next[index]] = [next[index], next[index - 1]];
+    const ordered = next.map((q, i) => ({ ...q, orderIndex: i }));
+    setQuestions(ordered);
+    persistReorder(ordered);
   }
 
   function handleMoveDown(index: number) {
     if (index === questions.length - 1) return;
-    setQuestions((prev) => {
-      const next = [...prev];
-      [next[index], next[index + 1]] = [next[index + 1], next[index]];
-      return next.map((q, i) => ({ ...q, orderIndex: i }));
-    });
+    const next = [...questions];
+    [next[index], next[index + 1]] = [next[index + 1], next[index]];
+    const ordered = next.map((q, i) => ({ ...q, orderIndex: i }));
+    setQuestions(ordered);
+    persistReorder(ordered);
   }
 
   function handleAdd(newQ: Omit<GeneratedQuestion, "id" | "orderIndex">) {
@@ -192,13 +324,14 @@ export function ReviewQuestionsSection({
       ...newQ,
       id: `manual-${Date.now()}`,
       orderIndex: questions.length,
+      isEdited: true,
     };
     setQuestions((prev) => {
       const next = [...prev, question];
-      // Jump to the last page so user sees the newly added question
       setPage(Math.ceil(next.length / PAGE_SIZE));
       return next;
     });
+    showToast("Thêm câu hỏi thành công");
   }
 
   async function handleSaveDraft() {
@@ -229,25 +362,18 @@ export function ReviewQuestionsSection({
           )
         );
 
-        // 3. PUT edited existing questions
-        const editedQuestions = questions.filter((q) => q.isEdited && !q.id.startsWith("manual-"));
-        await Promise.all(
-          editedQuestions.map((q) =>
-            updateJobQuestion(sessionId, q.id, {
-              question: q.question,
-              questionType: q.questionType,
-              difficulty: q.difficulty,
-              rationale: q.rationale ?? null,
-              sampleAnswer: q.sampleAnswer ?? null,
-            })
-          )
-        );
+        // 3. Persist current question order
+        const reorderItems = buildReorderPayload(questions);
+        if (reorderItems.length > 0) {
+          await reorderJobQuestions(sessionId, reorderItems);
+        }
 
-        // 4. Mark as saved draft
+        // 5. Mark as saved draft
         await saveJobDraft(sessionId);
       }
 
       setDeletedIds([]);
+      setQuestions((prev) => prev.map((q) => ({ ...q, isEdited: false })));
       setSaveState("saved");
       setTimeout(() => setSaveState("idle"), 3000);
     } catch {
@@ -259,9 +385,8 @@ export function ReviewQuestionsSection({
   // Status banners
   if (status === "PROCESSING" || status === "QUEUED" || status === "CONFIRMED") {
     return (
-      <div className={cn(portalCard, "p-8 flex flex-col items-center gap-4 text-center")}>
-        <div className="w-12 h-12 rounded-full border-4 border-primary border-t-transparent animate-spin" />
-        <p className={cn("text-sm font-medium", portalHeading)}>{rp.processingBanner}</p>
+      <div className={cn(portalCard, "p-8")}>
+        <AiLoadingSpinner text={rp.processingBanner} />
       </div>
     );
   }
@@ -325,7 +450,7 @@ export function ReviewQuestionsSection({
               onClick={() => saveState === "idle" && setShowSaveDialog(true)}
               disabled={saveState === "saving"}
               className={cn(
-                "flex-1 sm:flex-none flex items-center justify-center gap-2 text-sm font-semibold px-4 py-2 rounded-lg transition-colors",
+                "relative flex-1 sm:flex-none flex items-center justify-center gap-2 text-sm font-semibold px-4 py-2 rounded-lg transition-colors",
                 saveState === "saved"
                   ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800"
                   : saveState === "error"
@@ -404,7 +529,8 @@ export function ReviewQuestionsSection({
                           sessionId={sessionId}
                           isFirst={globalIdx === 0}
                           isLast={globalIdx === questions.length - 1}
-                          onUpdate={(changes) => handleUpdate(q.id, changes)}
+                          onSave={(changes) => handleSaveQuestion(q.id, changes)}
+                          onEditingChange={(editing) => handleEditingChange(q.id, editing)}
                           onDelete={() => handleDelete(q.id)}
                           onMoveUp={() => handleMoveUp(globalIdx)}
                           onMoveDown={() => handleMoveDown(globalIdx)}
@@ -430,7 +556,7 @@ export function ReviewQuestionsSection({
                         isFirst={false}
                         isLast={false}
                         isDragging
-                        onUpdate={() => {}}
+                        onSave={() => Promise.resolve(true)}
                         onDelete={() => {}}
                         onMoveUp={() => {}}
                         onMoveDown={() => {}}
@@ -506,6 +632,89 @@ export function ReviewQuestionsSection({
           onAdd={handleAdd}
           onClose={() => setShowAddDialog(false)}
         />
+      )}
+
+      {/* Unsaved-changes navigation warning */}
+      {showNavWarning && createPortal(
+        <div
+          className="fixed inset-0 z-99999 flex items-center justify-center p-4"
+          onClick={(e) => { if (e.target === e.currentTarget) setShowNavWarning(false); }}
+        >
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowNavWarning(false)} />
+          <div className="relative z-10 w-full max-w-sm animate-fade-up">
+            <div className="hr-glass-card overflow-hidden">
+              <div className="h-0.5 bg-linear-to-r from-amber-400 via-orange-400 to-red-400" />
+              <div className="p-6">
+                <div className="flex items-start justify-between gap-3 mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-100 dark:border-amber-900/40 flex items-center justify-center shrink-0">
+                      <AlertCircle size={18} className="text-amber-500" />
+                    </div>
+                    <div>
+                      <h3 className={cn("text-sm font-semibold", portalHeading)}>Đang chỉnh sửa câu hỏi</h3>
+                      <p className={cn("text-xs mt-0.5", portalSubtext)}>Bạn chưa lưu câu hỏi đang chỉnh sửa</p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowNavWarning(false)}
+                    className={cn("p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors shrink-0", portalSubtext)}
+                  >
+                    <X size={15} />
+                  </button>
+                </div>
+
+                <div className="rounded-xl bg-amber-50/60 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/30 px-4 py-3 mb-5">
+                  <p className={cn("text-sm leading-relaxed", portalHeading)}>
+                    Bạn đang chỉnh sửa câu hỏi chưa lưu. Nhấn <strong>Ở lại</strong> để lưu, hoặc <strong>Bỏ qua</strong> để rời trang và mất thay đổi.
+                  </p>
+                </div>
+
+                <div className="flex gap-2.5">
+                  <button
+                    type="button"
+                    onClick={handleLeaveAnyway}
+                    className={cn(
+                      "flex-1 py-2.5 text-sm font-semibold rounded-xl border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors",
+                      portalHeading
+                    )}
+                  >
+                    Bỏ qua
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleStayToSave}
+                    className="flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-semibold rounded-xl shimmer-button hr-cta-btn text-white"
+                  >
+                    <Check size={14} />
+                    Ở lại để lưu
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Question action toast */}
+      {toastMessage && createPortal(
+        <div className={cn(
+          "fixed bottom-6 right-6 z-99999 flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg text-white",
+          "transition-all duration-300 ease-in-out",
+          toastVariant === "delete"
+            ? "bg-slate-700 dark:bg-slate-600"
+            : "bg-emerald-500",
+          toastVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-3"
+        )}>
+          {toastVariant === "delete" ? (
+            <X size={16} className="shrink-0" />
+          ) : (
+            <CheckCircle2 size={16} className="shrink-0" />
+          )}
+          <span className="text-sm font-semibold">{toastMessage}</span>
+        </div>,
+        document.body
       )}
 
       {/* Save Draft Confirmation Dialog — rendered via portal to escape ancestor transforms */}

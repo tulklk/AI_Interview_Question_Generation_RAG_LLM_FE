@@ -13,6 +13,7 @@ import {
   AlertCircle,
   BookMarked,
 } from "lucide-react";
+import { AiLoadingSpinner } from "@/shared/components/common/ai-loading-spinner";
 import { JdInputCard } from "./jd-input-card";
 import { KbDocPicker } from "./kb-doc-picker";
 import { PlanEditCard } from "./plan-edit-card";
@@ -184,7 +185,7 @@ export function GenerateForm() {
 
   // ── Polling state ──
   const [pollingPhase,   setPollingPhase]   = useState<"plan" | "questions">("plan");
-  const [statusLabel,    setStatusLabel]    = useState<string>("Đang xử lý...");
+  const [statusLabel,    setStatusLabel]    = useState<string>("");
   const [isApproving,    setIsApproving]    = useState(false);
   const pollingRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pollingActiveRef = useRef(false);
@@ -503,7 +504,7 @@ export function GenerateForm() {
       if (!session || !pollingActiveRef.current) return;
 
       if (session.isPolling) {
-        setStatusLabel(session.statusLabel ?? "Đang xử lý...");
+        setStatusLabel(session.statusLabel ?? "");
         pollingRef.current = setTimeout(() => pollJob(jId), 3000);
         return;
       }
@@ -774,14 +775,11 @@ export function GenerateForm() {
     return (
       <div className="hr-glass-card overflow-hidden animate-fade-up">
         <div className="h-0.5 bg-linear-to-r from-violet-400 via-purple-500 to-cyan-400" />
-        <div className="p-8 flex flex-col items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl hr-loader-box flex items-center justify-center">
-            <Loader2 size={20} className="text-[#7C3AED] dark:text-[#a78bff] animate-spin" />
-          </div>
-          <div className="text-center">
-            <p className={cn("text-sm font-semibold", portalHeading)}>Đang khôi phục phiên làm việc…</p>
-            <p className={cn("text-xs mt-1", portalSubtext)}>Vui lòng đợi trong giây lát</p>
-          </div>
+        <div className="p-8">
+          <AiLoadingSpinner
+            text="Đang khôi phục phiên làm việc…"
+            subtext="Vui lòng đợi trong giây lát"
+          />
         </div>
       </div>
     );
@@ -795,15 +793,13 @@ export function GenerateForm() {
         <FlowStepIndicator currentStep={currentStep} steps={t.generatePage.flowSteps} />
 
         <div className="flex flex-col items-center justify-center gap-7 min-h-[55vh]">
-          {/* Dual-ring counter-rotating spinner with soft glow */}
-          <div className="relative flex items-center justify-center">
-            <div className="ai-spin-glow" />
-            <div className="ai-spin-outer" />
-            <div className="absolute ai-spin-inner" />
-          </div>
-
-          {/* Status label with shimmer gradient */}
-          <p className="text-[15px] font-semibold ai-status-text">{statusLabel}</p>
+          <AiLoadingSpinner
+            text={
+              pollingPhase === "questions"
+                ? t.generatePage.statusGeneratingQuestions
+                : t.generatePage.statusGeneratingPlan
+            }
+          />
 
           {/* Minimal "create another" action */}
           <button
