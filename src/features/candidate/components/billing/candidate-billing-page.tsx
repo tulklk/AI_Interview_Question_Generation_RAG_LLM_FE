@@ -391,7 +391,7 @@ export function CandidateBillingPage() {
 
   if (loading) {
     return (
-      <div className="py-8 flex justify-center">
+      <div className="flex items-center justify-center min-h-[calc(100vh-16rem)]">
         <AiLoadingSpinner text={b.loading} />
       </div>
     );
