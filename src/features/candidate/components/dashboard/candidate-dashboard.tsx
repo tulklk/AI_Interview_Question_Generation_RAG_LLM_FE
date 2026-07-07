@@ -56,9 +56,9 @@ export function CandidateDashboard() {
             icon={stat.icon}
             iconBg={stat.iconBg}
             iconColor={stat.iconColor}
-            value={stat.value}
+            value={stat.id === "streak" ? p.statValues.streak : stat.id === "readiness" ? p.statValues.readiness : stat.value}
             label={p.statLabels[i] ?? stat.label}
-            trend={stat.trend}
+            trend={p.statTrends[i] ?? stat.trend}
           />
         ))}
       </motion.div>
@@ -167,7 +167,7 @@ export function CandidateDashboard() {
             </div>
             <p className={cn("text-[12px] leading-[18px] mb-4", portalSubtextAlt)}>{p.aiRecommendation}</p>
             <Link
-              href="/jobseeker"
+              href="/jobseeker/practice"
               className="flex items-center gap-1.5 text-[12px] font-[600] text-primary hover:text-primary-hover transition-colors"
             >
               {p.startPractice}
@@ -183,7 +183,7 @@ export function CandidateDashboard() {
             <h2 className={cn("text-[20px] font-[700]", portalHeadingAlt)}>{p.recommendedTitle}</h2>
             <p className={cn("text-[14px] mt-0.5", portalSubtextAlt)}>{p.recommendedSubtitle}</p>
           </div>
-          <Link href="/jobseeker" className="flex items-center gap-1 text-[13px] font-[600] text-primary hover:text-primary-hover transition-colors">
+          <Link href="/jobseeker/practice" className="flex items-center gap-1 text-[13px] font-[600] text-primary hover:text-primary-hover transition-colors">
             {p.viewAllSets}
             <BarChart2 size={13} />
           </Link>

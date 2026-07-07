@@ -19,7 +19,7 @@ import type {
 // ── Navigation ─────────────────────────────────────────────────────────────
 export const jobseekerNavItems: JobseekerNavItem[] = [
   { label: "Dashboard", href: "/jobseeker/dashboard", icon: LayoutDashboard },
-  { label: "Practice Now", href: "/jobseeker", icon: BookOpen },
+  { label: "Practice Now", href: "/jobseeker/practice", icon: BookOpen },
   {
     label: "History",
     href: "/jobseeker/history",
@@ -262,6 +262,9 @@ export const practiceSessions: PracticeSession[] = [
 ];
 
 // ── Candidate Stats ────────────────────────────────────────────────────────
+const iconBg = "bg-gray-100 dark:bg-gray-800 shadow-sm ring-1 ring-black/5 dark:ring-white/10";
+const iconColor = "text-gray-900 dark:text-gray-100";
+
 export const candidateStats: CandidateStat[] = [
   {
     id: "sessions",
@@ -270,8 +273,8 @@ export const candidateStats: CandidateStat[] = [
     trend: "+3 this week",
     trendPositive: true,
     icon: BookOpen,
-    iconBg: "bg-blue-50",
-    iconColor: "text-blue-500",
+    iconBg,
+    iconColor,
   },
   {
     id: "avg-score",
@@ -280,8 +283,8 @@ export const candidateStats: CandidateStat[] = [
     trend: "+4% vs last week",
     trendPositive: true,
     icon: Target,
-    iconBg: "bg-violet-50",
-    iconColor: "text-violet-500",
+    iconBg,
+    iconColor,
   },
   {
     id: "streak",
@@ -290,8 +293,8 @@ export const candidateStats: CandidateStat[] = [
     trend: "Personal best",
     trendPositive: true,
     icon: Trophy,
-    iconBg: "bg-amber-50",
-    iconColor: "text-amber-500",
+    iconBg,
+    iconColor,
   },
   {
     id: "readiness",
@@ -300,8 +303,8 @@ export const candidateStats: CandidateStat[] = [
     trend: "AI assessed",
     trendPositive: true,
     icon: TrendingUp,
-    iconBg: "bg-emerald-50",
-    iconColor: "text-emerald-500",
+    iconBg,
+    iconColor,
   },
 ];
 

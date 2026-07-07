@@ -54,13 +54,13 @@ export function GoogleOAuthButton({
   onError,
 }: GoogleOAuthButtonProps) {
   const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ?? "";
-  const disabled = loading || !clientId;
+  const noClientId = !clientId;
 
   return (
     <div className="auth-social-button relative h-10 min-w-0">
       {/* Visual layer (not clickable) */}
       <div
-        className={`${oauthBtnClass} pointer-events-none select-none ${disabled ? "opacity-60" : ""}`}
+        className={`${oauthBtnClass} pointer-events-none select-none ${(loading || noClientId) ? "opacity-60" : ""}`}
         aria-hidden
       >
         {loading ? (
@@ -73,10 +73,10 @@ export function GoogleOAuthButton({
         )}
       </div>
 
-      {/* Real Google button — transparent overlay receives user clicks */}
-      {!disabled && (
+      {/* Real Google button — kept mounted to avoid re-initializing GSI on loading state changes */}
+      {!noClientId && (
         <div
-          className="absolute inset-0 z-10 overflow-hidden rounded-lg opacity-[0.011] cursor-pointer"
+          className={`absolute inset-0 z-10 overflow-hidden rounded-lg ${loading ? "pointer-events-none opacity-0" : "opacity-[0.011] cursor-pointer"}`}
           title="Google"
         >
           <GoogleLogin
@@ -85,7 +85,6 @@ export function GoogleOAuthButton({
             useOneTap={false}
             text={mode === "signup" ? "signup_with" : "signin_with"}
             size="large"
-            width="100%"
             containerProps={{
               style: { width: "100%", height: "100%", display: "flex", alignItems: "center" },
             }}

@@ -9,6 +9,7 @@ import { jobseekerNavItems } from "@/features/candidate/data/jobseeker";
 import { useLanguage } from "@/shared/providers/language-context";
 import { BrandLogo } from "@/shared/components/common/brand-logo";
 import { SidebarUserFooter } from "@/features/hr/components/layout/sidebar-user-footer";
+import { useCandidateSubscription } from "@/features/candidate/context/candidate-subscription-context";
 
 const listVariants: Variants = {
   hidden: {},
@@ -29,6 +30,8 @@ export function JobseekerSidebar({ open, onClose }: JobseekerSidebarProps) {
   const pathname = usePathname();
   const { t } = useLanguage();
   const s = t.jobseekerSidebar;
+  const { planType } = useCandidateSubscription();
+  const isPremium = planType === "PREMIUM";
 
   const sidebarContent = (
     <>
@@ -61,12 +64,7 @@ export function JobseekerSidebar({ open, onClose }: JobseekerSidebarProps) {
           animate="show"
         >
           {jobseekerNavItems.map((item) => {
-            const isActive =
-              item.href === "/jobseeker"
-                ? pathname === "/jobseeker"
-                : item.href !== "/jobseeker/settings"
-                ? pathname.startsWith(item.href)
-                : pathname === item.href;
+            const isActive = pathname.startsWith(item.href);
             const label = s.nav[item.href as keyof typeof s.nav] ?? item.label;
 
             return (
@@ -142,7 +140,7 @@ export function JobseekerSidebar({ open, onClose }: JobseekerSidebarProps) {
             {s.practiceNow.desc}
           </p>
           <Link
-            href="/jobseeker"
+            href="/jobseeker/practice"
             onClick={() => onClose?.()}
             className="shimmer-button mt-3 inline-block text-xs font-semibold text-white hr-cta-btn px-4 py-2 rounded-lg w-full text-center"
           >
@@ -159,8 +157,13 @@ export function JobseekerSidebar({ open, onClose }: JobseekerSidebarProps) {
         <SidebarUserFooter
           logoutTitle={s.logoutTitle}
           badge={
-            <span className="text-[10px] font-bold text-cyan-600 dark:text-cyan-300 bg-cyan-50 dark:bg-cyan-950 px-2 py-0.5 rounded-full shrink-0">
-              Free
+            <span className={cn(
+              "text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0",
+              isPremium
+                ? "text-violet-700 dark:text-violet-300 bg-violet-50 dark:bg-violet-950/60"
+                : "text-cyan-600 dark:text-cyan-300 bg-cyan-50 dark:bg-cyan-950"
+            )}>
+              {isPremium ? "Premium" : "Free"}
             </span>
           }
         />
@@ -171,7 +174,7 @@ export function JobseekerSidebar({ open, onClose }: JobseekerSidebarProps) {
   return (
     <>
       {/* Desktop sidebar */}
-      <aside className="hidden lg:flex flex-col w-[250px] shrink-0 h-screen hr-sidebar overflow-y-auto">
+      <aside className="hidden lg:flex flex-col w-62.5 shrink-0 h-screen hr-sidebar overflow-y-auto">
         {sidebarContent}
       </aside>
 
