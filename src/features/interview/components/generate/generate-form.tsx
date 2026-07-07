@@ -1008,7 +1008,7 @@ export function GenerateForm() {
         <div className="rounded-xl border border-indigo-200 dark:border-indigo-800 bg-indigo-50/90 dark:bg-indigo-950/40 px-4 py-3 text-sm text-indigo-950 dark:text-indigo-200 animate-fade-up">
           <p className="font-semibold mb-1">{t.generatePage.noAiPlan.title}</p>
           <p className="mb-2">{t.generatePage.noAiPlan.body}</p>
-          <Link href="/hr/settings#billing" className="inline-flex font-semibold text-primary hover:underline">
+          <Link href="/hr/settings?tab=billing" className="inline-flex font-semibold text-primary hover:underline">
             {t.generatePage.noAiPlan.goToPlans}
           </Link>
         </div>
@@ -1018,7 +1018,7 @@ export function GenerateForm() {
         <div className="rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40 px-4 py-3 text-sm text-amber-950 dark:text-amber-200 animate-fade-up">
           <p className="font-semibold mb-1">{t.generatePage.quota.exceededTitle}</p>
           <p className="mb-2">{t.generatePage.quota.exceededBody}</p>
-          <Link href="/hr/settings#billing" className="inline-flex font-semibold text-primary hover:underline">
+          <Link href="/hr/settings?tab=billing" className="inline-flex font-semibold text-primary hover:underline">
             {t.generatePage.quota.goToBilling}
           </Link>
         </div>
