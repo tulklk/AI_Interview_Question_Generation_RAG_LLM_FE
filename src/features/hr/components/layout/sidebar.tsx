@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Sparkles, X } from "lucide-react";
+import { CreditCard, Sparkles, X } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { isHrNavActive } from "@/shared/utils/nav";
 import { navItems } from "@/features/dashboard/data/dashboard";
@@ -23,6 +23,7 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
   const { t } = useLanguage();
   const { planId } = useHrSubscription();
   const planShortBadge = t.settingsPage.subscription.planShortBadge as Record<HrPlanId, string>;
+  const planNames = t.settingsPage.subscription.planNames as Record<HrPlanId, string>;
   const short = planShortBadge[planId]?.trim();
   const s = t.sidebar;
 
@@ -168,13 +169,27 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
         </div>
       </div>
 
-      <SidebarUserFooter
-        logoutTitle={s.logoutTitle}
-        badge={
-          short ? (
+      {/* ── Plan section ──────────────────────────────────────────────── */}
+      <div className="px-4 mb-1">
+        <Link
+          href="/hr/settings"
+          className="flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors group"
+        >
+          <div className="w-6 h-6 rounded-md bg-teal-50 dark:bg-teal-950/40 flex items-center justify-center shrink-0">
+            <CreditCard size={12} className="text-teal-500 dark:text-teal-400" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-semibold text-gray-800 dark:text-gray-100 leading-tight truncate">
+              {planNames[planId]}
+            </p>
+            <p className="text-[10px] font-semibold text-[#7C3AED] dark:text-[#a78bff] leading-tight">
+              {planId === "basic" ? s.planSection.upgradeBtn : s.planSection.manageBtn}
+            </p>
+          </div>
+          {short && (
             <span
               className={cn(
-                "text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 hr-plan-badge",
+                "text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0",
                 planId === "basic" && "text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-800",
                 planId === "professional" && "text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60",
                 planId === "business" && "text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/60",
@@ -183,8 +198,13 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
             >
               {short}
             </span>
-          ) : null
-        }
+          )}
+        </Link>
+      </div>
+
+      <SidebarUserFooter
+        logoutTitle={s.logoutTitle}
+        badge={null}
       />
     </aside>
   );

@@ -68,10 +68,8 @@ export function AppShell({ children, breadcrumb, pageTitle }: AppShellProps) {
   }, [addToast, loading, t.dashboardPage, user?.fullName]);
 
   const planNames = t.settingsPage.subscription.planNames as Record<HrPlanId, string>;
-  const planDisplay = t.settingsPage.subscription.userPlanTemplate.replace(
-    "{{plan}}",
-    planNames[planId]
-  );
+  const planShortBadge = t.settingsPage.subscription.planShortBadge as Record<HrPlanId, string>;
+  const planDisplay = planShortBadge[planId]?.trim() || planNames[planId];
 
   const routes = t.appShell.routes;
   const translatedTitle =
