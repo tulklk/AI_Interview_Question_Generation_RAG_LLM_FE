@@ -301,7 +301,7 @@ export function HrBillingSubscription() {
           <p className="font-semibold mb-1">{t.hrSubscription.quotaExceededTitle}</p>
           <p>
             {t.hrSubscription.quotaExceededBody}{" "}
-            <Link href="/hr/settings#billing" className="font-semibold text-[#6c47ff] hover:underline">
+            <Link href="/hr/settings?tab=billing" className="font-semibold text-[#6c47ff] hover:underline">
               {t.hrSubscription.goToSubscription}
             </Link>
           </p>
