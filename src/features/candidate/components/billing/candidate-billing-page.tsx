@@ -652,7 +652,7 @@ export function CandidateBillingPage() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-2 mb-1">
                     <span className={cn("text-sm font-medium", portalHeading)}>{item.label}</span>
-                    {!isPremium && item.limited && item.limit !== null && typeof item.used === "number" ? (
+                    {!isPremium && item.limited && typeof item.used === "number" && typeof item.limit === "number" ? (
                       <span className="text-[11px] text-gray-500 dark:text-gray-400 tabular-nums">
                         {item.used}/{item.limit}{item.perSet ? ` ${b.perSet}` : ""}
                       </span>
@@ -682,7 +682,7 @@ export function CandidateBillingPage() {
                       </span>
                     )}
                   </div>
-                  {!isPremium && item.limited && item.limit !== null && typeof item.used === "number" ? (
+                  {!isPremium && item.limited && typeof item.used === "number" && typeof item.limit === "number" ? (
                     <QuotaBar used={item.used} limit={item.limit} />
                   ) : (
                     <div className="h-1.5 rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden">
