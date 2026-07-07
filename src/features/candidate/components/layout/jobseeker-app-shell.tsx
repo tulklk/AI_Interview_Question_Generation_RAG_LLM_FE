@@ -13,6 +13,10 @@ import {
   hasLoginWelcomePending,
 } from "@/features/auth/utils/login-welcome";
 import { getInitials, resolveAvatarUrl } from "@/shared/utils/user-display";
+import {
+  CandidateSubscriptionProvider,
+  useCandidateSubscription,
+} from "@/features/candidate/context/candidate-subscription-context";
 
 interface JobseekerAppShellProps {
   children: ReactNode;
@@ -20,7 +24,7 @@ interface JobseekerAppShellProps {
   pageTitle: string;
 }
 
-export function JobseekerAppShell({
+function JobseekerAppShellInner({
   children,
   breadcrumb,
   pageTitle,
@@ -29,6 +33,7 @@ export function JobseekerAppShell({
   const pathname = usePathname();
   const { addToast } = useToast();
   const { user, loading } = useUser();
+  const { planType } = useCandidateSubscription();
   const welcomedRef = useRef(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -84,7 +89,7 @@ export function JobseekerAppShell({
           user={{
             initials: user?.fullName ? getInitials(user.fullName) : loading ? "..." : "??",
             name: user?.fullName ?? (loading ? "..." : "User"),
-            plan: "Free",
+            plan: planType === "PREMIUM" ? "Premium" : "Free",
             avatarUrl: resolveAvatarUrl(user),
           }}
         />
@@ -97,5 +102,13 @@ export function JobseekerAppShell({
         </main>
       </div>
     </div>
+  );
+}
+
+export function JobseekerAppShell(props: JobseekerAppShellProps) {
+  return (
+    <CandidateSubscriptionProvider>
+      <JobseekerAppShellInner {...props} />
+    </CandidateSubscriptionProvider>
   );
 }
