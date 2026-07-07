@@ -20,6 +20,7 @@ import { cn } from "@/lib/cn";
 import { portalHeading, portalSubtext, portalInput } from "@/shared/utils/portal-ui";
 import type { KnowledgeDocument, DocumentStatus } from "@/features/knowledge/types/knowledge";
 import { useLanguage } from "@/shared/providers/language-context";
+import { useToast } from "@/shared/providers/toast-context";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -454,12 +455,12 @@ export function KnowledgePageContent({
 }: KnowledgePageContentProps) {
   const { t } = useLanguage();
   const kb = t.knowledgePage;
+  const { addToast } = useToast();
 
   const [docs, setDocs] = useState<KnowledgeDocument[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [uploadingFileName, setUploadingFileName] = useState("");
-  const [uploadError, setUploadError] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [reingestingId, setReingestingId] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<KnowledgeDocument | null>(null);
@@ -505,18 +506,18 @@ export function KnowledgePageContent({
   async function handleFiles(files: File[]) {
     const tooBig = files.find((f) => f.size > MAX_FILE_MB * 1024 * 1024);
     if (tooBig) {
-      setUploadError(kb.fileTooLarge.replace("{{name}}", tooBig.name).replace("{{n}}", String(MAX_FILE_MB)));
+      addToast("error", kb.fileTooLarge.replace("{{name}}", tooBig.name).replace("{{n}}", String(MAX_FILE_MB)));
       return;
     }
-    setUploadError(null);
     for (const file of files) {
       setUploading(true);
       setUploadingFileName(file.name);
       const result = await onUpload(file);
       if (result) {
         setDocs((prev) => [result, ...prev]);
+        addToast("success", kb.uploadSuccess.replace("{{name}}", file.name));
       } else {
-        setUploadError(kb.uploadFailed.replace("{{name}}", file.name));
+        addToast("error", kb.uploadFailed.replace("{{name}}", file.name));
       }
       setUploading(false);
       setUploadingFileName("");
@@ -526,7 +527,12 @@ export function KnowledgePageContent({
   async function handleDelete(id: string) {
     setDeletingId(id);
     const ok = await onDelete(id);
-    if (ok) setDocs((prev) => prev.filter((d) => d.id !== id));
+    if (ok) {
+      setDocs((prev) => prev.filter((d) => d.id !== id));
+      addToast("success", kb.deleteSuccess);
+    } else {
+      addToast("error", kb.deleteFailed);
+    }
     setDeletingId(null);
     setConfirmDelete(null);
   }
@@ -538,6 +544,9 @@ export function KnowledgePageContent({
       setDocs((prev) =>
         prev.map((d) => (d.id === id ? { ...d, status: "INGESTING" as const } : d))
       );
+      addToast("success", kb.reingestSuccess);
+    } else {
+      addToast("error", kb.reingestFailed);
     }
     setReingestingId(null);
   }
@@ -633,13 +642,6 @@ export function KnowledgePageContent({
               <FilePlus2 size={18} className="text-violet-500" />
               <h3 className={cn("text-sm font-semibold", portalHeading)}>{kb.uploadSection}</h3>
             </div>
-
-            {uploadError && (
-              <div className="mb-3 flex items-start gap-2 rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/30 px-3 py-2.5 text-xs text-red-600 dark:text-red-400">
-                <AlertCircle size={13} className="shrink-0 mt-0.5" />
-                {uploadError}
-              </div>
-            )}
 
             <UploadZone
               onFiles={handleFiles}
