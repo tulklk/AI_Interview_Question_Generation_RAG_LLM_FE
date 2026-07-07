@@ -119,8 +119,15 @@ export async function listCompanies(params: ListCompaniesParams = {}): Promise<P
   return { items, totalCount: extractTotal(res.data, items.length) };
 }
 
-export async function createCompany(name: string): Promise<Company> {
-  const res = await apiClient.post("/api/companies", { name });
+export interface CreateCompanyPayload {
+  name: string;
+  logoUrl?: string;
+  websiteUrl?: string;
+  description?: string;
+}
+
+export async function createCompany(payload: CreateCompanyPayload): Promise<Company> {
+  const res = await apiClient.post("/api/companies", payload);
   const company = normalizeCompany(res.data);
   if (!company) throw new Error("Invalid response from create company");
   return company;
@@ -131,4 +138,22 @@ export async function getCompanyById(id: string): Promise<Company> {
   const company = normalizeCompany(res.data);
   if (!company) throw new Error("Invalid response from get company");
   return company;
+}
+
+export interface UpdateCompanyPayload {
+  name?: string;
+  logoUrl?: string;
+  websiteUrl?: string;
+  description?: string;
+}
+
+export async function updateCompany(id: string, payload: UpdateCompanyPayload): Promise<Company> {
+  const res = await apiClient.put(`/api/companies/${id}`, payload);
+  const company = normalizeCompany(res.data);
+  if (!company) throw new Error("Invalid response from update company");
+  return company;
+}
+
+export async function deleteCompany(id: string): Promise<void> {
+  await apiClient.delete(`/api/companies/${id}`);
 }

@@ -67,8 +67,8 @@ export async function resetPassword(data: ResetPasswordRequest): Promise<void> {
   await apiClient.post("/api/auth/reset-password", data);
 }
 
-export async function verifyEmail(token: string): Promise<void> {
-  await apiClient.get("/api/auth/verify-email", { params: { token } });
+export async function verifyEmail(email: string, otp: string): Promise<void> {
+  await apiClient.post("/api/auth/verify-email", { email, otp });
 }
 
 export async function registerCandidate(

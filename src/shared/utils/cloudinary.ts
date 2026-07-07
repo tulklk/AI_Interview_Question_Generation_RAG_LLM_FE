@@ -39,15 +39,12 @@ interface CloudinaryUploadResponse {
   error?: { message?: string };
 }
 
-/** Upload avatar to Cloudinary and return the secure URL string. */
-export async function uploadAvatarToCloudinary(file: File): Promise<string> {
-  validateAvatarFile(file);
-
+async function uploadImageToCloudinary(file: File, folder: string): Promise<string> {
   const { cloudName, uploadPreset } = getCloudinaryConfig();
   const formData = new FormData();
   formData.append("file", file);
   formData.append("upload_preset", uploadPreset);
-  formData.append("folder", "avatars");
+  formData.append("folder", folder);
 
   const res = await fetch(
     `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
@@ -66,4 +63,16 @@ export async function uploadAvatarToCloudinary(file: File): Promise<string> {
   }
 
   return url;
+}
+
+/** Upload avatar to Cloudinary and return the secure URL string. */
+export async function uploadAvatarToCloudinary(file: File): Promise<string> {
+  validateAvatarFile(file);
+  return uploadImageToCloudinary(file, "avatars");
+}
+
+/** Upload company logo to Cloudinary and return the secure URL string. */
+export async function uploadLogoToCloudinary(file: File): Promise<string> {
+  validateAvatarFile(file);
+  return uploadImageToCloudinary(file, "company-logos");
 }
