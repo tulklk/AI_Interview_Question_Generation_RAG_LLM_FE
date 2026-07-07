@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { Suspense, useState, useEffect } from "react";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import {
   User,
   SlidersHorizontal,
@@ -18,6 +19,12 @@ import type { SettingsTab } from "@/features/settings/types/settings";
 import { useLanguage } from "@/shared/providers/language-context";
 import { portalHeading } from "@/shared/utils/portal-ui";
 
+const VALID_TABS: SettingsTab[] = ["profile", "preferences", "notifications", "security", "billing"];
+
+function isValidTab(v: string | null): v is SettingsTab {
+  return VALID_TABS.includes(v as SettingsTab);
+}
+
 function TabContent({ tab }: { tab: SettingsTab }) {
   switch (tab) {
     case "profile":       return <ProfileSection />;
@@ -28,20 +35,27 @@ function TabContent({ tab }: { tab: SettingsTab }) {
   }
 }
 
-export function SettingsLayout() {
+function SettingsLayoutInner() {
   const { t } = useLanguage();
   const tabs = t.settingsPage.tabs;
-  const [activeTab, setActiveTab] = useState<SettingsTab>("profile");
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+
+  const [activeTab, setActiveTab] = useState<SettingsTab>(() => {
+    const tabParam = searchParams.get("tab");
+    if (isValidTab(tabParam)) return tabParam;
+    return "profile";
+  });
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    const syncFromHash = () => {
-      if (window.location.hash === "#billing") setActiveTab("billing");
-    };
-    syncFromHash();
-    window.addEventListener("hashchange", syncFromHash);
-    return () => window.removeEventListener("hashchange", syncFromHash);
-  }, []);
+    const tabParam = searchParams.get("tab");
+    if (isValidTab(tabParam)) {
+      setActiveTab(tabParam);
+    } else {
+      setActiveTab((prev) => (prev === "billing" ? "profile" : prev));
+    }
+  }, [searchParams]);
 
   const tabItems: { id: SettingsTab; label: string; Icon: typeof User }[] = [
     { id: "profile",       label: tabs.profile,       Icon: User },
@@ -53,9 +67,14 @@ export function SettingsLayout() {
 
   function handleTabClick(id: SettingsTab) {
     setActiveTab(id);
-    if (typeof window === "undefined") return;
-    const base = `${window.location.pathname}${window.location.search}`;
-    window.history.replaceState(null, "", id === "billing" ? `${base}#billing` : base);
+    const params = new URLSearchParams(searchParams.toString());
+    if (id === "billing") {
+      params.set("tab", "billing");
+    } else {
+      params.delete("tab");
+    }
+    const query = params.toString();
+    router.replace(`${pathname}${query ? `?${query}` : ""}`, { scroll: false });
   }
 
   return (
@@ -63,7 +82,7 @@ export function SettingsLayout() {
       {/* Tab nav */}
       <nav className="w-full hr-glass-card p-1.5 md:p-2 md:sticky md:top-4 animate-slide-left">
 
-        {/* Mobile: 5 equal-width icon tabs — no scroll, no layout shift */}
+        {/* Mobile: 5 equal-width icon tabs */}
         <ul className="flex md:hidden">
           {tabItems.map(({ id, label, Icon }) => {
             const isActive = activeTab === id;
@@ -74,7 +93,7 @@ export function SettingsLayout() {
                   onClick={() => handleTabClick(id)}
                   title={label}
                   className={cn(
-                    "w-full flex flex-col items-center justify-center gap-1 py-2 px-1 rounded-xl transition-colors duration-200",
+                    "w-full flex flex-col items-center justify-center gap-1 py-2 px-1 rounded-xl border border-transparent transition-colors duration-200 outline-none focus-visible:outline-none",
                     isActive
                       ? "hr-settings-tab-active"
                       : "hover:bg-[rgba(124,58,237,0.05)] dark:hover:bg-[rgba(124,58,237,0.08)]"
@@ -111,7 +130,7 @@ export function SettingsLayout() {
                   type="button"
                   onClick={() => handleTabClick(id)}
                   className={cn(
-                    "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 text-left",
+                    "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border border-transparent text-sm font-medium transition-colors duration-200 text-left outline-none focus-visible:outline-none",
                     isActive
                       ? "hr-settings-tab-active text-[#7C3AED] dark:text-[#a78bff] font-semibold"
                       : cn(portalHeading, "hover:bg-[rgba(124,58,237,0.05)] dark:hover:bg-[rgba(124,58,237,0.08)] opacity-80 hover:opacity-100")
@@ -139,5 +158,13 @@ export function SettingsLayout() {
         <TabContent tab={activeTab} />
       </div>
     </div>
+  );
+}
+
+export function SettingsLayout() {
+  return (
+    <Suspense>
+      <SettingsLayoutInner />
+    </Suspense>
   );
 }
