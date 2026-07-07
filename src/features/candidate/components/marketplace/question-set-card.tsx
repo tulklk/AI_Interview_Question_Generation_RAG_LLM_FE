@@ -1,5 +1,7 @@
 "use client";
 
+import { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { Clock, Users, Star, ChevronRight, BarChart2 } from "lucide-react";
 import { cn } from "@/lib/cn";
@@ -8,6 +10,61 @@ import type { QuestionSet } from "@/features/candidate/types/jobseeker";
 import { Pill, getDifficultyBadgeClass } from "@/features/candidate/components/ui/pill";
 import { portalHeadingAlt, portalSubtextAlt } from "@/shared/utils/portal-ui";
 
+const MAX_VISIBLE = 3;
+
+const skillTag = "shrink-0 bg-violet-50 dark:bg-violet-950/30 text-violet-700 dark:text-violet-300 border border-violet-100 dark:border-violet-800/30 text-[11px] font-medium px-2.5 py-1 rounded-md";
+
+interface SkillsPopoverProps {
+  skills: string[];
+  anchorRef: React.RefObject<HTMLButtonElement | null>;
+  onClose: () => void;
+}
+
+function SkillsPopover({ skills, anchorRef, onClose }: SkillsPopoverProps) {
+  const [mounted, setMounted] = useState(false);
+  const [rect, setRect] = useState<DOMRect | null>(null);
+  const popoverRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setMounted(true);
+    if (anchorRef.current) setRect(anchorRef.current.getBoundingClientRect());
+  }, [anchorRef]);
+
+  useEffect(() => {
+    function handleOutside(e: MouseEvent) {
+      if (
+        popoverRef.current?.contains(e.target as Node) ||
+        anchorRef.current?.contains(e.target as Node)
+      ) return;
+      onClose();
+    }
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    document.addEventListener("mousedown", handleOutside);
+    document.addEventListener("keydown", handleKey);
+    return () => {
+      document.removeEventListener("mousedown", handleOutside);
+      document.removeEventListener("keydown", handleKey);
+    };
+  }, [anchorRef, onClose]);
+
+  if (!mounted || !rect) return null;
+
+  return createPortal(
+    <div
+      ref={popoverRef}
+      style={{ top: rect.bottom + 6, left: rect.left }}
+      className="fixed z-9999 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl p-3 flex flex-wrap gap-1.5 max-w-55 animate-fade-up"
+    >
+      {skills.map((skill) => (
+        <span key={skill} className={skillTag}>{skill}</span>
+      ))}
+    </div>,
+    document.body
+  );
+}
+
 interface QuestionSetCardProps {
   set: QuestionSet;
 }
@@ -15,6 +72,11 @@ interface QuestionSetCardProps {
 export function QuestionSetCard({ set }: QuestionSetCardProps) {
   const { t } = useLanguage();
   const p = t.jobseekerMarketplacePage;
+  const [showSkills, setShowSkills] = useState(false);
+  const skillsBtnRef = useRef<HTMLButtonElement>(null);
+
+  const visibleSkills = set.skills.slice(0, MAX_VISIBLE);
+  const extraCount = set.skills.length - MAX_VISIBLE;
 
   return (
     <div className="hr-glass-card group flex flex-col gap-0 overflow-hidden">
@@ -44,20 +106,27 @@ export function QuestionSetCard({ set }: QuestionSetCardProps) {
           {set.description}
         </p>
 
-        {/* Skills */}
-        <div className="flex flex-wrap gap-1.5">
-          {set.skills.slice(0, 4).map((skill) => (
-            <span
-              key={skill}
-              className="bg-violet-50 dark:bg-violet-950/30 text-violet-700 dark:text-violet-300 border border-violet-100 dark:border-violet-800/30 text-[11px] font-medium px-2.5 py-1 rounded-md"
-            >
-              {skill}
-            </span>
+        {/* Skills — single row, overflow shows +N chip */}
+        <div className="flex items-center gap-1.5 overflow-hidden">
+          {visibleSkills.map((skill) => (
+            <span key={skill} className={skillTag}>{skill}</span>
           ))}
-          {set.skills.length > 4 && (
-            <span className={cn("text-[11px] px-1 py-1", portalSubtextAlt)}>
-              +{set.skills.length - 4}
-            </span>
+          {extraCount > 0 && (
+            <button
+              ref={skillsBtnRef}
+              type="button"
+              onClick={() => setShowSkills((v) => !v)}
+              className="shrink-0 text-[11px] font-semibold text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 px-2 py-1 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors cursor-pointer"
+            >
+              +{extraCount}
+            </button>
+          )}
+          {showSkills && (
+            <SkillsPopover
+              skills={set.skills}
+              anchorRef={skillsBtnRef}
+              onClose={() => setShowSkills(false)}
+            />
           )}
         </div>
 

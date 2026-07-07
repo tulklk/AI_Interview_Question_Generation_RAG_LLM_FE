@@ -6,13 +6,21 @@ import {
 } from "recharts";
 import { skillRadarData } from "@/features/candidate/data/jobseeker";
 import { useChartTheme } from "@/shared/hooks/use-chart-theme";
+import { useLanguage } from "@/shared/providers/language-context";
 
 export default function SkillRadarChart() {
   const chart = useChartTheme();
+  const { t } = useLanguage();
+  const labels = t.jobseekerDashboardPage.radarLabels as Record<string, string>;
+
+  const translatedData = skillRadarData.map((d) => ({
+    ...d,
+    skill: labels[d.skill] ?? d.skill,
+  }));
 
   return (
     <ResponsiveContainer width="100%" height={220}>
-      <RadarChart data={skillRadarData}>
+      <RadarChart data={translatedData}>
         <PolarGrid stroke={chart.gridStroke} />
         <PolarAngleAxis
           dataKey="skill"
