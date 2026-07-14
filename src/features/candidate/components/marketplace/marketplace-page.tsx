@@ -1,13 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion, type Variants } from "framer-motion";
-import { Search, Sparkles, SlidersHorizontal } from "lucide-react";
+import { Search, Sparkles, SlidersHorizontal, AlertCircle, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/cn";
-import { questionSets } from "@/features/candidate/data/jobseeker";
+import { listQuestionSets } from "@/features/candidate/services/question-set.service";
 import { QuestionSetCard } from "./question-set-card";
 import { useLanguage } from "@/shared/providers/language-context";
-import type { Difficulty } from "@/features/candidate/types/jobseeker";
+import type { Difficulty, QuestionSet } from "@/features/candidate/types/jobseeker";
+import { EmptyState } from "@/features/candidate/components/ui/empty-state";
 import {
   portalCard,
   portalHeadingAlt,
@@ -29,20 +30,47 @@ export function MarketplacePage() {
   const p = t.jobseekerMarketplacePage;
 
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [category, setCategory] = useState("All");
   const [difficulty, setDifficulty] = useState<"All" | Difficulty>("All");
 
-  const filtered = questionSets.filter((s) => {
-    const q = search.toLowerCase();
-    const matchSearch =
-      !q ||
-      s.title.toLowerCase().includes(q) ||
-      s.company.toLowerCase().includes(q) ||
-      s.skills.some((sk) => sk.toLowerCase().includes(q));
-    const matchCat = category === "All" || s.category === category;
-    const matchDiff = difficulty === "All" || s.difficulty === difficulty;
-    return matchSearch && matchCat && matchDiff;
-  });
+  const [sets, setSets] = useState<QuestionSet[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
+
+  // Debounce search input before it triggers a fetch
+  useEffect(() => {
+    const id = setTimeout(() => setDebouncedSearch(search), 400);
+    return () => clearTimeout(id);
+  }, [search]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setError(false);
+
+    listQuestionSets({
+      keyword: debouncedSearch || undefined,
+      difficulty: difficulty === "All" ? undefined : difficulty,
+    })
+      .then((res) => {
+        if (cancelled) return;
+        setSets(res.items);
+      })
+      .catch(() => {
+        if (!cancelled) setError(true);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [debouncedSearch, difficulty, reloadKey]);
+
+  const filtered = sets.filter((s) => category === "All" || s.category === category);
 
   return (
     <div>
@@ -150,19 +178,45 @@ export function MarketplacePage() {
       </motion.div>
 
       {/* ── Results count ─────────────────────────────────────────────────── */}
-      <motion.p
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.25 }}
-        className={cn("text-[13px] mb-5", portalSubtextAlt)}
-      >
-        <span className={cn("font-[600]", portalHeadingAlt)}>{filtered.length}</span>{" "}
-        {p.setsFound}
-      </motion.p>
+      {!loading && !error && (
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.25 }}
+          className={cn("text-[13px] mb-5", portalSubtextAlt)}
+        >
+          <span className={cn("font-[600]", portalHeadingAlt)}>{filtered.length}</span>{" "}
+          {p.setsFound}
+        </motion.p>
+      )}
 
       {/* ── Card Grid ─────────────────────────────────────────────────────── */}
-      {filtered.length === 0 ? (
-        <p className={cn("text-center py-16 text-[14px]", portalSubtextAlt)}>{p.noResults}</p>
+      {loading ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="hr-glass-card p-6 h-56 animate-pulse flex flex-col gap-4">
+              <div className="h-10 w-10 rounded-lg bg-gray-200 dark:bg-gray-700" />
+              <div className="h-4 w-3/4 rounded bg-gray-200 dark:bg-gray-700" />
+              <div className="h-3 w-full rounded bg-gray-200 dark:bg-gray-700" />
+              <div className="h-3 w-2/3 rounded bg-gray-200 dark:bg-gray-700" />
+            </div>
+          ))}
+        </div>
+      ) : error ? (
+        <div className="flex flex-col items-center gap-3 py-16 text-center">
+          <AlertCircle size={28} className="text-red-500" />
+          <p className={cn("text-[14px]", portalSubtextAlt)}>{p.loadFailed}</p>
+          <button
+            type="button"
+            onClick={() => setReloadKey((k) => k + 1)}
+            className="flex items-center gap-2 text-[13px] font-semibold text-primary hover:underline"
+          >
+            <RefreshCw size={13} />
+            {p.retryBtn}
+          </button>
+        </div>
+      ) : filtered.length === 0 ? (
+        <EmptyState icon={Search} title={p.noResults} />
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {filtered.map((set, i) => (
@@ -172,6 +226,8 @@ export function MarketplacePage() {
               animate="show"
               variants={fadeUp}
               transition={{ delay: i * 0.07 }}
+              whileHover={{ scale: 1.02 }}
+              className="transition-shadow duration-200 hover:drop-shadow-lg"
             >
               <QuestionSetCard set={set} />
             </motion.div>

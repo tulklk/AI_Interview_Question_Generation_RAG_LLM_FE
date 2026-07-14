@@ -1,16 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, Clock, BarChart2, Users, Star, ChevronDown,
-  ChevronRight, Target, Zap,
+  ChevronRight, Target, Zap, RotateCcw,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { useLanguage } from "@/shared/providers/language-context";
 import type { QuestionSet, QuestionCategory } from "@/features/candidate/types/jobseeker";
 import { Pill, getDifficultyBadgeClass, getCategoryBadgeClass } from "@/features/candidate/components/ui/pill";
+import { CompanyInfoCard } from "./company-info-card";
+import { findInProgressSession } from "@/features/candidate/services/practice-session.service";
 import {
   portalDivider,
   portalHeadingAlt,
@@ -26,6 +28,22 @@ interface SetDetailProps {
 export function SetDetail({ set }: SetDetailProps) {
   const { t } = useLanguage();
   const p = t.jobseekerSetDetailPage;
+
+  const [inProgressSessionId, setInProgressSessionId] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    findInProgressSession(set.id)
+      .then((found) => {
+        if (!cancelled) setInProgressSessionId(found?.sessionId ?? null);
+      })
+      .catch(() => {
+        // Non-critical — CTA just falls back to "Start"
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [set.id]);
 
   const categories: QuestionCategory[] = ["Technical", "Behavioral", "Situational"];
   const [openCategory, setOpenCategory] = useState<QuestionCategory | null>("Technical");
@@ -112,6 +130,9 @@ export function SetDetail({ set }: SetDetailProps) {
               </div>
             </div>
           </div>
+
+          {/* Company info block */}
+          {set.companyId && <CompanyInfoCard companyId={set.companyId} />}
 
           {/* Question Preview */}
           <div
@@ -224,13 +245,22 @@ export function SetDetail({ set }: SetDetailProps) {
                 </div>
               </div>
 
-              {/* CTA */}
+              {/* CTA — "Continue" if an in-progress session exists, else "Start" */}
               <Link
                 href={`/jobseeker/practice/${set.id}`}
                 className="shimmer-button flex items-center justify-center gap-2 w-full h-10 text-[14px] font-semibold text-white hr-cta-btn rounded-lg mt-2"
               >
-                {p.summaryCard.startBtn}
-                <ChevronRight size={14} />
+                {inProgressSessionId ? (
+                  <>
+                    <RotateCcw size={14} />
+                    {p.summaryCard.continueBtn}
+                  </>
+                ) : (
+                  <>
+                    {p.summaryCard.startBtn}
+                    <ChevronRight size={14} />
+                  </>
+                )}
               </Link>
             </div>
           </div>

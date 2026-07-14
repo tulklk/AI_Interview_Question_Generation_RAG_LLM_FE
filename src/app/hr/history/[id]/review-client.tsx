@@ -6,7 +6,7 @@ import { AlertCircle } from "lucide-react";
 import { AiLoadingSpinner } from "@/shared/components/common/ai-loading-spinner";
 import { AppShell } from "@/features/hr/components/layout/app-shell";
 import { ReviewPageClient } from "@/features/question/components/review-page-client";
-import { getGenerationSession, getGenerationJob, getJobQuestions, getDraft } from "@/features/interview/services/interview.service";
+import { getGenerationSession, getGenerationJob, getJobQuestions, getDraft, findQuestionSetForJob } from "@/features/interview/services/interview.service";
 import { getLocalSession, toGenerationSession } from "@/features/interview/utils/local-history";
 import type { GenerationSession, DraftQuestionSet, GenerationStatus } from "@/features/interview/types/generation-session";
 import { cn } from "@/lib/cn";
@@ -66,6 +66,8 @@ export function HrReviewPageClient() {
   const rp = t.reviewPage;
   const [session, setSession] = useState<GenerationSession | null>(null);
   const [draft, setDraft] = useState<DraftQuestionSet | null>(null);
+  const [questionSetId, setQuestionSetId] = useState<string | undefined>(undefined);
+  const [publishStatus, setPublishStatus] = useState<"DRAFT" | "PUBLISHED" | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [retrying, setRetrying] = useState(false);
@@ -189,6 +191,31 @@ export function HrReviewPageClient() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
+  // Fetch publish status independently — doesn't affect the readOnly/draftQuestions state above.
+  // The job-detail response never includes a questionSetId (only meta.hasDraft), so the id has
+  // to be cross-referenced from the HR question-sets list by jobId.
+  useEffect(() => {
+    if (!session?.id || session.status !== "COMPLETED") {
+      setQuestionSetId(undefined);
+      setPublishStatus(null);
+      return;
+    }
+    let cancelled = false;
+    findQuestionSetForJob(session.id).then((found) => {
+      if (cancelled) return;
+      setQuestionSetId(found?.questionSetId);
+      setPublishStatus(found?.status ?? null);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [session?.id, session?.status]);
+
+  function handleDraftSaved(newQuestionSetId: string) {
+    setQuestionSetId(newQuestionSetId);
+    setPublishStatus((prev) => prev ?? "DRAFT");
+  }
+
   return (
     <AppShell
       breadcrumb={[
@@ -218,6 +245,10 @@ export function HrReviewPageClient() {
           isDraftView={!!draft}
           isGenerating={isGeneratingQuestions(session.status)}
           isRetrying={retrying}
+          questionSetId={questionSetId}
+          publishStatus={publishStatus}
+          onPublishStatusChange={setPublishStatus}
+          onDraftSaved={handleDraftSaved}
         />
       )}
     </AppShell>

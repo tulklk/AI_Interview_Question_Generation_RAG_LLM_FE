@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useAnimationControls } from "framer-motion";
 import {
   Timer, ChevronLeft, ChevronRight, Send, X,
-  Loader2, Sparkles, CheckCircle2,
+  Loader2, Sparkles, CheckCircle2, AlertCircle, RefreshCw,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { useLanguage } from "@/shared/providers/language-context";
@@ -17,11 +17,58 @@ import {
   portalSubtextAlt,
 } from "@/shared/utils/portal-ui";
 import { ConfirmDialog } from "@/shared/components/ui/confirm-dialog";
+import { AiLoadingSpinner } from "@/shared/components/common/ai-loading-spinner";
+import {
+  startPracticeSession,
+  submitAnswer as submitAnswerApi,
+  completePracticeSession,
+  findInProgressSession,
+} from "@/features/candidate/services/practice-session.service";
+
+const SESSION_DURATION_SECONDS = 45 * 60;
 
 function formatTime(seconds: number) {
   const m = Math.floor(seconds / 60).toString().padStart(2, "0");
   const s = (seconds % 60).toString().padStart(2, "0");
   return `${m}:${s}`;
+}
+
+function draftKey(sessionId: string, questionId: string) {
+  return `practice-draft-${sessionId}-${questionId}`;
+}
+
+interface ProgressDotProps {
+  active: boolean;
+  submitted: boolean;
+  onClick: () => void;
+}
+
+function ProgressDot({ active, submitted, onClick }: ProgressDotProps) {
+  const controls = useAnimationControls();
+  const wasSubmitted = useRef(submitted);
+
+  useEffect(() => {
+    if (submitted && !wasSubmitted.current) {
+      controls.start({ scale: [1, 1.7, 1], transition: { duration: 0.4, ease: "easeOut" } });
+    }
+    wasSubmitted.current = submitted;
+  }, [submitted, controls]);
+
+  return (
+    <motion.button
+      type="button"
+      onClick={onClick}
+      animate={controls}
+      className={cn(
+        "rounded-full transition-all duration-200",
+        active
+          ? "w-6 h-2 bg-primary"
+          : submitted
+          ? "w-2 h-2 bg-emerald-400"
+          : "w-2 h-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600"
+      )}
+    />
+  );
 }
 
 interface PracticeSessionProps {
@@ -37,9 +84,21 @@ export function PracticeSession({ set }: PracticeSessionProps) {
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [submitted, setSubmitted] = useState<Record<string, boolean>>({});
   const [evaluating, setEvaluating] = useState(false);
-  const [timeLeft, setTimeLeft] = useState(45 * 60); // 45 min
+  const [submitError, setSubmitError] = useState(false);
+  const [timeLeft, setTimeLeft] = useState(SESSION_DURATION_SECONDS);
   const [direction, setDirection] = useState(1);
   const [exitOpen, setExitOpen] = useState(false);
+
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [startedAt, setStartedAt] = useState<string | null>(null);
+  const [resumed, setResumed] = useState(false);
+  const [starting, setStarting] = useState(true);
+  const [startError, setStartError] = useState(false);
+  const [finishing, setFinishing] = useState(false);
+  const [finishError, setFinishError] = useState(false);
+  const [startAttempt, setStartAttempt] = useState(0);
+
+  const restoredDraftIds = useRef(new Set<string>());
 
   const question = set.questions[currentIdx];
   const totalQuestions = set.questions.length;
@@ -48,34 +107,118 @@ export function PracticeSession({ set }: PracticeSessionProps) {
   const isSubmitted = submitted[question.id] ?? false;
   const isLast = currentIdx === totalQuestions - 1;
 
-  // Countdown timer
+  // Resume an IN_PROGRESS session for this set if one exists, otherwise start a fresh one.
   useEffect(() => {
-    const id = setInterval(() => {
-      setTimeLeft((prev) => Math.max(0, prev - 1));
-    }, 1000);
+    let cancelled = false;
+    setStarting(true);
+    setStartError(false);
+
+    async function init() {
+      try {
+        const existing = await findInProgressSession(set.id);
+        if (cancelled) return;
+
+        if (existing) {
+          const submittedMap: Record<string, boolean> = {};
+          const answersMap: Record<string, string> = {};
+          existing.answers.forEach((a) => {
+            submittedMap[a.questionId] = true;
+            if (a.answer) answersMap[a.questionId] = a.answer;
+          });
+          setSessionId(existing.sessionId);
+          setStartedAt(existing.startedAt ?? new Date().toISOString());
+          setSubmitted(submittedMap);
+          setAnswers((prev) => ({ ...prev, ...answersMap }));
+          setResumed(true);
+          const firstUnanswered = set.questions.findIndex((q) => !submittedMap[q.id]);
+          setCurrentIdx(firstUnanswered === -1 ? set.questions.length - 1 : firstUnanswered);
+        } else {
+          const res = await startPracticeSession(set.id);
+          if (cancelled) return;
+          setSessionId(res.sessionId);
+          setStartedAt(res.startedAt ?? new Date().toISOString());
+        }
+      } catch {
+        if (!cancelled) setStartError(true);
+      } finally {
+        if (!cancelled) setStarting(false);
+      }
+    }
+
+    init();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [set.id, startAttempt]);
+
+  // Countdown timer — computed from the server's started_at so it survives refresh/resume.
+  useEffect(() => {
+    if (!startedAt) return;
+    const startMs = new Date(startedAt).getTime();
+    function tick() {
+      const elapsed = Math.floor((Date.now() - startMs) / 1000);
+      setTimeLeft(Math.max(0, SESSION_DURATION_SECONDS - elapsed));
+    }
+    tick();
+    const id = setInterval(tick, 1000);
     return () => clearInterval(id);
-  }, []);
+  }, [startedAt]);
+
+  // Restore an unsubmitted draft answer for the current question from sessionStorage (once per question).
+  useEffect(() => {
+    if (!sessionId || !question || typeof window === "undefined") return;
+    if (restoredDraftIds.current.has(question.id)) return;
+    restoredDraftIds.current.add(question.id);
+    if (submitted[question.id]) return;
+    const saved = window.sessionStorage.getItem(draftKey(sessionId, question.id));
+    if (saved) {
+      setAnswers((prev) => (prev[question.id] !== undefined ? prev : { ...prev, [question.id]: saved }));
+    }
+  }, [sessionId, question, submitted]);
 
   function navigate(delta: number) {
     setDirection(delta);
     setCurrentIdx((i) => Math.min(Math.max(0, i + delta), totalQuestions - 1));
   }
 
+  function handleAnswerChange(value: string) {
+    setAnswers((prev) => ({ ...prev, [question.id]: value }));
+    if (sessionId && typeof window !== "undefined") {
+      window.sessionStorage.setItem(draftKey(sessionId, question.id), value);
+    }
+  }
+
   const handleSubmitAnswer = useCallback(() => {
-    if (!currentAnswer.trim() || isSubmitted) return;
+    if (!currentAnswer.trim() || isSubmitted || !sessionId) return;
     setEvaluating(true);
-    setTimeout(() => {
-      setEvaluating(false);
-      setSubmitted((prev) => ({ ...prev, [question.id]: true }));
-      // Auto-advance if not last
-      if (!isLast) {
-        setTimeout(() => navigate(1), 600);
-      }
-    }, 2000);
-  }, [currentAnswer, isSubmitted, question.id, isLast]);
+    setSubmitError(false);
+    submitAnswerApi(sessionId, { questionId: question.id, answer: currentAnswer })
+      .then(() => {
+        setSubmitted((prev) => ({ ...prev, [question.id]: true }));
+        if (typeof window !== "undefined") {
+          window.sessionStorage.removeItem(draftKey(sessionId, question.id));
+        }
+        if (!isLast) {
+          setTimeout(() => navigate(1), 600);
+        }
+      })
+      .catch(() => setSubmitError(true))
+      .finally(() => setEvaluating(false));
+  }, [currentAnswer, isSubmitted, question.id, isLast, sessionId]);
 
   function handleFinish() {
-    router.push(`/jobseeker/practice/${set.id}/result`);
+    if (!sessionId) return;
+    setFinishing(true);
+    setFinishError(false);
+    completePracticeSession(sessionId)
+      .then(() => {
+        router.push(`/jobseeker/practice/${sessionId}/result`);
+      })
+      .catch(() => {
+        setFinishError(true);
+        setFinishing(false);
+      });
   }
 
   const allAnswered = set.questions.every((q) => submitted[q.id]);
@@ -85,6 +228,31 @@ export function PracticeSession({ set }: PracticeSessionProps) {
     center: { opacity: 1, x: 0 },
     exit:   (dir: number) => ({ opacity: 0, x: dir > 0 ? -40 : 40 }),
   };
+
+  if (starting) {
+    return (
+      <div className="min-h-screen hr-main-bg flex items-center justify-center">
+        <AiLoadingSpinner text={p.startingSession} />
+      </div>
+    );
+  }
+
+  if (startError || !sessionId) {
+    return (
+      <div className="min-h-screen hr-main-bg flex flex-col items-center justify-center gap-3 px-4 text-center">
+        <AlertCircle size={28} className="text-red-500" />
+        <p className={cn("text-[14px]", portalSubtextAlt)}>{p.startFailed}</p>
+        <button
+          type="button"
+          onClick={() => setStartAttempt((n) => n + 1)}
+          className="flex items-center gap-2 text-[13px] font-semibold text-primary hover:underline"
+        >
+          <RefreshCw size={13} />
+          {p.retryBtn}
+        </button>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -110,6 +278,11 @@ export function PracticeSession({ set }: PracticeSessionProps) {
             <p className={cn("text-[13px] font-[600] leading-none truncate", portalHeadingAlt)}>{set.title}</p>
             <p className={cn("text-[11px] mt-0.5", portalSubtextAlt)}>{set.company}</p>
           </div>
+          {resumed && (
+            <span className="hidden md:inline-flex items-center text-[10px] font-[600] px-2 py-0.5 rounded-full bg-primary/10 text-primary shrink-0">
+              {p.resumedBadge}
+            </span>
+          )}
         </div>
 
         {/* Center: progress */}
@@ -129,13 +302,17 @@ export function PracticeSession({ set }: PracticeSessionProps) {
 
         {/* Right: timer + exit */}
         <div className="flex items-center gap-2 sm:gap-4 shrink-0">
-          <div className={cn(
-            "flex items-center gap-1.5 text-[12px] sm:text-[13px] font-[600] tabular-nums",
-            timeLeft < 300 ? "text-red-500" : portalSubtextAlt
-          )}>
+          <motion.div
+            animate={timeLeft < 300 ? { scale: [1, 1.08, 1] } : { scale: 1 }}
+            transition={timeLeft < 300 ? { duration: 1, repeat: Infinity, ease: "easeInOut" } : undefined}
+            className={cn(
+              "flex items-center gap-1.5 text-[12px] sm:text-[13px] font-[600] tabular-nums",
+              timeLeft < 300 ? "text-red-500" : portalSubtextAlt
+            )}
+          >
             <Timer size={13} />
             {formatTime(timeLeft)}
-          </div>
+          </motion.div>
           <button
             type="button"
             onClick={() => setExitOpen(true)}
@@ -187,18 +364,20 @@ export function PracticeSession({ set }: PracticeSessionProps) {
               >
                 <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
                   <CheckCircle2 size={16} />
-                  <span className="text-[13px] font-[600]">Answer submitted</span>
+                  <span className="text-[13px] font-[600]">{p.answerSubmitted}</span>
                 </div>
-                <p className={cn("text-[14px] leading-[22px] whitespace-pre-wrap", portalSubtextAlt)}>
-                  {currentAnswer}
-                </p>
+                {currentAnswer && (
+                  <p className={cn("text-[14px] leading-[22px] whitespace-pre-wrap", portalSubtextAlt)}>
+                    {currentAnswer}
+                  </p>
+                )}
               </motion.div>
             ) : (
               /* Input state */
               <>
                 <textarea
                   value={currentAnswer}
-                  onChange={(e) => setAnswers((prev) => ({ ...prev, [question.id]: e.target.value }))}
+                  onChange={(e) => handleAnswerChange(e.target.value)}
                   placeholder={p.answerPlaceholder}
                   disabled={evaluating}
                   className={cn(
@@ -234,6 +413,22 @@ export function PracticeSession({ set }: PracticeSessionProps) {
                     </button>
                   )}
                 </div>
+                {submitError && (
+                  <div className="flex items-center gap-3 mt-2">
+                    <p className="flex items-center gap-1.5 text-[12px] font-[500] text-red-500">
+                      <AlertCircle size={12} />
+                      {p.submitFailed}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={handleSubmitAnswer}
+                      className="flex items-center gap-1.5 text-[12px] font-semibold text-primary hover:underline"
+                    >
+                      <RefreshCw size={11} />
+                      {p.retryBtn}
+                    </button>
+                  </div>
+                )}
               </>
             )}
           </div>
@@ -241,17 +436,11 @@ export function PracticeSession({ set }: PracticeSessionProps) {
           {/* Dot progress indicator */}
           <div className="flex items-center justify-center gap-2">
             {set.questions.map((q, idx) => (
-              <button
+              <ProgressDot
                 key={q.id}
+                active={idx === currentIdx}
+                submitted={submitted[q.id] ?? false}
                 onClick={() => { setDirection(idx > currentIdx ? 1 : -1); setCurrentIdx(idx); }}
-                className={cn(
-                  "rounded-full transition-all duration-200",
-                  idx === currentIdx
-                    ? "w-6 h-2 bg-primary"
-                    : submitted[q.id]
-                    ? "w-2 h-2 bg-emerald-400"
-                    : "w-2 h-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600"
-                )}
               />
             ))}
           </div>
@@ -268,15 +457,43 @@ export function PracticeSession({ set }: PracticeSessionProps) {
             </button>
 
             {allAnswered ? (
-              <motion.button
-                initial={{ scale: 0.95 }}
-                animate={{ scale: 1 }}
-                onClick={handleFinish}
-                className="shimmer-button flex items-center gap-2 h-10 px-6 text-[14px] font-semibold text-white hr-cta-btn rounded-xl"
-              >
-                <Sparkles size={15} />
-                {p.finishBtn}
-              </motion.button>
+              <div className="flex flex-col items-end gap-1.5">
+                <motion.div
+                  className="relative rounded-xl"
+                  initial={{ scale: 0.95 }}
+                  animate={{ scale: 1 }}
+                >
+                  <span
+                    className={cn(
+                      "absolute inset-0 rounded-xl bg-primary pointer-events-none",
+                      !finishing && !finishError ? "cta-ring-active" : "opacity-0"
+                    )}
+                  />
+                  <button
+                    onClick={handleFinish}
+                    disabled={finishing}
+                    className="relative shimmer-button flex items-center gap-2 h-10 px-6 text-[14px] font-semibold text-white hr-cta-btn rounded-xl disabled:opacity-70 disabled:cursor-not-allowed"
+                  >
+                    {finishing ? (
+                      <>
+                        <Loader2 size={15} className="animate-spin" />
+                        {p.finishing}
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles size={15} />
+                        {p.finishBtn}
+                      </>
+                    )}
+                  </button>
+                </motion.div>
+                {finishError && (
+                  <p className="flex items-center gap-1.5 text-[12px] font-[500] text-red-500">
+                    <AlertCircle size={12} />
+                    {p.finishFailed}
+                  </p>
+                )}
+              </div>
             ) : (
               <button
                 onClick={() => navigate(1)}

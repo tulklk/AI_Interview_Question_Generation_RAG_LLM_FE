@@ -1,29 +1,42 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, animate, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, RefreshCw, Share2, CheckCircle2,
   AlertCircle, Lightbulb, Sparkles, ChevronDown,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
-import { skillRadarData } from "@/features/candidate/data/jobseeker";
 import { FeedbackRadarChart } from "@/features/candidate/components/feedback/feedback-radar-chart";
 import { useLanguage } from "@/shared/providers/language-context";
-import type { PracticeSession } from "@/features/candidate/types/jobseeker";
+import type { PracticeFeedback } from "@/features/candidate/services/practice-session.service";
 import { Pill, getCategoryBadgeClass, getScoreLevel } from "@/features/candidate/components/ui/pill";
+import { getCompanyColor, getCompanyInitials } from "@/features/candidate/utils/company-visual";
 import { useChartTheme } from "@/shared/hooks/use-chart-theme";
+import { ConfettiBurst } from "@/shared/components/common/confetti-burst";
 import {
   portalHeadingAlt,
   portalSubtextAlt,
 } from "@/shared/utils/portal-ui";
+
+const CELEBRATION_THRESHOLD = 80;
 
 function ScoreRing({ score, trackStroke }: { score: number; trackStroke: string }) {
   const radius = 52;
   const circ = 2 * Math.PI * radius;
   const offset = circ - (score / 100) * circ;
   const color = score >= 80 ? "#10B981" : score >= 65 ? "#6C47FF" : "#F59E0B";
+  const [displayScore, setDisplayScore] = useState(0);
+
+  useEffect(() => {
+    const controls = animate(0, score, {
+      duration: 1.2,
+      ease: "easeOut",
+      onUpdate: (v) => setDisplayScore(Math.round(v)),
+    });
+    return () => controls.stop();
+  }, [score]);
 
   return (
     <div className="relative w-32 h-32 flex items-center justify-center">
@@ -40,14 +53,9 @@ function ScoreRing({ score, trackStroke }: { score: number; trackStroke: string 
         />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <motion.span
-          className={cn("text-[32px] font-[800] leading-none", portalHeadingAlt)}
-          initial={{ opacity: 0, scale: 0.8 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.5, duration: 0.4 }}
-        >
-          {score}
-        </motion.span>
+        <span className={cn("text-[32px] font-[800] leading-none tabular-nums", portalHeadingAlt)}>
+          {displayScore}
+        </span>
         <span className={cn("text-[11px] font-[500]", portalSubtextAlt)}>/ 100</span>
       </div>
     </div>
@@ -55,7 +63,7 @@ function ScoreRing({ score, trackStroke }: { score: number; trackStroke: string 
 }
 
 interface FeedbackPageProps {
-  session: PracticeSession;
+  session: PracticeFeedback;
 }
 
 export function FeedbackPage({ session }: FeedbackPageProps) {
@@ -63,7 +71,7 @@ export function FeedbackPage({ session }: FeedbackPageProps) {
   const p = t.jobseekerFeedbackPage;
   const chart = useChartTheme();
 
-  const { label: scoreLevelLabel, badgeClass: scoreLevelBadgeClass } = getScoreLevel(session.score, p.scoreLevels);
+  const { label: scoreLevelLabel, badgeClass: scoreLevelBadgeClass } = getScoreLevel(session.overallScore, p.scoreLevels);
 
   const [expandedIds, setExpandedIds] = useState<Set<string>>(
     () => new Set(session.answers.length > 0 ? [session.answers[0].questionId] : [])
@@ -78,11 +86,18 @@ export function FeedbackPage({ session }: FeedbackPageProps) {
     });
   }
 
-  const aiInsight = session.score >= 80
-    ? "Outstanding performance! Your answers showed depth, structure, and concrete examples. You're well-prepared for this interview level."
-    : session.score >= 65
-    ? "Solid performance. Your technical answers were strong, but behavioral responses could benefit from clearer STAR structure and specific metrics."
-    : "Good start! Focus on providing more specific examples and quantifiable outcomes in your answers to significantly boost your score.";
+  const aiInsight = session.aiInsight ?? (
+    session.overallScore >= 80
+      ? "Outstanding performance! Your answers showed depth, structure, and concrete examples. You're well-prepared for this interview level."
+      : session.overallScore >= 65
+      ? "Solid performance. Your technical answers were strong, but behavioral responses could benefit from clearer STAR structure and specific metrics."
+      : "Good start! Focus on providing more specific examples and quantifiable outcomes in your answers to significantly boost your score."
+  );
+
+  const companyName = session.companyName ?? "";
+  const companyInitials = companyName ? getCompanyInitials(companyName) : "";
+  const companyColor = companyName ? getCompanyColor(companyName) : "bg-gray-400";
+  const hasDimensionScores = session.dimensionScores.length > 0;
 
   return (
     <div className="max-w-[900px] mx-auto">
@@ -102,9 +117,10 @@ export function FeedbackPage({ session }: FeedbackPageProps) {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="hr-glass-card p-5 sm:p-8 mb-6 flex flex-col sm:flex-row items-center sm:items-start gap-5 sm:gap-10"
+        className="relative hr-glass-card p-5 sm:p-8 mb-6 flex flex-col sm:flex-row items-center sm:items-start gap-5 sm:gap-10"
       >
-        <ScoreRing score={session.score} trackStroke={chart.isDark ? "#374151" : "#F3F4F6"} />
+        {session.overallScore >= CELEBRATION_THRESHOLD && <ConfettiBurst />}
+        <ScoreRing score={session.overallScore} trackStroke={chart.isDark ? "#374151" : "#F3F4F6"} />
 
         <div className="flex-1">
           <div className="flex items-center gap-3 mb-2">
@@ -114,12 +130,18 @@ export function FeedbackPage({ session }: FeedbackPageProps) {
             </span>
           </div>
 
-          <div className="flex items-center gap-2 mb-4">
-            <div className={cn("w-6 h-6 rounded-lg flex items-center justify-center text-white text-[10px] font-bold", session.companyColor)}>
-              {session.companyInitials}
+          {(session.setTitle || companyName) && (
+            <div className="flex items-center gap-2 mb-4">
+              {companyName && (
+                <div className={cn("w-6 h-6 rounded-lg flex items-center justify-center text-white text-[10px] font-bold", companyColor)}>
+                  {companyInitials}
+                </div>
+              )}
+              <p className={cn("text-[14px]", portalSubtextAlt)}>
+                {[session.setTitle, companyName].filter(Boolean).join(" · ")}
+              </p>
             </div>
-            <p className={cn("text-[14px]", portalSubtextAlt)}>{session.setTitle} · {session.company}</p>
-          </div>
+          )}
 
           {/* AI Insight */}
           <div className="hr-quick-generate rounded-lg p-4 flex gap-3">
@@ -133,13 +155,15 @@ export function FeedbackPage({ session }: FeedbackPageProps) {
 
         {/* Action buttons */}
         <div className="flex sm:flex-col gap-2 shrink-0 w-full sm:w-auto">
-          <Link
-            href={`/jobseeker/practice/${session.setId}`}
-            className="shimmer-button flex items-center gap-2 h-9 px-4 text-[13px] font-semibold text-white hr-cta-btn rounded-lg"
-          >
-            <RefreshCw size={13} />
-            {p.retryBtn}
-          </Link>
+          {session.questionSetId && (
+            <Link
+              href={`/jobseeker/practice/${session.questionSetId}`}
+              className="shimmer-button flex items-center gap-2 h-9 px-4 text-[13px] font-semibold text-white hr-cta-btn rounded-lg"
+            >
+              <RefreshCw size={13} />
+              {p.retryBtn}
+            </Link>
+          )}
           <button className={cn(
             "hr-glass-card flex items-center gap-2 h-9 px-4 text-[13px] font-semibold hover:border-[#7C3AED]/30",
             portalHeadingAlt
@@ -150,6 +174,7 @@ export function FeedbackPage({ session }: FeedbackPageProps) {
         </div>
       </motion.div>
 
+      {hasDimensionScores && (
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[1fr_320px] gap-6 mb-6">
         {/* ── Skill Breakdown ───────────────────────────────────────── */}
         <motion.div
@@ -159,7 +184,7 @@ export function FeedbackPage({ session }: FeedbackPageProps) {
           className="hr-glass-card p-6"
         >
           <h2 className={cn("text-[16px] font-[700] mb-5", portalHeadingAlt)}>{p.skillBreakdown}</h2>
-          <FeedbackRadarChart />
+          <FeedbackRadarChart data={session.dimensionScores} />
         </motion.div>
 
         {/* ── Score breakdown bars ──────────────────────────────────── */}
@@ -169,8 +194,8 @@ export function FeedbackPage({ session }: FeedbackPageProps) {
           transition={{ delay: 0.15 }}
           className="hr-glass-card p-6 flex flex-col gap-4"
         >
-          <h2 className={cn("text-[16px] font-[700]", portalHeadingAlt)}>{p.skillBreakdown}</h2>
-          {skillRadarData.map((item, i) => (
+          <h2 className={cn("text-[16px] font-[700]", portalHeadingAlt)}>{p.scoreBreakdown}</h2>
+          {session.dimensionScores.map((item, i) => (
             <motion.div
               key={item.skill}
               initial={{ opacity: 0, x: -16 }}
@@ -198,6 +223,7 @@ export function FeedbackPage({ session }: FeedbackPageProps) {
           ))}
         </motion.div>
       </div>
+      )}
 
       {/* ── Question Reviews ─────────────────────────────────────── */}
       {session.answers.length > 0 && (

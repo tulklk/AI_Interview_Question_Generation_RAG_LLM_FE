@@ -653,6 +653,65 @@ export async function getDrafts(): Promise<DraftQuestionSet[]> {
 }
 
 // ---------------------------------------------------------------------------
+// Publish / Unpublish
+// ---------------------------------------------------------------------------
+
+export interface HrQuestionSetSummary {
+  questionSetId: string;
+  jobId?: string;
+  status: "DRAFT" | "PUBLISHED";
+}
+
+function normalizeQuestionSetSummary(raw: unknown): HrQuestionSetSummary | null {
+  if (!raw || typeof raw !== "object") return null;
+  const src = raw as Record<string, unknown>;
+  const questionSetId = [src.questionSetId, src.id, src.QuestionSetId, src.Id]
+    .find((v): v is string => typeof v === "string" && v.trim() !== "");
+  if (!questionSetId) return null;
+  const jobId = [src.jobId, src.sessionId, src.JobId, src.SessionId]
+    .find((v): v is string => typeof v === "string" && v.trim() !== "");
+  const rawStatus = [src.status, src.Status].find((v): v is string => typeof v === "string");
+  return { questionSetId, jobId, status: rawStatus === "PUBLISHED" ? "PUBLISHED" : "DRAFT" };
+}
+
+// The job-detail endpoint doesn't expose a questionSetId even when a draft was
+// saved (meta.hasDraft is the only signal) — the id only lives in this list,
+// keyed by jobId, so publish/unpublish has to cross-reference it here.
+export async function findQuestionSetForJob(jobId: string): Promise<HrQuestionSetSummary | null> {
+  try {
+    const { data } = await apiClient.get<{ data?: unknown } | unknown[]>("/api/hr/question-sets");
+    const items = Array.isArray(data) ? data : Array.isArray((data as { data?: unknown })?.data) ? (data as { data: unknown[] }).data : [];
+    const normalized = items.map(normalizeQuestionSetSummary).filter((s): s is HrQuestionSetSummary => s !== null);
+    return normalized.find((s) => s.jobId === jobId) ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export async function publishQuestionSet(questionSetId: string): Promise<boolean> {
+  try {
+    await apiClient.post(`/api/hr/question-sets/${questionSetId}/publish`);
+    return true;
+  } catch (err) {
+    const detail = (err as { response?: { data?: { detail?: string; message?: string } } })
+      ?.response?.data;
+    // Only surface a BE-provided message; never the raw axios/HTTP error text.
+    throw new Error(detail?.detail ?? detail?.message ?? "");
+  }
+}
+
+export async function unpublishQuestionSet(questionSetId: string): Promise<boolean> {
+  try {
+    await apiClient.post(`/api/hr/question-sets/${questionSetId}/unpublish`);
+    return true;
+  } catch (err) {
+    const detail = (err as { response?: { data?: { detail?: string; message?: string } } })
+      ?.response?.data;
+    throw new Error(detail?.detail ?? detail?.message ?? "");
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Legacy helpers (used by history detail page / results section)
 // ---------------------------------------------------------------------------
 

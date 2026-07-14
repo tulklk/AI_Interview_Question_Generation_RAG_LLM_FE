@@ -117,6 +117,7 @@ export function HistoryBoard() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.3 + i * 0.05 }}
+                whileHover={{ scale: 1.01 }}
                 className="hr-table-row grid grid-cols-[2.5fr_1fr_1fr_1fr_2fr_auto] gap-4 px-6 py-4 items-center"
               >
                 {/* Session */}
@@ -189,6 +190,7 @@ export function HistoryBoard() {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3 + i * 0.05 }}
+              whileHover={{ scale: 1.02 }}
               className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm p-4 flex flex-col gap-3"
             >
               {/* Header row: company icon + title + score */}

@@ -28,6 +28,16 @@ export const API_ENDPOINTS = {
   COMPANY: {
     LIST: "/api/companies",
   },
+  CANDIDATE: {
+    QUESTION_SETS: "/api/candidate/question-sets",
+  },
+  PRACTICE_SESSIONS: {
+    BASE: "/practice-sessions",
+  },
+  HR_QUESTION_SETS: {
+    PUBLISH: (id: string) => `/api/hr/question-sets/${id}/publish`,
+    UNPUBLISH: (id: string) => `/api/hr/question-sets/${id}/unpublish`,
+  },
   KNOWLEDGE: {
     HR_FILES: "/api/rag/knowledge/hr/files",
   },

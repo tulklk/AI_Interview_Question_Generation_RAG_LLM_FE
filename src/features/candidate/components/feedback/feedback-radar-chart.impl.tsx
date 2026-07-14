@@ -4,15 +4,18 @@ import {
   RadarChart, PolarGrid, PolarAngleAxis, Radar,
   ResponsiveContainer, Tooltip,
 } from "recharts";
-import { skillRadarData } from "@/features/candidate/data/jobseeker";
 import { useChartTheme } from "@/shared/hooks/use-chart-theme";
 
-export default function FeedbackRadarChart() {
+interface FeedbackRadarChartProps {
+  data: { skill: string; score: number; fullMark: number }[];
+}
+
+export default function FeedbackRadarChart({ data }: FeedbackRadarChartProps) {
   const chart = useChartTheme();
 
   return (
     <ResponsiveContainer width="100%" height={260}>
-      <RadarChart data={skillRadarData}>
+      <RadarChart data={data}>
         <PolarGrid stroke={chart.gridStroke} />
         <PolarAngleAxis
           dataKey="skill"

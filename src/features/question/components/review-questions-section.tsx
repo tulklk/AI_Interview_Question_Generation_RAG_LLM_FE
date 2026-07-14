@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
-import { Plus, BookMarked, CheckCircle2, Loader2, AlertCircle, RefreshCw, ChevronLeft, ChevronRight, X, Check } from "lucide-react";
+import { Plus, BookMarked, CheckCircle2, Loader2, AlertCircle, RefreshCw, ChevronLeft, ChevronRight, X, Check, Rocket, Undo2 } from "lucide-react";
 import { AiLoadingSpinner } from "@/shared/components/common/ai-loading-spinner";
 import {
   DndContext,
@@ -34,9 +34,18 @@ import {
 } from "@/shared/utils/portal-ui";
 import type { GeneratedQuestion, GenerationStatus } from "@/features/interview/types/generation-session";
 import { updateLocalSessionQuestions } from "@/features/interview/utils/local-history";
-import { updateJobQuestion, deleteJobQuestion, addJobQuestion, saveJobDraft, reorderJobQuestions } from "@/features/interview/services/interview.service";
+import {
+  updateJobQuestion,
+  deleteJobQuestion,
+  addJobQuestion,
+  saveJobDraft,
+  reorderJobQuestions,
+  publishQuestionSet,
+  unpublishQuestionSet,
+} from "@/features/interview/services/interview.service";
 import { QuestionEditCard } from "./question-edit-card";
 import { AddQuestionDialog } from "./add-question-dialog";
+import { ConfirmDialog } from "@/shared/components/ui/confirm-dialog";
 
 // ── Sortable wrapper ──────────────────────────────────────────────────────────
 
@@ -108,9 +117,14 @@ interface ReviewQuestionsSectionProps {
   status: GenerationStatus;
   failureMessage?: string;
   readOnly?: boolean;
+  questionSetId?: string;
+  publishStatus?: "DRAFT" | "PUBLISHED" | null;
+  onPublishStatusChange?: (status: "DRAFT" | "PUBLISHED") => void;
+  onDraftSaved?: (questionSetId: string) => void;
 }
 
 type SaveState = "idle" | "saving" | "saved" | "error";
+type PublishAction = "publish" | "unpublish" | null;
 
 const PAGE_SIZE = 5;
 
@@ -120,6 +134,10 @@ export function ReviewQuestionsSection({
   status,
   failureMessage,
   readOnly = false,
+  questionSetId,
+  publishStatus,
+  onPublishStatusChange,
+  onDraftSaved,
 }: ReviewQuestionsSectionProps) {
   const { t } = useLanguage();
   const rp = t.reviewPage;
@@ -134,6 +152,8 @@ export function ReviewQuestionsSection({
   const [showNavWarning, setShowNavWarning] = useState(false);
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [page, setPage] = useState(1);
+  const [publishConfirmAction, setPublishConfirmAction] = useState<PublishAction>(null);
+  const [publishing, setPublishing] = useState(false);
 
   const router = useRouter();
   const isEditable = status === "COMPLETED" && !readOnly;
@@ -369,7 +389,8 @@ export function ReviewQuestionsSection({
         }
 
         // 5. Mark as saved draft
-        await saveJobDraft(sessionId);
+        const savedQuestionSetId = await saveJobDraft(sessionId);
+        if (savedQuestionSetId) onDraftSaved?.(savedQuestionSetId);
       }
 
       setDeletedIds([]);
@@ -379,6 +400,31 @@ export function ReviewQuestionsSection({
     } catch {
       setSaveState("error");
       setTimeout(() => setSaveState("idle"), 3000);
+    }
+  }
+
+  async function handleConfirmPublishAction() {
+    if (!questionSetId || !publishConfirmAction) return;
+    const action = publishConfirmAction;
+    setPublishing(true);
+    try {
+      if (action === "publish") {
+        await publishQuestionSet(questionSetId);
+        onPublishStatusChange?.("PUBLISHED");
+        showToast(rp.publishSuccess);
+      } else {
+        await unpublishQuestionSet(questionSetId);
+        onPublishStatusChange?.("DRAFT");
+        showToast(rp.unpublishSuccess);
+      }
+    } catch (err) {
+      const message = err instanceof Error && err.message
+        ? err.message
+        : action === "publish" ? rp.publishFailed : rp.unpublishFailed;
+      showToast(message, "delete");
+    } finally {
+      setPublishing(false);
+      setPublishConfirmAction(null);
     }
   }
 
@@ -430,8 +476,9 @@ export function ReviewQuestionsSection({
         <p className={cn("text-sm", portalSubtext)}>
           {rp.questionCount.replace("{{count}}", String(questions.length))}
         </p>
-        {!readOnly && (
-          <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {!readOnly && (
+            <>
             <button
               type="button"
               onClick={() => setShowAddDialog(true)}
@@ -480,9 +527,51 @@ export function ReviewQuestionsSection({
                 </>
               )}
             </button>
-          </div>
-        )}
+            </>
+          )}
+
+          {questionSetId && questions.length > 0 && (
+            publishStatus === "PUBLISHED" ? (
+              <button
+                type="button"
+                onClick={() => setPublishConfirmAction("unpublish")}
+                disabled={publishing}
+                className={cn(
+                  "flex-1 sm:flex-none flex items-center justify-center gap-2 text-sm font-semibold px-4 py-2 rounded-lg border transition-colors disabled:opacity-60",
+                  portalCard,
+                  portalHeading,
+                  "hover:bg-gray-50 dark:hover:bg-gray-800"
+                )}
+              >
+                {publishing ? <Loader2 size={14} className="animate-spin" /> : <Undo2 size={14} />}
+                {rp.unpublish}
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setPublishConfirmAction("publish")}
+                disabled={publishing}
+                className="flex-1 sm:flex-none flex items-center justify-center gap-2 text-sm font-semibold px-4 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60 transition-colors"
+              >
+                {publishing ? <Loader2 size={14} className="animate-spin" /> : <Rocket size={14} />}
+                {rp.publish}
+              </button>
+            )
+          )}
+        </div>
       </div>
+
+      <ConfirmDialog
+        open={publishConfirmAction !== null}
+        title={publishConfirmAction === "unpublish" ? rp.unpublishConfirmTitle : rp.publishConfirmTitle}
+        message={publishConfirmAction === "unpublish" ? rp.unpublishConfirmMessage : rp.publishConfirmMessage}
+        confirmLabel={publishConfirmAction === "unpublish" ? rp.unpublish : rp.publish}
+        cancelLabel={rp.cancelBtn}
+        variant={publishConfirmAction === "unpublish" ? "danger" : "primary"}
+        loading={publishing}
+        onConfirm={handleConfirmPublishAction}
+        onCancel={() => setPublishConfirmAction(null)}
+      />
 
       {/* Questions List */}
       {questions.length === 0 ? (

@@ -17,9 +17,23 @@ interface ReviewPageClientProps {
   isDraftView?: boolean;
   isGenerating?: boolean;
   isRetrying?: boolean;
+  questionSetId?: string;
+  publishStatus?: "DRAFT" | "PUBLISHED" | null;
+  onPublishStatusChange?: (status: "DRAFT" | "PUBLISHED") => void;
+  onDraftSaved?: (questionSetId: string) => void;
 }
 
-export function ReviewPageClient({ session, draftQuestions, isDraftView = false, isGenerating = false, isRetrying = false }: ReviewPageClientProps) {
+export function ReviewPageClient({
+  session,
+  draftQuestions,
+  isDraftView = false,
+  isGenerating = false,
+  isRetrying = false,
+  questionSetId,
+  publishStatus,
+  onPublishStatusChange,
+  onDraftSaved,
+}: ReviewPageClientProps) {
   const { t } = useLanguage();
   const rp = t.reviewPage;
   const gsp = t.generationSessionPage;
@@ -186,6 +200,10 @@ export function ReviewPageClient({ session, draftQuestions, isDraftView = false,
             status={session.status}
             failureMessage={session.failureMessage}
             readOnly={isDraftView}
+            questionSetId={questionSetId}
+            publishStatus={publishStatus}
+            onPublishStatusChange={onPublishStatusChange}
+            onDraftSaved={onDraftSaved}
           />
         </div>
       )}

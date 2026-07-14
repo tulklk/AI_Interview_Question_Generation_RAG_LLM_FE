@@ -25,6 +25,7 @@ export interface QuestionSet {
   id: string;
   title: string;
   company: string;
+  companyId?: string;
   companyInitials: string;
   companyColor: string;
   difficulty: Difficulty;
