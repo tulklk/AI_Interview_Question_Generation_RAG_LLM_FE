@@ -188,7 +188,16 @@ export function RegisterJobSeekerForm({ registerRole = "jobseeker" }: RegisterJo
     if (!fullName.trim()) errors.fullName = "Họ tên là bắt buộc";
     if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()))
       errors.email = "Vui lòng nhập email hợp lệ";
-    if (password.length < 8) errors.password = rp.passwordTooShort;
+    if (password.length < 8) {
+      errors.password = rp.passwordTooShort;
+    } else if (
+      !/[A-Z]/.test(password) ||
+      !/[a-z]/.test(password) ||
+      !/[0-9]/.test(password) ||
+      !/[^A-Za-z0-9]/.test(password)
+    ) {
+      errors.password = rp.passwordComplexity;
+    }
     if (confirmPassword !== password) errors.confirmPassword = rp.passwordMismatch;
     if (Object.keys(errors).length > 0) {
       setFieldErrors(errors);
@@ -252,7 +261,16 @@ export function RegisterJobSeekerForm({ registerRole = "jobseeker" }: RegisterJo
       if (status === 409 || msg.toLowerCase().includes("email")) {
         setFieldErrors({ email: rp.emailAlreadyUsed });
         setStep(1);
-      } else if (data?.errors) {
+      } else if (Array.isArray(data?.errors) && data.errors.length > 0) {
+        const errMsg = (data.errors as string[]).join(" ");
+        const lower = errMsg.toLowerCase();
+        if (lower.includes("mật khẩu") || lower.includes("password")) {
+          setFieldErrors({ password: errMsg });
+          setStep(1);
+        } else {
+          addToast("error", errMsg);
+        }
+      } else if (data?.errors && typeof data.errors === "object") {
         setFieldErrors(data.errors as FieldErrors);
       } else {
         addToast("error", isGoogleSignup ? rp.profileCompleteFailed : rp.registrationFailed);
