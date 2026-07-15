@@ -178,6 +178,50 @@ export async function findInProgressSession(questionSetId: string): Promise<Prac
   }
 }
 
+export interface CompletedSessionSummary {
+  id: string;
+  questionSetId: string;
+  setTitle: string;
+  company: string;
+  completedAt?: string;
+  score: number;
+  durationMinutes: number;
+  skills: string[];
+  totalQuestions: number;
+}
+
+function normalizeCompletedSession(raw: unknown): CompletedSessionSummary | null {
+  const src = asRecord(raw);
+  if (!src) return null;
+  const id = pickString(src, "sessionId", "id", "SessionId", "Id");
+  if (!id) return null;
+  return {
+    id,
+    questionSetId: pickString(src, "questionSetId", "QuestionSetId"),
+    setTitle: pickString(src, "setTitle", "SetTitle", "jobTitle", "title"),
+    company: pickString(src, "company", "companyName", "CompanyName"),
+    completedAt: pickString(src, "completedAt", "CompletedAt", "endedAt", "updatedAt") || undefined,
+    score: pickNumber(src, "score", "overallScore", "Score") ?? 0,
+    durationMinutes: pickNumber(src, "durationMinutes", "DurationMinutes", "duration") ?? 0,
+    skills: pickStringArray(src, "skills", "Skills"),
+    totalQuestions: pickNumber(src, "totalQuestions", "TotalQuestions", "questionCount") ?? 0,
+  };
+}
+
+/** Lists the candidate's completed practice sessions, most recent first. */
+export async function listCompletedSessions(): Promise<CompletedSessionSummary[]> {
+  try {
+    const res = await apiClient.get("/practice-sessions", { params: { status: "COMPLETED" } });
+    return extractList(res.data)
+      .map(normalizeCompletedSession)
+      .filter((s): s is CompletedSessionSummary => s !== null);
+  } catch (err) {
+    const status = (err as { response?: { status?: number } })?.response?.status;
+    if (status === 404) return [];
+    throw err;
+  }
+}
+
 function normalizeAnswer(raw: unknown, index: number): AnswerRecord | null {
   const src = asRecord(raw);
   if (!src) return null;

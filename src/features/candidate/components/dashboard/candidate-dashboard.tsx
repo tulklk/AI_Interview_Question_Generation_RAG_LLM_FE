@@ -1,15 +1,20 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import {
   Sparkles, ChevronRight,
-  BarChart2, Clock, RefreshCw,
+  BarChart2, Clock, RefreshCw, AlertCircle,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import {
-  candidateStats, practiceSessions, questionSets,
-} from "@/features/candidate/data/jobseeker";
+  listCompletedSessions,
+  type CompletedSessionSummary,
+} from "@/features/candidate/services/practice-session.service";
+import { listQuestionSets } from "@/features/candidate/services/question-set.service";
+import { getCompanyColor, getCompanyInitials } from "@/features/candidate/utils/company-visual";
+import type { QuestionSet } from "@/features/candidate/types/jobseeker";
 import { QuestionSetCard } from "@/features/candidate/components/marketplace/question-set-card";
 import { SkillRadarChart } from "@/features/candidate/components/dashboard/skill-radar-chart";
 import { useLanguage } from "@/shared/providers/language-context";
@@ -25,13 +30,87 @@ const fadeUp = (delay = 0) => ({
   transition: { duration: 0.4, delay },
 });
 
+// NOTE: per-skill breakdown across a candidate's full history needs a BE aggregate
+// endpoint (fetching every past session's feedback individually is impractical).
+// These stay illustrative until that endpoint exists.
 const strongSkills = ["React", "TypeScript", "Communication"];
 const weakSkills  = ["Situational Questions", "System Design", "SQL"];
+
+function computeStreakDays(completedAtList: (string | undefined)[]): number {
+  const days = new Set(
+    completedAtList
+      .map((iso) => {
+        if (!iso) return null;
+        const d = new Date(iso);
+        return Number.isNaN(d.getTime()) ? null : d.toISOString().slice(0, 10);
+      })
+      .filter((d): d is string => d !== null)
+  );
+  let streak = 0;
+  const cursor = new Date();
+  cursor.setHours(0, 0, 0, 0);
+  if (!days.has(cursor.toISOString().slice(0, 10))) {
+    cursor.setDate(cursor.getDate() - 1);
+  }
+  while (days.has(cursor.toISOString().slice(0, 10))) {
+    streak++;
+    cursor.setDate(cursor.getDate() - 1);
+  }
+  return streak;
+}
 
 export function CandidateDashboard() {
   const { t } = useLanguage();
   const { user, loading } = useUser();
   const p = t.jobseekerDashboardPage;
+
+  const [sessions, setSessions] = useState<CompletedSessionSummary[]>([]);
+  const [sessionsLoading, setSessionsLoading] = useState(true);
+  const [sessionsError, setSessionsError] = useState(false);
+  const [sessionsReloadKey, setSessionsReloadKey] = useState(0);
+
+  const [recommendedSets, setRecommendedSets] = useState<QuestionSet[]>([]);
+  const [setsLoading, setSetsLoading] = useState(true);
+  const [setsError, setSetsError] = useState(false);
+  const [setsReloadKey, setSetsReloadKey] = useState(0);
+
+  useEffect(() => {
+    let cancelled = false;
+    setSessionsLoading(true);
+    setSessionsError(false);
+    listCompletedSessions()
+      .then((res) => {
+        if (!cancelled) setSessions(res);
+      })
+      .catch(() => {
+        if (!cancelled) setSessionsError(true);
+      })
+      .finally(() => {
+        if (!cancelled) setSessionsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [sessionsReloadKey]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setSetsLoading(true);
+    setSetsError(false);
+    listQuestionSets({ pageSize: 3 })
+      .then((res) => {
+        if (!cancelled) setRecommendedSets(res.items.slice(0, 3));
+      })
+      .catch(() => {
+        if (!cancelled) setSetsError(true);
+      })
+      .finally(() => {
+        if (!cancelled) setSetsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [setsReloadKey]);
 
   const greeting = getTimeOfDayGreeting({
     morning: p.greetingMorning,
@@ -42,24 +121,55 @@ export function CandidateDashboard() {
   const displayName = user?.fullName || (loading ? "..." : "User");
   const welcomeText = buildWelcomeMessage(p.welcomeTemplate, greeting, displayName);
 
+  const sessionCount = sessions.length;
+  const avgScore = sessionCount ? Math.round(sessions.reduce((a, s) => a + s.score, 0) / sessionCount) : 0;
+  const weeklyCount = sessions.filter((s) => {
+    if (!s.completedAt) return false;
+    const d = new Date(s.completedAt).getTime();
+    return !Number.isNaN(d) && Date.now() - d <= 7 * 24 * 60 * 60 * 1000;
+  }).length;
+  const streakDays = computeStreakDays(sessions.map((s) => s.completedAt));
+  const readinessKey = sessionCount === 0 ? "low" : avgScore >= 80 ? "high" : avgScore >= 60 ? "medium" : "low";
+  const readinessLabel = p.statValues.readinessLabels[readinessKey];
+
+  const welcomeSub = sessionsLoading
+    ? ""
+    : sessionCount === 0
+      ? p.welcomeSubEmpty
+      : p.welcomeSubTemplate
+          .replace("{{sets}}", String(recommendedSets.length))
+          .replace("{{streak}}", String(streakDays));
+
+  const iconBg = "bg-gray-100 dark:bg-gray-800 shadow-sm ring-1 ring-black/5 dark:ring-white/10";
+  const iconColor = "text-gray-900 dark:text-gray-100";
+  const statCards = [
+    { icon: BarChart2, label: p.statLabels[0], value: sessionCount.toString(), trend: weeklyCount > 0 ? p.weeklyTrendTemplate.replace("{{count}}", String(weeklyCount)) : undefined },
+    { icon: BarChart2, label: p.statLabels[1], value: `${avgScore}%`, trend: undefined },
+    { icon: Clock, label: p.statLabels[2], value: `${streakDays} ${streakDays === 1 ? "day" : "days"}`, trend: undefined },
+    { icon: Sparkles, label: p.statLabels[3], value: readinessLabel, trend: p.statTrends[3] },
+  ];
+
+  const recentSessions = [...sessions]
+    .sort((a, b) => new Date(b.completedAt ?? 0).getTime() - new Date(a.completedAt ?? 0).getTime())
+    .slice(0, 3);
+
   return (
     <div>
       <motion.div {...fadeUp(0)} className="mb-6">
         <h1 className={cn("text-[30px] font-[800] leading-[36px]", portalHeadingAlt)}>{welcomeText}</h1>
-        <p className={cn("text-[16px] leading-[24px] mt-1", portalSubtextAlt)}>{p.welcomeSub}</p>
+        <p className={cn("text-[16px] leading-[24px] mt-1", portalSubtextAlt)}>{welcomeSub}</p>
       </motion.div>
 
       <motion.div {...fadeUp(0.06)} className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        {candidateStats.map((stat, i) => (
-          <StatCard
-            key={stat.id}
-            icon={stat.icon}
-            iconBg={stat.iconBg}
-            iconColor={stat.iconColor}
-            value={stat.id === "streak" ? p.statValues.streak : stat.id === "readiness" ? p.statValues.readiness : stat.value}
-            label={p.statLabels[i] ?? stat.label}
-            trend={p.statTrends[i] ?? stat.trend}
-          />
+        {statCards.map((stat, i) => (
+          <motion.div
+            key={stat.label}
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: i * 0.06 }}
+          >
+            <StatCard icon={stat.icon} iconBg={iconBg} iconColor={iconColor} value={stat.value} label={stat.label} trend={stat.trend} />
+          </motion.div>
         ))}
       </motion.div>
 
@@ -86,30 +196,50 @@ export function CandidateDashboard() {
                 {p.viewAllHistory}
               </Link>
             </div>
-            <ul className="divide-y divide-gray-200 dark:divide-gray-800">
-              {practiceSessions.slice(0, 3).map((session) => (
-                <li key={session.id} className="hr-table-row flex items-center gap-4 px-5 py-3.5">
-                  <div className={cn("w-8 h-8 rounded-lg text-white text-[11px] font-bold flex items-center justify-center shrink-0", session.companyColor)}>
-                    {session.companyInitials}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className={cn("text-[13px] font-[600] truncate", portalHeadingAlt)}>{session.setTitle}</p>
-                    <p className={cn("text-[11px] flex items-center gap-1", portalSubtextAlt)}>
-                      <Clock size={10} />
-                      {session.date} · {session.duration}
-                    </p>
-                  </div>
-                  <Pill className={cn("text-[12px] font-[700] px-2.5 py-1", getScoreBadgeClass(session.score))}>
-                    {session.score}%
-                  </Pill>
-                  <Link href={`/jobseeker/practice/${session.setId}`}
-                    className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 dark:text-gray-500 hover:text-primary hover:bg-[#F5F3FF] dark:hover:bg-purple-950/30 transition-colors"
-                  >
-                    <RefreshCw size={13} />
-                  </Link>
-                </li>
-              ))}
-            </ul>
+
+            {sessionsLoading ? (
+              <div className="p-5 flex flex-col gap-3">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <div key={i} className="h-10 rounded-lg bg-gray-100 dark:bg-gray-800 animate-pulse" />
+                ))}
+              </div>
+            ) : sessionsError ? (
+              <div className="p-5 flex items-center justify-center gap-3">
+                <AlertCircle size={16} className="text-red-500 shrink-0" />
+                <p className={cn("text-[13px]", portalSubtextAlt)}>{p.loadFailed}</p>
+                <button type="button" onClick={() => setSessionsReloadKey((k) => k + 1)} className="flex items-center gap-1.5 text-[12px] font-semibold text-primary hover:underline">
+                  <RefreshCw size={12} />
+                  {p.retryBtn}
+                </button>
+              </div>
+            ) : recentSessions.length === 0 ? (
+              <p className={cn("text-center py-8 text-[13px]", portalSubtextAlt)}>{p.noSessionsYet}</p>
+            ) : (
+              <ul className="divide-y divide-gray-200 dark:divide-gray-800">
+                {recentSessions.map((session) => (
+                  <li key={session.id} className="hr-table-row flex items-center gap-4 px-5 py-3.5">
+                    <div className={cn("w-8 h-8 rounded-lg text-white text-[11px] font-bold flex items-center justify-center shrink-0", getCompanyColor(session.company))}>
+                      {getCompanyInitials(session.company)}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className={cn("text-[13px] font-[600] truncate", portalHeadingAlt)}>{session.setTitle}</p>
+                      <p className={cn("text-[11px] flex items-center gap-1", portalSubtextAlt)}>
+                        <Clock size={10} />
+                        {session.durationMinutes} min
+                      </p>
+                    </div>
+                    <Pill className={cn("text-[12px] font-[700] px-2.5 py-1", getScoreBadgeClass(session.score))}>
+                      {session.score}%
+                    </Pill>
+                    <Link href={`/jobseeker/practice/${session.questionSetId}`}
+                      className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 dark:text-gray-500 hover:text-primary hover:bg-[#F5F3FF] dark:hover:bg-purple-950/30 transition-colors"
+                    >
+                      <RefreshCw size={13} />
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
           </motion.div>
         </div>
 
@@ -188,18 +318,38 @@ export function CandidateDashboard() {
             <BarChart2 size={13} />
           </Link>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-          {questionSets.slice(0, 3).map((set, i) => (
-            <motion.div
-              key={set.id}
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.32 + i * 0.08 }}
-            >
-              <QuestionSetCard set={set} />
-            </motion.div>
-          ))}
-        </div>
+
+        {setsLoading ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="h-56 rounded-xl bg-gray-100 dark:bg-gray-800 animate-pulse" />
+            ))}
+          </div>
+        ) : setsError ? (
+          <div className="flex items-center justify-center gap-3 py-8">
+            <AlertCircle size={16} className="text-red-500 shrink-0" />
+            <p className={cn("text-[13px]", portalSubtextAlt)}>{p.loadFailed}</p>
+            <button type="button" onClick={() => setSetsReloadKey((k) => k + 1)} className="flex items-center gap-1.5 text-[12px] font-semibold text-primary hover:underline">
+              <RefreshCw size={12} />
+              {p.retryBtn}
+            </button>
+          </div>
+        ) : recommendedSets.length === 0 ? (
+          <p className={cn("text-center py-8 text-[13px]", portalSubtextAlt)}>{p.noRecommendedSets}</p>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            {recommendedSets.map((set, i) => (
+              <motion.div
+                key={set.id}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.32 + i * 0.08 }}
+              >
+                <QuestionSetCard set={set} />
+              </motion.div>
+            ))}
+          </div>
+        )}
       </motion.div>
     </div>
   );

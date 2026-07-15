@@ -18,6 +18,7 @@ import {
 } from "@/shared/utils/portal-ui";
 import { ConfirmDialog } from "@/shared/components/ui/confirm-dialog";
 import { AiLoadingSpinner } from "@/shared/components/common/ai-loading-spinner";
+import { useToast } from "@/shared/providers/toast-context";
 import {
   startPracticeSession,
   submitAnswer as submitAnswerApi,
@@ -78,6 +79,7 @@ interface PracticeSessionProps {
 export function PracticeSession({ set }: PracticeSessionProps) {
   const { t } = useLanguage();
   const router = useRouter();
+  const { addToast } = useToast();
   const p = t.jobseekerPracticePage;
 
   const [currentIdx, setCurrentIdx] = useState(0);
@@ -130,6 +132,7 @@ export function PracticeSession({ set }: PracticeSessionProps) {
           setSubmitted(submittedMap);
           setAnswers((prev) => ({ ...prev, ...answersMap }));
           setResumed(true);
+          addToast("success", p.resumedToast);
           const firstUnanswered = set.questions.findIndex((q) => !submittedMap[q.id]);
           setCurrentIdx(firstUnanswered === -1 ? set.questions.length - 1 : firstUnanswered);
         } else {
@@ -203,9 +206,12 @@ export function PracticeSession({ set }: PracticeSessionProps) {
           setTimeout(() => navigate(1), 600);
         }
       })
-      .catch(() => setSubmitError(true))
+      .catch(() => {
+        setSubmitError(true);
+        addToast("error", p.submitFailed);
+      })
       .finally(() => setEvaluating(false));
-  }, [currentAnswer, isSubmitted, question.id, isLast, sessionId]);
+  }, [currentAnswer, isSubmitted, question.id, isLast, sessionId, addToast, p.submitFailed]);
 
   function handleFinish() {
     if (!sessionId) return;
@@ -218,6 +224,7 @@ export function PracticeSession({ set }: PracticeSessionProps) {
       .catch(() => {
         setFinishError(true);
         setFinishing(false);
+        addToast("error", p.finishFailed);
       });
   }
 

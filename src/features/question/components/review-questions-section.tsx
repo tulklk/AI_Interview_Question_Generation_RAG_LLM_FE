@@ -46,6 +46,7 @@ import {
 import { QuestionEditCard } from "./question-edit-card";
 import { AddQuestionDialog } from "./add-question-dialog";
 import { ConfirmDialog } from "@/shared/components/ui/confirm-dialog";
+import { useToast } from "@/shared/providers/toast-context";
 
 // ── Sortable wrapper ──────────────────────────────────────────────────────────
 
@@ -141,12 +142,10 @@ export function ReviewQuestionsSection({
 }: ReviewQuestionsSectionProps) {
   const { t } = useLanguage();
   const rp = t.reviewPage;
+  const { addToast } = useToast();
   const [questions, setQuestions] = useState<GeneratedQuestion[]>(initialQuestions);
   const [deletedIds, setDeletedIds] = useState<string[]>([]);
   const [editingIds, setEditingIds] = useState<string[]>([]);
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [toastVariant, setToastVariant] = useState<"success" | "delete">("success");
-  const [toastVisible, setToastVisible] = useState(false);
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [showNavWarning, setShowNavWarning] = useState(false);
@@ -271,15 +270,6 @@ export function ReviewQuestionsSection({
     persistReorder(next);
   }
 
-  function showToast(message: string, variant: "success" | "delete" = "success") {
-    setToastMessage(message);
-    setToastVariant(variant);
-    setToastVisible(false);
-    setTimeout(() => setToastVisible(true), 16);
-    setTimeout(() => setToastVisible(false), 2700);
-    setTimeout(() => setToastMessage(null), 3000);
-  }
-
   async function handleSaveQuestion(id: string, changes: Partial<GeneratedQuestion>): Promise<boolean> {
     const isSynthetic = id.startsWith("manual-") || id.startsWith("q-") || id.startsWith("stub-");
     const isLocalSession = sessionId.startsWith("local-");
@@ -299,7 +289,7 @@ export function ReviewQuestionsSection({
 
     if (ok) {
       setQuestions((prev) => prev.map((q) => (q.id === id ? { ...q, ...changes } : q)));
-      showToast("Chỉnh sửa câu hỏi thành công");
+      addToast("success", "Chỉnh sửa câu hỏi thành công");
     }
     return ok;
   }
@@ -318,7 +308,7 @@ export function ReviewQuestionsSection({
     if (!id.startsWith("manual-")) {
       setDeletedIds((prev) => [...prev, id]);
     }
-    showToast("Đã xóa câu hỏi", "delete");
+    addToast("success", "Đã xóa câu hỏi");
   }
 
   function handleMoveUp(index: number) {
@@ -351,7 +341,7 @@ export function ReviewQuestionsSection({
       setPage(Math.ceil(next.length / PAGE_SIZE));
       return next;
     });
-    showToast("Thêm câu hỏi thành công");
+    addToast("success", "Thêm câu hỏi thành công");
   }
 
   async function handleSaveDraft() {
@@ -411,17 +401,17 @@ export function ReviewQuestionsSection({
       if (action === "publish") {
         await publishQuestionSet(questionSetId);
         onPublishStatusChange?.("PUBLISHED");
-        showToast(rp.publishSuccess);
+        addToast("success", rp.publishSuccess);
       } else {
         await unpublishQuestionSet(questionSetId);
         onPublishStatusChange?.("DRAFT");
-        showToast(rp.unpublishSuccess);
+        addToast("success", rp.unpublishSuccess);
       }
     } catch (err) {
       const message = err instanceof Error && err.message
         ? err.message
         : action === "publish" ? rp.publishFailed : rp.unpublishFailed;
-      showToast(message, "delete");
+      addToast("error", message);
     } finally {
       setPublishing(false);
       setPublishConfirmAction(null);
@@ -786,25 +776,6 @@ export function ReviewQuestionsSection({
         document.body
       )}
 
-      {/* Question action toast */}
-      {toastMessage && createPortal(
-        <div className={cn(
-          "fixed bottom-6 right-6 z-99999 flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg text-white",
-          "transition-all duration-300 ease-in-out",
-          toastVariant === "delete"
-            ? "bg-slate-700 dark:bg-slate-600"
-            : "bg-emerald-500",
-          toastVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-3"
-        )}>
-          {toastVariant === "delete" ? (
-            <X size={16} className="shrink-0" />
-          ) : (
-            <CheckCircle2 size={16} className="shrink-0" />
-          )}
-          <span className="text-sm font-semibold">{toastMessage}</span>
-        </div>,
-        document.body
-      )}
 
       {/* Save Draft Confirmation Dialog — rendered via portal to escape ancestor transforms */}
       {showSaveDialog && createPortal(

@@ -33,6 +33,8 @@ export function MarketplacePage() {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [category, setCategory] = useState("All");
   const [difficulty, setDifficulty] = useState<"All" | Difficulty>("All");
+  const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
+  const [availableSkills, setAvailableSkills] = useState<string[]>([]);
 
   const [sets, setSets] = useState<QuestionSet[]>([]);
   const [loading, setLoading] = useState(true);
@@ -45,6 +47,24 @@ export function MarketplacePage() {
     return () => clearTimeout(id);
   }, [search]);
 
+  // One-time, unfiltered fetch to populate the full skill-chip picker
+  // (independent of the current filters, so the list of options never shrinks).
+  useEffect(() => {
+    listQuestionSets({})
+      .then((res) => {
+        const skillSet = new Set<string>();
+        res.items.forEach((s) => s.skills.forEach((sk) => skillSet.add(sk)));
+        setAvailableSkills(Array.from(skillSet).sort());
+      })
+      .catch(() => {});
+  }, []);
+
+  function toggleSkill(skill: string) {
+    setSelectedSkills((prev) =>
+      prev.includes(skill) ? prev.filter((s) => s !== skill) : [...prev, skill]
+    );
+  }
+
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
@@ -53,6 +73,7 @@ export function MarketplacePage() {
     listQuestionSets({
       keyword: debouncedSearch || undefined,
       difficulty: difficulty === "All" ? undefined : difficulty,
+      skills: selectedSkills.length > 0 ? selectedSkills : undefined,
     })
       .then((res) => {
         if (cancelled) return;
@@ -68,7 +89,7 @@ export function MarketplacePage() {
     return () => {
       cancelled = true;
     };
-  }, [debouncedSearch, difficulty, reloadKey]);
+  }, [debouncedSearch, difficulty, selectedSkills, reloadKey]);
 
   const filtered = sets.filter((s) => category === "All" || s.category === category);
 
@@ -175,6 +196,29 @@ export function MarketplacePage() {
             ))}
           </div>
         </div>
+
+        {/* Skills — multi-select chips */}
+        {availableSkills.length > 0 && (
+          <div className="flex flex-wrap items-center gap-1.5 pt-1 border-t border-gray-100 dark:border-gray-800">
+            <span className={cn("text-[11px] font-[600] uppercase tracking-wide mr-1", portalSubtextAlt)}>
+              {p.skillsLabel}
+            </span>
+            {availableSkills.map((skill) => (
+              <button
+                key={skill}
+                onClick={() => toggleSkill(skill)}
+                className={cn(
+                  "text-[12px] font-[500] px-3 py-1.5 rounded-[6px] transition-colors shrink-0",
+                  selectedSkills.includes(skill)
+                    ? "bg-violet-600 text-white"
+                    : cn(portalMutedBg, portalSubtextAlt, "hover:bg-gray-200 dark:hover:bg-gray-700")
+                )}
+              >
+                {skill}
+              </button>
+            ))}
+          </div>
+        )}
       </motion.div>
 
       {/* ── Results count ─────────────────────────────────────────────────── */}

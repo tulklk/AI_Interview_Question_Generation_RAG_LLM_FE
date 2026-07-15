@@ -1,19 +1,28 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { Search, RefreshCw, Eye, BarChart2, Clock, Trophy, BookOpen, ChevronDown } from "lucide-react";
+import { Search, RefreshCw, Eye, BarChart2, Clock, Trophy, BookOpen, ChevronDown, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/cn";
-import { practiceSessions } from "@/features/candidate/data/jobseeker";
+import { listCompletedSessions, type CompletedSessionSummary } from "@/features/candidate/services/practice-session.service";
+import { getCompanyColor, getCompanyInitials } from "@/features/candidate/utils/company-visual";
 import { useLanguage } from "@/shared/providers/language-context";
 import { StatCard } from "@/features/candidate/components/ui/stat-card";
 import { Pill, getScoreBadgeClass } from "@/features/candidate/components/ui/pill";
+import { AiLoadingSpinner } from "@/shared/components/common/ai-loading-spinner";
 import {
   portalHeadingAlt,
   portalInput,
   portalSubtextAlt,
 } from "@/shared/utils/portal-ui";
+
+function formatSessionDate(iso?: string): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+}
 
 export function HistoryBoard() {
   const { t } = useLanguage();
@@ -22,23 +31,72 @@ export function HistoryBoard() {
   const [search, setSearch] = useState("");
   const [timeFilter, setTimeFilter] = useState("All Time");
 
-  const filtered = practiceSessions.filter((s) => {
+  const [sessions, setSessions] = useState<CompletedSessionSummary[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setError(false);
+    listCompletedSessions()
+      .then((res) => {
+        if (!cancelled) setSessions(res);
+      })
+      .catch(() => {
+        if (!cancelled) setError(true);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [reloadKey]);
+
+  const filtered = sessions.filter((s) => {
     const q = search.toLowerCase();
     return !q || s.setTitle.toLowerCase().includes(q) || s.company.toLowerCase().includes(q);
   });
 
-  const avgScore = Math.round(practiceSessions.reduce((a, s) => a + s.score, 0) / practiceSessions.length);
-  const bestScore = Math.max(...practiceSessions.map((s) => s.score));
-  const totalTime = practiceSessions.reduce((a, s) => a + parseInt(s.duration), 0);
+  const avgScore = sessions.length ? Math.round(sessions.reduce((a, s) => a + s.score, 0) / sessions.length) : 0;
+  const bestScore = sessions.length ? Math.max(...sessions.map((s) => s.score)) : 0;
+  const totalTime = sessions.reduce((a, s) => a + s.durationMinutes, 0);
 
   const iconBg = "bg-gray-100 dark:bg-gray-800 shadow-sm ring-1 ring-black/5 dark:ring-white/10";
   const iconColor = "text-gray-900 dark:text-gray-100";
   const statCards = [
-    { icon: BookOpen, label: p.statLabels[0], value: practiceSessions.length.toString(), bg: iconBg, color: iconColor },
+    { icon: BookOpen, label: p.statLabels[0], value: sessions.length.toString(), bg: iconBg, color: iconColor },
     { icon: BarChart2, label: p.statLabels[1], value: `${avgScore}%`, bg: iconBg, color: iconColor },
     { icon: Trophy, label: p.statLabels[2], value: `${bestScore}%`, bg: iconBg, color: iconColor },
     { icon: Clock, label: p.statLabels[3], value: `${totalTime} min`, bg: iconBg, color: iconColor },
   ];
+
+  if (loading) {
+    return (
+      <div className="py-20 flex items-center justify-center">
+        <AiLoadingSpinner text={p.loading} />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center gap-3 py-20 text-center">
+        <AlertCircle size={28} className="text-red-500" />
+        <p className={cn("text-[14px]", portalSubtextAlt)}>{p.loadFailed}</p>
+        <button
+          type="button"
+          onClick={() => setReloadKey((k) => k + 1)}
+          className="flex items-center gap-2 text-[13px] font-semibold text-primary hover:underline"
+        >
+          <RefreshCw size={13} />
+          {p.loadRetryBtn}
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -122,8 +180,8 @@ export function HistoryBoard() {
               >
                 {/* Session */}
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className={cn("w-8 h-8 rounded-lg text-white text-[11px] font-bold flex items-center justify-center shrink-0", session.companyColor)}>
-                    {session.companyInitials}
+                  <div className={cn("w-8 h-8 rounded-lg text-white text-[11px] font-bold flex items-center justify-center shrink-0", getCompanyColor(session.company))}>
+                    {getCompanyInitials(session.company)}
                   </div>
                   <div className="min-w-0">
                     <p className={cn("text-[13px] font-[600] truncate", portalHeadingAlt)}>{session.setTitle}</p>
@@ -132,7 +190,7 @@ export function HistoryBoard() {
                 </div>
 
                 {/* Date */}
-                <p className={cn("text-[12px]", portalSubtextAlt)}>{session.date}</p>
+                <p className={cn("text-[12px]", portalSubtextAlt)}>{formatSessionDate(session.completedAt)}</p>
 
                 {/* Score */}
                 <Pill className={cn("text-[13px] font-[700] px-2.5 py-1 w-fit", getScoreBadgeClass(session.score))}>
@@ -140,7 +198,7 @@ export function HistoryBoard() {
                 </Pill>
 
                 {/* Duration */}
-                <p className={cn("text-[12px]", portalSubtextAlt)}>{session.duration}</p>
+                <p className={cn("text-[12px]", portalSubtextAlt)}>{session.durationMinutes} min</p>
 
                 {/* Skills */}
                 <div className="flex flex-wrap gap-1.5">
@@ -154,7 +212,7 @@ export function HistoryBoard() {
                 {/* Actions */}
                 <div className="flex items-center gap-1">
                   <Link
-                    href={`/jobseeker/practice/${session.setId}/result`}
+                    href={`/jobseeker/practice/${session.id}/result`}
                     className={cn(
                       "flex items-center gap-1.5 h-[30px] px-3 text-[11px] font-[600] hover:text-primary hover:bg-[#F5F3FF] dark:hover:bg-purple-950/30 rounded-lg transition-colors",
                       portalSubtextAlt
@@ -165,7 +223,7 @@ export function HistoryBoard() {
                     {p.viewBtn}
                   </Link>
                   <Link
-                    href={`/jobseeker/practice/${session.setId}`}
+                    href={`/jobseeker/practice/${session.questionSetId}`}
                     className="shimmer-button flex items-center gap-1.5 h-7.5 px-3 text-[11px] font-semibold text-white hr-cta-btn rounded-lg"
                     title={p.retryBtn}
                   >
@@ -195,8 +253,8 @@ export function HistoryBoard() {
             >
               {/* Header row: company icon + title + score */}
               <div className="flex items-start gap-3">
-                <div className={cn("w-9 h-9 rounded-lg text-white text-[11px] font-bold flex items-center justify-center shrink-0", session.companyColor)}>
-                  {session.companyInitials}
+                <div className={cn("w-9 h-9 rounded-lg text-white text-[11px] font-bold flex items-center justify-center shrink-0", getCompanyColor(session.company))}>
+                  {getCompanyInitials(session.company)}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className={cn("text-[13px] font-[600] truncate", portalHeadingAlt)}>{session.setTitle}</p>
@@ -211,10 +269,10 @@ export function HistoryBoard() {
               <div className={cn("flex items-center gap-3 text-[12px]", portalSubtextAlt)}>
                 <span className="flex items-center gap-1">
                   <Clock size={11} className="shrink-0" />
-                  {session.date}
+                  {formatSessionDate(session.completedAt)}
                 </span>
                 <span>·</span>
-                <span>{session.duration}</span>
+                <span>{session.durationMinutes} min</span>
               </div>
 
               {/* Skills */}
@@ -229,7 +287,7 @@ export function HistoryBoard() {
               {/* Action buttons */}
               <div className="flex items-center gap-2 pt-1">
                 <Link
-                  href={`/jobseeker/practice/${session.setId}/result`}
+                  href={`/jobseeker/practice/${session.id}/result`}
                   className={cn(
                     "flex-1 flex items-center justify-center gap-1.5 h-[34px] text-[12px] font-[600] rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 transition-colors hover:text-primary hover:bg-violet-50 dark:hover:bg-violet-950/30 hover:border-violet-200 dark:hover:border-violet-800",
                     portalSubtextAlt
@@ -239,7 +297,7 @@ export function HistoryBoard() {
                   {p.viewBtn}
                 </Link>
                 <Link
-                  href={`/jobseeker/practice/${session.setId}`}
+                  href={`/jobseeker/practice/${session.questionSetId}`}
                   className="flex-1 shimmer-button flex items-center justify-center gap-1.5 h-[34px] text-[12px] font-semibold text-white hr-cta-btn rounded-lg"
                 >
                   <RefreshCw size={12} />

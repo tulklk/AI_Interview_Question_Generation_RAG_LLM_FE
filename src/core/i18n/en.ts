@@ -1722,6 +1722,7 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
     loadingSets: "Loading question sets…",
     loadFailed: "Failed to load question sets.",
     retryBtn: "Retry",
+    skillsLabel: "Skills:",
   },
 
   jobseekerSetDetailPage: {
@@ -1784,6 +1785,7 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
     finishFailed: "Failed to finish the session. Please try again.",
     answerSubmitted: "Answer submitted",
     resumedBadge: "Resumed",
+    resumedToast: "Welcome back — your practice session was restored.",
   },
 
   jobseekerFeedbackPage: {
@@ -1802,6 +1804,8 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
     suggestion: "AI Suggestion",
     retryBtn: "Practice Again",
     shareBtn: "Share Result",
+    shareCopied: "Link copied to clipboard.",
+    shareFailed: "Couldn't copy the link. Please copy it from the address bar.",
     loadingFeedback: "AI is evaluating your results…",
     loadingFeedbackSub: "This usually takes a few seconds.",
     feedbackLoadFailed: "Feedback isn't ready yet. Please try again in a moment.",
@@ -1843,6 +1847,9 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
     retryBtn: "Retry",
     viewBtn: "View",
     noHistory: "No practice sessions yet. Start practicing now!",
+    loading: "Loading your practice history…",
+    loadFailed: "Failed to load your practice history.",
+    loadRetryBtn: "Retry",
   },
 
   jobseekerDashboardPage: {
@@ -1852,9 +1859,21 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
     greetingEvening: "Good evening",
     greetingNight: "Hello",
     welcomeSub: "You have 3 recommended sets and a 7-day practice streak. Keep it up!",
+    welcomeSubEmpty: "Start your first practice session to begin tracking your progress!",
+    welcomeSubTemplate: "You have {{sets}} recommended sets and a {{streak}}-day practice streak. Keep it up!",
     statLabels: ["Practice Sessions", "Average Score", "Practice Streak", "Interview Readiness"],
     statTrends: ["+3 this week", "+4% vs last week", "Personal best", "AI assessed"],
-    statValues: { streak: "7 days", readiness: "High" },
+    weeklyTrendTemplate: "+{{count}} this week",
+    statValues: {
+      streak: "7 days",
+      readiness: "High",
+      readinessLabels: { high: "High", medium: "Medium", low: "Low" },
+    },
+    loading: "Loading your dashboard…",
+    loadFailed: "Failed to load.",
+    retryBtn: "Retry",
+    noSessionsYet: "No practice sessions yet.",
+    noRecommendedSets: "No question sets to recommend yet.",
     radarLabels: {
       Technical: "Technical",
       Behavioral: "Behavioral",

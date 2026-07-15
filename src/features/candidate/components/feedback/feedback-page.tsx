@@ -15,6 +15,7 @@ import { Pill, getCategoryBadgeClass, getScoreLevel } from "@/features/candidate
 import { getCompanyColor, getCompanyInitials } from "@/features/candidate/utils/company-visual";
 import { useChartTheme } from "@/shared/hooks/use-chart-theme";
 import { ConfettiBurst } from "@/shared/components/common/confetti-burst";
+import { useToast } from "@/shared/providers/toast-context";
 import {
   portalHeadingAlt,
   portalSubtextAlt,
@@ -70,12 +71,27 @@ export function FeedbackPage({ session }: FeedbackPageProps) {
   const { t } = useLanguage();
   const p = t.jobseekerFeedbackPage;
   const chart = useChartTheme();
+  const { addToast } = useToast();
 
   const { label: scoreLevelLabel, badgeClass: scoreLevelBadgeClass } = getScoreLevel(session.overallScore, p.scoreLevels);
 
   const [expandedIds, setExpandedIds] = useState<Set<string>>(
     () => new Set(session.answers.length > 0 ? [session.answers[0].questionId] : [])
   );
+
+  async function handleShare() {
+    const url = window.location.href;
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(url);
+      } else {
+        throw new Error("Clipboard API unavailable");
+      }
+      addToast("success", p.shareCopied);
+    } catch {
+      addToast("error", p.shareFailed);
+    }
+  }
 
   function toggleExpanded(id: string) {
     setExpandedIds((prev) => {
@@ -164,10 +180,14 @@ export function FeedbackPage({ session }: FeedbackPageProps) {
               {p.retryBtn}
             </Link>
           )}
-          <button className={cn(
-            "hr-glass-card flex items-center gap-2 h-9 px-4 text-[13px] font-semibold hover:border-[#7C3AED]/30",
-            portalHeadingAlt
-          )}>
+          <button
+            type="button"
+            onClick={handleShare}
+            className={cn(
+              "hr-glass-card flex items-center gap-2 h-9 px-4 text-[13px] font-semibold hover:border-[#7C3AED]/30",
+              portalHeadingAlt
+            )}
+          >
             <Share2 size={13} />
             {p.shareBtn}
           </button>

@@ -1721,6 +1721,7 @@ Yêu cầu:
     loadingSets: "Đang tải bộ câu hỏi…",
     loadFailed: "Không thể tải bộ câu hỏi.",
     retryBtn: "Thử lại",
+    skillsLabel: "Kỹ năng:",
   },
 
   jobseekerSetDetailPage: {
@@ -1783,6 +1784,7 @@ Yêu cầu:
     finishFailed: "Không thể hoàn thành phiên. Vui lòng thử lại.",
     answerSubmitted: "Đã gửi câu trả lời",
     resumedBadge: "Đã tiếp tục",
+    resumedToast: "Chào mừng trở lại — phiên luyện tập của bạn đã được khôi phục.",
   },
 
   jobseekerFeedbackPage: {
@@ -1801,6 +1803,8 @@ Yêu cầu:
     suggestion: "Gợi ý từ AI",
     retryBtn: "Luyện tập lại",
     shareBtn: "Chia sẻ kết quả",
+    shareCopied: "Đã sao chép liên kết.",
+    shareFailed: "Không thể sao chép liên kết. Vui lòng sao chép từ thanh địa chỉ.",
     loadingFeedback: "AI đang đánh giá kết quả của bạn…",
     loadingFeedbackSub: "Thường chỉ mất vài giây.",
     feedbackLoadFailed: "Phản hồi chưa sẵn sàng. Vui lòng thử lại sau giây lát.",
@@ -1842,6 +1846,9 @@ Yêu cầu:
     retryBtn: "Luyện lại",
     viewBtn: "Xem",
     noHistory: "Chưa có phiên luyện tập nào. Hãy bắt đầu ngay!",
+    loading: "Đang tải lịch sử luyện tập…",
+    loadFailed: "Không thể tải lịch sử luyện tập.",
+    loadRetryBtn: "Thử lại",
   },
 
   jobseekerDashboardPage: {
@@ -1851,9 +1858,21 @@ Yêu cầu:
     greetingEvening: "Chào buổi tối",
     greetingNight: "Xin chào",
     welcomeSub: "Bạn có 3 bộ câu hỏi được đề xuất và chuỗi 7 ngày luyện tập. Tiếp tục phát huy!",
+    welcomeSubEmpty: "Hãy bắt đầu phiên luyện tập đầu tiên để theo dõi tiến trình của bạn!",
+    welcomeSubTemplate: "Bạn có {{sets}} bộ câu hỏi được đề xuất và chuỗi {{streak}} ngày luyện tập. Tiếp tục phát huy!",
     statLabels: ["Phiên luyện tập", "Điểm trung bình", "Chuỗi luyện tập", "Sẵn sàng phỏng vấn"],
     statTrends: ["+3 tuần này", "+4% so với tuần trước", "Kỷ lục cá nhân", "Đánh giá AI"],
-    statValues: { streak: "7 ngày", readiness: "Cao" },
+    weeklyTrendTemplate: "+{{count}} tuần này",
+    statValues: {
+      streak: "7 ngày",
+      readiness: "Cao",
+      readinessLabels: { high: "Cao", medium: "Trung bình", low: "Thấp" },
+    },
+    loading: "Đang tải bảng điều khiển…",
+    loadFailed: "Không thể tải.",
+    retryBtn: "Thử lại",
+    noSessionsYet: "Chưa có phiên luyện tập nào.",
+    noRecommendedSets: "Chưa có bộ câu hỏi đề xuất.",
     radarLabels: {
       Technical: "Kỹ thuật",
       Behavioral: "Hành vi",
