@@ -1767,6 +1767,7 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
       targetScore: "Target Score",
       startBtn: "Start Practice",
       continueBtn: "Continue Practice",
+      attempts: "attempts",
     },
     companyBlock: {
       title: "About the Company",
@@ -1885,6 +1886,7 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
     loadRetryBtn: "Retry",
     loadMoreBtn: "Load more",
     loadingMore: "Loading more…",
+    pendingScoreTooltip: "AI is still catching up on scoring this session — check back in a bit.",
   },
 
   jobseekerDashboardPage: {
@@ -1909,6 +1911,7 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
     retryBtn: "Retry",
     noSessionsYet: "No practice sessions yet.",
     noRecommendedSets: "No question sets to recommend yet.",
+    pendingScoreTooltip: "AI is still catching up on scoring this session — check back in a bit.",
     radarLabels: {
       Technical: "Technical",
       Behavioral: "Behavioral",
@@ -1975,6 +1978,26 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
     uploadPhotoFailed: "Could not upload photo. Please try again.",
     invalidPhotoType: "Please choose a JPG, PNG, GIF, or WebP image.",
     photoTooLarge: "Image must be 2MB or smaller.",
+    cv: {
+      title: "Resume / CV",
+      emptyState: "Upload your CV so we can suggest skills and tailor your practice.",
+      uploadBtn: "Upload CV",
+      uploading: "Uploading…",
+      replaceBtn: "Replace",
+      deleteBtn: "Delete",
+      downloadBtn: "Download",
+      uploadedAt: "Uploaded",
+      detectedSkills: "Skills detected from your CV",
+      analysisUnavailable: "AI skill analysis isn't available for this file yet — your CV is still saved.",
+      uploadSuccess: "CV uploaded and analyzed successfully.",
+      uploadedAnalysisFailed: "CV uploaded, but AI analysis is temporarily unavailable. Your file is saved — try again later for skill suggestions.",
+      uploadFailed: "Could not upload your CV. Please try again.",
+      invalidFormat: "Please upload a PDF or DOCX file.",
+      deleteSuccess: "CV deleted.",
+      deleteFailed: "Could not delete your CV. Please try again.",
+      deleteConfirmTitle: "Delete your CV?",
+      deleteConfirmMessage: "This removes the file and its analysis. Skills already added to your profile will stay.",
+    },
   },
   jobseekerSettingsPage: {
     heading: "Settings",
@@ -2215,6 +2238,7 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
     statusPublished: "Published",
     publishMinHint: "Need at least {{min}} questions to publish ({{count}}/{{min}}).",
     saveDraftFirstHint: "Save a draft first to enable publishing.",
+    editLockedHint: "This set is published — unpublish it first to add, edit, delete, or reorder questions.",
     notCompletedBanner: "This session has status: {{status}}. Please wait or check back later.",
     questionActions: {
       edit: "Edit",

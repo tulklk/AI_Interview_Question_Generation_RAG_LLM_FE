@@ -1766,6 +1766,7 @@ Yêu cầu:
       targetScore: "Điểm mục tiêu",
       startBtn: "Bắt Đầu Luyện Tập",
       continueBtn: "Tiếp Tục Luyện Tập",
+      attempts: "lượt",
     },
     companyBlock: {
       title: "Về Công Ty",
@@ -1884,6 +1885,7 @@ Yêu cầu:
     loadRetryBtn: "Thử lại",
     loadMoreBtn: "Tải thêm",
     loadingMore: "Đang tải thêm…",
+    pendingScoreTooltip: "AI vẫn đang xử lý điểm cho phiên này — hãy quay lại sau ít phút.",
   },
 
   jobseekerDashboardPage: {
@@ -1908,6 +1910,7 @@ Yêu cầu:
     retryBtn: "Thử lại",
     noSessionsYet: "Chưa có phiên luyện tập nào.",
     noRecommendedSets: "Chưa có bộ câu hỏi đề xuất.",
+    pendingScoreTooltip: "AI vẫn đang xử lý điểm cho phiên này — hãy quay lại sau ít phút.",
     radarLabels: {
       Technical: "Kỹ thuật",
       Behavioral: "Hành vi",
@@ -1974,6 +1977,26 @@ Yêu cầu:
     uploadPhotoFailed: "Không thể tải ảnh lên. Vui lòng thử lại.",
     invalidPhotoType: "Vui lòng chọn ảnh JPG, PNG, GIF hoặc WebP.",
     photoTooLarge: "Ảnh không được lớn hơn 2MB.",
+    cv: {
+      title: "CV / Sơ yếu lý lịch",
+      emptyState: "Tải lên CV để hệ thống gợi ý kỹ năng và cá nhân hóa luyện tập cho bạn.",
+      uploadBtn: "Tải lên CV",
+      uploading: "Đang tải lên…",
+      replaceBtn: "Thay thế",
+      deleteBtn: "Xóa",
+      downloadBtn: "Tải xuống",
+      uploadedAt: "Đã tải lên",
+      detectedSkills: "Kỹ năng phát hiện từ CV",
+      analysisUnavailable: "Phân tích AI chưa khả dụng cho file này — CV của bạn vẫn được lưu.",
+      uploadSuccess: "Đã tải lên và phân tích CV thành công.",
+      uploadedAnalysisFailed: "Đã tải lên CV, nhưng phân tích AI hiện tạm thời không khả dụng. File của bạn vẫn được lưu — hãy thử lại sau để nhận gợi ý kỹ năng.",
+      uploadFailed: "Không thể tải lên CV. Vui lòng thử lại.",
+      invalidFormat: "Vui lòng tải lên file PDF hoặc DOCX.",
+      deleteSuccess: "Đã xóa CV.",
+      deleteFailed: "Không thể xóa CV. Vui lòng thử lại.",
+      deleteConfirmTitle: "Xóa CV của bạn?",
+      deleteConfirmMessage: "Thao tác này sẽ xóa file và kết quả phân tích. Các kỹ năng đã thêm vào hồ sơ sẽ được giữ nguyên.",
+    },
   },
   jobseekerSettingsPage: {
     heading: "Cài đặt",
@@ -2214,6 +2237,7 @@ Yêu cầu:
     statusPublished: "Đã đăng",
     publishMinHint: "Cần tối thiểu {{min}} câu hỏi để đăng ({{count}}/{{min}}).",
     saveDraftFirstHint: "Hãy lưu bản nháp trước để có thể đăng bộ câu hỏi.",
+    editLockedHint: "Bộ này đang được publish — hãy unpublish trước để thêm, sửa, xóa hoặc sắp xếp lại câu hỏi.",
     notCompletedBanner: "Phiên này có trạng thái: {{status}}. Vui lòng chờ hoặc kiểm tra lại sau.",
     questionActions: {
       edit: "Chỉnh sửa",
