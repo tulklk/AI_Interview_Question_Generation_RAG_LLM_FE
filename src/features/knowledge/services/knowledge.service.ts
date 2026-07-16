@@ -116,7 +116,9 @@ function extractList(data: unknown): KnowledgeDocument[] {
 
 export async function getHrKnowledgeDocs(): Promise<KnowledgeDocument[]> {
   try {
-    const { data } = await apiClient.get("/api/hr/knowledge-documents");
+    // BE defaults to PageSize=20 — this page has no pagination UI yet, so
+    // request a generous page size rather than silently truncating the list.
+    const { data } = await apiClient.get("/api/hr/knowledge-documents", { params: { PageSize: 200 } });
     return extractList(data);
   } catch {
     return [];
