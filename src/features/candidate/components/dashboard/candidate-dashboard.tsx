@@ -23,8 +23,9 @@ import { useLanguage } from "@/shared/providers/language-context";
 import { useUser } from "@/features/auth/context/user-context";
 import { buildWelcomeMessage, getTimeOfDayGreeting } from "@/shared/utils/greeting";
 import { StatCard } from "@/features/candidate/components/ui/stat-card";
-import { Pill, getScoreBadgeClass } from "@/features/candidate/components/ui/pill";
+import { Pill, PendingScorePill, getScoreBadgeClass } from "@/features/candidate/components/ui/pill";
 import { EmptyState } from "@/features/candidate/components/ui/empty-state";
+import { Skeleton } from "@/shared/components/ui/skeleton";
 import { portalHeadingAlt, portalSubtextAlt } from "@/shared/utils/portal-ui";
 
 const fadeUp = (delay = 0) => ({
@@ -39,23 +40,28 @@ const fadeUp = (delay = 0) => ({
 const strongSkills = ["React", "TypeScript", "Communication"];
 const weakSkills  = ["Situational Questions", "System Design", "SQL"];
 
+// Local calendar-day key (not UTC) — completedAt is stored in UTC, but a
+// "streak" should follow the candidate's own local day boundary, not UTC's.
+function localDateKey(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
 function computeStreakDays(completedAtList: (string | undefined)[]): number {
   const days = new Set(
     completedAtList
       .map((iso) => {
         if (!iso) return null;
         const d = new Date(iso);
-        return Number.isNaN(d.getTime()) ? null : d.toISOString().slice(0, 10);
+        return Number.isNaN(d.getTime()) ? null : localDateKey(d);
       })
       .filter((d): d is string => d !== null)
   );
   let streak = 0;
   const cursor = new Date();
-  cursor.setHours(0, 0, 0, 0);
-  if (!days.has(cursor.toISOString().slice(0, 10))) {
+  if (!days.has(localDateKey(cursor))) {
     cursor.setDate(cursor.getDate() - 1);
   }
-  while (days.has(cursor.toISOString().slice(0, 10))) {
+  while (days.has(localDateKey(cursor))) {
     streak++;
     cursor.setDate(cursor.getDate() - 1);
   }
@@ -171,16 +177,26 @@ export function CandidateDashboard() {
       </motion.div>
 
       <motion.div {...fadeUp(0.06)} className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        {statCards.map((stat, i) => (
-          <motion.div
-            key={stat.label}
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.06 }}
-          >
-            <StatCard icon={stat.icon} iconBg={iconBg} iconColor={iconColor} value={stat.value} label={stat.label} trend={stat.trend} />
-          </motion.div>
-        ))}
+        {sessionsLoading ? (
+          Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="hr-stat-card p-5 h-full flex flex-col gap-3">
+              <Skeleton className="w-9 h-9 rounded-lg" />
+              <Skeleton className="h-6 w-16" />
+              <Skeleton className="h-3 w-20" />
+            </div>
+          ))
+        ) : (
+          statCards.map((stat, i) => (
+            <motion.div
+              key={stat.label}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.06 }}
+            >
+              <StatCard icon={stat.icon} iconBg={iconBg} iconColor={iconColor} value={stat.value} label={stat.label} trend={stat.trend} />
+            </motion.div>
+          ))
+        )}
       </motion.div>
 
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6 mb-6">
@@ -238,12 +254,13 @@ export function CandidateDashboard() {
                         {session.durationMinutes} min
                       </p>
                     </div>
-                    <Pill className={cn(
-                      "text-[12px] font-[700] px-2.5 py-1",
-                      session.score !== null ? getScoreBadgeClass(session.score) : "bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500"
-                    )}>
-                      {session.score !== null ? `${session.score}%` : "—"}
-                    </Pill>
+                    {session.score !== null ? (
+                      <Pill className={cn("text-[12px] font-[700] px-2.5 py-1", getScoreBadgeClass(session.score))}>
+                        {session.score}%
+                      </Pill>
+                    ) : (
+                      <PendingScorePill label={p.pendingScoreTooltip} className="text-[12px] px-2.5 py-1" />
+                    )}
                     <Link href={`/jobseeker/practice/${session.questionSetId}`}
                       className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 dark:text-gray-500 hover:text-primary hover:bg-[#F5F3FF] dark:hover:bg-purple-950/30 transition-colors"
                     >

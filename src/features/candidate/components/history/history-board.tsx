@@ -14,7 +14,7 @@ import {
 import { getCompanyColor, getCompanyInitials } from "@/features/candidate/utils/company-visual";
 import { useLanguage } from "@/shared/providers/language-context";
 import { StatCard } from "@/features/candidate/components/ui/stat-card";
-import { Pill, getScoreBadgeClass } from "@/features/candidate/components/ui/pill";
+import { Pill, PendingScorePill, getScoreBadgeClass } from "@/features/candidate/components/ui/pill";
 import { EmptyState } from "@/features/candidate/components/ui/empty-state";
 import { AiLoadingSpinner } from "@/shared/components/common/ai-loading-spinner";
 import { useToast } from "@/shared/providers/toast-context";
@@ -48,13 +48,9 @@ function formatSessionDate(iso?: string): string {
   return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
 }
 
-function ScorePill({ score }: { score: number | null }) {
+function ScorePill({ score, pendingTooltip }: { score: number | null; pendingTooltip: string }) {
   if (score === null) {
-    return (
-      <Pill className="text-[13px] font-[700] px-2.5 py-1 w-fit bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500">
-        —
-      </Pill>
-    );
+    return <PendingScorePill label={pendingTooltip} className="text-[13px] px-2.5 py-1 w-fit" />;
   }
   return (
     <Pill className={cn("text-[13px] font-[700] px-2.5 py-1 w-fit", getScoreBadgeClass(score))}>
@@ -224,7 +220,7 @@ export function HistoryBoard() {
         className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm overflow-hidden hidden md:block"
       >
         {/* Header */}
-        <div className="grid grid-cols-[2.5fr_1fr_1fr_1fr_auto] gap-4 px-6 py-3 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/60">
+        <div className="grid grid-cols-[2.5fr_1fr_1fr_1fr_200px] gap-4 px-6 py-3 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/60">
           {[p.table.session, p.table.date, p.table.score, p.table.duration, p.table.actions].map((col) => (
             <span key={col} className={cn("text-[11px] font-[700] uppercase tracking-wide", portalSubtextAlt)}>{col}</span>
           ))}
@@ -241,7 +237,7 @@ export function HistoryBoard() {
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.3 + i * 0.05 }}
                 whileHover={{ scale: 1.01 }}
-                className="hr-table-row grid grid-cols-[2.5fr_1fr_1fr_1fr_auto] gap-4 px-6 py-4 items-center"
+                className="hr-table-row grid grid-cols-[2.5fr_1fr_1fr_1fr_200px] gap-4 px-6 py-4 items-center"
               >
                 {/* Session */}
                 <div className="flex items-center gap-3 min-w-0">
@@ -258,7 +254,7 @@ export function HistoryBoard() {
                 <p className={cn("text-[12px]", portalSubtextAlt)}>{formatSessionDate(session.completedAt)}</p>
 
                 {/* Score */}
-                <ScorePill score={session.score} />
+                <ScorePill score={session.score} pendingTooltip={p.pendingScoreTooltip} />
 
                 {/* Duration */}
                 <p className={cn("text-[12px]", portalSubtextAlt)}>{session.durationMinutes} min</p>
@@ -314,7 +310,7 @@ export function HistoryBoard() {
                   <p className={cn("text-[13px] font-[600] truncate", portalHeadingAlt)}>{session.setTitle}</p>
                   <p className={cn("text-[11px] mt-0.5", portalSubtextAlt)}>{session.company}</p>
                 </div>
-                <ScorePill score={session.score} />
+                <ScorePill score={session.score} pendingTooltip={p.pendingScoreTooltip} />
               </div>
 
               {/* Meta: date · duration */}

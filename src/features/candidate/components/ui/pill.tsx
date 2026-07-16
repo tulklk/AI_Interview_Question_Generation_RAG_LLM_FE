@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
-import { SignalLow, SignalMedium, SignalHigh, Code2, Users, Lightbulb, Layers, Puzzle, Network } from "lucide-react";
+import { SignalLow, SignalMedium, SignalHigh, Code2, Users, Lightbulb, Layers, Puzzle, Network, Clock } from "lucide-react";
 import { cn } from "@/lib/cn";
 import type { Difficulty, QuestionCategory } from "@/features/candidate/types/jobseeker";
 
@@ -8,11 +8,13 @@ interface PillProps {
   className?: string;
   children: ReactNode;
   size?: "sm" | "md";
+  title?: string;
 }
 
-export function Pill({ className, children, size = "md" }: PillProps) {
+export function Pill({ className, children, size = "md", title }: PillProps) {
   return (
     <span
+      title={title}
       className={cn(
         "shrink-0 font-[600] rounded-[6px]",
         size === "sm" ? "text-[10px] px-2 py-0.5" : "text-[11px] px-2.5 py-1",
@@ -118,6 +120,34 @@ export function getScoreBadgeClass(score: number): string {
   if (score >= 80) return "bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300";
   if (score >= 65) return "bg-violet-50 dark:bg-violet-950 text-violet-700 dark:text-violet-300";
   return "bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-300";
+}
+
+interface PendingScorePillProps {
+  /** Tooltip text explaining why there's no score yet — pass from the caller's own i18n. */
+  label: string;
+  size?: "sm" | "md";
+  className?: string;
+}
+
+/**
+ * Shown instead of a bare "—" wherever a score is still null — a plain dash
+ * with no explanation reads as broken UI. This adds a clock icon and a
+ * hover tooltip explaining scoring is still pending, not missing/failed.
+ */
+export function PendingScorePill({ label, size = "md", className }: PendingScorePillProps) {
+  return (
+    <Pill
+      size={size}
+      title={label}
+      className={cn(
+        "inline-flex items-center gap-1 bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500 cursor-help",
+        className
+      )}
+    >
+      <Clock size={size === "sm" ? 10 : 11} className="shrink-0" />
+      —
+    </Pill>
+  );
 }
 
 export interface ScoreLevelLabels {
