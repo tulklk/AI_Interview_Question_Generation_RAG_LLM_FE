@@ -136,6 +136,13 @@ function normalizeSessionDetail(raw: unknown): PracticeSessionDetail | null {
   };
 }
 
+// BE's auto-resume (find-existing-or-create) isn't atomic — two POSTs that land
+// close enough together (e.g. React StrictMode's double-effect in dev, or a
+// double-click before navigation completes) can each pass the "no IN_PROGRESS
+// session yet" check and create two separate sessions. Dedupe concurrent calls
+// for the same set in this tab so only one request ever goes out.
+const inFlightStarts = new Map<string, Promise<PracticeSessionDetail>>();
+
 /**
  * Starts a practice session for this question set. If the candidate already has
  * an IN_PROGRESS session for the same set, the BE returns that one instead of
@@ -143,15 +150,27 @@ function normalizeSessionDetail(raw: unknown): PracticeSessionDetail | null {
  * previously-submitted answerText, so this single call both starts and hydrates.
  */
 export async function startPracticeSession(questionSetId: string): Promise<PracticeSessionDetail> {
-  let res;
+  const inFlight = inFlightStarts.get(questionSetId);
+  if (inFlight) return inFlight;
+
+  const request = (async () => {
+    let res;
+    try {
+      res = await apiClient.post(BASE, { questionSetId });
+    } catch (err) {
+      rethrowForbidden(err);
+    }
+    const session = normalizeSessionDetail(res.data);
+    if (!session) throw new Error("Invalid response from start practice session");
+    return session;
+  })();
+
+  inFlightStarts.set(questionSetId, request);
   try {
-    res = await apiClient.post(BASE, { questionSetId });
-  } catch (err) {
-    rethrowForbidden(err);
+    return await request;
+  } finally {
+    inFlightStarts.delete(questionSetId);
   }
-  const session = normalizeSessionDetail(res.data);
-  if (!session) throw new Error("Invalid response from start practice session");
-  return session;
 }
 
 export async function getPracticeSession(sessionId: string): Promise<PracticeSessionDetail | null> {
