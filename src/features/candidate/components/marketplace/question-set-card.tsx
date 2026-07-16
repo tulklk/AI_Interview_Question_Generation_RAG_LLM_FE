@@ -102,7 +102,7 @@ export function QuestionSetCard({ set, initialBookmarked = false, onBookmarkChan
   const extraCount = set.skills.length - MAX_VISIBLE;
 
   return (
-    <div className="hr-glass-card group flex flex-col gap-0 overflow-hidden">
+    <div className="hr-glass-card group flex flex-col gap-0 overflow-hidden h-full">
       {/* Card body */}
       <div className="p-6 flex flex-col gap-4 flex-1">
         {/* Header row */}
@@ -137,12 +137,17 @@ export function QuestionSetCard({ set, initialBookmarked = false, onBookmarkChan
             disabled={bookmarking}
             aria-label={bookmarked ? p.unsaveBtn : p.saveBtn}
             title={bookmarked ? p.unsaveBtn : p.saveBtn}
-            className="shrink-0 w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-primary transition-colors disabled:opacity-60"
+            className={cn(
+              "shrink-0 w-8 h-8 flex items-center justify-center rounded-lg border transition-colors disabled:opacity-60",
+              bookmarked
+                ? "bg-primary/10 dark:bg-primary/15 border-primary/30 text-primary hover:bg-primary/15"
+                : "bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-primary hover:border-primary/30"
+            )}
           >
             {bookmarking ? (
-              <Loader2 size={15} className="animate-spin" />
+              <Loader2 size={14} className="animate-spin" />
             ) : (
-              <Bookmark size={15} className={bookmarked ? "fill-primary text-primary" : ""} />
+              <Bookmark size={14} className={bookmarked ? "fill-primary" : ""} />
             )}
           </button>
         </div>

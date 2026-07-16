@@ -14,7 +14,7 @@ interface StatCardProps {
 
 export function StatCard({ icon: Icon, iconBg, iconColor, value, label, trend, className }: StatCardProps) {
   return (
-    <div className={cn("hr-stat-card p-5", className)}>
+    <div className={cn("hr-stat-card p-5 h-full", className)}>
       <div className={cn("w-9 h-9 rounded-lg flex items-center justify-center mb-3 shadow-sm ring-1 ring-black/5 dark:ring-white/10", iconBg)}>
         <Icon size={16} className={iconColor} />
       </div>

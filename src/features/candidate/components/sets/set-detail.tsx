@@ -115,12 +115,17 @@ export function SetDetail({ set }: SetDetailProps) {
                 disabled={bookmarking}
                 aria-label={bookmarked ? mp.unsaveBtn : mp.saveBtn}
                 title={bookmarked ? mp.unsaveBtn : mp.saveBtn}
-                className="shrink-0 w-9 h-9 flex items-center justify-center rounded-lg text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-primary transition-colors disabled:opacity-60"
+                className={cn(
+                  "shrink-0 w-9 h-9 flex items-center justify-center rounded-lg border transition-colors disabled:opacity-60",
+                  bookmarked
+                    ? "bg-primary/10 dark:bg-primary/15 border-primary/30 text-primary hover:bg-primary/15"
+                    : "bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-primary hover:border-primary/30"
+                )}
               >
                 {bookmarking ? (
-                  <Loader2 size={17} className="animate-spin" />
+                  <Loader2 size={16} className="animate-spin" />
                 ) : (
-                  <Bookmark size={17} className={bookmarked ? "fill-primary text-primary" : ""} />
+                  <Bookmark size={16} className={bookmarked ? "fill-primary" : ""} />
                 )}
               </button>
             </div>
@@ -142,7 +147,7 @@ export function SetDetail({ set }: SetDetailProps) {
               {set.attempts !== undefined && (
                 <span className="flex items-center gap-1.5">
                   <Users size={14} className="text-primary" />
-                  {set.attempts.toLocaleString()} {p.summaryCard.totalQuestions === "Total Questions" ? "attempts" : "lượt"}
+                  {set.attempts.toLocaleString()} {p.summaryCard.attempts}
                 </span>
               )}
               {set.rating !== undefined && (
