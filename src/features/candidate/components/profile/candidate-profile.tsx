@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import {
   Edit2,
@@ -17,6 +17,12 @@ import {
   Phone,
   Link,
   Sparkles,
+  FileText,
+  Upload,
+  Download,
+  Trash2,
+  Loader2,
+  AlertCircle,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { achievements, practiceSessions } from "@/features/candidate/data/jobseeker";
@@ -28,8 +34,17 @@ import { getCurrentUser, updateCandidateProfile } from "@/features/auth/services
 import { AvatarUpload } from "@/shared/components/common/avatar-upload";
 import { uploadAvatarToCloudinary } from "@/shared/utils/cloudinary";
 import { mapAvatarUploadError } from "@/shared/utils/avatar-upload-messages";
-import { AiLoadingSpinner } from "@/shared/components/common/ai-loading-spinner";
+import { Skeleton } from "@/shared/components/ui/skeleton";
 import { SectionCard, Field } from "@/features/candidate/components/ui/section-card";
+import {
+  getCv,
+  uploadCv,
+  deleteCv,
+  CvValidationError,
+  type CvInfo,
+} from "@/features/candidate/services/candidate-cv.service";
+import { formatRelativeTime } from "@/shared/utils/relative-time";
+import { ConfirmDialog } from "@/shared/components/ui/confirm-dialog";
 import {
   portalCard,
   portalHeadingAlt,
@@ -103,7 +118,7 @@ function formFromUser(user: Awaited<ReturnType<typeof getCurrentUser>>): Profile
 }
 
 export function CandidateProfile() {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const p = t.jobseekerProfilePage;
   const { refreshUser } = useUser();
   const { addToast } = useToast();
@@ -115,6 +130,56 @@ export function CandidateProfile() {
   const [snapshot, setSnapshot] = useState<ProfileFormState>(EMPTY_FORM);
   const [skillInput, setSkillInput] = useState("");
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
+
+  const [cv, setCv] = useState<CvInfo | null>(null);
+  const [cvLoading, setCvLoading] = useState(true);
+  const [cvUploading, setCvUploading] = useState(false);
+  const [cvDeleting, setCvDeleting] = useState(false);
+  const [cvDeleteConfirmOpen, setCvDeleteConfirmOpen] = useState(false);
+  const cvFileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    getCv()
+      .then((c) => { if (!cancelled) setCv(c); })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setCvLoading(false); });
+    return () => { cancelled = true; };
+  }, []);
+
+  function handleCvFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    if (!/\.(pdf|docx)$/i.test(file.name)) {
+      addToast("error", p.cv.invalidFormat);
+      return;
+    }
+    setCvUploading(true);
+    uploadCv(file)
+      .then(({ cv: next, analysisFailed }) => {
+        setCv(next);
+        addToast("success", analysisFailed ? p.cv.uploadedAnalysisFailed : p.cv.uploadSuccess);
+      })
+      .catch((err) => {
+        addToast("error", err instanceof CvValidationError && err.message ? err.message : p.cv.uploadFailed);
+      })
+      .finally(() => setCvUploading(false));
+  }
+
+  function handleCvDelete() {
+    setCvDeleting(true);
+    deleteCv()
+      .then(() => {
+        setCv(null);
+        addToast("success", p.cv.deleteSuccess);
+      })
+      .catch(() => addToast("error", p.cv.deleteFailed))
+      .finally(() => {
+        setCvDeleting(false);
+        setCvDeleteConfirmOpen(false);
+      });
+  }
 
   const loadProfile = useCallback(async () => {
     setLoading(true);
@@ -239,8 +304,39 @@ export function CandidateProfile() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[calc(100vh-12rem)]">
-        <AiLoadingSpinner text={p.loading} />
+      <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-6 items-start">
+        <div className="flex flex-col gap-5">
+          <div className="hr-glass-card p-6 flex flex-col items-center text-center">
+            <Skeleton className="w-20 h-20 rounded-full mb-4" />
+            <Skeleton className="h-5 w-32 mb-2" />
+            <Skeleton className="h-3 w-40" />
+            <div className="grid grid-cols-2 gap-3 w-full mt-5">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <Skeleton key={i} className="h-16 rounded-lg" />
+              ))}
+            </div>
+          </div>
+          <div className="hr-glass-card p-5">
+            <Skeleton className="h-4 w-24 mb-4" />
+            <div className="grid grid-cols-3 gap-2">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <Skeleton key={i} className="h-16 rounded-lg" />
+              ))}
+            </div>
+          </div>
+        </div>
+        <div className="flex flex-col gap-5">
+          <Skeleton className="h-8 w-40" />
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="hr-glass-card p-5">
+              <Skeleton className="h-4 w-32 mb-4" />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Skeleton className="h-10 rounded-lg" />
+                <Skeleton className="h-10 rounded-lg" />
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     );
   }
@@ -493,6 +589,112 @@ export function CandidateProfile() {
           </Field>
         </SectionCard>
 
+        {/* CV / Resume */}
+        <SectionCard title={p.cv.title} icon={FileText}>
+          <input
+            ref={cvFileInputRef}
+            type="file"
+            accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            className="hidden"
+            onChange={handleCvFileChange}
+          />
+
+          {cvLoading ? (
+            <div className="h-16 flex items-center justify-center">
+              <Loader2 size={18} className="animate-spin text-gray-400" />
+            </div>
+          ) : cv ? (
+            <div className="flex flex-col gap-4">
+              <div className="flex items-start gap-3">
+                <div className={cn("w-10 h-10 rounded-lg flex items-center justify-center shrink-0", portalIconWell)}>
+                  <FileText size={18} className="text-primary" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className={cn("text-[14px] font-[600] truncate", portalHeadingAlt)}>{cv.fileName}</p>
+                  <p className={cn("text-[12px] mt-0.5", portalSubtextAlt)}>
+                    {p.cv.uploadedAt} {formatRelativeTime(cv.uploadedAt, lang)}
+                  </p>
+                </div>
+                <a
+                  href={cv.downloadUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1.5 h-8 px-3 text-[12px] font-[600] text-primary hover:bg-[#F5F3FF] dark:hover:bg-purple-950/30 rounded-lg transition-colors shrink-0"
+                >
+                  <Download size={13} />
+                  {p.cv.downloadBtn}
+                </a>
+              </div>
+
+              {cv.parsedAt ? (
+                cv.skills.length > 0 && (
+                  <div>
+                    <p className={cn("text-[11px] font-[700] uppercase tracking-wide mb-2", portalSubtextAlt)}>
+                      {p.cv.detectedSkills}
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {cv.skills.map((skill) => (
+                        <span
+                          key={skill}
+                          className={cn("text-[12px] font-[500] px-3 py-1.5 rounded-[6px]", portalMutedBg, portalHeadingAlt)}
+                        >
+                          {skill}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )
+              ) : (
+                <p className={cn("flex items-center gap-1.5 text-[12px] italic", portalSubtextAlt)}>
+                  <AlertCircle size={12} className="shrink-0" />
+                  {p.cv.analysisUnavailable}
+                </p>
+              )}
+
+              <div className="flex items-center gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => cvFileInputRef.current?.click()}
+                  disabled={cvUploading || cvDeleting}
+                  className={cn(
+                    "flex items-center gap-1.5 h-[34px] px-4 text-[12px] font-[600] hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg transition-colors disabled:opacity-50",
+                    portalCard,
+                    portalHeadingAlt
+                  )}
+                >
+                  {cvUploading ? <Loader2 size={13} className="animate-spin" /> : <Upload size={13} />}
+                  {cvUploading ? p.cv.uploading : p.cv.replaceBtn}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCvDeleteConfirmOpen(true)}
+                  disabled={cvUploading || cvDeleting}
+                  className="flex items-center gap-1.5 h-[34px] px-4 text-[12px] font-[600] text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg transition-colors disabled:opacity-50"
+                >
+                  <Trash2 size={13} />
+                  {p.cv.deleteBtn}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-col items-center gap-3 py-6 text-center">
+              <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center", portalIconWell)}>
+                <FileText size={20} className="text-gray-400 dark:text-gray-500" />
+              </div>
+              <p className={cn("text-[13px] max-w-xs", portalSubtextAlt)}>{p.cv.emptyState}</p>
+              <button
+                type="button"
+                onClick={() => cvFileInputRef.current?.click()}
+                disabled={cvUploading}
+                className="shimmer-button flex items-center gap-2 h-9 px-4 text-[13px] font-semibold text-white hr-cta-btn rounded-lg disabled:opacity-60"
+              >
+                {cvUploading ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
+                {cvUploading ? p.cv.uploading : p.cv.uploadBtn}
+              </button>
+            </div>
+          )}
+        </SectionCard>
+
         {/* Skills */}
         <SectionCard title={p.sectionSkills} icon={Sparkles}>
           <div className="flex flex-wrap gap-2 mb-4">
@@ -583,6 +785,18 @@ export function CandidateProfile() {
           </div>
         </SectionCard>
       </motion.div>
+
+      <ConfirmDialog
+        open={cvDeleteConfirmOpen}
+        title={p.cv.deleteConfirmTitle}
+        message={p.cv.deleteConfirmMessage}
+        confirmLabel={p.cv.deleteBtn}
+        cancelLabel={p.cancelBtn}
+        variant="danger"
+        loading={cvDeleting}
+        onConfirm={handleCvDelete}
+        onCancel={() => setCvDeleteConfirmOpen(false)}
+      />
     </div>
   );
 }
