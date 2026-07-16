@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
-import { Plus, BookMarked, CheckCircle2, Loader2, AlertCircle, RefreshCw, ChevronLeft, ChevronRight, X, Check, Rocket, Undo2, Globe, PenLine } from "lucide-react";
+import { Plus, BookMarked, CheckCircle2, Loader2, AlertCircle, RefreshCw, ChevronLeft, ChevronRight, X, Check, Rocket, Undo2, Globe, PenLine, Lock } from "lucide-react";
 import { AiLoadingSpinner } from "@/shared/components/common/ai-loading-spinner";
 import {
   DndContext,
@@ -42,6 +42,11 @@ import {
   reorderJobQuestions,
   publishQuestionSet,
   unpublishQuestionSet,
+  updateQuestionSetQuestion,
+  deleteQuestionSetQuestion,
+  addQuestionSetQuestion,
+  reorderQuestionSetQuestions,
+  getDraft,
 } from "@/features/interview/services/interview.service";
 import { QuestionEditCard } from "./question-edit-card";
 import { AddQuestionDialog } from "./add-question-dialog";
@@ -56,6 +61,7 @@ interface SortableCardProps {
   sessionId: string;
   isFirst: boolean;
   isLast: boolean;
+  locked?: boolean;
   onSave: (changes: Partial<GeneratedQuestion>) => Promise<boolean>;
   onEditingChange: (editing: boolean) => void;
   onDelete: () => void;
@@ -69,6 +75,7 @@ function SortableCard({
   sessionId,
   isFirst,
   isLast,
+  locked,
   onSave,
   onEditingChange,
   onDelete,
@@ -82,7 +89,7 @@ function SortableCard({
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: q.id });
+  } = useSortable({ id: q.id, disabled: locked });
 
   return (
     <div
@@ -101,7 +108,8 @@ function SortableCard({
         sessionId={sessionId}
         isFirst={isFirst}
         isLast={isLast}
-        dragHandleListeners={listeners}
+        locked={locked}
+        dragHandleListeners={locked ? undefined : listeners}
         onSave={onSave}
         onEditingChange={onEditingChange}
         onDelete={onDelete}
@@ -158,6 +166,8 @@ export function ReviewQuestionsSection({
 
   const router = useRouter();
   const isEditable = status === "COMPLETED" && !readOnly;
+  // BE rejects question add/edit/delete/reorder while PUBLISHED — unpublish first.
+  const isLocked = publishStatus === "PUBLISHED";
   const bypassGuardRef = useRef(false);
   const [pendingHref, setPendingHref] = useState<string | null>(null);
 
@@ -257,11 +267,20 @@ export function ReviewQuestionsSection({
       console.warn("[persistReorder] no valid question IDs — reorder skipped. IDs:", next.map(q => q.id));
       return;
     }
+    // Once a question set exists, reordering must go straight to it — reordering
+    // the job's own (disconnected) copy has no effect on the saved/published set.
+    if (questionSetId) {
+      void reorderQuestionSetQuestions(questionSetId, items).then((ok) => {
+        if (!ok) addToast("error", "Không thể lưu thứ tự câu hỏi. Vui lòng thử lại.");
+      });
+      return;
+    }
     void reorderJobQuestions(sessionId, items);
   }
 
   function handleDragEnd(event: DragEndEvent) {
     setActiveId(null);
+    if (isLocked) return;
     const { active, over } = event;
     if (!over || active.id === over.id) return;
     const oldIdx = questions.findIndex((q) => q.id === String(active.id));
@@ -281,17 +300,25 @@ export function ReviewQuestionsSection({
       return true;
     }
 
-    const ok = await updateJobQuestion(sessionId, id, {
+    const payload = {
       question: changes.question,
       questionType: changes.questionType,
       difficulty: changes.difficulty,
       rationale: changes.rationale ?? null,
       sampleAnswer: changes.sampleAnswer ?? null,
-    });
+    };
+
+    // Once a question set exists, edits must go straight to it — editing the
+    // job's own (disconnected) copy has no effect on the saved/published set.
+    const ok = questionSetId
+      ? await updateQuestionSetQuestion(questionSetId, id, payload)
+      : await updateJobQuestion(sessionId, id, payload);
 
     if (ok) {
       setQuestions((prev) => prev.map((q) => (q.id === id ? { ...q, ...changes } : q)));
       addToast("success", "Chỉnh sửa câu hỏi thành công");
+    } else {
+      addToast("error", "Không thể lưu chỉnh sửa. Vui lòng thử lại.");
     }
     return ok;
   }
@@ -300,13 +327,32 @@ export function ReviewQuestionsSection({
     setEditingIds((prev) => editing ? [...prev, id] : prev.filter((x) => x !== id));
   }
 
-  function handleDelete(id: string) {
+  function removeQuestionFromState(id: string) {
     setQuestions((prev) => {
       const next = prev.filter((q) => q.id !== id);
       const newTotalPages = Math.max(1, Math.ceil(next.length / PAGE_SIZE));
       setPage((p) => Math.min(p, newTotalPages));
       return next;
     });
+  }
+
+  function handleDelete(id: string) {
+    // Once a question set exists, deleting must go straight to it — deleting
+    // from the job's own (disconnected) copy has no effect on the saved/published
+    // set, so the question would silently reappear on the next real fetch.
+    if (questionSetId) {
+      deleteQuestionSetQuestion(questionSetId, id).then((ok) => {
+        if (ok) {
+          removeQuestionFromState(id);
+          addToast("success", "Đã xóa câu hỏi");
+        } else {
+          addToast("error", "Không thể xóa câu hỏi. Vui lòng thử lại.");
+        }
+      });
+      return;
+    }
+
+    removeQuestionFromState(id);
     if (!id.startsWith("manual-")) {
       setDeletedIds((prev) => [...prev, id]);
     }
@@ -331,7 +377,32 @@ export function ReviewQuestionsSection({
     persistReorder(ordered);
   }
 
-  function handleAdd(newQ: Omit<GeneratedQuestion, "id" | "orderIndex">) {
+  async function handleAdd(newQ: Omit<GeneratedQuestion, "id" | "orderIndex">) {
+    // Once a question set exists, adding must go straight to it — adding to the
+    // job's own (disconnected) copy has no effect on the saved/published set.
+    if (questionSetId) {
+      const ok = await addQuestionSetQuestion(questionSetId, {
+        question: newQ.question,
+        questionType: newQ.questionType,
+        difficulty: newQ.difficulty,
+        rationale: newQ.rationale,
+        sampleAnswer: newQ.sampleAnswer,
+        order: questions.length + 1,
+      });
+      if (!ok) {
+        addToast("error", "Không thể thêm câu hỏi. Vui lòng thử lại.");
+        return;
+      }
+      // BE doesn't return the new question's id, so refetch to pick it up.
+      const refreshed = await getDraft(questionSetId);
+      if (refreshed) {
+        setQuestions(refreshed.questions);
+        setPage(Math.ceil(refreshed.questions.length / PAGE_SIZE));
+      }
+      addToast("success", "Thêm câu hỏi thành công");
+      return;
+    }
+
     const question: GeneratedQuestion = {
       ...newQ,
       id: `manual-${Date.now()}`,
@@ -482,8 +553,7 @@ export function ReviewQuestionsSection({
           )}
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          {!readOnly && (
-            <>
+          {!readOnly && !isLocked && (
             <button
               type="button"
               onClick={() => setShowAddDialog(true)}
@@ -497,6 +567,9 @@ export function ReviewQuestionsSection({
               <Plus size={14} />
               {rp.addQuestion}
             </button>
+          )}
+
+          {!readOnly && !questionSetId && (
             <button
               type="button"
               onClick={() => saveState === "idle" && setShowSaveDialog(true)}
@@ -532,12 +605,18 @@ export function ReviewQuestionsSection({
                 </>
               )}
             </button>
-            </>
           )}
 
           {!readOnly && !questionSetId && (
             <span className={cn("text-xs italic", portalSubtext)}>
               {rp.saveDraftFirstHint}
+            </span>
+          )}
+
+          {!readOnly && isLocked && (
+            <span className="inline-flex items-center gap-1.5 text-xs italic text-amber-600 dark:text-amber-400">
+              <Lock size={12} />
+              {rp.editLockedHint}
             </span>
           )}
 
@@ -569,7 +648,7 @@ export function ReviewQuestionsSection({
               </button>
             ) : (
               <span className={cn("text-xs italic", portalSubtext)}>
-                {rp.publishMinHint.replace("{{min}}", String(MIN_QUESTIONS_TO_PUBLISH)).replace("{{count}}", String(questions.length))}
+                {rp.publishMinHint.replaceAll("{{min}}", String(MIN_QUESTIONS_TO_PUBLISH)).replaceAll("{{count}}", String(questions.length))}
               </span>
             )
           )}
@@ -633,6 +712,7 @@ export function ReviewQuestionsSection({
                           sessionId={sessionId}
                           isFirst={globalIdx === 0}
                           isLast={globalIdx === questions.length - 1}
+                          locked={isLocked}
                           onSave={(changes) => handleSaveQuestion(q.id, changes)}
                           onEditingChange={(editing) => handleEditingChange(q.id, editing)}
                           onDelete={() => handleDelete(q.id)}

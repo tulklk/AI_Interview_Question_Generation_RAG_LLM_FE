@@ -370,8 +370,12 @@ export async function getGenerationPlans(): Promise<GenerationSession[]> {
 
 export async function getGenerationJobs(): Promise<GenerationSession[]> {
   try {
+    // BE defaults to PageSize=20 if unspecified — this table paginates/filters
+    // client-side over the full list, so a small default would silently hide
+    // older jobs. Request a generous page size instead of paging server-side.
     const { data } = await apiClient.get<BackendJobListResponse>(
-      "/api/hr/question-generation-jobs"
+      "/api/hr/question-generation-jobs",
+      { params: { PageSize: 200 } }
     );
     let jobs: BackendJob[] = [];
     if (Array.isArray(data)) {
@@ -653,6 +657,74 @@ export async function getDrafts(): Promise<DraftQuestionSet[]> {
 }
 
 // ---------------------------------------------------------------------------
+// Question-set question CRUD — direct, immediate edits on an already-saved
+// question set (as opposed to the job-scoped CRUD above, which only edits the
+// generation job's own copy and never touches the saved/published set at all).
+// BE rejects all four while the set is PUBLISHED — unpublish first.
+// ---------------------------------------------------------------------------
+
+export async function updateQuestionSetQuestion(
+  questionSetId: string,
+  questionId: string,
+  payload: {
+    question?: string;
+    questionType?: string;
+    difficulty?: string;
+    rationale?: string | null;
+    sampleAnswer?: string | null;
+  }
+): Promise<boolean> {
+  try {
+    await apiClient.put(`/api/hr/question-sets/${questionSetId}/questions/${questionId}`, payload);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function deleteQuestionSetQuestion(questionSetId: string, questionId: string): Promise<boolean> {
+  try {
+    await apiClient.delete(`/api/hr/question-sets/${questionSetId}/questions/${questionId}`);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function addQuestionSetQuestion(
+  questionSetId: string,
+  payload: {
+    question: string;
+    questionType?: string;
+    difficulty?: string;
+    rationale?: string;
+    sampleAnswer?: string;
+    order?: number;
+  }
+): Promise<boolean> {
+  try {
+    await apiClient.post(`/api/hr/question-sets/${questionSetId}/questions`, payload);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function reorderQuestionSetQuestions(
+  questionSetId: string,
+  items: { id: string; order: number }[]
+): Promise<boolean> {
+  try {
+    await apiClient.put(`/api/hr/question-sets/${questionSetId}/questions/reorder`, {
+      items: items.map((i) => ({ questionId: i.id, order: i.order })),
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Publish / Unpublish
 // ---------------------------------------------------------------------------
 
@@ -685,6 +757,22 @@ export async function findQuestionSetForJob(jobId: string): Promise<HrQuestionSe
     return normalized.find((s) => s.jobId === jobId) ?? null;
   } catch {
     return null;
+  }
+}
+
+/** All jobs' publish status in one call, keyed by jobId — for list views (e.g. HR History) that need it for every row without an N+1 fetch. */
+export async function getQuestionSetStatusByJob(): Promise<Map<string, "DRAFT" | "PUBLISHED">> {
+  try {
+    const { data } = await apiClient.get<{ data?: unknown } | unknown[]>("/api/hr/question-sets");
+    const items = Array.isArray(data) ? data : Array.isArray((data as { data?: unknown })?.data) ? (data as { data: unknown[] }).data : [];
+    const normalized = items.map(normalizeQuestionSetSummary).filter((s): s is HrQuestionSetSummary => s !== null);
+    const map = new Map<string, "DRAFT" | "PUBLISHED">();
+    for (const s of normalized) {
+      if (s.jobId) map.set(s.jobId, s.status);
+    }
+    return map;
+  } catch {
+    return new Map();
   }
 }
 

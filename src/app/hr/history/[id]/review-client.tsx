@@ -80,23 +80,31 @@ export function HrReviewPageClient() {
     if (!job) return getGenerationSession(jobId);
 
     if (job.status === "COMPLETED") {
-      // Primary: questions endpoint
+      // Primary: if a question set was already saved for this job, ITS data is
+      // the live source of truth — the job's own questions/ids are a disconnected
+      // snapshot from before that save (different ids, same text). Editing/saving
+      // against those stale ids 404s against the question-set endpoints, so the
+      // review page must display the question-set's own questions whenever one
+      // exists, not the job's copy.
+      if (job.hasDraft) {
+        const found = await findQuestionSetForJob(jobId);
+        const qSetId = found?.questionSetId ?? job.questionSetId;
+        if (qSetId) {
+          const d = await getDraft(qSetId);
+          if (d?.questions && d.questions.length > 0) {
+            setDraft(d);
+            return { ...job, questionSetId: qSetId, generatedQuestions: d.questions };
+          }
+        }
+      }
+
+      // Fallback: no saved draft yet — use the job's own generated questions.
       const qs = await getJobQuestions(jobId);
       if (qs.length > 0) return { ...job, generatedQuestions: qs };
 
-      // Fallback 1: inline questions from job GET response (filter out stubs)
+      // Fallback: inline questions from job GET response (filter out stubs)
       const inlineQs = (job.generatedQuestions ?? []).filter(q => q.question.trim() !== "");
       if (inlineQs.length > 0) return { ...job, generatedQuestions: inlineQs };
-
-      // Fallback 2: draft endpoint (try even if hasDraft is not set, questionSetId may exist)
-      const qSetId = job.questionSetId;
-      if (qSetId) {
-        const d = await getDraft(qSetId);
-        if (d?.questions && d.questions.length > 0) {
-          setDraft(d);
-          return job;
-        }
-      }
 
       // Return job as-is — empty questions will trigger retry flow
       return job;
@@ -242,7 +250,6 @@ export function HrReviewPageClient() {
         <ReviewPageClient
           session={{ ...session, id }}
           draftQuestions={draft?.questions}
-          isDraftView={!!draft}
           isGenerating={isGeneratingQuestions(session.status)}
           isRetrying={retrying}
           questionSetId={questionSetId}

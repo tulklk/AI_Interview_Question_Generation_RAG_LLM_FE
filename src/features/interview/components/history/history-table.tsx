@@ -4,12 +4,12 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FileText, Calendar, ArrowUpDown, Eye, Download, Trash2, Inbox, Loader2, AlertTriangle, ChevronLeft, ChevronRight, SearchX } from "lucide-react";
+import { FileText, Calendar, ArrowUpDown, Eye, Download, Trash2, Inbox, Loader2, AlertTriangle, ChevronLeft, ChevronRight, SearchX, Globe, PenLine } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { useLanguage } from "@/shared/providers/language-context";
 import { useHrSubscription } from "@/features/hr/context/hr-subscription-context";
 import { getLocalSessions, toGenerationSession } from "@/features/interview/utils/local-history";
-import { getGenerationJobs, getGenerationPlans, deleteGenerationPlan, exportPlanQuestions } from "@/features/interview/services/interview.service";
+import { getGenerationJobs, getGenerationPlans, getQuestionSetStatusByJob, deleteGenerationPlan, exportPlanQuestions } from "@/features/interview/services/interview.service";
 import type { GenerationSession, GenerationStatus } from "@/features/interview/types/generation-session";
 import { SessionStatusBadge } from "@/features/interview/components/history/session-status-badge";
 import {
@@ -18,6 +18,20 @@ import {
   portalHeading,
   portalSubtext,
 } from "@/shared/utils/portal-ui";
+
+function PublishStatusBadge({ status, labels }: { status: "DRAFT" | "PUBLISHED"; labels: { published: string; draft: string } }) {
+  return (
+    <span className={cn(
+      "inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full",
+      status === "PUBLISHED"
+        ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400"
+        : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400"
+    )}>
+      {status === "PUBLISHED" ? <Globe size={11} /> : <PenLine size={11} />}
+      {status === "PUBLISHED" ? labels.published : labels.draft}
+    </span>
+  );
+}
 
 function formatDate(iso: string): string {
   const d = new Date(iso);
@@ -153,6 +167,7 @@ export function HistoryTable({ search = "", role = "", level = "", experience = 
   const canExport = hasFeature("pdfExport");
 
   const [sessions, setSessions] = useState<GenerationSession[]>([]);
+  const [publishMap, setPublishMap] = useState<Map<string, "DRAFT" | "PUBLISHED">>(new Map());
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [exportingId, setExportingId] = useState<string | null>(null);
@@ -204,6 +219,8 @@ export function HistoryTable({ search = "", role = "", level = "", experience = 
     const localOnly = localSessions
       .filter((s) => !s.backendJobId)
       .map(toGenerationSession);
+
+    getQuestionSetStatusByJob().then(setPublishMap);
 
     // Fetch all jobs (all statuses including in-progress), then enrich with
     // level/jobTitle metadata from plans API for completed sessions.
@@ -481,8 +498,14 @@ export function HistoryTable({ search = "", role = "", level = "", experience = 
               </div>
               <div className="flex-1 min-w-0">
                 <span className={cn("font-semibold text-sm leading-snug block", portalHeading)}>{title}</span>
-                <div className="mt-1">
+                <div className="mt-1 flex items-center gap-1.5 flex-wrap">
                   <SessionStatusBadge status={session.status} />
+                  {publishMap.has(session.id) && (
+                    <PublishStatusBadge
+                      status={publishMap.get(session.id)!}
+                      labels={{ published: t.reviewPage.statusPublished, draft: t.reviewPage.statusDraft }}
+                    />
+                  )}
                 </div>
               </div>
             </div>
@@ -573,7 +596,15 @@ export function HistoryTable({ search = "", role = "", level = "", experience = 
                   <span className={cn("text-sm font-medium tabular-nums", portalHeading)}>{questionsCount}</span>
                 </td>
                 <td className="px-4 py-3.5">
-                  <SessionStatusBadge status={session.status} />
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <SessionStatusBadge status={session.status} />
+                    {publishMap.has(session.id) && (
+                      <PublishStatusBadge
+                        status={publishMap.get(session.id)!}
+                        labels={{ published: t.reviewPage.statusPublished, draft: t.reviewPage.statusDraft }}
+                      />
+                    )}
+                  </div>
                 </td>
                 <td className="px-4 py-3.5">
                   <div className="flex items-center justify-end gap-0.5">
