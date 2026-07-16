@@ -471,6 +471,14 @@
 
   topHeader: {
     searchPlaceholder: "Search...",
+    notificationsTitle: "Notifications",
+    markAllRead: "Mark all read",
+    noNotifications: "You're all caught up.",
+  },
+
+  notificationMessages: {
+    hrQuestionsGenerated: "Questions generated for {{title}}",
+    candidateFeedbackReady: "Your AI feedback for {{title}} is ready",
   },
 
   appShell: {
@@ -1667,6 +1675,7 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
     nav: {
       "/jobseeker/dashboard": "Dashboard",
       "/jobseeker/practice": "Practice Now",
+      "/jobseeker/saved": "Saved",
       "/jobseeker/history": "History",
       "/jobseeker/profile": "Profile",
       "/jobseeker/settings": "Settings",
@@ -1683,6 +1692,7 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
     routes: {
       "/jobseeker/dashboard": "Dashboard",
       "/jobseeker/practice": "Practice Now",
+      "/jobseeker/saved": "Saved Sets",
       "/jobseeker/history": "Practice History",
       "/jobseeker/profile": "My Profile",
       "/jobseeker/settings": "Settings",
@@ -1723,6 +1733,11 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
     loadFailed: "Failed to load question sets.",
     retryBtn: "Retry",
     skillsLabel: "Skills:",
+    loadMoreBtn: "Load more",
+    loadingMore: "Loading more…",
+    saveBtn: "Save for later",
+    unsaveBtn: "Remove from saved",
+    bookmarkFailed: "Couldn't update your saved sets. Please try again.",
   },
 
   jobseekerSetDetailPage: {
@@ -1775,10 +1790,13 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
     exitConfirm: "Are you sure you want to exit? Your progress will be lost.",
     exitConfirmTitle: "Exit practice?",
     exitConfirmMessage: "Your submitted answers are saved — you can continue this session later. Any answer you haven't submitted yet will still be here if you come back on this device.",
-    exitConfirmBtn: "Exit",
+    exitConfirmBtn: "Save & Exit",
     exitCancelBtn: "Stay",
+    abandonBtn: "Abandon this session instead (progress won't be saved)",
+    abandonFailed: "Failed to abandon the session. Please try again.",
     startingSession: "Starting your practice session…",
     startFailed: "Failed to start the practice session.",
+    startForbidden: "You don't have access to practice this question set.",
     retryBtn: "Retry",
     submitFailed: "Failed to submit your answer. Please try again.",
     finishing: "Finishing session…",
@@ -1786,6 +1804,8 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
     answerSubmitted: "Answer submitted",
     resumedBadge: "Resumed",
     resumedToast: "Welcome back — your practice session was restored.",
+    answerAllToFinish: "Answer all questions to finish — {{count}} left.",
+    goToUnansweredBtn: "Go to unanswered",
   },
 
   jobseekerFeedbackPage: {
@@ -1806,9 +1826,12 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
     shareBtn: "Share Result",
     shareCopied: "Link copied to clipboard.",
     shareFailed: "Couldn't copy the link. Please copy it from the address bar.",
+    scoringInProgress: "AI is still scoring your answers — this can take a bit. Your answers below are already saved.",
+    scoreNotAvailable: "A score isn't available for this session yet. Your answers are saved below.",
     loadingFeedback: "AI is evaluating your results…",
     loadingFeedbackSub: "This usually takes a few seconds.",
     feedbackLoadFailed: "Feedback isn't ready yet. Please try again in a moment.",
+    feedbackForbidden: "This session belongs to another account, so we can't show its feedback here.",
     retryLoadBtn: "Retry",
     scoreLabels: {
       Technical: "Technical",
@@ -1823,6 +1846,14 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
       fair: "Fair",
       needsWork: "Needs Work",
     },
+  },
+
+  jobseekerSavedPage: {
+    heading: "Saved Sets",
+    subtext: "Question sets you've bookmarked to practice later.",
+    emptyState: "You haven't saved any question sets yet. Bookmark a set from the marketplace to see it here.",
+    loadFailed: "Failed to load your saved sets.",
+    retryBtn: "Retry",
   },
 
   jobseekerHistoryPage: {
@@ -1850,6 +1881,8 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
     loading: "Loading your practice history…",
     loadFailed: "Failed to load your practice history.",
     loadRetryBtn: "Retry",
+    loadMoreBtn: "Load more",
+    loadingMore: "Loading more…",
   },
 
   jobseekerDashboardPage: {
@@ -2178,6 +2211,8 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
     unpublishConfirmMessage: "This question set will be removed from the marketplace and candidates won't be able to find it anymore.",
     statusDraft: "Draft",
     statusPublished: "Published",
+    publishMinHint: "Need at least {{min}} questions to publish ({{count}}/{{min}}).",
+    saveDraftFirstHint: "Save a draft first to enable publishing.",
     notCompletedBanner: "This session has status: {{status}}. Please wait or check back later.",
     questionActions: {
       edit: "Edit",

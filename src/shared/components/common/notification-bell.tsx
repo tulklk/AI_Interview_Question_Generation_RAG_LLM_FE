@@ -1,44 +1,32 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Bell } from "lucide-react";
+import { Bell, BellOff } from "lucide-react";
 
-interface Notification {
-  id: number;
+export interface NotificationItem {
+  id: string;
   message: string;
   time: string;
   read: boolean;
+  href?: string;
 }
-
-const notifications: Notification[] = [
-  {
-    id: 1,
-    message: "15 questions generated for Senior Frontend Developer",
-    time: "2 min ago",
-    read: false,
-  },
-  {
-    id: 2,
-    message: "Weekly report is ready to view",
-    time: "1 hour ago",
-    read: false,
-  },
-  {
-    id: 3,
-    message: "New feature: Export to DOCX now available",
-    time: "1 day ago",
-    read: true,
-  },
-];
 
 interface NotificationBellProps {
-  count?: number;
+  items: NotificationItem[];
+  emptyLabel: string;
+  title?: string;
+  markAllReadLabel?: string;
 }
 
-export function NotificationBell({ count = 0 }: NotificationBellProps) {
+export function NotificationBell({ items, emptyLabel, title = "Notifications", markAllReadLabel = "Mark all read" }: NotificationBellProps) {
   const [open, setOpen] = useState(false);
-  const [items, setItems] = useState(notifications);
+  const [localItems, setLocalItems] = useState(items);
   const ref = useRef<HTMLDivElement>(null);
+
+  // Keep local read-state in sync when the source list changes (e.g. new completed session appears).
+  useEffect(() => {
+    setLocalItems(items);
+  }, [items]);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -50,10 +38,10 @@ export function NotificationBell({ count = 0 }: NotificationBellProps) {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const unread = items.filter((n) => !n.read).length;
+  const unread = localItems.filter((n) => !n.read).length;
 
   function markAllRead() {
-    setItems((prev) => prev.map((n) => ({ ...n, read: true })));
+    setLocalItems((prev) => prev.map((n) => ({ ...n, read: true })));
   }
 
   return (
@@ -73,41 +61,44 @@ export function NotificationBell({ count = 0 }: NotificationBellProps) {
       {open && (
         <div className="absolute right-0 top-10 w-80 bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 shadow-xl z-50">
           <div className="flex items-center justify-between px-4 pt-4 pb-3 border-b border-gray-100 dark:border-gray-800">
-            <span className="text-sm font-bold text-gray-900 dark:text-gray-100">Notifications</span>
-            <button
-              onClick={markAllRead}
-              className="text-xs font-semibold text-[#6c47ff] hover:text-[#5535dd] transition-colors"
-            >
-              Mark all read
-            </button>
-          </div>
-
-          <ul className="py-1">
-            {items.map((n) => (
-              <li
-                key={n.id}
-                className="flex items-start gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer"
+            <span className="text-sm font-bold text-gray-900 dark:text-gray-100">{title}</span>
+            {unread > 0 && (
+              <button
+                onClick={markAllRead}
+                className="text-xs font-semibold text-[#6c47ff] hover:text-[#5535dd] transition-colors"
               >
-                <span
-                  className={`mt-1.5 w-2 h-2 rounded-full shrink-0 ${
-                    n.read ? "bg-gray-300 dark:bg-gray-600" : "bg-[#6c47ff]"
-                  }`}
-                />
-                <div className="flex-1 min-w-0">
-                  <p className={`text-sm leading-snug ${n.read ? "text-gray-500 dark:text-gray-400" : "text-gray-800 dark:text-gray-100 font-medium"}`}>
-                    {n.message}
-                  </p>
-                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{n.time}</p>
-                </div>
-              </li>
-            ))}
-          </ul>
-
-          <div className="px-4 py-3 border-t border-gray-100 dark:border-gray-800">
-            <button className="w-full text-xs font-semibold text-[#6c47ff] hover:text-[#5535dd] transition-colors text-center">
-              View all notifications
-            </button>
+                {markAllReadLabel}
+              </button>
+            )}
           </div>
+
+          {localItems.length === 0 ? (
+            <div className="flex flex-col items-center gap-2 py-8 px-4 text-center">
+              <BellOff size={20} className="text-gray-300 dark:text-gray-600" />
+              <p className="text-xs text-gray-400 dark:text-gray-500">{emptyLabel}</p>
+            </div>
+          ) : (
+            <ul className="py-1 max-h-80 overflow-y-auto">
+              {localItems.map((n) => (
+                <li
+                  key={n.id}
+                  className="flex items-start gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer"
+                >
+                  <span
+                    className={`mt-1.5 w-2 h-2 rounded-full shrink-0 ${
+                      n.read ? "bg-gray-300 dark:bg-gray-600" : "bg-[#6c47ff]"
+                    }`}
+                  />
+                  <div className="flex-1 min-w-0">
+                    <p className={`text-sm leading-snug ${n.read ? "text-gray-500 dark:text-gray-400" : "text-gray-800 dark:text-gray-100 font-medium"}`}>
+                      {n.message}
+                    </p>
+                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{n.time}</p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       )}
     </div>

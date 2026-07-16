@@ -7,6 +7,7 @@ import {
   Brain,
   Trophy,
   TrendingUp,
+  Bookmark,
 } from "lucide-react";
 import type {
   JobseekerNavItem,
@@ -20,6 +21,7 @@ import type {
 export const jobseekerNavItems: JobseekerNavItem[] = [
   { label: "Dashboard", href: "/jobseeker/dashboard", icon: LayoutDashboard },
   { label: "Practice Now", href: "/jobseeker/practice", icon: BookOpen },
+  { label: "Saved", href: "/jobseeker/saved", icon: Bookmark },
   {
     label: "History",
     href: "/jobseeker/history",

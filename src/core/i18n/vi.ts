@@ -473,6 +473,14 @@ export const vi: Translations = {
 
   topHeader: {
     searchPlaceholder: "Tìm kiếm...",
+    notificationsTitle: "Thông báo",
+    markAllRead: "Đánh dấu đã đọc",
+    noNotifications: "Bạn đã xem hết thông báo.",
+  },
+
+  notificationMessages: {
+    hrQuestionsGenerated: "Đã tạo xong câu hỏi cho {{title}}",
+    candidateFeedbackReady: "Kết quả AI cho {{title}} đã sẵn sàng",
   },
 
   appShell: {
@@ -1666,6 +1674,7 @@ Yêu cầu:
     nav: {
       "/jobseeker/dashboard": "Dashboard",
       "/jobseeker/practice": "Luyện Tập Ngay",
+      "/jobseeker/saved": "Đã lưu",
       "/jobseeker/history": "Lịch sử",
       "/jobseeker/profile": "Hồ sơ",
       "/jobseeker/settings": "Cài đặt",
@@ -1682,6 +1691,7 @@ Yêu cầu:
     routes: {
       "/jobseeker/dashboard": "Dashboard",
       "/jobseeker/practice": "Luyện Tập Ngay",
+      "/jobseeker/saved": "Bộ Đã Lưu",
       "/jobseeker/history": "Lịch Sử Luyện Tập",
       "/jobseeker/profile": "Hồ Sơ",
       "/jobseeker/settings": "Cài đặt",
@@ -1722,6 +1732,11 @@ Yêu cầu:
     loadFailed: "Không thể tải bộ câu hỏi.",
     retryBtn: "Thử lại",
     skillsLabel: "Kỹ năng:",
+    loadMoreBtn: "Tải thêm",
+    loadingMore: "Đang tải thêm…",
+    saveBtn: "Lưu để xem sau",
+    unsaveBtn: "Bỏ lưu",
+    bookmarkFailed: "Không thể cập nhật danh sách đã lưu. Vui lòng thử lại.",
   },
 
   jobseekerSetDetailPage: {
@@ -1774,10 +1789,13 @@ Yêu cầu:
     exitConfirm: "Bạn có chắc muốn thoát? Tiến trình sẽ bị mất.",
     exitConfirmTitle: "Thoát buổi luyện tập?",
     exitConfirmMessage: "Các câu bạn đã gửi vẫn được lưu — bạn có thể tiếp tục phiên này sau. Câu đang gõ dở chưa gửi cũng sẽ được giữ lại trên thiết bị này.",
-    exitConfirmBtn: "Thoát",
+    exitConfirmBtn: "Lưu & Thoát",
     exitCancelBtn: "Ở lại",
+    abandonBtn: "Hủy phiên này luôn (tiến trình sẽ không được lưu)",
+    abandonFailed: "Không thể hủy phiên. Vui lòng thử lại.",
     startingSession: "Đang bắt đầu phiên luyện tập…",
     startFailed: "Không thể bắt đầu phiên luyện tập.",
+    startForbidden: "Bạn không có quyền luyện tập với bộ câu hỏi này.",
     retryBtn: "Thử lại",
     submitFailed: "Không thể gửi câu trả lời. Vui lòng thử lại.",
     finishing: "Đang hoàn thành phiên…",
@@ -1785,6 +1803,8 @@ Yêu cầu:
     answerSubmitted: "Đã gửi câu trả lời",
     resumedBadge: "Đã tiếp tục",
     resumedToast: "Chào mừng trở lại — phiên luyện tập của bạn đã được khôi phục.",
+    answerAllToFinish: "Hãy trả lời hết các câu hỏi để hoàn thành — còn {{count}} câu.",
+    goToUnansweredBtn: "Đến câu chưa trả lời",
   },
 
   jobseekerFeedbackPage: {
@@ -1805,9 +1825,12 @@ Yêu cầu:
     shareBtn: "Chia sẻ kết quả",
     shareCopied: "Đã sao chép liên kết.",
     shareFailed: "Không thể sao chép liên kết. Vui lòng sao chép từ thanh địa chỉ.",
+    scoringInProgress: "AI vẫn đang chấm điểm câu trả lời của bạn — có thể mất một chút thời gian. Câu trả lời của bạn đã được lưu bên dưới.",
+    scoreNotAvailable: "Phiên này chưa có điểm số. Câu trả lời của bạn đã được lưu bên dưới.",
     loadingFeedback: "AI đang đánh giá kết quả của bạn…",
     loadingFeedbackSub: "Thường chỉ mất vài giây.",
     feedbackLoadFailed: "Phản hồi chưa sẵn sàng. Vui lòng thử lại sau giây lát.",
+    feedbackForbidden: "Phiên này thuộc về tài khoản khác nên bạn không thể xem phản hồi ở đây.",
     retryLoadBtn: "Thử lại",
     scoreLabels: {
       Technical: "Kỹ thuật",
@@ -1822,6 +1845,14 @@ Yêu cầu:
       fair: "Khá",
       needsWork: "Cần cải thiện",
     },
+  },
+
+  jobseekerSavedPage: {
+    heading: "Bộ Câu Hỏi Đã Lưu",
+    subtext: "Các bộ câu hỏi bạn đã lưu để luyện tập sau.",
+    emptyState: "Bạn chưa lưu bộ câu hỏi nào. Hãy lưu một bộ từ trang tìm kiếm để xem ở đây.",
+    loadFailed: "Không thể tải danh sách đã lưu.",
+    retryBtn: "Thử lại",
   },
 
   jobseekerHistoryPage: {
@@ -1849,6 +1880,8 @@ Yêu cầu:
     loading: "Đang tải lịch sử luyện tập…",
     loadFailed: "Không thể tải lịch sử luyện tập.",
     loadRetryBtn: "Thử lại",
+    loadMoreBtn: "Tải thêm",
+    loadingMore: "Đang tải thêm…",
   },
 
   jobseekerDashboardPage: {
@@ -2177,6 +2210,8 @@ Yêu cầu:
     unpublishConfirmMessage: "Bộ câu hỏi sẽ bị gỡ khỏi marketplace và ứng viên sẽ không còn tìm thấy nữa.",
     statusDraft: "Bản nháp",
     statusPublished: "Đã đăng",
+    publishMinHint: "Cần tối thiểu {{min}} câu hỏi để đăng ({{count}}/{{min}}).",
+    saveDraftFirstHint: "Hãy lưu bản nháp trước để có thể đăng bộ câu hỏi.",
     notCompletedBanner: "Phiên này có trạng thái: {{status}}. Vui lòng chờ hoặc kiểm tra lại sau.",
     questionActions: {
       edit: "Chỉnh sửa",

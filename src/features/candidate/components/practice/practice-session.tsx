@@ -5,12 +5,12 @@ import { useRouter } from "next/navigation";
 import { motion, AnimatePresence, useAnimationControls } from "framer-motion";
 import {
   Timer, ChevronLeft, ChevronRight, Send, X,
-  Loader2, Sparkles, CheckCircle2, AlertCircle, RefreshCw,
+  Loader2, Sparkles, CheckCircle2, AlertCircle, RefreshCw, Lock,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { useLanguage } from "@/shared/providers/language-context";
 import type { QuestionSet } from "@/features/candidate/types/jobseeker";
-import { Pill, getCategoryBadgeClass, getDifficultyBadgeClass } from "@/features/candidate/components/ui/pill";
+import { CategoryPill, DifficultyPill, formatCategoryLabel } from "@/features/candidate/components/ui/pill";
 import {
   portalDivider,
   portalHeadingAlt,
@@ -23,7 +23,8 @@ import {
   startPracticeSession,
   submitAnswer as submitAnswerApi,
   completePracticeSession,
-  findInProgressSession,
+  abandonPracticeSession,
+  ForbiddenError,
 } from "@/features/candidate/services/practice-session.service";
 
 const SESSION_DURATION_SECONDS = 45 * 60;
@@ -90,12 +91,14 @@ export function PracticeSession({ set }: PracticeSessionProps) {
   const [timeLeft, setTimeLeft] = useState(SESSION_DURATION_SECONDS);
   const [direction, setDirection] = useState(1);
   const [exitOpen, setExitOpen] = useState(false);
+  const [abandoning, setAbandoning] = useState(false);
 
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [startedAt, setStartedAt] = useState<string | null>(null);
   const [resumed, setResumed] = useState(false);
   const [starting, setStarting] = useState(true);
   const [startError, setStartError] = useState(false);
+  const [startForbidden, setStartForbidden] = useState(false);
   const [finishing, setFinishing] = useState(false);
   const [finishError, setFinishError] = useState(false);
   const [startAttempt, setStartAttempt] = useState(0);
@@ -109,46 +112,44 @@ export function PracticeSession({ set }: PracticeSessionProps) {
   const isSubmitted = submitted[question.id] ?? false;
   const isLast = currentIdx === totalQuestions - 1;
 
-  // Resume an IN_PROGRESS session for this set if one exists, otherwise start a fresh one.
+  // Start (or auto-resume, server-side) the practice session for this set. The
+  // response's questions[] already carry any previously-submitted answerText.
   useEffect(() => {
     let cancelled = false;
     setStarting(true);
     setStartError(false);
+    setStartForbidden(false);
 
-    async function init() {
-      try {
-        const existing = await findInProgressSession(set.id);
+    startPracticeSession(set.id)
+      .then((session) => {
         if (cancelled) return;
-
-        if (existing) {
-          const submittedMap: Record<string, boolean> = {};
-          const answersMap: Record<string, string> = {};
-          existing.answers.forEach((a) => {
-            submittedMap[a.questionId] = true;
-            if (a.answer) answersMap[a.questionId] = a.answer;
-          });
-          setSessionId(existing.sessionId);
-          setStartedAt(existing.startedAt ?? new Date().toISOString());
-          setSubmitted(submittedMap);
-          setAnswers((prev) => ({ ...prev, ...answersMap }));
-          setResumed(true);
-          addToast("success", p.resumedToast);
-          const firstUnanswered = set.questions.findIndex((q) => !submittedMap[q.id]);
-          setCurrentIdx(firstUnanswered === -1 ? set.questions.length - 1 : firstUnanswered);
-        } else {
-          const res = await startPracticeSession(set.id);
-          if (cancelled) return;
-          setSessionId(res.sessionId);
-          setStartedAt(res.startedAt ?? new Date().toISOString());
-        }
-      } catch {
-        if (!cancelled) setStartError(true);
-      } finally {
+        const submittedMap: Record<string, boolean> = {};
+        const answersMap: Record<string, string> = {};
+        session.questions.forEach((q) => {
+          if (q.answerText) {
+            submittedMap[q.id] = true;
+            answersMap[q.id] = q.answerText;
+          }
+        });
+        const wasResumed = Object.keys(submittedMap).length > 0;
+        setSessionId(session.id);
+        setStartedAt(session.startedAt ?? new Date().toISOString());
+        setSubmitted(submittedMap);
+        setAnswers((prev) => ({ ...prev, ...answersMap }));
+        setResumed(wasResumed);
+        if (wasResumed) addToast("success", p.resumedToast);
+        const firstUnanswered = set.questions.findIndex((q) => !submittedMap[q.id]);
+        setCurrentIdx(firstUnanswered === -1 ? set.questions.length - 1 : firstUnanswered);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        if (err instanceof ForbiddenError) setStartForbidden(true);
+        else setStartError(true);
+      })
+      .finally(() => {
         if (!cancelled) setStarting(false);
-      }
-    }
+      });
 
-    init();
     return () => {
       cancelled = true;
     };
@@ -196,7 +197,7 @@ export function PracticeSession({ set }: PracticeSessionProps) {
     if (!currentAnswer.trim() || isSubmitted || !sessionId) return;
     setEvaluating(true);
     setSubmitError(false);
-    submitAnswerApi(sessionId, { questionId: question.id, answer: currentAnswer })
+    submitAnswerApi(sessionId, { questionId: question.id, answerText: currentAnswer })
       .then(() => {
         setSubmitted((prev) => ({ ...prev, [question.id]: true }));
         if (typeof window !== "undefined") {
@@ -228,7 +229,31 @@ export function PracticeSession({ set }: PracticeSessionProps) {
       });
   }
 
+  function handleAbandon() {
+    if (!sessionId || abandoning) return;
+    setAbandoning(true);
+    abandonPracticeSession(sessionId)
+      .then(() => {
+        if (typeof window !== "undefined") {
+          set.questions.forEach((q) => window.sessionStorage.removeItem(draftKey(sessionId, q.id)));
+        }
+        router.push(`/jobseeker/sets/${set.id}`);
+      })
+      .catch(() => {
+        setAbandoning(false);
+        addToast("error", p.abandonFailed);
+      });
+  }
+
   const allAnswered = set.questions.every((q) => submitted[q.id]);
+  const unansweredCount = set.questions.filter((q) => !submitted[q.id]).length;
+
+  function goToFirstUnanswered() {
+    const idx = set.questions.findIndex((q) => !submitted[q.id]);
+    if (idx === -1) return;
+    setDirection(idx > currentIdx ? 1 : -1);
+    setCurrentIdx(idx);
+  }
 
   const variants = {
     enter:  (dir: number) => ({ opacity: 0, x: dir > 0 ? 40 : -40 }),
@@ -240,6 +265,15 @@ export function PracticeSession({ set }: PracticeSessionProps) {
     return (
       <div className="min-h-screen hr-main-bg flex items-center justify-center">
         <AiLoadingSpinner text={p.startingSession} />
+      </div>
+    );
+  }
+
+  if (startForbidden) {
+    return (
+      <div className="min-h-screen hr-main-bg flex flex-col items-center justify-center gap-3 px-4 text-center">
+        <Lock size={28} className="text-gray-400 dark:text-gray-500" />
+        <p className={cn("text-[14px]", portalSubtextAlt)}>{p.startForbidden}</p>
       </div>
     );
   }
@@ -272,6 +306,7 @@ export function PracticeSession({ set }: PracticeSessionProps) {
       variant="danger"
       onConfirm={() => router.push(`/jobseeker/sets/${set.id}`)}
       onCancel={() => setExitOpen(false)}
+      extraAction={{ label: p.abandonBtn, onClick: handleAbandon, loading: abandoning }}
     />
     <div className="min-h-screen hr-main-bg flex flex-col">
       {/* ── Top bar ─────────────────────────────────────────────────── */}
@@ -349,8 +384,8 @@ export function PracticeSession({ set }: PracticeSessionProps) {
             >
               {/* Category + difficulty badges */}
               <div className="flex items-center gap-2 mb-5">
-                <Pill className={getCategoryBadgeClass(question.category)}>{question.category}</Pill>
-                <Pill className={getDifficultyBadgeClass(question.difficulty)}>{question.difficulty}</Pill>
+                <CategoryPill category={question.category} label={formatCategoryLabel(question.category)} />
+                <DifficultyPill difficulty={question.difficulty} label={question.difficulty} />
               </div>
 
               {/* Question text */}
@@ -501,10 +536,23 @@ export function PracticeSession({ set }: PracticeSessionProps) {
                   </p>
                 )}
               </div>
+            ) : isLast ? (
+              <div className="flex flex-col items-end gap-1.5">
+                <p className="flex items-center gap-1.5 text-[12px] font-[500] text-amber-600 dark:text-amber-400">
+                  <AlertCircle size={12} />
+                  {p.answerAllToFinish.replace("{{count}}", String(unansweredCount))}
+                </p>
+                <button
+                  onClick={goToFirstUnanswered}
+                  className="flex items-center gap-2 h-9 px-4 text-[13px] font-semibold text-white hr-cta-btn shimmer-button rounded-lg"
+                >
+                  {p.goToUnansweredBtn}
+                  <ChevronLeft size={15} />
+                </button>
+              </div>
             ) : (
               <button
                 onClick={() => navigate(1)}
-                disabled={isLast}
                 className="shimmer-button flex items-center gap-2 h-9 px-4 text-[13px] font-semibold text-white hr-cta-btn disabled:opacity-40 disabled:cursor-not-allowed rounded-lg"
               >
                 {p.nextBtn}

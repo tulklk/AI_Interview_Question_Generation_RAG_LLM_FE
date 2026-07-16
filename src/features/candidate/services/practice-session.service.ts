@@ -1,28 +1,20 @@
 import { apiClient } from "@/core/api/http-client";
-import type { AnswerRecord, QuestionCategory, Difficulty } from "@/features/candidate/types/jobseeker";
+import type { Difficulty } from "@/features/candidate/types/jobseeker";
 
-export class FeedbackNotReadyError extends Error {
-  constructor(message = "Feedback not ready") {
+const BASE = "/api/candidate/practice-sessions";
+
+/** Thrown when the BE returns 403 — the session exists but belongs to another candidate. */
+export class ForbiddenError extends Error {
+  constructor(message = "You don't have access to this session") {
     super(message);
-    this.name = "FeedbackNotReadyError";
+    this.name = "ForbiddenError";
   }
 }
 
-export interface SkillDimensionScore {
-  skill: string;
-  score: number;
-  fullMark: number;
-}
-
-export interface PracticeFeedback {
-  sessionId: string;
-  overallScore: number;
-  aiInsight?: string;
-  dimensionScores: SkillDimensionScore[];
-  answers: AnswerRecord[];
-  questionSetId?: string;
-  setTitle?: string;
-  companyName?: string;
+function rethrowForbidden(err: unknown): never {
+  const status = (err as { response?: { status?: number } })?.response?.status;
+  if (status === 403) throw new ForbiddenError();
+  throw err;
 }
 
 function asRecord(val: unknown): Record<string, unknown> | null {
@@ -37,20 +29,29 @@ function pickString(obj: Record<string, unknown>, ...keys: string[]): string {
   return "";
 }
 
-function pickNumber(obj: Record<string, unknown>, ...keys: string[]): number | undefined {
+function pickOptionalString(obj: Record<string, unknown>, ...keys: string[]): string | undefined {
   for (const k of keys) {
     const v = obj[k];
-    if (typeof v === "number") return v;
+    if (typeof v === "string") return v;
   }
   return undefined;
 }
 
-function pickStringArray(obj: Record<string, unknown>, ...keys: string[]): string[] {
+function pickNullableNumber(obj: Record<string, unknown>, ...keys: string[]): number | null {
   for (const k of keys) {
     const v = obj[k];
-    if (Array.isArray(v)) return v.filter((x): x is string => typeof x === "string");
+    if (typeof v === "number") return v;
+    if (v === null) return null;
   }
-  return [];
+  return null;
+}
+
+function pickNumber(obj: Record<string, unknown>, ...keys: string[]): number {
+  for (const k of keys) {
+    const v = obj[k];
+    if (typeof v === "number") return v;
+  }
+  return 0;
 }
 
 function normalizeDifficulty(raw: unknown): Difficulty {
@@ -60,226 +61,244 @@ function normalizeDifficulty(raw: unknown): Difficulty {
   return "Medium";
 }
 
-function normalizeCategory(raw: unknown): QuestionCategory {
-  const v = typeof raw === "string" ? raw.toLowerCase() : "";
-  if (v === "behavioral") return "Behavioral";
-  if (v === "situational") return "Situational";
-  return "Technical";
-}
-
-function extractRoot(raw: unknown): Record<string, unknown> | null {
+function extractData(raw: unknown): Record<string, unknown> | null {
   const root = asRecord(raw);
   if (!root) return null;
   return asRecord(root.data) ?? root;
 }
 
-export interface StartedPracticeSession {
-  sessionId: string;
+// ---------------------------------------------------------------------------
+// Session detail (start / resume / get) — the real API returns the full
+// question list with each question's own answerText (null until answered),
+// so a single call both starts/resumes a session AND hydrates its state.
+// ---------------------------------------------------------------------------
+
+export interface PracticeSessionQuestion {
+  id: string;
+  order: number;
+  question: string;
+  questionType: string;
+  difficulty: Difficulty;
+  skill?: string;
+  focusArea?: string;
+  answerText: string | null;
+}
+
+export interface PracticeSessionDetail {
+  id: string;
+  questionSetId: string;
+  status: "IN_PROGRESS" | "COMPLETED" | "ABANDONED";
   startedAt?: string;
+  completedAt?: string | null;
+  overallScore: number | null;
+  questions: PracticeSessionQuestion[];
 }
 
-export async function startPracticeSession(questionSetId: string): Promise<StartedPracticeSession> {
-  const res = await apiClient.post("/practice-sessions", { questionSetId });
-  const src = extractRoot(res.data);
-  const sessionId = src ? pickString(src, "sessionId", "id", "SessionId", "Id") : "";
-  if (!sessionId) throw new Error("Invalid response from start practice session");
-  const startedAt = src ? pickString(src, "startedAt", "StartedAt", "createdAt") || undefined : undefined;
-  return { sessionId, startedAt };
-}
-
-export async function submitAnswer(
-  sessionId: string,
-  payload: { questionId: string; answer: string }
-): Promise<void> {
-  await apiClient.post(`/practice-sessions/${sessionId}/answers`, payload);
-}
-
-export async function completePracticeSession(sessionId: string): Promise<void> {
-  await apiClient.post(`/practice-sessions/${sessionId}/complete`);
-}
-
-export interface SessionAnswerEntry {
-  questionId: string;
-  answer: string | undefined;
-}
-
-export interface PracticeSessionState {
-  sessionId: string;
-  questionSetId?: string;
-  status: "IN_PROGRESS" | "COMPLETED";
-  startedAt?: string;
-  answers: SessionAnswerEntry[];
-}
-
-function normalizeSessionState(raw: unknown): PracticeSessionState | null {
-  const src = extractRoot(raw);
+function normalizeSessionQuestion(raw: unknown): PracticeSessionQuestion | null {
+  const src = asRecord(raw);
   if (!src) return null;
-  const sessionId = pickString(src, "sessionId", "id", "SessionId", "Id");
-  if (!sessionId) return null;
-
-  const rawAnswers = src.answers ?? src.Answers;
-  const answers = Array.isArray(rawAnswers)
-    ? rawAnswers
-        .map((a) => {
-          const aSrc = asRecord(a);
-          if (!aSrc) return null;
-          const questionId = pickString(aSrc, "questionId", "QuestionId", "id");
-          if (!questionId) return null;
-          return { questionId, answer: pickString(aSrc, "answer", "Answer") || undefined };
-        })
-        .filter((a): a is SessionAnswerEntry => a !== null)
-    : [];
-
-  const statusRaw = pickString(src, "status", "Status").toUpperCase();
-
+  const id = pickString(src, "id", "questionId");
+  const question = pickString(src, "question");
+  if (!id || !question) return null;
   return {
-    sessionId,
-    questionSetId: pickString(src, "questionSetId", "QuestionSetId") || undefined,
-    status: statusRaw === "COMPLETED" ? "COMPLETED" : "IN_PROGRESS",
-    startedAt: pickString(src, "startedAt", "StartedAt", "createdAt") || undefined,
-    answers,
+    id,
+    order: pickNumber(src, "order"),
+    question,
+    questionType: pickString(src, "questionType") || "technical",
+    difficulty: normalizeDifficulty(src.difficulty),
+    skill: pickOptionalString(src, "skill"),
+    focusArea: pickOptionalString(src, "focusArea"),
+    answerText: typeof src.answerText === "string" ? src.answerText : null,
   };
 }
 
-/** GET /practice-sessions/{id} — hydrate an existing session (resume after refresh/reconnect). */
-export async function getPracticeSession(sessionId: string): Promise<PracticeSessionState | null> {
+function normalizeSessionDetail(raw: unknown): PracticeSessionDetail | null {
+  const src = extractData(raw);
+  if (!src) return null;
+  const id = pickString(src, "id", "sessionId");
+  if (!id) return null;
+
+  const rawQuestions = src.questions;
+  const questions = Array.isArray(rawQuestions)
+    ? rawQuestions.map(normalizeSessionQuestion).filter((q): q is PracticeSessionQuestion => q !== null)
+    : [];
+
+  const statusRaw = pickString(src, "status").toUpperCase();
+
+  return {
+    id,
+    questionSetId: pickString(src, "questionSetId"),
+    status: statusRaw === "COMPLETED" ? "COMPLETED" : statusRaw === "ABANDONED" ? "ABANDONED" : "IN_PROGRESS",
+    startedAt: pickOptionalString(src, "startedAt"),
+    completedAt: pickOptionalString(src, "completedAt") ?? null,
+    overallScore: pickNullableNumber(src, "overallScore"),
+    questions,
+  };
+}
+
+/**
+ * Starts a practice session for this question set. If the candidate already has
+ * an IN_PROGRESS session for the same set, the BE returns that one instead of
+ * creating a new one (auto-resume) — the returned questions[] already carry any
+ * previously-submitted answerText, so this single call both starts and hydrates.
+ */
+export async function startPracticeSession(questionSetId: string): Promise<PracticeSessionDetail> {
+  let res;
   try {
-    const res = await apiClient.get(`/practice-sessions/${sessionId}`);
-    return normalizeSessionState(res.data);
+    res = await apiClient.post(BASE, { questionSetId });
+  } catch (err) {
+    rethrowForbidden(err);
+  }
+  const session = normalizeSessionDetail(res.data);
+  if (!session) throw new Error("Invalid response from start practice session");
+  return session;
+}
+
+export async function getPracticeSession(sessionId: string): Promise<PracticeSessionDetail | null> {
+  try {
+    const res = await apiClient.get(`${BASE}/${sessionId}`);
+    return normalizeSessionDetail(res.data);
   } catch (err) {
     const status = (err as { response?: { status?: number } })?.response?.status;
     if (status === 404) return null;
-    throw err;
+    rethrowForbidden(err);
   }
 }
 
 function extractList(raw: unknown): unknown[] {
-  if (Array.isArray(raw)) return raw;
   const root = asRecord(raw);
-  if (!root) return [];
+  if (!root) return Array.isArray(raw) ? raw : [];
+  const data = asRecord(root.data);
+  if (data && Array.isArray(data.items)) return data.items;
   if (Array.isArray(root.data)) return root.data;
-  const nested = asRecord(root.data) ?? root;
-  if (Array.isArray(nested.items)) return nested.items as unknown[];
+  if (Array.isArray(root.items)) return root.items;
   return [];
 }
 
-/** Finds an IN_PROGRESS session for this question set, if the candidate left one behind. */
-export async function findInProgressSession(questionSetId: string): Promise<PracticeSessionState | null> {
+/** Read-only check for an in-progress session on this set, without starting/resuming one as a side effect. */
+export async function findInProgressSession(questionSetId: string): Promise<{ sessionId: string } | null> {
   try {
-    const res = await apiClient.get("/practice-sessions", {
-      params: { questionSetId, status: "IN_PROGRESS" },
-    });
-    const first = extractList(res.data)[0];
-    return first ? normalizeSessionState(first) : null;
+    const res = await apiClient.get(BASE, { params: { QuestionSetId: questionSetId, Status: "IN_PROGRESS" } });
+    const first = asRecord(extractList(res.data)[0]);
+    const sessionId = first ? pickString(first, "sessionId", "id") : "";
+    return sessionId ? { sessionId } : null;
   } catch (err) {
     const status = (err as { response?: { status?: number } })?.response?.status;
     if (status === 404) return null;
     throw err;
   }
 }
+
+export async function submitAnswer(
+  sessionId: string,
+  payload: { questionId: string; answerText: string }
+): Promise<void> {
+  await apiClient.post(`${BASE}/${sessionId}/answers`, payload);
+}
+
+export interface CompleteSessionResult {
+  overallScore: number | null;
+  durationSeconds: number;
+}
+
+export async function completePracticeSession(sessionId: string): Promise<CompleteSessionResult> {
+  const res = await apiClient.post(`${BASE}/${sessionId}/complete`);
+  const src = extractData(res.data) ?? {};
+  return {
+    overallScore: pickNullableNumber(src, "overallScore"),
+    durationSeconds: pickNumber(src, "durationSeconds"),
+  };
+}
+
+export async function abandonPracticeSession(sessionId: string): Promise<void> {
+  await apiClient.post(`${BASE}/${sessionId}/abandon`);
+}
+
+// ---------------------------------------------------------------------------
+// History list
+// ---------------------------------------------------------------------------
 
 export interface CompletedSessionSummary {
   id: string;
   questionSetId: string;
   setTitle: string;
   company: string;
-  completedAt?: string;
-  score: number;
+  score: number | null;
   durationMinutes: number;
-  skills: string[];
-  totalQuestions: number;
+  startedAt?: string;
+  completedAt?: string;
 }
 
 function normalizeCompletedSession(raw: unknown): CompletedSessionSummary | null {
   const src = asRecord(raw);
   if (!src) return null;
-  const id = pickString(src, "sessionId", "id", "SessionId", "Id");
+  const id = pickString(src, "sessionId", "id");
   if (!id) return null;
   return {
     id,
-    questionSetId: pickString(src, "questionSetId", "QuestionSetId"),
-    setTitle: pickString(src, "setTitle", "SetTitle", "jobTitle", "title"),
-    company: pickString(src, "company", "companyName", "CompanyName"),
-    completedAt: pickString(src, "completedAt", "CompletedAt", "endedAt", "updatedAt") || undefined,
-    score: pickNumber(src, "score", "overallScore", "Score") ?? 0,
-    durationMinutes: pickNumber(src, "durationMinutes", "DurationMinutes", "duration") ?? 0,
-    skills: pickStringArray(src, "skills", "Skills"),
-    totalQuestions: pickNumber(src, "totalQuestions", "TotalQuestions", "questionCount") ?? 0,
+    questionSetId: pickString(src, "questionSetId"),
+    setTitle: pickString(src, "setTitle", "title"),
+    company: pickString(src, "companyName", "company"),
+    score: pickNullableNumber(src, "score", "overallScore"),
+    durationMinutes: Math.round(pickNumber(src, "durationSeconds") / 60),
+    startedAt: pickOptionalString(src, "startedAt"),
+    completedAt: pickOptionalString(src, "completedAt"),
   };
 }
 
-/** Lists the candidate's completed practice sessions, most recent first. */
-export async function listCompletedSessions(): Promise<CompletedSessionSummary[]> {
+export interface PaginatedCompletedSessions {
+  items: CompletedSessionSummary[];
+  totalCount: number;
+}
+
+function extractTotal(raw: unknown, fallback: number): number {
+  const data = extractData(raw);
+  return data ? pickNumber(data, "totalCount") || fallback : fallback;
+}
+
+/** Lists a page of the candidate's completed practice sessions, most recent first. */
+export async function listCompletedSessions(
+  params: { page?: number; pageSize?: number; fromDate?: string; toDate?: string } = {}
+): Promise<PaginatedCompletedSessions> {
   try {
-    const res = await apiClient.get("/practice-sessions", { params: { status: "COMPLETED" } });
-    return extractList(res.data)
+    const res = await apiClient.get(BASE, {
+      params: {
+        Status: "COMPLETED",
+        Page: params.page ?? 1,
+        PageSize: params.pageSize ?? 20,
+        FromDate: params.fromDate,
+        ToDate: params.toDate,
+      },
+    });
+    const items = extractList(res.data)
       .map(normalizeCompletedSession)
       .filter((s): s is CompletedSessionSummary => s !== null);
+    return { items, totalCount: extractTotal(res.data, items.length) };
   } catch (err) {
     const status = (err as { response?: { status?: number } })?.response?.status;
-    if (status === 404) return [];
+    if (status === 404) return { items: [], totalCount: 0 };
     throw err;
   }
 }
 
-function normalizeAnswer(raw: unknown, index: number): AnswerRecord | null {
-  const src = asRecord(raw);
-  if (!src) return null;
+// ---------------------------------------------------------------------------
+// Stats
+// ---------------------------------------------------------------------------
+
+export interface PracticeStats {
+  totalSessions: number;
+  averageScore: number | null;
+  bestScore: number | null;
+  totalDurationMinutes: number;
+}
+
+export async function getPracticeStats(): Promise<PracticeStats> {
+  const res = await apiClient.get(`${BASE}/stats`);
+  const src = extractData(res.data) ?? {};
   return {
-    questionId: pickString(src, "questionId", "QuestionId", "id") || `q-${index}`,
-    questionText: pickString(src, "questionText", "QuestionText", "question"),
-    category: normalizeCategory(src.category ?? src.Category),
-    difficulty: normalizeDifficulty(src.difficulty ?? src.Difficulty),
-    answer: pickString(src, "answer", "Answer"),
-    aiScore: pickNumber(src, "aiScore", "AiScore", "score") ?? 0,
-    strengths: pickStringArray(src, "strengths", "Strengths"),
-    improvements: pickStringArray(src, "improvements", "Improvements"),
-    suggestion: pickString(src, "suggestion", "Suggestion"),
+    totalSessions: pickNumber(src, "totalSessions"),
+    averageScore: pickNullableNumber(src, "averageScore"),
+    bestScore: pickNullableNumber(src, "bestScore"),
+    totalDurationMinutes: Math.round(pickNumber(src, "totalDurationSeconds") / 60),
   };
-}
-
-export async function getPracticeFeedback(sessionId: string): Promise<PracticeFeedback> {
-  try {
-    const res = await apiClient.get(`/practice-sessions/${sessionId}/feedback`);
-    const src = extractRoot(res.data);
-    if (!src) throw new FeedbackNotReadyError();
-
-    const rawAnswers = src.answers ?? src.Answers;
-    const answers = Array.isArray(rawAnswers)
-      ? rawAnswers.map((a, i) => normalizeAnswer(a, i)).filter((a): a is AnswerRecord => a !== null)
-      : [];
-
-    const rawDimensions = src.dimensionScores ?? src.DimensionScores ?? src.skillScores;
-    const dimensionScores = Array.isArray(rawDimensions)
-      ? rawDimensions
-          .map((d) => {
-            const dSrc = asRecord(d);
-            if (!dSrc) return null;
-            const skill = pickString(dSrc, "skill", "Skill", "name");
-            if (!skill) return null;
-            return {
-              skill,
-              score: pickNumber(dSrc, "score", "Score") ?? 0,
-              fullMark: pickNumber(dSrc, "fullMark", "FullMark") ?? 100,
-            };
-          })
-          .filter((d): d is SkillDimensionScore => d !== null)
-      : [];
-
-    return {
-      sessionId,
-      overallScore: pickNumber(src, "overallScore", "OverallScore", "score") ?? 0,
-      aiInsight: pickString(src, "aiInsight", "AiInsight", "insight") || undefined,
-      dimensionScores,
-      answers,
-      questionSetId: pickString(src, "questionSetId", "QuestionSetId") || undefined,
-      setTitle: pickString(src, "setTitle", "SetTitle", "jobTitle") || undefined,
-      companyName: pickString(src, "company", "companyName", "CompanyName") || undefined,
-    };
-  } catch (err) {
-    if (err instanceof FeedbackNotReadyError) throw err;
-    const status = (err as { response?: { status?: number } })?.response?.status;
-    if (status === 404 || status === 202) throw new FeedbackNotReadyError();
-    throw err;
-  }
 }

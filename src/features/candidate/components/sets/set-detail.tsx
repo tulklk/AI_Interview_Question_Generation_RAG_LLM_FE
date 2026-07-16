@@ -5,14 +5,16 @@ import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, Clock, BarChart2, Users, Star, ChevronDown,
-  ChevronRight, Target, Zap, RotateCcw,
+  ChevronRight, Target, Zap, RotateCcw, Bookmark, Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { useLanguage } from "@/shared/providers/language-context";
 import type { QuestionSet, QuestionCategory } from "@/features/candidate/types/jobseeker";
-import { Pill, getDifficultyBadgeClass, getCategoryBadgeClass } from "@/features/candidate/components/ui/pill";
+import { DifficultyPill, CategoryPill, formatCategoryLabel } from "@/features/candidate/components/ui/pill";
 import { CompanyInfoCard } from "./company-info-card";
 import { findInProgressSession } from "@/features/candidate/services/practice-session.service";
+import { toggleBookmark, getBookmarkedSetIds } from "@/features/candidate/services/question-set.service";
+import { useToast } from "@/shared/providers/toast-context";
 import {
   portalDivider,
   portalHeadingAlt,
@@ -28,8 +30,12 @@ interface SetDetailProps {
 export function SetDetail({ set }: SetDetailProps) {
   const { t } = useLanguage();
   const p = t.jobseekerSetDetailPage;
+  const mp = t.jobseekerMarketplacePage;
+  const { addToast } = useToast();
 
   const [inProgressSessionId, setInProgressSessionId] = useState<string | null>(null);
+  const [bookmarked, setBookmarked] = useState(false);
+  const [bookmarking, setBookmarking] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -40,13 +46,28 @@ export function SetDetail({ set }: SetDetailProps) {
       .catch(() => {
         // Non-critical — CTA just falls back to "Start"
       });
+    getBookmarkedSetIds().then((ids) => {
+      if (!cancelled) setBookmarked(ids.has(set.id));
+    });
     return () => {
       cancelled = true;
     };
   }, [set.id]);
 
-  const categories: QuestionCategory[] = ["Technical", "Behavioral", "Situational"];
-  const [openCategory, setOpenCategory] = useState<QuestionCategory | null>("Technical");
+  function handleToggleBookmark() {
+    if (bookmarking) return;
+    setBookmarking(true);
+    toggleBookmark(set.id)
+      .then(setBookmarked)
+      .catch(() => addToast("error", mp.bookmarkFailed))
+      .finally(() => setBookmarking(false));
+  }
+
+  // Categories are derived from whatever questionType values the real question set actually
+  // contains (technical, behavioral, situational, problem-solving, system-design, ...) rather
+  // than a fixed 3-value list, preserving first-seen order.
+  const categories: QuestionCategory[] = Array.from(new Set(set.questions.map((q) => q.category)));
+  const [openCategory, setOpenCategory] = useState<QuestionCategory | null>(categories[0] ?? null);
 
   const groupedQuestions = categories.reduce((acc, cat) => {
     acc[cat] = set.questions.filter((q) => q.category === cat);
@@ -87,12 +108,26 @@ export function SetDetail({ set }: SetDetailProps) {
                 <h1 className={cn("text-[24px] font-[800] leading-[32px]", portalHeadingAlt)}>{set.title}</h1>
                 <p className={cn("text-[14px] mt-1", portalSubtextAlt)}>{p.by} {set.company}</p>
               </div>
-              <Pill className={cn("text-[12px] px-3 py-1.5", getDifficultyBadgeClass(set.difficulty))}>
-                {set.difficulty}
-              </Pill>
+              <DifficultyPill difficulty={set.difficulty} label={set.difficulty} className="text-[12px] px-3 py-1.5" />
+              <button
+                type="button"
+                onClick={handleToggleBookmark}
+                disabled={bookmarking}
+                aria-label={bookmarked ? mp.unsaveBtn : mp.saveBtn}
+                title={bookmarked ? mp.unsaveBtn : mp.saveBtn}
+                className="shrink-0 w-9 h-9 flex items-center justify-center rounded-lg text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-primary transition-colors disabled:opacity-60"
+              >
+                {bookmarking ? (
+                  <Loader2 size={17} className="animate-spin" />
+                ) : (
+                  <Bookmark size={17} className={bookmarked ? "fill-primary text-primary" : ""} />
+                )}
+              </button>
             </div>
 
-            <p className={cn("text-[15px] leading-[24px] mb-5", portalSubtextAlt)}>{set.description}</p>
+            {set.description && (
+              <p className={cn("text-[15px] leading-[24px] mb-5", portalSubtextAlt)}>{set.description}</p>
+            )}
 
             {/* Meta pills */}
             <div className={cn("flex flex-wrap items-center gap-4 text-[13px]", portalSubtextAlt)}>
@@ -132,7 +167,9 @@ export function SetDetail({ set }: SetDetailProps) {
           </div>
 
           {/* Company info block */}
-          {set.companyId && <CompanyInfoCard companyId={set.companyId} />}
+          {set.company && (
+            <CompanyInfoCard name={set.company} logoUrl={set.companyLogoUrl} />
+          )}
 
           {/* Question Preview */}
           <div
@@ -155,7 +192,7 @@ export function SetDetail({ set }: SetDetailProps) {
                       className="hr-table-row w-full flex items-center justify-between px-6 py-4"
                     >
                       <div className="flex items-center gap-3">
-                        <Pill className={getCategoryBadgeClass(cat)}>{p.categories[cat]}</Pill>
+                        <CategoryPill category={cat} label={formatCategoryLabel(cat)} />
                         <span className={cn("text-[13px]", portalSubtextAlt)}>{qs.length} questions</span>
                       </div>
                       <ChevronDown
@@ -186,9 +223,7 @@ export function SetDetail({ set }: SetDetailProps) {
                                 {idx + 1}.
                               </span>
                               <p className={cn("text-[14px] leading-[22px] flex-1", portalHeadingAlt)}>{q.text}</p>
-                              <Pill size="sm" className={getDifficultyBadgeClass(q.difficulty)}>
-                                {q.difficulty}
-                              </Pill>
+                              <DifficultyPill difficulty={q.difficulty} label={q.difficulty} size="sm" />
                             </li>
                           ))}
                         </motion.ul>

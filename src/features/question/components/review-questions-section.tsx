@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
-import { Plus, BookMarked, CheckCircle2, Loader2, AlertCircle, RefreshCw, ChevronLeft, ChevronRight, X, Check, Rocket, Undo2 } from "lucide-react";
+import { Plus, BookMarked, CheckCircle2, Loader2, AlertCircle, RefreshCw, ChevronLeft, ChevronRight, X, Check, Rocket, Undo2, Globe, PenLine } from "lucide-react";
 import { AiLoadingSpinner } from "@/shared/components/common/ai-loading-spinner";
 import {
   DndContext,
@@ -128,6 +128,8 @@ type SaveState = "idle" | "saving" | "saved" | "error";
 type PublishAction = "publish" | "unpublish" | null;
 
 const PAGE_SIZE = 5;
+// BE enforces this minimum on POST /api/hr/question-sets/{id}/publish.
+const MIN_QUESTIONS_TO_PUBLISH = 10;
 
 export function ReviewQuestionsSection({
   sessionId,
@@ -463,9 +465,22 @@ export function ReviewQuestionsSection({
     <div className="space-y-4">
       {/* Toolbar */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <p className={cn("text-sm", portalSubtext)}>
-          {rp.questionCount.replace("{{count}}", String(questions.length))}
-        </p>
+        <div className="flex items-center gap-2">
+          <p className={cn("text-sm", portalSubtext)}>
+            {rp.questionCount.replace("{{count}}", String(questions.length))}
+          </p>
+          {publishStatus && (
+            <span className={cn(
+              "inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-md",
+              publishStatus === "PUBLISHED"
+                ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400"
+                : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400"
+            )}>
+              {publishStatus === "PUBLISHED" ? <Globe size={11} /> : <PenLine size={11} />}
+              {publishStatus === "PUBLISHED" ? rp.statusPublished : rp.statusDraft}
+            </span>
+          )}
+        </div>
         <div className="flex flex-wrap items-center gap-2">
           {!readOnly && (
             <>
@@ -520,7 +535,13 @@ export function ReviewQuestionsSection({
             </>
           )}
 
-          {questionSetId && questions.length > 0 && (
+          {!readOnly && !questionSetId && (
+            <span className={cn("text-xs italic", portalSubtext)}>
+              {rp.saveDraftFirstHint}
+            </span>
+          )}
+
+          {questionSetId && (
             publishStatus === "PUBLISHED" ? (
               <button
                 type="button"
@@ -536,7 +557,7 @@ export function ReviewQuestionsSection({
                 {publishing ? <Loader2 size={14} className="animate-spin" /> : <Undo2 size={14} />}
                 {rp.unpublish}
               </button>
-            ) : (
+            ) : questions.length >= MIN_QUESTIONS_TO_PUBLISH ? (
               <button
                 type="button"
                 onClick={() => setPublishConfirmAction("publish")}
@@ -546,6 +567,10 @@ export function ReviewQuestionsSection({
                 {publishing ? <Loader2 size={14} className="animate-spin" /> : <Rocket size={14} />}
                 {rp.publish}
               </button>
+            ) : (
+              <span className={cn("text-xs italic", portalSubtext)}>
+                {rp.publishMinHint.replace("{{min}}", String(MIN_QUESTIONS_TO_PUBLISH)).replace("{{count}}", String(questions.length))}
+              </span>
             )
           )}
         </div>

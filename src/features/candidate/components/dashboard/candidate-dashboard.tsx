@@ -5,14 +5,16 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import {
   Sparkles, ChevronRight,
-  BarChart2, Clock, RefreshCw, AlertCircle,
+  BarChart2, Clock, RefreshCw, AlertCircle, History,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import {
   listCompletedSessions,
+  getPracticeStats,
   type CompletedSessionSummary,
+  type PracticeStats,
 } from "@/features/candidate/services/practice-session.service";
-import { listQuestionSets } from "@/features/candidate/services/question-set.service";
+import { listQuestionSets, getBookmarkedSetIds } from "@/features/candidate/services/question-set.service";
 import { getCompanyColor, getCompanyInitials } from "@/features/candidate/utils/company-visual";
 import type { QuestionSet } from "@/features/candidate/types/jobseeker";
 import { QuestionSetCard } from "@/features/candidate/components/marketplace/question-set-card";
@@ -22,6 +24,7 @@ import { useUser } from "@/features/auth/context/user-context";
 import { buildWelcomeMessage, getTimeOfDayGreeting } from "@/shared/utils/greeting";
 import { StatCard } from "@/features/candidate/components/ui/stat-card";
 import { Pill, getScoreBadgeClass } from "@/features/candidate/components/ui/pill";
+import { EmptyState } from "@/features/candidate/components/ui/empty-state";
 import { portalHeadingAlt, portalSubtextAlt } from "@/shared/utils/portal-ui";
 
 const fadeUp = (delay = 0) => ({
@@ -65,11 +68,13 @@ export function CandidateDashboard() {
   const p = t.jobseekerDashboardPage;
 
   const [sessions, setSessions] = useState<CompletedSessionSummary[]>([]);
+  const [stats, setStats] = useState<PracticeStats | null>(null);
   const [sessionsLoading, setSessionsLoading] = useState(true);
   const [sessionsError, setSessionsError] = useState(false);
   const [sessionsReloadKey, setSessionsReloadKey] = useState(0);
 
   const [recommendedSets, setRecommendedSets] = useState<QuestionSet[]>([]);
+  const [bookmarkedIds, setBookmarkedIds] = useState<Set<string>>(new Set());
   const [setsLoading, setSetsLoading] = useState(true);
   const [setsError, setSetsError] = useState(false);
   const [setsReloadKey, setSetsReloadKey] = useState(0);
@@ -78,9 +83,11 @@ export function CandidateDashboard() {
     let cancelled = false;
     setSessionsLoading(true);
     setSessionsError(false);
-    listCompletedSessions()
-      .then((res) => {
-        if (!cancelled) setSessions(res);
+    Promise.all([listCompletedSessions({ pageSize: 100 }), getPracticeStats()])
+      .then(([sessionsRes, statsRes]) => {
+        if (cancelled) return;
+        setSessions(sessionsRes.items);
+        setStats(statsRes);
       })
       .catch(() => {
         if (!cancelled) setSessionsError(true);
@@ -107,6 +114,9 @@ export function CandidateDashboard() {
       .finally(() => {
         if (!cancelled) setSetsLoading(false);
       });
+    getBookmarkedSetIds().then((ids) => {
+      if (!cancelled) setBookmarkedIds(ids);
+    });
     return () => {
       cancelled = true;
     };
@@ -121,15 +131,15 @@ export function CandidateDashboard() {
   const displayName = user?.fullName || (loading ? "..." : "User");
   const welcomeText = buildWelcomeMessage(p.welcomeTemplate, greeting, displayName);
 
-  const sessionCount = sessions.length;
-  const avgScore = sessionCount ? Math.round(sessions.reduce((a, s) => a + s.score, 0) / sessionCount) : 0;
+  const sessionCount = stats?.totalSessions ?? 0;
+  const avgScore = stats?.averageScore ?? null;
   const weeklyCount = sessions.filter((s) => {
     if (!s.completedAt) return false;
     const d = new Date(s.completedAt).getTime();
     return !Number.isNaN(d) && Date.now() - d <= 7 * 24 * 60 * 60 * 1000;
   }).length;
   const streakDays = computeStreakDays(sessions.map((s) => s.completedAt));
-  const readinessKey = sessionCount === 0 ? "low" : avgScore >= 80 ? "high" : avgScore >= 60 ? "medium" : "low";
+  const readinessKey = avgScore === null ? "low" : avgScore >= 80 ? "high" : avgScore >= 60 ? "medium" : "low";
   const readinessLabel = p.statValues.readinessLabels[readinessKey];
 
   const welcomeSub = sessionsLoading
@@ -144,7 +154,7 @@ export function CandidateDashboard() {
   const iconColor = "text-gray-900 dark:text-gray-100";
   const statCards = [
     { icon: BarChart2, label: p.statLabels[0], value: sessionCount.toString(), trend: weeklyCount > 0 ? p.weeklyTrendTemplate.replace("{{count}}", String(weeklyCount)) : undefined },
-    { icon: BarChart2, label: p.statLabels[1], value: `${avgScore}%`, trend: undefined },
+    { icon: BarChart2, label: p.statLabels[1], value: avgScore !== null ? `${avgScore}%` : "—", trend: undefined },
     { icon: Clock, label: p.statLabels[2], value: `${streakDays} ${streakDays === 1 ? "day" : "days"}`, trend: undefined },
     { icon: Sparkles, label: p.statLabels[3], value: readinessLabel, trend: p.statTrends[3] },
   ];
@@ -213,7 +223,7 @@ export function CandidateDashboard() {
                 </button>
               </div>
             ) : recentSessions.length === 0 ? (
-              <p className={cn("text-center py-8 text-[13px]", portalSubtextAlt)}>{p.noSessionsYet}</p>
+              <EmptyState icon={History} title={p.noSessionsYet} className="py-8" />
             ) : (
               <ul className="divide-y divide-gray-200 dark:divide-gray-800">
                 {recentSessions.map((session) => (
@@ -228,8 +238,11 @@ export function CandidateDashboard() {
                         {session.durationMinutes} min
                       </p>
                     </div>
-                    <Pill className={cn("text-[12px] font-[700] px-2.5 py-1", getScoreBadgeClass(session.score))}>
-                      {session.score}%
+                    <Pill className={cn(
+                      "text-[12px] font-[700] px-2.5 py-1",
+                      session.score !== null ? getScoreBadgeClass(session.score) : "bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500"
+                    )}>
+                      {session.score !== null ? `${session.score}%` : "—"}
                     </Pill>
                     <Link href={`/jobseeker/practice/${session.questionSetId}`}
                       className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 dark:text-gray-500 hover:text-primary hover:bg-[#F5F3FF] dark:hover:bg-purple-950/30 transition-colors"
@@ -335,7 +348,7 @@ export function CandidateDashboard() {
             </button>
           </div>
         ) : recommendedSets.length === 0 ? (
-          <p className={cn("text-center py-8 text-[13px]", portalSubtextAlt)}>{p.noRecommendedSets}</p>
+          <EmptyState icon={Sparkles} title={p.noRecommendedSets} className="py-8" />
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {recommendedSets.map((set, i) => (
@@ -345,7 +358,7 @@ export function CandidateDashboard() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.32 + i * 0.08 }}
               >
-                <QuestionSetCard set={set} />
+                <QuestionSetCard set={set} initialBookmarked={bookmarkedIds.has(set.id)} />
               </motion.div>
             ))}
           </div>

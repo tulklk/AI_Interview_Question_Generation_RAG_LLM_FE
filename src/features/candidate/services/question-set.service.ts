@@ -1,5 +1,5 @@
 import { apiClient } from "@/core/api/http-client";
-import type { Difficulty, PracticeQuestion, QuestionCategory, QuestionSet } from "@/features/candidate/types/jobseeker";
+import type { Difficulty, PracticeQuestion, QuestionSet } from "@/features/candidate/types/jobseeker";
 import { getCompanyColor, getCompanyInitials } from "@/features/candidate/utils/company-visual";
 
 export class NotFoundError extends Error {
@@ -43,6 +43,15 @@ function pickOptionalString(obj: Record<string, unknown>, ...keys: string[]): st
   return undefined;
 }
 
+function pickNullableString(obj: Record<string, unknown>, ...keys: string[]): string | null | undefined {
+  for (const k of keys) {
+    const v = obj[k];
+    if (typeof v === "string") return v;
+    if (v === null) return null;
+  }
+  return undefined;
+}
+
 function pickNumber(obj: Record<string, unknown>, ...keys: string[]): number | undefined {
   for (const k of keys) {
     const v = obj[k];
@@ -66,24 +75,23 @@ function normalizeDifficulty(raw: unknown): Difficulty {
   return "Medium";
 }
 
-function normalizeCategory(raw: unknown): QuestionCategory {
-  const v = typeof raw === "string" ? raw.toLowerCase() : "";
-  if (v === "behavioral") return "Behavioral";
-  if (v === "situational") return "Situational";
-  return "Technical";
+function formatEstimatedTime(minutes: number | undefined): string {
+  if (!minutes) return "";
+  return `${minutes} min`;
 }
 
 function normalizeQuestion(raw: unknown, index: number): PracticeQuestion | null {
   const src = asRecord(raw);
   if (!src) return null;
-  const text = pickString(src, "text", "question", "Question", "content");
+  const text = pickString(src, "question", "text", "content");
   if (!text) return null;
   return {
-    id: pickString(src, "id", "Id", "questionId") || `q-${index}`,
+    id: pickString(src, "id", "questionId") || `q-${index}`,
     text,
-    category: normalizeCategory(src.category ?? src.Category ?? src.questionType),
-    difficulty: normalizeDifficulty(src.difficulty ?? src.Difficulty),
-    timeLimit: pickNumber(src, "timeLimit", "TimeLimit"),
+    category: pickString(src, "questionType", "category") || "technical",
+    difficulty: normalizeDifficulty(src.difficulty),
+    skill: pickOptionalString(src, "skill"),
+    timeLimit: pickNumber(src, "timeLimit"),
   };
 }
 
@@ -92,85 +100,67 @@ function normalizeQuestionSet(raw: unknown): QuestionSet | null {
   if (!root) return null;
   const src = asRecord(root.data) ?? root;
 
-  const id = pickString(src, "id", "Id", "questionSetId", "QuestionSetId");
-  const title = pickString(src, "title", "Title", "jobTitle", "JobTitle", "name");
+  const id = pickString(src, "id", "questionSetId");
+  const title = pickString(src, "title", "jobTitle", "name");
   if (!id && !title) return null;
 
-  const companyName = pickString(src, "company", "companyName", "CompanyName") || "";
-  const companyId = pickOptionalString(src, "companyId", "CompanyId");
+  const companyName = pickString(src, "companyName", "company") || "";
+  const companyLogoUrl = pickNullableString(src, "companyLogo", "companyLogoUrl");
 
-  const rawQuestions = src.questions ?? src.Questions;
+  const rawQuestions = src.questions;
   const questions = Array.isArray(rawQuestions)
     ? rawQuestions.map((q, i) => normalizeQuestion(q, i)).filter((q): q is PracticeQuestion => q !== null)
     : [];
 
-  const totalQuestions = pickNumber(src, "totalQuestions", "TotalQuestions", "questionCount") ?? questions.length;
+  const totalQuestions = pickNumber(src, "totalQuestions") ?? questions.length;
 
   return {
     id: id || title,
     title: title || id,
     company: companyName,
-    companyId,
+    companyLogoUrl,
     companyInitials: getCompanyInitials(companyName || title),
-    companyColor: getCompanyColor(companyId || companyName || id),
-    difficulty: normalizeDifficulty(src.difficulty ?? src.Difficulty),
-    skills: pickStringArray(src, "skills", "Skills", "tags"),
+    companyColor: getCompanyColor(companyName || id),
+    difficulty: normalizeDifficulty(src.difficulty),
+    skills: pickStringArray(src, "skills"),
     totalQuestions,
-    estimatedTime: pickOptionalString(src, "estimatedTime", "EstimatedTime") ?? "",
-    category: pickOptionalString(src, "category", "Category") ?? "",
-    description: pickOptionalString(src, "description", "Description") ?? "",
-    rating: pickNumber(src, "rating", "Rating"),
-    attempts: pickNumber(src, "attempts", "Attempts", "attemptCount"),
+    estimatedTime: formatEstimatedTime(pickNumber(src, "estimatedTimeMinutes")),
+    rating: pickNumber(src, "rating"),
+    attempts: pickNumber(src, "attempts", "attemptCount"),
     questions,
   };
 }
 
 function extractItems(raw: unknown): unknown[] {
-  if (Array.isArray(raw)) return raw;
   const root = asRecord(raw);
-  if (!root) return [];
-
-  const data = root.data;
-  if (Array.isArray(data)) return data;
-
-  const nested = asRecord(data);
-  if (nested) {
-    for (const key of ["items", "Items", "questionSets", "QuestionSets", "results", "Results"]) {
-      if (Array.isArray(nested[key])) return nested[key] as unknown[];
-    }
-  }
-
-  for (const key of ["items", "Items", "questionSets", "QuestionSets", "results", "Results"]) {
-    if (Array.isArray(root[key])) return root[key] as unknown[];
-  }
-
+  if (!root) return Array.isArray(raw) ? raw : [];
+  const data = asRecord(root.data);
+  if (data && Array.isArray(data.items)) return data.items;
+  if (Array.isArray(root.data)) return root.data;
+  if (Array.isArray(root.items)) return root.items;
   return [];
 }
 
 function extractTotal(raw: unknown, fallback: number): number {
   const root = asRecord(raw);
   if (!root) return fallback;
-
-  const sources = [root, asRecord(root.data)].filter(Boolean) as Record<string, unknown>[];
-  for (const src of sources) {
-    for (const k of ["totalCount", "TotalCount", "total", "Total", "count", "Count"]) {
-      const v = src[k];
-      if (typeof v === "number" && v >= 0) return v;
-    }
-  }
-  return fallback;
+  const data = asRecord(root.data);
+  const totalCount = data ? pickNumber(data, "totalCount") : undefined;
+  return totalCount ?? pickNumber(root, "totalCount") ?? fallback;
 }
 
 export async function listQuestionSets(params: ListQuestionSetsParams = {}): Promise<PaginatedQuestionSets> {
-  const query: Record<string, string | number> = {};
-  if (params.keyword?.trim()) query.keyword = params.keyword.trim();
-  if (params.difficulty) query.difficulty = params.difficulty;
-  if (params.skills && params.skills.length > 0) query.skills = params.skills.join(",");
-  if (params.companyId) query.companyId = params.companyId;
-  if (params.page) query.page = params.page;
-  if (params.pageSize) query.pageSize = params.pageSize;
+  const query: Record<string, string | number | string[]> = {};
+  if (params.keyword?.trim()) query.Keyword = params.keyword.trim();
+  if (params.difficulty) query.Difficulty = params.difficulty;
+  if (params.skills && params.skills.length > 0) query.Skills = params.skills;
+  if (params.companyId) query.CompanyId = params.companyId;
+  if (params.page) query.Page = params.page;
+  if (params.pageSize) query.PageSize = params.pageSize;
 
-  const res = await apiClient.get("/api/candidate/question-sets", { params: query });
+  // indexes: null serializes arrays as repeated `Skills=a&Skills=b` (ASP.NET Core's
+  // expected format for `[FromQuery] string[]`) instead of axios's default `Skills[]=a`.
+  const res = await apiClient.get("/api/candidate/question-sets", { params: query, paramsSerializer: { indexes: null } });
   const rawItems = extractItems(res.data);
   const items = rawItems.map(normalizeQuestionSet).filter((s): s is QuestionSet => s !== null);
 
@@ -188,4 +178,40 @@ export async function getQuestionSetById(id: string): Promise<QuestionSet> {
     if (status === 404) throw new NotFoundError();
     throw err;
   }
+}
+
+// ---------------------------------------------------------------------------
+// Bookmarks — POST toggles (add on 1st call, remove on 2nd); only PUBLISHED
+// sets can be bookmarked (BE returns 404 otherwise, which can't happen from
+// candidate-facing pages since those only ever list PUBLISHED sets).
+// ---------------------------------------------------------------------------
+
+/** Toggles the bookmark on a question set and returns the new state. */
+export async function toggleBookmark(questionSetId: string): Promise<boolean> {
+  const res = await apiClient.post(`/api/candidate/question-sets/${questionSetId}/bookmark`);
+  const root = asRecord(res.data);
+  const data = root ? asRecord(root.data) : null;
+  return data?.bookmarked === true;
+}
+
+/** Ids of all question sets the candidate has bookmarked — for cross-referencing card state. */
+export async function getBookmarkedSetIds(): Promise<Set<string>> {
+  try {
+    const res = await apiClient.get("/api/candidate/bookmarks");
+    const ids = extractItems(res.data)
+      .map((raw) => asRecord(raw))
+      .filter((r): r is Record<string, unknown> => r !== null)
+      .map((r) => pickString(r, "id", "questionSetId"))
+      .filter((id) => id !== "");
+    return new Set(ids);
+  } catch {
+    return new Set();
+  }
+}
+
+export async function listBookmarkedQuestionSets(): Promise<QuestionSet[]> {
+  const res = await apiClient.get("/api/candidate/bookmarks");
+  return extractItems(res.data)
+    .map(normalizeQuestionSet)
+    .filter((s): s is QuestionSet => s !== null);
 }

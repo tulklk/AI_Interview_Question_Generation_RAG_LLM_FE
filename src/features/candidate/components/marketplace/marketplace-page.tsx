@@ -2,13 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { motion, type Variants } from "framer-motion";
-import { Search, Sparkles, SlidersHorizontal, AlertCircle, RefreshCw } from "lucide-react";
+import { Search, Sparkles, SlidersHorizontal, AlertCircle, RefreshCw, Loader2 } from "lucide-react";
 import { cn } from "@/lib/cn";
-import { listQuestionSets } from "@/features/candidate/services/question-set.service";
+import { listQuestionSets, getBookmarkedSetIds } from "@/features/candidate/services/question-set.service";
 import { QuestionSetCard } from "./question-set-card";
 import { useLanguage } from "@/shared/providers/language-context";
 import type { Difficulty, QuestionSet } from "@/features/candidate/types/jobseeker";
 import { EmptyState } from "@/features/candidate/components/ui/empty-state";
+import { useToast } from "@/shared/providers/toast-context";
 import {
   portalCard,
   portalHeadingAlt,
@@ -17,8 +18,8 @@ import {
   portalSubtextAlt,
 } from "@/shared/utils/portal-ui";
 
-const CATEGORIES = ["All", "Frontend", "Full Stack", "Backend", "Product", "Data", "DevOps"];
 const DIFFICULTIES: Array<"All" | Difficulty> = ["All", "Easy", "Medium", "Hard"];
+const PAGE_SIZE = 12;
 
 const fadeUp: Variants = {
   hidden: { opacity: 0, y: 20 },
@@ -28,16 +29,20 @@ const fadeUp: Variants = {
 export function MarketplacePage() {
   const { t } = useLanguage();
   const p = t.jobseekerMarketplacePage;
+  const { addToast } = useToast();
 
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [category, setCategory] = useState("All");
   const [difficulty, setDifficulty] = useState<"All" | Difficulty>("All");
   const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
   const [availableSkills, setAvailableSkills] = useState<string[]>([]);
 
   const [sets, setSets] = useState<QuestionSet[]>([]);
+  const [bookmarkedIds, setBookmarkedIds] = useState<Set<string>>(new Set());
+  const [totalCount, setTotalCount] = useState(0);
+  const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
 
@@ -57,6 +62,7 @@ export function MarketplacePage() {
         setAvailableSkills(Array.from(skillSet).sort());
       })
       .catch(() => {});
+    getBookmarkedSetIds().then(setBookmarkedIds);
   }, []);
 
   function toggleSkill(skill: string) {
@@ -65,6 +71,7 @@ export function MarketplacePage() {
     );
   }
 
+  // Filters (or a manual retry) changed — reset to page 1 and replace the list.
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
@@ -74,10 +81,14 @@ export function MarketplacePage() {
       keyword: debouncedSearch || undefined,
       difficulty: difficulty === "All" ? undefined : difficulty,
       skills: selectedSkills.length > 0 ? selectedSkills : undefined,
+      page: 1,
+      pageSize: PAGE_SIZE,
     })
       .then((res) => {
         if (cancelled) return;
         setSets(res.items);
+        setTotalCount(res.totalCount);
+        setPage(1);
       })
       .catch(() => {
         if (!cancelled) setError(true);
@@ -91,7 +102,26 @@ export function MarketplacePage() {
     };
   }, [debouncedSearch, difficulty, selectedSkills, reloadKey]);
 
-  const filtered = sets.filter((s) => category === "All" || s.category === category);
+  function loadMore() {
+    const nextPage = page + 1;
+    setLoadingMore(true);
+    listQuestionSets({
+      keyword: debouncedSearch || undefined,
+      difficulty: difficulty === "All" ? undefined : difficulty,
+      skills: selectedSkills.length > 0 ? selectedSkills : undefined,
+      page: nextPage,
+      pageSize: PAGE_SIZE,
+    })
+      .then((res) => {
+        setSets((prev) => [...prev, ...res.items]);
+        setTotalCount(res.totalCount);
+        setPage(nextPage);
+      })
+      .catch(() => {
+        addToast("error", p.loadFailed);
+      })
+      .finally(() => setLoadingMore(false));
+  }
 
   return (
     <div>
@@ -155,26 +185,6 @@ export function MarketplacePage() {
 
         {/* Filter pills row — scrollable on mobile */}
         <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-          {/* Categories — scroll on mobile */}
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden flex-nowrap sm:flex-wrap">
-            {CATEGORIES.map((cat) => (
-              <button
-                key={cat}
-                onClick={() => setCategory(cat)}
-                className={cn(
-                  "text-[12px] font-[500] px-3 py-1.5 rounded-[6px] transition-colors shrink-0",
-                  category === cat
-                    ? "hr-nav-active text-[#7C3AED] dark:text-[#a78bff] font-semibold"
-                    : cn(portalMutedBg, portalSubtextAlt, "hover:bg-gray-200 dark:hover:bg-gray-700")
-                )}
-              >
-                {cat}
-              </button>
-            ))}
-          </div>
-
-          <div className="hidden sm:block w-px h-5 bg-gray-200 dark:bg-gray-700 mx-1 shrink-0" />
-
           {/* Difficulty */}
           <div className="flex items-center gap-1.5 flex-wrap">
             {DIFFICULTIES.map((d) => (
@@ -229,7 +239,7 @@ export function MarketplacePage() {
           transition={{ delay: 0.25 }}
           className={cn("text-[13px] mb-5", portalSubtextAlt)}
         >
-          <span className={cn("font-[600]", portalHeadingAlt)}>{filtered.length}</span>{" "}
+          <span className={cn("font-[600]", portalHeadingAlt)}>{sets.length}</span>{" "}
           {p.setsFound}
         </motion.p>
       )}
@@ -259,11 +269,11 @@ export function MarketplacePage() {
             {p.retryBtn}
           </button>
         </div>
-      ) : filtered.length === 0 ? (
+      ) : sets.length === 0 ? (
         <EmptyState icon={Search} title={p.noResults} />
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filtered.map((set, i) => (
+          {sets.map((set, i) => (
             <motion.div
               key={set.id}
               initial="hidden"
@@ -273,9 +283,29 @@ export function MarketplacePage() {
               whileHover={{ scale: 1.02 }}
               className="transition-shadow duration-200 hover:drop-shadow-lg"
             >
-              <QuestionSetCard set={set} />
+              <QuestionSetCard set={set} initialBookmarked={bookmarkedIds.has(set.id)} />
             </motion.div>
           ))}
+        </div>
+      )}
+
+      {/* Load more */}
+      {!loading && !error && sets.length > 0 && sets.length < totalCount && (
+        <div className="flex justify-center mt-8">
+          <button
+            type="button"
+            onClick={loadMore}
+            disabled={loadingMore}
+            className={cn(
+              "flex items-center gap-2 h-10 px-5 rounded-lg text-[13px] font-semibold disabled:opacity-60 disabled:cursor-not-allowed transition-colors",
+              portalCard,
+              portalHeadingAlt,
+              "hover:border-primary/40"
+            )}
+          >
+            {loadingMore ? <Loader2 size={14} className="animate-spin" /> : null}
+            {loadingMore ? p.loadingMore : p.loadMoreBtn}
+          </button>
         </div>
       )}
     </div>

@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FileText, Calendar, ArrowUpDown, Eye, Download, Trash2, Inbox, Loader2, AlertTriangle, ChevronLeft, ChevronRight } from "lucide-react";
+import { FileText, Calendar, ArrowUpDown, Eye, Download, Trash2, Inbox, Loader2, AlertTriangle, ChevronLeft, ChevronRight, SearchX } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { useLanguage } from "@/shared/providers/language-context";
 import { useHrSubscription } from "@/features/hr/context/hr-subscription-context";
@@ -447,9 +447,10 @@ export function HistoryTable({ search = "", role = "", level = "", experience = 
   }
 
   const emptyFilterRow = (
-    <p className={cn("px-4 py-10 text-center text-sm", portalSubtext)}>
+    <div className={cn("flex flex-col items-center gap-2 px-4 py-10 text-sm", portalSubtext)}>
+      <SearchX size={20} className="text-gray-300 dark:text-gray-600" />
       Không tìm thấy kết quả phù hợp.
-    </p>
+    </div>
   );
 
   return (
@@ -533,9 +534,7 @@ export function HistoryTable({ search = "", role = "", level = "", experience = 
         <tbody className="divide-y divide-gray-100 dark:divide-gray-800/70">
           {filtered.length === 0 && (
             <tr>
-              <td colSpan={6} className={cn("px-4 py-10 text-center text-sm", portalSubtext)}>
-                Không tìm thấy kết quả phù hợp.
-              </td>
+              <td colSpan={6}>{emptyFilterRow}</td>
             </tr>
           )}
           {paginated.map((session, rowIdx) => {

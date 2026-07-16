@@ -2,21 +2,26 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
-import { AlertCircle, RefreshCw } from "lucide-react";
+import { AlertCircle, RefreshCw, Lock } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { JobseekerAppShell } from "@/features/candidate/components/layout/jobseeker-app-shell";
 import { AiLoadingSpinner } from "@/shared/components/common/ai-loading-spinner";
 import { FeedbackPage } from "./feedback-page";
 import {
-  getPracticeFeedback,
-  FeedbackNotReadyError,
-  type PracticeFeedback,
+  getPracticeSession,
+  ForbiddenError,
+  type PracticeSessionDetail,
 } from "@/features/candidate/services/practice-session.service";
+import { getQuestionSetById } from "@/features/candidate/services/question-set.service";
+import type { QuestionSet } from "@/features/candidate/types/jobseeker";
 import { useLanguage } from "@/shared/providers/language-context";
 import { portalSubtextAlt } from "@/shared/utils/portal-ui";
 
-const POLL_INTERVAL_MS = 3000;
-const MAX_POLL_ATTEMPTS = 10;
+// AI scoring can still be in progress right after "complete" — the score comes
+// back as null until BE's worker finishes. Poll quietly in the background while
+// the rest of the page (questions + your answers) is already shown.
+const SCORE_POLL_INTERVAL_MS = 3000;
+const SCORE_POLL_MAX_ATTEMPTS = 8;
 
 export function FeedbackResultClient() {
   const params = useParams<{ id: string }>();
@@ -24,44 +29,81 @@ export function FeedbackResultClient() {
   const { t } = useLanguage();
   const p = t.jobseekerFeedbackPage;
 
-  const [feedback, setFeedback] = useState<PracticeFeedback | null>(null);
+  const [session, setSession] = useState<PracticeSessionDetail | null>(null);
+  const [set, setSet] = useState<QuestionSet | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [forbidden, setForbidden] = useState(false);
+  const [scoring, setScoring] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
-  const attemptsRef = useRef(0);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pollAttemptsRef = useRef(0);
+  const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (!sessionId) return;
     let cancelled = false;
-    attemptsRef.current = 0;
     setLoading(true);
     setError(false);
+    setForbidden(false);
+    setSet(null);
+    pollAttemptsRef.current = 0;
 
-    function attempt() {
-      getPracticeFeedback(sessionId)
-        .then((res) => {
-          if (cancelled) return;
-          setFeedback(res);
-          setLoading(false);
-        })
-        .catch((err) => {
-          if (cancelled) return;
-          attemptsRef.current += 1;
-          if (err instanceof FeedbackNotReadyError && attemptsRef.current < MAX_POLL_ATTEMPTS) {
-            timerRef.current = setTimeout(attempt, POLL_INTERVAL_MS);
-            return;
-          }
-          setError(true);
-          setLoading(false);
-        });
+    function pollScore(id: string) {
+      pollTimerRef.current = setTimeout(() => {
+        if (cancelled) return;
+        getPracticeSession(id)
+          .then((s) => {
+            if (cancelled || !s) return;
+            setSession(s);
+            if (s.overallScore !== null) {
+              setScoring(false);
+              return;
+            }
+            pollAttemptsRef.current += 1;
+            if (pollAttemptsRef.current < SCORE_POLL_MAX_ATTEMPTS) {
+              pollScore(id);
+            } else {
+              setScoring(false);
+            }
+          })
+          .catch(() => setScoring(false));
+      }, SCORE_POLL_INTERVAL_MS);
     }
 
-    attempt();
+    getPracticeSession(sessionId)
+      .then((s) => {
+        if (cancelled) return;
+        if (!s) {
+          setError(true);
+          return;
+        }
+        setSession(s);
+        if (s.overallScore === null) {
+          setScoring(true);
+          pollScore(s.id);
+        }
+        if (s.questionSetId) {
+          getQuestionSetById(s.questionSetId)
+            .then((qs) => {
+              if (!cancelled) setSet(qs);
+            })
+            .catch(() => {
+              // Non-critical — header just omits title/company.
+            });
+        }
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        if (err instanceof ForbiddenError) setForbidden(true);
+        else setError(true);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
 
     return () => {
       cancelled = true;
-      if (timerRef.current) clearTimeout(timerRef.current);
+      if (pollTimerRef.current) clearTimeout(pollTimerRef.current);
     };
   }, [sessionId, reloadKey]);
 
@@ -80,7 +122,14 @@ export function FeedbackResultClient() {
         </div>
       )}
 
-      {!loading && error && (
+      {!loading && forbidden && (
+        <div className="flex flex-col items-center gap-3 py-20 text-center">
+          <Lock size={28} className="text-gray-400 dark:text-gray-500" />
+          <p className={cn("text-[14px]", portalSubtextAlt)}>{p.feedbackForbidden}</p>
+        </div>
+      )}
+
+      {!loading && !forbidden && error && (
         <div className="flex flex-col items-center gap-3 py-20 text-center">
           <AlertCircle size={28} className="text-red-500" />
           <p className={cn("text-[14px]", portalSubtextAlt)}>{p.feedbackLoadFailed}</p>
@@ -95,7 +144,9 @@ export function FeedbackResultClient() {
         </div>
       )}
 
-      {!loading && !error && feedback && <FeedbackPage session={feedback} />}
+      {!loading && !error && !forbidden && session && (
+        <FeedbackPage session={session} scoring={scoring} setTitle={set?.title} companyName={set?.company} />
+      )}
     </JobseekerAppShell>
   );
 }

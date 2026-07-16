@@ -11,13 +11,16 @@ export interface JobseekerNavItem {
 
 // ── Question Set ───────────────────────────────────────────────────────────
 export type Difficulty = "Easy" | "Medium" | "Hard";
-export type QuestionCategory = "Technical" | "Behavioral" | "Situational";
+// The real API's questionType is an open-ended string (technical, behavioral,
+// situational, problem-solving, system-design, ...) — not a fixed 3-value enum.
+export type QuestionCategory = string;
 
 export interface PracticeQuestion {
   id: string;
   text: string;
   category: QuestionCategory;
   difficulty: Difficulty;
+  skill?: string;
   timeLimit?: number; // seconds
 }
 
@@ -25,15 +28,15 @@ export interface QuestionSet {
   id: string;
   title: string;
   company: string;
-  companyId?: string;
+  companyLogoUrl?: string | null;
   companyInitials: string;
   companyColor: string;
   difficulty: Difficulty;
   skills: string[];
   totalQuestions: number;
   estimatedTime: string;
-  category: string;
-  description: string;
+  category?: string;
+  description?: string;
   rating?: number;
   attempts?: number;
   questions: PracticeQuestion[];
@@ -46,10 +49,13 @@ export interface AnswerRecord {
   category: QuestionCategory;
   difficulty: Difficulty;
   answer: string;
-  aiScore: number;
-  strengths: string[];
-  improvements: string[];
-  suggestion: string;
+  // AI evaluation isn't in the current BE contract (only an overall session score
+  // exists, and it's still null until BE finishes wiring the scoring worker) —
+  // keep these optional and render them only when actually present.
+  aiScore?: number;
+  strengths?: string[];
+  improvements?: string[];
+  suggestion?: string;
 }
 
 export interface PracticeSession {
