@@ -22,13 +22,7 @@ export const jobseekerNavItems: JobseekerNavItem[] = [
   { label: "Dashboard", href: "/jobseeker/dashboard", icon: LayoutDashboard },
   { label: "Practice Now", href: "/jobseeker/practice", icon: BookOpen },
   { label: "Saved", href: "/jobseeker/saved", icon: Bookmark },
-  {
-    label: "History",
-    href: "/jobseeker/history",
-    icon: History,
-    badge: 8,
-    badgeVariant: "count",
-  },
+  { label: "History", href: "/jobseeker/history", icon: History },
   { label: "Settings", href: "/jobseeker/settings", icon: Settings },
 ];
 
