@@ -25,7 +25,14 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
-import { achievements, practiceSessions } from "@/features/candidate/data/jobseeker";
+import {
+  getPracticeStats,
+  listCompletedSessions,
+  type PracticeStats,
+  type CompletedSessionSummary,
+} from "@/features/candidate/services/practice-session.service";
+import { computeStreakDays } from "@/features/candidate/utils/practice-streak";
+import type { Achievement } from "@/features/candidate/types/jobseeker";
 import { SENIORITY_LEVELS } from "@/shared/constants/seniority-levels";
 import { useLanguage } from "@/shared/providers/language-context";
 import { useUser } from "@/features/auth/context/user-context";
@@ -138,12 +145,29 @@ export function CandidateProfile() {
   const [cvDeleteConfirmOpen, setCvDeleteConfirmOpen] = useState(false);
   const cvFileInputRef = useRef<HTMLInputElement>(null);
 
+  const [stats, setStats] = useState<PracticeStats | null>(null);
+  const [sessions, setSessions] = useState<CompletedSessionSummary[]>([]);
+  const [statsLoading, setStatsLoading] = useState(true);
+
   useEffect(() => {
     let cancelled = false;
     getCv()
       .then((c) => { if (!cancelled) setCv(c); })
       .catch(() => {})
       .finally(() => { if (!cancelled) setCvLoading(false); });
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    Promise.all([getPracticeStats(), listCompletedSessions({ pageSize: 100 })])
+      .then(([statsRes, sessionsRes]) => {
+        if (cancelled) return;
+        setStats(statsRes);
+        setSessions(sessionsRes.items);
+      })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setStatsLoading(false); });
     return () => { cancelled = true; };
   }, []);
 
@@ -199,10 +223,62 @@ export function CandidateProfile() {
     loadProfile();
   }, [loadProfile]);
 
-  const avgScore = Math.round(
-    practiceSessions.reduce((a, s) => a + s.score, 0) / practiceSessions.length
-  );
-  const bestScore = Math.max(...practiceSessions.map((s) => s.score));
+  const sessionCount = stats?.totalSessions ?? 0;
+  const avgScore = stats?.averageScore ?? null;
+  const bestScore = stats?.bestScore ?? null;
+  const streakDays = computeStreakDays(sessions.map((s) => s.completedAt));
+  // A session finishing well under the fixed 45-min practice timer (see
+  // SESSION_DURATION_SECONDS in practice-session.tsx) counts as "fast".
+  const SPEED_DEMON_THRESHOLD_MINUTES = 35;
+
+  const achievements: Achievement[] = [
+    {
+      id: "first-practice",
+      title: p.achievementItems.firstPractice.title,
+      description: p.achievementItems.firstPractice.description,
+      icon: "🎯",
+      earned: sessionCount >= 1,
+    },
+    {
+      id: "streak-7",
+      title: p.achievementItems.streak7.title,
+      description: p.achievementItems.streak7.description,
+      icon: "🔥",
+      earned: streakDays >= 7,
+    },
+    {
+      id: "high-scorer",
+      title: p.achievementItems.highScorer.title,
+      description: p.achievementItems.highScorer.description,
+      icon: "⭐",
+      earned: bestScore !== null && bestScore >= 90,
+    },
+    // Whether every question category (Technical/Behavioral/Situational/...) has
+    // been answered at least once needs the per-question type from each past
+    // session's AI feedback — fetching that for every session isn't practical
+    // client-side, so this stays un-earnable until a BE aggregate exists.
+    {
+      id: "all-categories",
+      title: p.achievementItems.allCategories.title,
+      description: p.achievementItems.allCategories.description,
+      icon: "🏆",
+      earned: false,
+    },
+    {
+      id: "speed-demon",
+      title: p.achievementItems.speedDemon.title,
+      description: p.achievementItems.speedDemon.description,
+      icon: "⚡",
+      earned: sessions.some((s) => s.durationMinutes > 0 && s.durationMinutes <= SPEED_DEMON_THRESHOLD_MINUTES),
+    },
+    {
+      id: "consistent-learner",
+      title: p.achievementItems.consistentLearner.title,
+      description: p.achievementItems.consistentLearner.description,
+      icon: "📚",
+      earned: sessionCount >= 20,
+    },
+  ];
 
   function addSkill() {
     const s = skillInput.trim();
@@ -255,28 +331,28 @@ export function CandidateProfile() {
     {
       icon: BookOpen,
       label: p.stats.sessions,
-      value: practiceSessions.length.toString(),
+      value: sessionCount.toString(),
       color: "text-blue-500 dark:text-blue-400",
       bg: "bg-blue-50 dark:bg-blue-950/40",
     },
     {
       icon: TrendingUp,
       label: p.stats.avgScore,
-      value: `${avgScore}%`,
+      value: avgScore !== null ? `${avgScore}%` : "—",
       color: "text-violet-500 dark:text-violet-400",
       bg: "bg-violet-50 dark:bg-violet-950/40",
     },
     {
       icon: Trophy,
       label: p.stats.bestScore,
-      value: `${bestScore}%`,
+      value: bestScore !== null ? `${bestScore}%` : "—",
       color: "text-amber-500 dark:text-amber-400",
       bg: "bg-amber-50 dark:bg-amber-950/40",
     },
     {
       icon: Flame,
       label: p.stats.streak,
-      value: "7 days",
+      value: `${streakDays} ${streakDays === 1 ? p.stats.day : p.stats.days}`,
       color: "text-emerald-500 dark:text-emerald-400",
       bg: "bg-emerald-50 dark:bg-emerald-950/40",
     },
@@ -380,20 +456,30 @@ export function CandidateProfile() {
           ) : null}
 
           <div className="grid grid-cols-2 gap-3 w-full mt-5">
-            {profileStats.map((s) => (
-              <div key={s.label} className={cn(portalIconWell, "rounded-lg p-3 text-center")}>
-                <div
-                  className={cn(
-                    "w-7 h-7 rounded-lg flex items-center justify-center mx-auto mb-1.5",
-                    s.bg
-                  )}
-                >
-                  <s.icon size={13} className={s.color} />
+            {statsLoading ? (
+              Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className={cn(portalIconWell, "rounded-lg p-3 flex flex-col items-center gap-1.5")}>
+                  <Skeleton className="w-7 h-7 rounded-lg" />
+                  <Skeleton className="h-4 w-10" />
+                  <Skeleton className="h-2.5 w-14" />
                 </div>
-                <p className={cn("text-[16px] font-[700] leading-none", portalHeadingAlt)}>{s.value}</p>
-                <p className={cn("text-[11px] mt-0.5", portalSubtextAlt)}>{s.label}</p>
-              </div>
-            ))}
+              ))
+            ) : (
+              profileStats.map((s) => (
+                <div key={s.label} className={cn(portalIconWell, "rounded-lg p-3 text-center")}>
+                  <div
+                    className={cn(
+                      "w-7 h-7 rounded-lg flex items-center justify-center mx-auto mb-1.5",
+                      s.bg
+                    )}
+                  >
+                    <s.icon size={13} className={s.color} />
+                  </div>
+                  <p className={cn("text-[16px] font-[700] leading-none", portalHeadingAlt)}>{s.value}</p>
+                  <p className={cn("text-[11px] mt-0.5", portalSubtextAlt)}>{s.label}</p>
+                </div>
+              ))
+            )}
           </div>
         </motion.div>
 

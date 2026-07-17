@@ -42,55 +42,7 @@ export interface QuestionSet {
   questions: PracticeQuestion[];
 }
 
-// ── Practice Session ───────────────────────────────────────────────────────
-export interface AnswerRecord {
-  questionId: string;
-  questionText: string;
-  category: QuestionCategory;
-  difficulty: Difficulty;
-  answer: string;
-  // AI evaluation isn't in the current BE contract (only an overall session score
-  // exists, and it's still null until BE finishes wiring the scoring worker) —
-  // keep these optional and render them only when actually present.
-  aiScore?: number;
-  strengths?: string[];
-  improvements?: string[];
-  suggestion?: string;
-}
-
-export interface PracticeSession {
-  id: string;
-  setId: string;
-  setTitle: string;
-  company: string;
-  companyInitials: string;
-  companyColor: string;
-  date: string;
-  score: number;
-  duration: string;
-  skills: string[];
-  totalQuestions: number;
-  answers: AnswerRecord[];
-}
-
 // ── Candidate ──────────────────────────────────────────────────────────────
-export interface SkillStat {
-  skill: string;
-  score: number;
-  fullMark: number;
-}
-
-export interface CandidateStat {
-  id: string;
-  label: string;
-  value: string;
-  trend?: string;
-  trendPositive?: boolean;
-  icon: LucideIcon;
-  iconBg: string;
-  iconColor: string;
-}
-
 export interface Achievement {
   id: string;
   title: string;

@@ -16,6 +16,7 @@ import {
 } from "@/features/candidate/services/practice-session.service";
 import { listQuestionSets, getBookmarkedSetIds } from "@/features/candidate/services/question-set.service";
 import { getCompanyColor, getCompanyInitials } from "@/features/candidate/utils/company-visual";
+import { computeStreakDays } from "@/features/candidate/utils/practice-streak";
 import type { QuestionSet } from "@/features/candidate/types/jobseeker";
 import { QuestionSetCard } from "@/features/candidate/components/marketplace/question-set-card";
 import { useLanguage } from "@/shared/providers/language-context";
@@ -32,34 +33,6 @@ const fadeUp = (delay = 0) => ({
   animate: { opacity: 1, y: 0 },
   transition: { duration: 0.4, delay },
 });
-
-// Local calendar-day key (not UTC) — completedAt is stored in UTC, but a
-// "streak" should follow the candidate's own local day boundary, not UTC's.
-function localDateKey(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
-
-function computeStreakDays(completedAtList: (string | undefined)[]): number {
-  const days = new Set(
-    completedAtList
-      .map((iso) => {
-        if (!iso) return null;
-        const d = new Date(iso);
-        return Number.isNaN(d.getTime()) ? null : localDateKey(d);
-      })
-      .filter((d): d is string => d !== null)
-  );
-  let streak = 0;
-  const cursor = new Date();
-  if (!days.has(localDateKey(cursor))) {
-    cursor.setDate(cursor.getDate() - 1);
-  }
-  while (days.has(localDateKey(cursor))) {
-    streak++;
-    cursor.setDate(cursor.getDate() - 1);
-  }
-  return streak;
-}
 
 export function CandidateDashboard() {
   const { t } = useLanguage();
