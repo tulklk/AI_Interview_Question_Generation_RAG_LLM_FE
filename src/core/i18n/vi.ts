@@ -926,6 +926,9 @@ Yêu cầu:
       statusPlanProposed: "Đề xuất kế hoạch",
       statusInProgress: "Đang xử lý",
       statusFailed: "Thất bại",
+      allPublishStatus: "Tất cả (Đã publish & Draft)",
+      publishStatusPublished: "Chỉ đã publish",
+      publishStatusDraft: "Chỉ draft",
       exportAll: "Xuất tất cả",
     },
     table: {

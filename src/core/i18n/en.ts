@@ -924,6 +924,9 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
       statusPlanProposed: "Plan Proposed",
       statusInProgress: "In Progress",
       statusFailed: "Failed",
+      allPublishStatus: "All (Published & Draft)",
+      publishStatusPublished: "Published only",
+      publishStatusDraft: "Draft only",
       exportAll: "Export All",
     },
     table: {

@@ -127,6 +127,7 @@ interface HistoryTableProps {
   level?: string;
   experience?: string;
   status?: string;
+  publishStatus?: string;
 }
 
 function resolveSessionDestination(session: GenerationSession): { type: "history" } | { type: "generate"; view: string; phase: string } {
@@ -158,7 +159,7 @@ function resolveSessionDestination(session: GenerationSession): { type: "history
   return { type: "generate", view, phase };
 }
 
-export function HistoryTable({ search = "", role = "", level = "", experience = "", status = "" }: HistoryTableProps) {
+export function HistoryTable({ search = "", role = "", level = "", experience = "", status = "", publishStatus = "" }: HistoryTableProps) {
   const { t } = useLanguage();
   const { addToast } = useToast();
   const { hasFeature } = useHrSubscription();
@@ -308,7 +309,7 @@ export function HistoryTable({ search = "", role = "", level = "", experience = 
 
   // Reset to page 1 whenever any filter changes
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { setPage(1); }, [search, role, level, experience, status]);
+  useEffect(() => { setPage(1); }, [search, role, level, experience, status, publishStatus]);
 
   const filtered = sessions.filter((s) => {
     const sRole = (s.planDraft?.role ?? "").toLowerCase();
@@ -332,6 +333,9 @@ export function HistoryTable({ search = "", role = "", level = "", experience = 
         if (s.status !== status) return false;
       }
     }
+    // Publish status: separate from generation status — a session only has one
+    // once a question set has been saved as a draft/published from it.
+    if (publishStatus && publishMap.get(s.id) !== publishStatus) return false;
     return true;
   });
 
