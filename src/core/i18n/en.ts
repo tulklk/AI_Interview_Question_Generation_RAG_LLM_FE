@@ -1984,6 +1984,7 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
       downloadBtn: "Download",
       uploadedAt: "Uploaded",
       detectedSkills: "Skills detected from your CV",
+      aiSummary: "AI summary",
       analysisUnavailable: "AI skill analysis isn't available for this file yet — your CV is still saved.",
       uploadSuccess: "CV uploaded and analyzed successfully.",
       uploadedAnalysisFailed: "CV uploaded, but AI analysis is temporarily unavailable. Your file is saved — try again later for skill suggestions.",

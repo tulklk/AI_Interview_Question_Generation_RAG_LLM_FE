@@ -627,23 +627,33 @@ export function CandidateProfile() {
               </div>
 
               {cv.parsedAt ? (
-                cv.skills.length > 0 && (
-                  <div>
-                    <p className={cn("text-[11px] font-[700] uppercase tracking-wide mb-2", portalSubtextAlt)}>
-                      {p.cv.detectedSkills}
-                    </p>
-                    <div className="flex flex-wrap gap-2">
-                      {cv.skills.map((skill) => (
-                        <span
-                          key={skill}
-                          className={cn("text-[12px] font-[500] px-3 py-1.5 rounded-[6px]", portalMutedBg, portalHeadingAlt)}
-                        >
-                          {skill}
-                        </span>
-                      ))}
+                <div className="flex flex-col gap-3">
+                  {cv.summary && (
+                    <div>
+                      <p className={cn("text-[11px] font-[700] uppercase tracking-wide mb-1.5", portalSubtextAlt)}>
+                        {p.cv.aiSummary}
+                      </p>
+                      <p className={cn("text-[13px] leading-[20px]", portalSubtextAlt)}>{cv.summary}</p>
                     </div>
-                  </div>
-                )
+                  )}
+                  {cv.skills.length > 0 && (
+                    <div>
+                      <p className={cn("text-[11px] font-[700] uppercase tracking-wide mb-2", portalSubtextAlt)}>
+                        {p.cv.detectedSkills}
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {cv.skills.map((skill) => (
+                          <span
+                            key={skill}
+                            className={cn("text-[12px] font-[500] px-3 py-1.5 rounded-[6px]", portalMutedBg, portalHeadingAlt)}
+                          >
+                            {skill}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
               ) : (
                 <p className={cn("flex items-center gap-1.5 text-[12px] italic", portalSubtextAlt)}>
                   <AlertCircle size={12} className="shrink-0" />

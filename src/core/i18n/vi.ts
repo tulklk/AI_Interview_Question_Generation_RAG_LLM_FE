@@ -1983,6 +1983,7 @@ Yêu cầu:
       downloadBtn: "Tải xuống",
       uploadedAt: "Đã tải lên",
       detectedSkills: "Kỹ năng phát hiện từ CV",
+      aiSummary: "Tóm tắt AI",
       analysisUnavailable: "Phân tích AI chưa khả dụng cho file này — CV của bạn vẫn được lưu.",
       uploadSuccess: "Đã tải lên và phân tích CV thành công.",
       uploadedAnalysisFailed: "Đã tải lên CV, nhưng phân tích AI hiện tạm thời không khả dụng. File của bạn vẫn được lưu — hãy thử lại sau để nhận gợi ý kỹ năng.",
