@@ -9,8 +9,10 @@ import { AiLoadingSpinner } from "@/shared/components/common/ai-loading-spinner"
 import { FeedbackPage } from "./feedback-page";
 import {
   getPracticeSession,
+  getSessionFeedback,
   ForbiddenError,
   type PracticeSessionDetail,
+  type SessionFeedback,
 } from "@/features/candidate/services/practice-session.service";
 import { getQuestionSetById } from "@/features/candidate/services/question-set.service";
 import type { QuestionSet } from "@/features/candidate/types/jobseeker";
@@ -30,6 +32,7 @@ export function FeedbackResultClient() {
   const p = t.jobseekerFeedbackPage;
 
   const [session, setSession] = useState<PracticeSessionDetail | null>(null);
+  const [feedback, setFeedback] = useState<SessionFeedback | null>(null);
   const [set, setSet] = useState<QuestionSet | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -46,15 +49,17 @@ export function FeedbackResultClient() {
     setError(false);
     setForbidden(false);
     setSet(null);
+    setFeedback(null);
     pollAttemptsRef.current = 0;
 
     function pollScore(id: string) {
       pollTimerRef.current = setTimeout(() => {
         if (cancelled) return;
-        getPracticeSession(id)
-          .then((s) => {
+        Promise.all([getPracticeSession(id), getSessionFeedback(id).catch(() => null)])
+          .then(([s, fb]) => {
             if (cancelled || !s) return;
             setSession(s);
+            if (fb) setFeedback(fb);
             if (s.overallScore !== null) {
               setScoring(false);
               return;
@@ -70,14 +75,15 @@ export function FeedbackResultClient() {
       }, SCORE_POLL_INTERVAL_MS);
     }
 
-    getPracticeSession(sessionId)
-      .then((s) => {
+    Promise.all([getPracticeSession(sessionId), getSessionFeedback(sessionId).catch(() => null)])
+      .then(([s, fb]) => {
         if (cancelled) return;
         if (!s) {
           setError(true);
           return;
         }
         setSession(s);
+        if (fb) setFeedback(fb);
         if (s.overallScore === null) {
           setScoring(true);
           pollScore(s.id);
@@ -145,7 +151,7 @@ export function FeedbackResultClient() {
       )}
 
       {!loading && !error && !forbidden && session && (
-        <FeedbackPage session={session} scoring={scoring} setTitle={set?.title} companyName={set?.company} />
+        <FeedbackPage session={session} feedback={feedback} scoring={scoring} setTitle={set?.title} companyName={set?.company} />
       )}
     </JobseekerAppShell>
   );

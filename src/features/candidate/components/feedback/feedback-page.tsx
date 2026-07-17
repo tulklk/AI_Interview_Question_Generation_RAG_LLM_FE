@@ -5,12 +5,12 @@ import Link from "next/link";
 import { motion, animate, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, RefreshCw, Share2, Loader2,
-  Sparkles, ChevronDown,
+  Sparkles, ChevronDown, CheckCircle2, AlertTriangle, Lightbulb,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { useLanguage } from "@/shared/providers/language-context";
-import type { PracticeSessionDetail } from "@/features/candidate/services/practice-session.service";
-import { CategoryPill, formatCategoryLabel, getScoreLevel } from "@/features/candidate/components/ui/pill";
+import type { PracticeSessionDetail, SessionFeedback } from "@/features/candidate/services/practice-session.service";
+import { CategoryPill, Pill, formatCategoryLabel, getScoreLevel, getScoreBadgeClass } from "@/features/candidate/components/ui/pill";
 import { getCompanyColor, getCompanyInitials } from "@/features/candidate/utils/company-visual";
 import { useChartTheme } from "@/shared/hooks/use-chart-theme";
 import { ConfettiBurst } from "@/shared/components/common/confetti-burst";
@@ -77,12 +77,13 @@ function PendingScoreRing({ scoring, trackStroke }: { scoring: boolean; trackStr
 
 interface FeedbackPageProps {
   session: PracticeSessionDetail;
+  feedback: SessionFeedback | null;
   scoring: boolean;
   setTitle?: string;
   companyName?: string;
 }
 
-export function FeedbackPage({ session, scoring, setTitle, companyName }: FeedbackPageProps) {
+export function FeedbackPage({ session, feedback, scoring, setTitle, companyName }: FeedbackPageProps) {
   const { t } = useLanguage();
   const p = t.jobseekerFeedbackPage;
   const chart = useChartTheme();
@@ -93,6 +94,7 @@ export function FeedbackPage({ session, scoring, setTitle, companyName }: Feedba
   const { label: scoreLevelLabel, badgeClass: scoreLevelBadgeClass } = getScoreLevel(score, p.scoreLevels);
 
   const answeredQuestions = session.questions.filter((q) => q.answerText);
+  const feedbackByQuestionId = new Map((feedback?.items ?? []).map((item) => [item.questionId, item]));
 
   const [expandedIds, setExpandedIds] = useState<Set<string>>(
     () => new Set(answeredQuestions.length > 0 ? [answeredQuestions[0].id] : [])
@@ -245,6 +247,8 @@ export function FeedbackPage({ session, scoring, setTitle, companyName }: Feedba
           <h2 className={cn("text-[20px] font-[700]", portalHeadingAlt)}>{p.questionReviews}</h2>
           {answeredQuestions.map((q, i) => {
             const isExpanded = expandedIds.has(q.id);
+            const fb = feedbackByQuestionId.get(q.id);
+            const hasEval = fb && fb.evaluationStatus === "Succeeded" && fb.score !== null;
             return (
               <motion.div
                 key={q.id}
@@ -262,6 +266,11 @@ export function FeedbackPage({ session, scoring, setTitle, companyName }: Feedba
                     <div className="flex items-center gap-2 mb-2">
                       <CategoryPill category={q.questionType} label={formatCategoryLabel(q.questionType)} />
                       <span className={cn("text-[12px]", portalSubtextAlt)}>Q{i + 1}</span>
+                      {hasEval && (
+                        <Pill className={cn("text-[11px] font-[700] px-2 py-0.5 ml-auto", getScoreBadgeClass(fb.score as number))}>
+                          {fb.score}%
+                        </Pill>
+                      )}
                     </div>
                     <p className={cn("text-[15px] font-[700] leading-[24px]", portalHeadingAlt)}>{q.question}</p>
                   </div>
@@ -280,12 +289,53 @@ export function FeedbackPage({ session, scoring, setTitle, companyName }: Feedba
                       transition={{ duration: 0.2 }}
                       className="overflow-hidden"
                     >
-                      <div className="pt-5">
+                      <div className="pt-5 flex flex-col gap-4">
                         {/* Your answer */}
                         <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4 border border-gray-100 dark:border-gray-700/50">
                           <p className={cn("text-[11px] font-[700] uppercase tracking-wide mb-2", portalSubtextAlt)}>{p.yourAnswer}</p>
                           <p className={cn("text-[13px] leading-[22px] whitespace-pre-wrap", portalHeadingAlt)}>{q.answerText}</p>
                         </div>
+
+                        {/* AI evaluation — only when this question's evaluation actually succeeded */}
+                        {hasEval && (
+                          <div className="flex flex-col gap-3">
+                            <p className={cn("text-[11px] font-[700] uppercase tracking-wide", portalSubtextAlt)}>{p.aiEvaluation}</p>
+
+                            {fb.strengths.length > 0 && (
+                              <div className="flex flex-col gap-1.5">
+                                <p className="flex items-center gap-1.5 text-[12px] font-[700] text-emerald-600 dark:text-emerald-400">
+                                  <CheckCircle2 size={13} />
+                                  {p.strengths}
+                                </p>
+                                <ul className={cn("text-[13px] leading-[20px] list-disc pl-5", portalHeadingAlt)}>
+                                  {fb.strengths.map((s) => <li key={s}>{s}</li>)}
+                                </ul>
+                              </div>
+                            )}
+
+                            {fb.improvements.length > 0 && (
+                              <div className="flex flex-col gap-1.5">
+                                <p className="flex items-center gap-1.5 text-[12px] font-[700] text-amber-600 dark:text-amber-400">
+                                  <AlertTriangle size={13} />
+                                  {p.improvements}
+                                </p>
+                                <ul className={cn("text-[13px] leading-[20px] list-disc pl-5", portalHeadingAlt)}>
+                                  {fb.improvements.map((s) => <li key={s}>{s}</li>)}
+                                </ul>
+                              </div>
+                            )}
+
+                            {fb.suggestion && (
+                              <div className="flex items-start gap-2 bg-primary/5 dark:bg-primary/10 rounded-lg p-3">
+                                <Lightbulb size={14} className="text-primary shrink-0 mt-0.5" />
+                                <div>
+                                  <p className="text-[12px] font-[700] text-primary mb-1">{p.suggestion}</p>
+                                  <p className={cn("text-[13px] leading-[20px]", portalHeadingAlt)}>{fb.suggestion}</p>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
                     </motion.div>
                   )}

@@ -184,6 +184,87 @@ export async function getPracticeSession(sessionId: string): Promise<PracticeSes
   }
 }
 
+// ---------------------------------------------------------------------------
+// Per-question AI feedback (SCRUM-282) — separate from the plain session
+// detail above: this carries the actual AI evaluation (score, strengths,
+// improvements, suggestion) per answered question, not just the answer text.
+// evaluationStatus/score/etc. are null/empty per-item while that question's
+// evaluation hasn't succeeded yet (still processing, or permanently failed).
+// ---------------------------------------------------------------------------
+
+export interface QuestionFeedbackItem {
+  questionId: string;
+  questionText: string;
+  questionType: string;
+  difficulty: Difficulty;
+  answerText: string;
+  score: number | null;
+  strengths: string[];
+  improvements: string[];
+  suggestion: string | null;
+  dimensionScores: Record<string, number> | null;
+  evaluationStatus: string;
+}
+
+export interface SessionFeedback {
+  sessionId: string;
+  overallScore: number | null;
+  status: string;
+  items: QuestionFeedbackItem[];
+}
+
+function normalizeDimensionScores(raw: unknown): Record<string, number> | null {
+  const src = asRecord(raw);
+  if (!src) return null;
+  const out: Record<string, number> = {};
+  for (const [k, v] of Object.entries(src)) {
+    if (typeof v === "number") out[k] = v;
+  }
+  return Object.keys(out).length > 0 ? out : null;
+}
+
+function normalizeFeedbackItem(raw: unknown): QuestionFeedbackItem | null {
+  const src = asRecord(raw);
+  if (!src) return null;
+  const questionId = pickString(src, "questionId", "id");
+  if (!questionId) return null;
+  return {
+    questionId,
+    questionText: pickString(src, "questionText", "question"),
+    questionType: pickString(src, "questionType") || "technical",
+    difficulty: normalizeDifficulty(src.difficulty),
+    answerText: pickString(src, "answerText"),
+    score: pickNullableNumber(src, "score"),
+    strengths: Array.isArray(src.strengths) ? src.strengths.filter((s): s is string => typeof s === "string") : [],
+    improvements: Array.isArray(src.improvements) ? src.improvements.filter((s): s is string => typeof s === "string") : [],
+    suggestion: pickOptionalString(src, "suggestion") ?? null,
+    dimensionScores: normalizeDimensionScores(src.dimensionScores),
+    evaluationStatus: pickString(src, "evaluationStatus") || "Unknown",
+  };
+}
+
+/** Full per-question AI feedback for a session. Only the session's owner can fetch it. */
+export async function getSessionFeedback(sessionId: string): Promise<SessionFeedback | null> {
+  try {
+    const res = await apiClient.get(`${BASE}/${sessionId}/feedback`);
+    const src = extractData(res.data);
+    if (!src) return null;
+    const rawItems = src.items;
+    return {
+      sessionId: pickString(src, "sessionId") || sessionId,
+      overallScore: pickNullableNumber(src, "overallScore"),
+      status: pickString(src, "status"),
+      items: Array.isArray(rawItems)
+        ? rawItems.map(normalizeFeedbackItem).filter((i): i is QuestionFeedbackItem => i !== null)
+        : [],
+    };
+  } catch (err) {
+    const status = (err as { response?: { status?: number } })?.response?.status;
+    if (status === 404) return null;
+    rethrowForbidden(err);
+  }
+}
+
 function extractList(raw: unknown): unknown[] {
   const root = asRecord(raw);
   if (!root) return Array.isArray(raw) ? raw : [];
