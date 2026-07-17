@@ -183,6 +183,12 @@ export function CandidateProfile() {
     uploadCv(file)
       .then(({ cv: next, analysisFailed }) => {
         setCv(next);
+        // BE overwrites the profile's TechStack from the new CV analysis — mirror
+        // that here so "Skills & Expertise" reflects it without a page reload.
+        if (!analysisFailed && next.techStack.length > 0) {
+          setForm((prev) => ({ ...prev, skills: next.techStack }));
+          setSnapshot((prev) => ({ ...prev, skills: next.techStack }));
+        }
         addToast("success", analysisFailed ? p.cv.uploadedAnalysisFailed : p.cv.uploadSuccess);
       })
       .catch((err) => {
