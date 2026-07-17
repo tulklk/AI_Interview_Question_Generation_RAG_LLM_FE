@@ -1998,7 +1998,7 @@ Yêu cầu:
       uploadSuccess: "Đã tải lên và phân tích CV thành công.",
       uploadedAnalysisFailed: "Đã tải lên CV, nhưng phân tích AI hiện tạm thời không khả dụng. File của bạn vẫn được lưu — hãy thử lại sau để nhận gợi ý kỹ năng.",
       uploadFailed: "Không thể tải lên CV. Vui lòng thử lại.",
-      invalidFormat: "Vui lòng tải lên file PDF hoặc DOCX.",
+      invalidFormat: "Vui lòng tải lên file PDF, DOCX, JPG, JPEG hoặc PNG.",
       deleteSuccess: "Đã xóa CV.",
       deleteFailed: "Không thể xóa CV. Vui lòng thử lại.",
       deleteConfirmTitle: "Xóa CV của bạn?",

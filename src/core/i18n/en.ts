@@ -1999,7 +1999,7 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
       uploadSuccess: "CV uploaded and analyzed successfully.",
       uploadedAnalysisFailed: "CV uploaded, but AI analysis is temporarily unavailable. Your file is saved — try again later for skill suggestions.",
       uploadFailed: "Could not upload your CV. Please try again.",
-      invalidFormat: "Please upload a PDF or DOCX file.",
+      invalidFormat: "Please upload a PDF, DOCX, JPG, JPEG, or PNG file.",
       deleteSuccess: "CV deleted.",
       deleteFailed: "Could not delete your CV. Please try again.",
       deleteConfirmTitle: "Delete your CV?",

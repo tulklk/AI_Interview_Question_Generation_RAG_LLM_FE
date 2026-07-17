@@ -175,7 +175,7 @@ export function CandidateProfile() {
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
-    if (!/\.(pdf|docx)$/i.test(file.name)) {
+    if (!/\.(pdf|docx|jpe?g|png)$/i.test(file.name)) {
       addToast("error", p.cv.invalidFormat);
       return;
     }
@@ -680,7 +680,7 @@ export function CandidateProfile() {
           <input
             ref={cvFileInputRef}
             type="file"
-            accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            accept=".pdf,.docx,.jpg,.jpeg,.png,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/jpeg,image/png"
             className="hidden"
             onChange={handleCvFileChange}
           />
