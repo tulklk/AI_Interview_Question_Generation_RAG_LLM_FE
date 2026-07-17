@@ -18,7 +18,6 @@ import { listQuestionSets, getBookmarkedSetIds } from "@/features/candidate/serv
 import { getCompanyColor, getCompanyInitials } from "@/features/candidate/utils/company-visual";
 import type { QuestionSet } from "@/features/candidate/types/jobseeker";
 import { QuestionSetCard } from "@/features/candidate/components/marketplace/question-set-card";
-import { SkillRadarChart } from "@/features/candidate/components/dashboard/skill-radar-chart";
 import { useLanguage } from "@/shared/providers/language-context";
 import { useUser } from "@/features/auth/context/user-context";
 import { buildWelcomeMessage, getTimeOfDayGreeting } from "@/shared/utils/greeting";
@@ -33,12 +32,6 @@ const fadeUp = (delay = 0) => ({
   animate: { opacity: 1, y: 0 },
   transition: { duration: 0.4, delay },
 });
-
-// NOTE: per-skill breakdown across a candidate's full history needs a BE aggregate
-// endpoint (fetching every past session's feedback individually is impractical).
-// These stay illustrative until that endpoint exists.
-const strongSkills = ["React", "TypeScript", "Communication"];
-const weakSkills  = ["Situational Questions", "System Design", "SQL"];
 
 // Local calendar-day key (not UTC) — completedAt is stored in UTC, but a
 // "streak" should follow the candidate's own local day boundary, not UTC's.
@@ -169,6 +162,14 @@ export function CandidateDashboard() {
     .sort((a, b) => new Date(b.completedAt ?? 0).getTime() - new Date(a.completedAt ?? 0).getTime())
     .slice(0, 3);
 
+  const recommendation = sessionsLoading
+    ? ""
+    : sessionCount === 0
+      ? p.aiRecommendationEmpty
+      : avgScore !== null
+        ? p.aiRecommendationTemplate.replace("{{count}}", String(sessionCount)).replace("{{avg}}", String(avgScore))
+        : p.aiRecommendationNoScore.replace("{{count}}", String(sessionCount));
+
   return (
     <div>
       <motion.div {...fadeUp(0)} className="mb-6">
@@ -206,7 +207,7 @@ export function CandidateDashboard() {
             className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm p-6"
           >
             <h2 className={cn("text-[16px] font-[700] mb-4", portalHeadingAlt)}>{p.analyticsTitle}</h2>
-            <SkillRadarChart />
+            <EmptyState icon={BarChart2} title={p.analyticsUnavailable} className="py-8" />
           </motion.div>
 
           <motion.div
@@ -278,43 +279,8 @@ export function CandidateDashboard() {
             {...fadeUp(0.14)}
             className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm p-5"
           >
-            <div>
-              <h3 className={cn("text-[14px] font-[700] mb-3", portalHeadingAlt)}>{p.strongSkillsTitle}</h3>
-              <div className="flex flex-col gap-2">
-                {strongSkills.map((skill, i) => (
-                  <div key={skill} className="flex items-center gap-3">
-                    <div className="flex-1 h-1.5 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
-                      <motion.div
-                        className="h-full bg-emerald-400 rounded-full"
-                        initial={{ width: 0 }}
-                        animate={{ width: `${90 - i * 6}%` }}
-                        transition={{ duration: 0.8, delay: 0.3 + i * 0.1 }}
-                      />
-                    </div>
-                    <span className={cn("text-[12px] font-[500] w-24 shrink-0", portalHeadingAlt)}>{skill}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-800">
-              <h3 className={cn("text-[14px] font-[700] mb-3", portalHeadingAlt)}>{p.weakSkillsTitle}</h3>
-              <div className="flex flex-col gap-2">
-                {weakSkills.map((skill, i) => (
-                  <div key={skill} className="flex items-center gap-3">
-                    <div className="flex-1 h-1.5 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
-                      <motion.div
-                        className="h-full bg-amber-400 rounded-full"
-                        initial={{ width: 0 }}
-                        animate={{ width: `${55 - i * 8}%` }}
-                        transition={{ duration: 0.8, delay: 0.35 + i * 0.1 }}
-                      />
-                    </div>
-                    <span className={cn("text-[12px] font-[500] w-24 shrink-0 truncate", portalHeadingAlt)}>{skill}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
+            <h3 className={cn("text-[14px] font-[700] mb-3", portalHeadingAlt)}>{p.skillBreakdownTitle}</h3>
+            <p className={cn("text-[12px] leading-[18px]", portalSubtextAlt)}>{p.skillBreakdownUnavailable}</p>
           </motion.div>
 
           <motion.div
@@ -325,7 +291,7 @@ export function CandidateDashboard() {
               <Sparkles size={14} className="text-primary" />
               <h3 className={cn("text-[13px] font-[700]", portalHeadingAlt)}>{p.aiRecommendationTitle}</h3>
             </div>
-            <p className={cn("text-[12px] leading-[18px] mb-4", portalSubtextAlt)}>{p.aiRecommendation}</p>
+            <p className={cn("text-[12px] leading-[18px] mb-4", portalSubtextAlt)}>{recommendation}</p>
             <Link
               href="/jobseeker/practice"
               className="flex items-center gap-1.5 text-[12px] font-[600] text-primary hover:text-primary-hover transition-colors"

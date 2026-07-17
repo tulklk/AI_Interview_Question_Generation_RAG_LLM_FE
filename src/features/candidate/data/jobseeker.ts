@@ -304,15 +304,6 @@ export const candidateStats: CandidateStat[] = [
   },
 ];
 
-// ── Radar chart data ───────────────────────────────────────────────────────
-export const skillRadarData = [
-  { skill: "Technical", score: 82, fullMark: 100 },
-  { skill: "Behavioral", score: 88, fullMark: 100 },
-  { skill: "Situational", score: 74, fullMark: 100 },
-  { skill: "Communication", score: 91, fullMark: 100 },
-  { skill: "Problem Solving", score: 79, fullMark: 100 },
-];
-
 // ── Achievements ───────────────────────────────────────────────────────────
 export const achievements: Achievement[] = [
   { id: "a1", title: "First Practice", description: "Completed your first practice session", icon: "🎯", earned: true, earnedDate: "Apr 10, 2026" },
