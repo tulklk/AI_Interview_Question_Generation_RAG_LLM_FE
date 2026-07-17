@@ -396,13 +396,6 @@ export async function getGenerationJobs(): Promise<GenerationSession[]> {
   }
 }
 
-export async function getGenerationSession(id: string): Promise<GenerationSession> {
-  const { data } = await apiClient.get<GenerationSession>(
-    `/api/v1/hr/generation-sessions/${id}`
-  );
-  return data;
-}
-
 // ---------------------------------------------------------------------------
 // Plan management
 // ---------------------------------------------------------------------------
@@ -604,8 +597,11 @@ export async function deleteGenerationPlan(jobId: string): Promise<boolean> {
   try {
     await apiClient.delete(`/api/hr/question-generation-plans/${jobId}`);
     return true;
-  } catch {
-    return false;
+  } catch (err) {
+    // BE rejects (409) once the session has been saved as a draft/question-set —
+    // there is currently no API to delete a question-set, so this is permanent
+    // for any job with hasDraft=true, not a transient failure.
+    throw new Error(extractBeErrorMessage(err));
   }
 }
 
@@ -776,15 +772,24 @@ export async function getQuestionSetStatusByJob(): Promise<Map<string, "DRAFT" |
   }
 }
 
+// BE error responses actually come back as { code, error: "..." } — not the
+// { detail }/{ message } shape ASP.NET's default ProblemDetails uses. Reading
+// only detail/message meant every real BE rejection (min-questions, ownership,
+// "already saved as draft", ...) surfaced as a blank message and silently fell
+// back to a generic "failed" toast instead of the actual reason.
+function extractBeErrorMessage(err: unknown): string {
+  const data = (err as { response?: { data?: { error?: string; detail?: string; message?: string } } })
+    ?.response?.data;
+  return data?.error ?? data?.detail ?? data?.message ?? "";
+}
+
 export async function publishQuestionSet(questionSetId: string): Promise<boolean> {
   try {
     await apiClient.post(`/api/hr/question-sets/${questionSetId}/publish`);
     return true;
   } catch (err) {
-    const detail = (err as { response?: { data?: { detail?: string; message?: string } } })
-      ?.response?.data;
     // Only surface a BE-provided message; never the raw axios/HTTP error text.
-    throw new Error(detail?.detail ?? detail?.message ?? "");
+    throw new Error(extractBeErrorMessage(err));
   }
 }
 
@@ -793,9 +798,7 @@ export async function unpublishQuestionSet(questionSetId: string): Promise<boole
     await apiClient.post(`/api/hr/question-sets/${questionSetId}/unpublish`);
     return true;
   } catch (err) {
-    const detail = (err as { response?: { data?: { detail?: string; message?: string } } })
-      ?.response?.data;
-    throw new Error(detail?.detail ?? detail?.message ?? "");
+    throw new Error(extractBeErrorMessage(err));
   }
 }
 

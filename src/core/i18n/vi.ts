@@ -939,6 +939,7 @@ Yêu cầu:
       exportTitle: "Tải xuống Excel",
       viewTitle: "Xem",
       deleteTitle: "Xóa",
+      deleteFailed: "Không thể xóa. Vui lòng thử lại.",
     },
     deleteModal: {
       title: "Xác nhận xóa",

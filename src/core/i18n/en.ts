@@ -937,6 +937,7 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
       exportTitle: "Download Excel",
       viewTitle: "View",
       deleteTitle: "Delete",
+      deleteFailed: "Could not delete. Please try again.",
     },
     deleteModal: {
       title: "Confirm Delete",

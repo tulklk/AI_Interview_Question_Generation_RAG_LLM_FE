@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { FileText, Calendar, ArrowUpDown, Eye, Download, Trash2, Inbox, Loader2, AlertTriangle, ChevronLeft, ChevronRight, SearchX, Globe, PenLine } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { useLanguage } from "@/shared/providers/language-context";
+import { useToast } from "@/shared/providers/toast-context";
 import { useHrSubscription } from "@/features/hr/context/hr-subscription-context";
 import { getLocalSessions, toGenerationSession } from "@/features/interview/utils/local-history";
 import { getGenerationJobs, getGenerationPlans, getQuestionSetStatusByJob, deleteGenerationPlan, exportPlanQuestions } from "@/features/interview/services/interview.service";
@@ -159,6 +160,7 @@ function resolveSessionDestination(session: GenerationSession): { type: "history
 
 export function HistoryTable({ search = "", role = "", level = "", experience = "", status = "" }: HistoryTableProps) {
   const { t } = useLanguage();
+  const { addToast } = useToast();
   const { hasFeature } = useHrSubscription();
   const router = useRouter();
   const ht = t.historyPage.table;
@@ -182,9 +184,14 @@ export function HistoryTable({ search = "", role = "", level = "", experience = 
     const id = confirmSession.id;
     setConfirmSession(null);
     setDeletingId(id);
-    const ok = await deleteGenerationPlan(id);
-    if (ok) setSessions(prev => prev.filter(s => s.id !== id));
-    setDeletingId(null);
+    try {
+      await deleteGenerationPlan(id);
+      setSessions(prev => prev.filter(s => s.id !== id));
+    } catch (err) {
+      addToast("error", err instanceof Error && err.message ? err.message : ht.deleteFailed);
+    } finally {
+      setDeletingId(null);
+    }
   }
 
   function handleViewSession(session: GenerationSession) {

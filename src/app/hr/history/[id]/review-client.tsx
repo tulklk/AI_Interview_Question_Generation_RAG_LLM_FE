@@ -6,7 +6,7 @@ import { AlertCircle } from "lucide-react";
 import { AiLoadingSpinner } from "@/shared/components/common/ai-loading-spinner";
 import { AppShell } from "@/features/hr/components/layout/app-shell";
 import { ReviewPageClient } from "@/features/question/components/review-page-client";
-import { getGenerationSession, getGenerationJob, getJobQuestions, getDraft, findQuestionSetForJob } from "@/features/interview/services/interview.service";
+import { getGenerationJob, getJobQuestions, getDraft, findQuestionSetForJob } from "@/features/interview/services/interview.service";
 import { getLocalSession, toGenerationSession } from "@/features/interview/utils/local-history";
 import type { GenerationSession, DraftQuestionSet, GenerationStatus } from "@/features/interview/types/generation-session";
 import { cn } from "@/lib/cn";
@@ -77,7 +77,7 @@ export function HrReviewPageClient() {
 
   async function loadJob(jobId: string): Promise<GenerationSession | null> {
     const job = await getGenerationJob(jobId);
-    if (!job) return getGenerationSession(jobId);
+    if (!job) return null;
 
     if (job.status === "COMPLETED") {
       // Primary: if a question set was already saved for this job, ITS data is
