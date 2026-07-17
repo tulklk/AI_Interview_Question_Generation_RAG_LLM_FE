@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion, type Variants } from "framer-motion";
 import { Search, Sparkles, SlidersHorizontal, AlertCircle, RefreshCw, Loader2 } from "lucide-react";
 import { cn } from "@/lib/cn";
@@ -45,6 +45,12 @@ export function MarketplacePage() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  function scrollToSearch() {
+    searchInputRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    searchInputRef.current?.focus();
+  }
 
   // Debounce search input before it triggers a fetch
   useEffect(() => {
@@ -151,6 +157,8 @@ export function MarketplacePage() {
           {/* CTAs */}
           <div className="flex flex-wrap items-center gap-4">
             <button
+              type="button"
+              onClick={scrollToSearch}
               className="shimmer-button h-11 px-6 text-[14px] font-semibold text-white hr-cta-btn rounded-xl"
             >
               {p.heroCta}
@@ -174,6 +182,7 @@ export function MarketplacePage() {
         )}>
           <Search size={15} className="text-gray-400 dark:text-gray-500 shrink-0" />
           <input
+            ref={searchInputRef}
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
