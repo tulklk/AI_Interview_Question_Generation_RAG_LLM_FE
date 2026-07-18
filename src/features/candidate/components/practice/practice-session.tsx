@@ -157,6 +157,9 @@ export function PracticeSession({ set }: PracticeSessionProps) {
   }, [set.id, startAttempt]);
 
   // Countdown timer — computed from the server's started_at so it survives refresh/resume.
+  // Browsers throttle setInterval in background tabs, so the display can lag while the
+  // tab is unfocused; resync immediately on visibilitychange so it catches up right away
+  // instead of waiting for the next (possibly delayed) tick.
   useEffect(() => {
     if (!startedAt) return;
     const startMs = new Date(startedAt).getTime();
@@ -166,7 +169,14 @@ export function PracticeSession({ set }: PracticeSessionProps) {
     }
     tick();
     const id = setInterval(tick, 1000);
-    return () => clearInterval(id);
+    function onVisibilityChange() {
+      if (document.visibilityState === "visible") tick();
+    }
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => {
+      clearInterval(id);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
   }, [startedAt]);
 
   // Restore an unsubmitted draft answer for the current question from sessionStorage (once per question).
