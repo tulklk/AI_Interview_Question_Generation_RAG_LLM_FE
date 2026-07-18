@@ -189,7 +189,18 @@ export function CandidateProfile() {
           setForm((prev) => ({ ...prev, skills: next.techStack }));
           setSnapshot((prev) => ({ ...prev, skills: next.techStack }));
         }
-        addToast("success", analysisFailed ? p.cv.uploadedAnalysisFailed : p.cv.uploadSuccess);
+        // A 200 with parsedAt set but no summary/skills means BE ran the parser
+        // and found nothing (e.g. the file isn't actually a resume) — that's not
+        // "analyzed successfully" and shouldn't be announced as such. The file
+        // itself is still saved fine either way, so this stays a "success" toast
+        // (matching the analysisFailed case below) — only the wording changes.
+        const hasInsights = Boolean(next.summary) || next.skills.length > 0;
+        const message = analysisFailed
+          ? p.cv.uploadedAnalysisFailed
+          : hasInsights
+            ? p.cv.uploadSuccess
+            : p.cv.uploadedNoSkills;
+        addToast("success", message);
       })
       .catch((err) => {
         addToast("error", err instanceof CvValidationError && err.message ? err.message : p.cv.uploadFailed);
@@ -718,7 +729,7 @@ export function CandidateProfile() {
                 </a>
               </div>
 
-              {cv.parsedAt ? (
+              {cv.parsedAt && (cv.summary || cv.skills.length > 0) ? (
                 <div className="flex flex-col gap-3">
                   {cv.summary && (
                     <div>
@@ -749,7 +760,7 @@ export function CandidateProfile() {
               ) : (
                 <p className={cn("flex items-center gap-1.5 text-[12px] italic", portalSubtextAlt)}>
                   <AlertCircle size={12} className="shrink-0" />
-                  {p.cv.analysisUnavailable}
+                  {cv.parsedAt ? p.cv.noSkillsDetected : p.cv.analysisUnavailable}
                 </p>
               )}
 
