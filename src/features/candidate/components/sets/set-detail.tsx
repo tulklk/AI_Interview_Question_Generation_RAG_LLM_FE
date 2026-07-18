@@ -13,7 +13,7 @@ import { useLanguage } from "@/shared/providers/language-context";
 import type { QuestionSet, QuestionCategory } from "@/features/candidate/types/jobseeker";
 import { DifficultyPill, CategoryPill, formatCategoryLabel } from "@/features/candidate/components/ui/pill";
 import { CompanyInfoCard } from "./company-info-card";
-import { findInProgressSession, abandonPracticeSession } from "@/features/candidate/services/practice-session.service";
+import { findInProgressSession, abandonPracticeSession, getPracticeSession } from "@/features/candidate/services/practice-session.service";
 import { toggleBookmark, getBookmarkedSetIds } from "@/features/candidate/services/question-set.service";
 import { useToast } from "@/shared/providers/toast-context";
 import { ConfirmDialog } from "@/shared/components/ui/confirm-dialog";
@@ -75,7 +75,15 @@ export function SetDetail({ set }: SetDetailProps) {
       .then(() => {
         router.push(`/jobseeker/practice/${set.id}`);
       })
-      .catch(() => {
+      .catch(async () => {
+        // The old session may have already been auto-completed server-side (BE
+        // enforces the set's time limit) by the time we tried to abandon it —
+        // either way there's nothing IN_PROGRESS left, so starting fresh still works.
+        const existing = await getPracticeSession(inProgressSessionId).catch(() => null);
+        if (existing && existing.status !== "IN_PROGRESS") {
+          router.push(`/jobseeker/practice/${set.id}`);
+          return;
+        }
         setStartingNew(false);
         setStartNewConfirmOpen(false);
         addToast("error", p.startNewFailed);

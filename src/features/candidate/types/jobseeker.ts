@@ -36,6 +36,8 @@ export interface QuestionSet {
   totalQuestions: number;
   estimatedTime: string;
   estimatedTimeMinutes?: number;
+  /** HR-configured practice time limit (1–480 min), null/undefined = no limit. Distinct from estimatedTimeMinutes, which is just a display estimate. */
+  timeLimitMinutes?: number | null;
   category?: string;
   description?: string;
   rating?: number;

@@ -91,6 +91,10 @@ export interface PracticeSessionDetail {
   startedAt?: string;
   completedAt?: string | null;
   overallScore: number | null;
+  /** HR-configured limit that applied when this session started; null = untimed. */
+  timeLimitMinutes: number | null;
+  /** Absolute deadline (startedAt + timeLimitMinutes) BE enforces server-side; null = untimed. */
+  expiresAt: string | null;
   questions: PracticeSessionQuestion[];
 }
 
@@ -132,6 +136,8 @@ function normalizeSessionDetail(raw: unknown): PracticeSessionDetail | null {
     startedAt: pickOptionalString(src, "startedAt"),
     completedAt: pickOptionalString(src, "completedAt") ?? null,
     overallScore: pickNullableNumber(src, "overallScore"),
+    timeLimitMinutes: pickNullableNumber(src, "timeLimitMinutes"),
+    expiresAt: pickOptionalString(src, "expiresAt") ?? null,
     questions,
   };
 }

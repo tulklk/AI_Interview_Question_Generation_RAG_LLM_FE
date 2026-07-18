@@ -114,6 +114,9 @@ function normalizeQuestionSet(raw: unknown): QuestionSet | null {
 
   const totalQuestions = pickNumber(src, "totalQuestions") ?? questions.length;
   const estimatedTimeMinutes = pickNumber(src, "estimatedTimeMinutes");
+  // null (or absent) means "no limit" per the BE contract — pickNumber already
+  // collapses both to undefined, which QuestionSet.timeLimitMinutes treats the same way.
+  const timeLimitMinutes = pickNumber(src, "timeLimitMinutes");
 
   return {
     id: id || title,
@@ -127,6 +130,7 @@ function normalizeQuestionSet(raw: unknown): QuestionSet | null {
     totalQuestions,
     estimatedTime: formatEstimatedTime(estimatedTimeMinutes),
     estimatedTimeMinutes,
+    timeLimitMinutes,
     rating: pickNumber(src, "rating"),
     attempts: pickNumber(src, "attempts", "attemptCount"),
     questions,

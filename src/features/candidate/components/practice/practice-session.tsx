@@ -24,10 +24,9 @@ import {
   submitAnswer as submitAnswerApi,
   completePracticeSession,
   abandonPracticeSession,
+  getPracticeSession,
   ForbiddenError,
 } from "@/features/candidate/services/practice-session.service";
-
-const DEFAULT_SESSION_DURATION_MINUTES = 45;
 
 function formatTime(seconds: number) {
   const m = Math.floor(seconds / 60).toString().padStart(2, "0");
@@ -37,40 +36,6 @@ function formatTime(seconds: number) {
 
 function draftKey(sessionId: string, questionId: string) {
   return `practice-draft-${sessionId}-${questionId}`;
-}
-
-// The countdown is purely a display — the server doesn't enforce it — but it's
-// promised as pausable ("you can continue this session later"), so wall-clock
-// time spent away from the page (Save & Exit, closed tab, etc.) must not drain
-// it. We track that locally per session: the gap between "last seen" and "now"
-// on (re)mount counts as paused time and is subtracted from elapsed.
-function clockKey(sessionId: string) {
-  return `practice-clock-${sessionId}`;
-}
-
-interface ClockState {
-  pausedMs: number;
-  lastSeenAt: number;
-}
-
-function readClockState(sessionId: string): ClockState | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const raw = window.localStorage.getItem(clockKey(sessionId));
-    return raw ? (JSON.parse(raw) as ClockState) : null;
-  } catch {
-    return null;
-  }
-}
-
-function writeClockState(sessionId: string, state: ClockState) {
-  if (typeof window === "undefined") return;
-  window.localStorage.setItem(clockKey(sessionId), JSON.stringify(state));
-}
-
-function clearClockState(sessionId: string) {
-  if (typeof window === "undefined") return;
-  window.localStorage.removeItem(clockKey(sessionId));
 }
 
 interface ProgressDotProps {
@@ -117,24 +82,25 @@ export function PracticeSession({ set }: PracticeSessionProps) {
   const { addToast } = useToast();
   const p = t.jobseekerPracticePage;
 
-  // Use the set's own estimated time (BE-provided, varies per set — e.g. a
-  // 25-question set is ~75 min, not the same budget as a 10-question one) so
-  // the countdown doesn't hit 00:00 while questions are still unanswered.
-  const sessionDurationSeconds =
-    (set.estimatedTimeMinutes && set.estimatedTimeMinutes > 0 ? set.estimatedTimeMinutes : DEFAULT_SESSION_DURATION_MINUTES) * 60;
-
   const [currentIdx, setCurrentIdx] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [submitted, setSubmitted] = useState<Record<string, boolean>>({});
   const [evaluating, setEvaluating] = useState(false);
   const [submitError, setSubmitError] = useState(false);
-  const [timeLeft, setTimeLeft] = useState(sessionDurationSeconds);
+  const [timeLeft, setTimeLeft] = useState(0);
   const [direction, setDirection] = useState(1);
   const [exitOpen, setExitOpen] = useState(false);
   const [abandoning, setAbandoning] = useState(false);
 
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [startedAt, setStartedAt] = useState<string | null>(null);
+  // Absolute deadline BE enforces server-side (startedAt + the set's configured
+  // time limit); null = untimed. Unlike a client-tracked "elapsed since start"
+  // countdown, this can't be paused by leaving the page — BE auto-completes at
+  // this exact moment regardless of whether the candidate is looking at it, so
+  // the display must match that rather than pretend time stops on exit.
+  const [expiresAt, setExpiresAt] = useState<string | null>(null);
+  const hasTimeLimit = expiresAt !== null;
   const [resumed, setResumed] = useState(false);
   const [starting, setStarting] = useState(true);
   const [startError, setStartError] = useState(false);
@@ -180,6 +146,7 @@ export function PracticeSession({ set }: PracticeSessionProps) {
         const wasResumed = Object.keys(submittedMap).length > 0;
         setSessionId(session.id);
         setStartedAt(session.startedAt ?? new Date().toISOString());
+        setExpiresAt(session.expiresAt);
         setSubmitted(submittedMap);
         setAnswers((prev) => ({ ...prev, ...answersMap }));
         setResumed(wasResumed);
@@ -202,28 +169,18 @@ export function PracticeSession({ set }: PracticeSessionProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [set.id, startAttempt]);
 
-  // Countdown timer — computed from the server's started_at, minus any time spent
-  // away from the page (see clockKey helpers above), so it survives refresh/resume
-  // without draining while the session is "paused" (Save & Exit).
-  // Browsers also throttle setInterval in background tabs, so the display can lag
-  // while the tab is unfocused; resync immediately on visibilitychange so it
-  // catches up right away instead of waiting for the next (possibly delayed) tick.
+  // Countdown timer — computed from the session's absolute expiresAt (BE-enforced,
+  // untouched by leaving the page). Browsers throttle setInterval in background
+  // tabs, so the display can lag while unfocused; resync immediately on
+  // visibilitychange so it catches up right away instead of waiting for the next
+  // (possibly delayed) tick.
   useEffect(() => {
-    if (!startedAt || !sessionId) return;
-    const id_ = sessionId;
-    const startMs = new Date(startedAt).getTime();
-
-    const prev = readClockState(id_);
-    const now = Date.now();
-    const pausedMs = (prev?.pausedMs ?? 0) + (prev ? Math.max(0, now - prev.lastSeenAt) : 0);
-    writeClockState(id_, { pausedMs, lastSeenAt: now });
+    if (!expiresAt || !sessionId) return;
+    const deadlineMs = new Date(expiresAt).getTime();
 
     function tick() {
-      const nowTick = Date.now();
-      const elapsed = Math.floor((nowTick - startMs - pausedMs) / 1000);
-      const remaining = sessionDurationSeconds - elapsed;
+      const remaining = Math.floor((deadlineMs - Date.now()) / 1000);
       setTimeLeft(Math.max(0, remaining));
-      writeClockState(id_, { pausedMs, lastSeenAt: nowTick });
 
       // Auto-submit once time is up. If an answer submission is mid-flight, wait
       // for it to settle (evaluatingRef) — the next tick (≤1s later) retries.
@@ -242,9 +199,8 @@ export function PracticeSession({ set }: PracticeSessionProps) {
     return () => {
       clearInterval(intervalId);
       document.removeEventListener("visibilitychange", onVisibilityChange);
-      writeClockState(id_, { pausedMs, lastSeenAt: Date.now() });
     };
-  }, [startedAt, sessionId, sessionDurationSeconds]);
+  }, [expiresAt, sessionId]);
 
   // Restore an unsubmitted draft answer for the current question from sessionStorage (once per question).
   useEffect(() => {
@@ -297,10 +253,18 @@ export function PracticeSession({ set }: PracticeSessionProps) {
     setFinishError(false);
     completePracticeSession(sessionId)
       .then(() => {
-        clearClockState(sessionId);
         router.push(`/jobseeker/practice/${sessionId}/result`);
       })
-      .catch(() => {
+      .catch(async () => {
+        // BE now enforces the question set's own time limit server-side and can
+        // auto-complete a session before our client-side auto-submit reaches it —
+        // complete() then 400s even though the session is actually done. Check
+        // the real status before surfacing an error the candidate can't recover from.
+        const existing = await getPracticeSession(sessionId).catch(() => null);
+        if (existing && existing.status !== "IN_PROGRESS") {
+          router.push(`/jobseeker/practice/${sessionId}/result`);
+          return;
+        }
         setFinishError(true);
         setFinishing(false);
         addToast("error", p.finishFailed);
@@ -315,10 +279,20 @@ export function PracticeSession({ set }: PracticeSessionProps) {
         if (typeof window !== "undefined") {
           set.questions.forEach((q) => window.sessionStorage.removeItem(draftKey(sessionId, q.id)));
         }
-        clearClockState(sessionId);
         router.push(`/jobseeker/sets/${set.id}`);
       })
-      .catch(() => {
+      .catch(async () => {
+        // Same server-side timeout race as handleFinish — if the session already
+        // isn't IN_PROGRESS anymore, there's nothing left to abandon; leaving is
+        // still the right outcome, just without a scary error.
+        const existing = await getPracticeSession(sessionId).catch(() => null);
+        if (existing && existing.status !== "IN_PROGRESS") {
+          if (typeof window !== "undefined") {
+            set.questions.forEach((q) => window.sessionStorage.removeItem(draftKey(sessionId, q.id)));
+          }
+          router.push(`/jobseeker/sets/${set.id}`);
+          return;
+        }
         setAbandoning(false);
         addToast("error", p.abandonFailed);
       });
@@ -423,17 +397,19 @@ export function PracticeSession({ set }: PracticeSessionProps) {
 
         {/* Right: timer + exit */}
         <div className="flex items-center gap-2 sm:gap-4 shrink-0">
-          <motion.div
-            animate={timeLeft < 300 ? { scale: [1, 1.08, 1] } : { scale: 1 }}
-            transition={timeLeft < 300 ? { duration: 1, repeat: Infinity, ease: "easeInOut" } : undefined}
-            className={cn(
-              "flex items-center gap-1.5 text-[12px] sm:text-[13px] font-[600] tabular-nums",
-              timeLeft < 300 ? "text-red-500" : portalSubtextAlt
-            )}
-          >
-            <Timer size={13} />
-            {formatTime(timeLeft)}
-          </motion.div>
+          {hasTimeLimit && (
+            <motion.div
+              animate={timeLeft < 300 ? { scale: [1, 1.08, 1] } : { scale: 1 }}
+              transition={timeLeft < 300 ? { duration: 1, repeat: Infinity, ease: "easeInOut" } : undefined}
+              className={cn(
+                "flex items-center gap-1.5 text-[12px] sm:text-[13px] font-[600] tabular-nums",
+                timeLeft < 300 ? "text-red-500" : portalSubtextAlt
+              )}
+            >
+              <Timer size={13} />
+              {formatTime(timeLeft)}
+            </motion.div>
+          )}
           <button
             type="button"
             onClick={() => setExitOpen(true)}
