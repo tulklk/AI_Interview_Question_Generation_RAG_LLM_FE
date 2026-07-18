@@ -2,19 +2,21 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, Clock, BarChart2, Users, Star, ChevronDown,
-  ChevronRight, Target, Zap, RotateCcw, Bookmark, Loader2,
+  ChevronRight, Target, Zap, RotateCcw, Bookmark, Loader2, RefreshCw,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { useLanguage } from "@/shared/providers/language-context";
 import type { QuestionSet, QuestionCategory } from "@/features/candidate/types/jobseeker";
 import { DifficultyPill, CategoryPill, formatCategoryLabel } from "@/features/candidate/components/ui/pill";
 import { CompanyInfoCard } from "./company-info-card";
-import { findInProgressSession } from "@/features/candidate/services/practice-session.service";
+import { findInProgressSession, abandonPracticeSession } from "@/features/candidate/services/practice-session.service";
 import { toggleBookmark, getBookmarkedSetIds } from "@/features/candidate/services/question-set.service";
 import { useToast } from "@/shared/providers/toast-context";
+import { ConfirmDialog } from "@/shared/components/ui/confirm-dialog";
 import {
   portalDivider,
   portalHeadingAlt,
@@ -32,10 +34,13 @@ export function SetDetail({ set }: SetDetailProps) {
   const p = t.jobseekerSetDetailPage;
   const mp = t.jobseekerMarketplacePage;
   const { addToast } = useToast();
+  const router = useRouter();
 
   const [inProgressSessionId, setInProgressSessionId] = useState<string | null>(null);
   const [bookmarked, setBookmarked] = useState(false);
   const [bookmarking, setBookmarking] = useState(false);
+  const [startNewConfirmOpen, setStartNewConfirmOpen] = useState(false);
+  const [startingNew, setStartingNew] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -61,6 +66,20 @@ export function SetDetail({ set }: SetDetailProps) {
       .then(setBookmarked)
       .catch(() => addToast("error", mp.bookmarkFailed))
       .finally(() => setBookmarking(false));
+  }
+
+  function handleStartNew() {
+    if (!inProgressSessionId || startingNew) return;
+    setStartingNew(true);
+    abandonPracticeSession(inProgressSessionId)
+      .then(() => {
+        router.push(`/jobseeker/practice/${set.id}`);
+      })
+      .catch(() => {
+        setStartingNew(false);
+        setStartNewConfirmOpen(false);
+        addToast("error", p.startNewFailed);
+      });
   }
 
   // Categories are derived from whatever questionType values the real question set actually
@@ -302,10 +321,38 @@ export function SetDetail({ set }: SetDetailProps) {
                   </>
                 )}
               </Link>
+
+              {inProgressSessionId && (
+                <button
+                  type="button"
+                  onClick={() => setStartNewConfirmOpen(true)}
+                  disabled={startingNew}
+                  className={cn(
+                    "flex items-center justify-center gap-2 w-full h-9 text-[13px] font-semibold rounded-lg border transition-colors disabled:opacity-60",
+                    portalMutedBg, portalHeadingAlt,
+                    "hover:bg-gray-100 dark:hover:bg-gray-700 border-gray-200 dark:border-gray-700"
+                  )}
+                >
+                  {startingNew ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />}
+                  {p.summaryCard.startNewBtn}
+                </button>
+              )}
             </div>
           </div>
         </motion.div>
       </div>
+
+      <ConfirmDialog
+        open={startNewConfirmOpen}
+        title={p.startNewConfirmTitle}
+        message={p.startNewConfirmMessage}
+        confirmLabel={p.startNewConfirmBtn}
+        cancelLabel={p.startNewCancelBtn}
+        variant="danger"
+        loading={startingNew}
+        onConfirm={handleStartNew}
+        onCancel={() => setStartNewConfirmOpen(false)}
+      />
     </div>
   );
 }

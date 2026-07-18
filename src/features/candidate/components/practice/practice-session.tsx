@@ -27,7 +27,7 @@ import {
   ForbiddenError,
 } from "@/features/candidate/services/practice-session.service";
 
-const SESSION_DURATION_SECONDS = 45 * 60;
+const DEFAULT_SESSION_DURATION_MINUTES = 45;
 
 function formatTime(seconds: number) {
   const m = Math.floor(seconds / 60).toString().padStart(2, "0");
@@ -37,6 +37,40 @@ function formatTime(seconds: number) {
 
 function draftKey(sessionId: string, questionId: string) {
   return `practice-draft-${sessionId}-${questionId}`;
+}
+
+// The countdown is purely a display — the server doesn't enforce it — but it's
+// promised as pausable ("you can continue this session later"), so wall-clock
+// time spent away from the page (Save & Exit, closed tab, etc.) must not drain
+// it. We track that locally per session: the gap between "last seen" and "now"
+// on (re)mount counts as paused time and is subtracted from elapsed.
+function clockKey(sessionId: string) {
+  return `practice-clock-${sessionId}`;
+}
+
+interface ClockState {
+  pausedMs: number;
+  lastSeenAt: number;
+}
+
+function readClockState(sessionId: string): ClockState | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(clockKey(sessionId));
+    return raw ? (JSON.parse(raw) as ClockState) : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeClockState(sessionId: string, state: ClockState) {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(clockKey(sessionId), JSON.stringify(state));
+}
+
+function clearClockState(sessionId: string) {
+  if (typeof window === "undefined") return;
+  window.localStorage.removeItem(clockKey(sessionId));
 }
 
 interface ProgressDotProps {
@@ -83,12 +117,18 @@ export function PracticeSession({ set }: PracticeSessionProps) {
   const { addToast } = useToast();
   const p = t.jobseekerPracticePage;
 
+  // Use the set's own estimated time (BE-provided, varies per set — e.g. a
+  // 25-question set is ~75 min, not the same budget as a 10-question one) so
+  // the countdown doesn't hit 00:00 while questions are still unanswered.
+  const sessionDurationSeconds =
+    (set.estimatedTimeMinutes && set.estimatedTimeMinutes > 0 ? set.estimatedTimeMinutes : DEFAULT_SESSION_DURATION_MINUTES) * 60;
+
   const [currentIdx, setCurrentIdx] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [submitted, setSubmitted] = useState<Record<string, boolean>>({});
   const [evaluating, setEvaluating] = useState(false);
   const [submitError, setSubmitError] = useState(false);
-  const [timeLeft, setTimeLeft] = useState(SESSION_DURATION_SECONDS);
+  const [timeLeft, setTimeLeft] = useState(sessionDurationSeconds);
   const [direction, setDirection] = useState(1);
   const [exitOpen, setExitOpen] = useState(false);
   const [abandoning, setAbandoning] = useState(false);
@@ -104,6 +144,12 @@ export function PracticeSession({ set }: PracticeSessionProps) {
   const [startAttempt, setStartAttempt] = useState(0);
 
   const restoredDraftIds = useRef(new Set<string>());
+  const timeUpRef = useRef(false);
+  const evaluatingRef = useRef(false);
+
+  useEffect(() => {
+    evaluatingRef.current = evaluating;
+  }, [evaluating]);
 
   const question = set.questions[currentIdx];
   const totalQuestions = set.questions.length;
@@ -156,28 +202,49 @@ export function PracticeSession({ set }: PracticeSessionProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [set.id, startAttempt]);
 
-  // Countdown timer — computed from the server's started_at so it survives refresh/resume.
-  // Browsers throttle setInterval in background tabs, so the display can lag while the
-  // tab is unfocused; resync immediately on visibilitychange so it catches up right away
-  // instead of waiting for the next (possibly delayed) tick.
+  // Countdown timer — computed from the server's started_at, minus any time spent
+  // away from the page (see clockKey helpers above), so it survives refresh/resume
+  // without draining while the session is "paused" (Save & Exit).
+  // Browsers also throttle setInterval in background tabs, so the display can lag
+  // while the tab is unfocused; resync immediately on visibilitychange so it
+  // catches up right away instead of waiting for the next (possibly delayed) tick.
   useEffect(() => {
-    if (!startedAt) return;
+    if (!startedAt || !sessionId) return;
+    const id_ = sessionId;
     const startMs = new Date(startedAt).getTime();
+
+    const prev = readClockState(id_);
+    const now = Date.now();
+    const pausedMs = (prev?.pausedMs ?? 0) + (prev ? Math.max(0, now - prev.lastSeenAt) : 0);
+    writeClockState(id_, { pausedMs, lastSeenAt: now });
+
     function tick() {
-      const elapsed = Math.floor((Date.now() - startMs) / 1000);
-      setTimeLeft(Math.max(0, SESSION_DURATION_SECONDS - elapsed));
+      const nowTick = Date.now();
+      const elapsed = Math.floor((nowTick - startMs - pausedMs) / 1000);
+      const remaining = sessionDurationSeconds - elapsed;
+      setTimeLeft(Math.max(0, remaining));
+      writeClockState(id_, { pausedMs, lastSeenAt: nowTick });
+
+      // Auto-submit once time is up. If an answer submission is mid-flight, wait
+      // for it to settle (evaluatingRef) — the next tick (≤1s later) retries.
+      if (remaining <= 0 && !timeUpRef.current && !evaluatingRef.current) {
+        timeUpRef.current = true;
+        addToast("error", p.timeUpToast);
+        handleFinish();
+      }
     }
     tick();
-    const id = setInterval(tick, 1000);
+    const intervalId = setInterval(tick, 1000);
     function onVisibilityChange() {
       if (document.visibilityState === "visible") tick();
     }
     document.addEventListener("visibilitychange", onVisibilityChange);
     return () => {
-      clearInterval(id);
+      clearInterval(intervalId);
       document.removeEventListener("visibilitychange", onVisibilityChange);
+      writeClockState(id_, { pausedMs, lastSeenAt: Date.now() });
     };
-  }, [startedAt]);
+  }, [startedAt, sessionId, sessionDurationSeconds]);
 
   // Restore an unsubmitted draft answer for the current question from sessionStorage (once per question).
   useEffect(() => {
@@ -230,6 +297,7 @@ export function PracticeSession({ set }: PracticeSessionProps) {
     setFinishError(false);
     completePracticeSession(sessionId)
       .then(() => {
+        clearClockState(sessionId);
         router.push(`/jobseeker/practice/${sessionId}/result`);
       })
       .catch(() => {
@@ -247,6 +315,7 @@ export function PracticeSession({ set }: PracticeSessionProps) {
         if (typeof window !== "undefined") {
           set.questions.forEach((q) => window.sessionStorage.removeItem(draftKey(sessionId, q.id)));
         }
+        clearClockState(sessionId);
         router.push(`/jobseeker/sets/${set.id}`);
       })
       .catch(() => {
@@ -508,7 +577,7 @@ export function PracticeSession({ set }: PracticeSessionProps) {
               {p.prevBtn}
             </button>
 
-            {allAnswered ? (
+            {allAnswered || finishing || finishError ? (
               <div className="flex flex-col items-end gap-1.5">
                 <motion.div
                   className="relative rounded-xl"

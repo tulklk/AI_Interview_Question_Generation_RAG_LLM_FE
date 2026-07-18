@@ -113,6 +113,7 @@ function normalizeQuestionSet(raw: unknown): QuestionSet | null {
     : [];
 
   const totalQuestions = pickNumber(src, "totalQuestions") ?? questions.length;
+  const estimatedTimeMinutes = pickNumber(src, "estimatedTimeMinutes");
 
   return {
     id: id || title,
@@ -124,7 +125,8 @@ function normalizeQuestionSet(raw: unknown): QuestionSet | null {
     difficulty: normalizeDifficulty(src.difficulty),
     skills: pickStringArray(src, "skills"),
     totalQuestions,
-    estimatedTime: formatEstimatedTime(pickNumber(src, "estimatedTimeMinutes")),
+    estimatedTime: formatEstimatedTime(estimatedTimeMinutes),
+    estimatedTimeMinutes,
     rating: pickNumber(src, "rating"),
     attempts: pickNumber(src, "attempts", "attemptCount"),
     questions,

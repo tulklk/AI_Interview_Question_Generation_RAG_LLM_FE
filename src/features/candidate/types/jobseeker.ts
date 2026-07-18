@@ -35,6 +35,7 @@ export interface QuestionSet {
   skills: string[];
   totalQuestions: number;
   estimatedTime: string;
+  estimatedTimeMinutes?: number;
   category?: string;
   description?: string;
   rating?: number;
