@@ -256,6 +256,7 @@ export function HrReviewPageClient() {
           publishStatus={publishStatus}
           onPublishStatusChange={setPublishStatus}
           onDraftSaved={handleDraftSaved}
+          initialTimeLimitMinutes={draft?.timeLimitMinutes}
         />
       )}
     </AppShell>

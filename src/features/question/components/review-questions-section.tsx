@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
-import { Plus, BookMarked, CheckCircle2, Loader2, AlertCircle, RefreshCw, ChevronLeft, ChevronRight, X, Check, Rocket, Undo2, Globe, PenLine, Lock } from "lucide-react";
+import { Plus, BookMarked, CheckCircle2, Loader2, AlertCircle, RefreshCw, ChevronLeft, ChevronRight, X, Check, Rocket, Undo2, Globe, PenLine, Lock, Clock, Pencil } from "lucide-react";
 import { AiLoadingSpinner } from "@/shared/components/common/ai-loading-spinner";
 import {
   DndContext,
@@ -46,10 +46,12 @@ import {
   deleteQuestionSetQuestion,
   addQuestionSetQuestion,
   reorderQuestionSetQuestions,
+  setQuestionSetTimeLimit,
   getDraft,
 } from "@/features/interview/services/interview.service";
 import { QuestionEditCard } from "./question-edit-card";
 import { AddQuestionDialog } from "./add-question-dialog";
+import { TimeLimitDialog } from "./time-limit-dialog";
 import { ConfirmDialog } from "@/shared/components/ui/confirm-dialog";
 import { useToast } from "@/shared/providers/toast-context";
 
@@ -130,6 +132,7 @@ interface ReviewQuestionsSectionProps {
   publishStatus?: "DRAFT" | "PUBLISHED" | null;
   onPublishStatusChange?: (status: "DRAFT" | "PUBLISHED") => void;
   onDraftSaved?: (questionSetId: string) => void;
+  initialTimeLimitMinutes?: number | null;
 }
 
 type SaveState = "idle" | "saving" | "saved" | "error";
@@ -149,6 +152,7 @@ export function ReviewQuestionsSection({
   publishStatus,
   onPublishStatusChange,
   onDraftSaved,
+  initialTimeLimitMinutes,
 }: ReviewQuestionsSectionProps) {
   const { t } = useLanguage();
   const rp = t.reviewPage;
@@ -160,6 +164,9 @@ export function ReviewQuestionsSection({
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [showNavWarning, setShowNavWarning] = useState(false);
   const [saveState, setSaveState] = useState<SaveState>("idle");
+  const [timeLimitMinutes, setTimeLimitMinutes] = useState<number | null>(initialTimeLimitMinutes ?? null);
+  const [showTimeLimitDialog, setShowTimeLimitDialog] = useState(false);
+  const [savingTimeLimit, setSavingTimeLimit] = useState(false);
   const [page, setPage] = useState(1);
   const [publishConfirmAction, setPublishConfirmAction] = useState<PublishAction>(null);
   const [publishing, setPublishing] = useState(false);
@@ -491,6 +498,21 @@ export function ReviewQuestionsSection({
     }
   }
 
+  async function handleSaveTimeLimit(minutes: number | null) {
+    if (!questionSetId) return;
+    setSavingTimeLimit(true);
+    try {
+      await setQuestionSetTimeLimit(questionSetId, minutes);
+      setTimeLimitMinutes(minutes);
+      setShowTimeLimitDialog(false);
+      addToast("success", rp.timeLimitSaveSuccess);
+    } catch (err) {
+      addToast("error", err instanceof Error && err.message ? err.message : rp.timeLimitSaveFailed);
+    } finally {
+      setSavingTimeLimit(false);
+    }
+  }
+
   // Status banners
   if (status === "PROCESSING" || status === "QUEUED" || status === "CONFIRMED") {
     return (
@@ -550,6 +572,23 @@ export function ReviewQuestionsSection({
               {publishStatus === "PUBLISHED" ? <Globe size={11} /> : <PenLine size={11} />}
               {publishStatus === "PUBLISHED" ? rp.statusPublished : rp.statusDraft}
             </span>
+          )}
+          {!readOnly && questionSetId && (
+            <button
+              type="button"
+              onClick={() => !isLocked && setShowTimeLimitDialog(true)}
+              disabled={isLocked}
+              title={isLocked ? rp.editLockedHint : rp.timeLimitEditHint}
+              className={cn(
+                "inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-md transition-colors",
+                "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400",
+                isLocked ? "opacity-60 cursor-not-allowed" : "hover:bg-gray-200 dark:hover:bg-gray-700 cursor-pointer"
+              )}
+            >
+              <Clock size={11} />
+              {timeLimitMinutes != null ? rp.timeLimitLabel.replace("{{min}}", String(timeLimitMinutes)) : rp.noTimeLimitLabel}
+              {!isLocked && <Pencil size={9} />}
+            </button>
           )}
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -666,6 +705,15 @@ export function ReviewQuestionsSection({
         onConfirm={handleConfirmPublishAction}
         onCancel={() => setPublishConfirmAction(null)}
       />
+
+      {showTimeLimitDialog && (
+        <TimeLimitDialog
+          currentMinutes={timeLimitMinutes}
+          saving={savingTimeLimit}
+          onSave={handleSaveTimeLimit}
+          onClose={() => setShowTimeLimitDialog(false)}
+        />
+      )}
 
       {/* Questions List */}
       {questions.length === 0 ? (

@@ -116,5 +116,7 @@ export interface DraftQuestionSet {
   confirmedPlan?: PlanDraft;
   generatedAt: string;
   status: "DRAFT" | "PUBLISHED";
+  /** Candidate practice time limit in minutes (1–480); null = untimed. Set via PUT .../time-limit. */
+  timeLimitMinutes?: number | null;
   questions: GeneratedQuestion[];
 }

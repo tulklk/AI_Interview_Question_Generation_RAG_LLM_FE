@@ -2258,6 +2258,11 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
     publishMinHint: "Need at least {{min}} questions to publish ({{count}}/{{min}}).",
     saveDraftFirstHint: "Save a draft first to enable publishing.",
     editLockedHint: "This set is published — unpublish it first to add, edit, delete, or reorder questions.",
+    timeLimitLabel: "Time limit: {{min}} min",
+    noTimeLimitLabel: "No time limit",
+    timeLimitEditHint: "Set how long candidates get to complete this set.",
+    timeLimitSaveSuccess: "Time limit updated.",
+    timeLimitSaveFailed: "Couldn't update the time limit. Please try again.",
     notCompletedBanner: "This session has status: {{status}}. Please wait or check back later.",
     questionActions: {
       edit: "Edit",
@@ -2289,6 +2294,16 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
       sampleAnswerPlaceholder: "What would an ideal answer include?",
       addBtn: "Add Question",
       cancelBtn: "Cancel",
+    },
+    timeLimitDialog: {
+      title: "Practice Time Limit",
+      description: "Candidates will be auto-submitted once time runs out. Applies to this question set only.",
+      noLimitLabel: "No time limit",
+      minutesLabel: "Minutes (1–480)",
+      rangeError: "Enter a number between 1 and 480.",
+      cancelBtn: "Cancel",
+      saveBtn: "Save",
+      saving: "Saving…",
     },
     askAI: {
       panelTitle: "Ask AI",

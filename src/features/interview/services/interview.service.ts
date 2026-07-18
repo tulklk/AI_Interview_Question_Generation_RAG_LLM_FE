@@ -802,6 +802,23 @@ export async function unpublishQuestionSet(questionSetId: string): Promise<boole
   }
 }
 
+/**
+ * Sets (or clears, with null) the candidate practice time limit for a question
+ * set — 1–480 minutes. BE rejects this while the set is PUBLISHED (409):
+ * unpublish first.
+ */
+export async function setQuestionSetTimeLimit(
+  questionSetId: string,
+  timeLimitMinutes: number | null
+): Promise<boolean> {
+  try {
+    await apiClient.put(`/api/hr/question-sets/${questionSetId}/time-limit`, { timeLimitMinutes });
+    return true;
+  } catch (err) {
+    throw new Error(extractBeErrorMessage(err));
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Legacy helpers (used by history detail page / results section)
 // ---------------------------------------------------------------------------

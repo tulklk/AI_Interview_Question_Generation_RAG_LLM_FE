@@ -2257,6 +2257,11 @@ Yêu cầu:
     publishMinHint: "Cần tối thiểu {{min}} câu hỏi để đăng ({{count}}/{{min}}).",
     saveDraftFirstHint: "Hãy lưu bản nháp trước để có thể đăng bộ câu hỏi.",
     editLockedHint: "Bộ này đang được publish — hãy unpublish trước để thêm, sửa, xóa hoặc sắp xếp lại câu hỏi.",
+    timeLimitLabel: "Giới hạn: {{min}} phút",
+    noTimeLimitLabel: "Không giới hạn thời gian",
+    timeLimitEditHint: "Đặt thời gian candidate được làm bộ câu hỏi này.",
+    timeLimitSaveSuccess: "Đã cập nhật giới hạn thời gian.",
+    timeLimitSaveFailed: "Không thể cập nhật giới hạn thời gian. Vui lòng thử lại.",
     notCompletedBanner: "Phiên này có trạng thái: {{status}}. Vui lòng chờ hoặc kiểm tra lại sau.",
     questionActions: {
       edit: "Chỉnh sửa",
@@ -2288,6 +2293,16 @@ Yêu cầu:
       sampleAnswerPlaceholder: "Câu trả lời lý tưởng sẽ bao gồm những gì?",
       addBtn: "Thêm câu hỏi",
       cancelBtn: "Hủy",
+    },
+    timeLimitDialog: {
+      title: "Giới hạn thời gian làm bài",
+      description: "Candidate sẽ tự động bị nộp bài khi hết giờ. Chỉ áp dụng cho bộ câu hỏi này.",
+      noLimitLabel: "Không giới hạn thời gian",
+      minutesLabel: "Số phút (1–480)",
+      rangeError: "Nhập số từ 1 đến 480.",
+      cancelBtn: "Hủy",
+      saveBtn: "Lưu",
+      saving: "Đang lưu…",
     },
     askAI: {
       panelTitle: "Hỏi AI",

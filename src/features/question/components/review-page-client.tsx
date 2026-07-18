@@ -20,6 +20,7 @@ interface ReviewPageClientProps {
   publishStatus?: "DRAFT" | "PUBLISHED" | null;
   onPublishStatusChange?: (status: "DRAFT" | "PUBLISHED") => void;
   onDraftSaved?: (questionSetId: string) => void;
+  initialTimeLimitMinutes?: number | null;
 }
 
 export function ReviewPageClient({
@@ -31,6 +32,7 @@ export function ReviewPageClient({
   publishStatus,
   onPublishStatusChange,
   onDraftSaved,
+  initialTimeLimitMinutes,
 }: ReviewPageClientProps) {
   const { t } = useLanguage();
   const rp = t.reviewPage;
@@ -186,6 +188,7 @@ export function ReviewPageClient({
             publishStatus={publishStatus}
             onPublishStatusChange={onPublishStatusChange}
             onDraftSaved={onDraftSaved}
+            initialTimeLimitMinutes={initialTimeLimitMinutes}
           />
         </div>
       )}
