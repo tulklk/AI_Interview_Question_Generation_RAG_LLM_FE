@@ -1872,7 +1872,7 @@ Yêu cầu:
   jobseekerHistoryPage: {
     heading: "Lịch Sử Luyện Tập",
     subtext: "Theo dõi tiến trình của bạn qua tất cả các phiên luyện tập.",
-    statLabels: ["Tổng phiên", "Điểm TB", "Điểm cao nhất", "Thời gian"],
+    statLabels: ["Tổng phiên", "Điểm TB", "Điểm cao nhất", "Thời gian", "Điểm gần nhất"],
     filters: {
       searchPlaceholder: "Tìm theo công ty hoặc vai trò...",
       allTime: "Tất cả",

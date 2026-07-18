@@ -389,6 +389,7 @@ export interface PracticeStats {
   totalSessions: number;
   averageScore: number | null;
   bestScore: number | null;
+  latestScore: number | null;
   totalDurationMinutes: number;
 }
 
@@ -399,6 +400,7 @@ export async function getPracticeStats(): Promise<PracticeStats> {
     totalSessions: pickNumber(src, "totalSessions"),
     averageScore: pickNullableNumber(src, "averageScore"),
     bestScore: pickNullableNumber(src, "bestScore"),
+    latestScore: pickNullableNumber(src, "latestScore"),
     totalDurationMinutes: Math.round(pickNumber(src, "totalDurationSeconds") / 60),
   };
 }

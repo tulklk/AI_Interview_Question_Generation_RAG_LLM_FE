@@ -1873,7 +1873,7 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
   jobseekerHistoryPage: {
     heading: "Practice History",
     subtext: "Track your progress across all practice sessions.",
-    statLabels: ["Total Sessions", "Avg Score", "Best Score", "Time Practiced"],
+    statLabels: ["Total Sessions", "Avg Score", "Best Score", "Time Practiced", "Latest Score"],
     filters: {
       searchPlaceholder: "Search by company or role...",
       allTime: "All Time",

@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { Search, RefreshCw, Eye, BarChart2, Clock, Trophy, BookOpen, ChevronDown, AlertCircle, History as HistoryIcon, Loader2 } from "lucide-react";
+import { Search, RefreshCw, Eye, BarChart2, Clock, Trophy, BookOpen, ChevronDown, AlertCircle, History as HistoryIcon, Loader2, Activity } from "lucide-react";
 import { cn } from "@/lib/cn";
 import {
   listCompletedSessions,
@@ -125,6 +125,7 @@ export function HistoryBoard() {
     { icon: BookOpen, label: p.statLabels[0], value: (stats?.totalSessions ?? 0).toString(), bg: iconBg, color: iconColor },
     { icon: BarChart2, label: p.statLabels[1], value: stats?.averageScore != null ? `${stats.averageScore}%` : "—", bg: iconBg, color: iconColor },
     { icon: Trophy, label: p.statLabels[2], value: stats?.bestScore != null ? `${stats.bestScore}%` : "—", bg: iconBg, color: iconColor },
+    { icon: Activity, label: p.statLabels[4], value: stats?.latestScore != null ? `${stats.latestScore}%` : "—", bg: iconBg, color: iconColor },
     { icon: Clock, label: p.statLabels[3], value: `${stats?.totalDurationMinutes ?? 0} min`, bg: iconBg, color: iconColor },
   ];
 
@@ -156,7 +157,7 @@ export function HistoryBoard() {
   return (
     <div>
       {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
         {statCards.map((s, i) => (
           <motion.div
             key={s.label}
