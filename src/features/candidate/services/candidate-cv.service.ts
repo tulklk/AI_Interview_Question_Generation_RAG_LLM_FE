@@ -91,9 +91,18 @@ export async function uploadCv(file: File): Promise<UploadCvResult> {
       headers: { "Content-Type": "multipart/form-data" },
     });
   } catch (err) {
-    const response = (err as { response?: { status?: number; data?: { error?: string; detail?: string } } }).response;
+    const response = (err as {
+      response?: { status?: number; data?: { error?: string; detail?: string; stage?: string; source?: string } };
+    }).response;
     const message = response?.data?.error ?? response?.data?.detail;
-    if (response?.status === 400) {
+    // BE returns 400 for two different situations: a true validation rejection
+    // (wrong format/size — nothing saved) and a CV_PARSE/RAG failure, where the
+    // file IS saved server-side despite the 400. Only the former is a real
+    // CvValidationError; the latter must go through the same "saved but analysis
+    // failed" recovery as non-400 errors, or the UI wrongly looks like nothing
+    // happened (verified live: BE saves the file and GET reflects it).
+    const isParseFailure = Boolean(response?.data?.stage || response?.data?.source);
+    if (response?.status === 400 && !isParseFailure) {
       throw new CvValidationError(message || "Invalid file");
     }
     const cv = await getCv().catch(() => null);
