@@ -180,7 +180,7 @@ export function SetDetail({ set }: SetDetailProps) {
               {set.rating !== undefined && (
                 <span className="flex items-center gap-1.5">
                   <Star size={14} className="text-amber-400 fill-amber-400" />
-                  <span className={cn("font-[600]", portalHeadingAlt)}>{set.rating}</span>
+                  <span className={cn("font-[600]", portalHeadingAlt)}>{set.rating!.toFixed(1)}</span>
                 </span>
               )}
             </div>

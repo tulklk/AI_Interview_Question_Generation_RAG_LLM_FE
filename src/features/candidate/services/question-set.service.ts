@@ -117,6 +117,20 @@ function normalizeQuestionSet(raw: unknown): QuestionSet | null {
   // null (or absent) means "no limit" per the BE contract — pickNumber already
   // collapses both to undefined, which QuestionSet.timeLimitMinutes treats the same way.
   const timeLimitMinutes = pickNumber(src, "timeLimitMinutes");
+  // BE's rating is on a 0–10 scale (confirmed live: values of 10, 2.5, 0) but the
+  // UI is a 5-star widget — convert here so every consumer gets an already-correct
+  // 0–5 value instead of each one re-deriving it.
+  const rawRating = pickNumber(src, "rating");
+  const rating = rawRating !== undefined ? Math.round(rawRating * 5) / 10 : undefined;
+
+  // BE now populates top-level skills[] on both list and detail endpoints
+  // (previously always empty, even though each question carried its own real
+  // `skill` tag — fixed BE-side). Keep the derive-from-questions fallback for
+  // safety in case a set predates the fix or skills[] is empty for any reason.
+  const topLevelSkills = pickStringArray(src, "skills");
+  const skills = topLevelSkills.length > 0
+    ? topLevelSkills
+    : Array.from(new Set(questions.map((q) => q.skill).filter((s): s is string => Boolean(s))));
 
   return {
     id: id || title,
@@ -126,12 +140,12 @@ function normalizeQuestionSet(raw: unknown): QuestionSet | null {
     companyInitials: getCompanyInitials(companyName || title),
     companyColor: getCompanyColor(companyName || id),
     difficulty: normalizeDifficulty(src.difficulty),
-    skills: pickStringArray(src, "skills"),
+    skills,
     totalQuestions,
     estimatedTime: formatEstimatedTime(estimatedTimeMinutes),
     estimatedTimeMinutes,
     timeLimitMinutes,
-    rating: pickNumber(src, "rating"),
+    rating,
     attempts: pickNumber(src, "attempts", "attemptCount"),
     questions,
   };

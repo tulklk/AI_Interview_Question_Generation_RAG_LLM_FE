@@ -213,7 +213,7 @@ export function QuestionSetCard({ set, initialBookmarked = false, onBookmarkChan
                 }
               />
             ))}
-            <span className={cn("text-[12px] font-[600] ml-1", portalHeadingAlt)}>{set.rating}</span>
+            <span className={cn("text-[12px] font-[600] ml-1", portalHeadingAlt)}>{set.rating!.toFixed(1)}</span>
           </div>
         )}
       </div>
