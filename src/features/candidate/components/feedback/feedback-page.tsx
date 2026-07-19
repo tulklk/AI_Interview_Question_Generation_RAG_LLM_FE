@@ -9,11 +9,12 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { useLanguage } from "@/shared/providers/language-context";
-import type { PracticeSessionDetail, SessionFeedback } from "@/features/candidate/services/practice-session.service";
+import type { PracticeSessionDetail, AnswerEvaluation } from "@/features/candidate/services/practice-session.service";
 import { CategoryPill, Pill, formatCategoryLabel, getScoreLevel, getScoreBadgeClass } from "@/features/candidate/components/ui/pill";
 import { getCompanyColor, getCompanyInitials } from "@/features/candidate/utils/company-visual";
 import { useChartTheme } from "@/shared/hooks/use-chart-theme";
 import { ConfettiBurst } from "@/shared/components/common/confetti-burst";
+import { FeedbackRadarChart } from "./feedback-radar-chart";
 import { useToast } from "@/shared/providers/toast-context";
 import {
   portalHeadingAlt,
@@ -21,6 +22,27 @@ import {
 } from "@/shared/utils/portal-ui";
 
 const CELEBRATION_THRESHOLD = 80;
+
+/** Averages each dimension key (clarity/depth/structure/relevance, ...) across
+ * every question that has a dimensionScores breakdown. Returns null if none do —
+ * the radar chart section is simply omitted rather than showing fabricated data. */
+function aggregateDimensionScores(feedback: Record<string, AnswerEvaluation>): { skill: string; score: number }[] | null {
+  const sums: Record<string, { total: number; count: number }> = {};
+  Object.values(feedback).forEach((fb) => {
+    if (!fb.dimensionScores) return;
+    Object.entries(fb.dimensionScores).forEach(([key, value]) => {
+      sums[key] ??= { total: 0, count: 0 };
+      sums[key].total += value;
+      sums[key].count += 1;
+    });
+  });
+  const keys = Object.keys(sums);
+  if (keys.length === 0) return null;
+  return keys.map((key) => ({
+    skill: formatCategoryLabel(key),
+    score: Math.round(sums[key].total / sums[key].count),
+  }));
+}
 
 function ScoreRing({ score, trackStroke }: { score: number; trackStroke: string }) {
   const radius = 52;
@@ -77,7 +99,7 @@ function PendingScoreRing({ scoring, trackStroke }: { scoring: boolean; trackStr
 
 interface FeedbackPageProps {
   session: PracticeSessionDetail;
-  feedback: SessionFeedback | null;
+  feedback: Record<string, AnswerEvaluation>;
   scoring: boolean;
   setTitle?: string;
   companyName?: string;
@@ -94,7 +116,8 @@ export function FeedbackPage({ session, feedback, scoring, setTitle, companyName
   const { label: scoreLevelLabel, badgeClass: scoreLevelBadgeClass } = getScoreLevel(score, p.scoreLevels);
 
   const answeredQuestions = session.questions.filter((q) => q.answerText);
-  const feedbackByQuestionId = new Map((feedback?.items ?? []).map((item) => [item.questionId, item]));
+  const feedbackByQuestionId = new Map(Object.entries(feedback));
+  const radarData = aggregateDimensionScores(feedback);
 
   const [expandedIds, setExpandedIds] = useState<Set<string>>(
     () => new Set(answeredQuestions.length > 0 ? [answeredQuestions[0].id] : [])
@@ -235,6 +258,19 @@ export function FeedbackPage({ session, feedback, scoring, setTitle, companyName
           </button>
         </div>
       </motion.div>
+
+      {/* ── Skill Breakdown (radar) — only when at least one question has dimension scores ── */}
+      {radarData && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="hr-glass-card p-5 sm:p-6 mb-6"
+        >
+          <h2 className={cn("text-[16px] font-[700] mb-2", portalHeadingAlt)}>{p.skillBreakdown}</h2>
+          <FeedbackRadarChart data={radarData} />
+        </motion.div>
+      )}
 
       {/* ── Question Reviews ─────────────────────────────────────── */}
       {answeredQuestions.length > 0 && (

@@ -9,10 +9,10 @@ import { AiLoadingSpinner } from "@/shared/components/common/ai-loading-spinner"
 import { FeedbackPage } from "./feedback-page";
 import {
   getPracticeSession,
-  getSessionFeedback,
+  readAnswerEvaluations,
   ForbiddenError,
   type PracticeSessionDetail,
-  type SessionFeedback,
+  type AnswerEvaluation,
 } from "@/features/candidate/services/practice-session.service";
 import { getQuestionSetById } from "@/features/candidate/services/question-set.service";
 import type { QuestionSet } from "@/features/candidate/types/jobseeker";
@@ -32,7 +32,7 @@ export function FeedbackResultClient() {
   const p = t.jobseekerFeedbackPage;
 
   const [session, setSession] = useState<PracticeSessionDetail | null>(null);
-  const [feedback, setFeedback] = useState<SessionFeedback | null>(null);
+  const [feedback, setFeedback] = useState<Record<string, AnswerEvaluation>>({});
   const [set, setSet] = useState<QuestionSet | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -49,17 +49,16 @@ export function FeedbackResultClient() {
     setError(false);
     setForbidden(false);
     setSet(null);
-    setFeedback(null);
+    setFeedback({});
     pollAttemptsRef.current = 0;
 
     function pollScore(id: string) {
       pollTimerRef.current = setTimeout(() => {
         if (cancelled) return;
-        Promise.all([getPracticeSession(id), getSessionFeedback(id).catch(() => null)])
-          .then(([s, fb]) => {
+        getPracticeSession(id)
+          .then((s) => {
             if (cancelled || !s) return;
             setSession(s);
-            if (fb) setFeedback(fb);
             if (s.overallScore !== null) {
               setScoring(false);
               return;
@@ -75,15 +74,17 @@ export function FeedbackResultClient() {
       }, SCORE_POLL_INTERVAL_MS);
     }
 
-    Promise.all([getPracticeSession(sessionId), getSessionFeedback(sessionId).catch(() => null)])
-      .then(([s, fb]) => {
+    getPracticeSession(sessionId)
+      .then((s) => {
         if (cancelled) return;
         if (!s) {
           setError(true);
           return;
         }
         setSession(s);
-        if (fb) setFeedback(fb);
+        // Per-question AI evaluation only ever arrives inline in the submit-answer
+        // response (captured live during the session) — read whatever was saved.
+        setFeedback(readAnswerEvaluations(s.id));
         if (s.overallScore === null) {
           setScoring(true);
           pollScore(s.id);

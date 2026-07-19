@@ -190,35 +190,6 @@ export async function getPracticeSession(sessionId: string): Promise<PracticeSes
   }
 }
 
-// ---------------------------------------------------------------------------
-// Per-question AI feedback (SCRUM-282) — separate from the plain session
-// detail above: this carries the actual AI evaluation (score, strengths,
-// improvements, suggestion) per answered question, not just the answer text.
-// evaluationStatus/score/etc. are null/empty per-item while that question's
-// evaluation hasn't succeeded yet (still processing, or permanently failed).
-// ---------------------------------------------------------------------------
-
-export interface QuestionFeedbackItem {
-  questionId: string;
-  questionText: string;
-  questionType: string;
-  difficulty: Difficulty;
-  answerText: string;
-  score: number | null;
-  strengths: string[];
-  improvements: string[];
-  suggestion: string | null;
-  dimensionScores: Record<string, number> | null;
-  evaluationStatus: string;
-}
-
-export interface SessionFeedback {
-  sessionId: string;
-  overallScore: number | null;
-  status: string;
-  items: QuestionFeedbackItem[];
-}
-
 function normalizeDimensionScores(raw: unknown): Record<string, number> | null {
   const src = asRecord(raw);
   if (!src) return null;
@@ -229,17 +200,28 @@ function normalizeDimensionScores(raw: unknown): Record<string, number> | null {
   return Object.keys(out).length > 0 ? out : null;
 }
 
-function normalizeFeedbackItem(raw: unknown): QuestionFeedbackItem | null {
-  const src = asRecord(raw);
+/**
+ * Per-question AI evaluation. BE has no GET endpoint for this — it's only ever
+ * returned inline, once, in the POST .../answers response — so it's captured
+ * there and carried to the results page via sessionStorage (see
+ * saveAnswerEvaluation/readAnswerEvaluations below). If the candidate views
+ * results in a new tab/browser session, this data is simply unavailable and
+ * the per-question breakdown is omitted — a real limitation of not having a
+ * persisted BE source, not a bug in the FE capture itself.
+ */
+export interface AnswerEvaluation {
+  score: number | null;
+  strengths: string[];
+  improvements: string[];
+  suggestion: string | null;
+  dimensionScores: Record<string, number> | null;
+  evaluationStatus: string;
+}
+
+function normalizeAnswerEvaluation(raw: unknown): AnswerEvaluation | null {
+  const src = extractData(raw);
   if (!src) return null;
-  const questionId = pickString(src, "questionId", "id");
-  if (!questionId) return null;
   return {
-    questionId,
-    questionText: pickString(src, "questionText", "question"),
-    questionType: pickString(src, "questionType") || "technical",
-    difficulty: normalizeDifficulty(src.difficulty),
-    answerText: pickString(src, "answerText"),
     score: pickNullableNumber(src, "score"),
     strengths: Array.isArray(src.strengths) ? src.strengths.filter((s): s is string => typeof s === "string") : [],
     improvements: Array.isArray(src.improvements) ? src.improvements.filter((s): s is string => typeof s === "string") : [],
@@ -249,25 +231,28 @@ function normalizeFeedbackItem(raw: unknown): QuestionFeedbackItem | null {
   };
 }
 
-/** Full per-question AI feedback for a session. Only the session's owner can fetch it. */
-export async function getSessionFeedback(sessionId: string): Promise<SessionFeedback | null> {
+function feedbackStorageKey(sessionId: string): string {
+  return `practice-feedback-${sessionId}`;
+}
+
+export function readAnswerEvaluations(sessionId: string): Record<string, AnswerEvaluation> {
+  if (typeof window === "undefined") return {};
   try {
-    const res = await apiClient.get(`${BASE}/${sessionId}/feedback`);
-    const src = extractData(res.data);
-    if (!src) return null;
-    const rawItems = src.items;
-    return {
-      sessionId: pickString(src, "sessionId") || sessionId,
-      overallScore: pickNullableNumber(src, "overallScore"),
-      status: pickString(src, "status"),
-      items: Array.isArray(rawItems)
-        ? rawItems.map(normalizeFeedbackItem).filter((i): i is QuestionFeedbackItem => i !== null)
-        : [],
-    };
-  } catch (err) {
-    const status = (err as { response?: { status?: number } })?.response?.status;
-    if (status === 404) return null;
-    rethrowForbidden(err);
+    const raw = window.sessionStorage.getItem(feedbackStorageKey(sessionId));
+    return raw ? (JSON.parse(raw) as Record<string, AnswerEvaluation>) : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveAnswerEvaluation(sessionId: string, questionId: string, evaluation: AnswerEvaluation): void {
+  if (typeof window === "undefined") return;
+  try {
+    const map = readAnswerEvaluations(sessionId);
+    map[questionId] = evaluation;
+    window.sessionStorage.setItem(feedbackStorageKey(sessionId), JSON.stringify(map));
+  } catch {
+    // Best-effort only — worst case that question's AI eval just doesn't render later.
   }
 }
 
@@ -295,11 +280,19 @@ export async function findInProgressSession(questionSetId: string): Promise<{ se
   }
 }
 
+/**
+ * Submits an answer. The response carries that question's AI evaluation
+ * (score/strengths/improvements/suggestion) inline — captured to sessionStorage
+ * here (see readAnswerEvaluations) since there's no way to fetch it again later.
+ */
 export async function submitAnswer(
   sessionId: string,
   payload: { questionId: string; answerText: string }
-): Promise<void> {
-  await apiClient.post(`${BASE}/${sessionId}/answers`, payload);
+): Promise<AnswerEvaluation | null> {
+  const res = await apiClient.post(`${BASE}/${sessionId}/answers`, payload);
+  const evaluation = normalizeAnswerEvaluation(res.data);
+  if (evaluation) saveAnswerEvaluation(sessionId, payload.questionId, evaluation);
+  return evaluation;
 }
 
 export interface CompleteSessionResult {
