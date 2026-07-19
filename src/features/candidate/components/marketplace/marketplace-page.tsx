@@ -20,6 +20,20 @@ import {
 
 const DIFFICULTIES: Array<"All" | Difficulty> = ["All", "Easy", "Medium", "Hard"];
 const PAGE_SIZE = 12;
+// BE's Keyword filter only matches the question-set title, not company name or
+// skills — even though the search box explicitly promises "role, company, or
+// skill". When searching, fetch a larger batch (ignoring Keyword) and match
+// title/company/skills client-side instead so company search actually works.
+const SEARCH_FETCH_SIZE = 200;
+
+function matchesSearchTerm(set: QuestionSet, term: string): boolean {
+  const q = term.toLowerCase();
+  return (
+    set.title.toLowerCase().includes(q) ||
+    set.company.toLowerCase().includes(q) ||
+    set.skills.some((s) => s.toLowerCase().includes(q))
+  );
+}
 
 const fadeUp: Variants = {
   hidden: { opacity: 0, y: 20 },
@@ -83,17 +97,22 @@ export function MarketplacePage() {
     setLoading(true);
     setError(false);
 
+    const term = debouncedSearch.trim();
+    const isSearching = term.length > 0;
+
     listQuestionSets({
-      keyword: debouncedSearch || undefined,
+      // While searching, skip server-side Keyword (title-only) entirely and
+      // instead pull a larger batch to filter client-side across title/company/skills.
       difficulty: difficulty === "All" ? undefined : difficulty,
       skills: selectedSkills.length > 0 ? selectedSkills : undefined,
       page: 1,
-      pageSize: PAGE_SIZE,
+      pageSize: isSearching ? SEARCH_FETCH_SIZE : PAGE_SIZE,
     })
       .then((res) => {
         if (cancelled) return;
-        setSets(res.items);
-        setTotalCount(res.totalCount);
+        const items = isSearching ? res.items.filter((s) => matchesSearchTerm(s, term)) : res.items;
+        setSets(items);
+        setTotalCount(isSearching ? items.length : res.totalCount);
         setPage(1);
       })
       .catch(() => {
@@ -112,7 +131,6 @@ export function MarketplacePage() {
     const nextPage = page + 1;
     setLoadingMore(true);
     listQuestionSets({
-      keyword: debouncedSearch || undefined,
       difficulty: difficulty === "All" ? undefined : difficulty,
       skills: selectedSkills.length > 0 ? selectedSkills : undefined,
       page: nextPage,
@@ -298,8 +316,9 @@ export function MarketplacePage() {
         </div>
       )}
 
-      {/* Load more */}
-      {!loading && !error && sets.length > 0 && sets.length < totalCount && (
+      {/* Load more — hidden while searching, since that fetch already pulls a large
+          enough batch to filter client-side rather than paging through it. */}
+      {!loading && !error && !debouncedSearch.trim() && sets.length > 0 && sets.length < totalCount && (
         <div className="flex justify-center mt-8">
           <button
             type="button"
