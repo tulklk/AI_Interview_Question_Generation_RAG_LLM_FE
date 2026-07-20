@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Search, Filter, Clock, Briefcase, Activity, Download, ChevronDown, Check } from "lucide-react";
+import { Search, Filter, Clock, Briefcase, Activity, Globe, Download, ChevronDown, Check } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { useLanguage } from "@/shared/providers/language-context";
 
@@ -142,6 +142,8 @@ interface HistoryFiltersProps {
   onExperienceChange: (v: string) => void;
   status: string;
   onStatusChange: (v: string) => void;
+  publishStatus: string;
+  onPublishStatusChange: (v: string) => void;
 }
 
 export function HistoryFilters({
@@ -155,6 +157,8 @@ export function HistoryFilters({
   onExperienceChange,
   status,
   onStatusChange,
+  publishStatus,
+  onPublishStatusChange,
 }: HistoryFiltersProps) {
   const { t } = useLanguage();
   const hf = t.historyPage.filters;
@@ -168,6 +172,11 @@ export function HistoryFilters({
     { value: "PLAN_PROPOSED", label: hf.statusPlanProposed },
     { value: "IN_PROGRESS",  label: hf.statusInProgress },
     { value: "FAILED",       label: hf.statusFailed },
+  ];
+  const publishStatuses: FilterOption[] = [
+    { value: "",          label: hf.allPublishStatus },
+    { value: "PUBLISHED", label: hf.publishStatusPublished },
+    { value: "DRAFT",     label: hf.publishStatusDraft },
   ];
 
   return (
@@ -199,6 +208,7 @@ export function HistoryFilters({
         <FilterSelect value={level}      options={levels}      onChange={onLevelChange}      icon={<Clock     size={13} />} />
         <FilterSelect value={experience} options={experiences} onChange={onExperienceChange} icon={<Briefcase size={13} />} />
         <FilterSelect value={status}     options={statuses}    onChange={onStatusChange}     icon={<Activity  size={13} />} />
+        <FilterSelect value={publishStatus} options={publishStatuses} onChange={onPublishStatusChange} icon={<Globe size={13} />} />
 
         <button
           type="button"

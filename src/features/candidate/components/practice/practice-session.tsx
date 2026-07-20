@@ -1,27 +1,75 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useAnimationControls } from "framer-motion";
 import {
   Timer, ChevronLeft, ChevronRight, Send, X,
-  Loader2, Sparkles, CheckCircle2,
+  Loader2, Sparkles, CheckCircle2, AlertCircle, RefreshCw, Lock,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { useLanguage } from "@/shared/providers/language-context";
 import type { QuestionSet } from "@/features/candidate/types/jobseeker";
-import { Pill, getCategoryBadgeClass, getDifficultyBadgeClass } from "@/features/candidate/components/ui/pill";
+import { CategoryPill, DifficultyPill, formatCategoryLabel } from "@/features/candidate/components/ui/pill";
 import {
   portalDivider,
   portalHeadingAlt,
   portalSubtextAlt,
 } from "@/shared/utils/portal-ui";
 import { ConfirmDialog } from "@/shared/components/ui/confirm-dialog";
+import { AiLoadingSpinner } from "@/shared/components/common/ai-loading-spinner";
+import { useToast } from "@/shared/providers/toast-context";
+import {
+  startPracticeSession,
+  submitAnswer as submitAnswerApi,
+  completePracticeSession,
+  abandonPracticeSession,
+  getPracticeSession,
+  ForbiddenError,
+} from "@/features/candidate/services/practice-session.service";
 
 function formatTime(seconds: number) {
   const m = Math.floor(seconds / 60).toString().padStart(2, "0");
   const s = (seconds % 60).toString().padStart(2, "0");
   return `${m}:${s}`;
+}
+
+function draftKey(sessionId: string, questionId: string) {
+  return `practice-draft-${sessionId}-${questionId}`;
+}
+
+interface ProgressDotProps {
+  active: boolean;
+  submitted: boolean;
+  onClick: () => void;
+}
+
+function ProgressDot({ active, submitted, onClick }: ProgressDotProps) {
+  const controls = useAnimationControls();
+  const wasSubmitted = useRef(submitted);
+
+  useEffect(() => {
+    if (submitted && !wasSubmitted.current) {
+      controls.start({ scale: [1, 1.7, 1], transition: { duration: 0.4, ease: "easeOut" } });
+    }
+    wasSubmitted.current = submitted;
+  }, [submitted, controls]);
+
+  return (
+    <motion.button
+      type="button"
+      onClick={onClick}
+      animate={controls}
+      className={cn(
+        "rounded-full transition-all duration-200",
+        active
+          ? "w-6 h-2 bg-primary"
+          : submitted
+          ? "w-2 h-2 bg-emerald-400"
+          : "w-2 h-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600"
+      )}
+    />
+  );
 }
 
 interface PracticeSessionProps {
@@ -31,15 +79,43 @@ interface PracticeSessionProps {
 export function PracticeSession({ set }: PracticeSessionProps) {
   const { t } = useLanguage();
   const router = useRouter();
+  const { addToast } = useToast();
   const p = t.jobseekerPracticePage;
 
   const [currentIdx, setCurrentIdx] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [submitted, setSubmitted] = useState<Record<string, boolean>>({});
   const [evaluating, setEvaluating] = useState(false);
-  const [timeLeft, setTimeLeft] = useState(45 * 60); // 45 min
+  const [submitError, setSubmitError] = useState(false);
+  const [timeLeft, setTimeLeft] = useState(0);
   const [direction, setDirection] = useState(1);
   const [exitOpen, setExitOpen] = useState(false);
+  const [abandoning, setAbandoning] = useState(false);
+
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [startedAt, setStartedAt] = useState<string | null>(null);
+  // Absolute deadline BE enforces server-side (startedAt + the set's configured
+  // time limit); null = untimed. Unlike a client-tracked "elapsed since start"
+  // countdown, this can't be paused by leaving the page — BE auto-completes at
+  // this exact moment regardless of whether the candidate is looking at it, so
+  // the display must match that rather than pretend time stops on exit.
+  const [expiresAt, setExpiresAt] = useState<string | null>(null);
+  const hasTimeLimit = expiresAt !== null;
+  const [resumed, setResumed] = useState(false);
+  const [starting, setStarting] = useState(true);
+  const [startError, setStartError] = useState(false);
+  const [startForbidden, setStartForbidden] = useState(false);
+  const [finishing, setFinishing] = useState(false);
+  const [finishError, setFinishError] = useState(false);
+  const [startAttempt, setStartAttempt] = useState(0);
+
+  const restoredDraftIds = useRef(new Set<string>());
+  const timeUpRef = useRef(false);
+  const evaluatingRef = useRef(false);
+
+  useEffect(() => {
+    evaluatingRef.current = evaluating;
+  }, [evaluating]);
 
   const question = set.questions[currentIdx];
   const totalQuestions = set.questions.length;
@@ -48,43 +124,229 @@ export function PracticeSession({ set }: PracticeSessionProps) {
   const isSubmitted = submitted[question.id] ?? false;
   const isLast = currentIdx === totalQuestions - 1;
 
-  // Countdown timer
+  // Start (or auto-resume, server-side) the practice session for this set. The
+  // response's questions[] already carry any previously-submitted answerText.
   useEffect(() => {
-    const id = setInterval(() => {
-      setTimeLeft((prev) => Math.max(0, prev - 1));
-    }, 1000);
-    return () => clearInterval(id);
-  }, []);
+    let cancelled = false;
+    setStarting(true);
+    setStartError(false);
+    setStartForbidden(false);
+
+    startPracticeSession(set.id)
+      .then((session) => {
+        if (cancelled) return;
+        const submittedMap: Record<string, boolean> = {};
+        const answersMap: Record<string, string> = {};
+        session.questions.forEach((q) => {
+          if (q.answerText) {
+            submittedMap[q.id] = true;
+            answersMap[q.id] = q.answerText;
+          }
+        });
+        const wasResumed = Object.keys(submittedMap).length > 0;
+        setSessionId(session.id);
+        setStartedAt(session.startedAt ?? new Date().toISOString());
+        setExpiresAt(session.expiresAt);
+        setSubmitted(submittedMap);
+        setAnswers((prev) => ({ ...prev, ...answersMap }));
+        setResumed(wasResumed);
+        if (wasResumed) addToast("success", p.resumedToast);
+        const firstUnanswered = set.questions.findIndex((q) => !submittedMap[q.id]);
+        setCurrentIdx(firstUnanswered === -1 ? set.questions.length - 1 : firstUnanswered);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        if (err instanceof ForbiddenError) setStartForbidden(true);
+        else setStartError(true);
+      })
+      .finally(() => {
+        if (!cancelled) setStarting(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [set.id, startAttempt]);
+
+  // Countdown timer — computed from the session's absolute expiresAt (BE-enforced,
+  // untouched by leaving the page). Browsers throttle setInterval in background
+  // tabs, so the display can lag while unfocused; resync immediately on
+  // visibilitychange so it catches up right away instead of waiting for the next
+  // (possibly delayed) tick.
+  useEffect(() => {
+    if (!expiresAt || !sessionId) return;
+    const deadlineMs = new Date(expiresAt).getTime();
+
+    function tick() {
+      const remaining = Math.floor((deadlineMs - Date.now()) / 1000);
+      setTimeLeft(Math.max(0, remaining));
+
+      // Auto-submit once time is up. If an answer submission is mid-flight, wait
+      // for it to settle (evaluatingRef) — the next tick (≤1s later) retries.
+      if (remaining <= 0 && !timeUpRef.current && !evaluatingRef.current) {
+        timeUpRef.current = true;
+        addToast("error", p.timeUpToast);
+        handleFinish();
+      }
+    }
+    tick();
+    const intervalId = setInterval(tick, 1000);
+    function onVisibilityChange() {
+      if (document.visibilityState === "visible") tick();
+    }
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => {
+      clearInterval(intervalId);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
+  }, [expiresAt, sessionId]);
+
+  // Restore an unsubmitted draft answer for the current question from sessionStorage (once per question).
+  useEffect(() => {
+    if (!sessionId || !question || typeof window === "undefined") return;
+    if (restoredDraftIds.current.has(question.id)) return;
+    restoredDraftIds.current.add(question.id);
+    if (submitted[question.id]) return;
+    const saved = window.sessionStorage.getItem(draftKey(sessionId, question.id));
+    if (saved) {
+      setAnswers((prev) => (prev[question.id] !== undefined ? prev : { ...prev, [question.id]: saved }));
+    }
+  }, [sessionId, question, submitted]);
 
   function navigate(delta: number) {
     setDirection(delta);
     setCurrentIdx((i) => Math.min(Math.max(0, i + delta), totalQuestions - 1));
   }
 
+  function handleAnswerChange(value: string) {
+    setAnswers((prev) => ({ ...prev, [question.id]: value }));
+    if (sessionId && typeof window !== "undefined") {
+      window.sessionStorage.setItem(draftKey(sessionId, question.id), value);
+    }
+  }
+
   const handleSubmitAnswer = useCallback(() => {
-    if (!currentAnswer.trim() || isSubmitted) return;
+    if (!currentAnswer.trim() || isSubmitted || !sessionId) return;
     setEvaluating(true);
-    setTimeout(() => {
-      setEvaluating(false);
-      setSubmitted((prev) => ({ ...prev, [question.id]: true }));
-      // Auto-advance if not last
-      if (!isLast) {
-        setTimeout(() => navigate(1), 600);
-      }
-    }, 2000);
-  }, [currentAnswer, isSubmitted, question.id, isLast]);
+    setSubmitError(false);
+    submitAnswerApi(sessionId, { questionId: question.id, answerText: currentAnswer })
+      .then(() => {
+        setSubmitted((prev) => ({ ...prev, [question.id]: true }));
+        if (typeof window !== "undefined") {
+          window.sessionStorage.removeItem(draftKey(sessionId, question.id));
+        }
+        if (!isLast) {
+          setTimeout(() => navigate(1), 600);
+        }
+      })
+      .catch(() => {
+        setSubmitError(true);
+        addToast("error", p.submitFailed);
+      })
+      .finally(() => setEvaluating(false));
+  }, [currentAnswer, isSubmitted, question.id, isLast, sessionId, addToast, p.submitFailed]);
 
   function handleFinish() {
-    router.push(`/jobseeker/practice/${set.id}/result`);
+    if (!sessionId) return;
+    setFinishing(true);
+    setFinishError(false);
+    completePracticeSession(sessionId)
+      .then(() => {
+        router.push(`/jobseeker/practice/${sessionId}/result`);
+      })
+      .catch(async () => {
+        // BE now enforces the question set's own time limit server-side and can
+        // auto-complete a session before our client-side auto-submit reaches it —
+        // complete() then 400s even though the session is actually done. Check
+        // the real status before surfacing an error the candidate can't recover from.
+        const existing = await getPracticeSession(sessionId).catch(() => null);
+        if (existing && existing.status !== "IN_PROGRESS") {
+          router.push(`/jobseeker/practice/${sessionId}/result`);
+          return;
+        }
+        setFinishError(true);
+        setFinishing(false);
+        addToast("error", p.finishFailed);
+      });
+  }
+
+  function handleAbandon() {
+    if (!sessionId || abandoning) return;
+    setAbandoning(true);
+    abandonPracticeSession(sessionId)
+      .then(() => {
+        if (typeof window !== "undefined") {
+          set.questions.forEach((q) => window.sessionStorage.removeItem(draftKey(sessionId, q.id)));
+        }
+        router.push(`/jobseeker/sets/${set.id}`);
+      })
+      .catch(async () => {
+        // Same server-side timeout race as handleFinish — if the session already
+        // isn't IN_PROGRESS anymore, there's nothing left to abandon; leaving is
+        // still the right outcome, just without a scary error.
+        const existing = await getPracticeSession(sessionId).catch(() => null);
+        if (existing && existing.status !== "IN_PROGRESS") {
+          if (typeof window !== "undefined") {
+            set.questions.forEach((q) => window.sessionStorage.removeItem(draftKey(sessionId, q.id)));
+          }
+          router.push(`/jobseeker/sets/${set.id}`);
+          return;
+        }
+        setAbandoning(false);
+        addToast("error", p.abandonFailed);
+      });
   }
 
   const allAnswered = set.questions.every((q) => submitted[q.id]);
+  const unansweredCount = set.questions.filter((q) => !submitted[q.id]).length;
+
+  function goToFirstUnanswered() {
+    const idx = set.questions.findIndex((q) => !submitted[q.id]);
+    if (idx === -1) return;
+    setDirection(idx > currentIdx ? 1 : -1);
+    setCurrentIdx(idx);
+  }
 
   const variants = {
     enter:  (dir: number) => ({ opacity: 0, x: dir > 0 ? 40 : -40 }),
     center: { opacity: 1, x: 0 },
     exit:   (dir: number) => ({ opacity: 0, x: dir > 0 ? -40 : 40 }),
   };
+
+  if (starting) {
+    return (
+      <div className="min-h-screen hr-main-bg flex items-center justify-center">
+        <AiLoadingSpinner text={p.startingSession} />
+      </div>
+    );
+  }
+
+  if (startForbidden) {
+    return (
+      <div className="min-h-screen hr-main-bg flex flex-col items-center justify-center gap-3 px-4 text-center">
+        <Lock size={28} className="text-gray-400 dark:text-gray-500" />
+        <p className={cn("text-[14px]", portalSubtextAlt)}>{p.startForbidden}</p>
+      </div>
+    );
+  }
+
+  if (startError || !sessionId) {
+    return (
+      <div className="min-h-screen hr-main-bg flex flex-col items-center justify-center gap-3 px-4 text-center">
+        <AlertCircle size={28} className="text-red-500" />
+        <p className={cn("text-[14px]", portalSubtextAlt)}>{p.startFailed}</p>
+        <button
+          type="button"
+          onClick={() => setStartAttempt((n) => n + 1)}
+          className="flex items-center gap-2 text-[13px] font-semibold text-primary hover:underline"
+        >
+          <RefreshCw size={13} />
+          {p.retryBtn}
+        </button>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -97,6 +359,7 @@ export function PracticeSession({ set }: PracticeSessionProps) {
       variant="danger"
       onConfirm={() => router.push(`/jobseeker/sets/${set.id}`)}
       onCancel={() => setExitOpen(false)}
+      extraAction={{ label: p.abandonBtn, onClick: handleAbandon, loading: abandoning }}
     />
     <div className="min-h-screen hr-main-bg flex flex-col">
       {/* ── Top bar ─────────────────────────────────────────────────── */}
@@ -110,6 +373,11 @@ export function PracticeSession({ set }: PracticeSessionProps) {
             <p className={cn("text-[13px] font-[600] leading-none truncate", portalHeadingAlt)}>{set.title}</p>
             <p className={cn("text-[11px] mt-0.5", portalSubtextAlt)}>{set.company}</p>
           </div>
+          {resumed && (
+            <span className="hidden md:inline-flex items-center text-[10px] font-[600] px-2 py-0.5 rounded-full bg-primary/10 text-primary shrink-0">
+              {p.resumedBadge}
+            </span>
+          )}
         </div>
 
         {/* Center: progress */}
@@ -129,13 +397,19 @@ export function PracticeSession({ set }: PracticeSessionProps) {
 
         {/* Right: timer + exit */}
         <div className="flex items-center gap-2 sm:gap-4 shrink-0">
-          <div className={cn(
-            "flex items-center gap-1.5 text-[12px] sm:text-[13px] font-[600] tabular-nums",
-            timeLeft < 300 ? "text-red-500" : portalSubtextAlt
-          )}>
-            <Timer size={13} />
-            {formatTime(timeLeft)}
-          </div>
+          {hasTimeLimit && (
+            <motion.div
+              animate={timeLeft < 300 ? { scale: [1, 1.08, 1] } : { scale: 1 }}
+              transition={timeLeft < 300 ? { duration: 1, repeat: Infinity, ease: "easeInOut" } : undefined}
+              className={cn(
+                "flex items-center gap-1.5 text-[12px] sm:text-[13px] font-[600] tabular-nums",
+                timeLeft < 300 ? "text-red-500" : portalSubtextAlt
+              )}
+            >
+              <Timer size={13} />
+              {formatTime(timeLeft)}
+            </motion.div>
+          )}
           <button
             type="button"
             onClick={() => setExitOpen(true)}
@@ -165,8 +439,8 @@ export function PracticeSession({ set }: PracticeSessionProps) {
             >
               {/* Category + difficulty badges */}
               <div className="flex items-center gap-2 mb-5">
-                <Pill className={getCategoryBadgeClass(question.category)}>{question.category}</Pill>
-                <Pill className={getDifficultyBadgeClass(question.difficulty)}>{question.difficulty}</Pill>
+                <CategoryPill category={question.category} label={formatCategoryLabel(question.category)} />
+                <DifficultyPill difficulty={question.difficulty} label={question.difficulty} />
               </div>
 
               {/* Question text */}
@@ -187,18 +461,20 @@ export function PracticeSession({ set }: PracticeSessionProps) {
               >
                 <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
                   <CheckCircle2 size={16} />
-                  <span className="text-[13px] font-[600]">Answer submitted</span>
+                  <span className="text-[13px] font-[600]">{p.answerSubmitted}</span>
                 </div>
-                <p className={cn("text-[14px] leading-[22px] whitespace-pre-wrap", portalSubtextAlt)}>
-                  {currentAnswer}
-                </p>
+                {currentAnswer && (
+                  <p className={cn("text-[14px] leading-[22px] whitespace-pre-wrap", portalSubtextAlt)}>
+                    {currentAnswer}
+                  </p>
+                )}
               </motion.div>
             ) : (
               /* Input state */
               <>
                 <textarea
                   value={currentAnswer}
-                  onChange={(e) => setAnswers((prev) => ({ ...prev, [question.id]: e.target.value }))}
+                  onChange={(e) => handleAnswerChange(e.target.value)}
                   placeholder={p.answerPlaceholder}
                   disabled={evaluating}
                   className={cn(
@@ -234,6 +510,22 @@ export function PracticeSession({ set }: PracticeSessionProps) {
                     </button>
                   )}
                 </div>
+                {submitError && (
+                  <div className="flex items-center gap-3 mt-2">
+                    <p className="flex items-center gap-1.5 text-[12px] font-[500] text-red-500">
+                      <AlertCircle size={12} />
+                      {p.submitFailed}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={handleSubmitAnswer}
+                      className="flex items-center gap-1.5 text-[12px] font-semibold text-primary hover:underline"
+                    >
+                      <RefreshCw size={11} />
+                      {p.retryBtn}
+                    </button>
+                  </div>
+                )}
               </>
             )}
           </div>
@@ -241,17 +533,11 @@ export function PracticeSession({ set }: PracticeSessionProps) {
           {/* Dot progress indicator */}
           <div className="flex items-center justify-center gap-2">
             {set.questions.map((q, idx) => (
-              <button
+              <ProgressDot
                 key={q.id}
+                active={idx === currentIdx}
+                submitted={submitted[q.id] ?? false}
                 onClick={() => { setDirection(idx > currentIdx ? 1 : -1); setCurrentIdx(idx); }}
-                className={cn(
-                  "rounded-full transition-all duration-200",
-                  idx === currentIdx
-                    ? "w-6 h-2 bg-primary"
-                    : submitted[q.id]
-                    ? "w-2 h-2 bg-emerald-400"
-                    : "w-2 h-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600"
-                )}
               />
             ))}
           </div>
@@ -267,20 +553,61 @@ export function PracticeSession({ set }: PracticeSessionProps) {
               {p.prevBtn}
             </button>
 
-            {allAnswered ? (
-              <motion.button
-                initial={{ scale: 0.95 }}
-                animate={{ scale: 1 }}
-                onClick={handleFinish}
-                className="shimmer-button flex items-center gap-2 h-10 px-6 text-[14px] font-semibold text-white hr-cta-btn rounded-xl"
-              >
-                <Sparkles size={15} />
-                {p.finishBtn}
-              </motion.button>
+            {allAnswered || finishing || finishError ? (
+              <div className="flex flex-col items-end gap-1.5">
+                <motion.div
+                  className="relative rounded-xl"
+                  initial={{ scale: 0.95 }}
+                  animate={{ scale: 1 }}
+                >
+                  <span
+                    className={cn(
+                      "absolute inset-0 rounded-xl bg-primary pointer-events-none",
+                      !finishing && !finishError ? "cta-ring-active" : "opacity-0"
+                    )}
+                  />
+                  <button
+                    onClick={handleFinish}
+                    disabled={finishing}
+                    className="relative shimmer-button flex items-center gap-2 h-10 px-6 text-[14px] font-semibold text-white hr-cta-btn rounded-xl disabled:opacity-70 disabled:cursor-not-allowed"
+                  >
+                    {finishing ? (
+                      <>
+                        <Loader2 size={15} className="animate-spin" />
+                        {p.finishing}
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles size={15} />
+                        {p.finishBtn}
+                      </>
+                    )}
+                  </button>
+                </motion.div>
+                {finishError && (
+                  <p className="flex items-center gap-1.5 text-[12px] font-[500] text-red-500">
+                    <AlertCircle size={12} />
+                    {p.finishFailed}
+                  </p>
+                )}
+              </div>
+            ) : isLast ? (
+              <div className="flex flex-col items-end gap-1.5">
+                <p className="flex items-center gap-1.5 text-[12px] font-[500] text-amber-600 dark:text-amber-400">
+                  <AlertCircle size={12} />
+                  {p.answerAllToFinish.replace("{{count}}", String(unansweredCount))}
+                </p>
+                <button
+                  onClick={goToFirstUnanswered}
+                  className="flex items-center gap-2 h-9 px-4 text-[13px] font-semibold text-white hr-cta-btn shimmer-button rounded-lg"
+                >
+                  {p.goToUnansweredBtn}
+                  <ChevronLeft size={15} />
+                </button>
+              </div>
             ) : (
               <button
                 onClick={() => navigate(1)}
-                disabled={isLast}
                 className="shimmer-button flex items-center gap-2 h-9 px-4 text-[13px] font-semibold text-white hr-cta-btn disabled:opacity-40 disabled:cursor-not-allowed rounded-lg"
               >
                 {p.nextBtn}

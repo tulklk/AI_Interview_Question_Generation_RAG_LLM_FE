@@ -7,6 +7,12 @@ import { useOverlayTransition } from "@/shared/hooks/use-overlay-transition";
 
 export type ConfirmDialogVariant = "danger" | "primary";
 
+interface ConfirmDialogExtraAction {
+  label: string;
+  onClick: () => void;
+  loading?: boolean;
+}
+
 interface ConfirmDialogProps {
   open: boolean;
   title: string;
@@ -17,6 +23,8 @@ interface ConfirmDialogProps {
   loading?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
+  /** Optional tertiary destructive action, rendered as a text link below the main buttons. */
+  extraAction?: ConfirmDialogExtraAction;
 }
 
 interface LatchedContent {
@@ -37,6 +45,7 @@ export function ConfirmDialog({
   loading = false,
   onConfirm,
   onCancel,
+  extraAction,
 }: ConfirmDialogProps) {
   const { mounted, exiting } = useOverlayTransition(open, 250);
   const [content, setContent] = useState<LatchedContent>({
@@ -142,6 +151,20 @@ export function ConfirmDialog({
             {content.confirmLabel}
           </button>
         </div>
+
+        {extraAction && (
+          <div className="border-t border-[#e5e7eb] dark:border-gray-700 px-6 py-3 text-center">
+            <button
+              type="button"
+              onClick={extraAction.onClick}
+              disabled={loading || extraAction.loading}
+              className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-red-600 dark:text-red-400 hover:underline disabled:opacity-50"
+            >
+              {extraAction.loading ? <Loader2 size={13} className="animate-spin" /> : null}
+              {extraAction.label}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

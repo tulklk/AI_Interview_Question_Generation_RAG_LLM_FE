@@ -370,8 +370,12 @@ export async function getGenerationPlans(): Promise<GenerationSession[]> {
 
 export async function getGenerationJobs(): Promise<GenerationSession[]> {
   try {
+    // BE defaults to PageSize=20 if unspecified — this table paginates/filters
+    // client-side over the full list, so a small default would silently hide
+    // older jobs. Request a generous page size instead of paging server-side.
     const { data } = await apiClient.get<BackendJobListResponse>(
-      "/api/hr/question-generation-jobs"
+      "/api/hr/question-generation-jobs",
+      { params: { PageSize: 200 } }
     );
     let jobs: BackendJob[] = [];
     if (Array.isArray(data)) {
@@ -390,13 +394,6 @@ export async function getGenerationJobs(): Promise<GenerationSession[]> {
   } catch {
     return [];
   }
-}
-
-export async function getGenerationSession(id: string): Promise<GenerationSession> {
-  const { data } = await apiClient.get<GenerationSession>(
-    `/api/v1/hr/generation-sessions/${id}`
-  );
-  return data;
 }
 
 // ---------------------------------------------------------------------------
@@ -600,8 +597,11 @@ export async function deleteGenerationPlan(jobId: string): Promise<boolean> {
   try {
     await apiClient.delete(`/api/hr/question-generation-plans/${jobId}`);
     return true;
-  } catch {
-    return false;
+  } catch (err) {
+    // BE rejects (409) once the session has been saved as a draft/question-set —
+    // there is currently no API to delete a question-set, so this is permanent
+    // for any job with hasDraft=true, not a transient failure.
+    throw new Error(extractBeErrorMessage(err));
   }
 }
 
@@ -649,6 +649,173 @@ export async function getDrafts(): Promise<DraftQuestionSet[]> {
     return [];
   } catch {
     return [];
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Question-set question CRUD — direct, immediate edits on an already-saved
+// question set (as opposed to the job-scoped CRUD above, which only edits the
+// generation job's own copy and never touches the saved/published set at all).
+// BE rejects all four while the set is PUBLISHED — unpublish first.
+// ---------------------------------------------------------------------------
+
+export async function updateQuestionSetQuestion(
+  questionSetId: string,
+  questionId: string,
+  payload: {
+    question?: string;
+    questionType?: string;
+    difficulty?: string;
+    rationale?: string | null;
+    sampleAnswer?: string | null;
+  }
+): Promise<boolean> {
+  try {
+    await apiClient.put(`/api/hr/question-sets/${questionSetId}/questions/${questionId}`, payload);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function deleteQuestionSetQuestion(questionSetId: string, questionId: string): Promise<boolean> {
+  try {
+    await apiClient.delete(`/api/hr/question-sets/${questionSetId}/questions/${questionId}`);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function addQuestionSetQuestion(
+  questionSetId: string,
+  payload: {
+    question: string;
+    questionType?: string;
+    difficulty?: string;
+    rationale?: string;
+    sampleAnswer?: string;
+    order?: number;
+  }
+): Promise<boolean> {
+  try {
+    await apiClient.post(`/api/hr/question-sets/${questionSetId}/questions`, payload);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function reorderQuestionSetQuestions(
+  questionSetId: string,
+  items: { id: string; order: number }[]
+): Promise<boolean> {
+  try {
+    await apiClient.put(`/api/hr/question-sets/${questionSetId}/questions/reorder`, {
+      items: items.map((i) => ({ questionId: i.id, order: i.order })),
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Publish / Unpublish
+// ---------------------------------------------------------------------------
+
+export interface HrQuestionSetSummary {
+  questionSetId: string;
+  jobId?: string;
+  status: "DRAFT" | "PUBLISHED";
+}
+
+function normalizeQuestionSetSummary(raw: unknown): HrQuestionSetSummary | null {
+  if (!raw || typeof raw !== "object") return null;
+  const src = raw as Record<string, unknown>;
+  const questionSetId = [src.questionSetId, src.id, src.QuestionSetId, src.Id]
+    .find((v): v is string => typeof v === "string" && v.trim() !== "");
+  if (!questionSetId) return null;
+  const jobId = [src.jobId, src.sessionId, src.JobId, src.SessionId]
+    .find((v): v is string => typeof v === "string" && v.trim() !== "");
+  const rawStatus = [src.status, src.Status].find((v): v is string => typeof v === "string");
+  return { questionSetId, jobId, status: rawStatus === "PUBLISHED" ? "PUBLISHED" : "DRAFT" };
+}
+
+// The job-detail endpoint doesn't expose a questionSetId even when a draft was
+// saved (meta.hasDraft is the only signal) — the id only lives in this list,
+// keyed by jobId, so publish/unpublish has to cross-reference it here.
+export async function findQuestionSetForJob(jobId: string): Promise<HrQuestionSetSummary | null> {
+  try {
+    const { data } = await apiClient.get<{ data?: unknown } | unknown[]>("/api/hr/question-sets");
+    const items = Array.isArray(data) ? data : Array.isArray((data as { data?: unknown })?.data) ? (data as { data: unknown[] }).data : [];
+    const normalized = items.map(normalizeQuestionSetSummary).filter((s): s is HrQuestionSetSummary => s !== null);
+    return normalized.find((s) => s.jobId === jobId) ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/** All jobs' publish status in one call, keyed by jobId — for list views (e.g. HR History) that need it for every row without an N+1 fetch. */
+export async function getQuestionSetStatusByJob(): Promise<Map<string, "DRAFT" | "PUBLISHED">> {
+  try {
+    const { data } = await apiClient.get<{ data?: unknown } | unknown[]>("/api/hr/question-sets");
+    const items = Array.isArray(data) ? data : Array.isArray((data as { data?: unknown })?.data) ? (data as { data: unknown[] }).data : [];
+    const normalized = items.map(normalizeQuestionSetSummary).filter((s): s is HrQuestionSetSummary => s !== null);
+    const map = new Map<string, "DRAFT" | "PUBLISHED">();
+    for (const s of normalized) {
+      if (s.jobId) map.set(s.jobId, s.status);
+    }
+    return map;
+  } catch {
+    return new Map();
+  }
+}
+
+// BE error responses actually come back as { code, error: "..." } — not the
+// { detail }/{ message } shape ASP.NET's default ProblemDetails uses. Reading
+// only detail/message meant every real BE rejection (min-questions, ownership,
+// "already saved as draft", ...) surfaced as a blank message and silently fell
+// back to a generic "failed" toast instead of the actual reason.
+function extractBeErrorMessage(err: unknown): string {
+  const data = (err as { response?: { data?: { error?: string; detail?: string; message?: string } } })
+    ?.response?.data;
+  return data?.error ?? data?.detail ?? data?.message ?? "";
+}
+
+export async function publishQuestionSet(questionSetId: string): Promise<boolean> {
+  try {
+    await apiClient.post(`/api/hr/question-sets/${questionSetId}/publish`);
+    return true;
+  } catch (err) {
+    // Only surface a BE-provided message; never the raw axios/HTTP error text.
+    throw new Error(extractBeErrorMessage(err));
+  }
+}
+
+export async function unpublishQuestionSet(questionSetId: string): Promise<boolean> {
+  try {
+    await apiClient.post(`/api/hr/question-sets/${questionSetId}/unpublish`);
+    return true;
+  } catch (err) {
+    throw new Error(extractBeErrorMessage(err));
+  }
+}
+
+/**
+ * Sets (or clears, with null) the candidate practice time limit for a question
+ * set — 1–480 minutes. BE rejects this while the set is PUBLISHED (409):
+ * unpublish first.
+ */
+export async function setQuestionSetTimeLimit(
+  questionSetId: string,
+  timeLimitMinutes: number | null
+): Promise<boolean> {
+  try {
+    await apiClient.put(`/api/hr/question-sets/${questionSetId}/time-limit`, { timeLimitMinutes });
+    return true;
+  } catch (err) {
+    throw new Error(extractBeErrorMessage(err));
   }
 }
 

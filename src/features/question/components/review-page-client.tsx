@@ -14,12 +14,26 @@ import type { GenerationSession, GeneratedQuestion } from "@/features/interview/
 interface ReviewPageClientProps {
   session: GenerationSession;
   draftQuestions?: GeneratedQuestion[];
-  isDraftView?: boolean;
   isGenerating?: boolean;
   isRetrying?: boolean;
+  questionSetId?: string;
+  publishStatus?: "DRAFT" | "PUBLISHED" | null;
+  onPublishStatusChange?: (status: "DRAFT" | "PUBLISHED") => void;
+  onDraftSaved?: (questionSetId: string) => void;
+  initialTimeLimitMinutes?: number | null;
 }
 
-export function ReviewPageClient({ session, draftQuestions, isDraftView = false, isGenerating = false, isRetrying = false }: ReviewPageClientProps) {
+export function ReviewPageClient({
+  session,
+  draftQuestions,
+  isGenerating = false,
+  isRetrying = false,
+  questionSetId,
+  publishStatus,
+  onPublishStatusChange,
+  onDraftSaved,
+  initialTimeLimitMinutes,
+}: ReviewPageClientProps) {
   const { t } = useLanguage();
   const rp = t.reviewPage;
   const gsp = t.generationSessionPage;
@@ -136,21 +150,6 @@ export function ReviewPageClient({ session, draftQuestions, isDraftView = false,
         </div>
       )}
 
-      {/* Draft saved banner */}
-      {isDraftView && (
-        <div
-          className="animate-fade-up rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/30 px-4 py-3"
-          style={{ animationDelay: "90ms" }}
-        >
-          <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-400">
-            Bản nháp đã lưu — chỉ xem
-          </p>
-          <p className="text-xs text-emerald-600 dark:text-emerald-500 mt-0.5">
-            Câu hỏi đã được lưu thành công. Để chỉnh sửa, hãy tạo phiên mới.
-          </p>
-        </div>
-      )}
-
       {/* Loading animation while generating questions */}
       {isGenerating && (
         <div
@@ -185,7 +184,11 @@ export function ReviewPageClient({ session, draftQuestions, isDraftView = false,
             initialQuestions={draftQuestions ?? session.generatedQuestions ?? []}
             status={session.status}
             failureMessage={session.failureMessage}
-            readOnly={isDraftView}
+            questionSetId={questionSetId}
+            publishStatus={publishStatus}
+            onPublishStatusChange={onPublishStatusChange}
+            onDraftSaved={onDraftSaved}
+            initialTimeLimitMinutes={initialTimeLimitMinutes}
           />
         </div>
       )}

@@ -18,6 +18,7 @@ export default function HrHistoryPage() {
   const [level, setLevel] = useState("");
   const [experience, setExperience] = useState("");
   const [status, setStatus] = useState("");
+  const [publishStatus, setPublishStatus] = useState("");
 
   return (
     <AppShell
@@ -41,8 +42,10 @@ export default function HrHistoryPage() {
         onExperienceChange={setExperience}
         status={status}
         onStatusChange={setStatus}
+        publishStatus={publishStatus}
+        onPublishStatusChange={setPublishStatus}
       />
-      <HistoryTable search={search} role={role} level={level} experience={experience} status={status} />
+      <HistoryTable search={search} role={role} level={level} experience={experience} status={status} publishStatus={publishStatus} />
     </AppShell>
   );
 }

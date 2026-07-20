@@ -12,6 +12,7 @@ import {
   X,
   ChevronUp,
   Loader2,
+  Lock,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { useLanguage } from "@/shared/providers/language-context";
@@ -50,6 +51,8 @@ interface QuestionEditCardProps {
   isFirst?: boolean;
   isLast?: boolean;
   isDragging?: boolean;
+  /** Set is PUBLISHED — BE rejects add/edit/delete/reorder, so hide those affordances. */
+  locked?: boolean;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   dragHandleListeners?: Record<string, any>;
   onSave: (updated: Partial<GeneratedQuestion>) => Promise<boolean>;
@@ -66,6 +69,7 @@ export function QuestionEditCard({
   isFirst = false,
   isLast = false,
   isDragging = false,
+  locked = false,
   dragHandleListeners,
   onSave,
   onEditingChange,
@@ -355,40 +359,51 @@ export function QuestionEditCard({
               >
                 <Sparkles size={13} />
               </button>
-              <button
-                type="button"
-                onClick={startEdit}
-                title={rp.questionActions.edit}
-                className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-              >
-                <Pencil size={13} />
-              </button>
-              <button
-                type="button"
-                onClick={() => !isFirst && onMoveUp()}
-                disabled={isFirst}
-                title={rp.questionActions.moveUp}
-                className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-              >
-                <ChevronUp size={13} />
-              </button>
-              <button
-                type="button"
-                onClick={() => !isLast && onMoveDown()}
-                disabled={isLast}
-                title={rp.questionActions.moveDown}
-                className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-              >
-                <ChevronDown size={13} />
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowDeleteConfirm(true)}
-                title={rp.questionActions.delete}
-                className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 dark:text-gray-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
-              >
-                <Trash2 size={13} />
-              </button>
+              {locked ? (
+                <div
+                  title={rp.editLockedHint}
+                  className="w-7 h-7 flex items-center justify-center rounded-lg text-amber-500 dark:text-amber-400"
+                >
+                  <Lock size={13} />
+                </div>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    onClick={startEdit}
+                    title={rp.questionActions.edit}
+                    className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                  >
+                    <Pencil size={13} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => !isFirst && onMoveUp()}
+                    disabled={isFirst}
+                    title={rp.questionActions.moveUp}
+                    className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                  >
+                    <ChevronUp size={13} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => !isLast && onMoveDown()}
+                    disabled={isLast}
+                    title={rp.questionActions.moveDown}
+                    className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                  >
+                    <ChevronDown size={13} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowDeleteConfirm(true)}
+                    title={rp.questionActions.delete}
+                    className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 dark:text-gray-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
+                  >
+                    <Trash2 size={13} />
+                  </button>
+                </>
+              )}
             </div>
           )}
         </div>
@@ -410,41 +425,50 @@ export function QuestionEditCard({
               <Sparkles size={12} />
               <span>{rp.questionActions.askAI}</span>
             </button>
-            <button
-              type="button"
-              onClick={startEdit}
-              title={rp.questionActions.edit}
-              className="flex-1 flex items-center justify-center gap-1.5 py-1.5 text-xs rounded-lg text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-            >
-              <Pencil size={12} />
-              <span>{rp.questionActions.edit}</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => !isFirst && onMoveUp()}
-              disabled={isFirst}
-              title={rp.questionActions.moveUp}
-              className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-            >
-              <ChevronUp size={14} />
-            </button>
-            <button
-              type="button"
-              onClick={() => !isLast && onMoveDown()}
-              disabled={isLast}
-              title={rp.questionActions.moveDown}
-              className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-            >
-              <ChevronDown size={14} />
-            </button>
-            <button
-              type="button"
-              onClick={() => setShowDeleteConfirm(true)}
-              title={rp.questionActions.delete}
-              className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 dark:text-gray-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
-            >
-              <Trash2 size={13} />
-            </button>
+            {locked ? (
+              <div className="flex-1 flex items-center justify-center gap-1.5 py-1.5 text-xs text-amber-500 dark:text-amber-400">
+                <Lock size={12} />
+                <span>{rp.statusPublished}</span>
+              </div>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  onClick={startEdit}
+                  title={rp.questionActions.edit}
+                  className="flex-1 flex items-center justify-center gap-1.5 py-1.5 text-xs rounded-lg text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                >
+                  <Pencil size={12} />
+                  <span>{rp.questionActions.edit}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => !isFirst && onMoveUp()}
+                  disabled={isFirst}
+                  title={rp.questionActions.moveUp}
+                  className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                >
+                  <ChevronUp size={14} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => !isLast && onMoveDown()}
+                  disabled={isLast}
+                  title={rp.questionActions.moveDown}
+                  className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                >
+                  <ChevronDown size={14} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowDeleteConfirm(true)}
+                  title={rp.questionActions.delete}
+                  className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 dark:text-gray-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
+                >
+                  <Trash2 size={13} />
+                </button>
+              </>
+            )}
           </div>
         )}
 
