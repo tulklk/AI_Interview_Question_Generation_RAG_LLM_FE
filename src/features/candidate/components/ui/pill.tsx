@@ -27,9 +27,9 @@ export function Pill({ className, children, size = "md", title }: PillProps) {
 }
 
 const DIFFICULTY_BADGE_CLASS: Record<Difficulty, string> = {
-  Easy: "bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300",
-  Medium: "bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-300",
-  Hard: "bg-red-50 dark:bg-red-950 text-red-600 dark:text-red-400",
+  Easy: "bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300",
+  Medium: "bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300",
+  Hard: "bg-red-100 dark:bg-red-950 text-red-600 dark:text-red-400",
 };
 
 export function getDifficultyBadgeClass(difficulty: Difficulty): string {
@@ -64,11 +64,11 @@ export function DifficultyPill({ difficulty, label, size = "md", className }: Di
 // problem-solving, system-design, ...). Known ones get a distinct color/icon;
 // anything else falls back to a neutral style rather than crashing or mislabeling.
 const CATEGORY_BADGE_CLASS: Record<string, string> = {
-  technical: "bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300",
-  behavioral: "bg-violet-50 dark:bg-violet-950 text-violet-700 dark:text-violet-300",
-  situational: "bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-300",
-  "problem-solving": "bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300",
-  "system-design": "bg-cyan-50 dark:bg-cyan-950 text-cyan-700 dark:text-cyan-300",
+  technical: "bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300",
+  behavioral: "bg-violet-100 dark:bg-violet-950 text-violet-700 dark:text-violet-300",
+  situational: "bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300",
+  "problem-solving": "bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300",
+  "system-design": "bg-cyan-100 dark:bg-cyan-950 text-cyan-700 dark:text-cyan-300",
 };
 const CATEGORY_BADGE_FALLBACK = "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300";
 
@@ -117,9 +117,9 @@ export function formatCategoryLabel(category: QuestionCategory): string {
  * a bare "NN%" is shown (dashboard recent sessions, history rows, per-question scores).
  */
 export function getScoreBadgeClass(score: number): string {
-  if (score >= 80) return "bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300";
-  if (score >= 65) return "bg-violet-50 dark:bg-violet-950 text-violet-700 dark:text-violet-300";
-  return "bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-300";
+  if (score >= 80) return "bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300";
+  if (score >= 65) return "bg-violet-100 dark:bg-violet-950 text-violet-700 dark:text-violet-300";
+  return "bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300";
 }
 
 interface PendingScorePillProps {
@@ -165,8 +165,8 @@ export function getScoreLevel(
   score: number,
   labels: ScoreLevelLabels,
 ): { label: string; badgeClass: string } {
-  if (score >= 80) return { label: labels.excellent, badgeClass: "bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300" };
-  if (score >= 65) return { label: labels.good, badgeClass: "bg-violet-50 dark:bg-violet-950 text-violet-700 dark:text-violet-300" };
-  if (score >= 50) return { label: labels.fair, badgeClass: "bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-300" };
-  return { label: labels.needsWork, badgeClass: "bg-red-50 dark:bg-red-950 text-red-600 dark:text-red-400" };
+  if (score >= 80) return { label: labels.excellent, badgeClass: "bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300" };
+  if (score >= 65) return { label: labels.good, badgeClass: "bg-violet-100 dark:bg-violet-950 text-violet-700 dark:text-violet-300" };
+  if (score >= 50) return { label: labels.fair, badgeClass: "bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300" };
+  return { label: labels.needsWork, badgeClass: "bg-red-100 dark:bg-red-950 text-red-600 dark:text-red-400" };
 }

@@ -3,6 +3,25 @@
 import { useEffect, useRef, useState } from "react";
 import { Bell, BellOff } from "lucide-react";
 
+const NOTIF_READ_KEY = "hiregen-notifications-read";
+
+function getReadIds(): Set<string> {
+  if (typeof window === "undefined") return new Set();
+  try {
+    const raw = localStorage.getItem(NOTIF_READ_KEY);
+    return raw ? new Set(JSON.parse(raw) as string[]) : new Set();
+  } catch {
+    return new Set();
+  }
+}
+
+function persistReadIds(ids: Set<string>) {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(NOTIF_READ_KEY, JSON.stringify([...ids]));
+  } catch { /* quota exceeded — ignore */ }
+}
+
 export interface NotificationItem {
   id: string;
   message: string;
@@ -23,9 +42,10 @@ export function NotificationBell({ items, emptyLabel, title = "Notifications", m
   const [localItems, setLocalItems] = useState(items);
   const ref = useRef<HTMLDivElement>(null);
 
-  // Keep local read-state in sync when the source list changes (e.g. new completed session appears).
+  // Merge incoming items with persisted read IDs so "mark all read" survives navigation.
   useEffect(() => {
-    setLocalItems(items);
+    const readIds = getReadIds();
+    setLocalItems(items.map((n) => ({ ...n, read: n.read || readIds.has(n.id) })));
   }, [items]);
 
   useEffect(() => {
@@ -41,6 +61,9 @@ export function NotificationBell({ items, emptyLabel, title = "Notifications", m
   const unread = localItems.filter((n) => !n.read).length;
 
   function markAllRead() {
+    const readIds = getReadIds();
+    localItems.forEach((n) => readIds.add(n.id));
+    persistReadIds(readIds);
     setLocalItems((prev) => prev.map((n) => ({ ...n, read: true })));
   }
 

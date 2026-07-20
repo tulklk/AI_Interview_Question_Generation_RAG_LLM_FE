@@ -134,7 +134,7 @@ export function AppShell({ children, breadcrumb, pageTitle }: AppShellProps) {
             avatarUrl: resolveAvatarUrl(user),
           }}
         />
-        <main className="flex-1 overflow-y-auto hr-main-bg">
+        <main className="flex-1 overflow-y-auto overflow-x-hidden hr-main-bg scrollbar-hide">
           <div className="hr-aurora-orb hr-aurora-orb--purple w-125 h-125 -top-30 -left-20" aria-hidden="true" />
           <div className="hr-aurora-orb hr-aurora-orb--cyan w-100 h-100 top-[30%] -right-15" aria-hidden="true" />
           <div className="hr-aurora-orb hr-aurora-orb--violet w-87.5 h-87.5 -bottom-20 left-[30%]" aria-hidden="true" />
