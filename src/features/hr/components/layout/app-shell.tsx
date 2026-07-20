@@ -13,7 +13,12 @@ import { useUser } from "@/features/auth/context/user-context";
 import { buildWelcomeMessage, getTimeOfDayGreeting } from "@/shared/utils/greeting";
 import { clearLoginWelcomePending, hasLoginWelcomePending } from "@/features/auth/utils/login-welcome";
 import { getInitials, resolveAvatarUrl } from "@/shared/utils/user-display";
+import { formatRelativeTime } from "@/shared/utils/relative-time";
 import type { HrPlanId } from "@/features/hr/types/hr-subscription";
+import type { NotificationItem } from "@/shared/components/common/notification-bell";
+import { getGenerationJobs } from "@/features/interview/services/interview.service";
+
+const UNREAD_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 interface AppShellProps {
   children: ReactNode;
@@ -22,7 +27,7 @@ interface AppShellProps {
 }
 
 export function AppShell({ children, breadcrumb, pageTitle }: AppShellProps) {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const pathname = usePathname();
   const { planId } = useHrSubscription();
   const { user, loading } = useUser();
@@ -30,11 +35,39 @@ export function AppShell({ children, breadcrumb, pageTitle }: AppShellProps) {
   const welcomedRef = useRef(false);
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
 
   // Close sidebar on route change
   useEffect(() => {
     setSidebarOpen(false);
   }, [pathname]);
+
+  // Derive notifications from recently completed generation jobs.
+  useEffect(() => {
+    let cancelled = false;
+    getGenerationJobs()
+      .then((jobs) => {
+        if (cancelled) return;
+        const items: NotificationItem[] = jobs
+          .filter((j) => j.status === "COMPLETED")
+          .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+          .slice(0, 5)
+          .map((j) => ({
+            id: j.id,
+            message: t.notificationMessages.hrQuestionsGenerated.replace("{{title}}", j.jobTitle || "—"),
+            time: formatRelativeTime(j.updatedAt, lang),
+            read: Date.now() - new Date(j.updatedAt).getTime() > UNREAD_WINDOW_MS,
+          }));
+        setNotifications(items);
+      })
+      .catch(() => {
+        // Non-critical — bell just shows empty.
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Lock body scroll when mobile sidebar is open
   useEffect(() => {
@@ -93,6 +126,7 @@ export function AppShell({ children, breadcrumb, pageTitle }: AppShellProps) {
           breadcrumb={translatedBreadcrumb}
           pageTitle={translatedTitle}
           onMenuToggle={() => setSidebarOpen((v) => !v)}
+          notifications={notifications}
           user={{
             initials: user?.fullName ? getInitials(user.fullName) : loading ? "..." : "??",
             name: user?.fullName ?? (loading ? "..." : "User"),

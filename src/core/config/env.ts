@@ -8,7 +8,7 @@ export function getApiBaseUrl(): string {
 }
 
 export function getAuthRefreshPath(): string {
-  const path = process.env.NEXT_PUBLIC_AUTH_REFRESH_PATH ?? "/auth/refresh";
+  const path = process.env.NEXT_PUBLIC_AUTH_REFRESH_PATH ?? "/api/auth/refresh-token";
   return path.startsWith("/") ? path : `/${path}`;
 }
 

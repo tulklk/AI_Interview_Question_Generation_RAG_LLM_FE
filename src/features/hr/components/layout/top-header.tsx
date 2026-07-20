@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { ChevronRight, Menu } from "lucide-react";
 import { SearchInput } from "@/shared/components/common/search-input";
-import { NotificationBell } from "@/shared/components/common/notification-bell";
+import { NotificationBell, type NotificationItem } from "@/shared/components/common/notification-bell";
 import { UserAvatar } from "@/shared/components/common/user-avatar";
 import { LanguageSwitcher } from "@/shared/components/common/language-switcher";
 import { ThemeToggle } from "@/shared/components/common/theme-toggle";
@@ -28,6 +28,7 @@ interface TopHeaderProps {
   user?: TopHeaderUser;
   variant?: "default" | "admin";
   onMenuToggle?: () => void;
+  notifications?: NotificationItem[];
 }
 
 const DEFAULT_USER: TopHeaderUser = {
@@ -42,6 +43,7 @@ export function TopHeader({
   user = DEFAULT_USER,
   variant = "default",
   onMenuToggle,
+  notifications = [],
 }: TopHeaderProps) {
   const { t } = useLanguage();
   const isAdmin = variant === "admin";
@@ -124,7 +126,12 @@ export function TopHeader({
           <LanguageSwitcher />
         </div>
         <div className="hidden sm:block w-px h-5 bg-gray-200 dark:bg-gray-700" />
-        <NotificationBell count={2} />
+        <NotificationBell
+          items={notifications}
+          title={t.topHeader.notificationsTitle}
+          markAllReadLabel={t.topHeader.markAllRead}
+          emptyLabel={t.topHeader.noNotifications}
+        />
         <UserAvatar
           initials={user.initials}
           name={user.name}

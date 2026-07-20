@@ -1,29 +1,64 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, animate, AnimatePresence } from "framer-motion";
 import {
-  ArrowLeft, RefreshCw, Share2, CheckCircle2,
-  AlertCircle, Lightbulb, Sparkles, ChevronDown,
+  ArrowLeft, RefreshCw, Share2, Loader2,
+  Sparkles, ChevronDown, CheckCircle2, AlertTriangle, Lightbulb,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
-import { skillRadarData } from "@/features/candidate/data/jobseeker";
-import { FeedbackRadarChart } from "@/features/candidate/components/feedback/feedback-radar-chart";
 import { useLanguage } from "@/shared/providers/language-context";
-import type { PracticeSession } from "@/features/candidate/types/jobseeker";
-import { Pill, getCategoryBadgeClass, getScoreLevel } from "@/features/candidate/components/ui/pill";
+import type { PracticeSessionDetail, AnswerEvaluation } from "@/features/candidate/services/practice-session.service";
+import { CategoryPill, Pill, formatCategoryLabel, getScoreLevel, getScoreBadgeClass } from "@/features/candidate/components/ui/pill";
+import { getCompanyColor, getCompanyInitials } from "@/features/candidate/utils/company-visual";
 import { useChartTheme } from "@/shared/hooks/use-chart-theme";
+import { ConfettiBurst } from "@/shared/components/common/confetti-burst";
+import { FeedbackRadarChart } from "./feedback-radar-chart";
+import { useToast } from "@/shared/providers/toast-context";
 import {
   portalHeadingAlt,
   portalSubtextAlt,
 } from "@/shared/utils/portal-ui";
+
+const CELEBRATION_THRESHOLD = 80;
+
+/** Averages each dimension key (clarity/depth/structure/relevance, ...) across
+ * every question that has a dimensionScores breakdown. Returns null if none do —
+ * the radar chart section is simply omitted rather than showing fabricated data. */
+function aggregateDimensionScores(feedback: Record<string, AnswerEvaluation>): { skill: string; score: number }[] | null {
+  const sums: Record<string, { total: number; count: number }> = {};
+  Object.values(feedback).forEach((fb) => {
+    if (!fb.dimensionScores) return;
+    Object.entries(fb.dimensionScores).forEach(([key, value]) => {
+      sums[key] ??= { total: 0, count: 0 };
+      sums[key].total += value;
+      sums[key].count += 1;
+    });
+  });
+  const keys = Object.keys(sums);
+  if (keys.length === 0) return null;
+  return keys.map((key) => ({
+    skill: formatCategoryLabel(key),
+    score: Math.round(sums[key].total / sums[key].count),
+  }));
+}
 
 function ScoreRing({ score, trackStroke }: { score: number; trackStroke: string }) {
   const radius = 52;
   const circ = 2 * Math.PI * radius;
   const offset = circ - (score / 100) * circ;
   const color = score >= 80 ? "#10B981" : score >= 65 ? "#6C47FF" : "#F59E0B";
+  const [displayScore, setDisplayScore] = useState(0);
+
+  useEffect(() => {
+    const controls = animate(0, score, {
+      duration: 1.2,
+      ease: "easeOut",
+      onUpdate: (v) => setDisplayScore(Math.round(v)),
+    });
+    return () => controls.stop();
+  }, [score]);
 
   return (
     <div className="relative w-32 h-32 flex items-center justify-center">
@@ -40,34 +75,67 @@ function ScoreRing({ score, trackStroke }: { score: number; trackStroke: string 
         />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <motion.span
-          className={cn("text-[32px] font-[800] leading-none", portalHeadingAlt)}
-          initial={{ opacity: 0, scale: 0.8 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.5, duration: 0.4 }}
-        >
-          {score}
-        </motion.span>
+        <span className={cn("text-[32px] font-[800] leading-none tabular-nums", portalHeadingAlt)}>
+          {displayScore}
+        </span>
         <span className={cn("text-[11px] font-[500]", portalSubtextAlt)}>/ 100</span>
       </div>
     </div>
   );
 }
 
-interface FeedbackPageProps {
-  session: PracticeSession;
+function PendingScoreRing({ scoring, trackStroke }: { scoring: boolean; trackStroke: string }) {
+  return (
+    <div className="relative w-32 h-32 flex items-center justify-center">
+      <svg width="128" height="128" className="-rotate-90">
+        <circle cx="64" cy="64" r={52} fill="none" stroke={trackStroke} strokeWidth="10" />
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5">
+        {scoring ? <Loader2 size={20} className="animate-spin text-primary" /> : <span className="text-[24px]">—</span>}
+      </div>
+    </div>
+  );
 }
 
-export function FeedbackPage({ session }: FeedbackPageProps) {
+interface FeedbackPageProps {
+  session: PracticeSessionDetail;
+  feedback: Record<string, AnswerEvaluation>;
+  scoring: boolean;
+  setTitle?: string;
+  companyName?: string;
+}
+
+export function FeedbackPage({ session, feedback, scoring, setTitle, companyName }: FeedbackPageProps) {
   const { t } = useLanguage();
   const p = t.jobseekerFeedbackPage;
   const chart = useChartTheme();
+  const { addToast } = useToast();
 
-  const { label: scoreLevelLabel, badgeClass: scoreLevelBadgeClass } = getScoreLevel(session.score, p.scoreLevels);
+  const hasScore = session.overallScore !== null;
+  const score = session.overallScore ?? 0;
+  const { label: scoreLevelLabel, badgeClass: scoreLevelBadgeClass } = getScoreLevel(score, p.scoreLevels);
+
+  const answeredQuestions = session.questions.filter((q) => q.answerText);
+  const feedbackByQuestionId = new Map(Object.entries(feedback));
+  const radarData = aggregateDimensionScores(feedback);
 
   const [expandedIds, setExpandedIds] = useState<Set<string>>(
-    () => new Set(session.answers.length > 0 ? [session.answers[0].questionId] : [])
+    () => new Set(answeredQuestions.length > 0 ? [answeredQuestions[0].id] : [])
   );
+
+  async function handleShare() {
+    const url = window.location.href;
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(url);
+      } else {
+        throw new Error("Clipboard API unavailable");
+      }
+      addToast("success", p.shareCopied);
+    } catch {
+      addToast("error", p.shareFailed);
+    }
+  }
 
   function toggleExpanded(id: string) {
     setExpandedIds((prev) => {
@@ -78,11 +146,18 @@ export function FeedbackPage({ session }: FeedbackPageProps) {
     });
   }
 
-  const aiInsight = session.score >= 80
-    ? "Outstanding performance! Your answers showed depth, structure, and concrete examples. You're well-prepared for this interview level."
-    : session.score >= 65
-    ? "Solid performance. Your technical answers were strong, but behavioral responses could benefit from clearer STAR structure and specific metrics."
-    : "Good start! Focus on providing more specific examples and quantifiable outcomes in your answers to significantly boost your score.";
+  const aiInsight = hasScore
+    ? (
+      score >= 80
+        ? "Outstanding performance! Your answers showed depth and structure. You're well-prepared for this interview level."
+        : score >= 65
+        ? "Solid performance. Keep refining your answers with clearer structure and specific examples."
+        : "Good start! Focus on providing more specific examples and quantifiable outcomes in your answers to boost your score."
+    )
+    : null;
+
+  const companyInitials = companyName ? getCompanyInitials(companyName) : "";
+  const companyColor = companyName ? getCompanyColor(companyName) : "bg-gray-400";
 
   return (
     <div className="max-w-[900px] mx-auto">
@@ -102,105 +177,103 @@ export function FeedbackPage({ session }: FeedbackPageProps) {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="hr-glass-card p-5 sm:p-8 mb-6 flex flex-col sm:flex-row items-center sm:items-start gap-5 sm:gap-10"
+        className="relative hr-glass-card p-5 sm:p-8 mb-6 flex flex-col sm:flex-row items-center sm:items-start gap-5 sm:gap-10"
       >
-        <ScoreRing score={session.score} trackStroke={chart.isDark ? "#374151" : "#F3F4F6"} />
+        {hasScore && score >= CELEBRATION_THRESHOLD && <ConfettiBurst />}
+        {hasScore ? (
+          <ScoreRing score={score} trackStroke={chart.isDark ? "#374151" : "#F3F4F6"} />
+        ) : (
+          <PendingScoreRing scoring={scoring} trackStroke={chart.isDark ? "#374151" : "#F3F4F6"} />
+        )}
 
         <div className="flex-1">
           <div className="flex items-center gap-3 mb-2">
             <h1 className={cn("text-[24px] font-[800]", portalHeadingAlt)}>{p.overallScore}</h1>
-            <span className={cn("text-[12px] font-[700] px-3 py-1 rounded-full", scoreLevelBadgeClass)}>
-              {scoreLevelLabel}
-            </span>
+            {hasScore && (
+              <span className={cn("text-[12px] font-[700] px-3 py-1 rounded-full", scoreLevelBadgeClass)}>
+                {scoreLevelLabel}
+              </span>
+            )}
           </div>
 
-          <div className="flex items-center gap-2 mb-4">
-            <div className={cn("w-6 h-6 rounded-lg flex items-center justify-center text-white text-[10px] font-bold", session.companyColor)}>
-              {session.companyInitials}
+          {(setTitle || companyName) && (
+            <div className="flex items-center gap-2 mb-4">
+              {companyName && (
+                <div className={cn("w-6 h-6 rounded-lg flex items-center justify-center text-white text-[10px] font-bold", companyColor)}>
+                  {companyInitials}
+                </div>
+              )}
+              <p className={cn("text-[14px]", portalSubtextAlt)}>
+                {[setTitle, companyName].filter(Boolean).join(" · ")}
+              </p>
             </div>
-            <p className={cn("text-[14px]", portalSubtextAlt)}>{session.setTitle} · {session.company}</p>
-          </div>
+          )}
 
-          {/* AI Insight */}
+          {/* AI Insight / pending state */}
           <div className="hr-quick-generate rounded-lg p-4 flex gap-3">
-            <Sparkles size={15} className="text-[#7C3AED] dark:text-[#a78bff] shrink-0 mt-0.5" />
-            <div>
-              <p className="text-[12px] font-[700] text-primary mb-1">{p.aiInsight}</p>
-              <p className={cn("text-[13px] leading-[20px]", portalHeadingAlt)}>{aiInsight}</p>
-            </div>
+            {hasScore ? (
+              <>
+                <Sparkles size={15} className="text-[#7C3AED] dark:text-[#a78bff] shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-[12px] font-[700] text-primary mb-1">{p.aiInsight}</p>
+                  <p className={cn("text-[13px] leading-[20px]", portalHeadingAlt)}>{aiInsight}</p>
+                </div>
+              </>
+            ) : (
+              <>
+                {scoring ? (
+                  <Loader2 size={15} className="animate-spin text-primary shrink-0 mt-0.5" />
+                ) : (
+                  <Sparkles size={15} className="text-[#7C3AED] dark:text-[#a78bff] shrink-0 mt-0.5" />
+                )}
+                <p className={cn("text-[13px] leading-[20px]", portalHeadingAlt)}>
+                  {scoring ? p.scoringInProgress : p.scoreNotAvailable}
+                </p>
+              </>
+            )}
           </div>
         </div>
 
         {/* Action buttons */}
         <div className="flex sm:flex-col gap-2 shrink-0 w-full sm:w-auto">
-          <Link
-            href={`/jobseeker/practice/${session.setId}`}
-            className="shimmer-button flex items-center gap-2 h-9 px-4 text-[13px] font-semibold text-white hr-cta-btn rounded-lg"
+          {session.questionSetId && (
+            <Link
+              href={`/jobseeker/practice/${session.questionSetId}`}
+              className="shimmer-button flex items-center gap-2 h-9 px-4 text-[13px] font-semibold text-white hr-cta-btn rounded-lg"
+            >
+              <RefreshCw size={13} />
+              {p.retryBtn}
+            </Link>
+          )}
+          <button
+            type="button"
+            onClick={handleShare}
+            className={cn(
+              "hr-glass-card flex items-center gap-2 h-9 px-4 text-[13px] font-semibold hover:border-[#7C3AED]/30",
+              portalHeadingAlt
+            )}
           >
-            <RefreshCw size={13} />
-            {p.retryBtn}
-          </Link>
-          <button className={cn(
-            "hr-glass-card flex items-center gap-2 h-9 px-4 text-[13px] font-semibold hover:border-[#7C3AED]/30",
-            portalHeadingAlt
-          )}>
             <Share2 size={13} />
             {p.shareBtn}
           </button>
         </div>
       </motion.div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[1fr_320px] gap-6 mb-6">
-        {/* ── Skill Breakdown ───────────────────────────────────────── */}
+      {/* ── Skill Breakdown (radar) — only when at least one question has dimension scores ── */}
+      {radarData && (
         <motion.div
-          initial={{ opacity: 0, y: 16 }}
+          initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="hr-glass-card p-6"
+          transition={{ delay: 0.2 }}
+          className="hr-glass-card p-5 sm:p-6 mb-6"
         >
-          <h2 className={cn("text-[16px] font-[700] mb-5", portalHeadingAlt)}>{p.skillBreakdown}</h2>
-          <FeedbackRadarChart />
+          <h2 className={cn("text-[16px] font-[700] mb-2", portalHeadingAlt)}>{p.skillBreakdown}</h2>
+          <FeedbackRadarChart data={radarData} />
         </motion.div>
-
-        {/* ── Score breakdown bars ──────────────────────────────────── */}
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.15 }}
-          className="hr-glass-card p-6 flex flex-col gap-4"
-        >
-          <h2 className={cn("text-[16px] font-[700]", portalHeadingAlt)}>{p.skillBreakdown}</h2>
-          {skillRadarData.map((item, i) => (
-            <motion.div
-              key={item.skill}
-              initial={{ opacity: 0, x: -16 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.2 + i * 0.06 }}
-              className="flex flex-col gap-1.5"
-            >
-              <div className="flex items-center justify-between">
-                <span className={cn("text-[13px] font-[500]", portalHeadingAlt)}>{item.skill}</span>
-                <span className={cn("text-[13px] font-[700]", portalHeadingAlt)}>{item.score}</span>
-              </div>
-              <div className="h-1.5 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
-                <motion.div
-                  className={cn(
-                    "h-full rounded-full",
-                    item.score >= 85 ? "bg-emerald-400" :
-                    item.score >= 70 ? "bg-primary" : "bg-amber-400"
-                  )}
-                  initial={{ width: 0 }}
-                  animate={{ width: `${item.score}%` }}
-                  transition={{ duration: 0.8, delay: 0.3 + i * 0.06 }}
-                />
-              </div>
-            </motion.div>
-          ))}
-        </motion.div>
-      </div>
+      )}
 
       {/* ── Question Reviews ─────────────────────────────────────── */}
-      {session.answers.length > 0 && (
+      {answeredQuestions.length > 0 && (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -208,11 +281,13 @@ export function FeedbackPage({ session }: FeedbackPageProps) {
           className="flex flex-col gap-4"
         >
           <h2 className={cn("text-[20px] font-[700]", portalHeadingAlt)}>{p.questionReviews}</h2>
-          {session.answers.map((ans, i) => {
-            const isExpanded = expandedIds.has(ans.questionId);
+          {answeredQuestions.map((q, i) => {
+            const isExpanded = expandedIds.has(q.id);
+            const fb = feedbackByQuestionId.get(q.id);
+            const hasEval = fb && fb.evaluationStatus === "Succeeded" && fb.score !== null;
             return (
               <motion.div
-                key={ans.questionId}
+                key={q.id}
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.3 + i * 0.08 }}
@@ -220,32 +295,25 @@ export function FeedbackPage({ session }: FeedbackPageProps) {
               >
                 {/* Question header — always-visible summary, click to expand */}
                 <button
-                  onClick={() => toggleExpanded(ans.questionId)}
+                  onClick={() => toggleExpanded(q.id)}
                   className="w-full flex items-start justify-between gap-4 text-left cursor-pointer"
                 >
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-2">
-                      <Pill className={getCategoryBadgeClass(ans.category)}>{ans.category}</Pill>
+                      <CategoryPill category={q.questionType} label={formatCategoryLabel(q.questionType)} />
                       <span className={cn("text-[12px]", portalSubtextAlt)}>Q{i + 1}</span>
+                      {hasEval && (
+                        <Pill className={cn("text-[11px] font-[700] px-2 py-0.5 ml-auto", getScoreBadgeClass(fb.score as number))}>
+                          {fb.score}%
+                        </Pill>
+                      )}
                     </div>
-                    <p className={cn("text-[15px] font-[700] leading-[24px]", portalHeadingAlt)}>{ans.questionText}</p>
+                    <p className={cn("text-[15px] font-[700] leading-[24px]", portalHeadingAlt)}>{q.question}</p>
                   </div>
-                  <div className="shrink-0 flex items-center gap-3">
-                    <div className="flex flex-col items-center">
-                      <span className={cn(
-                        "text-[22px] font-[800] leading-none",
-                        ans.aiScore >= 80 ? "text-emerald-500" :
-                        ans.aiScore >= 65 ? "text-primary" : "text-amber-500"
-                      )}>
-                        {ans.aiScore}
-                      </span>
-                      <span className={cn("text-[10px]", portalSubtextAlt)}>/ 100</span>
-                    </div>
-                    <ChevronDown
-                      size={16}
-                      className={cn("text-gray-400 dark:text-gray-500 transition-transform duration-200", isExpanded && "rotate-180")}
-                    />
-                  </div>
+                  <ChevronDown
+                    size={16}
+                    className={cn("text-gray-400 dark:text-gray-500 transition-transform duration-200 shrink-0 mt-1", isExpanded && "rotate-180")}
+                  />
                 </button>
 
                 <AnimatePresence initial={false}>
@@ -257,55 +325,53 @@ export function FeedbackPage({ session }: FeedbackPageProps) {
                       transition={{ duration: 0.2 }}
                       className="overflow-hidden"
                     >
-                      <div className="pt-5">
+                      <div className="pt-5 flex flex-col gap-4">
                         {/* Your answer */}
-                        <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4 mb-4 border border-gray-100 dark:border-gray-700/50">
+                        <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4 border border-gray-100 dark:border-gray-700/50">
                           <p className={cn("text-[11px] font-[700] uppercase tracking-wide mb-2", portalSubtextAlt)}>{p.yourAnswer}</p>
-                          <p className={cn("text-[13px] leading-[22px]", portalHeadingAlt)}>{ans.answer}</p>
+                          <p className={cn("text-[13px] leading-[22px] whitespace-pre-wrap", portalHeadingAlt)}>{q.answerText}</p>
                         </div>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-                          {/* Strengths */}
-                          <div>
-                            <div className="flex items-center gap-1.5 mb-2">
-                              <CheckCircle2 size={13} className="text-emerald-500" />
-                              <p className="text-[12px] font-[700] text-emerald-700 dark:text-emerald-400">{p.strengths}</p>
-                            </div>
-                            <ul className="space-y-1">
-                              {ans.strengths.map((s, j) => (
-                                <li key={j} className={cn("flex items-start gap-2 text-[13px]", portalHeadingAlt)}>
-                                  <span className="text-emerald-400 mt-1 shrink-0">·</span>
-                                  {s}
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
+                        {/* AI evaluation — only when this question's evaluation actually succeeded */}
+                        {hasEval && (
+                          <div className="flex flex-col gap-3">
+                            <p className={cn("text-[11px] font-[700] uppercase tracking-wide", portalSubtextAlt)}>{p.aiEvaluation}</p>
 
-                          {/* Improvements */}
-                          <div>
-                            <div className="flex items-center gap-1.5 mb-2">
-                              <AlertCircle size={13} className="text-amber-500" />
-                              <p className="text-[12px] font-[700] text-amber-700 dark:text-amber-400">{p.improvements}</p>
-                            </div>
-                            <ul className="space-y-1">
-                              {ans.improvements.map((s, j) => (
-                                <li key={j} className={cn("flex items-start gap-2 text-[13px]", portalHeadingAlt)}>
-                                  <span className="text-amber-400 mt-1 shrink-0">·</span>
-                                  {s}
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                        </div>
+                            {fb.strengths.length > 0 && (
+                              <div className="flex flex-col gap-1.5">
+                                <p className="flex items-center gap-1.5 text-[12px] font-[700] text-emerald-600 dark:text-emerald-400">
+                                  <CheckCircle2 size={13} />
+                                  {p.strengths}
+                                </p>
+                                <ul className={cn("text-[13px] leading-[20px] list-disc pl-5", portalHeadingAlt)}>
+                                  {fb.strengths.map((s) => <li key={s}>{s}</li>)}
+                                </ul>
+                              </div>
+                            )}
 
-                        {/* AI Suggestion */}
-                        <div className="hr-quick-generate rounded-lg p-4 flex gap-3">
-                          <Lightbulb size={14} className="text-[#7C3AED] dark:text-[#a78bff] shrink-0 mt-0.5" />
-                          <div>
-                            <p className="text-[11px] font-[700] text-primary mb-1">{p.suggestion}</p>
-                            <p className={cn("text-[13px] leading-[20px]", portalHeadingAlt)}>{ans.suggestion}</p>
+                            {fb.improvements.length > 0 && (
+                              <div className="flex flex-col gap-1.5">
+                                <p className="flex items-center gap-1.5 text-[12px] font-[700] text-amber-600 dark:text-amber-400">
+                                  <AlertTriangle size={13} />
+                                  {p.improvements}
+                                </p>
+                                <ul className={cn("text-[13px] leading-[20px] list-disc pl-5", portalHeadingAlt)}>
+                                  {fb.improvements.map((s) => <li key={s}>{s}</li>)}
+                                </ul>
+                              </div>
+                            )}
+
+                            {fb.suggestion && (
+                              <div className="flex items-start gap-2 bg-primary/5 dark:bg-primary/10 rounded-lg p-3">
+                                <Lightbulb size={14} className="text-primary shrink-0 mt-0.5" />
+                                <div>
+                                  <p className="text-[12px] font-[700] text-primary mb-1">{p.suggestion}</p>
+                                  <p className={cn("text-[13px] leading-[20px]", portalHeadingAlt)}>{fb.suggestion}</p>
+                                </div>
+                              </div>
+                            )}
                           </div>
-                        </div>
+                        )}
                       </div>
                     </motion.div>
                   )}
