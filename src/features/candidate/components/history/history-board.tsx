@@ -1,49 +1,163 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { Search, RefreshCw, Eye, BarChart2, Clock, Trophy, BookOpen, ChevronDown } from "lucide-react";
+import { Search, RefreshCw, Eye, BarChart2, Clock, Trophy, BookOpen, ChevronDown, AlertCircle, History as HistoryIcon, Loader2, Activity } from "lucide-react";
 import { cn } from "@/lib/cn";
-import { practiceSessions } from "@/features/candidate/data/jobseeker";
+import {
+  listCompletedSessions,
+  getPracticeStats,
+  type CompletedSessionSummary,
+  type PracticeStats,
+} from "@/features/candidate/services/practice-session.service";
+import { getCompanyColor, getCompanyInitials } from "@/features/candidate/utils/company-visual";
 import { useLanguage } from "@/shared/providers/language-context";
 import { StatCard } from "@/features/candidate/components/ui/stat-card";
-import { Pill, getScoreBadgeClass } from "@/features/candidate/components/ui/pill";
+import { Pill, PendingScorePill, getScoreBadgeClass } from "@/features/candidate/components/ui/pill";
+import { EmptyState } from "@/features/candidate/components/ui/empty-state";
+import { AiLoadingSpinner } from "@/shared/components/common/ai-loading-spinner";
+import { useToast } from "@/shared/providers/toast-context";
 import {
+  portalCard,
   portalHeadingAlt,
   portalInput,
   portalSubtextAlt,
 } from "@/shared/utils/portal-ui";
 
+const PAGE_SIZE = 20;
+
+type TimeFilterKey = "all" | "week" | "month";
+
+function dateRangeFor(filter: TimeFilterKey): { fromDate?: string } {
+  if (filter === "all") return {};
+  const from = new Date();
+  if (filter === "week") {
+    from.setDate(from.getDate() - 7);
+  } else {
+    from.setDate(1);
+  }
+  from.setHours(0, 0, 0, 0);
+  return { fromDate: from.toISOString() };
+}
+
+function formatSessionDate(iso?: string): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+}
+
+function ScorePill({ score, pendingTooltip }: { score: number | null; pendingTooltip: string }) {
+  if (score === null) {
+    return <PendingScorePill label={pendingTooltip} className="text-[13px] px-2.5 py-1 w-fit" />;
+  }
+  return (
+    <Pill className={cn("text-[13px] font-[700] px-2.5 py-1 w-fit", getScoreBadgeClass(score))}>
+      {score}%
+    </Pill>
+  );
+}
+
 export function HistoryBoard() {
   const { t } = useLanguage();
   const p = t.jobseekerHistoryPage;
+  const { addToast } = useToast();
 
   const [search, setSearch] = useState("");
-  const [timeFilter, setTimeFilter] = useState("All Time");
+  const [timeFilter, setTimeFilter] = useState<TimeFilterKey>("all");
 
-  const filtered = practiceSessions.filter((s) => {
+  const [sessions, setSessions] = useState<CompletedSessionSummary[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
+  const [page, setPage] = useState(1);
+  const [stats, setStats] = useState<PracticeStats | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [error, setError] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setError(false);
+    const { fromDate } = dateRangeFor(timeFilter);
+    Promise.all([listCompletedSessions({ page: 1, pageSize: PAGE_SIZE, fromDate }), getPracticeStats()])
+      .then(([sessionsRes, statsRes]) => {
+        if (cancelled) return;
+        setSessions(sessionsRes.items);
+        setTotalCount(sessionsRes.totalCount);
+        setPage(1);
+        setStats(statsRes);
+      })
+      .catch(() => {
+        if (!cancelled) setError(true);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [reloadKey, timeFilter]);
+
+  function loadMore() {
+    const nextPage = page + 1;
+    setLoadingMore(true);
+    const { fromDate } = dateRangeFor(timeFilter);
+    listCompletedSessions({ page: nextPage, pageSize: PAGE_SIZE, fromDate })
+      .then((res) => {
+        setSessions((prev) => [...prev, ...res.items]);
+        setTotalCount(res.totalCount);
+        setPage(nextPage);
+      })
+      .catch(() => addToast("error", p.loadFailed))
+      .finally(() => setLoadingMore(false));
+  }
+
+  const filtered = sessions.filter((s) => {
     const q = search.toLowerCase();
     return !q || s.setTitle.toLowerCase().includes(q) || s.company.toLowerCase().includes(q);
   });
 
-  const avgScore = Math.round(practiceSessions.reduce((a, s) => a + s.score, 0) / practiceSessions.length);
-  const bestScore = Math.max(...practiceSessions.map((s) => s.score));
-  const totalTime = practiceSessions.reduce((a, s) => a + parseInt(s.duration), 0);
-
   const iconBg = "bg-gray-100 dark:bg-gray-800 shadow-sm ring-1 ring-black/5 dark:ring-white/10";
   const iconColor = "text-gray-900 dark:text-gray-100";
   const statCards = [
-    { icon: BookOpen, label: p.statLabels[0], value: practiceSessions.length.toString(), bg: iconBg, color: iconColor },
-    { icon: BarChart2, label: p.statLabels[1], value: `${avgScore}%`, bg: iconBg, color: iconColor },
-    { icon: Trophy, label: p.statLabels[2], value: `${bestScore}%`, bg: iconBg, color: iconColor },
-    { icon: Clock, label: p.statLabels[3], value: `${totalTime} min`, bg: iconBg, color: iconColor },
+    { icon: BookOpen, label: p.statLabels[0], value: (stats?.totalSessions ?? 0).toString(), bg: iconBg, color: iconColor },
+    { icon: BarChart2, label: p.statLabels[1], value: stats?.averageScore != null ? `${stats.averageScore}%` : "—", bg: iconBg, color: iconColor },
+    { icon: Trophy, label: p.statLabels[2], value: stats?.bestScore != null ? `${stats.bestScore}%` : "—", bg: iconBg, color: iconColor },
+    { icon: Activity, label: p.statLabels[4], value: stats?.latestScore != null ? `${stats.latestScore}%` : "—", bg: iconBg, color: iconColor },
+    { icon: Clock, label: p.statLabels[3], value: `${stats?.totalDurationMinutes ?? 0} min`, bg: iconBg, color: iconColor },
   ];
+
+  if (loading) {
+    return (
+      <div className="py-20 flex items-center justify-center">
+        <AiLoadingSpinner text={p.loading} />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center gap-3 py-20 text-center">
+        <AlertCircle size={28} className="text-red-500" />
+        <p className={cn("text-[14px]", portalSubtextAlt)}>{p.loadFailed}</p>
+        <button
+          type="button"
+          onClick={() => setReloadKey((k) => k + 1)}
+          className="flex items-center gap-2 text-[13px] font-semibold text-primary hover:underline"
+        >
+          <RefreshCw size={13} />
+          {p.loadRetryBtn}
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div>
       {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
         {statCards.map((s, i) => (
           <motion.div
             key={s.label}
@@ -79,14 +193,20 @@ export function HistoryBoard() {
         <div className="relative shrink-0">
           <select
             value={timeFilter}
-            onChange={(e) => setTimeFilter(e.target.value)}
+            onChange={(e) => setTimeFilter(e.target.value as TimeFilterKey)}
             className={cn(
               "appearance-none w-full sm:w-auto rounded-lg pl-3 pr-8 h-[38px] text-[12px] outline-none cursor-pointer focus:border-primary transition-all",
               portalInput
             )}
           >
-            {[p.filters.allTime, p.filters.thisWeek, p.filters.thisMonth].map((opt) => (
-              <option key={opt}>{opt}</option>
+            {(
+              [
+                ["all", p.filters.allTime],
+                ["week", p.filters.thisWeek],
+                ["month", p.filters.thisMonth],
+              ] as [TimeFilterKey, string][]
+            ).map(([key, label]) => (
+              <option key={key} value={key}>{label}</option>
             ))}
           </select>
           <ChevronDown size={13} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 pointer-events-none" />
@@ -101,14 +221,14 @@ export function HistoryBoard() {
         className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm overflow-hidden hidden md:block"
       >
         {/* Header */}
-        <div className="grid grid-cols-[2.5fr_1fr_1fr_1fr_2fr_auto] gap-4 px-6 py-3 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/60">
-          {[p.table.session, p.table.date, p.table.score, p.table.duration, p.table.skills, p.table.actions].map((col) => (
+        <div className="grid grid-cols-[2.5fr_1fr_1fr_1fr_200px] gap-4 px-6 py-3 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/60">
+          {[p.table.session, p.table.date, p.table.score, p.table.duration, p.table.actions].map((col) => (
             <span key={col} className={cn("text-[11px] font-[700] uppercase tracking-wide", portalSubtextAlt)}>{col}</span>
           ))}
         </div>
 
         {filtered.length === 0 ? (
-          <p className={cn("text-center py-12 text-[14px]", portalSubtextAlt)}>{p.noHistory}</p>
+          <EmptyState icon={HistoryIcon} title={p.noHistory} className="py-12" />
         ) : (
           <ul className="divide-y divide-gray-200 dark:divide-gray-800">
             {filtered.map((session, i) => (
@@ -117,12 +237,13 @@ export function HistoryBoard() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.3 + i * 0.05 }}
-                className="hr-table-row grid grid-cols-[2.5fr_1fr_1fr_1fr_2fr_auto] gap-4 px-6 py-4 items-center"
+                whileHover={{ scale: 1.01 }}
+                className="hr-table-row grid grid-cols-[2.5fr_1fr_1fr_1fr_200px] gap-4 px-6 py-4 items-center"
               >
                 {/* Session */}
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className={cn("w-8 h-8 rounded-lg text-white text-[11px] font-bold flex items-center justify-center shrink-0", session.companyColor)}>
-                    {session.companyInitials}
+                  <div className={cn("w-8 h-8 rounded-lg text-white text-[11px] font-bold flex items-center justify-center shrink-0", getCompanyColor(session.company))}>
+                    {getCompanyInitials(session.company)}
                   </div>
                   <div className="min-w-0">
                     <p className={cn("text-[13px] font-[600] truncate", portalHeadingAlt)}>{session.setTitle}</p>
@@ -131,29 +252,18 @@ export function HistoryBoard() {
                 </div>
 
                 {/* Date */}
-                <p className={cn("text-[12px]", portalSubtextAlt)}>{session.date}</p>
+                <p className={cn("text-[12px]", portalSubtextAlt)}>{formatSessionDate(session.completedAt)}</p>
 
                 {/* Score */}
-                <Pill className={cn("text-[13px] font-[700] px-2.5 py-1 w-fit", getScoreBadgeClass(session.score))}>
-                  {session.score}%
-                </Pill>
+                <ScorePill score={session.score} pendingTooltip={p.pendingScoreTooltip} />
 
                 {/* Duration */}
-                <p className={cn("text-[12px]", portalSubtextAlt)}>{session.duration}</p>
-
-                {/* Skills */}
-                <div className="flex flex-wrap gap-1.5">
-                  {session.skills.slice(0, 3).map((skill) => (
-                    <span key={skill} className="text-[11px] font-medium px-2 py-0.5 rounded-md bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700">
-                      {skill}
-                    </span>
-                  ))}
-                </div>
+                <p className={cn("text-[12px]", portalSubtextAlt)}>{session.durationMinutes} min</p>
 
                 {/* Actions */}
                 <div className="flex items-center gap-1">
                   <Link
-                    href={`/jobseeker/practice/${session.setId}/result`}
+                    href={`/jobseeker/practice/${session.id}/result`}
                     className={cn(
                       "flex items-center gap-1.5 h-[30px] px-3 text-[11px] font-[600] hover:text-primary hover:bg-[#F5F3FF] dark:hover:bg-purple-950/30 rounded-lg transition-colors",
                       portalSubtextAlt
@@ -164,7 +274,7 @@ export function HistoryBoard() {
                     {p.viewBtn}
                   </Link>
                   <Link
-                    href={`/jobseeker/practice/${session.setId}`}
+                    href={`/jobseeker/practice/${session.questionSetId}`}
                     className="shimmer-button flex items-center gap-1.5 h-7.5 px-3 text-[11px] font-semibold text-white hr-cta-btn rounded-lg"
                     title={p.retryBtn}
                   >
@@ -181,7 +291,7 @@ export function HistoryBoard() {
       {/* Card list — mobile (below md) */}
       <div className="md:hidden flex flex-col gap-3">
         {filtered.length === 0 ? (
-          <p className={cn("text-center py-12 text-[14px]", portalSubtextAlt)}>{p.noHistory}</p>
+          <EmptyState icon={HistoryIcon} title={p.noHistory} className="py-12" />
         ) : (
           filtered.map((session, i) => (
             <motion.div
@@ -189,45 +299,35 @@ export function HistoryBoard() {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3 + i * 0.05 }}
+              whileHover={{ scale: 1.02 }}
               className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm p-4 flex flex-col gap-3"
             >
               {/* Header row: company icon + title + score */}
               <div className="flex items-start gap-3">
-                <div className={cn("w-9 h-9 rounded-lg text-white text-[11px] font-bold flex items-center justify-center shrink-0", session.companyColor)}>
-                  {session.companyInitials}
+                <div className={cn("w-9 h-9 rounded-lg text-white text-[11px] font-bold flex items-center justify-center shrink-0", getCompanyColor(session.company))}>
+                  {getCompanyInitials(session.company)}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className={cn("text-[13px] font-[600] truncate", portalHeadingAlt)}>{session.setTitle}</p>
                   <p className={cn("text-[11px] mt-0.5", portalSubtextAlt)}>{session.company}</p>
                 </div>
-                <Pill className={cn("text-[13px] font-[700] px-2.5 py-1 shrink-0", getScoreBadgeClass(session.score))}>
-                  {session.score}%
-                </Pill>
+                <ScorePill score={session.score} pendingTooltip={p.pendingScoreTooltip} />
               </div>
 
               {/* Meta: date · duration */}
               <div className={cn("flex items-center gap-3 text-[12px]", portalSubtextAlt)}>
                 <span className="flex items-center gap-1">
                   <Clock size={11} className="shrink-0" />
-                  {session.date}
+                  {formatSessionDate(session.completedAt)}
                 </span>
                 <span>·</span>
-                <span>{session.duration}</span>
-              </div>
-
-              {/* Skills */}
-              <div className="flex flex-wrap gap-1.5">
-                {session.skills.slice(0, 4).map((skill) => (
-                  <span key={skill} className="text-[11px] font-medium px-2 py-0.5 rounded-md bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700">
-                    {skill}
-                  </span>
-                ))}
+                <span>{session.durationMinutes} min</span>
               </div>
 
               {/* Action buttons */}
               <div className="flex items-center gap-2 pt-1">
                 <Link
-                  href={`/jobseeker/practice/${session.setId}/result`}
+                  href={`/jobseeker/practice/${session.id}/result`}
                   className={cn(
                     "flex-1 flex items-center justify-center gap-1.5 h-[34px] text-[12px] font-[600] rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 transition-colors hover:text-primary hover:bg-violet-50 dark:hover:bg-violet-950/30 hover:border-violet-200 dark:hover:border-violet-800",
                     portalSubtextAlt
@@ -237,7 +337,7 @@ export function HistoryBoard() {
                   {p.viewBtn}
                 </Link>
                 <Link
-                  href={`/jobseeker/practice/${session.setId}`}
+                  href={`/jobseeker/practice/${session.questionSetId}`}
                   className="flex-1 shimmer-button flex items-center justify-center gap-1.5 h-[34px] text-[12px] font-semibold text-white hr-cta-btn rounded-lg"
                 >
                   <RefreshCw size={12} />
@@ -248,6 +348,26 @@ export function HistoryBoard() {
           ))
         )}
       </div>
+
+      {/* Load more */}
+      {sessions.length > 0 && sessions.length < totalCount && (
+        <div className="flex justify-center mt-6">
+          <button
+            type="button"
+            onClick={loadMore}
+            disabled={loadingMore}
+            className={cn(
+              "flex items-center gap-2 h-10 px-5 rounded-lg text-[13px] font-semibold disabled:opacity-60 disabled:cursor-not-allowed transition-colors",
+              portalCard,
+              portalHeadingAlt,
+              "hover:border-primary/40"
+            )}
+          >
+            {loadingMore ? <Loader2 size={14} className="animate-spin" /> : null}
+            {loadingMore ? p.loadingMore : p.loadMoreBtn}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

@@ -11,13 +11,16 @@ export interface JobseekerNavItem {
 
 // ── Question Set ───────────────────────────────────────────────────────────
 export type Difficulty = "Easy" | "Medium" | "Hard";
-export type QuestionCategory = "Technical" | "Behavioral" | "Situational";
+// The real API's questionType is an open-ended string (technical, behavioral,
+// situational, problem-solving, system-design, ...) — not a fixed 3-value enum.
+export type QuestionCategory = string;
 
 export interface PracticeQuestion {
   id: string;
   text: string;
   category: QuestionCategory;
   difficulty: Difficulty;
+  skill?: string;
   timeLimit?: number; // seconds
 }
 
@@ -25,65 +28,24 @@ export interface QuestionSet {
   id: string;
   title: string;
   company: string;
+  companyLogoUrl?: string | null;
   companyInitials: string;
   companyColor: string;
   difficulty: Difficulty;
   skills: string[];
   totalQuestions: number;
   estimatedTime: string;
-  category: string;
-  description: string;
+  estimatedTimeMinutes?: number;
+  /** HR-configured practice time limit (1–480 min), null/undefined = no limit. Distinct from estimatedTimeMinutes, which is just a display estimate. */
+  timeLimitMinutes?: number | null;
+  category?: string;
+  description?: string;
   rating?: number;
   attempts?: number;
   questions: PracticeQuestion[];
 }
 
-// ── Practice Session ───────────────────────────────────────────────────────
-export interface AnswerRecord {
-  questionId: string;
-  questionText: string;
-  category: QuestionCategory;
-  difficulty: Difficulty;
-  answer: string;
-  aiScore: number;
-  strengths: string[];
-  improvements: string[];
-  suggestion: string;
-}
-
-export interface PracticeSession {
-  id: string;
-  setId: string;
-  setTitle: string;
-  company: string;
-  companyInitials: string;
-  companyColor: string;
-  date: string;
-  score: number;
-  duration: string;
-  skills: string[];
-  totalQuestions: number;
-  answers: AnswerRecord[];
-}
-
 // ── Candidate ──────────────────────────────────────────────────────────────
-export interface SkillStat {
-  skill: string;
-  score: number;
-  fullMark: number;
-}
-
-export interface CandidateStat {
-  id: string;
-  label: string;
-  value: string;
-  trend?: string;
-  trendPositive?: boolean;
-  icon: LucideIcon;
-  iconBg: string;
-  iconColor: string;
-}
-
 export interface Achievement {
   id: string;
   title: string;

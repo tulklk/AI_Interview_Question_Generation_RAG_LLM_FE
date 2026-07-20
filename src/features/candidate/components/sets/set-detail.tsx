@@ -1,16 +1,22 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, Clock, BarChart2, Users, Star, ChevronDown,
-  ChevronRight, Target, Zap,
+  ChevronRight, Target, Zap, RotateCcw, Bookmark, Loader2, RefreshCw,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { useLanguage } from "@/shared/providers/language-context";
 import type { QuestionSet, QuestionCategory } from "@/features/candidate/types/jobseeker";
-import { Pill, getDifficultyBadgeClass, getCategoryBadgeClass } from "@/features/candidate/components/ui/pill";
+import { DifficultyPill, CategoryPill, formatCategoryLabel } from "@/features/candidate/components/ui/pill";
+import { CompanyInfoCard } from "./company-info-card";
+import { findInProgressSession, abandonPracticeSession, getPracticeSession } from "@/features/candidate/services/practice-session.service";
+import { toggleBookmark, getBookmarkedSetIds } from "@/features/candidate/services/question-set.service";
+import { useToast } from "@/shared/providers/toast-context";
+import { ConfirmDialog } from "@/shared/components/ui/confirm-dialog";
 import {
   portalDivider,
   portalHeadingAlt,
@@ -26,9 +32,69 @@ interface SetDetailProps {
 export function SetDetail({ set }: SetDetailProps) {
   const { t } = useLanguage();
   const p = t.jobseekerSetDetailPage;
+  const mp = t.jobseekerMarketplacePage;
+  const { addToast } = useToast();
+  const router = useRouter();
 
-  const categories: QuestionCategory[] = ["Technical", "Behavioral", "Situational"];
-  const [openCategory, setOpenCategory] = useState<QuestionCategory | null>("Technical");
+  const [inProgressSessionId, setInProgressSessionId] = useState<string | null>(null);
+  const [bookmarked, setBookmarked] = useState(false);
+  const [bookmarking, setBookmarking] = useState(false);
+  const [startNewConfirmOpen, setStartNewConfirmOpen] = useState(false);
+  const [startingNew, setStartingNew] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    findInProgressSession(set.id)
+      .then((found) => {
+        if (!cancelled) setInProgressSessionId(found?.sessionId ?? null);
+      })
+      .catch(() => {
+        // Non-critical — CTA just falls back to "Start"
+      });
+    getBookmarkedSetIds().then((ids) => {
+      if (!cancelled) setBookmarked(ids.has(set.id));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [set.id]);
+
+  function handleToggleBookmark() {
+    if (bookmarking) return;
+    setBookmarking(true);
+    toggleBookmark(set.id)
+      .then(setBookmarked)
+      .catch(() => addToast("error", mp.bookmarkFailed))
+      .finally(() => setBookmarking(false));
+  }
+
+  function handleStartNew() {
+    if (!inProgressSessionId || startingNew) return;
+    setStartingNew(true);
+    abandonPracticeSession(inProgressSessionId)
+      .then(() => {
+        router.push(`/jobseeker/practice/${set.id}`);
+      })
+      .catch(async () => {
+        // The old session may have already been auto-completed server-side (BE
+        // enforces the set's time limit) by the time we tried to abandon it —
+        // either way there's nothing IN_PROGRESS left, so starting fresh still works.
+        const existing = await getPracticeSession(inProgressSessionId).catch(() => null);
+        if (existing && existing.status !== "IN_PROGRESS") {
+          router.push(`/jobseeker/practice/${set.id}`);
+          return;
+        }
+        setStartingNew(false);
+        setStartNewConfirmOpen(false);
+        addToast("error", p.startNewFailed);
+      });
+  }
+
+  // Categories are derived from whatever questionType values the real question set actually
+  // contains (technical, behavioral, situational, problem-solving, system-design, ...) rather
+  // than a fixed 3-value list, preserving first-seen order.
+  const categories: QuestionCategory[] = Array.from(new Set(set.questions.map((q) => q.category)));
+  const [openCategory, setOpenCategory] = useState<QuestionCategory | null>(categories[0] ?? null);
 
   const groupedQuestions = categories.reduce((acc, cat) => {
     acc[cat] = set.questions.filter((q) => q.category === cat);
@@ -69,12 +135,31 @@ export function SetDetail({ set }: SetDetailProps) {
                 <h1 className={cn("text-[24px] font-[800] leading-[32px]", portalHeadingAlt)}>{set.title}</h1>
                 <p className={cn("text-[14px] mt-1", portalSubtextAlt)}>{p.by} {set.company}</p>
               </div>
-              <Pill className={cn("text-[12px] px-3 py-1.5", getDifficultyBadgeClass(set.difficulty))}>
-                {set.difficulty}
-              </Pill>
+              <DifficultyPill difficulty={set.difficulty} label={set.difficulty} className="text-[12px] px-3 py-1.5" />
+              <button
+                type="button"
+                onClick={handleToggleBookmark}
+                disabled={bookmarking}
+                aria-label={bookmarked ? mp.unsaveBtn : mp.saveBtn}
+                title={bookmarked ? mp.unsaveBtn : mp.saveBtn}
+                className={cn(
+                  "shrink-0 w-9 h-9 flex items-center justify-center rounded-lg border transition-colors disabled:opacity-60",
+                  bookmarked
+                    ? "bg-primary/10 dark:bg-primary/15 border-primary/30 text-primary hover:bg-primary/15"
+                    : "bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-primary hover:border-primary/30"
+                )}
+              >
+                {bookmarking ? (
+                  <Loader2 size={16} className="animate-spin" />
+                ) : (
+                  <Bookmark size={16} className={bookmarked ? "fill-primary" : ""} />
+                )}
+              </button>
             </div>
 
-            <p className={cn("text-[15px] leading-[24px] mb-5", portalSubtextAlt)}>{set.description}</p>
+            {set.description && (
+              <p className={cn("text-[15px] leading-[24px] mb-5", portalSubtextAlt)}>{set.description}</p>
+            )}
 
             {/* Meta pills */}
             <div className={cn("flex flex-wrap items-center gap-4 text-[13px]", portalSubtextAlt)}>
@@ -89,13 +174,13 @@ export function SetDetail({ set }: SetDetailProps) {
               {set.attempts !== undefined && (
                 <span className="flex items-center gap-1.5">
                   <Users size={14} className="text-primary" />
-                  {set.attempts.toLocaleString()} {p.summaryCard.totalQuestions === "Total Questions" ? "attempts" : "lượt"}
+                  {set.attempts.toLocaleString()} {p.summaryCard.attempts}
                 </span>
               )}
               {set.rating !== undefined && (
                 <span className="flex items-center gap-1.5">
                   <Star size={14} className="text-amber-400 fill-amber-400" />
-                  <span className={cn("font-[600]", portalHeadingAlt)}>{set.rating}</span>
+                  <span className={cn("font-[600]", portalHeadingAlt)}>{set.rating!.toFixed(1)}</span>
                 </span>
               )}
             </div>
@@ -112,6 +197,11 @@ export function SetDetail({ set }: SetDetailProps) {
               </div>
             </div>
           </div>
+
+          {/* Company info block */}
+          {set.company && (
+            <CompanyInfoCard name={set.company} logoUrl={set.companyLogoUrl} />
+          )}
 
           {/* Question Preview */}
           <div
@@ -134,7 +224,7 @@ export function SetDetail({ set }: SetDetailProps) {
                       className="hr-table-row w-full flex items-center justify-between px-6 py-4"
                     >
                       <div className="flex items-center gap-3">
-                        <Pill className={getCategoryBadgeClass(cat)}>{p.categories[cat]}</Pill>
+                        <CategoryPill category={cat} label={formatCategoryLabel(cat)} />
                         <span className={cn("text-[13px]", portalSubtextAlt)}>{qs.length} questions</span>
                       </div>
                       <ChevronDown
@@ -165,9 +255,7 @@ export function SetDetail({ set }: SetDetailProps) {
                                 {idx + 1}.
                               </span>
                               <p className={cn("text-[14px] leading-[22px] flex-1", portalHeadingAlt)}>{q.text}</p>
-                              <Pill size="sm" className={getDifficultyBadgeClass(q.difficulty)}>
-                                {q.difficulty}
-                              </Pill>
+                              <DifficultyPill difficulty={q.difficulty} label={q.difficulty} size="sm" />
                             </li>
                           ))}
                         </motion.ul>
@@ -224,18 +312,55 @@ export function SetDetail({ set }: SetDetailProps) {
                 </div>
               </div>
 
-              {/* CTA */}
+              {/* CTA — "Continue" if an in-progress session exists, else "Start" */}
               <Link
                 href={`/jobseeker/practice/${set.id}`}
                 className="shimmer-button flex items-center justify-center gap-2 w-full h-10 text-[14px] font-semibold text-white hr-cta-btn rounded-lg mt-2"
               >
-                {p.summaryCard.startBtn}
-                <ChevronRight size={14} />
+                {inProgressSessionId ? (
+                  <>
+                    <RotateCcw size={14} />
+                    {p.summaryCard.continueBtn}
+                  </>
+                ) : (
+                  <>
+                    {p.summaryCard.startBtn}
+                    <ChevronRight size={14} />
+                  </>
+                )}
               </Link>
+
+              {inProgressSessionId && (
+                <button
+                  type="button"
+                  onClick={() => setStartNewConfirmOpen(true)}
+                  disabled={startingNew}
+                  className={cn(
+                    "flex items-center justify-center gap-2 w-full h-9 text-[13px] font-semibold rounded-lg border transition-colors disabled:opacity-60",
+                    portalMutedBg, portalHeadingAlt,
+                    "hover:bg-gray-100 dark:hover:bg-gray-700 border-gray-200 dark:border-gray-700"
+                  )}
+                >
+                  {startingNew ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />}
+                  {p.summaryCard.startNewBtn}
+                </button>
+              )}
             </div>
           </div>
         </motion.div>
       </div>
+
+      <ConfirmDialog
+        open={startNewConfirmOpen}
+        title={p.startNewConfirmTitle}
+        message={p.startNewConfirmMessage}
+        confirmLabel={p.startNewConfirmBtn}
+        cancelLabel={p.startNewCancelBtn}
+        variant="danger"
+        loading={startingNew}
+        onConfirm={handleStartNew}
+        onCancel={() => setStartNewConfirmOpen(false)}
+      />
     </div>
   );
 }

@@ -636,6 +636,17 @@ body {
   animation: stepRingPulse 1.6s ease-out infinite;
 }
 
+/* CTA button — same pulse convention as step-ring-active, scaled down for a rectangular button */
+@keyframes ctaRingPulse {
+  0%   { transform: scale(1);    opacity: 0.45; }
+  65%  { transform: scale(1.15); opacity: 0;    }
+  100% { transform: scale(1.15); opacity: 0;    }
+}
+
+.cta-ring-active {
+  animation: ctaRingPulse 1.6s ease-out infinite;
+}
+
 /* ── Input border travel: rotating light goes around once, then shows normal ring ── */
 @property --ba {
   syntax: '<angle>';

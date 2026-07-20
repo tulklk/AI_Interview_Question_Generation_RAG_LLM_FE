@@ -13,10 +13,15 @@ import {
   hasLoginWelcomePending,
 } from "@/features/auth/utils/login-welcome";
 import { getInitials, resolveAvatarUrl } from "@/shared/utils/user-display";
+import { formatRelativeTime } from "@/shared/utils/relative-time";
+import type { NotificationItem } from "@/shared/components/common/notification-bell";
+import { listCompletedSessions } from "@/features/candidate/services/practice-session.service";
 import {
   CandidateSubscriptionProvider,
   useCandidateSubscription,
 } from "@/features/candidate/context/candidate-subscription-context";
+
+const UNREAD_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 interface JobseekerAppShellProps {
   children: ReactNode;
@@ -29,19 +34,46 @@ function JobseekerAppShellInner({
   breadcrumb,
   pageTitle,
 }: JobseekerAppShellProps) {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const pathname = usePathname();
   const { addToast } = useToast();
   const { user, loading } = useUser();
   const { planType } = useCandidateSubscription();
   const welcomedRef = useRef(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
 
   // Body scroll lock when mobile sidebar is open
   useEffect(() => {
     document.body.style.overflow = sidebarOpen ? "hidden" : "";
     return () => { document.body.style.overflow = ""; };
   }, [sidebarOpen]);
+
+  // Derive notifications from recently completed practice sessions (feedback ready).
+  useEffect(() => {
+    let cancelled = false;
+    listCompletedSessions({ pageSize: 5 })
+      .then((res) => {
+        if (cancelled) return;
+        const items: NotificationItem[] = [...res.items]
+          .sort((a, b) => new Date(b.completedAt ?? 0).getTime() - new Date(a.completedAt ?? 0).getTime())
+          .slice(0, 5)
+          .map((s) => ({
+            id: s.id,
+            message: t.notificationMessages.candidateFeedbackReady.replace("{{title}}", s.setTitle || "—"),
+            time: formatRelativeTime(s.completedAt, lang),
+            read: !s.completedAt || Date.now() - new Date(s.completedAt).getTime() > UNREAD_WINDOW_MS,
+          }));
+        setNotifications(items);
+      })
+      .catch(() => {
+        // Non-critical — bell just shows empty.
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Close sidebar on route change
   useEffect(() => { setSidebarOpen(false); }, [pathname]);
@@ -86,6 +118,7 @@ function JobseekerAppShellInner({
           breadcrumb={translatedBreadcrumb}
           pageTitle={translatedTitle}
           onMenuToggle={() => setSidebarOpen((v) => !v)}
+          notifications={notifications}
           user={{
             initials: user?.fullName ? getInitials(user.fullName) : loading ? "..." : "??",
             name: user?.fullName ?? (loading ? "..." : "User"),

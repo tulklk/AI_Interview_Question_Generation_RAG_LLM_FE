@@ -8,7 +8,7 @@ interface StatCardProps {
 
 export function StatCard({ stat, labelOverride }: StatCardProps) {
   return (
-    <div className="hr-stat-card p-5 flex flex-col gap-4">
+    <div className="hr-stat-card p-5 flex flex-col gap-4 h-full">
       <div className="flex items-start justify-between">
         <div
           className={cn(

@@ -4,12 +4,13 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FileText, Calendar, ArrowUpDown, Eye, Download, Trash2, Inbox, Loader2, AlertTriangle, ChevronLeft, ChevronRight } from "lucide-react";
+import { FileText, Calendar, ArrowUpDown, Eye, Download, Trash2, Inbox, Loader2, AlertTriangle, ChevronLeft, ChevronRight, SearchX, Globe, PenLine } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { useLanguage } from "@/shared/providers/language-context";
+import { useToast } from "@/shared/providers/toast-context";
 import { useHrSubscription } from "@/features/hr/context/hr-subscription-context";
 import { getLocalSessions, toGenerationSession } from "@/features/interview/utils/local-history";
-import { getGenerationJobs, getGenerationPlans, deleteGenerationPlan, exportPlanQuestions } from "@/features/interview/services/interview.service";
+import { getGenerationJobs, getGenerationPlans, getQuestionSetStatusByJob, deleteGenerationPlan, exportPlanQuestions } from "@/features/interview/services/interview.service";
 import type { GenerationSession, GenerationStatus } from "@/features/interview/types/generation-session";
 import { SessionStatusBadge } from "@/features/interview/components/history/session-status-badge";
 import {
@@ -18,6 +19,20 @@ import {
   portalHeading,
   portalSubtext,
 } from "@/shared/utils/portal-ui";
+
+function PublishStatusBadge({ status, labels }: { status: "DRAFT" | "PUBLISHED"; labels: { published: string; draft: string } }) {
+  return (
+    <span className={cn(
+      "inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full",
+      status === "PUBLISHED"
+        ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400"
+        : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400"
+    )}>
+      {status === "PUBLISHED" ? <Globe size={11} /> : <PenLine size={11} />}
+      {status === "PUBLISHED" ? labels.published : labels.draft}
+    </span>
+  );
+}
 
 function formatDate(iso: string): string {
   const d = new Date(iso);
@@ -112,6 +127,7 @@ interface HistoryTableProps {
   level?: string;
   experience?: string;
   status?: string;
+  publishStatus?: string;
 }
 
 function resolveSessionDestination(session: GenerationSession): { type: "history" } | { type: "generate"; view: string; phase: string } {
@@ -143,8 +159,9 @@ function resolveSessionDestination(session: GenerationSession): { type: "history
   return { type: "generate", view, phase };
 }
 
-export function HistoryTable({ search = "", role = "", level = "", experience = "", status = "" }: HistoryTableProps) {
+export function HistoryTable({ search = "", role = "", level = "", experience = "", status = "", publishStatus = "" }: HistoryTableProps) {
   const { t } = useLanguage();
+  const { addToast } = useToast();
   const { hasFeature } = useHrSubscription();
   const router = useRouter();
   const ht = t.historyPage.table;
@@ -153,6 +170,7 @@ export function HistoryTable({ search = "", role = "", level = "", experience = 
   const canExport = hasFeature("pdfExport");
 
   const [sessions, setSessions] = useState<GenerationSession[]>([]);
+  const [publishMap, setPublishMap] = useState<Map<string, "DRAFT" | "PUBLISHED">>(new Map());
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [exportingId, setExportingId] = useState<string | null>(null);
@@ -167,9 +185,14 @@ export function HistoryTable({ search = "", role = "", level = "", experience = 
     const id = confirmSession.id;
     setConfirmSession(null);
     setDeletingId(id);
-    const ok = await deleteGenerationPlan(id);
-    if (ok) setSessions(prev => prev.filter(s => s.id !== id));
-    setDeletingId(null);
+    try {
+      await deleteGenerationPlan(id);
+      setSessions(prev => prev.filter(s => s.id !== id));
+    } catch (err) {
+      addToast("error", err instanceof Error && err.message ? err.message : ht.deleteFailed);
+    } finally {
+      setDeletingId(null);
+    }
   }
 
   function handleViewSession(session: GenerationSession) {
@@ -204,6 +227,8 @@ export function HistoryTable({ search = "", role = "", level = "", experience = 
     const localOnly = localSessions
       .filter((s) => !s.backendJobId)
       .map(toGenerationSession);
+
+    getQuestionSetStatusByJob().then(setPublishMap);
 
     // Fetch all jobs (all statuses including in-progress), then enrich with
     // level/jobTitle metadata from plans API for completed sessions.
@@ -284,7 +309,7 @@ export function HistoryTable({ search = "", role = "", level = "", experience = 
 
   // Reset to page 1 whenever any filter changes
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { setPage(1); }, [search, role, level, experience, status]);
+  useEffect(() => { setPage(1); }, [search, role, level, experience, status, publishStatus]);
 
   const filtered = sessions.filter((s) => {
     const sRole = (s.planDraft?.role ?? "").toLowerCase();
@@ -308,6 +333,9 @@ export function HistoryTable({ search = "", role = "", level = "", experience = 
         if (s.status !== status) return false;
       }
     }
+    // Publish status: separate from generation status — a session only has one
+    // once a question set has been saved as a draft/published from it.
+    if (publishStatus && publishMap.get(s.id) !== publishStatus) return false;
     return true;
   });
 
@@ -447,9 +475,10 @@ export function HistoryTable({ search = "", role = "", level = "", experience = 
   }
 
   const emptyFilterRow = (
-    <p className={cn("px-4 py-10 text-center text-sm", portalSubtext)}>
+    <div className={cn("flex flex-col items-center gap-2 px-4 py-10 text-sm", portalSubtext)}>
+      <SearchX size={20} className="text-gray-300 dark:text-gray-600" />
       Không tìm thấy kết quả phù hợp.
-    </p>
+    </div>
   );
 
   return (
@@ -480,8 +509,14 @@ export function HistoryTable({ search = "", role = "", level = "", experience = 
               </div>
               <div className="flex-1 min-w-0">
                 <span className={cn("font-semibold text-sm leading-snug block", portalHeading)}>{title}</span>
-                <div className="mt-1">
+                <div className="mt-1 flex items-center gap-1.5 flex-wrap">
                   <SessionStatusBadge status={session.status} />
+                  {publishMap.has(session.id) && (
+                    <PublishStatusBadge
+                      status={publishMap.get(session.id)!}
+                      labels={{ published: t.reviewPage.statusPublished, draft: t.reviewPage.statusDraft }}
+                    />
+                  )}
                 </div>
               </div>
             </div>
@@ -533,9 +568,7 @@ export function HistoryTable({ search = "", role = "", level = "", experience = 
         <tbody className="divide-y divide-gray-100 dark:divide-gray-800/70">
           {filtered.length === 0 && (
             <tr>
-              <td colSpan={6} className={cn("px-4 py-10 text-center text-sm", portalSubtext)}>
-                Không tìm thấy kết quả phù hợp.
-              </td>
+              <td colSpan={6}>{emptyFilterRow}</td>
             </tr>
           )}
           {paginated.map((session, rowIdx) => {
@@ -574,7 +607,15 @@ export function HistoryTable({ search = "", role = "", level = "", experience = 
                   <span className={cn("text-sm font-medium tabular-nums", portalHeading)}>{questionsCount}</span>
                 </td>
                 <td className="px-4 py-3.5">
-                  <SessionStatusBadge status={session.status} />
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <SessionStatusBadge status={session.status} />
+                    {publishMap.has(session.id) && (
+                      <PublishStatusBadge
+                        status={publishMap.get(session.id)!}
+                        labels={{ published: t.reviewPage.statusPublished, draft: t.reviewPage.statusDraft }}
+                      />
+                    )}
+                  </div>
                 </td>
                 <td className="px-4 py-3.5">
                   <div className="flex items-center justify-end gap-0.5">

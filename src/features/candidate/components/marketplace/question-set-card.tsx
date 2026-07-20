@@ -3,12 +3,14 @@
 import { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
-import { Clock, Users, Star, ChevronRight, BarChart2 } from "lucide-react";
+import { Clock, Users, Star, ChevronRight, BarChart2, Bookmark, Loader2 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { useLanguage } from "@/shared/providers/language-context";
 import type { QuestionSet } from "@/features/candidate/types/jobseeker";
-import { Pill, getDifficultyBadgeClass } from "@/features/candidate/components/ui/pill";
+import { DifficultyPill } from "@/features/candidate/components/ui/pill";
 import { portalHeadingAlt, portalSubtextAlt } from "@/shared/utils/portal-ui";
+import { toggleBookmark } from "@/features/candidate/services/question-set.service";
+import { useToast } from "@/shared/providers/toast-context";
 
 const MAX_VISIBLE = 3;
 
@@ -67,38 +69,87 @@ function SkillsPopover({ skills, anchorRef, onClose }: SkillsPopoverProps) {
 
 interface QuestionSetCardProps {
   set: QuestionSet;
+  initialBookmarked?: boolean;
+  onBookmarkChange?: (id: string, bookmarked: boolean) => void;
 }
 
-export function QuestionSetCard({ set }: QuestionSetCardProps) {
+export function QuestionSetCard({ set, initialBookmarked = false, onBookmarkChange }: QuestionSetCardProps) {
   const { t } = useLanguage();
   const p = t.jobseekerMarketplacePage;
+  const { addToast } = useToast();
   const [showSkills, setShowSkills] = useState(false);
   const skillsBtnRef = useRef<HTMLButtonElement>(null);
+  const [bookmarked, setBookmarked] = useState(initialBookmarked);
+  const [bookmarking, setBookmarking] = useState(false);
+
+  useEffect(() => setBookmarked(initialBookmarked), [initialBookmarked]);
+
+  function handleToggleBookmark(e: React.MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (bookmarking) return;
+    setBookmarking(true);
+    toggleBookmark(set.id)
+      .then((next) => {
+        setBookmarked(next);
+        onBookmarkChange?.(set.id, next);
+      })
+      .catch(() => addToast("error", p.bookmarkFailed))
+      .finally(() => setBookmarking(false));
+  }
 
   const visibleSkills = set.skills.slice(0, MAX_VISIBLE);
   const extraCount = set.skills.length - MAX_VISIBLE;
 
   return (
-    <div className="hr-glass-card group flex flex-col gap-0 overflow-hidden">
+    <div className="hr-glass-card group flex flex-col gap-0 overflow-hidden h-full">
       {/* Card body */}
       <div className="p-6 flex flex-col gap-4 flex-1">
         {/* Header row */}
         <div className="flex items-start gap-3">
-          <div
-            className={cn(
-              "w-10 h-10 rounded-lg flex items-center justify-center text-white text-sm font-bold shrink-0",
-              set.companyColor
-            )}
-          >
-            {set.companyInitials}
-          </div>
+          {set.companyLogoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={set.companyLogoUrl}
+              alt={set.company}
+              className="w-10 h-10 rounded-lg object-cover shrink-0 border border-gray-100 dark:border-gray-700"
+            />
+          ) : (
+            <div
+              className={cn(
+                "w-10 h-10 rounded-lg flex items-center justify-center text-white text-sm font-bold shrink-0",
+                set.companyColor
+              )}
+            >
+              {set.companyInitials}
+            </div>
+          )}
           <div className="flex-1 min-w-0">
             <h3 className={cn("text-[14px] font-[700] leading-[20px] line-clamp-2", portalHeadingAlt)}>
               {set.title}
             </h3>
             <p className={cn("text-[12px] mt-0.5", portalSubtextAlt)}>{set.company}</p>
           </div>
-          <Pill className={getDifficultyBadgeClass(set.difficulty)}>{set.difficulty}</Pill>
+          <DifficultyPill difficulty={set.difficulty} label={set.difficulty} />
+          <button
+            type="button"
+            onClick={handleToggleBookmark}
+            disabled={bookmarking}
+            aria-label={bookmarked ? p.unsaveBtn : p.saveBtn}
+            title={bookmarked ? p.unsaveBtn : p.saveBtn}
+            className={cn(
+              "shrink-0 w-8 h-8 flex items-center justify-center rounded-lg border transition-colors disabled:opacity-60",
+              bookmarked
+                ? "bg-primary/10 dark:bg-primary/15 border-primary/30 text-primary hover:bg-primary/15"
+                : "bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-primary hover:border-primary/30"
+            )}
+          >
+            {bookmarking ? (
+              <Loader2 size={14} className="animate-spin" />
+            ) : (
+              <Bookmark size={14} className={bookmarked ? "fill-primary" : ""} />
+            )}
+          </button>
         </div>
 
         {/* Description */}
@@ -162,7 +213,7 @@ export function QuestionSetCard({ set }: QuestionSetCardProps) {
                 }
               />
             ))}
-            <span className={cn("text-[12px] font-[600] ml-1", portalHeadingAlt)}>{set.rating}</span>
+            <span className={cn("text-[12px] font-[600] ml-1", portalHeadingAlt)}>{set.rating!.toFixed(1)}</span>
           </div>
         )}
       </div>

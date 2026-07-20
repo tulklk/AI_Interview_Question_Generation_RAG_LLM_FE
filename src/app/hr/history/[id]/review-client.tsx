@@ -6,7 +6,7 @@ import { AlertCircle } from "lucide-react";
 import { AiLoadingSpinner } from "@/shared/components/common/ai-loading-spinner";
 import { AppShell } from "@/features/hr/components/layout/app-shell";
 import { ReviewPageClient } from "@/features/question/components/review-page-client";
-import { getGenerationSession, getGenerationJob, getJobQuestions, getDraft } from "@/features/interview/services/interview.service";
+import { getGenerationJob, getJobQuestions, getDraft, findQuestionSetForJob } from "@/features/interview/services/interview.service";
 import { getLocalSession, toGenerationSession } from "@/features/interview/utils/local-history";
 import type { GenerationSession, DraftQuestionSet, GenerationStatus } from "@/features/interview/types/generation-session";
 import { cn } from "@/lib/cn";
@@ -66,6 +66,8 @@ export function HrReviewPageClient() {
   const rp = t.reviewPage;
   const [session, setSession] = useState<GenerationSession | null>(null);
   const [draft, setDraft] = useState<DraftQuestionSet | null>(null);
+  const [questionSetId, setQuestionSetId] = useState<string | undefined>(undefined);
+  const [publishStatus, setPublishStatus] = useState<"DRAFT" | "PUBLISHED" | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [retrying, setRetrying] = useState(false);
@@ -75,26 +77,34 @@ export function HrReviewPageClient() {
 
   async function loadJob(jobId: string): Promise<GenerationSession | null> {
     const job = await getGenerationJob(jobId);
-    if (!job) return getGenerationSession(jobId);
+    if (!job) return null;
 
     if (job.status === "COMPLETED") {
-      // Primary: questions endpoint
+      // Primary: if a question set was already saved for this job, ITS data is
+      // the live source of truth — the job's own questions/ids are a disconnected
+      // snapshot from before that save (different ids, same text). Editing/saving
+      // against those stale ids 404s against the question-set endpoints, so the
+      // review page must display the question-set's own questions whenever one
+      // exists, not the job's copy.
+      if (job.hasDraft) {
+        const found = await findQuestionSetForJob(jobId);
+        const qSetId = found?.questionSetId ?? job.questionSetId;
+        if (qSetId) {
+          const d = await getDraft(qSetId);
+          if (d?.questions && d.questions.length > 0) {
+            setDraft(d);
+            return { ...job, questionSetId: qSetId, generatedQuestions: d.questions };
+          }
+        }
+      }
+
+      // Fallback: no saved draft yet — use the job's own generated questions.
       const qs = await getJobQuestions(jobId);
       if (qs.length > 0) return { ...job, generatedQuestions: qs };
 
-      // Fallback 1: inline questions from job GET response (filter out stubs)
+      // Fallback: inline questions from job GET response (filter out stubs)
       const inlineQs = (job.generatedQuestions ?? []).filter(q => q.question.trim() !== "");
       if (inlineQs.length > 0) return { ...job, generatedQuestions: inlineQs };
-
-      // Fallback 2: draft endpoint (try even if hasDraft is not set, questionSetId may exist)
-      const qSetId = job.questionSetId;
-      if (qSetId) {
-        const d = await getDraft(qSetId);
-        if (d?.questions && d.questions.length > 0) {
-          setDraft(d);
-          return job;
-        }
-      }
 
       // Return job as-is — empty questions will trigger retry flow
       return job;
@@ -189,6 +199,31 @@ export function HrReviewPageClient() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
+  // Fetch publish status independently — doesn't affect the readOnly/draftQuestions state above.
+  // The job-detail response never includes a questionSetId (only meta.hasDraft), so the id has
+  // to be cross-referenced from the HR question-sets list by jobId.
+  useEffect(() => {
+    if (!session?.id || session.status !== "COMPLETED") {
+      setQuestionSetId(undefined);
+      setPublishStatus(null);
+      return;
+    }
+    let cancelled = false;
+    findQuestionSetForJob(session.id).then((found) => {
+      if (cancelled) return;
+      setQuestionSetId(found?.questionSetId);
+      setPublishStatus(found?.status ?? null);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [session?.id, session?.status]);
+
+  function handleDraftSaved(newQuestionSetId: string) {
+    setQuestionSetId(newQuestionSetId);
+    setPublishStatus((prev) => prev ?? "DRAFT");
+  }
+
   return (
     <AppShell
       breadcrumb={[
@@ -215,9 +250,13 @@ export function HrReviewPageClient() {
         <ReviewPageClient
           session={{ ...session, id }}
           draftQuestions={draft?.questions}
-          isDraftView={!!draft}
           isGenerating={isGeneratingQuestions(session.status)}
           isRetrying={retrying}
+          questionSetId={questionSetId}
+          publishStatus={publishStatus}
+          onPublishStatusChange={setPublishStatus}
+          onDraftSaved={handleDraftSaved}
+          initialTimeLimitMinutes={draft?.timeLimitMinutes}
         />
       )}
     </AppShell>

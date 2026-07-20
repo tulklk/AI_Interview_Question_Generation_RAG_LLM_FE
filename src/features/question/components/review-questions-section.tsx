@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
-import { Plus, BookMarked, CheckCircle2, Loader2, AlertCircle, RefreshCw, ChevronLeft, ChevronRight, X, Check } from "lucide-react";
+import { Plus, BookMarked, CheckCircle2, Loader2, AlertCircle, RefreshCw, ChevronLeft, ChevronRight, X, Check, Rocket, Undo2, Globe, PenLine, Lock, Clock, Pencil } from "lucide-react";
 import { AiLoadingSpinner } from "@/shared/components/common/ai-loading-spinner";
 import {
   DndContext,
@@ -34,9 +34,26 @@ import {
 } from "@/shared/utils/portal-ui";
 import type { GeneratedQuestion, GenerationStatus } from "@/features/interview/types/generation-session";
 import { updateLocalSessionQuestions } from "@/features/interview/utils/local-history";
-import { updateJobQuestion, deleteJobQuestion, addJobQuestion, saveJobDraft, reorderJobQuestions } from "@/features/interview/services/interview.service";
+import {
+  updateJobQuestion,
+  deleteJobQuestion,
+  addJobQuestion,
+  saveJobDraft,
+  reorderJobQuestions,
+  publishQuestionSet,
+  unpublishQuestionSet,
+  updateQuestionSetQuestion,
+  deleteQuestionSetQuestion,
+  addQuestionSetQuestion,
+  reorderQuestionSetQuestions,
+  setQuestionSetTimeLimit,
+  getDraft,
+} from "@/features/interview/services/interview.service";
 import { QuestionEditCard } from "./question-edit-card";
 import { AddQuestionDialog } from "./add-question-dialog";
+import { TimeLimitDialog } from "./time-limit-dialog";
+import { ConfirmDialog } from "@/shared/components/ui/confirm-dialog";
+import { useToast } from "@/shared/providers/toast-context";
 
 // ── Sortable wrapper ──────────────────────────────────────────────────────────
 
@@ -46,6 +63,7 @@ interface SortableCardProps {
   sessionId: string;
   isFirst: boolean;
   isLast: boolean;
+  locked?: boolean;
   onSave: (changes: Partial<GeneratedQuestion>) => Promise<boolean>;
   onEditingChange: (editing: boolean) => void;
   onDelete: () => void;
@@ -59,6 +77,7 @@ function SortableCard({
   sessionId,
   isFirst,
   isLast,
+  locked,
   onSave,
   onEditingChange,
   onDelete,
@@ -72,7 +91,7 @@ function SortableCard({
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: q.id });
+  } = useSortable({ id: q.id, disabled: locked });
 
   return (
     <div
@@ -91,7 +110,8 @@ function SortableCard({
         sessionId={sessionId}
         isFirst={isFirst}
         isLast={isLast}
-        dragHandleListeners={listeners}
+        locked={locked}
+        dragHandleListeners={locked ? undefined : listeners}
         onSave={onSave}
         onEditingChange={onEditingChange}
         onDelete={onDelete}
@@ -108,11 +128,19 @@ interface ReviewQuestionsSectionProps {
   status: GenerationStatus;
   failureMessage?: string;
   readOnly?: boolean;
+  questionSetId?: string;
+  publishStatus?: "DRAFT" | "PUBLISHED" | null;
+  onPublishStatusChange?: (status: "DRAFT" | "PUBLISHED") => void;
+  onDraftSaved?: (questionSetId: string) => void;
+  initialTimeLimitMinutes?: number | null;
 }
 
 type SaveState = "idle" | "saving" | "saved" | "error";
+type PublishAction = "publish" | "unpublish" | null;
 
 const PAGE_SIZE = 5;
+// BE enforces this minimum on POST /api/hr/question-sets/{id}/publish.
+const MIN_QUESTIONS_TO_PUBLISH = 10;
 
 export function ReviewQuestionsSection({
   sessionId,
@@ -120,23 +148,33 @@ export function ReviewQuestionsSection({
   status,
   failureMessage,
   readOnly = false,
+  questionSetId,
+  publishStatus,
+  onPublishStatusChange,
+  onDraftSaved,
+  initialTimeLimitMinutes,
 }: ReviewQuestionsSectionProps) {
   const { t } = useLanguage();
   const rp = t.reviewPage;
+  const { addToast } = useToast();
   const [questions, setQuestions] = useState<GeneratedQuestion[]>(initialQuestions);
   const [deletedIds, setDeletedIds] = useState<string[]>([]);
   const [editingIds, setEditingIds] = useState<string[]>([]);
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [toastVariant, setToastVariant] = useState<"success" | "delete">("success");
-  const [toastVisible, setToastVisible] = useState(false);
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [showNavWarning, setShowNavWarning] = useState(false);
   const [saveState, setSaveState] = useState<SaveState>("idle");
+  const [timeLimitMinutes, setTimeLimitMinutes] = useState<number | null>(initialTimeLimitMinutes ?? null);
+  const [showTimeLimitDialog, setShowTimeLimitDialog] = useState(false);
+  const [savingTimeLimit, setSavingTimeLimit] = useState(false);
   const [page, setPage] = useState(1);
+  const [publishConfirmAction, setPublishConfirmAction] = useState<PublishAction>(null);
+  const [publishing, setPublishing] = useState(false);
 
   const router = useRouter();
   const isEditable = status === "COMPLETED" && !readOnly;
+  // BE rejects question add/edit/delete/reorder while PUBLISHED — unpublish first.
+  const isLocked = publishStatus === "PUBLISHED";
   const bypassGuardRef = useRef(false);
   const [pendingHref, setPendingHref] = useState<string | null>(null);
 
@@ -236,11 +274,20 @@ export function ReviewQuestionsSection({
       console.warn("[persistReorder] no valid question IDs — reorder skipped. IDs:", next.map(q => q.id));
       return;
     }
+    // Once a question set exists, reordering must go straight to it — reordering
+    // the job's own (disconnected) copy has no effect on the saved/published set.
+    if (questionSetId) {
+      void reorderQuestionSetQuestions(questionSetId, items).then((ok) => {
+        if (!ok) addToast("error", "Không thể lưu thứ tự câu hỏi. Vui lòng thử lại.");
+      });
+      return;
+    }
     void reorderJobQuestions(sessionId, items);
   }
 
   function handleDragEnd(event: DragEndEvent) {
     setActiveId(null);
+    if (isLocked) return;
     const { active, over } = event;
     if (!over || active.id === over.id) return;
     const oldIdx = questions.findIndex((q) => q.id === String(active.id));
@@ -249,15 +296,6 @@ export function ReviewQuestionsSection({
     const next = arrayMove(questions, oldIdx, newIdx).map((q, i) => ({ ...q, orderIndex: i }));
     setQuestions(next);
     persistReorder(next);
-  }
-
-  function showToast(message: string, variant: "success" | "delete" = "success") {
-    setToastMessage(message);
-    setToastVariant(variant);
-    setToastVisible(false);
-    setTimeout(() => setToastVisible(true), 16);
-    setTimeout(() => setToastVisible(false), 2700);
-    setTimeout(() => setToastMessage(null), 3000);
   }
 
   async function handleSaveQuestion(id: string, changes: Partial<GeneratedQuestion>): Promise<boolean> {
@@ -269,17 +307,25 @@ export function ReviewQuestionsSection({
       return true;
     }
 
-    const ok = await updateJobQuestion(sessionId, id, {
+    const payload = {
       question: changes.question,
       questionType: changes.questionType,
       difficulty: changes.difficulty,
       rationale: changes.rationale ?? null,
       sampleAnswer: changes.sampleAnswer ?? null,
-    });
+    };
+
+    // Once a question set exists, edits must go straight to it — editing the
+    // job's own (disconnected) copy has no effect on the saved/published set.
+    const ok = questionSetId
+      ? await updateQuestionSetQuestion(questionSetId, id, payload)
+      : await updateJobQuestion(sessionId, id, payload);
 
     if (ok) {
       setQuestions((prev) => prev.map((q) => (q.id === id ? { ...q, ...changes } : q)));
-      showToast("Chỉnh sửa câu hỏi thành công");
+      addToast("success", "Chỉnh sửa câu hỏi thành công");
+    } else {
+      addToast("error", "Không thể lưu chỉnh sửa. Vui lòng thử lại.");
     }
     return ok;
   }
@@ -288,17 +334,36 @@ export function ReviewQuestionsSection({
     setEditingIds((prev) => editing ? [...prev, id] : prev.filter((x) => x !== id));
   }
 
-  function handleDelete(id: string) {
+  function removeQuestionFromState(id: string) {
     setQuestions((prev) => {
       const next = prev.filter((q) => q.id !== id);
       const newTotalPages = Math.max(1, Math.ceil(next.length / PAGE_SIZE));
       setPage((p) => Math.min(p, newTotalPages));
       return next;
     });
+  }
+
+  function handleDelete(id: string) {
+    // Once a question set exists, deleting must go straight to it — deleting
+    // from the job's own (disconnected) copy has no effect on the saved/published
+    // set, so the question would silently reappear on the next real fetch.
+    if (questionSetId) {
+      deleteQuestionSetQuestion(questionSetId, id).then((ok) => {
+        if (ok) {
+          removeQuestionFromState(id);
+          addToast("success", "Đã xóa câu hỏi");
+        } else {
+          addToast("error", "Không thể xóa câu hỏi. Vui lòng thử lại.");
+        }
+      });
+      return;
+    }
+
+    removeQuestionFromState(id);
     if (!id.startsWith("manual-")) {
       setDeletedIds((prev) => [...prev, id]);
     }
-    showToast("Đã xóa câu hỏi", "delete");
+    addToast("success", "Đã xóa câu hỏi");
   }
 
   function handleMoveUp(index: number) {
@@ -319,7 +384,32 @@ export function ReviewQuestionsSection({
     persistReorder(ordered);
   }
 
-  function handleAdd(newQ: Omit<GeneratedQuestion, "id" | "orderIndex">) {
+  async function handleAdd(newQ: Omit<GeneratedQuestion, "id" | "orderIndex">) {
+    // Once a question set exists, adding must go straight to it — adding to the
+    // job's own (disconnected) copy has no effect on the saved/published set.
+    if (questionSetId) {
+      const ok = await addQuestionSetQuestion(questionSetId, {
+        question: newQ.question,
+        questionType: newQ.questionType,
+        difficulty: newQ.difficulty,
+        rationale: newQ.rationale,
+        sampleAnswer: newQ.sampleAnswer,
+        order: questions.length + 1,
+      });
+      if (!ok) {
+        addToast("error", "Không thể thêm câu hỏi. Vui lòng thử lại.");
+        return;
+      }
+      // BE doesn't return the new question's id, so refetch to pick it up.
+      const refreshed = await getDraft(questionSetId);
+      if (refreshed) {
+        setQuestions(refreshed.questions);
+        setPage(Math.ceil(refreshed.questions.length / PAGE_SIZE));
+      }
+      addToast("success", "Thêm câu hỏi thành công");
+      return;
+    }
+
     const question: GeneratedQuestion = {
       ...newQ,
       id: `manual-${Date.now()}`,
@@ -331,7 +421,7 @@ export function ReviewQuestionsSection({
       setPage(Math.ceil(next.length / PAGE_SIZE));
       return next;
     });
-    showToast("Thêm câu hỏi thành công");
+    addToast("success", "Thêm câu hỏi thành công");
   }
 
   async function handleSaveDraft() {
@@ -369,7 +459,8 @@ export function ReviewQuestionsSection({
         }
 
         // 5. Mark as saved draft
-        await saveJobDraft(sessionId);
+        const savedQuestionSetId = await saveJobDraft(sessionId);
+        if (savedQuestionSetId) onDraftSaved?.(savedQuestionSetId);
       }
 
       setDeletedIds([]);
@@ -379,6 +470,46 @@ export function ReviewQuestionsSection({
     } catch {
       setSaveState("error");
       setTimeout(() => setSaveState("idle"), 3000);
+    }
+  }
+
+  async function handleConfirmPublishAction() {
+    if (!questionSetId || !publishConfirmAction) return;
+    const action = publishConfirmAction;
+    setPublishing(true);
+    try {
+      if (action === "publish") {
+        await publishQuestionSet(questionSetId);
+        onPublishStatusChange?.("PUBLISHED");
+        addToast("success", rp.publishSuccess);
+      } else {
+        await unpublishQuestionSet(questionSetId);
+        onPublishStatusChange?.("DRAFT");
+        addToast("success", rp.unpublishSuccess);
+      }
+    } catch (err) {
+      const message = err instanceof Error && err.message
+        ? err.message
+        : action === "publish" ? rp.publishFailed : rp.unpublishFailed;
+      addToast("error", message);
+    } finally {
+      setPublishing(false);
+      setPublishConfirmAction(null);
+    }
+  }
+
+  async function handleSaveTimeLimit(minutes: number | null) {
+    if (!questionSetId) return;
+    setSavingTimeLimit(true);
+    try {
+      await setQuestionSetTimeLimit(questionSetId, minutes);
+      setTimeLimitMinutes(minutes);
+      setShowTimeLimitDialog(false);
+      addToast("success", rp.timeLimitSaveSuccess);
+    } catch (err) {
+      addToast("error", err instanceof Error && err.message ? err.message : rp.timeLimitSaveFailed);
+    } finally {
+      setSavingTimeLimit(false);
     }
   }
 
@@ -427,11 +558,41 @@ export function ReviewQuestionsSection({
     <div className="space-y-4">
       {/* Toolbar */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <p className={cn("text-sm", portalSubtext)}>
-          {rp.questionCount.replace("{{count}}", String(questions.length))}
-        </p>
-        {!readOnly && (
-          <div className="flex flex-wrap items-center gap-2">
+        <div className="flex items-center gap-2">
+          <p className={cn("text-sm", portalSubtext)}>
+            {rp.questionCount.replace("{{count}}", String(questions.length))}
+          </p>
+          {publishStatus && (
+            <span className={cn(
+              "inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-md",
+              publishStatus === "PUBLISHED"
+                ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400"
+                : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400"
+            )}>
+              {publishStatus === "PUBLISHED" ? <Globe size={11} /> : <PenLine size={11} />}
+              {publishStatus === "PUBLISHED" ? rp.statusPublished : rp.statusDraft}
+            </span>
+          )}
+          {!readOnly && questionSetId && (
+            <button
+              type="button"
+              onClick={() => !isLocked && setShowTimeLimitDialog(true)}
+              disabled={isLocked}
+              title={isLocked ? rp.editLockedHint : rp.timeLimitEditHint}
+              className={cn(
+                "inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-md transition-colors",
+                "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400",
+                isLocked ? "opacity-60 cursor-not-allowed" : "hover:bg-gray-200 dark:hover:bg-gray-700 cursor-pointer"
+              )}
+            >
+              <Clock size={11} />
+              {timeLimitMinutes != null ? rp.timeLimitLabel.replace("{{min}}", String(timeLimitMinutes)) : rp.noTimeLimitLabel}
+              {!isLocked && <Pencil size={9} />}
+            </button>
+          )}
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          {!readOnly && !isLocked && (
             <button
               type="button"
               onClick={() => setShowAddDialog(true)}
@@ -445,6 +606,9 @@ export function ReviewQuestionsSection({
               <Plus size={14} />
               {rp.addQuestion}
             </button>
+          )}
+
+          {!readOnly && !questionSetId && (
             <button
               type="button"
               onClick={() => saveState === "idle" && setShowSaveDialog(true)}
@@ -480,9 +644,76 @@ export function ReviewQuestionsSection({
                 </>
               )}
             </button>
-          </div>
-        )}
+          )}
+
+          {!readOnly && !questionSetId && (
+            <span className={cn("text-xs italic", portalSubtext)}>
+              {rp.saveDraftFirstHint}
+            </span>
+          )}
+
+          {!readOnly && isLocked && (
+            <span className="inline-flex items-center gap-1.5 text-xs italic text-amber-600 dark:text-amber-400">
+              <Lock size={12} />
+              {rp.editLockedHint}
+            </span>
+          )}
+
+          {questionSetId && (
+            publishStatus === "PUBLISHED" ? (
+              <button
+                type="button"
+                onClick={() => setPublishConfirmAction("unpublish")}
+                disabled={publishing}
+                className={cn(
+                  "flex-1 sm:flex-none flex items-center justify-center gap-2 text-sm font-semibold px-4 py-2 rounded-lg border transition-colors disabled:opacity-60",
+                  portalCard,
+                  portalHeading,
+                  "hover:bg-gray-50 dark:hover:bg-gray-800"
+                )}
+              >
+                {publishing ? <Loader2 size={14} className="animate-spin" /> : <Undo2 size={14} />}
+                {rp.unpublish}
+              </button>
+            ) : questions.length >= MIN_QUESTIONS_TO_PUBLISH ? (
+              <button
+                type="button"
+                onClick={() => setPublishConfirmAction("publish")}
+                disabled={publishing}
+                className="flex-1 sm:flex-none flex items-center justify-center gap-2 text-sm font-semibold px-4 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60 transition-colors"
+              >
+                {publishing ? <Loader2 size={14} className="animate-spin" /> : <Rocket size={14} />}
+                {rp.publish}
+              </button>
+            ) : (
+              <span className={cn("text-xs italic", portalSubtext)}>
+                {rp.publishMinHint.replaceAll("{{min}}", String(MIN_QUESTIONS_TO_PUBLISH)).replaceAll("{{count}}", String(questions.length))}
+              </span>
+            )
+          )}
+        </div>
       </div>
+
+      <ConfirmDialog
+        open={publishConfirmAction !== null}
+        title={publishConfirmAction === "unpublish" ? rp.unpublishConfirmTitle : rp.publishConfirmTitle}
+        message={publishConfirmAction === "unpublish" ? rp.unpublishConfirmMessage : rp.publishConfirmMessage}
+        confirmLabel={publishConfirmAction === "unpublish" ? rp.unpublish : rp.publish}
+        cancelLabel={rp.cancelBtn}
+        variant={publishConfirmAction === "unpublish" ? "danger" : "primary"}
+        loading={publishing}
+        onConfirm={handleConfirmPublishAction}
+        onCancel={() => setPublishConfirmAction(null)}
+      />
+
+      {showTimeLimitDialog && (
+        <TimeLimitDialog
+          currentMinutes={timeLimitMinutes}
+          saving={savingTimeLimit}
+          onSave={handleSaveTimeLimit}
+          onClose={() => setShowTimeLimitDialog(false)}
+        />
+      )}
 
       {/* Questions List */}
       {questions.length === 0 ? (
@@ -529,6 +760,7 @@ export function ReviewQuestionsSection({
                           sessionId={sessionId}
                           isFirst={globalIdx === 0}
                           isLast={globalIdx === questions.length - 1}
+                          locked={isLocked}
                           onSave={(changes) => handleSaveQuestion(q.id, changes)}
                           onEditingChange={(editing) => handleEditingChange(q.id, editing)}
                           onDelete={() => handleDelete(q.id)}
@@ -697,25 +929,6 @@ export function ReviewQuestionsSection({
         document.body
       )}
 
-      {/* Question action toast */}
-      {toastMessage && createPortal(
-        <div className={cn(
-          "fixed bottom-6 right-6 z-99999 flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg text-white",
-          "transition-all duration-300 ease-in-out",
-          toastVariant === "delete"
-            ? "bg-slate-700 dark:bg-slate-600"
-            : "bg-emerald-500",
-          toastVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-3"
-        )}>
-          {toastVariant === "delete" ? (
-            <X size={16} className="shrink-0" />
-          ) : (
-            <CheckCircle2 size={16} className="shrink-0" />
-          )}
-          <span className="text-sm font-semibold">{toastMessage}</span>
-        </div>,
-        document.body
-      )}
 
       {/* Save Draft Confirmation Dialog — rendered via portal to escape ancestor transforms */}
       {showSaveDialog && createPortal(

@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { motion, type Variants } from "framer-motion";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -10,6 +11,7 @@ import { useLanguage } from "@/shared/providers/language-context";
 import { BrandLogo } from "@/shared/components/common/brand-logo";
 import { SidebarUserFooter } from "@/features/hr/components/layout/sidebar-user-footer";
 import { useCandidateSubscription } from "@/features/candidate/context/candidate-subscription-context";
+import { getPracticeStats } from "@/features/candidate/services/practice-session.service";
 
 const listVariants: Variants = {
   hidden: {},
@@ -32,6 +34,13 @@ export function JobseekerSidebar({ open, onClose }: JobseekerSidebarProps) {
   const s = t.jobseekerSidebar;
   const { planType } = useCandidateSubscription();
   const isPremium = planType === "PREMIUM";
+
+  const [historyCount, setHistoryCount] = useState<number | null>(null);
+  useEffect(() => {
+    getPracticeStats()
+      .then((stats) => setHistoryCount(stats.totalSessions))
+      .catch(() => {});
+  }, []);
 
   const sidebarContent = (
     <>
@@ -66,6 +75,7 @@ export function JobseekerSidebar({ open, onClose }: JobseekerSidebarProps) {
           {jobseekerNavItems.map((item) => {
             const isActive = pathname.startsWith(item.href);
             const label = s.nav[item.href as keyof typeof s.nav] ?? item.label;
+            const badge = item.href === "/jobseeker/history" ? historyCount || undefined : item.badge;
 
             return (
               <motion.li key={item.href} variants={itemVariants}>
@@ -101,7 +111,7 @@ export function JobseekerSidebar({ open, onClose }: JobseekerSidebarProps) {
 
                   <span className="text-sm font-medium flex-1">{label}</span>
 
-                  {item.badge !== undefined && (
+                  {badge !== undefined && (
                     <span
                       className={cn(
                         "text-[10px] font-semibold px-1.5 py-0.5 rounded-md leading-none",
@@ -112,7 +122,7 @@ export function JobseekerSidebar({ open, onClose }: JobseekerSidebarProps) {
                           : "bg-page-bg dark:bg-gray-800 text-[#6b7280] dark:text-gray-400"
                       )}
                     >
-                      {item.badge}
+                      {badge}
                     </span>
                   )}
                 </Link>
