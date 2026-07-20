@@ -13,6 +13,7 @@ import type { PracticeSessionDetail, AnswerEvaluation } from "@/features/candida
 import { CategoryPill, Pill, formatCategoryLabel, getScoreLevel, getScoreBadgeClass } from "@/features/candidate/components/ui/pill";
 import { getCompanyColor, getCompanyInitials } from "@/features/candidate/utils/company-visual";
 import { useChartTheme } from "@/shared/hooks/use-chart-theme";
+import { QuestionContent } from "@/shared/components/ui/question-content";
 import { ConfettiBurst } from "@/shared/components/common/confetti-burst";
 import { FeedbackRadarChart } from "./feedback-radar-chart";
 import { useToast } from "@/shared/providers/toast-context";
@@ -308,7 +309,7 @@ export function FeedbackPage({ session, feedback, scoring, setTitle, companyName
                         </Pill>
                       )}
                     </div>
-                    <p className={cn("text-[15px] font-[700] leading-[24px]", portalHeadingAlt)}>{q.question}</p>
+                    <QuestionContent text={q.question} className={cn("text-[15px] font-bold leading-6", portalHeadingAlt)} />
                   </div>
                   <ChevronDown
                     size={16}
