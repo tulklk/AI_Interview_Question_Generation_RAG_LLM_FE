@@ -2180,3 +2180,11 @@ body {
   .ai-spin-glow  { animation: none; opacity: 0.25; }
   .ai-status-text { animation: none; background: none; -webkit-text-fill-color: currentColor; }
 }
+
+/* ── Scrollbar: hide track but keep scrolling functional ── */
+.scrollbar-hide {
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}

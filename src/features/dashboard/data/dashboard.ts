@@ -8,6 +8,7 @@ import {
   History,
   Settings,
   BookOpen,
+  Users,
 } from "lucide-react";
 import type {
   StatItem,
@@ -39,6 +40,11 @@ export const navItems: NavItem[] = [
     label: "Knowledge Base",
     href: "/hr/knowledge",
     icon: BookOpen,
+  },
+  {
+    label: "Candidates",
+    href: "/hr/candidate-recommendations",
+    icon: Users,
   },
   {
     label: "Settings",

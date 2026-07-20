@@ -28,6 +28,16 @@ import {
   ForbiddenError,
 } from "@/features/candidate/services/practice-session.service";
 
+const MIN_ANSWER_CHARS = 20;
+const MIN_ANSWER_WORDS = 3;
+
+function validateAnswerText(text: string): "tooShort" | "tooFewWords" | null {
+  const trimmed = text.trim();
+  if (trimmed.length < MIN_ANSWER_CHARS) return "tooShort";
+  if (trimmed.split(/\s+/).filter(Boolean).length < MIN_ANSWER_WORDS) return "tooFewWords";
+  return null;
+}
+
 function formatTime(seconds: number) {
   const m = Math.floor(seconds / 60).toString().padStart(2, "0");
   const s = (seconds % 60).toString().padStart(2, "0");
@@ -72,6 +82,114 @@ function ProgressDot({ active, submitted, onClick }: ProgressDotProps) {
   );
 }
 
+interface QuestionNavProps {
+  questions: QuestionSet["questions"];
+  currentIdx: number;
+  submitted: Record<string, boolean>;
+  onSelect: (idx: number) => void;
+  onFinish: () => void;
+  finishing: boolean;
+  hasTimeLimit: boolean;
+  timeLeft: number;
+  labels: {
+    title: string; answered: string; current: string; unanswered: string;
+    answeredLabel: string; timeLabel: string; submitBtn: string; noTimeLimit: string;
+  };
+}
+
+function QuestionNav({ questions, currentIdx, submitted, onSelect, onFinish, finishing, hasTimeLimit, timeLeft, labels }: QuestionNavProps) {
+  const answeredCount = questions.filter((q) => submitted[q.id]).length;
+  const total = questions.length;
+
+  return (
+    <aside className={cn(
+      "hidden lg:flex flex-col w-72 fixed top-17 right-4 z-40 scrollbar-hide",
+      "max-h-[calc(100vh-80px)] rounded-2xl shadow-xl border",
+      "bg-white/95 dark:bg-gray-900/95 backdrop-blur-md",
+      portalDivider
+    )}>
+      {/* Stats header */}
+      <div className={cn("grid grid-cols-2 border-b shrink-0", portalDivider)}>
+        <div className={cn("px-4 py-3 border-r", portalDivider)}>
+          <p className={cn("text-[11px] font-medium mb-0.5", portalSubtextAlt)}>{labels.answeredLabel}</p>
+          <p className={cn("text-[22px] font-bold tabular-nums leading-none", portalHeadingAlt)}>
+            {answeredCount}
+            <span className={cn("text-[14px] font-normal", portalSubtextAlt)}>/{total}</span>
+          </p>
+        </div>
+        <div className="px-4 py-3">
+          <p className={cn("text-[11px] font-medium mb-0.5", portalSubtextAlt)}>{labels.timeLabel}</p>
+          {hasTimeLimit ? (
+            <p className={cn(
+              "text-[22px] font-bold tabular-nums leading-none",
+              timeLeft < 300 ? "text-red-500" : "text-primary"
+            )}>
+              {formatTime(timeLeft)}
+            </p>
+          ) : (
+            <p className={cn("text-[14px] font-medium leading-none mt-1", portalSubtextAlt)}>{labels.noTimeLimit}</p>
+          )}
+        </div>
+      </div>
+
+      {/* Question number grid */}
+      <div className="flex-1 overflow-y-auto scrollbar-hide p-4">
+        <div className="grid grid-cols-6 gap-2">
+          {questions.map((q, idx) => {
+            const isActive = idx === currentIdx;
+            const isDone = submitted[q.id] ?? false;
+            return (
+              <button
+                key={q.id}
+                type="button"
+                onClick={() => onSelect(idx)}
+                title={isActive ? labels.current : isDone ? labels.answered : labels.unanswered}
+                className={cn(
+                  "w-9 h-9 rounded-full text-[13px] font-bold transition-all duration-150 flex items-center justify-center",
+                  isActive
+                    ? "bg-primary text-white shadow-md shadow-primary/30 scale-110"
+                    : isDone
+                    ? "bg-emerald-500 dark:bg-emerald-600 text-white hover:bg-emerald-600 dark:hover:bg-emerald-500"
+                    : "border-2 border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-primary/50 hover:text-primary"
+                )}
+              >
+                {idx + 1}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Submit button + legend */}
+      <div className={cn("px-4 pt-3 pb-4 border-t shrink-0 flex flex-col gap-3", portalDivider)}>
+        <button
+          type="button"
+          onClick={onFinish}
+          disabled={finishing}
+          className="w-full h-10 rounded-xl text-[14px] font-bold text-white hr-cta-btn shimmer-button disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+        >
+          {finishing ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
+          {labels.submitBtn}
+        </button>
+
+        {/* Legend */}
+        <div className="flex flex-col gap-1.5">
+          {[
+            { color: "bg-primary", label: labels.current },
+            { color: "bg-emerald-500", label: labels.answered },
+            { color: "border-2 border-gray-300 dark:border-gray-600", label: labels.unanswered },
+          ].map(({ color, label }) => (
+            <div key={label} className="flex items-center gap-2">
+              <span className={cn("w-4 h-4 rounded-full shrink-0", color)} />
+              <span className={cn("text-[12px]", portalSubtextAlt)}>{label}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </aside>
+  );
+}
+
 interface PracticeSessionProps {
   set: QuestionSet;
 }
@@ -87,6 +205,7 @@ export function PracticeSession({ set }: PracticeSessionProps) {
   const [submitted, setSubmitted] = useState<Record<string, boolean>>({});
   const [evaluating, setEvaluating] = useState(false);
   const [submitError, setSubmitError] = useState(false);
+  const [validationError, setValidationError] = useState<string | null>(null);
   const [timeLeft, setTimeLeft] = useState(0);
   const [direction, setDirection] = useState(1);
   const [exitOpen, setExitOpen] = useState(false);
@@ -202,6 +321,12 @@ export function PracticeSession({ set }: PracticeSessionProps) {
     };
   }, [expiresAt, sessionId]);
 
+  // Clear validation error when the active question changes.
+  useEffect(() => {
+    setValidationError(null);
+    setSubmitError(false);
+  }, [question.id]);
+
   // Restore an unsubmitted draft answer for the current question from sessionStorage (once per question).
   useEffect(() => {
     if (!sessionId || !question || typeof window === "undefined") return;
@@ -221,6 +346,7 @@ export function PracticeSession({ set }: PracticeSessionProps) {
 
   function handleAnswerChange(value: string) {
     setAnswers((prev) => ({ ...prev, [question.id]: value }));
+    if (validationError) setValidationError(null);
     if (sessionId && typeof window !== "undefined") {
       window.sessionStorage.setItem(draftKey(sessionId, question.id), value);
     }
@@ -228,6 +354,12 @@ export function PracticeSession({ set }: PracticeSessionProps) {
 
   const handleSubmitAnswer = useCallback(() => {
     if (!currentAnswer.trim() || isSubmitted || !sessionId) return;
+    const vErr = validateAnswerText(currentAnswer);
+    if (vErr) {
+      setValidationError(vErr === "tooShort" ? p.validationTooShort : p.validationTooFewWords);
+      return;
+    }
+    setValidationError(null);
     setEvaluating(true);
     setSubmitError(false);
     submitAnswerApi(sessionId, { questionId: question.id, answerText: currentAnswer })
@@ -245,7 +377,7 @@ export function PracticeSession({ set }: PracticeSessionProps) {
         addToast("error", p.submitFailed);
       })
       .finally(() => setEvaluating(false));
-  }, [currentAnswer, isSubmitted, question.id, isLast, sessionId, addToast, p.submitFailed]);
+  }, [currentAnswer, isSubmitted, question.id, isLast, sessionId, addToast, p.submitFailed, p.validationTooShort, p.validationTooFewWords]);
 
   function handleFinish() {
     if (!sessionId) return;
@@ -370,11 +502,11 @@ export function PracticeSession({ set }: PracticeSessionProps) {
             {set.companyInitials}
           </div>
           <div className="min-w-0 hidden sm:block">
-            <p className={cn("text-[13px] font-[600] leading-none truncate", portalHeadingAlt)}>{set.title}</p>
+            <p className={cn("text-[13px] font-semibold leading-none truncate", portalHeadingAlt)}>{set.title}</p>
             <p className={cn("text-[11px] mt-0.5", portalSubtextAlt)}>{set.company}</p>
           </div>
           {resumed && (
-            <span className="hidden md:inline-flex items-center text-[10px] font-[600] px-2 py-0.5 rounded-full bg-primary/10 text-primary shrink-0">
+            <span className="hidden md:inline-flex items-center text-[10px] font-semibold px-2 py-0.5 rounded-full bg-primary/10 text-primary shrink-0">
               {p.resumedBadge}
             </span>
           )}
@@ -390,7 +522,7 @@ export function PracticeSession({ set }: PracticeSessionProps) {
               transition={{ duration: 0.4 }}
             />
           </div>
-          <span className={cn("text-[11px] sm:text-[12px] font-[600] shrink-0 tabular-nums", portalSubtextAlt)}>
+          <span className={cn("text-[11px] sm:text-[12px] font-semibold shrink-0 tabular-nums", portalSubtextAlt)}>
             {p.question} {currentIdx + 1} {p.of} {totalQuestions}
           </span>
         </div>
@@ -402,7 +534,7 @@ export function PracticeSession({ set }: PracticeSessionProps) {
               animate={timeLeft < 300 ? { scale: [1, 1.08, 1] } : { scale: 1 }}
               transition={timeLeft < 300 ? { duration: 1, repeat: Infinity, ease: "easeInOut" } : undefined}
               className={cn(
-                "flex items-center gap-1.5 text-[12px] sm:text-[13px] font-[600] tabular-nums",
+                "flex items-center gap-1.5 text-[12px] sm:text-[13px] font-semibold tabular-nums",
                 timeLeft < 300 ? "text-red-500" : portalSubtextAlt
               )}
             >
@@ -422,8 +554,8 @@ export function PracticeSession({ set }: PracticeSessionProps) {
       </header>
 
       {/* ── Main ────────────────────────────────────────────────────── */}
-      <main className="flex-1 flex items-start justify-center px-3 sm:px-6 py-6 sm:py-10">
-        <div className="w-full max-w-[760px] flex flex-col gap-5">
+      <main className="flex-1 flex items-start justify-center px-3 sm:px-6 lg:pr-80 pt-3 pb-8 overflow-y-auto scrollbar-hide">
+        <div className="w-full flex flex-col gap-5">
 
           {/* Question card */}
           <AnimatePresence mode="wait" custom={direction}>
@@ -444,7 +576,7 @@ export function PracticeSession({ set }: PracticeSessionProps) {
               </div>
 
               {/* Question text */}
-              <p className={cn("text-[17px] sm:text-[20px] font-[700] leading-[26px] sm:leading-[30px]", portalHeadingAlt)}>
+              <p className={cn("text-[17px] sm:text-[20px] font-bold leading-6.5 sm:leading-7.5", portalHeadingAlt)}>
                 {question.text}
               </p>
             </motion.div>
@@ -461,10 +593,10 @@ export function PracticeSession({ set }: PracticeSessionProps) {
               >
                 <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
                   <CheckCircle2 size={16} />
-                  <span className="text-[13px] font-[600]">{p.answerSubmitted}</span>
+                  <span className="text-[13px] font-semibold">{p.answerSubmitted}</span>
                 </div>
                 {currentAnswer && (
-                  <p className={cn("text-[14px] leading-[22px] whitespace-pre-wrap", portalSubtextAlt)}>
+                  <p className={cn("text-[14px] leading-5.5 whitespace-pre-wrap", portalSubtextAlt)}>
                     {currentAnswer}
                   </p>
                 )}
@@ -478,14 +610,14 @@ export function PracticeSession({ set }: PracticeSessionProps) {
                   placeholder={p.answerPlaceholder}
                   disabled={evaluating}
                   className={cn(
-                    "w-full min-h-[140px] sm:min-h-[180px] text-[14px] font-[400] bg-transparent outline-none resize-none leading-[24px]",
+                    "w-full min-h-35 sm:min-h-45 text-[14px] font-normal bg-transparent outline-none resize-none leading-6",
                     portalHeadingAlt,
                     "placeholder:text-gray-400 dark:placeholder:text-gray-500"
                   )}
                 />
                 <div className={cn("flex items-center justify-between mt-3 pt-3 border-t", portalDivider)}>
                   <span className={cn(
-                    "text-[12px] font-[500]",
+                    "text-[12px] font-medium",
                     currentAnswer.length < 150 ? "text-gray-400 dark:text-gray-500" : "text-emerald-600 dark:text-emerald-400"
                   )}>
                     {currentAnswer.length} {p.characters}
@@ -510,9 +642,19 @@ export function PracticeSession({ set }: PracticeSessionProps) {
                     </button>
                   )}
                 </div>
+                {validationError && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="flex items-center gap-1.5 mt-2"
+                  >
+                    <AlertCircle size={13} className="text-amber-500 shrink-0" />
+                    <p className="text-[12px] font-medium text-amber-600 dark:text-amber-400">{validationError}</p>
+                  </motion.div>
+                )}
                 {submitError && (
                   <div className="flex items-center gap-3 mt-2">
-                    <p className="flex items-center gap-1.5 text-[12px] font-[500] text-red-500">
+                    <p className="flex items-center gap-1.5 text-[12px] font-medium text-red-500">
                       <AlertCircle size={12} />
                       {p.submitFailed}
                     </p>
@@ -585,7 +727,7 @@ export function PracticeSession({ set }: PracticeSessionProps) {
                   </button>
                 </motion.div>
                 {finishError && (
-                  <p className="flex items-center gap-1.5 text-[12px] font-[500] text-red-500">
+                  <p className="flex items-center gap-1.5 text-[12px] font-medium text-red-500">
                     <AlertCircle size={12} />
                     {p.finishFailed}
                   </p>
@@ -593,7 +735,7 @@ export function PracticeSession({ set }: PracticeSessionProps) {
               </div>
             ) : isLast ? (
               <div className="flex flex-col items-end gap-1.5">
-                <p className="flex items-center gap-1.5 text-[12px] font-[500] text-amber-600 dark:text-amber-400">
+                <p className="flex items-center gap-1.5 text-[12px] font-medium text-amber-600 dark:text-amber-400">
                   <AlertCircle size={12} />
                   {p.answerAllToFinish.replace("{{count}}", String(unansweredCount))}
                 </p>
@@ -617,6 +759,27 @@ export function PracticeSession({ set }: PracticeSessionProps) {
           </div>
         </div>
       </main>
+
+      <QuestionNav
+        questions={set.questions}
+        currentIdx={currentIdx}
+        submitted={submitted}
+        onSelect={(idx) => { setDirection(idx > currentIdx ? 1 : -1); setCurrentIdx(idx); }}
+        onFinish={handleFinish}
+        finishing={finishing}
+        hasTimeLimit={hasTimeLimit}
+        timeLeft={timeLeft}
+        labels={{
+          title: p.questionListTitle,
+          answered: p.questionAnswered,
+          current: p.questionCurrent,
+          unanswered: p.questionUnanswered,
+          answeredLabel: p.sidebarAnsweredLabel,
+          timeLabel: p.sidebarTimeLabel,
+          submitBtn: p.sidebarSubmitBtn,
+          noTimeLimit: p.sidebarNoTimeLimit,
+        }}
+      />
     </div>
     </>
   );

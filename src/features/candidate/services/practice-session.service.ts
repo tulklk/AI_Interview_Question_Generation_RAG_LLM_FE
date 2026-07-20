@@ -322,6 +322,7 @@ export interface CompletedSessionSummary {
   questionSetId: string;
   setTitle: string;
   company: string;
+  companyLogoUrl?: string | null;
   score: number | null;
   durationMinutes: number;
   startedAt?: string;
@@ -333,13 +334,20 @@ function normalizeCompletedSession(raw: unknown): CompletedSessionSummary | null
   if (!src) return null;
   const id = pickString(src, "sessionId", "id");
   if (!id) return null;
+  const durationMinutes =
+    typeof src.durationMinutes === "number"
+      ? src.durationMinutes
+      : typeof src.durationSeconds === "number"
+        ? Math.round(src.durationSeconds / 60)
+        : 0;
   return {
     id,
     questionSetId: pickString(src, "questionSetId"),
     setTitle: pickString(src, "setTitle", "title"),
     company: pickString(src, "companyName", "company"),
+    companyLogoUrl: pickOptionalString(src, "companyLogo", "companyLogoUrl") ?? null,
     score: pickNullableNumber(src, "score", "overallScore"),
-    durationMinutes: Math.round(pickNumber(src, "durationSeconds") / 60),
+    durationMinutes,
     startedAt: pickOptionalString(src, "startedAt"),
     completedAt: pickOptionalString(src, "completedAt"),
   };
@@ -352,12 +360,16 @@ export interface PaginatedCompletedSessions {
 
 function extractTotal(raw: unknown, fallback: number): number {
   const data = extractData(raw);
-  return data ? pickNumber(data, "totalCount") || fallback : fallback;
+  if (!data) return fallback;
+  for (const k of ["totalCount", "total", "count"]) {
+    if (typeof data[k] === "number") return data[k] as number;
+  }
+  return fallback;
 }
 
 /** Lists a page of the candidate's completed practice sessions, most recent first. */
 export async function listCompletedSessions(
-  params: { page?: number; pageSize?: number; fromDate?: string; toDate?: string } = {}
+  params: { page?: number; pageSize?: number; fromDate?: string; toDate?: string; keyword?: string } = {}
 ): Promise<PaginatedCompletedSessions> {
   try {
     const res = await apiClient.get(BASE, {
@@ -367,6 +379,7 @@ export async function listCompletedSessions(
         PageSize: params.pageSize ?? 20,
         FromDate: params.fromDate,
         ToDate: params.toDate,
+        Keyword: params.keyword || undefined,
       },
     });
     const items = extractList(res.data)
@@ -395,11 +408,17 @@ export interface PracticeStats {
 export async function getPracticeStats(): Promise<PracticeStats> {
   const res = await apiClient.get(`${BASE}/stats`);
   const src = extractData(res.data) ?? {};
+  const totalDurationMinutes =
+    typeof src.totalDurationMinutes === "number"
+      ? src.totalDurationMinutes
+      : typeof src.totalDurationSeconds === "number"
+        ? Math.round(src.totalDurationSeconds / 60)
+        : 0;
   return {
-    totalSessions: pickNumber(src, "totalSessions"),
-    averageScore: pickNullableNumber(src, "averageScore"),
-    bestScore: pickNullableNumber(src, "bestScore"),
-    latestScore: pickNullableNumber(src, "latestScore"),
-    totalDurationMinutes: Math.round(pickNumber(src, "totalDurationSeconds") / 60),
+    totalSessions: pickNumber(src, "totalSessions", "completedSessions"),
+    averageScore: pickNullableNumber(src, "averageScore", "avgScore"),
+    bestScore: pickNullableNumber(src, "bestScore", "highestScore", "maxScore"),
+    latestScore: pickNullableNumber(src, "latestScore", "lastScore", "recentScore"),
+    totalDurationMinutes,
   };
 }
