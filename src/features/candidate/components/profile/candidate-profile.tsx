@@ -23,6 +23,8 @@ import {
   Trash2,
   Loader2,
   AlertCircle,
+  Eye,
+  ChevronDown,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import {
@@ -143,6 +145,8 @@ export function CandidateProfile() {
   const [cvUploading, setCvUploading] = useState(false);
   const [cvDeleting, setCvDeleting] = useState(false);
   const [cvDeleteConfirmOpen, setCvDeleteConfirmOpen] = useState(false);
+  const [showCvInsights, setShowCvInsights] = useState(false);
+  const [showAllCvSkills, setShowAllCvSkills] = useState(false);
   const cvFileInputRef = useRef<HTMLInputElement>(null);
 
   const [stats, setStats] = useState<PracticeStats | null>(null);
@@ -703,88 +707,147 @@ export function CandidateProfile() {
           />
 
           {cvLoading ? (
-            <div className="h-16 flex items-center justify-center">
-              <Loader2 size={18} className="animate-spin text-gray-400" />
+            <div className="h-12 flex items-center justify-center">
+              <Loader2 size={16} className="animate-spin text-gray-400" />
             </div>
           ) : cv ? (
-            <div className="flex flex-col gap-4">
-              <div className="flex items-start gap-3">
-                <div className={cn("w-10 h-10 rounded-lg flex items-center justify-center shrink-0", portalIconWell)}>
-                  <FileText size={18} className="text-primary" />
+            <div className="flex flex-col gap-3">
+              {/* ── File row ──────────────────────────────────── */}
+              <div className={cn("flex items-center gap-3 px-3 py-2.5 rounded-xl", portalMutedBg)}>
+                <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center shrink-0", portalIconWell)}>
+                  <FileText size={15} className="text-primary" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className={cn("text-[14px] font-[600] truncate", portalHeadingAlt)}>{cv.fileName}</p>
-                  <p className={cn("text-[12px] mt-0.5", portalSubtextAlt)}>
+                  <p className={cn("text-[13px] font-semibold truncate", portalHeadingAlt)}>{cv.fileName}</p>
+                  <p className={cn("text-[11px]", portalSubtextAlt)}>
                     {p.cv.uploadedAt} {formatRelativeTime(cv.uploadedAt, lang)}
                   </p>
                 </div>
+                {/* View */}
                 <a
                   href={cv.downloadUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-1.5 h-8 px-3 text-[12px] font-[600] text-primary hover:bg-[#F5F3FF] dark:hover:bg-purple-950/30 rounded-lg transition-colors shrink-0"
+                  className="flex items-center gap-1 h-7 px-2.5 text-[12px] font-semibold text-primary hover:bg-primary/8 rounded-lg transition-colors shrink-0"
+                >
+                  <Eye size={13} />
+                  {p.cv.viewBtn}
+                </a>
+                {/* Download icon-only */}
+                <a
+                  href={cv.downloadUrl}
+                  download
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title={p.cv.downloadBtn}
+                  className={cn("w-7 h-7 flex items-center justify-center rounded-lg transition-colors shrink-0", portalIconWell, portalSubtextAlt, "hover:text-primary")}
                 >
                   <Download size={13} />
-                  {p.cv.downloadBtn}
                 </a>
               </div>
 
-              {cv.parsedAt && (cv.summary || cv.skills.length > 0) ? (
-                <div className="flex flex-col gap-3">
-                  {cv.summary && (
-                    <div>
-                      <p className={cn("text-[11px] font-[700] uppercase tracking-wide mb-1.5", portalSubtextAlt)}>
-                        {p.cv.aiSummary}
-                      </p>
-                      <p className={cn("text-[13px] leading-[20px]", portalSubtextAlt)}>{cv.summary}</p>
-                    </div>
-                  )}
-                  {cv.skills.length > 0 && (
-                    <div>
-                      <p className={cn("text-[11px] font-[700] uppercase tracking-wide mb-2", portalSubtextAlt)}>
-                        {p.cv.detectedSkills}
-                      </p>
-                      <div className="flex flex-wrap gap-2">
-                        {cv.skills.map((skill) => (
-                          <span
-                            key={skill}
-                            className={cn("text-[12px] font-[500] px-3 py-1.5 rounded-[6px]", portalMutedBg, portalHeadingAlt)}
-                          >
-                            {skill}
-                          </span>
-                        ))}
+              {/* ── AI Insights toggle ────────────────────────── */}
+              {cv.parsedAt ? (
+                cv.summary || cv.skills.length > 0 ? (
+                  <div className={cn("rounded-xl border overflow-hidden", portalMutedBg, "border-gray-100 dark:border-gray-800")}>
+                    <button
+                      type="button"
+                      onClick={() => setShowCvInsights((v) => !v)}
+                      className="w-full flex items-center justify-between px-3 py-2.5 text-left"
+                    >
+                      <span className={cn("text-[12px] font-semibold flex items-center gap-1.5", portalHeadingAlt)}>
+                        <Sparkles size={12} className="text-primary" />
+                        {p.cv.aiInsightsToggle}
+                      </span>
+                      <ChevronDown
+                        size={14}
+                        className={cn("transition-transform duration-200 shrink-0", portalSubtextAlt, showCvInsights && "rotate-180")}
+                      />
+                    </button>
+
+                    {showCvInsights && (
+                      <div className={cn("px-3 pb-3 flex flex-col gap-3 border-t", "border-gray-100 dark:border-gray-800")}>
+                        {cv.summary && (
+                          <div className="pt-3">
+                            <p className={cn("text-[10px] font-bold uppercase tracking-wider mb-1.5", portalSubtextAlt)}>
+                              {p.cv.aiSummary}
+                            </p>
+                            <p className={cn("text-[12px] leading-4.75", portalSubtextAlt)}>{cv.summary}</p>
+                          </div>
+                        )}
+                        {cv.skills.length > 0 && (
+                          <div>
+                            <p className={cn("text-[10px] font-bold uppercase tracking-wider mb-2", portalSubtextAlt)}>
+                              {p.cv.detectedSkills}
+                            </p>
+                            <div className="flex flex-wrap gap-1.5">
+                              {(showAllCvSkills ? cv.skills : cv.skills.slice(0, 10)).map((skill) => (
+                                <span
+                                  key={skill}
+                                  className={cn("text-[11px] font-medium px-2.5 py-1 rounded-md", portalIconWell, portalHeadingAlt)}
+                                >
+                                  {skill}
+                                </span>
+                              ))}
+                              {!showAllCvSkills && cv.skills.length > 10 && (
+                                <button
+                                  type="button"
+                                  onClick={() => setShowAllCvSkills(true)}
+                                  className="text-[11px] font-semibold text-primary hover:underline px-2 py-1"
+                                >
+                                  +{cv.skills.length - 10}
+                                </button>
+                              )}
+                              {showAllCvSkills && cv.skills.length > 10 && (
+                                <button
+                                  type="button"
+                                  onClick={() => setShowAllCvSkills(false)}
+                                  className={cn("text-[11px] font-semibold px-2 py-1 hover:underline", portalSubtextAlt)}
+                                >
+                                  ↑
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        )}
                       </div>
-                    </div>
-                  )}
-                </div>
+                    )}
+                  </div>
+                ) : (
+                  <p className={cn("flex items-center gap-1.5 text-[12px] italic", portalSubtextAlt)}>
+                    <AlertCircle size={12} className="shrink-0" />
+                    {p.cv.noSkillsDetected}
+                  </p>
+                )
               ) : (
                 <p className={cn("flex items-center gap-1.5 text-[12px] italic", portalSubtextAlt)}>
                   <AlertCircle size={12} className="shrink-0" />
-                  {cv.parsedAt ? p.cv.noSkillsDetected : p.cv.analysisUnavailable}
+                  {p.cv.analysisUnavailable}
                 </p>
               )}
 
-              <div className="flex items-center gap-2 pt-1">
+              {/* ── Actions ───────────────────────────────────── */}
+              <div className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={() => cvFileInputRef.current?.click()}
                   disabled={cvUploading || cvDeleting}
                   className={cn(
-                    "flex items-center gap-1.5 h-[34px] px-4 text-[12px] font-[600] hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg transition-colors disabled:opacity-50",
+                    "flex items-center gap-1.5 h-8 px-3 text-[12px] font-semibold hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg transition-colors disabled:opacity-50",
                     portalCard,
                     portalHeadingAlt
                   )}
                 >
-                  {cvUploading ? <Loader2 size={13} className="animate-spin" /> : <Upload size={13} />}
+                  {cvUploading ? <Loader2 size={12} className="animate-spin" /> : <Upload size={12} />}
                   {cvUploading ? p.cv.uploading : p.cv.replaceBtn}
                 </button>
                 <button
                   type="button"
                   onClick={() => setCvDeleteConfirmOpen(true)}
                   disabled={cvUploading || cvDeleting}
-                  className="flex items-center gap-1.5 h-[34px] px-4 text-[12px] font-[600] text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg transition-colors disabled:opacity-50"
+                  className="flex items-center gap-1.5 h-8 px-3 text-[12px] font-semibold text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg transition-colors disabled:opacity-50"
                 >
-                  <Trash2 size={13} />
+                  <Trash2 size={12} />
                   {p.cv.deleteBtn}
                 </button>
               </div>

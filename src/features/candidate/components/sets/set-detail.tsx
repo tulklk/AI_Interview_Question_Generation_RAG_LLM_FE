@@ -3,9 +3,9 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import {
-  ArrowLeft, Clock, BarChart2, Users, Star, ChevronDown,
+  ArrowLeft, Clock, BarChart2, Users, Star, X,
   ChevronRight, Target, Zap, RotateCcw, Bookmark, Loader2, RefreshCw,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
@@ -29,6 +29,30 @@ interface SetDetailProps {
   set: QuestionSet;
 }
 
+function CompanyModal({ name, logoUrl, onClose }: { name: string; logoUrl?: string | null; onClose: () => void }) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      onClick={onClose}
+    >
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+      <div
+        className="relative z-10 w-full max-w-md"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button
+          type="button"
+          onClick={onClose}
+          className="absolute -top-3 -right-3 z-20 w-7 h-7 rounded-full bg-gray-800 border border-gray-700 text-gray-300 flex items-center justify-center hover:bg-gray-700 hover:text-white transition-colors"
+        >
+          <X size={13} />
+        </button>
+        <CompanyInfoCard name={name} logoUrl={logoUrl} />
+      </div>
+    </div>
+  );
+}
+
 export function SetDetail({ set }: SetDetailProps) {
   const { t } = useLanguage();
   const p = t.jobseekerSetDetailPage;
@@ -41,6 +65,8 @@ export function SetDetail({ set }: SetDetailProps) {
   const [bookmarking, setBookmarking] = useState(false);
   const [startNewConfirmOpen, setStartNewConfirmOpen] = useState(false);
   const [startingNew, setStartingNew] = useState(false);
+  const [showCompanyModal, setShowCompanyModal] = useState(false);
+  const [showAllSkills, setShowAllSkills] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -94,7 +120,6 @@ export function SetDetail({ set }: SetDetailProps) {
   // contains (technical, behavioral, situational, problem-solving, system-design, ...) rather
   // than a fixed 3-value list, preserving first-seen order.
   const categories: QuestionCategory[] = Array.from(new Set(set.questions.map((q) => q.category)));
-  const [openCategory, setOpenCategory] = useState<QuestionCategory | null>(categories[0] ?? null);
 
   const groupedQuestions = categories.reduce((acc, cat) => {
     acc[cat] = set.questions.filter((q) => q.category === cat);
@@ -128,12 +153,30 @@ export function SetDetail({ set }: SetDetailProps) {
             className="hr-glass-card p-6"
           >
             <div className="flex items-start gap-4 mb-5">
-              <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center text-white text-base font-bold shrink-0", set.companyColor)}>
-                {set.companyInitials}
-              </div>
+              {set.companyLogoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={set.companyLogoUrl}
+                  alt={set.company ?? ""}
+                  className="w-12 h-12 rounded-xl object-cover shrink-0 border border-gray-100 dark:border-gray-700"
+                />
+              ) : (
+                <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center text-white text-base font-bold shrink-0", set.companyColor)}>
+                  {set.companyInitials}
+                </div>
+              )}
               <div className="flex-1">
-                <h1 className={cn("text-[24px] font-[800] leading-[32px]", portalHeadingAlt)}>{set.title}</h1>
-                <p className={cn("text-[14px] mt-1", portalSubtextAlt)}>{p.by} {set.company}</p>
+                <h1 className={cn("text-[24px] font-extrabold leading-8", portalHeadingAlt)}>{set.title}</h1>
+                <p className={cn("text-[14px] mt-1", portalSubtextAlt)}>
+                  {p.by}{" "}
+                  <button
+                    type="button"
+                    onClick={() => setShowCompanyModal(true)}
+                    className="text-primary hover:underline font-medium"
+                  >
+                    {set.company}
+                  </button>
+                </p>
               </div>
               <DifficultyPill difficulty={set.difficulty} label={set.difficulty} className="text-[12px] px-3 py-1.5" />
               <button
@@ -158,7 +201,7 @@ export function SetDetail({ set }: SetDetailProps) {
             </div>
 
             {set.description && (
-              <p className={cn("text-[15px] leading-[24px] mb-5", portalSubtextAlt)}>{set.description}</p>
+              <p className={cn("text-[15px] leading-6 mb-5", portalSubtextAlt)}>{set.description}</p>
             )}
 
             {/* Meta pills */}
@@ -180,87 +223,33 @@ export function SetDetail({ set }: SetDetailProps) {
               {set.rating !== undefined && (
                 <span className="flex items-center gap-1.5">
                   <Star size={14} className="text-amber-400 fill-amber-400" />
-                  <span className={cn("font-[600]", portalHeadingAlt)}>{set.rating!.toFixed(1)}</span>
+                  <span className={cn("font-semibold", portalHeadingAlt)}>{set.rating!.toFixed(1)}</span>
                 </span>
               )}
             </div>
 
-            {/* Skills */}
-            <div className="mt-5">
-              <p className={cn("text-[12px] font-[700] uppercase tracking-wide mb-3", portalHeadingAlt)}>{p.skills}</p>
-              <div className="flex flex-wrap gap-2">
-                {set.skills.map((s) => (
-                  <span key={s} className={cn("text-[12px] font-[500] px-3 py-1.5 rounded-[6px]", portalMutedBg, portalHeadingAlt)}>
-                    {s}
-                  </span>
-                ))}
-              </div>
-            </div>
           </div>
-
-          {/* Company info block */}
-          {set.company && (
-            <CompanyInfoCard name={set.company} logoUrl={set.companyLogoUrl} />
-          )}
 
           {/* Question Preview */}
           <div
             className="hr-glass-card overflow-hidden"
           >
-            <div className={cn("px-6 py-4 border-b", portalDivider)}>
-              <h2 className={cn("text-[16px] font-[700]", portalHeadingAlt)}>{p.preview}</h2>
+            <div className="px-6 py-4">
+              <h2 className={cn("text-[16px] font-bold", portalHeadingAlt)}>{p.preview}</h2>
             </div>
 
-            <div className={cn("divide-y", portalDivider)}>
+            <div className="flex flex-col gap-1 px-3 pb-3">
               {categories.map((cat) => {
                 const qs = groupedQuestions[cat];
                 if (qs.length === 0) return null;
-                const isOpen = openCategory === cat;
-
                 return (
-                  <div key={cat}>
-                    <button
-                      onClick={() => setOpenCategory(isOpen ? null : cat)}
-                      className="hr-table-row w-full flex items-center justify-between px-6 py-4"
-                    >
-                      <div className="flex items-center gap-3">
-                        <CategoryPill category={cat} label={formatCategoryLabel(cat)} />
-                        <span className={cn("text-[13px]", portalSubtextAlt)}>{qs.length} questions</span>
-                      </div>
-                      <ChevronDown
-                        size={16}
-                        className={cn("text-gray-400 dark:text-gray-500 transition-transform duration-200", isOpen && "rotate-180")}
-                      />
-                    </button>
-
-                    <AnimatePresence>
-                      {isOpen && (
-                        <motion.ul
-                          initial={{ height: 0, opacity: 0 }}
-                          animate={{ height: "auto", opacity: 1 }}
-                          exit={{ height: 0, opacity: 0 }}
-                          transition={{ duration: 0.2 }}
-                          className="overflow-hidden"
-                        >
-                          {qs.map((q, idx) => (
-                            <li
-                              key={q.id}
-                              className={cn(
-                                "flex items-start gap-4 px-6 py-4 border-t",
-                                portalDivider,
-                                portalIconWell
-                              )}
-                            >
-                              <span className={cn("text-[12px] font-[600] w-5 shrink-0 pt-0.5", portalSubtextAlt)}>
-                                {idx + 1}.
-                              </span>
-                              <p className={cn("text-[14px] leading-[22px] flex-1", portalHeadingAlt)}>{q.text}</p>
-                              <DifficultyPill difficulty={q.difficulty} label={q.difficulty} size="sm" />
-                            </li>
-                          ))}
-                        </motion.ul>
-                      )}
-                    </AnimatePresence>
+                  <div key={cat} className="flex items-center justify-between px-3 py-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+                    <div className="flex items-center gap-3">
+                      <CategoryPill category={cat} label={formatCategoryLabel(cat)} />
+                    </div>
+                    <span className={cn("text-[13px] font-medium tabular-nums", portalSubtextAlt)}>
+                      {qs.length} questions
+                    </span>
                   </div>
                 );
               })}
@@ -280,7 +269,7 @@ export function SetDetail({ set }: SetDetailProps) {
           >
             {/* Card header */}
             <div className={cn("px-5 py-4 border-b", portalIconWell, portalDivider)}>
-              <p className={cn("text-[14px] font-[700]", portalHeadingAlt)}>{p.summaryCard.title}</p>
+              <p className={cn("text-[14px] font-bold", portalHeadingAlt)}>{p.summaryCard.title}</p>
             </div>
 
             {/* Stats */}
@@ -296,16 +285,27 @@ export function SetDetail({ set }: SetDetailProps) {
                     <Icon size={14} className="text-primary" />
                     {label}
                   </div>
-                  <span className={cn("text-[13px] font-[600]", portalHeadingAlt)}>{value}</span>
+                  <span className={cn("text-[13px] font-semibold", portalHeadingAlt)}>{value}</span>
                 </div>
               ))}
 
               {/* Skill tags */}
               <div className={cn("pt-2 border-t", portalDivider)}>
-                <p className={cn("text-[11px] font-[700] uppercase tracking-wide mb-2", portalHeadingAlt)}>{p.skills}</p>
-                <div className="flex flex-wrap gap-1.5">
-                  {set.skills.map((s) => (
-                    <span key={s} className={cn("text-[11px] font-[500] px-2 py-1 rounded-[4px]", portalMutedBg, portalHeadingAlt)}>
+                <div className="flex items-center justify-between mb-2">
+                  <p className={cn("text-[11px] font-bold uppercase tracking-wide", portalHeadingAlt)}>{p.skills}</p>
+                  {set.skills.length > 3 && (
+                    <button
+                      type="button"
+                      onClick={() => setShowAllSkills((v) => !v)}
+                      className="text-[10px] font-semibold text-primary hover:underline"
+                    >
+                      {showAllSkills ? "Thu gọn" : `Xem tất cả (${set.skills.length})`}
+                    </button>
+                  )}
+                </div>
+                <div className="flex flex-col gap-1">
+                  {(showAllSkills ? set.skills : set.skills.slice(0, 3)).map((s) => (
+                    <span key={s} className={cn("text-[11px] font-medium px-2.5 py-1.5 rounded-md w-full block truncate", portalMutedBg, portalHeadingAlt)}>
                       {s}
                     </span>
                   ))}
@@ -349,6 +349,14 @@ export function SetDetail({ set }: SetDetailProps) {
           </div>
         </motion.div>
       </div>
+
+      {showCompanyModal && set.company && (
+        <CompanyModal
+          name={set.company}
+          logoUrl={set.companyLogoUrl}
+          onClose={() => setShowCompanyModal(false)}
+        />
+      )}
 
       <ConfirmDialog
         open={startNewConfirmOpen}

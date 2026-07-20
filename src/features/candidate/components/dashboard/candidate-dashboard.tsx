@@ -218,9 +218,18 @@ export function CandidateDashboard() {
               <ul className="divide-y divide-gray-200 dark:divide-gray-800">
                 {recentSessions.map((session) => (
                   <li key={session.id} className="hr-table-row flex items-center gap-4 px-5 py-3.5">
-                    <div className={cn("w-8 h-8 rounded-lg text-white text-[11px] font-bold flex items-center justify-center shrink-0", getCompanyColor(session.company))}>
-                      {getCompanyInitials(session.company)}
-                    </div>
+                    {session.companyLogoUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={session.companyLogoUrl}
+                        alt={session.company}
+                        className="w-8 h-8 rounded-lg object-cover shrink-0 border border-gray-100 dark:border-gray-700"
+                      />
+                    ) : (
+                      <div className={cn("w-8 h-8 rounded-lg text-white text-[11px] font-bold flex items-center justify-center shrink-0", getCompanyColor(session.company))}>
+                        {getCompanyInitials(session.company)}
+                      </div>
+                    )}
                     <div className="flex-1 min-w-0">
                       <p className={cn("text-[13px] font-[600] truncate", portalHeadingAlt)}>{session.setTitle}</p>
                       <p className={cn("text-[11px] flex items-center gap-1", portalSubtextAlt)}>

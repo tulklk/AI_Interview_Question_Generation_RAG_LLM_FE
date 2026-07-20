@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { cn } from "@/lib/cn";
 import { usePathname } from "next/navigation";
 import { JobseekerSidebar } from "./jobseeker-sidebar";
 import { TopHeader } from "@/features/hr/components/layout/top-header";
@@ -16,6 +17,7 @@ import { getInitials, resolveAvatarUrl } from "@/shared/utils/user-display";
 import { formatRelativeTime } from "@/shared/utils/relative-time";
 import type { NotificationItem } from "@/shared/components/common/notification-bell";
 import { listCompletedSessions } from "@/features/candidate/services/practice-session.service";
+import { ScoringProgressBadge } from "@/features/candidate/components/ui/scoring-progress-badge";
 import {
   CandidateSubscriptionProvider,
   useCandidateSubscription,
@@ -27,12 +29,14 @@ interface JobseekerAppShellProps {
   children: ReactNode;
   breadcrumb?: { label: string; href?: string }[];
   pageTitle: string;
+  fullWidth?: boolean;
 }
 
 function JobseekerAppShellInner({
   children,
   breadcrumb,
   pageTitle,
+  fullWidth = false,
 }: JobseekerAppShellProps) {
   const { t, lang } = useLanguage();
   const pathname = usePathname();
@@ -126,14 +130,18 @@ function JobseekerAppShellInner({
             avatarUrl: resolveAvatarUrl(user),
           }}
         />
-        <main className="flex-1 overflow-y-auto hr-main-bg">
+        <main className="flex-1 overflow-y-auto overflow-x-hidden hr-main-bg scrollbar-hide">
           {/* Aurora orbs — visible in dark mode only */}
           <div className="hr-aurora-orb hr-aurora-orb--purple w-130 h-130 -top-20 -left-15" aria-hidden="true" />
           <div className="hr-aurora-orb hr-aurora-orb--cyan w-100 h-100 bottom-[10%] -right-10" aria-hidden="true" />
           <div className="hr-aurora-orb hr-aurora-orb--violet w-80 h-80 top-[40%] left-[30%]" aria-hidden="true" />
-          <div className="relative z-10 max-w-350 mx-auto px-4 sm:px-6 md:px-8 py-5 md:py-7">{children}</div>
+          <div className={cn(
+            "relative z-10 py-5 md:py-7",
+            fullWidth ? "px-4 sm:px-6 md:px-8" : "max-w-350 mx-auto px-4 sm:px-6 md:px-8"
+          )}>{children}</div>
         </main>
       </div>
+      <ScoringProgressBadge />
     </div>
   );
 }
