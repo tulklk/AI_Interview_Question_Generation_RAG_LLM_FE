@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { Search, RefreshCw, Eye, BarChart2, Clock, Trophy, BookOpen, ChevronDown, AlertCircle, History as HistoryIcon, Loader2, Activity } from "lucide-react";
@@ -65,6 +65,7 @@ export function HistoryBoard() {
   const { addToast } = useToast();
 
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [timeFilter, setTimeFilter] = useState<TimeFilterKey>("all");
 
   const [sessions, setSessions] = useState<CompletedSessionSummary[]>([]);
@@ -76,18 +77,38 @@ export function HistoryBoard() {
   const [error, setError] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
 
+  // Debounce keyword: 350 ms after last keystroke
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  function handleSearchChange(value: string) {
+    setSearch(value);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => setDebouncedSearch(value), 350);
+  }
+
+  // Fetch stats once (global, not affected by keyword / time filter)
+  useEffect(() => {
+    getPracticeStats()
+      .then(setStats)
+      .catch(() => {});
+  }, [reloadKey]);
+
+  // Fetch sessions when filter, keyword, or reload key changes
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
     setError(false);
     const { fromDate } = dateRangeFor(timeFilter);
-    Promise.all([listCompletedSessions({ page: 1, pageSize: PAGE_SIZE, fromDate }), getPracticeStats()])
-      .then(([sessionsRes, statsRes]) => {
+    listCompletedSessions({
+      page: 1,
+      pageSize: PAGE_SIZE,
+      fromDate,
+      keyword: debouncedSearch || undefined,
+    })
+      .then((res) => {
         if (cancelled) return;
-        setSessions(sessionsRes.items);
-        setTotalCount(sessionsRes.totalCount);
+        setSessions(res.items);
+        setTotalCount(res.totalCount);
         setPage(1);
-        setStats(statsRes);
       })
       .catch(() => {
         if (!cancelled) setError(true);
@@ -98,13 +119,18 @@ export function HistoryBoard() {
     return () => {
       cancelled = true;
     };
-  }, [reloadKey, timeFilter]);
+  }, [reloadKey, timeFilter, debouncedSearch]);
 
   function loadMore() {
     const nextPage = page + 1;
     setLoadingMore(true);
     const { fromDate } = dateRangeFor(timeFilter);
-    listCompletedSessions({ page: nextPage, pageSize: PAGE_SIZE, fromDate })
+    listCompletedSessions({
+      page: nextPage,
+      pageSize: PAGE_SIZE,
+      fromDate,
+      keyword: debouncedSearch || undefined,
+    })
       .then((res) => {
         setSessions((prev) => [...prev, ...res.items]);
         setTotalCount(res.totalCount);
@@ -114,10 +140,7 @@ export function HistoryBoard() {
       .finally(() => setLoadingMore(false));
   }
 
-  const filtered = sessions.filter((s) => {
-    const q = search.toLowerCase();
-    return !q || s.setTitle.toLowerCase().includes(q) || s.company.toLowerCase().includes(q);
-  });
+  const filtered = sessions;
 
   const iconBg = "bg-gray-100 dark:bg-gray-800 shadow-sm ring-1 ring-black/5 dark:ring-white/10";
   const iconColor = "text-gray-900 dark:text-gray-100";
@@ -185,7 +208,7 @@ export function HistoryBoard() {
           <input
             type="text"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => handleSearchChange(e.target.value)}
             placeholder={p.filters.searchPlaceholder}
             className="flex-1 text-[12px] bg-transparent outline-none"
           />
@@ -242,9 +265,14 @@ export function HistoryBoard() {
               >
                 {/* Session */}
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className={cn("w-8 h-8 rounded-lg text-white text-[11px] font-bold flex items-center justify-center shrink-0", getCompanyColor(session.company))}>
-                    {getCompanyInitials(session.company)}
-                  </div>
+                  {session.companyLogoUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={session.companyLogoUrl} alt={session.company} className="w-8 h-8 rounded-lg object-cover shrink-0 border border-gray-100 dark:border-gray-700" />
+                  ) : (
+                    <div className={cn("w-8 h-8 rounded-lg text-white text-[11px] font-bold flex items-center justify-center shrink-0", getCompanyColor(session.company))}>
+                      {getCompanyInitials(session.company)}
+                    </div>
+                  )}
                   <div className="min-w-0">
                     <p className={cn("text-[13px] font-[600] truncate", portalHeadingAlt)}>{session.setTitle}</p>
                     <p className={cn("text-[11px]", portalSubtextAlt)}>{session.company}</p>
@@ -304,9 +332,14 @@ export function HistoryBoard() {
             >
               {/* Header row: company icon + title + score */}
               <div className="flex items-start gap-3">
-                <div className={cn("w-9 h-9 rounded-lg text-white text-[11px] font-bold flex items-center justify-center shrink-0", getCompanyColor(session.company))}>
-                  {getCompanyInitials(session.company)}
-                </div>
+                {session.companyLogoUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={session.companyLogoUrl} alt={session.company} className="w-9 h-9 rounded-lg object-cover shrink-0 border border-gray-100 dark:border-gray-700" />
+                ) : (
+                  <div className={cn("w-9 h-9 rounded-lg text-white text-[11px] font-bold flex items-center justify-center shrink-0", getCompanyColor(session.company))}>
+                    {getCompanyInitials(session.company)}
+                  </div>
+                )}
                 <div className="flex-1 min-w-0">
                   <p className={cn("text-[13px] font-[600] truncate", portalHeadingAlt)}>{session.setTitle}</p>
                   <p className={cn("text-[11px] mt-0.5", portalSubtextAlt)}>{session.company}</p>
