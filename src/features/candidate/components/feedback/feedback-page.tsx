@@ -160,7 +160,7 @@ export function FeedbackPage({ session, feedback, scoring, setTitle, companyName
   const companyColor = companyName ? getCompanyColor(companyName) : "bg-gray-400";
 
   return (
-    <div className="max-w-[900px] mx-auto">
+    <div className="w-full">
       {/* Back */}
       <Link
         href="/jobseeker/history"

@@ -18,6 +18,7 @@ import { getQuestionSetById } from "@/features/candidate/services/question-set.s
 import type { QuestionSet } from "@/features/candidate/types/jobseeker";
 import { useLanguage } from "@/shared/providers/language-context";
 import { portalSubtextAlt } from "@/shared/utils/portal-ui";
+import { registerScoringSession, markScoringDone } from "@/features/candidate/components/ui/scoring-progress-badge";
 
 // AI scoring can still be in progress right after "complete" — the score comes
 // back as null until BE's worker finishes. Poll quietly in the background while
@@ -41,6 +42,8 @@ export function FeedbackResultClient() {
   const [reloadKey, setReloadKey] = useState(0);
   const pollAttemptsRef = useRef(0);
   const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Track whether scoring was ever in progress (for localStorage update on done)
+  const wasScoring = useRef(false);
 
   useEffect(() => {
     if (!sessionId) return;
@@ -61,6 +64,10 @@ export function FeedbackResultClient() {
             setSession(s);
             if (s.overallScore !== null) {
               setScoring(false);
+              if (wasScoring.current) {
+                markScoringDone(id);
+                wasScoring.current = false;
+              }
               return;
             }
             pollAttemptsRef.current += 1;
@@ -86,13 +93,19 @@ export function FeedbackResultClient() {
         // response (captured live during the session) — read whatever was saved.
         setFeedback(readAnswerEvaluations(s.id));
         if (s.overallScore === null) {
+          wasScoring.current = true;
           setScoring(true);
+          registerScoringSession(s.id, "");
           pollScore(s.id);
         }
         if (s.questionSetId) {
           getQuestionSetById(s.questionSetId)
             .then((qs) => {
-              if (!cancelled) setSet(qs);
+              if (!cancelled) {
+                setSet(qs);
+                // Update badge title once we have the real set name
+                if (qs?.title) registerScoringSession(s.id, qs.title);
+              }
             })
             .catch(() => {
               // Non-critical — header just omits title/company.
@@ -117,6 +130,7 @@ export function FeedbackResultClient() {
   return (
     <JobseekerAppShell
       pageTitle="AI Feedback"
+      fullWidth
       breadcrumb={[
         { label: "Jobseeker", href: "/jobseeker/dashboard" },
         { label: "History", href: "/jobseeker/history" },
