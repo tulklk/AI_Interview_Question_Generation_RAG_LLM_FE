@@ -67,7 +67,7 @@ interface FilterBarLabels {
 interface FilterBarProps {
   search: string;
   onSearchChange: (v: string) => void;
-  searchInputRef: React.RefObject<HTMLInputElement>;
+  searchInputRef: React.RefObject<HTMLInputElement | null>;
   searchPlaceholder: string;
   difficulty: "All" | Difficulty;
   onDifficultyChange: (d: "All" | Difficulty) => void;
