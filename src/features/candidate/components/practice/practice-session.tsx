@@ -11,6 +11,7 @@ import { cn } from "@/lib/cn";
 import { useLanguage } from "@/shared/providers/language-context";
 import type { QuestionSet } from "@/features/candidate/types/jobseeker";
 import { CategoryPill, DifficultyPill, formatCategoryLabel } from "@/features/candidate/components/ui/pill";
+import { QuestionContent } from "@/shared/components/ui/question-content";
 import {
   portalDivider,
   portalHeadingAlt,
@@ -103,8 +104,8 @@ function QuestionNav({ questions, currentIdx, submitted, onSelect, onFinish, fin
 
   return (
     <aside className={cn(
-      "hidden lg:flex flex-col w-72 fixed top-17 right-4 z-40 scrollbar-hide",
-      "max-h-[calc(100vh-80px)] rounded-2xl shadow-xl border",
+      "hidden lg:flex flex-col w-72 shrink-0 scrollbar-hide",
+      "max-h-[calc(100vh-128px)] rounded-2xl shadow-xl border",
       "bg-white/95 dark:bg-gray-900/95 backdrop-blur-md",
       portalDivider
     )}>
@@ -553,9 +554,10 @@ export function PracticeSession({ set }: PracticeSessionProps) {
         </div>
       </header>
 
-      {/* ── Main ────────────────────────────────────────────────────── */}
-      <main className="flex-1 flex items-start justify-center px-3 sm:px-6 lg:pr-80 pt-3 pb-8 overflow-y-auto scrollbar-hide">
-        <div className="w-full flex flex-col gap-5">
+      {/* ── Body (main + sidebar) ──────────────────────────────────── */}
+      <div className="flex-1 flex items-center justify-center overflow-y-auto scrollbar-hide py-6 px-3 sm:px-6">
+        <div className="w-full flex gap-5 items-start">
+        <div className="flex-1 flex flex-col gap-5">
 
           {/* Question card */}
           <AnimatePresence mode="wait" custom={direction}>
@@ -576,9 +578,10 @@ export function PracticeSession({ set }: PracticeSessionProps) {
               </div>
 
               {/* Question text */}
-              <p className={cn("text-[17px] sm:text-[20px] font-bold leading-6.5 sm:leading-7.5", portalHeadingAlt)}>
-                {question.text}
-              </p>
+              <QuestionContent
+                text={question.text}
+                className={cn("text-[17px] sm:text-[20px] font-bold leading-6.5 sm:leading-7.5", portalHeadingAlt)}
+              />
             </motion.div>
           </AnimatePresence>
 
@@ -757,8 +760,7 @@ export function PracticeSession({ set }: PracticeSessionProps) {
               </button>
             )}
           </div>
-        </div>
-      </main>
+        </div>{/* end cards column */}
 
       <QuestionNav
         questions={set.questions}
@@ -780,6 +782,8 @@ export function PracticeSession({ set }: PracticeSessionProps) {
           noTimeLimit: p.sidebarNoTimeLimit,
         }}
       />
+      </div>{/* end content row */}
+      </div>{/* end body wrapper */}
     </div>
     </>
   );

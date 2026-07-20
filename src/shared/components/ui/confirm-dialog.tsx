@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { AlertTriangle, Loader2, UserCheck, X } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { useOverlayTransition } from "@/shared/hooks/use-overlay-transition";
@@ -72,8 +73,8 @@ export function ConfirmDialog({
     onCancel();
   }
 
-  return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+  return createPortal(
+    <div className="fixed inset-0 z-60 flex items-center justify-center p-4">
       <div
         className={cn(
           "absolute inset-0 bg-black/40 backdrop-blur-sm",
@@ -88,7 +89,7 @@ export function ConfirmDialog({
         aria-labelledby="confirm-dialog-title"
         aria-describedby="confirm-dialog-desc"
         className={cn(
-          "relative w-full max-w-sm rounded-xl border border-[#e5e7eb] dark:border-gray-700 bg-white dark:bg-gray-900 shadow-[0_20px_25px_-5px_rgba(0,0,0,0.1),0_8px_10px_-6px_rgba(0,0,0,0.1)] dark:shadow-[0_20px_25px_-5px_rgba(0,0,0,0.4)]",
+          "relative w-full max-w-sm rounded-xl border border-border dark:border-gray-700 bg-white dark:bg-gray-900 shadow-[0_20px_25px_-5px_rgba(0,0,0,0.1),0_8px_10px_-6px_rgba(0,0,0,0.1)] dark:shadow-[0_20px_25px_-5px_rgba(0,0,0,0.4)]",
           exiting ? "animate-scale-out" : "animate-scale-in"
         )}
         onClick={(e) => e.stopPropagation()}
@@ -97,7 +98,7 @@ export function ConfirmDialog({
           type="button"
           onClick={handleCancel}
           disabled={loading}
-          className="absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded-lg text-gray-400 dark:text-gray-500 transition-colors hover:bg-[#f5f7fb] dark:hover:bg-gray-800 hover:text-gray-600 dark:hover:text-gray-300 disabled:opacity-50"
+          className="absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded-lg text-gray-400 dark:text-gray-500 transition-colors hover:bg-page-bg dark:hover:bg-gray-800 hover:text-gray-600 dark:hover:text-gray-300 disabled:opacity-50"
           aria-label={content.cancelLabel}
         >
           <X size={15} />
@@ -107,7 +108,7 @@ export function ConfirmDialog({
           <div
             className={cn(
               "mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full",
-              isDanger ? "bg-red-50 dark:bg-red-950/50 text-red-600 dark:text-red-400" : "bg-[#f5f3ff] dark:bg-[#6c47ff]/15 text-[#6c47ff]"
+              isDanger ? "bg-red-50 dark:bg-red-950/50 text-red-600 dark:text-red-400" : "bg-lavender dark:bg-primary/15 text-primary"
             )}
           >
             <Icon size={22} />
@@ -115,7 +116,7 @@ export function ConfirmDialog({
 
           <h3
             id="confirm-dialog-title"
-            className="text-center text-base font-bold text-[#111827] dark:text-gray-100"
+            className="text-center text-base font-bold text-charcoal dark:text-gray-100"
           >
             {content.title}
           </h3>
@@ -127,12 +128,12 @@ export function ConfirmDialog({
           </p>
         </div>
 
-        <div className="flex gap-3 border-t border-[#e5e7eb] dark:border-gray-700 px-6 py-4">
+        <div className="flex gap-3 border-t border-border dark:border-gray-700 px-6 py-4">
           <button
             type="button"
             onClick={handleCancel}
             disabled={loading}
-            className="inline-flex min-h-10 flex-1 items-center justify-center rounded-lg border border-[#e5e7eb] dark:border-gray-700 bg-white dark:bg-gray-800 px-4 py-2 text-sm font-semibold text-[#111827] dark:text-gray-100 transition-colors hover:bg-[#f9fafb] dark:hover:bg-gray-700 disabled:opacity-50"
+            className="inline-flex min-h-10 flex-1 items-center justify-center rounded-lg border border-border dark:border-gray-700 bg-white dark:bg-gray-800 px-4 py-2 text-sm font-semibold text-charcoal dark:text-gray-100 transition-colors hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50"
           >
             {content.cancelLabel}
           </button>
@@ -144,7 +145,7 @@ export function ConfirmDialog({
               "inline-flex min-h-10 flex-1 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors disabled:opacity-50",
               isDanger
                 ? "bg-red-600 hover:bg-red-700"
-                : "bg-[#6c47ff] hover:bg-[#5a3dd9]"
+                : "bg-primary hover:bg-primary-hover"
             )}
           >
             {loading ? <Loader2 size={14} className="animate-spin" /> : null}
@@ -153,7 +154,7 @@ export function ConfirmDialog({
         </div>
 
         {extraAction && (
-          <div className="border-t border-[#e5e7eb] dark:border-gray-700 px-6 py-3 text-center">
+          <div className="border-t border-border dark:border-gray-700 px-6 py-3 text-center">
             <button
               type="button"
               onClick={extraAction.onClick}
@@ -166,6 +167,7 @@ export function ConfirmDialog({
           </div>
         )}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
