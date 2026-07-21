@@ -191,6 +191,12 @@
   --shadow-elevation-sm: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
   --shadow-elevation-card: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
   --shadow-elevation-prominent: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+  --shadow-ambient-light:
+    0 2px 4px -1px rgba(17, 24, 39, 0.06),
+    0 8px 20px -6px rgba(124, 58, 237, 0.10),
+    0 16px 40px -12px rgba(17, 24, 39, 0.08);
+  --gradient-card-wash-light: linear-gradient(160deg, rgba(124, 58, 237, 0.045) 0%, rgba(255, 255, 255, 0) 55%);
+  --gradient-jewel: linear-gradient(135deg, #7c3aed 0%, #6c47ff 45%, #22d3ee 100%);
   --font-sans: var(--font-be-vietnam-pro), "Be Vietnam Pro", system-ui, -apple-system, sans-serif;
   --animate-fade-in: fadeIn 0.4s ease-out both;
   --animate-fade-up: fadeUp 0.5s ease-out both;
@@ -1683,13 +1689,12 @@ body {
 
 /* HR Glass Card — layered shadow + glassmorphism */
 .hr-glass-card {
-  background: rgba(255, 255, 255, 0.9);
+  background:
+    var(--gradient-card-wash-light),
+    rgba(255, 255, 255, 0.9);
   border-radius: 14px;
   border: 1px solid rgba(124, 58, 237, 0.08);
-  box-shadow:
-    0 1px 3px rgba(15, 23, 42, 0.04),
-    0 4px 16px -4px rgba(124, 58, 237, 0.07),
-    0 8px 32px -8px rgba(15, 23, 42, 0.05);
+  box-shadow: var(--shadow-ambient-light);
   transition:
     box-shadow 0.35s ease,
     transform 0.35s cubic-bezier(0.22, 1, 0.36, 1),
@@ -1734,15 +1739,76 @@ body {
   }
 }
 
+/* Glass Card — alias sharing the same premium surface as .hr-glass-card */
+.glass-card {
+  background:
+    var(--gradient-card-wash-light),
+    rgba(255, 255, 255, 0.9);
+  border-radius: 14px;
+  border: 1px solid rgba(124, 58, 237, 0.08);
+  box-shadow: var(--shadow-ambient-light);
+  transition:
+    box-shadow 0.35s ease,
+    transform 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 0.35s ease;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.dark .glass-card {
+  background: rgba(15, 23, 42, 0.82);
+  border-color: rgba(124, 58, 237, 0.13);
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.28),
+    0 4px 16px -4px rgba(124, 58, 237, 0.17),
+    0 8px 32px -8px rgba(0, 0, 0, 0.38),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+/* Jewel border — gradient ring reserved for the primary (score) card */
+.jewel-border {
+  position: relative;
+  border-radius: 16px;
+}
+
+.jewel-border::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1.5px;
+  background: var(--gradient-jewel);
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Card tilt — JS-driven 3D tilt (see useTilt hook) */
+.card-tilt {
+  transform-style: preserve-3d;
+  will-change: transform;
+  transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card-tilt {
+    transition: none;
+    transform: none !important;
+  }
+}
+
 /* HR Stat Card — 3D tilt on hover */
 .hr-stat-card {
-  background: rgba(255, 255, 255, 0.92);
+  background:
+    var(--gradient-card-wash-light),
+    rgba(255, 255, 255, 0.92);
   border-radius: 14px;
   border: 1px solid rgba(124, 58, 237, 0.07);
-  box-shadow:
-    0 1px 3px rgba(15, 23, 42, 0.04),
-    0 4px 16px -4px rgba(124, 58, 237, 0.06),
-    0 8px 24px -8px rgba(15, 23, 42, 0.04);
+  box-shadow: var(--shadow-ambient-light);
   transition:
     box-shadow 0.38s ease,
     transform 0.38s cubic-bezier(0.22, 1, 0.36, 1),
