@@ -340,12 +340,24 @@ function normalizeCompletedSession(raw: unknown): CompletedSessionSummary | null
       : typeof src.durationSeconds === "number"
         ? Math.round(src.durationSeconds / 60)
         : 0;
+
+  // Logo may be at top-level or nested inside questionSet / set / questionSetDetail
+  const nested =
+    asRecord(src.questionSet) ??
+    asRecord(src.set) ??
+    asRecord(src.questionSetDetail) ??
+    null;
+  const companyLogoUrl =
+    pickOptionalString(src, "companyLogo", "companyLogoUrl", "logoUrl") ??
+    (nested ? pickOptionalString(nested, "companyLogo", "companyLogoUrl", "logoUrl") : undefined) ??
+    null;
+
   return {
     id,
     questionSetId: pickString(src, "questionSetId"),
     setTitle: pickString(src, "setTitle", "title"),
     company: pickString(src, "companyName", "company"),
-    companyLogoUrl: pickOptionalString(src, "companyLogo", "companyLogoUrl") ?? null,
+    companyLogoUrl,
     score: pickNullableNumber(src, "score", "overallScore"),
     durationMinutes,
     startedAt: pickOptionalString(src, "startedAt"),
