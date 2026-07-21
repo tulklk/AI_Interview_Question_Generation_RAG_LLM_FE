@@ -4,13 +4,13 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FileText, Calendar, ArrowUpDown, Eye, Download, Trash2, Inbox, Loader2, AlertTriangle, ChevronLeft, ChevronRight, SearchX, Globe, PenLine } from "lucide-react";
+import { FileText, Calendar, ArrowUpDown, Eye, Download, Trash2, Inbox, Loader2, AlertTriangle, ChevronLeft, ChevronRight, SearchX, Globe, GlobeOff, PenLine } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { useLanguage } from "@/shared/providers/language-context";
 import { useToast } from "@/shared/providers/toast-context";
 import { useHrSubscription } from "@/features/hr/context/hr-subscription-context";
 import { getLocalSessions, toGenerationSession } from "@/features/interview/utils/local-history";
-import { getGenerationJobs, getGenerationPlans, getQuestionSetStatusByJob, deleteGenerationPlan, exportPlanQuestions } from "@/features/interview/services/interview.service";
+import { getGenerationJobs, getGenerationPlans, getQuestionSetStatusByJob, deleteGenerationPlan, exportPlanQuestions, publishQuestionSet, unpublishQuestionSet } from "@/features/interview/services/interview.service";
 import type { GenerationSession, GenerationStatus } from "@/features/interview/types/generation-session";
 import { SessionStatusBadge } from "@/features/interview/components/history/session-status-badge";
 import {
@@ -174,7 +174,11 @@ export function HistoryTable({ search = "", role = "", level = "", experience = 
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [exportingId, setExportingId] = useState<string | null>(null);
+  const [publishingTableId, setPublishingTableId] = useState<string | null>(null);
+  const [unpublishingTableId, setUnpublishingTableId] = useState<string | null>(null);
   const [confirmSession, setConfirmSession] = useState<GenerationSession | null>(null);
+  const [publishConfirmSession, setPublishConfirmSession] = useState<GenerationSession | null>(null);
+  const [unpublishConfirmSession, setUnpublishConfirmSession] = useState<GenerationSession | null>(null);
   const [page, setPage] = useState(1);
 
   // Always-current ref so effects with [] deps never get a stale loadData
@@ -192,6 +196,40 @@ export function HistoryTable({ search = "", role = "", level = "", experience = 
       addToast("error", err instanceof Error && err.message ? err.message : ht.deleteFailed);
     } finally {
       setDeletingId(null);
+    }
+  }
+
+  async function confirmPublishFromTable() {
+    const qsId = publishConfirmSession?.questionSetId;
+    if (!publishConfirmSession || !qsId) return;
+    const session = publishConfirmSession;
+    setPublishConfirmSession(null);
+    setPublishingTableId(session.id);
+    try {
+      await publishQuestionSet(qsId);
+      setPublishMap(prev => new Map(prev).set(session.id, "PUBLISHED"));
+      addToast("success", "Đăng bộ câu hỏi thành công");
+    } catch (err) {
+      addToast("error", err instanceof Error && err.message ? err.message : "Không thể đăng bộ câu hỏi");
+    } finally {
+      setPublishingTableId(null);
+    }
+  }
+
+  async function confirmUnpublishFromTable() {
+    const qsId = unpublishConfirmSession?.questionSetId;
+    if (!unpublishConfirmSession || !qsId) return;
+    const session = unpublishConfirmSession;
+    setUnpublishConfirmSession(null);
+    setUnpublishingTableId(session.id);
+    try {
+      await unpublishQuestionSet(qsId);
+      setPublishMap(prev => new Map(prev).set(session.id, "DRAFT"));
+      addToast("success", "Gỡ đăng bộ câu hỏi thành công");
+    } catch (err) {
+      addToast("error", err instanceof Error && err.message ? err.message : "Không thể gỡ đăng bộ câu hỏi");
+    } finally {
+      setUnpublishingTableId(null);
     }
   }
 
@@ -415,6 +453,11 @@ export function HistoryTable({ search = "", role = "", level = "", experience = 
 
   // Shared action buttons for both table and card views
   function ActionButtons({ session }: { session: GenerationSession }) {
+    const publishStatus = publishMap.get(session.id);
+    const canManagePublish = session.status === "COMPLETED" && publishStatus !== undefined;
+    const isPublishing = publishingTableId === session.id;
+    const isUnpublishing = unpublishingTableId === session.id;
+
     return (
       <>
         <button
@@ -425,6 +468,43 @@ export function HistoryTable({ search = "", role = "", level = "", experience = 
         >
           <Eye size={14} />
         </button>
+
+        {/* Publish button — only for DRAFT */}
+        {canManagePublish && publishStatus === "DRAFT" && (
+          <button
+            type="button"
+            onClick={() => session.questionSetId
+              ? setPublishConfirmSession(session)
+              : router.push(`/hr/history/${session.id}`)
+            }
+            disabled={isPublishing}
+            title="Đăng bộ câu hỏi"
+            className="p-2 rounded-lg transition-colors disabled:opacity-40 text-gray-400 dark:text-gray-500 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40"
+          >
+            {isPublishing
+              ? <Loader2 size={14} className="animate-spin" />
+              : <Globe size={14} />}
+          </button>
+        )}
+
+        {/* Unpublish button — only for PUBLISHED */}
+        {canManagePublish && publishStatus === "PUBLISHED" && (
+          <button
+            type="button"
+            onClick={() => session.questionSetId
+              ? setUnpublishConfirmSession(session)
+              : router.push(`/hr/history/${session.id}`)
+            }
+            disabled={isUnpublishing}
+            title="Gỡ đăng bộ câu hỏi"
+            className="p-2 rounded-lg transition-colors disabled:opacity-40 text-emerald-500 dark:text-emerald-400 hover:text-amber-600 dark:hover:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/40"
+          >
+            {isUnpublishing
+              ? <Loader2 size={14} className="animate-spin" />
+              : <GlobeOff size={14} />}
+          </button>
+        )}
+
         <button
           type="button"
           onClick={() => handleExport(session)}
@@ -490,6 +570,82 @@ export function HistoryTable({ search = "", role = "", level = "", experience = 
         onCancel={() => setConfirmSession(null)}
         dm={dm}
       />
+    )}
+
+    {publishConfirmSession && createPortal(
+      <div className="fixed inset-0 z-9999 flex items-center justify-center p-4">
+        <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setPublishConfirmSession(null)} />
+        <div className="relative w-full max-w-md rounded-2xl bg-white dark:bg-gray-900 shadow-2xl border border-gray-200 dark:border-gray-700 p-6 animate-fade-up">
+          <div className="flex items-center gap-4 mb-4">
+            <div className="w-11 h-11 rounded-xl bg-emerald-100 dark:bg-emerald-950/50 flex items-center justify-center shrink-0">
+              <Globe size={22} className="text-emerald-600 dark:text-emerald-400" />
+            </div>
+            <div>
+              <h3 className={cn("text-base font-semibold", portalHeading)}>Đăng bộ câu hỏi</h3>
+              <p className={cn("text-xs mt-0.5", portalSubtext)}>Bộ câu hỏi sẽ hiển thị cho ứng viên</p>
+            </div>
+          </div>
+          <p className={cn("text-sm font-semibold px-3 py-2 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700", portalHeading)}>
+            {publishConfirmSession.jobTitle || "Untitled"}
+          </p>
+          <div className="flex gap-3 mt-5 justify-end">
+            <button
+              type="button"
+              onClick={() => setPublishConfirmSession(null)}
+              className="px-4 py-2 text-sm font-medium rounded-xl border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+            >
+              Huỷ
+            </button>
+            <button
+              type="button"
+              onClick={confirmPublishFromTable}
+              className="px-4 py-2 text-sm font-semibold rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white transition-colors flex items-center gap-2"
+            >
+              <Globe size={14} />
+              Xác nhận đăng
+            </button>
+          </div>
+        </div>
+      </div>,
+      document.body
+    )}
+
+    {unpublishConfirmSession && createPortal(
+      <div className="fixed inset-0 z-9999 flex items-center justify-center p-4">
+        <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setUnpublishConfirmSession(null)} />
+        <div className="relative w-full max-w-md rounded-2xl bg-white dark:bg-gray-900 shadow-2xl border border-gray-200 dark:border-gray-700 p-6 animate-fade-up">
+          <div className="flex items-center gap-4 mb-4">
+            <div className="w-11 h-11 rounded-xl bg-amber-100 dark:bg-amber-950/50 flex items-center justify-center shrink-0">
+              <GlobeOff size={22} className="text-amber-600 dark:text-amber-400" />
+            </div>
+            <div>
+              <h3 className={cn("text-base font-semibold", portalHeading)}>Gỡ đăng bộ câu hỏi</h3>
+              <p className={cn("text-xs mt-0.5", portalSubtext)}>Ứng viên sẽ không còn thấy bộ câu hỏi này</p>
+            </div>
+          </div>
+          <p className={cn("text-sm font-semibold px-3 py-2 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700", portalHeading)}>
+            {unpublishConfirmSession.jobTitle || "Untitled"}
+          </p>
+          <div className="flex gap-3 mt-5 justify-end">
+            <button
+              type="button"
+              onClick={() => setUnpublishConfirmSession(null)}
+              className="px-4 py-2 text-sm font-medium rounded-xl border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+            >
+              Huỷ
+            </button>
+            <button
+              type="button"
+              onClick={confirmUnpublishFromTable}
+              className="px-4 py-2 text-sm font-semibold rounded-xl bg-amber-500 hover:bg-amber-600 text-white transition-colors flex items-center gap-2"
+            >
+              <GlobeOff size={14} />
+              Xác nhận gỡ đăng
+            </button>
+          </div>
+        </div>
+      </div>,
+      document.body
     )}
 
     {/* ── Mobile card list (< md) ──────────────────────────────────────────── */}
