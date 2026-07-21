@@ -69,7 +69,7 @@ export function SettingsPage() {
     <div className="flex flex-col md:grid md:grid-cols-[220px_1fr] gap-4 md:gap-6 items-start">
 
       {/* ── Sidebar nav ───────────────────────────────────────────────────────── */}
-      <nav className="w-full bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm p-1.5 md:p-2 md:sticky md:top-4">
+      <nav className="w-full hr-glass-card p-1.5 md:p-2 md:sticky md:top-4">
 
         {/* Mobile: icon tabs */}
         <ul className="flex md:hidden overflow-x-auto">
@@ -152,7 +152,7 @@ export function SettingsPage() {
       ) : (
         <div
           key={activeTab}
-          className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm p-5 md:p-6 animate-scale-in min-w-0 w-full"
+          className="hr-glass-card p-5 md:p-6 animate-scale-in min-w-0 w-full"
         >
           {/* Section header */}
           <div className="flex items-center gap-3 mb-6 pb-5 border-b border-gray-200 dark:border-gray-800">

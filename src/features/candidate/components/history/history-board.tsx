@@ -154,7 +154,7 @@ export function HistoryBoard() {
 
   if (loading) {
     return (
-      <div className="py-20 flex items-center justify-center">
+      <div className="min-h-[calc(100vh-160px)] flex items-center justify-center">
         <AiLoadingSpinner text={p.loading} />
       </div>
     );
@@ -198,7 +198,7 @@ export function HistoryBoard() {
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2 }}
-        className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm p-4 mb-4 flex flex-col sm:flex-row items-stretch sm:items-center gap-3"
+        className="hr-glass-card p-4 mb-4 flex flex-col sm:flex-row items-stretch sm:items-center gap-3"
       >
         <div className={cn(
           "flex items-center gap-2 flex-1 rounded-lg px-3 h-[38px] focus-within:border-primary focus-within:shadow-[0_0_0_3px_rgba(108,71,255,0.1)] transition-all",
@@ -241,7 +241,7 @@ export function HistoryBoard() {
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.25 }}
-        className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm overflow-hidden hidden md:block"
+        className="hr-glass-card overflow-hidden hidden md:block"
       >
         {/* Header */}
         <div className="grid grid-cols-[2.5fr_1fr_1fr_1fr_200px] gap-4 px-6 py-3 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/60">
@@ -328,7 +328,7 @@ export function HistoryBoard() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3 + i * 0.05 }}
               whileHover={{ scale: 1.02 }}
-              className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm p-4 flex flex-col gap-3"
+              className="hr-glass-card p-4 flex flex-col gap-3"
             >
               {/* Header row: company icon + title + score */}
               <div className="flex items-start gap-3">

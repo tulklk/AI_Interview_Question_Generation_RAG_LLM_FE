@@ -56,6 +56,12 @@ export function markScoringDone(sessionId: string) {
   }
 }
 
+export function removeScoringEntry(sessionId: string) {
+  if (typeof window === "undefined") return;
+  writeScoringEntries(readScoringEntries().filter((e) => e.sessionId !== sessionId));
+  window.dispatchEvent(new CustomEvent("cand:scoring-updated"));
+}
+
 // ---------------------------------------------------------------------------
 // Badge card
 // ---------------------------------------------------------------------------
@@ -276,7 +282,10 @@ export function ScoringProgressBadge() {
     };
   }, []);
 
-  const visible = entries.filter((e) => !dismissed.has(e.sessionId));
+  const visible = entries.filter((e) =>
+    !dismissed.has(e.sessionId) &&
+    pathname !== `/jobseeker/practice/${e.sessionId}/result`
+  );
   if (visible.length === 0) return null;
 
   return (

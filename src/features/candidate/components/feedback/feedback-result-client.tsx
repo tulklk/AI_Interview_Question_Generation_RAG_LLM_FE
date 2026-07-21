@@ -18,7 +18,7 @@ import { getQuestionSetById } from "@/features/candidate/services/question-set.s
 import type { QuestionSet } from "@/features/candidate/types/jobseeker";
 import { useLanguage } from "@/shared/providers/language-context";
 import { portalSubtextAlt } from "@/shared/utils/portal-ui";
-import { registerScoringSession, markScoringDone } from "@/features/candidate/components/ui/scoring-progress-badge";
+import { registerScoringSession, markScoringDone, removeScoringEntry } from "@/features/candidate/components/ui/scoring-progress-badge";
 
 // AI scoring can still be in progress right after "complete" — the score comes
 // back as null until BE's worker finishes. Poll quietly in the background while
@@ -97,14 +97,18 @@ export function FeedbackResultClient() {
           setScoring(true);
           registerScoringSession(s.id, "");
           pollScore(s.id);
+        } else {
+          // Score already computed — remove any stale badge entry immediately
+          removeScoringEntry(s.id);
         }
         if (s.questionSetId) {
           getQuestionSetById(s.questionSetId)
             .then((qs) => {
               if (!cancelled) {
                 setSet(qs);
-                // Update badge title once we have the real set name
-                if (qs?.title) registerScoringSession(s.id, qs.title);
+                // Only update badge title when scoring is still in progress —
+                // if score was already available, the badge was already removed above.
+                if (qs?.title && s.overallScore === null) registerScoringSession(s.id, qs.title);
               }
             })
             .catch(() => {

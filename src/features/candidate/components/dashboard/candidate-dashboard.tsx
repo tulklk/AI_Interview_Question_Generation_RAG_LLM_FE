@@ -177,7 +177,7 @@ export function CandidateDashboard() {
         <div className="flex flex-col gap-6">
           <motion.div
             {...fadeUp(0.12)}
-            className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm p-6"
+            className="hr-glass-card p-6"
           >
             <h2 className={cn("text-[16px] font-[700] mb-4", portalHeadingAlt)}>{p.analyticsTitle}</h2>
             <EmptyState icon={BarChart2} title={p.analyticsUnavailable} className="py-8" />
@@ -185,7 +185,7 @@ export function CandidateDashboard() {
 
           <motion.div
             {...fadeUp(0.18)}
-            className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm overflow-hidden"
+            className="hr-glass-card overflow-hidden"
           >
             <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/60">
               <div>
@@ -259,7 +259,7 @@ export function CandidateDashboard() {
         <div className="flex flex-col gap-4">
           <motion.div
             {...fadeUp(0.14)}
-            className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm p-5"
+            className="hr-glass-card p-5"
           >
             <h3 className={cn("text-[14px] font-[700] mb-3", portalHeadingAlt)}>{p.skillBreakdownTitle}</h3>
             <p className={cn("text-[12px] leading-[18px]", portalSubtextAlt)}>{p.skillBreakdownUnavailable}</p>
