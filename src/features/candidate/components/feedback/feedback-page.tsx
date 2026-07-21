@@ -5,7 +5,7 @@ import Link from "next/link";
 import { motion, animate, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, RefreshCw, Share2, Loader2,
-  Sparkles, ChevronDown, CheckCircle2, AlertTriangle, Lightbulb,
+  Sparkles, ChevronDown, CheckCircle2, AlertTriangle, Lightbulb, Target,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { useLanguage } from "@/shared/providers/language-context";
@@ -14,6 +14,7 @@ import { CategoryPill, Pill, formatCategoryLabel, getScoreLevel, getScoreBadgeCl
 import { getCompanyColor, getCompanyInitials } from "@/features/candidate/utils/company-visual";
 import { useChartTheme } from "@/shared/hooks/use-chart-theme";
 import { QuestionContent } from "@/shared/components/ui/question-content";
+import { useTilt } from "@/shared/hooks/use-tilt";
 import { ConfettiBurst } from "@/shared/components/common/confetti-burst";
 import { FeedbackRadarChart } from "./feedback-radar-chart";
 import { useToast } from "@/shared/providers/toast-context";
@@ -23,6 +24,13 @@ import {
 } from "@/shared/utils/portal-ui";
 
 const CELEBRATION_THRESHOLD = 80;
+
+function getSkillColor(score: number) {
+  if (score >= 80) return { bar: "bg-emerald-500", text: "text-emerald-700 dark:text-emerald-400", bg: "bg-emerald-50 dark:bg-emerald-950/40", ring: "#10B981" };
+  if (score >= 65) return { bar: "bg-violet-500", text: "text-violet-700 dark:text-violet-400", bg: "bg-violet-50 dark:bg-violet-950/40", ring: "#6C47FF" };
+  if (score >= 50) return { bar: "bg-amber-500", text: "text-amber-700 dark:text-amber-400", bg: "bg-amber-50 dark:bg-amber-950/40", ring: "#F59E0B" };
+  return { bar: "bg-red-500", text: "text-red-700 dark:text-red-400", bg: "bg-red-50 dark:bg-red-950/40", ring: "#EF4444" };
+}
 
 /** Averages each dimension key (clarity/depth/structure/relevance, ...) across
  * every question that has a dimensionScores breakdown. Returns null if none do —
@@ -111,6 +119,7 @@ export function FeedbackPage({ session, feedback, scoring, setTitle, companyName
   const p = t.jobseekerFeedbackPage;
   const chart = useChartTheme();
   const { addToast } = useToast();
+  const scoreTilt = useTilt<HTMLDivElement>({ maxTilt: 6 });
 
   const hasScore = session.overallScore !== null;
   const score = session.overallScore ?? 0;
@@ -178,8 +187,14 @@ export function FeedbackPage({ session, feedback, scoring, setTitle, companyName
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="relative hr-glass-card p-5 sm:p-8 mb-6 flex flex-col sm:flex-row items-center sm:items-start gap-5 sm:gap-10"
+        className="jewel-border mb-6"
       >
+        <div
+          ref={scoreTilt.ref}
+          onMouseMove={scoreTilt.onMouseMove}
+          onMouseLeave={scoreTilt.onMouseLeave}
+          className="relative hr-glass-card card-tilt rounded-2xl p-5 sm:p-8 flex flex-col sm:flex-row items-center sm:items-start gap-5 sm:gap-10"
+        >
         {hasScore && score >= CELEBRATION_THRESHOLD && <ConfettiBurst />}
         {hasScore ? (
           <ScoreRing score={score} trackStroke={chart.isDark ? "#374151" : "#F3F4F6"} />
@@ -258,6 +273,7 @@ export function FeedbackPage({ session, feedback, scoring, setTitle, companyName
             {p.shareBtn}
           </button>
         </div>
+        </div>
       </motion.div>
 
       {/* ── Skill Breakdown (radar) — only when at least one question has dimension scores ── */}
@@ -268,8 +284,57 @@ export function FeedbackPage({ session, feedback, scoring, setTitle, companyName
           transition={{ delay: 0.2 }}
           className="hr-glass-card p-5 sm:p-6 mb-6"
         >
-          <h2 className={cn("text-[16px] font-[700] mb-2", portalHeadingAlt)}>{p.skillBreakdown}</h2>
-          <FeedbackRadarChart data={radarData} />
+          {/* Header */}
+          <div className="flex items-center justify-between mb-5">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-violet-100 dark:bg-violet-950/50 flex items-center justify-center shrink-0">
+                <Target size={15} className="text-primary" />
+              </div>
+              <div>
+                <h2 className={cn("text-[15px] font-bold leading-tight", portalHeadingAlt)}>{p.skillBreakdown}</h2>
+                <p className={cn("text-[11px] mt-0.5", portalSubtextAlt)}>Điểm trung bình từng chiều đánh giá</p>
+              </div>
+            </div>
+            <div className={cn(
+              "text-[12px] font-bold px-3 py-1 rounded-full border",
+              "bg-violet-50 dark:bg-violet-950/40 text-primary border-violet-200 dark:border-violet-800/40"
+            )}>
+              TB {Math.round(radarData.reduce((s, d) => s + d.score, 0) / radarData.length)}%
+            </div>
+          </div>
+
+          {/* Body: chart + skill list */}
+          <div className="flex flex-col md:flex-row gap-4 md:gap-8 items-center">
+            {/* Radar chart */}
+            <div className="w-full md:w-[52%] shrink-0">
+              <FeedbackRadarChart data={radarData} />
+            </div>
+
+            {/* Skill score bars */}
+            <div className="w-full md:flex-1 space-y-3.5">
+              {[...radarData].sort((a, b) => b.score - a.score).map((item, i) => {
+                const c = getSkillColor(item.score);
+                return (
+                  <div key={item.skill}>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className={cn("text-[12px] font-semibold", portalHeadingAlt)}>{item.skill}</span>
+                      <span className={cn("text-[11px] font-bold px-2 py-0.5 rounded-full", c.bg, c.text)}>
+                        {item.score}%
+                      </span>
+                    </div>
+                    <div className="w-full h-1.5 rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden">
+                      <motion.div
+                        className={cn("h-full rounded-full", c.bar)}
+                        initial={{ width: 0 }}
+                        animate={{ width: `${item.score}%` }}
+                        transition={{ duration: 0.9, delay: 0.35 + i * 0.08, ease: "easeOut" }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         </motion.div>
       )}
 
