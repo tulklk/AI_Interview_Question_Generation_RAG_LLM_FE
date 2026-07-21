@@ -167,6 +167,7 @@ export function ReviewQuestionsSection({
   const [timeLimitMinutes, setTimeLimitMinutes] = useState<number | null>(initialTimeLimitMinutes ?? null);
   const [showTimeLimitDialog, setShowTimeLimitDialog] = useState(false);
   const [savingTimeLimit, setSavingTimeLimit] = useState(false);
+  const timeLimitDirtyRef = useRef(false);
   const [page, setPage] = useState(1);
   const [publishConfirmAction, setPublishConfirmAction] = useState<PublishAction>(null);
   const [publishing, setPublishing] = useState(false);
@@ -460,7 +461,14 @@ export function ReviewQuestionsSection({
 
         // 5. Mark as saved draft
         const savedQuestionSetId = await saveJobDraft(sessionId);
-        if (savedQuestionSetId) onDraftSaved?.(savedQuestionSetId);
+        if (savedQuestionSetId) {
+          onDraftSaved?.(savedQuestionSetId);
+          // Apply time limit if user set one before draft was saved
+          if (timeLimitDirtyRef.current) {
+            timeLimitDirtyRef.current = false;
+            await setQuestionSetTimeLimit(savedQuestionSetId, timeLimitMinutes).catch(() => {});
+          }
+        }
       }
 
       setDeletedIds([]);
@@ -499,10 +507,18 @@ export function ReviewQuestionsSection({
   }
 
   async function handleSaveTimeLimit(minutes: number | null) {
-    if (!questionSetId) return;
+    if (!questionSetId) {
+      // Draft not saved yet — store locally; will be pushed to BE on save draft
+      timeLimitDirtyRef.current = true;
+      setTimeLimitMinutes(minutes);
+      setShowTimeLimitDialog(false);
+      addToast("success", rp.timeLimitSaveSuccess);
+      return;
+    }
     setSavingTimeLimit(true);
     try {
       await setQuestionSetTimeLimit(questionSetId, minutes);
+      timeLimitDirtyRef.current = false;
       setTimeLimitMinutes(minutes);
       setShowTimeLimitDialog(false);
       addToast("success", rp.timeLimitSaveSuccess);
@@ -573,7 +589,7 @@ export function ReviewQuestionsSection({
               {publishStatus === "PUBLISHED" ? rp.statusPublished : rp.statusDraft}
             </span>
           )}
-          {!readOnly && questionSetId && (
+          {!readOnly && isEditable && (
             <button
               type="button"
               onClick={() => !isLocked && setShowTimeLimitDialog(true)}
@@ -675,7 +691,7 @@ export function ReviewQuestionsSection({
                 {publishing ? <Loader2 size={14} className="animate-spin" /> : <Undo2 size={14} />}
                 {rp.unpublish}
               </button>
-            ) : questions.length >= MIN_QUESTIONS_TO_PUBLISH ? (
+            ) : (
               <button
                 type="button"
                 onClick={() => setPublishConfirmAction("publish")}
@@ -685,10 +701,6 @@ export function ReviewQuestionsSection({
                 {publishing ? <Loader2 size={14} className="animate-spin" /> : <Rocket size={14} />}
                 {rp.publish}
               </button>
-            ) : (
-              <span className={cn("text-xs italic", portalSubtext)}>
-                {rp.publishMinHint.replaceAll("{{min}}", String(MIN_QUESTIONS_TO_PUBLISH)).replaceAll("{{count}}", String(questions.length))}
-              </span>
             )
           )}
         </div>
