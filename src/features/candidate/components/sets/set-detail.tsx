@@ -232,23 +232,22 @@ export function SetDetail({ set }: SetDetailProps) {
           </div>
 
           {/* Question Preview */}
-          <div
-            className="hr-glass-card overflow-hidden"
-          >
-            <div className="px-6 py-4">
+          <div className="hr-glass-card overflow-hidden">
+            <div className="px-6 py-4 flex items-center justify-between">
               <h2 className={cn("text-[16px] font-bold", portalHeadingAlt)}>{p.preview}</h2>
+              <span className={cn("text-[12px] font-medium", portalSubtextAlt)}>
+                {set.totalQuestions} {p.questions}
+              </span>
             </div>
 
-            <div className="flex flex-col gap-1 px-3 pb-3">
+            <div className="flex flex-col divide-y divide-gray-100 dark:divide-gray-800">
               {categories.map((cat) => {
                 const qs = groupedQuestions[cat];
                 if (qs.length === 0) return null;
                 return (
-                  <div key={cat} className="flex items-center justify-between px-3 py-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
-                    <div className="flex items-center gap-3">
-                      <CategoryPill category={cat} label={formatCategoryLabel(cat)} />
-                    </div>
-                    <span className={cn("text-[13px] font-medium tabular-nums", portalSubtextAlt)}>
+                  <div key={cat} className="flex items-center justify-between px-5 py-3.5 hover:bg-gray-50 dark:hover:bg-gray-800/40 transition-colors">
+                    <CategoryPill category={cat} label={formatCategoryLabel(cat)} />
+                    <span className={cn("text-[12px] font-semibold tabular-nums", portalSubtextAlt)}>
                       {qs.length} {p.questions}
                     </span>
                   </div>

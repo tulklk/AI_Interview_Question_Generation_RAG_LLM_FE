@@ -6,7 +6,7 @@ import { motion, animate, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, RefreshCw, Share2, Loader2,
   Sparkles, ChevronDown, CheckCircle2, AlertTriangle, Lightbulb, Target,
-  TrendingUp, TrendingDown, Minus,
+  TrendingUp, TrendingDown, Minus, BookOpen, Flame,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { useLanguage, type Lang } from "@/shared/providers/language-context";
@@ -16,7 +16,6 @@ import { translateDimensionKey, translateQuestionCategory } from "@/features/can
 import { getCompanyColor, getCompanyInitials } from "@/features/candidate/utils/company-visual";
 import { useChartTheme } from "@/shared/hooks/use-chart-theme";
 import { QuestionContent } from "@/shared/components/ui/question-content";
-import { useTilt } from "@/shared/hooks/use-tilt";
 import { ConfettiBurst } from "@/shared/components/common/confetti-burst";
 import { FeedbackRadarChart } from "./feedback-radar-chart";
 import { useToast } from "@/shared/providers/toast-context";
@@ -100,6 +99,38 @@ function buildExecutiveSummary(
   return { strongPoint, focusPoint };
 }
 
+interface ActionPlanItem {
+  category: string;
+  score: number;
+  improvement: string;
+}
+
+function buildActionPlan(
+  session: PracticeSessionDetail,
+  feedback: Record<string, AnswerEvaluation>,
+  lang: Lang
+): ActionPlanItem[] | null {
+  const scored = session.questions
+    .map((q) => ({ q, fb: feedback[q.id] }))
+    .filter(
+      (x): x is { q: typeof x.q; fb: AnswerEvaluation } =>
+        Boolean(x.fb) &&
+        x.fb.evaluationStatus === "Succeeded" &&
+        x.fb.score !== null &&
+        x.fb.improvements.length > 0
+    )
+    .sort((a, b) => (a.fb.score as number) - (b.fb.score as number))
+    .slice(0, 3);
+
+  if (scored.length === 0) return null;
+
+  return scored.map(({ q, fb }) => ({
+    category: translateQuestionCategory(q.questionType, lang),
+    score: fb.score as number,
+    improvement: fb.improvements[0],
+  }));
+}
+
 function ScoreRing({ score, trackStroke }: { score: number; trackStroke: string }) {
   const radius = 52;
   const circ = 2 * Math.PI * radius;
@@ -168,8 +199,6 @@ export function FeedbackPage({ session, feedback, scoring, setTitle, companyName
   const p = t.jobseekerFeedbackPage;
   const chart = useChartTheme();
   const { addToast } = useToast();
-  const scoreTilt = useTilt<HTMLDivElement>({ maxTilt: 6 });
-
   const hasScore = session.overallScore !== null;
   const score = session.overallScore ?? 0;
   const { label: scoreLevelLabel, badgeClass: scoreLevelBadgeClass } = getScoreLevel(score, p.scoreLevels);
@@ -178,6 +207,7 @@ export function FeedbackPage({ session, feedback, scoring, setTitle, companyName
   const feedbackByQuestionId = new Map(Object.entries(feedback));
   const radarData = aggregateDimensionScores(feedback, lang);
   const executiveSummary = buildExecutiveSummary(session, feedback, p.executiveSummary, lang);
+  const actionPlan = buildActionPlan(session, feedback, lang);
 
   const [expandedIds, setExpandedIds] = useState<Set<string>>(
     () => new Set(answeredQuestions.length > 0 ? [answeredQuestions[0].id] : [])
@@ -231,14 +261,8 @@ export function FeedbackPage({ session, feedback, scoring, setTitle, companyName
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="jewel-border mb-6"
+        className="relative hr-glass-card rounded-2xl p-5 sm:p-8 flex flex-col sm:flex-row items-center sm:items-start gap-5 sm:gap-10 mb-6"
       >
-        <div
-          ref={scoreTilt.ref}
-          onMouseMove={scoreTilt.onMouseMove}
-          onMouseLeave={scoreTilt.onMouseLeave}
-          className="relative hr-glass-card card-tilt rounded-2xl p-5 sm:p-8 flex flex-col sm:flex-row items-center sm:items-start gap-5 sm:gap-10"
-        >
         {hasScore && score >= CELEBRATION_THRESHOLD && <ConfettiBurst />}
         {hasScore ? (
           <ScoreRing score={score} trackStroke={chart.isDark ? "#374151" : "#F3F4F6"} />
@@ -346,7 +370,6 @@ export function FeedbackPage({ session, feedback, scoring, setTitle, companyName
             {p.shareBtn}
           </button>
         </div>
-        </div>
       </motion.div>
 
       {/* ── Skill Breakdown (radar) — only when at least one question has dimension scores ── */}
@@ -407,6 +430,62 @@ export function FeedbackPage({ session, feedback, scoring, setTitle, companyName
                 );
               })}
             </div>
+          </div>
+        </motion.div>
+      )}
+
+      {/* ── Action Plan ──────────────────────────────────────────── */}
+      {hasScore && actionPlan && actionPlan.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.22 }}
+          className="hr-glass-card p-5 sm:p-6 mb-6"
+        >
+          <div className="flex items-center gap-2.5 mb-5">
+            <div className="w-8 h-8 rounded-xl bg-amber-100 dark:bg-amber-950/50 flex items-center justify-center shrink-0">
+              <Flame size={15} className="text-amber-600 dark:text-amber-400" />
+            </div>
+            <div>
+              <h2 className={cn("text-[15px] font-bold leading-tight", portalHeadingAlt)}>{p.actionPlanTitle}</h2>
+              <p className={cn("text-[11px] mt-0.5", portalSubtextAlt)}>{p.actionPlanSubtitle}</p>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-3">
+            {actionPlan.map((item, i) => {
+              const c = getSkillColor(item.score);
+              const rankColors = [
+                "bg-red-100 dark:bg-red-950/40 text-red-700 dark:text-red-400",
+                "bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400",
+                "bg-blue-100 dark:bg-blue-950/40 text-blue-700 dark:text-blue-400",
+              ];
+              return (
+                <div
+                  key={`${item.category}-${i}`}
+                  className="flex gap-3 items-start p-3.5 rounded-xl bg-gray-50 dark:bg-gray-800/40 border border-gray-100 dark:border-gray-700/50"
+                >
+                  <span className={cn(
+                    "w-6 h-6 rounded-full shrink-0 flex items-center justify-center text-[11px] font-bold",
+                    rankColors[i] ?? rankColors[2]
+                  )}>
+                    {i + 1}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className={cn("text-[12px] font-bold", portalHeadingAlt)}>{item.category}</span>
+                      <span className={cn("text-[11px] font-bold px-1.5 py-0.5 rounded-full", c.bg, c.text)}>
+                        {item.score}%
+                      </span>
+                    </div>
+                    <p className={cn("text-[12px] leading-4.5", portalSubtextAlt)}>
+                      {item.improvement}
+                    </p>
+                  </div>
+                  <BookOpen size={14} className="text-gray-300 dark:text-gray-600 shrink-0 mt-0.5" />
+                </div>
+              );
+            })}
           </div>
         </motion.div>
       )}

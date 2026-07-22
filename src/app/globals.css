@@ -220,6 +220,31 @@
   --animate-bot-glow:      botGlow    3s   ease-in-out   infinite;
   --animate-bot-scan:      botScan    2.2s linear         infinite;
   --animate-bot-icon-glow: botIconGlow 2.5s ease-in-out  infinite;
+
+  /* ── Semantic alias tokens (light-mode defaults) ───────────────────────── */
+  --color-bg-canvas: #F6F8FC;
+  --color-bg-surface: #FFFFFF;
+  --color-bg-elevated: #FFFFFF;
+  --color-bg-muted: #F1F5F9;
+  --color-bg-subtle: #E2E8F0;
+  --color-text-base: #0F172A;
+  --color-text-muted: #475569;
+  --color-text-subtle: #94A3B8;
+  --color-border-default: #E2E8F0;
+  --color-border-muted: #F1F5F9;
+  --color-success: #10B981;
+  --color-success-muted: #D1FAE5;
+  --color-warning: #F59E0B;
+  --color-warning-muted: #FEF3C7;
+  --color-danger: #EF4444;
+  --color-danger-muted: #FEE2E2;
+  --color-info: #06B6D4;
+  --color-info-muted: #CFFAFE;
+  --color-chart-1: #6C47FF;
+  --color-chart-2: #06B6D4;
+  --color-chart-3: #10B981;
+  --color-chart-4: #F59E0B;
+  --color-chart-5: #EC4899;
 }
 
 :root {
@@ -228,6 +253,21 @@
 
 .dark {
   color-scheme: dark;
+  /* Semantic alias tokens — dark overrides */
+  --color-bg-canvas: #050816;
+  --color-bg-surface: #111827;
+  --color-bg-elevated: #1F2937;
+  --color-bg-muted: #1F2937;
+  --color-bg-subtle: #374151;
+  --color-text-base: #F8FAFC;
+  --color-text-muted: #9CA3AF;
+  --color-text-subtle: #6B7280;
+  --color-border-default: #374151;
+  --color-border-muted: #1F2937;
+  --color-success-muted: #064E3B;
+  --color-warning-muted: #78350F;
+  --color-danger-muted: #7F1D1D;
+  --color-info-muted: #164E63;
 }
 
 *,

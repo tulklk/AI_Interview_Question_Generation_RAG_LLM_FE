@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { motion, type Variants } from "framer-motion";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { BookOpen, X } from "lucide-react";
@@ -12,16 +11,6 @@ import { BrandLogo } from "@/shared/components/common/brand-logo";
 import { SidebarUserFooter } from "@/features/hr/components/layout/sidebar-user-footer";
 import { useCandidateSubscription } from "@/features/candidate/context/candidate-subscription-context";
 import { getPracticeStats } from "@/features/candidate/services/practice-session.service";
-
-const listVariants: Variants = {
-  hidden: {},
-  show: { transition: { staggerChildren: 0.055, delayChildren: 0.12 } },
-};
-
-const itemVariants: Variants = {
-  hidden: { opacity: 0, x: -14 },
-  show: { opacity: 1, x: 0, transition: { duration: 0.22 } },
-};
 
 interface JobseekerSidebarProps {
   open?: boolean;
@@ -44,41 +33,26 @@ export function JobseekerSidebar({ open, onClose }: JobseekerSidebarProps) {
 
   const sidebarContent = (
     <>
-      <motion.div
-        initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3, ease: "easeOut" }}
-        className="px-5 pt-6 pb-2"
-      >
+      <div className="px-5 pt-6 pb-2">
         <BrandLogo
           logoClassName="w-9 h-9"
           subtitleClassName="text-gray-400 dark:text-gray-500 text-[11px]"
         />
-      </motion.div>
+      </div>
 
       <nav className="flex-1 px-4 mt-6">
-        <motion.p
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.08, duration: 0.25 }}
-          className="text-gray-400 dark:text-gray-500 text-[10px] font-semibold uppercase tracking-widest px-2 mb-2"
-        >
+        <p className="text-gray-400 dark:text-gray-500 text-[10px] font-semibold uppercase tracking-widest px-2 mb-2">
           {s.sectionLabel}
-        </motion.p>
+        </p>
 
-        <motion.ul
-          className="space-y-0.5"
-          variants={listVariants}
-          initial="hidden"
-          animate="show"
-        >
+        <ul className="space-y-0.5">
           {jobseekerNavItems.map((item) => {
             const isActive = pathname.startsWith(item.href);
             const label = s.nav[item.href as keyof typeof s.nav] ?? item.label;
             const badge = item.href === "/jobseeker/history" ? historyCount || undefined : item.badge;
 
             return (
-              <motion.li key={item.href} variants={itemVariants}>
+              <li key={item.href}>
                 <Link
                   href={item.href}
                   onClick={() => onClose?.()}
@@ -89,7 +63,6 @@ export function JobseekerSidebar({ open, onClose }: JobseekerSidebarProps) {
                       : "text-[#6b7280] dark:text-gray-400 hover:bg-[rgba(124,58,237,0.06)] dark:hover:bg-[rgba(124,58,237,0.08)] hover:text-charcoal dark:hover:text-gray-100"
                   )}
                 >
-                  {/* 3D icon box — same as HR sidebar */}
                   <div
                     className={cn(
                       "w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-all duration-200",
@@ -126,19 +99,14 @@ export function JobseekerSidebar({ open, onClose }: JobseekerSidebarProps) {
                     </span>
                   )}
                 </Link>
-              </motion.li>
+              </li>
             );
           })}
-        </motion.ul>
+        </ul>
       </nav>
 
       {/* Practice CTA */}
-      <motion.div
-        initial={{ opacity: 0, y: 14 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.35, duration: 0.3, ease: "easeOut" }}
-        className="px-4 mb-4"
-      >
+      <div className="px-4 mb-4">
         <div className="hr-quick-generate rounded-xl p-4">
           <div className="w-8 h-8 rounded-lg hr-icon-box flex items-center justify-center mb-3">
             <BookOpen size={15} className="text-[#7C3AED] dark:text-[#a78bff]" />
@@ -157,27 +125,21 @@ export function JobseekerSidebar({ open, onClose }: JobseekerSidebarProps) {
             {s.practiceNow.btn}
           </Link>
         </div>
-      </motion.div>
+      </div>
 
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.45, duration: 0.25 }}
-      >
-        <SidebarUserFooter
-          logoutTitle={s.logoutTitle}
-          badge={
-            <span className={cn(
-              "text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0",
-              isPremium
-                ? "text-violet-700 dark:text-violet-300 bg-violet-50 dark:bg-violet-950/60"
-                : "text-cyan-600 dark:text-cyan-300 bg-cyan-50 dark:bg-cyan-950"
-            )}>
-              {isPremium ? "Premium" : "Free"}
-            </span>
-          }
-        />
-      </motion.div>
+      <SidebarUserFooter
+        logoutTitle={s.logoutTitle}
+        badge={
+          <span className={cn(
+            "text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0",
+            isPremium
+              ? "text-violet-700 dark:text-violet-300 bg-violet-50 dark:bg-violet-950/60"
+              : "text-cyan-600 dark:text-cyan-300 bg-cyan-50 dark:bg-cyan-950"
+          )}>
+            {isPremium ? "Premium" : "Free"}
+          </span>
+        }
+      />
     </>
   );
 
