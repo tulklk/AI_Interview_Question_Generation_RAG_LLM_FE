@@ -11,7 +11,6 @@ import {
 } from "@/features/knowledge/services/knowledge.service";
 import { cn } from "@/lib/cn";
 import { portalHeading, portalSubtext } from "@/shared/utils/portal-ui";
-import { BookOpen } from "lucide-react";
 import { useLanguage } from "@/shared/providers/language-context";
 
 export default function HrKnowledgePage() {
@@ -27,13 +26,8 @@ export default function HrKnowledgePage() {
       ]}
     >
       <div className="mb-6 animate-fade-up">
-        <div className="flex items-center gap-3 mb-1">
-          <div className="w-9 h-9 rounded-xl bg-violet-50 dark:bg-violet-950/40 flex items-center justify-center">
-            <BookOpen size={18} className="text-violet-500 dark:text-violet-400" />
-          </div>
-          <h2 className={cn("text-2xl font-bold", portalHeading)}>{kb.hrTitle}</h2>
-        </div>
-        <p className={cn("text-sm mt-1 ml-12", portalSubtext)}>{kb.hrSubtext}</p>
+        <h2 className={cn("text-2xl font-bold", portalHeading)}>{kb.hrTitle}</h2>
+        <p className={cn("text-sm mt-1", portalSubtext)}>{kb.hrSubtext}</p>
       </div>
 
       <div className="animate-fade-up" style={{ animationDelay: "80ms" }}>
