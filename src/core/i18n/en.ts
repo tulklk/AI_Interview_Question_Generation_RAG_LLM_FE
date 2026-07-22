@@ -943,6 +943,7 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
       viewTitle: "View",
       deleteTitle: "Delete",
       deleteFailed: "Could not delete. Please try again.",
+      deleteSuccess: "Question set deleted successfully.",
     },
     deleteModal: {
       title: "Confirm Delete",

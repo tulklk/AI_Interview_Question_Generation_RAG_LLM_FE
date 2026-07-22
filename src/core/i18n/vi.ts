@@ -945,6 +945,7 @@ Yêu cầu:
       viewTitle: "Xem",
       deleteTitle: "Xóa",
       deleteFailed: "Không thể xóa. Vui lòng thử lại.",
+      deleteSuccess: "Đã xóa bộ câu hỏi thành công.",
     },
     deleteModal: {
       title: "Xác nhận xóa",

@@ -192,6 +192,7 @@ export function HistoryTable({ search = "", role = "", level = "", experience = 
     try {
       await deleteGenerationPlan(id);
       setSessions(prev => prev.filter(s => s.id !== id));
+      addToast("success", ht.deleteSuccess);
     } catch (err) {
       addToast("error", err instanceof Error && err.message ? err.message : ht.deleteFailed);
     } finally {
