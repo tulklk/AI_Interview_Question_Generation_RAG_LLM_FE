@@ -733,6 +733,21 @@
       viewAll: "View all",
       qs: "Qs",
     },
+    scoreDistribution: {
+      title: "Score Distribution",
+      subtitle: "How your scores break down across all sessions",
+      sessions: "sessions",
+      scoreLabel: "Score",
+      countLabel: "Sessions",
+      empty: "Complete a few sessions to see your score distribution.",
+    },
+    companyScore: {
+      title: "Performance by Company",
+      subtitle: "Average score per company (top 6)",
+      avgScore: "Avg. Score",
+      sessions: "sessions",
+      empty: "Complete sessions from at least 2 companies to see this chart.",
+    },
     quickGenerate: {
       title: "Generate New Questions",
       desc: "Upload or paste a job description to get AI-powered interview questions in seconds.",
@@ -2061,6 +2076,21 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
     },
     recentSessions: {
       menu: { viewDetail: "View detail", practiceAgain: "Practice again", saveSet: "Save set", unsaveSet: "Unsave set" },
+    },
+        scoreDistribution: {
+      title: "Score Distribution",
+      subtitle: "How your scores break down across all sessions",
+      sessions: "sessions",
+      scoreLabel: "Score",
+      countLabel: "Sessions",
+      empty: "Complete a few sessions to see your score distribution.",
+    },
+        companyScore: {
+      title: "Performance by Company",
+      subtitle: "Average score per company (top 6)",
+      avgScore: "Avg. Score",
+      sessions: "sessions",
+      empty: "Complete sessions from at least 2 companies to see this chart.",
     },
   },
 

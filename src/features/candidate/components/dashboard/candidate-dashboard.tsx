@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 import {
   Sparkles, BarChart2, RefreshCw, AlertCircle, History,
   LineChart, Radar, CalendarDays, Briefcase, ListChecks, Bot,
+  PieChart, Building2,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { listQuestionSets, getBookmarkedSetIds } from "@/features/candidate/services/question-set.service";
@@ -26,6 +27,8 @@ import { AiCoachPanel } from "@/features/candidate/components/dashboard/ai-coach
 import { RoleReadinessList } from "@/features/candidate/components/dashboard/role-readiness-list";
 import { WeeklyGoalCard } from "@/features/candidate/components/dashboard/weekly-goal-card";
 import { RecentSessionsList } from "@/features/candidate/components/dashboard/recent-sessions-list";
+import { ScoreDistributionChart } from "@/features/candidate/components/dashboard/score-distribution-chart";
+import { CompanyScoreChart } from "@/features/candidate/components/dashboard/company-score-chart";
 
 export function CandidateDashboard() {
   const { t } = useLanguage();
@@ -75,6 +78,12 @@ export function CandidateDashboard() {
   const heatmapState = dashboard.loading ? "loading" : dashboard.error ? "error" : dashboard.practiceHeatmap.activeDays === 0 ? "empty" : "ready";
   const rolesState = dashboard.loading ? "loading" : dashboard.error ? "error" : dashboard.roleReadiness.length === 0 ? "empty" : "ready";
 
+  const scoredSessions = dashboard.allSessions.filter((s) => s.score !== null);
+  const distState = dashboard.loading ? "loading" : dashboard.error ? "error" : scoredSessions.length < 2 ? "empty" : "ready";
+
+  const companies = new Set(scoredSessions.map((s) => s.company).filter(Boolean));
+  const companyState = dashboard.loading ? "loading" : dashboard.error ? "error" : companies.size < 2 ? "empty" : "ready";
+
   return (
     <div>
       <DashboardHeader
@@ -114,6 +123,38 @@ export function CandidateDashboard() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         <ChartCard
+          title={p.scoreDistribution.title}
+          subtitle={p.scoreDistribution.subtitle}
+          icon={PieChart}
+          state={distState}
+          emptyIcon={PieChart}
+          emptyTitle={p.scoreDistribution.empty}
+          errorLabel={p.trendChart.error}
+          retryLabel={p.retryBtn}
+          onRetry={dashboard.reload}
+          minHeight={220}
+        >
+          <ScoreDistributionChart sessions={dashboard.allSessions} />
+        </ChartCard>
+
+        <ChartCard
+          title={p.companyScore.title}
+          subtitle={p.companyScore.subtitle}
+          icon={Building2}
+          state={companyState}
+          emptyIcon={Building2}
+          emptyTitle={p.companyScore.empty}
+          errorLabel={p.trendChart.error}
+          retryLabel={p.retryBtn}
+          onRetry={dashboard.reload}
+          minHeight={220}
+        >
+          <CompanyScoreChart sessions={dashboard.allSessions} />
+        </ChartCard>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        <ChartCard
           title={p.skills.title}
           subtitle={p.skills.subtitle}
           icon={Radar}
@@ -130,8 +171,8 @@ export function CandidateDashboard() {
 
         <div className="hr-glass-card p-5 sm:p-6">
           <div className="flex items-center gap-2.5 mb-4">
-            <div className="w-8 h-8 rounded-xl bg-violet-100 dark:bg-violet-950/50 flex items-center justify-center shrink-0">
-              <Bot size={15} className="text-primary" />
+            <div className="w-8 h-8 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center shrink-0">
+              <Bot size={15} className="text-gray-500 dark:text-gray-400" />
             </div>
             <div>
               <h2 className={cn("text-[15px] font-bold leading-tight", portalHeadingAlt)}>{p.coach.title}</h2>
@@ -184,8 +225,8 @@ export function CandidateDashboard() {
       {dashboard.skillAnalytics && dashboard.skillAnalytics.skills.some((s) => s.score < 80) && (
         <div className="hr-glass-card p-5 sm:p-6 mb-6">
           <div className="flex items-center gap-2.5 mb-4">
-            <div className="w-8 h-8 rounded-xl bg-violet-100 dark:bg-violet-950/50 flex items-center justify-center shrink-0">
-              <ListChecks size={15} className="text-primary" />
+            <div className="w-8 h-8 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center shrink-0">
+              <ListChecks size={15} className="text-gray-500 dark:text-gray-400" />
             </div>
             <h2 className={cn("text-[15px] font-bold leading-tight", portalHeadingAlt)}>{p.weakSkillsTable.title}</h2>
           </div>

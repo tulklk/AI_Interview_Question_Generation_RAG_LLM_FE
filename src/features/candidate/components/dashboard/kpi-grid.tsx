@@ -37,6 +37,7 @@ export function KpiGrid({ loading, stats, streakDays, sessionsLast7Days, readine
           label={k.sessions.label}
           tooltip={k.sessions.tooltip}
           value={(stats?.totalSessions ?? 0).toString()}
+          countUp={{ value: stats?.totalSessions ?? 0 }}
           trendLabel={sessionsLast7Days > 0 ? fillTemplate(k.weeklyTrend, { count: String(sessionsLast7Days) }) : undefined}
           trendDirection={sessionsLast7Days > 0 ? "up" : "flat"}
         />
@@ -46,6 +47,11 @@ export function KpiGrid({ loading, stats, streakDays, sessionsLast7Days, readine
           label={k.averageScore.label}
           tooltip={k.averageScore.tooltip}
           value={stats?.averageScore !== null && stats?.averageScore !== undefined ? `${stats.averageScore}%` : "—"}
+          countUp={
+            stats?.averageScore !== null && stats?.averageScore !== undefined
+              ? { value: stats.averageScore, suffix: "%", decimals: 1 }
+              : undefined
+          }
           sparklineData={sessionsSparkline}
           trendLabel={trendLabel}
           trendDirection={scoreTrend.direction}
@@ -56,6 +62,7 @@ export function KpiGrid({ loading, stats, streakDays, sessionsLast7Days, readine
           label={k.streak.label}
           tooltip={k.streak.tooltip}
           value={`${streakDays}`}
+          countUp={{ value: streakDays }}
         />
         <KpiCard
           loading={loading}
@@ -63,6 +70,10 @@ export function KpiGrid({ loading, stats, streakDays, sessionsLast7Days, readine
           label={k.totalDuration.label}
           tooltip={k.totalDuration.tooltip}
           value={formatDuration(stats?.totalDurationMinutes ?? 0)}
+          countUp={{
+            value: stats?.totalDurationMinutes ?? 0,
+            formatter: (v) => formatDuration(Math.round(v)),
+          }}
         />
       </div>
     </div>
