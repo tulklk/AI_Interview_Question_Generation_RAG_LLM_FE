@@ -10,6 +10,7 @@ import { FeedbackPage } from "./feedback-page";
 import {
   getPracticeSession,
   readAnswerEvaluations,
+  listCompletedSessions,
   ForbiddenError,
   type PracticeSessionDetail,
   type AnswerEvaluation,
@@ -35,6 +36,7 @@ export function FeedbackResultClient() {
   const [session, setSession] = useState<PracticeSessionDetail | null>(null);
   const [feedback, setFeedback] = useState<Record<string, AnswerEvaluation>>({});
   const [set, setSet] = useState<QuestionSet | null>(null);
+  const [previousScore, setPreviousScore] = useState<number | null | undefined>(undefined);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [forbidden, setForbidden] = useState(false);
@@ -53,6 +55,7 @@ export function FeedbackResultClient() {
     setForbidden(false);
     setSet(null);
     setFeedback({});
+    setPreviousScore(undefined);
     pollAttemptsRef.current = 0;
 
     function pollScore(id: string) {
@@ -114,6 +117,21 @@ export function FeedbackResultClient() {
             .catch(() => {
               // Non-critical — header just omits title/company.
             });
+
+          // Find the most recent OTHER completed+scored attempt of this same
+          // question set to power a "vs. last attempt" comparison — null when
+          // this is the only attempt, so the UI can say so honestly.
+          listCompletedSessions({ pageSize: 50 })
+            .then((res) => {
+              if (cancelled) return;
+              const prior = res.items
+                .filter((item) => item.questionSetId === s.questionSetId && item.id !== s.id && item.score !== null)
+                .sort((a, b) => new Date(b.completedAt ?? 0).getTime() - new Date(a.completedAt ?? 0).getTime())[0];
+              setPreviousScore(prior?.score ?? null);
+            })
+            .catch(() => setPreviousScore(null));
+        } else {
+          setPreviousScore(null);
         }
       })
       .catch((err) => {
@@ -133,12 +151,12 @@ export function FeedbackResultClient() {
 
   return (
     <JobseekerAppShell
-      pageTitle="AI Feedback"
+      pageTitle={p.pageTitle}
       fullWidth
       breadcrumb={[
-        { label: "Jobseeker", href: "/jobseeker/dashboard" },
-        { label: "History", href: "/jobseeker/history" },
-        { label: "Feedback" },
+        { label: "jobseeker", href: "/jobseeker/dashboard" },
+        { label: "history", href: "/jobseeker/history" },
+        { label: "feedback" },
       ]}
     >
       {loading && (
@@ -170,7 +188,7 @@ export function FeedbackResultClient() {
       )}
 
       {!loading && !error && !forbidden && session && (
-        <FeedbackPage session={session} feedback={feedback} scoring={scoring} setTitle={set?.title} companyName={set?.company} />
+        <FeedbackPage session={session} feedback={feedback} scoring={scoring} setTitle={set?.title} companyName={set?.company} previousScore={previousScore} />
       )}
     </JobseekerAppShell>
   );

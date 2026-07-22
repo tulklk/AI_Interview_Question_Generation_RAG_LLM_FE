@@ -88,19 +88,22 @@ interface QuestionNavProps {
   currentIdx: number;
   submitted: Record<string, boolean>;
   onSelect: (idx: number) => void;
-  onFinish: () => void;
+  onRequestFinish: () => void;
   finishing: boolean;
   hasTimeLimit: boolean;
   timeLeft: number;
+  elapsedSeconds: number;
   labels: {
     title: string; answered: string; current: string; unanswered: string;
-    answeredLabel: string; timeLabel: string; submitBtn: string; noTimeLimit: string;
+    answeredLabel: string; timeLabel: string; submitBtn: string; timeUsedLabel: string;
+    answerAllHint: string;
   };
 }
 
-function QuestionNav({ questions, currentIdx, submitted, onSelect, onFinish, finishing, hasTimeLimit, timeLeft, labels }: QuestionNavProps) {
+function QuestionNav({ questions, currentIdx, submitted, onSelect, onRequestFinish, finishing, hasTimeLimit, timeLeft, elapsedSeconds, labels }: QuestionNavProps) {
   const answeredCount = questions.filter((q) => submitted[q.id]).length;
   const total = questions.length;
+  const allAnswered = answeredCount === total;
 
   return (
     <aside className={cn(
@@ -119,7 +122,9 @@ function QuestionNav({ questions, currentIdx, submitted, onSelect, onFinish, fin
           </p>
         </div>
         <div className="px-4 py-3">
-          <p className={cn("text-[11px] font-medium mb-0.5", portalSubtextAlt)}>{labels.timeLabel}</p>
+          <p className={cn("text-[11px] font-medium mb-0.5", portalSubtextAlt)}>
+            {hasTimeLimit ? labels.timeLabel : labels.timeUsedLabel}
+          </p>
           {hasTimeLimit ? (
             <p className={cn(
               "text-[22px] font-bold tabular-nums leading-none",
@@ -128,7 +133,9 @@ function QuestionNav({ questions, currentIdx, submitted, onSelect, onFinish, fin
               {formatTime(timeLeft)}
             </p>
           ) : (
-            <p className={cn("text-[14px] font-medium leading-none mt-1", portalSubtextAlt)}>{labels.noTimeLimit}</p>
+            <p className={cn("text-[22px] font-bold tabular-nums leading-none", portalHeadingAlt)}>
+              {formatTime(elapsedSeconds)}
+            </p>
           )}
         </div>
       </div>
@@ -165,13 +172,17 @@ function QuestionNav({ questions, currentIdx, submitted, onSelect, onFinish, fin
       <div className={cn("px-4 pt-3 pb-4 border-t shrink-0 flex flex-col gap-3", portalDivider)}>
         <button
           type="button"
-          onClick={onFinish}
-          disabled={finishing}
-          className="w-full h-10 rounded-xl text-[14px] font-bold text-white hr-cta-btn shimmer-button disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          onClick={onRequestFinish}
+          disabled={finishing || !allAnswered}
+          title={!allAnswered ? labels.answerAllHint : undefined}
+          className="w-full h-10 rounded-xl text-[14px] font-bold text-white hr-cta-btn shimmer-button disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >
           {finishing ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
           {labels.submitBtn}
         </button>
+        {!allAnswered && (
+          <p className={cn("text-[11px] text-center -mt-1", portalSubtextAlt)}>{labels.answerAllHint}</p>
+        )}
 
         {/* Legend */}
         <div className="flex flex-col gap-1.5">
@@ -208,9 +219,11 @@ export function PracticeSession({ set }: PracticeSessionProps) {
   const [submitError, setSubmitError] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [timeLeft, setTimeLeft] = useState(0);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [direction, setDirection] = useState(1);
   const [exitOpen, setExitOpen] = useState(false);
   const [abandoning, setAbandoning] = useState(false);
+  const [reviewOpen, setReviewOpen] = useState(false);
 
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [startedAt, setStartedAt] = useState<string | null>(null);
@@ -321,6 +334,32 @@ export function PracticeSession({ set }: PracticeSessionProps) {
       document.removeEventListener("visibilitychange", onVisibilityChange);
     };
   }, [expiresAt, sessionId]);
+
+  // Untimed sessions have no deadline to count down to — show elapsed time
+  // instead so "no limit" doesn't read as "no timer at all" (see labels.timeUsedLabel).
+  useEffect(() => {
+    if (hasTimeLimit || !startedAt || !sessionId) return;
+    const startMs = new Date(startedAt).getTime();
+    function tick() {
+      setElapsedSeconds(Math.max(0, Math.floor((Date.now() - startMs) / 1000)));
+    }
+    tick();
+    const intervalId = setInterval(tick, 1000);
+    return () => clearInterval(intervalId);
+  }, [hasTimeLimit, startedAt, sessionId]);
+
+  // Native "leave site?" prompt when there's typed-but-unsubmitted answer text —
+  // the in-app exit dialog only covers the custom X button, not tab close/refresh/back.
+  useEffect(() => {
+    function handleBeforeUnload(e: BeforeUnloadEvent) {
+      if (currentAnswer.trim().length > 0 && !isSubmitted) {
+        e.preventDefault();
+        e.returnValue = "";
+      }
+    }
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [currentAnswer, isSubmitted]);
 
   // Clear validation error when the active question changes.
   useEffect(() => {
@@ -434,6 +473,16 @@ export function PracticeSession({ set }: PracticeSessionProps) {
   const allAnswered = set.questions.every((q) => submitted[q.id]);
   const unansweredCount = set.questions.filter((q) => !submitted[q.id]).length;
 
+  // A prior finish attempt already failed — retry directly, don't re-open review.
+  // Otherwise this is a fresh submit request, so confirm via the review dialog first.
+  function requestFinish() {
+    if (finishError) {
+      handleFinish();
+      return;
+    }
+    setReviewOpen(true);
+  }
+
   function goToFirstUnanswered() {
     const idx = set.questions.findIndex((q) => !submitted[q.id]);
     if (idx === -1) return;
@@ -494,6 +543,17 @@ export function PracticeSession({ set }: PracticeSessionProps) {
       onCancel={() => setExitOpen(false)}
       extraAction={{ label: p.abandonBtn, onClick: handleAbandon, loading: abandoning }}
     />
+    <ConfirmDialog
+      open={reviewOpen}
+      title={p.reviewConfirmTitle}
+      message={p.reviewConfirmMessage.replace("{{count}}", String(totalQuestions))}
+      confirmLabel={p.reviewConfirmBtn}
+      cancelLabel={p.reviewCancelBtn}
+      variant="primary"
+      loading={finishing}
+      onConfirm={() => { setReviewOpen(false); handleFinish(); }}
+      onCancel={() => setReviewOpen(false)}
+    />
     <div className="min-h-screen hr-main-bg flex flex-col">
       {/* ── Top bar ─────────────────────────────────────────────────── */}
       <header className={cn("hr-topbar px-4 md:px-8 h-14 flex items-center justify-between shrink-0 border-b gap-2", portalDivider)}>
@@ -530,7 +590,7 @@ export function PracticeSession({ set }: PracticeSessionProps) {
 
         {/* Right: timer + exit */}
         <div className="flex items-center gap-2 sm:gap-4 shrink-0">
-          {hasTimeLimit && (
+          {hasTimeLimit ? (
             <motion.div
               animate={timeLeft < 300 ? { scale: [1, 1.08, 1] } : { scale: 1 }}
               transition={timeLeft < 300 ? { duration: 1, repeat: Infinity, ease: "easeInOut" } : undefined}
@@ -538,10 +598,19 @@ export function PracticeSession({ set }: PracticeSessionProps) {
                 "flex items-center gap-1.5 text-[12px] sm:text-[13px] font-semibold tabular-nums",
                 timeLeft < 300 ? "text-red-500" : portalSubtextAlt
               )}
+              title={p.sidebarTimeLabel}
             >
               <Timer size={13} />
               {formatTime(timeLeft)}
             </motion.div>
+          ) : (
+            <div
+              className={cn("flex items-center gap-1.5 text-[12px] sm:text-[13px] font-semibold tabular-nums", portalSubtextAlt)}
+              title={p.timeUsedLabel}
+            >
+              <Timer size={13} />
+              {formatTime(elapsedSeconds)}
+            </div>
           )}
           <button
             type="button"
@@ -712,7 +781,7 @@ export function PracticeSession({ set }: PracticeSessionProps) {
                     )}
                   />
                   <button
-                    onClick={handleFinish}
+                    onClick={requestFinish}
                     disabled={finishing}
                     className="relative shimmer-button flex items-center gap-2 h-10 px-6 text-[14px] font-semibold text-white hr-cta-btn rounded-xl disabled:opacity-70 disabled:cursor-not-allowed"
                   >
@@ -767,10 +836,11 @@ export function PracticeSession({ set }: PracticeSessionProps) {
         currentIdx={currentIdx}
         submitted={submitted}
         onSelect={(idx) => { setDirection(idx > currentIdx ? 1 : -1); setCurrentIdx(idx); }}
-        onFinish={handleFinish}
+        onRequestFinish={requestFinish}
         finishing={finishing}
         hasTimeLimit={hasTimeLimit}
         timeLeft={timeLeft}
+        elapsedSeconds={elapsedSeconds}
         labels={{
           title: p.questionListTitle,
           answered: p.questionAnswered,
@@ -779,7 +849,8 @@ export function PracticeSession({ set }: PracticeSessionProps) {
           answeredLabel: p.sidebarAnsweredLabel,
           timeLabel: p.sidebarTimeLabel,
           submitBtn: p.sidebarSubmitBtn,
-          noTimeLimit: p.sidebarNoTimeLimit,
+          timeUsedLabel: p.timeUsedLabel,
+          answerAllHint: p.answerAllToFinish.replace("{{count}}", String(unansweredCount)),
         }}
       />
       </div>{/* end content row */}
