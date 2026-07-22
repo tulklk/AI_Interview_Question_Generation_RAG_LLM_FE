@@ -46,9 +46,9 @@ export function SettingsPage() {
   const iconColor = "text-gray-900 dark:text-gray-100";
 
   const tabs: { id: Tab; Icon: typeof User; iconBg: string; iconColor: string; label: string }[] = [
-    { id: "profile",  Icon: User,       iconBg, iconColor, label: "Profile" },
+    { id: "profile",  Icon: User,       iconBg, iconColor, label: p.profileTitle },
     { id: "general",  Icon: Settings,   iconBg, iconColor, label: p.generalTitle },
-    { id: "security", Icon: ShieldCheck, iconBg, iconColor, label: "Security" },
+    { id: "security", Icon: ShieldCheck, iconBg, iconColor, label: p.securityTitle },
     { id: "privacy",  Icon: Shield,     iconBg, iconColor, label: p.privacyTitle },
     { id: "billing",  Icon: CreditCard, iconBg, iconColor, label: p.billing.title },
   ];
@@ -56,9 +56,9 @@ export function SettingsPage() {
   const active = tabs.find((t) => t.id === activeTab)!;
 
   const sectionSubtitle: Record<Tab, string> = {
-    profile:  "Manage your personal information and career details",
+    profile:  p.profileDescription,
     general:  p.generalDescription,
-    security: "Change your password and manage account security",
+    security: p.securityDescription,
     privacy:  p.privacyDescription,
     billing:  p.billing.subtitle,
   };
@@ -232,9 +232,16 @@ export function SettingsPage() {
                   <button
                     key={action}
                     type="button"
-                    className={cn("flex items-center justify-between w-full gap-3 px-4 py-4 text-sm text-left transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/50", portalHeading)}
+                    disabled
+                    title={p.privacyActions.comingSoon}
+                    className={cn("flex items-center justify-between w-full gap-3 px-4 py-4 text-sm text-left transition-colors opacity-60 cursor-not-allowed", portalHeading)}
                   >
-                    <span>{action}</span>
+                    <span className="flex items-center gap-2">
+                      {action}
+                      <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400">
+                        {p.privacyActions.comingSoon}
+                      </span>
+                    </span>
                     <ChevronRight size={15} className="text-gray-400 dark:text-gray-500 shrink-0" />
                   </button>
                 ))}
@@ -244,14 +251,21 @@ export function SettingsPage() {
                 <div className="px-4 py-2.5 bg-red-50 dark:bg-red-950/30 border-b border-red-200 dark:border-red-900/50">
                   <p className="text-xs font-semibold text-red-600 dark:text-red-400 flex items-center gap-1.5">
                     <Zap size={12} />
-                    Danger Zone
+                    {p.dangerZone}
                   </p>
                 </div>
                 <button
                   type="button"
-                  className="flex items-center justify-between w-full gap-3 px-4 py-4 text-sm text-left transition-colors text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30"
+                  disabled
+                  title={p.privacyActions.comingSoon}
+                  className="flex items-center justify-between w-full gap-3 px-4 py-4 text-sm text-left transition-colors text-red-600 dark:text-red-400 opacity-60 cursor-not-allowed"
                 >
-                  <span>{p.privacyActions.deleteAccount}</span>
+                  <span className="flex items-center gap-2">
+                    {p.privacyActions.deleteAccount}
+                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-red-100 dark:bg-red-950 text-red-600 dark:text-red-400">
+                      {p.privacyActions.comingSoon}
+                    </span>
+                  </span>
                   <ChevronRight size={15} className="shrink-0" />
                 </button>
               </div>

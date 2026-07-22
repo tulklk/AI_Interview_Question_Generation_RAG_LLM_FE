@@ -221,9 +221,10 @@ export function SetDetail({ set }: SetDetailProps) {
                 </span>
               )}
               {set.rating !== undefined && (
-                <span className="flex items-center gap-1.5">
+                <span className="flex items-center gap-1.5" title={p.ratingTooltip}>
                   <Star size={14} className="text-amber-400 fill-amber-400" />
                   <span className={cn("font-semibold", portalHeadingAlt)}>{set.rating!.toFixed(1)}</span>
+                  <span className={portalSubtextAlt}>/ 5</span>
                 </span>
               )}
             </div>
@@ -248,7 +249,7 @@ export function SetDetail({ set }: SetDetailProps) {
                       <CategoryPill category={cat} label={formatCategoryLabel(cat)} />
                     </div>
                     <span className={cn("text-[13px] font-medium tabular-nums", portalSubtextAlt)}>
-                      {qs.length} questions
+                      {qs.length} {p.questions}
                     </span>
                   </div>
                 );
@@ -299,7 +300,7 @@ export function SetDetail({ set }: SetDetailProps) {
                       onClick={() => setShowAllSkills((v) => !v)}
                       className="text-[10px] font-semibold text-primary hover:underline"
                     >
-                      {showAllSkills ? "Thu gọn" : `Xem tất cả (${set.skills.length})`}
+                      {showAllSkills ? p.collapseSkills : p.showAllSkills.replace("{{count}}", String(set.skills.length))}
                     </button>
                   )}
                 </div>
