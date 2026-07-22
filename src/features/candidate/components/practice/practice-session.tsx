@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { motion, AnimatePresence, useAnimationControls } from "framer-motion";
 import {
   Timer, ChevronLeft, ChevronRight, Send, X,
-  Loader2, Sparkles, CheckCircle2, AlertCircle, RefreshCw, Lock,
+  Loader2, Sparkles, CheckCircle2, AlertCircle, RefreshCw, Lock, Save,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { useLanguage } from "@/shared/providers/language-context";
@@ -242,6 +242,9 @@ export function PracticeSession({ set }: PracticeSessionProps) {
   const [finishError, setFinishError] = useState(false);
   const [startAttempt, setStartAttempt] = useState(0);
 
+  const [draftSaveStatus, setDraftSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
+  const draftSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const restoredDraftIds = useRef(new Set<string>());
   const timeUpRef = useRef(false);
   const evaluatingRef = useRef(false);
@@ -361,10 +364,15 @@ export function PracticeSession({ set }: PracticeSessionProps) {
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, [currentAnswer, isSubmitted]);
 
-  // Clear validation error when the active question changes.
+  // Clear validation error and draft save status when the active question changes.
   useEffect(() => {
     setValidationError(null);
     setSubmitError(false);
+    setDraftSaveStatus("idle");
+    if (draftSaveTimer.current) {
+      clearTimeout(draftSaveTimer.current);
+      draftSaveTimer.current = null;
+    }
   }, [question.id]);
 
   // Restore an unsubmitted draft answer for the current question from sessionStorage (once per question).
@@ -389,6 +397,13 @@ export function PracticeSession({ set }: PracticeSessionProps) {
     if (validationError) setValidationError(null);
     if (sessionId && typeof window !== "undefined") {
       window.sessionStorage.setItem(draftKey(sessionId, question.id), value);
+      // Debounced visual save status (600ms after last keystroke → show "saved" for 2s)
+      if (draftSaveTimer.current) clearTimeout(draftSaveTimer.current);
+      setDraftSaveStatus("saving");
+      draftSaveTimer.current = setTimeout(() => {
+        setDraftSaveStatus("saved");
+        draftSaveTimer.current = setTimeout(() => setDraftSaveStatus("idle"), 2000);
+      }, 600);
     }
   }
 
@@ -688,15 +703,29 @@ export function PracticeSession({ set }: PracticeSessionProps) {
                   )}
                 />
                 <div className={cn("flex items-center justify-between mt-3 pt-3 border-t", portalDivider)}>
-                  <span className={cn(
-                    "text-[12px] font-medium",
-                    currentAnswer.length < 150 ? "text-gray-400 dark:text-gray-500" : "text-emerald-600 dark:text-emerald-400"
-                  )}>
-                    {currentAnswer.length} {p.characters}
-                    {currentAnswer.length < 150 && (
-                      <span className="text-gray-400 dark:text-gray-500"> · {p.minRecommended}</span>
+                  <div className="flex items-center gap-3">
+                    <span className={cn(
+                      "text-[12px] font-medium",
+                      currentAnswer.length < 150 ? "text-gray-400 dark:text-gray-500" : "text-emerald-600 dark:text-emerald-400"
+                    )}>
+                      {currentAnswer.length} {p.characters}
+                      {currentAnswer.length < 150 && (
+                        <span className="text-gray-400 dark:text-gray-500"> · {p.minRecommended}</span>
+                      )}
+                    </span>
+                    {draftSaveStatus === "saving" && (
+                      <span className="flex items-center gap-1 text-[11px] text-gray-400 dark:text-gray-500">
+                        <Loader2 size={10} className="animate-spin" />
+                        {p.autoSaving}
+                      </span>
                     )}
-                  </span>
+                    {draftSaveStatus === "saved" && (
+                      <span className="flex items-center gap-1 text-[11px] text-emerald-500 dark:text-emerald-400">
+                        <Save size={10} />
+                        {p.autoSaved}
+                      </span>
+                    )}
+                  </div>
 
                   {evaluating ? (
                     <div className="flex items-center gap-2 text-[13px] text-primary">

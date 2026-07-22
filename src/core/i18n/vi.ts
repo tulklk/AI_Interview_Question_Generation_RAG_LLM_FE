@@ -735,36 +735,6 @@ export const vi: Translations = {
       viewAll: "Xem tất cả",
       qs: "CH",
     },
-    scoreDistribution: {
-      title: "Phân bố điểm số",
-      subtitle: "Điểm của bạn phân bố theo khoảng như thế nào",
-      sessions: "phiên",
-      scoreLabel: "Điểm",
-      countLabel: "Số phiên",
-      empty: "Hoàn thành một vài phiên để xem phân bố điểm của bạn.",
-    },
-    companyScore: {
-      title: "Hiệu suất theo công ty",
-      subtitle: "Điểm trung bình theo công ty (top 6)",
-      avgScore: "Điểm TB",
-      sessions: "phiên",
-      empty: "Hoàn thành phiên từ ít nhất 2 công ty để xem biểu đồ này.",
-    },
-        scoreDistribution: {
-      title: "Phân bố điểm số",
-      subtitle: "Điểm của bạn phân bố theo khoảng như thế nào",
-      sessions: "phiên",
-      scoreLabel: "Điểm",
-      countLabel: "Số phiên",
-      empty: "Hoàn thành một vài phiên để xem phân bố điểm của bạn.",
-    },
-        companyScore: {
-      title: "Hiệu suất theo công ty",
-      subtitle: "Điểm trung bình theo công ty (top 6)",
-      avgScore: "Điểm TB",
-      sessions: "phiên",
-      empty: "Hoàn thành phiên từ ít nhất 2 công ty để xem biểu đồ này.",
-    },
     quickGenerate: {
       title: "Tạo câu hỏi mới",
       desc: "Tải lên hoặc dán mô tả công việc để nhận câu hỏi phỏng vấn được AI hỗ trợ trong vài giây.",
@@ -1878,6 +1848,8 @@ Yêu cầu:
     reviewCancelBtn: "Xem lại thêm",
     validationTooShort: "Câu trả lời quá ngắn — vui lòng viết ít nhất 20 ký tự.",
     validationTooFewWords: "Câu trả lời chưa đủ — vui lòng dùng ít nhất 3 từ.",
+    autoSaving: "Đang lưu nháp…",
+    autoSaved: "Đã lưu nháp",
   },
 
   jobseekerFeedbackPage: {
@@ -1906,6 +1878,8 @@ Yêu cầu:
     strengths: "Điểm mạnh",
     improvements: "Cần cải thiện",
     suggestion: "Gợi ý từ AI",
+    actionPlanTitle: "Kế hoạch cải thiện",
+    actionPlanSubtitle: "Các điểm cần cải thiện ưu tiên nhất dựa trên câu trả lời yếu nhất phiên này",
     retryBtn: "Luyện tập lại",
     shareBtn: "Chia sẻ kết quả",
     shareCopied: "Đã sao chép liên kết.",
@@ -2090,6 +2064,21 @@ Yêu cầu:
     },
     recentSessions: {
       menu: { viewDetail: "Xem chi tiết", practiceAgain: "Luyện lại", saveSet: "Lưu bộ câu hỏi", unsaveSet: "Bỏ lưu" },
+    },
+    scoreDistribution: {
+      title: "Phân bố điểm số",
+      subtitle: "Điểm của bạn phân bố theo khoảng như thế nào",
+      sessions: "phiên",
+      scoreLabel: "Điểm",
+      countLabel: "Số phiên",
+      empty: "Hoàn thành một vài phiên để xem phân bố điểm của bạn.",
+    },
+    companyScore: {
+      title: "Hiệu suất theo công ty",
+      subtitle: "Điểm trung bình theo công ty (top 6)",
+      avgScore: "Điểm TB",
+      sessions: "phiên",
+      empty: "Hoàn thành phiên từ ít nhất 2 công ty để xem biểu đồ này.",
     },
   },
 
@@ -2588,6 +2577,7 @@ Yêu cầu:
     scored: "Kết quả đã sẵn sàng!",
     subtitle: "Nhấn để xem phản hồi",
   },
+
   hrDashboardPage: {
     greeting: "Xin chào",
     greetingSubtitle: "Tổng quan hoạt động tạo câu hỏi phỏng vấn của bạn.",
@@ -2691,5 +2681,4 @@ Yêu cầu:
       upgrade: "Nâng cấp gói",
     },
   },
-
 };

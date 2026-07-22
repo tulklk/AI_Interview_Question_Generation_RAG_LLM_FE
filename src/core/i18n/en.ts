@@ -733,21 +733,6 @@
       viewAll: "View all",
       qs: "Qs",
     },
-    scoreDistribution: {
-      title: "Score Distribution",
-      subtitle: "How your scores break down across all sessions",
-      sessions: "sessions",
-      scoreLabel: "Score",
-      countLabel: "Sessions",
-      empty: "Complete a few sessions to see your score distribution.",
-    },
-    companyScore: {
-      title: "Performance by Company",
-      subtitle: "Average score per company (top 6)",
-      avgScore: "Avg. Score",
-      sessions: "sessions",
-      empty: "Complete sessions from at least 2 companies to see this chart.",
-    },
     quickGenerate: {
       title: "Generate New Questions",
       desc: "Upload or paste a job description to get AI-powered interview questions in seconds.",
@@ -1864,6 +1849,8 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
     reviewCancelBtn: "Keep reviewing",
     validationTooShort: "Answer too short — please write at least 20 characters.",
     validationTooFewWords: "Answer too brief — please use at least 3 words.",
+    autoSaving: "Saving draft…",
+    autoSaved: "Draft saved",
   },
 
   jobseekerFeedbackPage: {
@@ -1892,6 +1879,8 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
     strengths: "Strengths",
     improvements: "Areas to Improve",
     suggestion: "AI Suggestion",
+    actionPlanTitle: "Action Plan",
+    actionPlanSubtitle: "Top improvements based on your weakest answers this session",
     retryBtn: "Practice Again",
     shareBtn: "Share Result",
     shareCopied: "Link copied to clipboard.",
@@ -2077,7 +2066,7 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
     recentSessions: {
       menu: { viewDetail: "View detail", practiceAgain: "Practice again", saveSet: "Save set", unsaveSet: "Unsave set" },
     },
-        scoreDistribution: {
+    scoreDistribution: {
       title: "Score Distribution",
       subtitle: "How your scores break down across all sessions",
       sessions: "sessions",
@@ -2085,7 +2074,7 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
       countLabel: "Sessions",
       empty: "Complete a few sessions to see your score distribution.",
     },
-        companyScore: {
+    companyScore: {
       title: "Performance by Company",
       subtitle: "Average score per company (top 6)",
       avgScore: "Avg. Score",
@@ -2589,6 +2578,7 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
     scored: "Your results are ready!",
     subtitle: "Click to view feedback",
   },
+
   hrDashboardPage: {
     greeting: "Welcome back",
     greetingSubtitle: "Here's an overview of your interview generation activity.",
@@ -2692,7 +2682,6 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
       upgrade: "Upgrade Plan",
     },
   },
-
 };
 
 export type Translations = typeof en;
