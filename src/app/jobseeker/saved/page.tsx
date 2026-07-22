@@ -5,7 +5,7 @@ export default function SavedPage() {
   return (
     <JobseekerAppShell
       pageTitle="Saved Sets"
-      breadcrumb={[{ label: "Jobseeker", href: "/jobseeker/dashboard" }, { label: "Saved" }]}
+      breadcrumb={[{ label: "jobseeker", href: "/jobseeker/dashboard" }, { label: "saved" }]}
     >
       <div className="animate-fade-up">
         <SavedSetsPage />

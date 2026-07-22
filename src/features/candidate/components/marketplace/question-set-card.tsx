@@ -192,16 +192,16 @@ export function QuestionSetCard({ set, initialBookmarked = false, onBookmarkChan
             {p.estimatedTime}{set.estimatedTime}
           </span>
           {set.attempts !== undefined && (
-            <span className="flex items-center gap-1 ml-auto">
+            <span className="flex items-center gap-1 ml-auto" title={p.attempts}>
               <Users size={12} className="shrink-0" />
-              {set.attempts.toLocaleString()}
+              {set.attempts.toLocaleString()} {p.attempts}
             </span>
           )}
         </div>
 
         {/* Rating */}
         {set.rating !== undefined && (
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5" title={p.ratingTooltip}>
             {[1, 2, 3, 4, 5].map((star) => (
               <Star
                 key={star}
@@ -214,6 +214,7 @@ export function QuestionSetCard({ set, initialBookmarked = false, onBookmarkChan
               />
             ))}
             <span className={cn("text-[12px] font-[600] ml-1", portalHeadingAlt)}>{set.rating!.toFixed(1)}</span>
+            <span className={cn("text-[11px]", portalSubtextAlt)}>/ 5</span>
           </div>
         )}
       </div>

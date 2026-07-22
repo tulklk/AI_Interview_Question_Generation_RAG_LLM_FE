@@ -76,8 +76,8 @@ function normalizeDifficulty(raw: unknown): Difficulty {
 }
 
 function formatEstimatedTime(minutes: number | undefined): string {
-  if (!minutes) return "";
-  return `${minutes} min`;
+  if (!minutes || minutes <= 0) return "";
+  return `${Math.round(minutes)} min`;
 }
 
 function normalizeQuestion(raw: unknown, index: number): PracticeQuestion | null {

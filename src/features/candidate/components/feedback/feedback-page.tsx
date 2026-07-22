@@ -6,11 +6,13 @@ import { motion, animate, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, RefreshCw, Share2, Loader2,
   Sparkles, ChevronDown, CheckCircle2, AlertTriangle, Lightbulb, Target,
+  TrendingUp, TrendingDown, Minus,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
-import { useLanguage } from "@/shared/providers/language-context";
+import { useLanguage, type Lang } from "@/shared/providers/language-context";
 import type { PracticeSessionDetail, AnswerEvaluation } from "@/features/candidate/services/practice-session.service";
-import { CategoryPill, Pill, formatCategoryLabel, getScoreLevel, getScoreBadgeClass } from "@/features/candidate/components/ui/pill";
+import { CategoryPill, Pill, getScoreLevel, getScoreBadgeClass } from "@/features/candidate/components/ui/pill";
+import { translateDimensionKey, translateQuestionCategory } from "@/features/candidate/utils/skill-labels";
 import { getCompanyColor, getCompanyInitials } from "@/features/candidate/utils/company-visual";
 import { useChartTheme } from "@/shared/hooks/use-chart-theme";
 import { QuestionContent } from "@/shared/components/ui/question-content";
@@ -35,7 +37,7 @@ function getSkillColor(score: number) {
 /** Averages each dimension key (clarity/depth/structure/relevance, ...) across
  * every question that has a dimensionScores breakdown. Returns null if none do —
  * the radar chart section is simply omitted rather than showing fabricated data. */
-function aggregateDimensionScores(feedback: Record<string, AnswerEvaluation>): { skill: string; score: number }[] | null {
+function aggregateDimensionScores(feedback: Record<string, AnswerEvaluation>, lang: Lang): { skill: string; score: number }[] | null {
   const sums: Record<string, { total: number; count: number }> = {};
   Object.values(feedback).forEach((fb) => {
     if (!fb.dimensionScores) return;
@@ -48,9 +50,54 @@ function aggregateDimensionScores(feedback: Record<string, AnswerEvaluation>): {
   const keys = Object.keys(sums);
   if (keys.length === 0) return null;
   return keys.map((key) => ({
-    skill: formatCategoryLabel(key),
+    skill: translateDimensionKey(key, lang),
     score: Math.round(sums[key].total / sums[key].count),
   }));
+}
+
+/**
+ * Evidence-based executive summary — cites the actual weakest/strongest scored
+ * question (real AI-generated strengths/improvements text) instead of a generic
+ * canned sentence. Returns null when no question has been scored yet.
+ */
+interface ExecutiveSummary {
+  strongPoint: string | null;
+  focusPoint: string | null;
+}
+
+function buildExecutiveSummary(
+  session: PracticeSessionDetail,
+  feedback: Record<string, AnswerEvaluation>,
+  labels: { strongTemplate: string; focusTemplate: string },
+  lang: Lang
+): ExecutiveSummary | null {
+  const scored = session.questions
+    .map((q) => ({ q, fb: feedback[q.id] }))
+    .filter((x): x is { q: typeof x.q; fb: AnswerEvaluation } => Boolean(x.fb) && x.fb.evaluationStatus === "Succeeded" && x.fb.score !== null);
+
+  if (scored.length === 0) return null;
+
+  const sorted = [...scored].sort((a, b) => (b.fb.score as number) - (a.fb.score as number));
+  const best = sorted[0];
+  const worst = sorted[sorted.length - 1];
+
+  const strongPoint =
+    best.fb.strengths.length > 0
+      ? labels.strongTemplate
+          .replace("{{category}}", translateQuestionCategory(best.q.questionType, lang))
+          .replace("{{score}}", String(best.fb.score))
+          .replace("{{detail}}", best.fb.strengths[0])
+      : null;
+
+  const focusPoint =
+    worst.fb.improvements.length > 0 && worst.q.id !== best.q.id
+      ? labels.focusTemplate
+          .replace("{{category}}", translateQuestionCategory(worst.q.questionType, lang))
+          .replace("{{score}}", String(worst.fb.score))
+          .replace("{{detail}}", worst.fb.improvements[0])
+      : null;
+
+  return { strongPoint, focusPoint };
 }
 
 function ScoreRing({ score, trackStroke }: { score: number; trackStroke: string }) {
@@ -112,10 +159,12 @@ interface FeedbackPageProps {
   scoring: boolean;
   setTitle?: string;
   companyName?: string;
+  /** Score of the most recent other completed attempt of this same set — undefined while still loading, null when there isn't one. */
+  previousScore?: number | null;
 }
 
-export function FeedbackPage({ session, feedback, scoring, setTitle, companyName }: FeedbackPageProps) {
-  const { t } = useLanguage();
+export function FeedbackPage({ session, feedback, scoring, setTitle, companyName, previousScore }: FeedbackPageProps) {
+  const { t, lang } = useLanguage();
   const p = t.jobseekerFeedbackPage;
   const chart = useChartTheme();
   const { addToast } = useToast();
@@ -127,7 +176,8 @@ export function FeedbackPage({ session, feedback, scoring, setTitle, companyName
 
   const answeredQuestions = session.questions.filter((q) => q.answerText);
   const feedbackByQuestionId = new Map(Object.entries(feedback));
-  const radarData = aggregateDimensionScores(feedback);
+  const radarData = aggregateDimensionScores(feedback, lang);
+  const executiveSummary = buildExecutiveSummary(session, feedback, p.executiveSummary, lang);
 
   const [expandedIds, setExpandedIds] = useState<Set<string>>(
     () => new Set(answeredQuestions.length > 0 ? [answeredQuestions[0].id] : [])
@@ -157,13 +207,7 @@ export function FeedbackPage({ session, feedback, scoring, setTitle, companyName
   }
 
   const aiInsight = hasScore
-    ? (
-      score >= 80
-        ? "Outstanding performance! Your answers showed depth and structure. You're well-prepared for this interview level."
-        : score >= 65
-        ? "Solid performance. Keep refining your answers with clearer structure and specific examples."
-        : "Good start! Focus on providing more specific examples and quantifiable outcomes in your answers to boost your score."
-    )
+    ? (score >= 80 ? p.insightExcellent : score >= 65 ? p.insightGood : p.insightNeedsWork)
     : null;
 
   const companyInitials = companyName ? getCompanyInitials(companyName) : "";
@@ -210,6 +254,21 @@ export function FeedbackPage({ session, feedback, scoring, setTitle, companyName
                 {scoreLevelLabel}
               </span>
             )}
+            {hasScore && previousScore !== undefined && (
+              previousScore === null ? (
+                <span className={cn("text-[11px]", portalSubtextAlt)}>{p.comparisonUnavailable}</span>
+              ) : (() => {
+                const delta = Math.round(score - previousScore);
+                const Icon = delta > 0 ? TrendingUp : delta < 0 ? TrendingDown : Minus;
+                const color = delta > 0 ? "text-emerald-600 dark:text-emerald-400" : delta < 0 ? "text-red-500 dark:text-red-400" : "text-gray-400 dark:text-gray-500";
+                return (
+                  <span className={cn("flex items-center gap-1 text-[12px] font-[700]", color)}>
+                    <Icon size={12} />
+                    {delta > 0 ? "+" : ""}{delta}% {p.comparisonVsLast}
+                  </span>
+                );
+              })()
+            )}
           </div>
 
           {(setTitle || companyName) && (
@@ -230,9 +289,23 @@ export function FeedbackPage({ session, feedback, scoring, setTitle, companyName
             {hasScore ? (
               <>
                 <Sparkles size={15} className="text-[#7C3AED] dark:text-[#a78bff] shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-[12px] font-[700] text-primary mb-1">{p.aiInsight}</p>
-                  <p className={cn("text-[13px] leading-[20px]", portalHeadingAlt)}>{aiInsight}</p>
+                <div className="flex flex-col gap-2">
+                  <div>
+                    <p className="text-[12px] font-[700] text-primary mb-1">{p.aiInsight}</p>
+                    <p className={cn("text-[13px] leading-[20px]", portalHeadingAlt)}>{aiInsight}</p>
+                  </div>
+                  {executiveSummary?.strongPoint && (
+                    <p className={cn("text-[12px] leading-[18px] flex items-start gap-1.5", portalSubtextAlt)}>
+                      <CheckCircle2 size={12} className="text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
+                      {executiveSummary.strongPoint}
+                    </p>
+                  )}
+                  {executiveSummary?.focusPoint && (
+                    <p className={cn("text-[12px] leading-[18px] flex items-start gap-1.5", portalSubtextAlt)}>
+                      <AlertTriangle size={12} className="text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                      {executiveSummary.focusPoint}
+                    </p>
+                  )}
                 </div>
               </>
             ) : (
@@ -292,14 +365,14 @@ export function FeedbackPage({ session, feedback, scoring, setTitle, companyName
               </div>
               <div>
                 <h2 className={cn("text-[15px] font-bold leading-tight", portalHeadingAlt)}>{p.skillBreakdown}</h2>
-                <p className={cn("text-[11px] mt-0.5", portalSubtextAlt)}>Điểm trung bình từng chiều đánh giá</p>
+                <p className={cn("text-[11px] mt-0.5", portalSubtextAlt)}>{p.skillBreakdownSubtitle}</p>
               </div>
             </div>
             <div className={cn(
               "text-[12px] font-bold px-3 py-1 rounded-full border",
               "bg-violet-50 dark:bg-violet-950/40 text-primary border-violet-200 dark:border-violet-800/40"
             )}>
-              TB {Math.round(radarData.reduce((s, d) => s + d.score, 0) / radarData.length)}%
+              {p.skillBreakdownAvgPrefix} {Math.round(radarData.reduce((s, d) => s + d.score, 0) / radarData.length)}%
             </div>
           </div>
 
@@ -366,7 +439,7 @@ export function FeedbackPage({ session, feedback, scoring, setTitle, companyName
                 >
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-2">
-                      <CategoryPill category={q.questionType} label={formatCategoryLabel(q.questionType)} />
+                      <CategoryPill category={q.questionType} label={translateQuestionCategory(q.questionType, lang)} />
                       <span className={cn("text-[12px]", portalSubtextAlt)}>Q{i + 1}</span>
                       {hasEval && (
                         <Pill className={cn("text-[11px] font-[700] px-2 py-0.5 ml-auto", getScoreBadgeClass(fb.score as number))}>
