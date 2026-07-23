@@ -8,6 +8,7 @@ export const vi: Translations = {
     tryFree: "Dùng miễn phí",
     switchToLight: "Chuyển sang chế độ sáng",
     switchToDark: "Chuyển sang chế độ tối",
+    goToDashboard: "Vào Dashboard",
   },
 
   nav: {

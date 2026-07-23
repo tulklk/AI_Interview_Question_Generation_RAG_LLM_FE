@@ -6,6 +6,7 @@
     tryFree: "Try for Free",
     switchToLight: "Switch to light mode",
     switchToDark: "Switch to dark mode",
+    goToDashboard: "Go to Dashboard",
   },
 
   nav: {
