@@ -14,7 +14,7 @@ import { useToast } from "@/shared/providers/toast-context";
 
 const MAX_VISIBLE = 3;
 
-const skillTag = "shrink-0 bg-violet-50 dark:bg-violet-950/30 text-violet-700 dark:text-violet-300 border border-violet-100 dark:border-violet-800/30 text-[11px] font-medium px-2.5 py-1 rounded-md";
+const skillTag = "min-w-0 truncate bg-violet-50 dark:bg-violet-950/30 text-violet-700 dark:text-violet-300 border border-violet-100 dark:border-violet-800/30 text-[11px] font-medium px-2.5 py-1 rounded-md";
 
 interface SkillsPopoverProps {
   skills: string[];
@@ -93,6 +93,7 @@ export function QuestionSetCard({ set, initialBookmarked = false, onBookmarkChan
       .then((next) => {
         setBookmarked(next);
         onBookmarkChange?.(set.id, next);
+        addToast("success", next ? p.bookmarkSaved : p.bookmarkUnsaved);
       })
       .catch(() => addToast("error", p.bookmarkFailed))
       .finally(() => setBookmarking(false));
@@ -158,9 +159,9 @@ export function QuestionSetCard({ set, initialBookmarked = false, onBookmarkChan
         </p>
 
         {/* Skills — single row, overflow shows +N chip */}
-        <div className="flex items-center gap-1.5 overflow-hidden">
+        <div className="flex items-center gap-1.5">
           {visibleSkills.map((skill) => (
-            <span key={skill} className={skillTag}>{skill}</span>
+            <span key={skill} className={skillTag} style={{ maxWidth: "7rem" }}>{skill}</span>
           ))}
           {extraCount > 0 && (
             <button

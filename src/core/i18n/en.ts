@@ -6,6 +6,7 @@
     tryFree: "Try for Free",
     switchToLight: "Switch to light mode",
     switchToDark: "Switch to dark mode",
+    goToDashboard: "Go to Dashboard",
   },
 
   nav: {
@@ -1754,6 +1755,8 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
     loadingMore: "Loading more…",
     saveBtn: "Save for later",
     unsaveBtn: "Remove from saved",
+    bookmarkSaved: "Saved to your collection.",
+    bookmarkUnsaved: "Removed from saved sets.",
     bookmarkFailed: "Couldn't update your saved sets. Please try again.",
   },
 
