@@ -8,6 +8,7 @@ export const vi: Translations = {
     tryFree: "Dùng miễn phí",
     switchToLight: "Chuyển sang chế độ sáng",
     switchToDark: "Chuyển sang chế độ tối",
+    goToDashboard: "Vào Dashboard",
   },
 
   nav: {
@@ -1753,6 +1754,8 @@ Yêu cầu:
     loadingMore: "Đang tải thêm…",
     saveBtn: "Lưu để xem sau",
     unsaveBtn: "Bỏ lưu",
+    bookmarkSaved: "Đã lưu vào bộ sưu tập.",
+    bookmarkUnsaved: "Đã xóa khỏi danh sách đã lưu.",
     bookmarkFailed: "Không thể cập nhật danh sách đã lưu. Vui lòng thử lại.",
   },
 
