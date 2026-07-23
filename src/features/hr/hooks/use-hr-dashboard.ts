@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { getGenerationJobs } from "@/features/interview/services/interview.service";
+import { getGenerationJobs, getGenerationPlans } from "@/features/interview/services/interview.service";
 import { listRecommendations } from "@/features/hr/services/recommendation.service";
 import type { GenerationSession } from "@/features/interview/types/generation-session";
 import type { CandidateRecommendation } from "@/features/hr/services/recommendation.service";
@@ -96,11 +96,19 @@ export function useHrDashboard(): HrDashboardData {
 
     Promise.all([
       getGenerationJobs(),
+      getGenerationPlans().catch(() => [] as Awaited<ReturnType<typeof getGenerationPlans>>),
       listRecommendations({ pageSize: 20 }).catch(() => ({ items: [], totalCount: 0 })),
     ])
-      .then(([jobs, recs]) => {
+      .then(([jobs, plans, recs]) => {
         if (cancelled) return;
-        setSessions(jobs);
+        // Enrich sessions with actual job titles from the plans API
+        // (the jobs API returns a generic "Interview Questions" fallback when no role is set)
+        const planTitleMap = new Map(plans.map((p) => [p.id, p.jobTitle]));
+        const enriched = jobs.map((s) => ({
+          ...s,
+          jobTitle: planTitleMap.get(s.id) || s.jobTitle,
+        }));
+        setSessions(enriched);
         setCandidates(recs.items);
       })
       .catch(() => {
