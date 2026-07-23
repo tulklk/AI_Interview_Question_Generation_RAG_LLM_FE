@@ -1,7 +1,8 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { motion } from "framer-motion";
+import { animate, motion } from "framer-motion";
 import {
   RefreshCw,
   AlertCircle,
@@ -31,6 +32,44 @@ import type { GenerationSession } from "@/features/interview/types/generation-se
 import type { CandidateRecommendation, RecommendationStatus } from "@/features/hr/services/recommendation.service";
 
 // ---------------------------------------------------------------------------
+// KPI animated value
+// ---------------------------------------------------------------------------
+
+function KpiValue({ value }: { value: string | number }) {
+  const [display, setDisplay] = useState<string>("0");
+
+  useEffect(() => {
+    const str = String(value);
+    const pctMatch = str.match(/^(\d+(?:\.\d+)?)%$/);
+
+    let numVal: number | null = null;
+    let suffix = "";
+
+    if (typeof value === "number") {
+      numVal = value;
+    } else if (pctMatch) {
+      numVal = parseFloat(pctMatch[1]);
+      suffix = "%";
+    }
+
+    if (numVal === null) {
+      setDisplay(str);
+      return;
+    }
+
+    setDisplay("0" + suffix);
+    const controls = animate(0, numVal, {
+      duration: 1.0,
+      ease: "easeOut",
+      onUpdate: (v) => setDisplay(Math.round(v) + suffix),
+    });
+    return () => controls.stop();
+  }, [value]);
+
+  return <>{display}</>;
+}
+
+// ---------------------------------------------------------------------------
 // KPI Card
 // ---------------------------------------------------------------------------
 
@@ -45,6 +84,7 @@ interface KpiCardProps {
 }
 
 function KpiCard({ icon: Icon, iconBg, iconColor, label, desc, value, loading }: KpiCardProps) {
+  const isNumeric = typeof value === "number" || /^\d+(?:\.\d+)?%?$/.test(String(value));
   return (
     <div className="hr-glass-card p-5 flex flex-col gap-3">
       <div className="flex items-start gap-3">
@@ -59,8 +99,17 @@ function KpiCard({ icon: Icon, iconBg, iconColor, label, desc, value, loading }:
       {loading ? (
         <div className="h-7 w-20 rounded-lg bg-gray-100 dark:bg-gray-800 animate-pulse" />
       ) : (
-        <p className={cn("text-[26px] font-extrabold leading-none tracking-tight", portalHeadingAlt)}>
-          {value}
+        <p
+          title={isNumeric ? undefined : String(value)}
+          className={cn(
+            "font-extrabold tracking-tight",
+            isNumeric
+              ? "text-[26px] leading-none tabular-nums"
+              : "text-[16px] leading-snug line-clamp-2",
+            portalHeadingAlt
+          )}
+        >
+          <KpiValue value={value} />
         </p>
       )}
     </div>
@@ -174,7 +223,7 @@ function buildInsights(data: ReturnType<typeof useHrDashboard>, labels: {
     const trendText = last7 > prior7 ? labels.trendUp : last7 < prior7 ? labels.trendDown : labels.trendFlat;
     insights.push({
       icon: CalendarDays,
-      color: last7 > prior7 ? "text-emerald-600 dark:text-emerald-400" : last7 < prior7 ? "text-red-500 dark:text-red-400" : "text-gray-500 dark:text-gray-400",
+      color: last7 > prior7 ? "text-emerald-600 dark:text-emerald-400" : last7 < prior7 ? "text-red-500 dark:text-red-400" : "text-gray-600 dark:text-gray-400",
       text: trendText,
     });
   }
@@ -202,8 +251,8 @@ function ChartCard({ title, subtitle, icon: Icon, children, loading, empty, empt
     <div className="hr-glass-card overflow-hidden">
       <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-800">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl bg-violet-100 dark:bg-violet-950/50 flex items-center justify-center shrink-0">
-            <Icon size={15} className="text-primary" />
+          <div className="w-8 h-8 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center shrink-0">
+            <Icon size={15} className="text-gray-600 dark:text-gray-400" />
           </div>
           <div>
             <h2 className={cn("text-[14px] font-bold leading-tight", portalHeadingAlt)}>{title}</h2>
@@ -286,7 +335,7 @@ export function HrDashboard() {
     {
       icon: Zap,
       iconBg: "bg-gray-100 dark:bg-gray-800",
-      iconColor: "text-gray-500 dark:text-gray-400",
+      iconColor: "text-gray-600 dark:text-gray-400",
       label: p.kpi.totalSessions,
       desc: p.kpi.totalSessionsDesc,
       value: data.totalSessions,
@@ -295,7 +344,7 @@ export function HrDashboard() {
     {
       icon: CheckCircle2,
       iconBg: "bg-gray-100 dark:bg-gray-800",
-      iconColor: "text-gray-500 dark:text-gray-400",
+      iconColor: "text-gray-600 dark:text-gray-400",
       label: p.kpi.completedSessions,
       desc: p.kpi.completedSessionsDesc,
       value: data.completedSessions,
@@ -304,7 +353,7 @@ export function HrDashboard() {
     {
       icon: MessageSquareText,
       iconBg: "bg-gray-100 dark:bg-gray-800",
-      iconColor: "text-gray-500 dark:text-gray-400",
+      iconColor: "text-gray-600 dark:text-gray-400",
       label: p.kpi.totalQuestions,
       desc: p.kpi.totalQuestionsDesc,
       value: data.totalQuestionsGenerated,
@@ -313,7 +362,7 @@ export function HrDashboard() {
     {
       icon: TrendingUp,
       iconBg: "bg-gray-100 dark:bg-gray-800",
-      iconColor: "text-gray-500 dark:text-gray-400",
+      iconColor: "text-gray-600 dark:text-gray-400",
       label: p.kpi.successRate,
       desc: p.kpi.successRateDesc,
       value: `${data.successRate}%`,
@@ -322,7 +371,7 @@ export function HrDashboard() {
     {
       icon: CalendarDays,
       iconBg: "bg-gray-100 dark:bg-gray-800",
-      iconColor: "text-gray-500 dark:text-gray-400",
+      iconColor: "text-gray-600 dark:text-gray-400",
       label: p.kpi.thisMonth,
       desc: p.kpi.thisMonthDesc,
       value: data.thisMonthSessions,
@@ -331,7 +380,7 @@ export function HrDashboard() {
     {
       icon: Briefcase,
       iconBg: "bg-gray-100 dark:bg-gray-800",
-      iconColor: "text-gray-500 dark:text-gray-400",
+      iconColor: "text-gray-600 dark:text-gray-400",
       label: p.kpi.topRole,
       desc: p.kpi.topRoleDesc,
       value: data.topRole || "—",
@@ -415,8 +464,8 @@ export function HrDashboard() {
         <motion.div className="hr-glass-card overflow-hidden" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
           <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-800">
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-xl bg-violet-100 dark:bg-violet-950/50 flex items-center justify-center shrink-0">
-                <History size={15} className="text-primary" />
+              <div className="w-8 h-8 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center shrink-0">
+                <History size={15} className="text-gray-600 dark:text-gray-400" />
               </div>
               <div>
                 <h2 className={cn("text-[14px] font-bold leading-tight", portalHeadingAlt)}>{p.recentSessions.title}</h2>
@@ -460,7 +509,7 @@ export function HrDashboard() {
                       <tr key={session.id} className="hover:bg-gray-50/70 dark:hover:bg-gray-800/40 transition-colors">
                         <td className="px-4 py-3">
                           <Link href={`/hr/generate/${session.id}`} className={cn("font-medium hover:text-primary transition-colors line-clamp-1", portalHeadingAlt)}>
-                            {session.jobTitle || "—"}
+                            {session.planDraft?.role || session.jobTitle || "—"}
                           </Link>
                           {session.planDraft?.level && (
                             <span className={cn("text-[10px]", portalSubtextAlt)}>{session.planDraft.level}</span>
@@ -489,8 +538,8 @@ export function HrDashboard() {
           {/* AI Insights */}
           <motion.div className="hr-glass-card p-5" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
             <div className="flex items-center gap-2.5 mb-4">
-              <div className="w-8 h-8 rounded-xl bg-amber-100 dark:bg-amber-950/50 flex items-center justify-center shrink-0">
-                <Lightbulb size={15} className="text-amber-600 dark:text-amber-400" />
+              <div className="w-8 h-8 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center shrink-0">
+                <Lightbulb size={15} className="text-gray-600 dark:text-gray-400" />
               </div>
               <div>
                 <h2 className={cn("text-[14px] font-bold leading-tight", portalHeadingAlt)}>{p.insights.title}</h2>
@@ -532,8 +581,8 @@ export function HrDashboard() {
       <motion.div className="hr-glass-card overflow-hidden" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-800">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-blue-100 dark:bg-blue-950/50 flex items-center justify-center shrink-0">
-              <Users size={15} className="text-blue-600 dark:text-blue-400" />
+            <div className="w-8 h-8 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center shrink-0">
+              <Users size={15} className="text-gray-600 dark:text-gray-400" />
             </div>
             <div>
               <h2 className={cn("text-[14px] font-bold leading-tight", portalHeadingAlt)}>{p.candidates.title}</h2>
