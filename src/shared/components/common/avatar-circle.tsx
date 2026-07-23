@@ -39,6 +39,7 @@ export function AvatarCircle({
           src={avatarUrl!.trim()}
           alt={fullName}
           className="w-full h-full object-cover"
+          referrerPolicy="no-referrer"
           onError={() => setImageFailed(true)}
         />
       ) : (
