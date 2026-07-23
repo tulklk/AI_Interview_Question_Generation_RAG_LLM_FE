@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { motion, type Variants } from "framer-motion";
-import { Search, Sparkles, SlidersHorizontal, AlertCircle, RefreshCw, Loader2, ChevronDown, Check, X } from "lucide-react";
+import { Search, Sparkles, AlertCircle, RefreshCw, Loader2, ChevronDown, Check, X } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { listQuestionSets, getBookmarkedSetIds } from "@/features/candidate/services/question-set.service";
 import { QuestionSetCard } from "./question-set-card";
@@ -14,7 +13,6 @@ import {
   portalCard,
   portalHeadingAlt,
   portalInput,
-  portalMutedBg,
   portalSubtextAlt,
 } from "@/shared/utils/portal-ui";
 
@@ -35,21 +33,12 @@ function matchesSearchTerm(set: QuestionSet, term: string): boolean {
   );
 }
 
-const fadeUp: Variants = {
-  hidden: { opacity: 0, y: 20 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.4, ease: "easeOut" } },
-};
-
-// ── Difficulty badge colour helper ─────────────────────────────────────────
-
 function difficultyColor(d: "All" | Difficulty) {
   if (d === "Easy")   return "text-emerald-600 dark:text-emerald-400";
   if (d === "Medium") return "text-amber-500 dark:text-amber-400";
   if (d === "Hard")   return "text-red-500 dark:text-red-400";
   return "";
 }
-
-// ── FilterBar ──────────────────────────────────────────────────────────────
 
 interface FilterBarLabels {
   searchPlaceholder: string;
@@ -91,7 +80,6 @@ function FilterBar({
   const diffRef = useRef<HTMLDivElement>(null);
   const skillRef = useRef<HTMLDivElement>(null);
 
-  // Close dropdowns on outside click
   useEffect(() => {
     function handler(e: MouseEvent) {
       if (diffRef.current && !diffRef.current.contains(e.target as Node)) setDiffOpen(false);
@@ -118,12 +106,7 @@ function FilterBar({
   const optionBase = "flex items-center gap-2.5 w-full px-3 py-2 text-[13px] transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/60 cursor-pointer";
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 16 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, delay: 0.15 }}
-      className="hr-glass-card p-3 mb-6"
-    >
+    <div className="hr-glass-card p-3 mb-6">
       <div className="flex flex-col sm:flex-row gap-2">
         {/* Search */}
         <div className={cn(
@@ -158,7 +141,7 @@ function FilterBar({
               diffOpen ? "border-primary shadow-[0_0_0_3px_rgba(108,71,255,0.1)]" : "",
             )}
           >
-            <span className={cn("text-[11px] font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500 hidden sm:block")}>
+            <span className="text-[11px] font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500 hidden sm:block">
               {p.difficultyLabel}
             </span>
             <span className={cn("font-semibold", difficultyColor(difficulty), difficulty === "All" && portalSubtextAlt)}>
@@ -222,7 +205,6 @@ function FilterBar({
 
             {skillOpen && (
               <div className={cn(dropdownBase, "right-0 w-64")}>
-                {/* Search inside dropdown */}
                 <div className="p-2 border-b border-gray-100 dark:border-gray-800">
                   <div className={cn("flex items-center gap-2 rounded-lg px-2.5 h-8", portalInput)}>
                     <Search size={12} className="text-gray-400 shrink-0" />
@@ -237,7 +219,6 @@ function FilterBar({
                   </div>
                 </div>
 
-                {/* Options list */}
                 <div className="max-h-52 overflow-y-auto py-1">
                   {filteredSkills.map((skill) => {
                     const active = selectedSkills.includes(skill);
@@ -267,7 +248,6 @@ function FilterBar({
                   )}
                 </div>
 
-                {/* Footer: clear */}
                 {selectedSkills.length > 0 && (
                   <div className="border-t border-gray-100 dark:border-gray-800 p-2">
                     <button
@@ -301,7 +281,7 @@ function FilterBar({
           ))}
         </div>
       )}
-    </motion.div>
+    </div>
   );
 }
 
@@ -331,14 +311,11 @@ export function MarketplacePage() {
     searchInputRef.current?.focus();
   }
 
-  // Debounce search input before it triggers a fetch
   useEffect(() => {
     const id = setTimeout(() => setDebouncedSearch(search), 400);
     return () => clearTimeout(id);
   }, [search]);
 
-  // One-time, unfiltered fetch to populate the full skill-chip picker
-  // (independent of the current filters, so the list of options never shrinks).
   useEffect(() => {
     listQuestionSets({})
       .then((res) => {
@@ -356,7 +333,6 @@ export function MarketplacePage() {
     );
   }
 
-  // Filters (or a manual retry) changed — reset to page 1 and replace the list.
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
@@ -366,8 +342,6 @@ export function MarketplacePage() {
     const isSearching = term.length > 0;
 
     listQuestionSets({
-      // While searching, skip server-side Keyword (title-only) entirely and
-      // instead pull a larger batch to filter client-side across title/company/skills.
       difficulty: difficulty === "All" ? undefined : difficulty,
       skills: selectedSkills.length > 0 ? selectedSkills : undefined,
       page: 1,
@@ -414,42 +388,32 @@ export function MarketplacePage() {
 
   return (
     <div>
-      {/* ── Hero ────────────────────────────────────────────────────────── */}
-      <motion.section
-        initial={{ opacity: 0, y: 24 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="hr-quick-generate rounded-xl px-5 sm:px-10 py-8 sm:py-12 mb-8"
-      >
-        <div className="max-w-2xl">
-          {/* Badge */}
-          <div className={cn("inline-flex items-center gap-2 rounded-full px-3 py-1.5 mb-5", portalCard)}>
-            <Sparkles size={13} className="text-primary" />
-            <span className={cn("text-[12px] font-[600]", portalHeadingAlt)}>{p.heroBadge}</span>
+      {/* ── Hero ─────────────────────────────────────────────────────────── */}
+      <section className="hr-quick-generate rounded-xl px-6 sm:px-10 py-7 sm:py-9 mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
+        <div className="max-w-xl">
+          <div className="inline-flex items-center gap-1.5 bg-primary/10 dark:bg-primary/15 border border-primary/20 rounded-full px-3 py-1 mb-4">
+            <Sparkles size={12} className="text-primary" />
+            <span className="text-[11px] font-semibold text-primary">{p.heroBadge}</span>
           </div>
-
-          {/* Headline */}
-          <h1 className={cn("text-[28px] sm:text-[48px] font-[800] leading-[34px] sm:leading-[52px] mb-4", portalHeadingAlt)}>
+          <h1 className={cn("text-[24px] sm:text-[32px] font-[800] leading-7.5 sm:leading-10 mb-2.5", portalHeadingAlt)}>
             {p.heroTitle}{" "}
             <span className="text-primary">{p.heroTitleAccent}</span>
           </h1>
-          <p className={cn("text-[16px] leading-[24px] max-w-lg mb-8", portalSubtextAlt)}>
+          <p className={cn("text-[13px] leading-5 max-w-md", portalSubtextAlt)}>
             {p.heroSub}
           </p>
-
-          {/* CTAs */}
-          <div className="flex flex-wrap items-center gap-4">
-            <button
-              type="button"
-              onClick={scrollToSearch}
-              className="shimmer-button h-11 px-6 text-[14px] font-semibold text-white hr-cta-btn rounded-xl"
-            >
-              {p.heroCta}
-            </button>
-            <p className={cn("text-[13px]", portalSubtextAlt)}>{p.heroCtaSub}</p>
-          </div>
         </div>
-      </motion.section>
+        <div className="flex items-center gap-3 shrink-0">
+          <button
+            type="button"
+            onClick={scrollToSearch}
+            className="shimmer-button h-10 px-5 text-[13px] font-semibold text-white hr-cta-btn rounded-lg"
+          >
+            {p.heroCta}
+          </button>
+          <p className={cn("text-[12px] hidden sm:block", portalSubtextAlt)}>{p.heroCtaSub}</p>
+        </div>
+      </section>
 
       {/* ── Search + Filters ─────────────────────────────────────────────── */}
       <FilterBar
@@ -468,20 +432,15 @@ export function MarketplacePage() {
 
       {/* ── Results count ─────────────────────────────────────────────────── */}
       {!loading && !error && (
-        <motion.p
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.25 }}
-          className={cn("text-[13px] mb-5", portalSubtextAlt)}
-        >
-          <span className={cn("font-[600]", portalHeadingAlt)}>{sets.length}</span>{" "}
+        <p className={cn("text-[13px] mb-5", portalSubtextAlt)}>
+          <span className={cn("font-semibold", portalHeadingAlt)}>{sets.length}</span>{" "}
           {p.setsFound}
-        </motion.p>
+        </p>
       )}
 
       {/* ── Card Grid ─────────────────────────────────────────────────────── */}
       {loading ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
           {Array.from({ length: 6 }).map((_, i) => (
             <div key={i} className="hr-glass-card p-6 h-56 animate-pulse flex flex-col gap-4">
               <div className="h-10 w-10 rounded-lg bg-gray-200 dark:bg-gray-700" />
@@ -507,25 +466,26 @@ export function MarketplacePage() {
       ) : sets.length === 0 ? (
         <EmptyState icon={Search} title={p.noResults} />
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {sets.map((set, i) => (
-            <motion.div
-              key={set.id}
-              initial="hidden"
-              animate="show"
-              variants={fadeUp}
-              transition={{ delay: i * 0.07 }}
-              whileHover={{ scale: 1.02 }}
-              className="transition-shadow duration-200 hover:drop-shadow-lg"
-            >
-              <QuestionSetCard set={set} initialBookmarked={bookmarkedIds.has(set.id)} />
-            </motion.div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          {sets.map((set) => (
+            <div key={set.id} className="hover:drop-shadow-md transition-all duration-200">
+              <QuestionSetCard
+                set={set}
+                initialBookmarked={bookmarkedIds.has(set.id)}
+                onBookmarkChange={(id, bookmarked) => {
+                  setBookmarkedIds((prev) => {
+                    const next = new Set(prev);
+                    if (bookmarked) next.add(id); else next.delete(id);
+                    return next;
+                  });
+                }}
+              />
+            </div>
           ))}
         </div>
       )}
 
-      {/* Load more — hidden while searching, since that fetch already pulls a large
-          enough batch to filter client-side rather than paging through it. */}
+      {/* Load more */}
       {!loading && !error && !debouncedSearch.trim() && sets.length > 0 && sets.length < totalCount && (
         <div className="flex justify-center mt-8">
           <button

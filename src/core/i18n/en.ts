@@ -1755,6 +1755,8 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
     loadingMore: "Loading more…",
     saveBtn: "Save for later",
     unsaveBtn: "Remove from saved",
+    bookmarkSaved: "Saved to your collection.",
+    bookmarkUnsaved: "Removed from saved sets.",
     bookmarkFailed: "Couldn't update your saved sets. Please try again.",
   },
 

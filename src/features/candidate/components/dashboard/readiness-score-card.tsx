@@ -48,6 +48,27 @@ function Ring({ score, color }: { score: number; color: string }) {
   );
 }
 
+function useCountUpPct(target: number): string {
+  const [display, setDisplay] = useState("0");
+
+  useEffect(() => {
+    setDisplay("0");
+    const controls = animate(0, target, {
+      duration: 1.1,
+      ease: "easeOut",
+      onUpdate: (v) => setDisplay(String(Math.round(v))),
+    });
+    return () => controls.stop();
+  }, [target]);
+
+  return display;
+}
+
+function FactorValue({ value }: { value: number }) {
+  const display = useCountUpPct(value);
+  return <>{display}%</>;
+}
+
 const FACTOR_LABEL_KEY: Record<string, "averageScore" | "consistency" | "stability" | "frequency"> = {
   averageScore: "averageScore",
   consistency: "consistency",
@@ -108,7 +129,7 @@ export function ReadinessScoreCard({ readiness, loading }: ReadinessScoreCardPro
           {readiness.factors.map((f) => (
             <div key={f.key} className="flex items-center justify-between gap-2">
               <span className={cn("text-[11px] truncate", portalSubtextAlt)}>{p.factors[FACTOR_LABEL_KEY[f.key]]}</span>
-              <span className={cn("text-[11px] font-[700] tabular-nums shrink-0", portalHeadingAlt)}>{Math.round(f.value)}%</span>
+              <span className={cn("text-[11px] font-[700] tabular-nums shrink-0", portalHeadingAlt)}><FactorValue value={Math.round(f.value)} /></span>
             </div>
           ))}
         </div>
