@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { motion } from "framer-motion";
 import { Search, Sparkles, AlertCircle, RefreshCw, Loader2, ChevronDown, Check, X } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { listQuestionSets, getBookmarkedSetIds } from "@/features/candidate/services/question-set.service";
@@ -389,7 +390,12 @@ export function MarketplacePage() {
   return (
     <div>
       {/* ── Hero ─────────────────────────────────────────────────────────── */}
-      <section className="hr-quick-generate rounded-xl px-6 sm:px-10 py-7 sm:py-9 mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
+      <motion.section
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.45, ease: "easeOut" }}
+        className="hr-quick-generate rounded-xl px-6 sm:px-10 py-7 sm:py-9 mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6"
+      >
         <div className="max-w-xl">
           <div className="inline-flex items-center gap-1.5 bg-primary/10 dark:bg-primary/15 border border-primary/20 rounded-full px-3 py-1 mb-4">
             <Sparkles size={12} className="text-primary" />
@@ -413,9 +419,14 @@ export function MarketplacePage() {
           </button>
           <p className={cn("text-[12px] hidden sm:block", portalSubtextAlt)}>{p.heroCtaSub}</p>
         </div>
-      </section>
+      </motion.section>
 
       {/* ── Search + Filters ─────────────────────────────────────────────── */}
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.1, ease: "easeOut" }}
+      >
       <FilterBar
         search={search}
         onSearchChange={setSearch}
@@ -429,13 +440,19 @@ export function MarketplacePage() {
         onClearSkills={() => setSelectedSkills([])}
         labels={p}
       />
+      </motion.div>
 
       {/* ── Results count ─────────────────────────────────────────────────── */}
       {!loading && !error && (
-        <p className={cn("text-[13px] mb-5", portalSubtextAlt)}>
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.3, delay: 0.18 }}
+          className={cn("text-[13px] mb-5", portalSubtextAlt)}
+        >
           <span className={cn("font-semibold", portalHeadingAlt)}>{sets.length}</span>{" "}
           {p.setsFound}
-        </p>
+        </motion.p>
       )}
 
       {/* ── Card Grid ─────────────────────────────────────────────────────── */}
@@ -467,8 +484,14 @@ export function MarketplacePage() {
         <EmptyState icon={Search} title={p.noResults} />
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-          {sets.map((set) => (
-            <div key={set.id} className="hover:drop-shadow-md transition-all duration-200">
+          {sets.map((set, i) => (
+            <motion.div
+              key={set.id}
+              initial={{ opacity: 0, y: 18 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.35, delay: i * 0.07, ease: "easeOut" }}
+              className="hover:drop-shadow-md transition-[filter] duration-200"
+            >
               <QuestionSetCard
                 set={set}
                 initialBookmarked={bookmarkedIds.has(set.id)}
@@ -480,7 +503,7 @@ export function MarketplacePage() {
                   });
                 }}
               />
-            </div>
+            </motion.div>
           ))}
         </div>
       )}

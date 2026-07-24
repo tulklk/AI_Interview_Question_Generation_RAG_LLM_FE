@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BookOpen, X } from "lucide-react";
+import { BookOpen, X, Zap } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { jobseekerNavItems } from "@/features/candidate/data/jobseeker";
 import { useLanguage } from "@/shared/providers/language-context";
@@ -15,9 +15,10 @@ import { getPracticeStats } from "@/features/candidate/services/practice-session
 interface JobseekerSidebarProps {
   open?: boolean;
   onClose?: () => void;
+  onOpenUpgrade?: () => void;
 }
 
-export function JobseekerSidebar({ open, onClose }: JobseekerSidebarProps) {
+export function JobseekerSidebar({ open, onClose, onOpenUpgrade }: JobseekerSidebarProps) {
   const pathname = usePathname();
   const { t } = useLanguage();
   const s = t.jobseekerSidebar;
@@ -130,14 +131,26 @@ export function JobseekerSidebar({ open, onClose }: JobseekerSidebarProps) {
       <SidebarUserFooter
         logoutTitle={s.logoutTitle}
         badge={
-          <span className={cn(
-            "text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0",
-            isPremium
-              ? "text-violet-700 dark:text-violet-300 bg-violet-50 dark:bg-violet-950/60"
-              : "text-cyan-600 dark:text-cyan-300 bg-cyan-50 dark:bg-cyan-950"
-          )}>
-            {isPremium ? "Premium" : "Free"}
-          </span>
+          isPremium ? (
+            <Link
+              href="/jobseeker/settings?tab=billing"
+              onClick={() => onClose?.()}
+              title="Quản lý gói Premium"
+              className="text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 text-violet-700 dark:text-violet-300 bg-violet-50 dark:bg-violet-950/60 hover:bg-violet-100 dark:hover:bg-violet-900/60 transition-colors"
+            >
+              Premium
+            </Link>
+          ) : (
+            <button
+              type="button"
+              onClick={() => onOpenUpgrade?.()}
+              title="Nâng cấp lên Premium"
+              className="group flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 text-cyan-600 dark:text-cyan-300 bg-cyan-50 dark:bg-cyan-950 hover:bg-primary hover:text-white dark:hover:bg-primary dark:hover:text-white transition-colors cursor-pointer"
+            >
+              <Zap size={9} className="group-hover:text-white transition-colors" />
+              Free
+            </button>
+          )
         }
       />
     </>

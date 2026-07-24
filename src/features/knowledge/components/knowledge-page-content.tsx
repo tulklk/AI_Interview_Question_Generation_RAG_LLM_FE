@@ -18,6 +18,8 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { portalHeading, portalSubtext, portalInput } from "@/shared/utils/portal-ui";
+import { useCountUp } from "@/shared/hooks/use-count-up";
+import { useInView } from "framer-motion";
 import type { KnowledgeDocument, DocumentStatus } from "@/features/knowledge/types/knowledge";
 import { useLanguage } from "@/shared/providers/language-context";
 import { useToast } from "@/shared/providers/toast-context";
@@ -47,6 +49,18 @@ const ACCEPTED_TYPES = [
 ];
 const ACCEPTED_EXT = [".pdf", ".docx", ".doc", ".txt"];
 const MAX_FILE_MB = 20;
+
+function DocStatTile({ value, label, color, bg }: { value: number; label: string; color: string; bg: string }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const isInView = useInView(ref, { once: true, margin: "-60px" });
+  const display = useCountUp(value, isInView);
+  return (
+    <div ref={ref} className={cn("rounded-xl p-3 text-center", bg)}>
+      <p className={cn("text-xl font-bold tabular-nums", color)}>{display}</p>
+      <p className={cn("text-[11px] font-medium mt-0.5", portalSubtext)}>{label}</p>
+    </div>
+  );
+}
 
 function formatBytes(bytes?: number): string {
   if (!bytes) return "";
@@ -576,16 +590,9 @@ export function KnowledgePageContent({
         <div className="flex flex-col gap-4">
           {/* Stats row */}
           <div className="grid grid-cols-3 gap-2">
-            {[
-              { label: kb.statsReady, value: readyCount, color: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-50 dark:bg-emerald-950/30" },
-              { label: kb.statsProcessing, value: processingCount, color: "text-blue-600 dark:text-blue-400", bg: "bg-blue-50 dark:bg-blue-950/30" },
-              { label: kb.statsFailed, value: failedCount, color: "text-red-500 dark:text-red-400", bg: "bg-red-50 dark:bg-red-950/30" },
-            ].map(({ label, value, color, bg }) => (
-              <div key={label} className={cn("rounded-xl p-3 text-center", bg)}>
-                <p className={cn("text-xl font-bold", color)}>{value}</p>
-                <p className={cn("text-[11px] font-medium mt-0.5", portalSubtext)}>{label}</p>
-              </div>
-            ))}
+            <DocStatTile value={readyCount} label={kb.statsReady} color="text-emerald-600 dark:text-emerald-400" bg="bg-emerald-50 dark:bg-emerald-950/30" />
+            <DocStatTile value={processingCount} label={kb.statsProcessing} color="text-blue-600 dark:text-blue-400" bg="bg-blue-50 dark:bg-blue-950/30" />
+            <DocStatTile value={failedCount} label={kb.statsFailed} color="text-red-500 dark:text-red-400" bg="bg-red-50 dark:bg-red-950/30" />
           </div>
 
           {/* Search */}

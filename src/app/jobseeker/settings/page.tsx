@@ -1,5 +1,6 @@
 "use client";
 
+import { Suspense } from "react";
 import { JobseekerAppShell } from "@/features/candidate/components/layout/jobseeker-app-shell";
 import { SettingsPage } from "@/features/candidate/components/settings/settings-page";
 import { useLanguage } from "@/shared/providers/language-context";
@@ -21,7 +22,9 @@ export default function JobseekerSettingsPage() {
       </div>
 
       <div className="animate-fade-up" style={{ animationDelay: "80ms" }}>
-        <SettingsPage />
+        <Suspense>
+          <SettingsPage />
+        </Suspense>
       </div>
     </JobseekerAppShell>
   );
