@@ -2342,6 +2342,13 @@ Yêu cầu:
       deleteHistory: "Xóa lịch sử luyện tập",
       deleteAccount: "Xóa tài khoản",
       comingSoon: "Sắp ra mắt",
+      recruiterRecommendation: {
+        title: "Đề xuất cho nhà tuyển dụng",
+        description: "Khi bật, các phiên luyện tập đạt tiêu chí chất lượng của bạn có thể được đề xuất cho nhà tuyển dụng đang tìm ứng viên. Tắt tùy chọn này sẽ ngừng tạo đề xuất mới — không xóa các đề xuất đã tạo trước đó.",
+        updateSuccess: "Đã cập nhật tùy chọn",
+        updateFailed: "Không thể cập nhật tùy chọn. Vui lòng thử lại.",
+        loadFailed: "Không thể tải cài đặt quyền riêng tư.",
+      },
     },
     billing: {
       title: "Thanh toán",

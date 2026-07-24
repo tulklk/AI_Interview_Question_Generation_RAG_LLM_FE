@@ -2343,6 +2343,13 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
       deleteHistory: "Delete practice history",
       deleteAccount: "Delete account",
       comingSoon: "Coming soon",
+      recruiterRecommendation: {
+        title: "Recruiter recommendations",
+        description: "When enabled, your practice sessions that meet quality criteria may be recommended to recruiters looking for candidates. Turning this off stops new recommendations — it doesn't remove ones already made.",
+        updateSuccess: "Preference updated",
+        updateFailed: "Couldn't update your preference. Please try again.",
+        loadFailed: "Couldn't load your privacy settings.",
+      },
     },
     billing: {
       title: "Billing",

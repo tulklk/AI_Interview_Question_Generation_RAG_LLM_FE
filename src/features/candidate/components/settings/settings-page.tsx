@@ -10,6 +10,8 @@ import { Toggle } from "@/shared/components/ui/toggle";
 import { SecuritySection } from "@/features/settings/components/security-section";
 import { CandidateProfile } from "@/features/candidate/components/profile/candidate-profile";
 import { CandidateBillingPage } from "@/features/candidate/components/billing/candidate-billing-page";
+import { getPrivacySettings, updatePrivacySettings } from "@/features/candidate/services/privacy-settings.service";
+import { useToast } from "@/shared/providers/toast-context";
 import { portalHeading, portalSubtext } from "@/shared/utils/portal-ui";
 
 type Tab = "profile" | "general" | "security" | "privacy" | "billing";
@@ -40,6 +42,7 @@ function ChoiceButton({ active, onClick, children }: { active: boolean; onClick:
 export function SettingsPage() {
   const { t, lang, setLang } = useLanguage();
   const p = t.jobseekerSettingsPage;
+  const { addToast } = useToast();
   const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState<Tab>(() => {
     const tab = searchParams.get("tab");
@@ -48,6 +51,30 @@ export function SettingsPage() {
       : "profile";
   });
   const [notifications, setNotifications] = useState({ email: true, practice: true, tips: false });
+
+  const [allowRecommendation, setAllowRecommendation] = useState<boolean | null>(null);
+  const [savingRecommendation, setSavingRecommendation] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    getPrivacySettings()
+      .then((allow) => { if (!cancelled) setAllowRecommendation(allow); })
+      .catch(() => { if (!cancelled) addToast("error", p.privacyActions.recruiterRecommendation.loadFailed); });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function handleToggleRecommendation(next: boolean) {
+    if (savingRecommendation) return;
+    setSavingRecommendation(true);
+    updatePrivacySettings(next)
+      .then(() => {
+        setAllowRecommendation(next);
+        addToast("success", p.privacyActions.recruiterRecommendation.updateSuccess);
+      })
+      .catch(() => addToast("error", p.privacyActions.recruiterRecommendation.updateFailed))
+      .finally(() => setSavingRecommendation(false));
+  }
 
   useEffect(() => {
     const tab = searchParams.get("tab");
@@ -241,6 +268,20 @@ export function SettingsPage() {
           {/* Privacy */}
           {activeTab === "privacy" && (
             <div className="space-y-3">
+              <div className="rounded-xl border border-gray-200 dark:border-gray-800 px-4 py-4 flex items-start justify-between gap-4">
+                <div className="min-w-0">
+                  <p className={cn("text-sm font-semibold", portalHeading)}>{p.privacyActions.recruiterRecommendation.title}</p>
+                  <p className="text-xs mt-1 leading-relaxed text-gray-500 dark:text-gray-400">
+                    {p.privacyActions.recruiterRecommendation.description}
+                  </p>
+                </div>
+                <Toggle
+                  checked={allowRecommendation ?? true}
+                  onChange={handleToggleRecommendation}
+                  disabled={allowRecommendation === null || savingRecommendation}
+                />
+              </div>
+
               <div className="rounded-xl border border-gray-200 dark:border-gray-800 divide-y divide-gray-200 dark:divide-gray-800 overflow-hidden">
                 {[p.privacyActions.downloadData, p.privacyActions.deleteHistory].map((action) => (
                   <button
