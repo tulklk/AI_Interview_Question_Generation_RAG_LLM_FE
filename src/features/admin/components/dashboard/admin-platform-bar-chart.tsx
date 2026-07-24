@@ -67,10 +67,11 @@ export function AdminPlatformBarChart({ data, loading }: Props) {
               tickFormatter={(v: number) => v.toLocaleString()}
             />
             <Tooltip
-              formatter={(value: number, _name: string, props: { payload?: { unit?: string } }) => [
-                `${value.toLocaleString()} ${props.payload?.unit ?? ""}`,
-                "Số lượng",
-              ]}
+              formatter={(value, _name, item) => {
+                const num = typeof value === "number" ? value : Number(value ?? 0);
+                const unit = (item?.payload as { unit?: string } | undefined)?.unit ?? "";
+                return [`${num.toLocaleString()} ${unit}`, "Số lượng"];
+              }}
               contentStyle={{
                 fontSize: 12,
                 borderRadius: 10,

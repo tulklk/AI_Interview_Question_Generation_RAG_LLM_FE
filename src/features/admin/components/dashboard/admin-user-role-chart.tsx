@@ -84,10 +84,13 @@ export function AdminUserRoleChart({ data, loading }: Props) {
                 ))}
               </Pie>
               <Tooltip
-                formatter={(value: number, name: string) => [
-                  `${value.toLocaleString()} câu (${total > 0 ? Math.round((value / total) * 100) : 0}%)`,
-                  name,
-                ]}
+                formatter={(value, name) => {
+                  const num = typeof value === "number" ? value : Number(value ?? 0);
+                  return [
+                    `${num.toLocaleString()} câu (${total > 0 ? Math.round((num / total) * 100) : 0}%)`,
+                    name,
+                  ];
+                }}
                 contentStyle={{
                   fontSize: 12,
                   borderRadius: 10,
