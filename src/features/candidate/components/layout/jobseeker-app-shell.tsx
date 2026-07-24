@@ -22,6 +22,7 @@ import {
   CandidateSubscriptionProvider,
   useCandidateSubscription,
 } from "@/features/candidate/context/candidate-subscription-context";
+import { UpgradeModal } from "@/features/candidate/components/billing/upgrade-modal";
 
 const UNREAD_WINDOW_MS = 24 * 60 * 60 * 1000;
 
@@ -42,9 +43,10 @@ function JobseekerAppShellInner({
   const pathname = usePathname();
   const { addToast } = useToast();
   const { user, loading } = useUser();
-  const { planType } = useCandidateSubscription();
+  const { planType, refreshSubscription } = useCandidateSubscription();
   const welcomedRef = useRef(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [showUpgrade, setShowUpgrade] = useState(false);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
 
   // Body scroll lock when mobile sidebar is open
@@ -115,8 +117,13 @@ function JobseekerAppShellInner({
   }));
 
   return (
+    <>
     <div className="flex h-screen overflow-hidden">
-      <JobseekerSidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <JobseekerSidebar
+        open={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        onOpenUpgrade={() => setShowUpgrade(true)}
+      />
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
         <TopHeader
           breadcrumb={translatedBreadcrumb}
@@ -143,6 +150,14 @@ function JobseekerAppShellInner({
       </div>
       <ScoringProgressBadge />
     </div>
+
+    {showUpgrade && (
+      <UpgradeModal
+        onClose={() => setShowUpgrade(false)}
+        onDone={() => { void refreshSubscription(); }}
+      />
+    )}
+    </>
   );
 }
 

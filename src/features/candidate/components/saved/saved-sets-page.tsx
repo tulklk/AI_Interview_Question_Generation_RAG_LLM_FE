@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { motion } from "framer-motion";
 import Link from "next/link";
 import {
   Bookmark, AlertCircle, RefreshCw,
@@ -54,9 +55,11 @@ function StarRating({ rating }: { rating: number }) {
 function SavedRow({
   set,
   onRemove,
+  index = 0,
 }: {
   set: QuestionSet;
   onRemove: (id: string) => void;
+  index?: number;
 }) {
   const { t } = useLanguage();
   const p = t.jobseekerMarketplacePage;
@@ -81,7 +84,12 @@ function SavedRow({
   }
 
   return (
-    <div className="flex items-center gap-4 px-5 py-4 border-b border-gray-100 dark:border-gray-800 last:border-0 hover:bg-gray-50/50 dark:hover:bg-gray-800/30 transition-colors group">
+    <motion.div
+      initial={{ opacity: 0, x: -10 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ duration: 0.3, delay: 0.18 + index * 0.07, ease: "easeOut" }}
+      className="flex items-center gap-4 px-5 py-4 border-b border-gray-100 dark:border-gray-800 last:border-0 hover:bg-gray-50/50 dark:hover:bg-gray-800/30 transition-colors group"
+    >
       {/* Logo */}
       <CompanyLogo set={set} />
 
@@ -156,7 +164,7 @@ function SavedRow({
           {removing ? <Loader2 size={13} className="animate-spin" /> : <X size={13} />}
         </button>
       </div>
-    </div>
+    </motion.div>
   );
 }
 
@@ -187,7 +195,12 @@ export function SavedSetsPage() {
   return (
     <div>
       {/* Page header */}
-      <div className="flex items-center justify-between mb-6">
+      <motion.div
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, ease: "easeOut" }}
+        className="flex items-center justify-between mb-6"
+      >
         <div>
           <h1 className={cn("text-[22px] font-extrabold", portalHeadingAlt)}>{p.heading}</h1>
           <p className={cn("text-[13px] mt-1", portalSubtextAlt)}>{p.subtext}</p>
@@ -197,7 +210,7 @@ export function SavedSetsPage() {
             {sets.length} {sets.length === 1 ? "set" : "sets"}
           </span>
         )}
-      </div>
+      </motion.div>
 
       {loading ? (
         <div className="hr-glass-card overflow-hidden">
@@ -233,7 +246,12 @@ export function SavedSetsPage() {
       ) : sets.length === 0 ? (
         <EmptyState icon={Bookmark} title={p.emptyState} />
       ) : (
-        <div className="hr-glass-card overflow-hidden">
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.08, ease: "easeOut" }}
+          className="hr-glass-card overflow-hidden"
+        >
           {/* Table header */}
           <div className="flex items-center gap-4 px-5 py-2.5 bg-gray-50 dark:bg-gray-800/60 border-b border-gray-100 dark:border-gray-800">
             <div className="w-9 shrink-0" />
@@ -245,10 +263,10 @@ export function SavedSetsPage() {
             <div className="shrink-0 w-28" />
           </div>
 
-          {sets.map((set) => (
-            <SavedRow key={set.id} set={set} onRemove={handleRemove} />
+          {sets.map((set, i) => (
+            <SavedRow key={set.id} set={set} onRemove={handleRemove} index={i} />
           ))}
-        </div>
+        </motion.div>
       )}
     </div>
   );

@@ -1,6 +1,5 @@
 "use client";
 
-import { motion, type Variants } from "framer-motion";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LogOut } from "lucide-react";
@@ -11,16 +10,6 @@ import { useLanguage } from "@/shared/providers/language-context";
 import { useLogout } from "@/features/auth/hooks/use-logout";
 import { BrandLogo } from "@/shared/components/common/brand-logo";
 
-const listVariants: Variants = {
-  hidden: {},
-  show: { transition: { staggerChildren: 0.055, delayChildren: 0.12 } },
-};
-
-const itemVariants: Variants = {
-  hidden: { opacity: 0, x: -14 },
-  show: { opacity: 1, x: 0, transition: { duration: 0.22 } },
-};
-
 export function AdminSidebar() {
   const pathname = usePathname();
   const { t } = useLanguage();
@@ -29,40 +18,25 @@ export function AdminSidebar() {
 
   return (
     <aside className="hr-sidebar flex flex-col w-62.5 shrink-0 h-screen overflow-y-auto">
-      <motion.div
-        initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3, ease: "easeOut" }}
-        className="px-5 pt-6 pb-2"
-      >
+      <div className="px-5 pt-6 pb-2">
         <BrandLogo
           logoClassName="w-9 h-9"
           subtitleClassName="text-gray-400 dark:text-gray-500 text-[11px]"
         />
-      </motion.div>
+      </div>
 
       <nav className="flex-1 px-4 mt-6">
-        <motion.p
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.08, duration: 0.25 }}
-          className="text-gray-400 dark:text-gray-500 text-[10px] font-semibold uppercase tracking-widest px-2 mb-2"
-        >
+        <p className="text-gray-400 dark:text-gray-500 text-[10px] font-semibold uppercase tracking-widest px-2 mb-2">
           {s.sectionLabel}
-        </motion.p>
+        </p>
 
-        <motion.ul
-          className="space-y-0.5"
-          variants={listVariants}
-          initial="hidden"
-          animate="show"
-        >
+        <ul className="space-y-0.5">
           {adminNavItems.map((item) => {
             const isActive = isAdminNavActive(item.href, pathname);
             const label = s.nav[item.href as keyof typeof s.nav] ?? item.label;
 
             return (
-              <motion.li key={item.href} variants={itemVariants}>
+              <li key={item.href}>
                 <Link
                   href={item.href}
                   className={cn(
@@ -72,7 +46,6 @@ export function AdminSidebar() {
                       : "text-[#6b7280] dark:text-gray-400 hover:bg-[rgba(124,58,237,0.06)] dark:hover:bg-[rgba(124,58,237,0.08)] hover:text-charcoal dark:hover:text-gray-100"
                   )}
                 >
-                  {/* 3D icon box — matches HR/Jobseeker sidebar style */}
                   <div
                     className={cn(
                       "w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-all duration-200",
@@ -107,19 +80,14 @@ export function AdminSidebar() {
                     </span>
                   )}
                 </Link>
-              </motion.li>
+              </li>
             );
           })}
-        </motion.ul>
+        </ul>
       </nav>
 
       {/* User Footer */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.45, duration: 0.25 }}
-        className="px-4 py-4 border-t border-black/5 dark:border-white/8"
-      >
+      <div className="px-4 py-4 border-t border-black/5 dark:border-white/8">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-full bg-linear-to-br from-[#7C3AED] to-[#06B6D4] flex items-center justify-center shrink-0 hr-avatar-ring">
             <span className="text-white text-xs font-bold">AD</span>
@@ -149,7 +117,7 @@ export function AdminSidebar() {
             )}
           </button>
         </div>
-      </motion.div>
+      </div>
     </aside>
   );
 }
