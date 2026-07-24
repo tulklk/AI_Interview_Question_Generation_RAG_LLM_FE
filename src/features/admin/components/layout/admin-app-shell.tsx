@@ -13,6 +13,7 @@ import {
   hasLoginWelcomePending,
 } from "@/features/auth/utils/login-welcome";
 import { getInitials } from "@/shared/utils/user-display";
+import { AdminScrollContext } from "@/features/admin/context/admin-scroll-context";
 
 interface AdminAppShellProps {
   children: ReactNode;
@@ -26,6 +27,7 @@ export function AdminAppShell({ children, breadcrumb, pageTitle }: AdminAppShell
   const { addToast } = useToast();
   const { user, loading } = useUser();
   const welcomedRef = useRef(false);
+  const mainRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     if (loading || welcomedRef.current || !hasLoginWelcomePending("admin")) return;
@@ -59,6 +61,7 @@ export function AdminAppShell({ children, breadcrumb, pageTitle }: AdminAppShell
   }));
 
   return (
+    <AdminScrollContext.Provider value={mainRef}>
     <div className="flex h-screen overflow-hidden">
       <AdminSidebar />
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
@@ -72,13 +75,16 @@ export function AdminAppShell({ children, breadcrumb, pageTitle }: AdminAppShell
             plan: "Admin",
           }}
         />
-        <main className="flex-1 overflow-y-auto hr-main-bg relative">
+        <main ref={mainRef} className="flex-1 overflow-y-auto overflow-x-hidden hr-main-bg scrollbar-hide">
           <div className="hr-aurora-orb hr-aurora-orb--purple w-130 h-130 -top-20 -left-15" aria-hidden="true" />
           <div className="hr-aurora-orb hr-aurora-orb--cyan w-100 h-100 bottom-[10%] -right-10" aria-hidden="true" />
           <div className="hr-aurora-orb hr-aurora-orb--violet w-80 h-80 top-[40%] left-[30%]" aria-hidden="true" />
-          <div className="relative z-10 max-w-360 mx-auto px-6 md:px-10 py-8">{children}</div>
+          <div key={pathname} className="relative z-10 max-w-360 mx-auto px-6 md:px-10 py-8 animate-fade-up">
+            {children}
+          </div>
         </main>
       </div>
     </div>
+    </AdminScrollContext.Provider>
   );
 }
