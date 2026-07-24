@@ -112,7 +112,6 @@ export interface ListRecommendationsParams {
   pageSize?: number;
   status?: string;
   questionSetId?: string;
-  minScore?: number;
 }
 
 export async function listRecommendations(
@@ -124,7 +123,6 @@ export async function listRecommendations(
       PageSize: params.pageSize ?? 12,
       Status: params.status || undefined,
       QuestionSetId: params.questionSetId || undefined,
-      MinScore: params.minScore ?? undefined,
     },
   });
   const items = extractList(res.data)

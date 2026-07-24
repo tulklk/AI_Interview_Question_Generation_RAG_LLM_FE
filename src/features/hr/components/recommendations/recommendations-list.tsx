@@ -364,23 +364,25 @@ export function RecommendationsList() {
     setLoading(true);
     setError(false);
     try {
-      const res = await listRecommendations({ page, pageSize: PAGE_SIZE, status: statusFilter || undefined, minScore });
+      const res = await listRecommendations({ page, pageSize: PAGE_SIZE, status: statusFilter || undefined });
       setItems(res.items);
       setTotalCount(res.totalCount);
     } catch { setError(true); }
     finally { setLoading(false); }
-  }, [page, statusFilter, minScore]);
+  }, [page, statusFilter]);
 
   useEffect(() => { void fetchData(); }, [fetchData]);
-  useEffect(() => { setPage(1); }, [statusFilter, minScore]);
+  useEffect(() => { setPage(1); }, [statusFilter]);
 
   function handleStatusChange(id: string, status: RecommendationStatus) {
     setItems((prev) => prev.map((r) => (r.id === id ? { ...r, status } : r)));
   }
 
-  const displayed = searchSet.trim()
-    ? items.filter((r) => r.questionSetTitle.toLowerCase().includes(searchSet.toLowerCase()))
-    : items;
+  // BE doesn't support a MinScore query param — filter client-side over the
+  // current page's items instead (same approach as the question-set search below).
+  const displayed = items
+    .filter((r) => (minScore === undefined ? true : r.score >= minScore))
+    .filter((r) => (searchSet.trim() ? r.questionSetTitle.toLowerCase().includes(searchSet.toLowerCase()) : true));
 
   return (
     <div>
@@ -436,7 +438,7 @@ export function RecommendationsList() {
             type="text"
             value={searchSet}
             onChange={(e) => setSearchSet(e.target.value)}
-            placeholder={p.filters.allStatuses}
+            placeholder={p.searchPlaceholder}
             className="w-full h-8 pl-7 pr-3 text-[12px] bg-gray-100 dark:bg-gray-800 border-0 rounded-lg text-gray-700 dark:text-gray-300 placeholder:text-gray-400 outline-none focus:ring-2 focus:ring-primary/20 transition-colors"
           />
         </div>
@@ -485,19 +487,19 @@ export function RecommendationsList() {
               <thead>
                 <tr className="border-b border-gray-100 dark:border-gray-800 bg-gray-50/80 dark:bg-gray-800/40">
                   <th className={cn("text-left px-5 py-3 text-[11px] font-semibold uppercase tracking-wider", portalSubtextAlt)}>
-                    {p.card.targetRole.replace(":", "") || "Ứng viên"}
+                    {p.card.candidate}
                   </th>
                   <th className={cn("text-left px-4 py-3 text-[11px] font-semibold uppercase tracking-wider hidden md:table-cell", portalSubtextAlt)}>
-                    Bộ câu hỏi
+                    {p.card.questionSet}
                   </th>
                   <th className={cn("text-left px-4 py-3 text-[11px] font-semibold uppercase tracking-wider hidden lg:table-cell", portalSubtextAlt)}>
-                    Kỹ năng
+                    {p.detail.skills}
                   </th>
                   <th className={cn("text-center px-4 py-3 text-[11px] font-semibold uppercase tracking-wider", portalSubtextAlt)}>
-                    Điểm
+                    {p.card.score}
                   </th>
                   <th className={cn("text-left px-4 py-3 text-[11px] font-semibold uppercase tracking-wider hidden sm:table-cell", portalSubtextAlt)}>
-                    Trạng thái
+                    {p.card.status}
                   </th>
                   <th className="px-4 py-3 w-36" />
                 </tr>
@@ -523,7 +525,7 @@ export function RecommendationsList() {
       {!loading && !error && totalPages > 1 && (
         <div className="flex items-center justify-between mt-5">
           <p className={cn("text-[12px]", portalSubtextAlt)}>
-            {p.page} {page} / {totalPages} · {totalCount} ứng viên
+            {p.page} {page} / {totalPages} · {totalCount} {p.card.candidate}
           </p>
           <div className="flex items-center gap-2">
             <button type="button" onClick={() => setPage((n) => Math.max(1, n - 1))} disabled={page === 1}

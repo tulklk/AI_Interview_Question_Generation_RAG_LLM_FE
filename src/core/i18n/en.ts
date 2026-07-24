@@ -2255,6 +2255,9 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
       score90plus: "90+",
     },
     card: {
+      candidate: "Candidate",
+      score: "Score",
+      status: "Status",
       targetRole: "Target Role",
       questionSet: "Question Set",
       completedAgo: "Completed",
@@ -2278,6 +2281,7 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
     },
     detail: {
       backBtn: "Back to Recommendations",
+      info: "Info",
       overallScore: "Overall Score",
       recommendationReason: "Why recommended",
       reason: "Recommendation Reason",
@@ -2290,6 +2294,7 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
       scoreFair: "Fair match",
     },
     backToList: "Back to Recommendations",
+    searchPlaceholder: "Search by question set…",
     loading: "Loading candidate…",
     empty: "No candidates found matching your filters.",
     loadFailed: "Failed to load recommendations. Please try again.",

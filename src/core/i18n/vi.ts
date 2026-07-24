@@ -2254,6 +2254,9 @@ Yêu cầu:
       score90plus: "90+",
     },
     card: {
+      candidate: "Ứng viên",
+      score: "Điểm",
+      status: "Trạng thái",
       targetRole: "Vị trí mục tiêu",
       questionSet: "Bộ câu hỏi",
       completedAgo: "Hoàn thành",
@@ -2277,6 +2280,7 @@ Yêu cầu:
     },
     detail: {
       backBtn: "Quay lại danh sách",
+      info: "Thông tin",
       overallScore: "Điểm tổng",
       recommendationReason: "Lý do đề xuất",
       reason: "Lý do đề xuất",
@@ -2289,6 +2293,7 @@ Yêu cầu:
       scoreFair: "Tạm được",
     },
     backToList: "Quay lại danh sách",
+    searchPlaceholder: "Tìm theo bộ câu hỏi…",
     loading: "Đang tải ứng viên…",
     empty: "Không tìm thấy ứng viên phù hợp.",
     loadFailed: "Không thể tải danh sách. Vui lòng thử lại.",

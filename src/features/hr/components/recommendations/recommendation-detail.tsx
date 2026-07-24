@@ -52,7 +52,7 @@ function avatarColor(name: string): string {
 // Score Ring
 // ---------------------------------------------------------------------------
 
-function ScoreRing({ score }: { score: number }) {
+function ScoreRing({ score, labels }: { score: number; labels: ReturnType<typeof useLanguage>["t"]["hrRecommendationsPage"]["detail"] }) {
   const radius = 36;
   const circ = 2 * Math.PI * radius;
   const dash = (Math.min(100, Math.max(0, score)) / 100) * circ;
@@ -84,10 +84,10 @@ function ScoreRing({ score }: { score: number }) {
       </div>
       <div>
         <p className={cn("text-[11px] font-semibold uppercase tracking-wider mb-0.5", portalSubtextAlt)}>
-          Điểm tổng
+          {labels.overallScore}
         </p>
         <p className={cn("text-[15px] font-bold", textColor)}>
-          {score >= 85 ? "Rất phù hợp" : score >= 70 ? "Phù hợp" : "Cần xem xét"}
+          {score >= 85 ? labels.scoreExcellent : score >= 70 ? labels.scoreGood : labels.scoreFair}
         </p>
         <div className="mt-1.5 w-32 h-1.5 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
           <motion.div
@@ -334,7 +334,7 @@ export function RecommendationDetail({ id }: { id: string }) {
             </div>
 
             <div className={cn("border-t pt-4", portalDivider)}>
-              <ScoreRing score={rec.score} />
+              <ScoreRing score={rec.score} labels={p.detail} />
             </div>
 
             {/* Action buttons */}
@@ -382,11 +382,11 @@ export function RecommendationDetail({ id }: { id: string }) {
           {/* Info card */}
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}
             className="hr-glass-card p-5 flex flex-col gap-4">
-            <h2 className={cn("text-[13px] font-bold uppercase tracking-wider", portalSubtextAlt)}>Thông tin</h2>
+            <h2 className={cn("text-[13px] font-bold uppercase tracking-wider", portalSubtextAlt)}>{p.detail.info}</h2>
 
             <div className="flex flex-col gap-4 divide-y divide-gray-100 dark:divide-gray-800">
               {rec.targetRole && (
-                <DetailRow icon={Briefcase} label="Vai trò ứng tuyển">
+                <DetailRow icon={Briefcase} label={p.card.targetRole}>
                   {rec.targetRole}
                 </DetailRow>
               )}
@@ -401,7 +401,7 @@ export function RecommendationDetail({ id }: { id: string }) {
 
               {rec.completedAt && (
                 <div className="pt-3">
-                  <DetailRow icon={Clock} label="Hoàn thành">
+                  <DetailRow icon={Clock} label={p.detail.completedAt}>
                     {formatRelativeTime(rec.completedAt, lang)}
                   </DetailRow>
                 </div>
