@@ -144,6 +144,9 @@
     introSubtext:
       "Choose the plan that matches how you use HireGen AI — candidates start free or upgrade to Premium; teams unlock the full hiring toolkit.",
     mostPopular: "Most Popular",
+    currentPlanBadge: "Your Plan",
+    managePlan: "Manage subscription",
+    upgradePlan: "Upgrade",
     jobSeeker: {
       title: "For job seekers & learners",
       subtext:

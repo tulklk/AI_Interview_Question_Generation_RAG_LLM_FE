@@ -1,12 +1,16 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { CheckCircle2, XCircle } from "lucide-react";
+import { CheckCircle2, XCircle, BadgeCheck } from "lucide-react";
 import { useLanguage } from "@/shared/providers/language-context";
 import { pricingPlansJobSeeker, pricingPlansRecruiter } from "@/features/guest/data/guest";
 import { cn } from "@/lib/cn";
 import { ScrollReveal } from "@/shared/components/common/scroll-reveal";
 import { CosmicField } from "@/features/guest/components/cosmic-field";
+import { useUser } from "@/features/auth";
+import { getUserRole } from "@/core/auth/permissions";
+import { getCandidateSubscription } from "@/features/candidate/services/candidate-billing.service";
 import type { Translations } from "@/core/i18n/en";
 import type { PricingPlan } from "@/features/guest/types/guest";
 
@@ -14,18 +18,37 @@ type PlanI18n =
   | Translations["pricing"]["jobSeeker"]["plans"][number]
   | Translations["pricing"]["recruiter"]["plans"][number];
 
+/** Maps backend planType → pricing card id */
+function candidatePlanIdFromType(planType: string): string {
+  return planType === "PREMIUM" ? "premium" : "free";
+}
+
 function PricingPlanCard({
   plan,
   planT,
   animation,
   delay,
   mostPopularLabel,
+  isCurrentPlan,
+  isLoggedIn,
+  manageHref,
+  upgradeHref,
+  currentPlanLabel,
+  managePlanLabel,
+  upgradePlanLabel,
 }: {
   plan: PricingPlan;
   planT: PlanI18n;
   animation: "fade-up" | "scale-in";
   delay: number;
   mostPopularLabel: string;
+  isCurrentPlan: boolean;
+  isLoggedIn: boolean;
+  manageHref: string;
+  upgradeHref: string;
+  currentPlanLabel: string;
+  managePlanLabel: string;
+  upgradePlanLabel: string;
 }) {
   const footnote =
     "priceFootnote" in planT && typeof planT.priceFootnote === "string"
@@ -43,6 +66,35 @@ function PricingPlanCard({
   const isEnterpriseCta = plan.id === "enterprise" || plan.id === "hr-enterprise";
   const isMutedLeadPlan = plan.id === "free" || plan.id === "hr-basic";
 
+  // Determine CTA
+  let ctaHref: string;
+  let ctaLabel: string;
+  let ctaClass: string;
+
+  if (isCurrentPlan) {
+    ctaHref = manageHref;
+    ctaLabel = managePlanLabel;
+    ctaClass = plan.highlighted
+      ? "bg-white/20 text-white border border-white/40 hover:bg-white/30 cursor-default"
+      : "bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-800";
+  } else if (isLoggedIn) {
+    ctaHref = upgradeHref;
+    ctaLabel = isEnterpriseCta ? planT.cta : upgradePlanLabel;
+    ctaClass = plan.highlighted
+      ? "bg-white text-primary hover:bg-white/90 shadow-sm"
+      : isEnterpriseCta
+        ? "bg-gray-900 text-white hover:bg-gray-800 dark:bg-gray-100 dark:text-gray-900 dark:hover:bg-white"
+        : "bg-primary text-white hover:bg-primary/85";
+  } else {
+    ctaHref = "/login";
+    ctaLabel = planT.cta;
+    ctaClass = plan.highlighted
+      ? "bg-white text-primary hover:bg-white/90 shadow-sm"
+      : isEnterpriseCta
+        ? "bg-gray-900 text-white hover:bg-gray-800"
+        : "bg-primary text-white hover:bg-primary/85";
+  }
+
   return (
     <ScrollReveal
       animation={animation}
@@ -50,21 +102,30 @@ function PricingPlanCard({
       className={cn(
         "relative rounded-xl border flex flex-col gap-5 sm:gap-6 h-full w-full p-6 sm:p-7 min-h-0",
         plan.highlighted
-          ? "bg-gradient-to-b from-[#6c47ff] to-[#7c5cff] border-[#6c47ff] text-white z-10 shadow-xl shadow-[#6c47ff]/30 ring-1 ring-white/15 md:scale-[1.02] md:shadow-2xl md:shadow-[#6c47ff]/25"
+          ? "bg-linear-to-b from-primary to-[#7c5cff] border-primary text-white z-10 shadow-xl shadow-primary/30 ring-1 ring-white/15 md:scale-[1.02] md:shadow-2xl md:shadow-primary/25"
           : isMutedLeadPlan
             ? "bg-slate-50/90 dark:bg-gray-900/80 border-slate-200/90 dark:border-gray-700 shadow-sm"
             : "bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 shadow-sm"
       )}
     >
-      {plan.highlighted && (
+      {/* "Most popular" OR "Your plan" badge */}
+      {(plan.highlighted || isCurrentPlan) && (
         <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 z-20">
-          <span className="bg-white text-[#6c47ff] text-xs font-bold px-3.5 py-1.5 rounded-full shadow-md border border-[#6c47ff]/15 whitespace-nowrap">
-            {badgeLabel}
+          <span
+            className={cn(
+              "text-xs font-bold px-3.5 py-1.5 rounded-full shadow-md border whitespace-nowrap flex items-center gap-1.5",
+              isCurrentPlan
+                ? "bg-emerald-500 text-white border-emerald-400/30"
+                : "bg-white text-primary border-primary/15"
+            )}
+          >
+            {isCurrentPlan && <BadgeCheck size={12} />}
+            {isCurrentPlan ? currentPlanLabel : badgeLabel}
           </span>
         </div>
       )}
 
-      <div className={cn(plan.highlighted && "pt-1")}>
+      <div className={cn((plan.highlighted || isCurrentPlan) && "pt-1")}>
         <p
           className={cn(
             "text-sm font-semibold mb-2.5 sm:mb-3 tracking-tight",
@@ -152,17 +213,14 @@ function PricingPlanCard({
       </ul>
 
       <Link
-        href="/login"
+        href={ctaHref}
         className={cn(
-          "mt-auto w-full text-center text-sm font-semibold py-3 sm:py-3.5 rounded-lg transition-colors min-h-[44px] inline-flex items-center justify-center",
-          plan.highlighted
-            ? "bg-white text-[#6c47ff] hover:bg-white/90 shadow-sm"
-            : isEnterpriseCta
-              ? "bg-gray-900 text-white hover:bg-gray-800"
-              : "bg-[#6c47ff] text-white hover:bg-[#5535dd]"
+          "mt-auto w-full text-center text-sm font-semibold py-3 sm:py-3.5 rounded-lg transition-colors min-h-11 inline-flex items-center justify-center gap-1.5",
+          ctaClass
         )}
       >
-        {planT.cta}
+        {isCurrentPlan && <BadgeCheck size={14} />}
+        {ctaLabel}
       </Link>
     </ScrollReveal>
   );
@@ -171,6 +229,33 @@ function PricingPlanCard({
 export function PricingSection() {
   const { t } = useLanguage();
   const p = t.pricing;
+  const { user } = useUser();
+
+  const [candidatePlanId, setCandidatePlanId] = useState<string | null>(null);
+
+  const isLoggedIn = Boolean(user);
+  const role = getUserRole();
+  const isJobSeeker =
+    !role ||
+    role.toUpperCase().includes("JOB") ||
+    role.toUpperCase().includes("CANDIDATE") ||
+    role.toUpperCase().includes("SEEKER");
+  const isHr = role?.toUpperCase().includes("HR") ?? false;
+
+  useEffect(() => {
+    if (!user) {
+      setCandidatePlanId(null);
+      return;
+    }
+    if (!isJobSeeker) return;
+
+    getCandidateSubscription()
+      .then((sub) => setCandidatePlanId(candidatePlanIdFromType(sub.planType)))
+      .catch(() => setCandidatePlanId(null));
+  }, [user, isJobSeeker]);
+
+  const jobSeekerManageHref = "/jobseeker/settings";
+  const hrManageHref = "/hr/settings";
 
   return (
     <section id="pricing" className="relative bg-white/92 dark:bg-gray-950/85 py-16 sm:py-20 px-4 sm:px-6">
@@ -179,7 +264,7 @@ export function PricingSection() {
       </div>
       <div className="relative z-10 max-w-6xl mx-auto">
         <ScrollReveal animation="fade-up" className="text-center mb-10 sm:mb-12">
-          <p className="text-sm font-semibold text-[#6c47ff] uppercase tracking-widest mb-3">
+          <p className="text-sm font-semibold text-primary uppercase tracking-widest mb-3">
             {p.sectionLabel}
           </p>
           <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-50 tracking-tight">{p.headline}</h2>
@@ -210,6 +295,8 @@ export function PricingSection() {
                 ? "order-1 md:order-2"
                 : "order-2 md:order-1";
 
+              const isCurrentPlan = isJobSeeker && candidatePlanId === plan.id;
+
               return (
                 <div key={plan.id} className={cn("min-h-0 flex w-full", orderClass)}>
                   <PricingPlanCard
@@ -218,6 +305,13 @@ export function PricingSection() {
                     animation={animation}
                     delay={i * 80}
                     mostPopularLabel={p.mostPopular}
+                    isCurrentPlan={isCurrentPlan}
+                    isLoggedIn={isLoggedIn}
+                    manageHref={jobSeekerManageHref}
+                    upgradeHref={jobSeekerManageHref}
+                    currentPlanLabel={p.currentPlanBadge}
+                    managePlanLabel={p.managePlan}
+                    upgradePlanLabel={p.upgradePlan}
                   />
                 </div>
               );
@@ -252,7 +346,7 @@ export function PricingSection() {
                 {p.recruiter.highlights.map((line, hi) => (
                   <li
                     key={hi}
-                    className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 bg-white/90 dark:bg-gray-900 border border-gray-200/90 dark:border-gray-700 rounded-full px-3.5 py-1.5 shadow-sm max-w-full sm:max-w-[340px] leading-snug"
+                    className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 bg-white/90 dark:bg-gray-900 border border-gray-200/90 dark:border-gray-700 rounded-full px-3.5 py-1.5 shadow-sm max-w-full sm:max-w-85 leading-snug"
                   >
                     {line}
                   </li>
@@ -266,6 +360,10 @@ export function PricingSection() {
               const planT = p.recruiter.plans[i];
               if (!planT) return null;
               const animation = plan.highlighted ? "scale-in" : "fade-up";
+
+              // HR users: show "current plan" on their tier (no billing service yet → mark first non-enterprise as current)
+              const isCurrentPlan = isHr && plan.id === "hr-basic";
+
               return (
                 <div key={plan.id} className="min-h-0 flex w-full">
                   <PricingPlanCard
@@ -274,6 +372,13 @@ export function PricingSection() {
                     animation={animation}
                     delay={i * 70}
                     mostPopularLabel={p.mostPopular}
+                    isCurrentPlan={isCurrentPlan}
+                    isLoggedIn={isLoggedIn}
+                    manageHref={hrManageHref}
+                    upgradeHref={hrManageHref}
+                    currentPlanLabel={p.currentPlanBadge}
+                    managePlanLabel={p.managePlan}
+                    upgradePlanLabel={p.upgradePlan}
                   />
                 </div>
               );
@@ -290,7 +395,7 @@ export function PricingSection() {
                   {p.recruiter.upgradeWhy.points.map((pt, pi) => (
                     <li key={pi} className="flex gap-4">
                       <span
-                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#6c47ff]/10 text-sm font-bold text-[#6c47ff]"
+                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary"
                         aria-hidden
                       >
                         {pi + 1}

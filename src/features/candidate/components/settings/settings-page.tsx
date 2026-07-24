@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { User, Settings, ShieldCheck, Shield, Check, ChevronRight, Zap, CreditCard } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { useLanguage } from "@/shared/providers/language-context";
@@ -39,8 +40,21 @@ function ChoiceButton({ active, onClick, children }: { active: boolean; onClick:
 export function SettingsPage() {
   const { t, lang, setLang } = useLanguage();
   const p = t.jobseekerSettingsPage;
-  const [activeTab, setActiveTab] = useState<Tab>("profile");
+  const searchParams = useSearchParams();
+  const [activeTab, setActiveTab] = useState<Tab>(() => {
+    const tab = searchParams.get("tab");
+    return (tab === "billing" || tab === "profile" || tab === "general" || tab === "security" || tab === "privacy")
+      ? tab
+      : "profile";
+  });
   const [notifications, setNotifications] = useState({ email: true, practice: true, tips: false });
+
+  useEffect(() => {
+    const tab = searchParams.get("tab");
+    if (tab === "billing" || tab === "profile" || tab === "general" || tab === "security" || tab === "privacy") {
+      setActiveTab(tab);
+    }
+  }, [searchParams]);
 
   const iconBg = "bg-gray-100 dark:bg-gray-800 shadow-sm ring-1 ring-black/5 dark:ring-white/10";
   const iconColor = "text-gray-900 dark:text-gray-100";

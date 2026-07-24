@@ -146,6 +146,9 @@ export const vi: Translations = {
     introSubtext:
       "Chọn gói phù hợp cách bạn dùng HireGen AI — ứng viên bắt đầu miễn phí hoặc nâng cấp Premium; doanh nghiệp mở khóa bộ công cụ tuyển dụng đầy đủ.",
     mostPopular: "Phổ biến nhất",
+    currentPlanBadge: "Gói của bạn",
+    managePlan: "Quản lý gói",
+    upgradePlan: "Nâng cấp",
     jobSeeker: {
       title: "Dành cho ứng viên & người học",
       subtext:
