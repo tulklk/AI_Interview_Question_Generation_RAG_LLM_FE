@@ -2525,7 +2525,7 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
     breadcrumbReview: "Review",
     questionCount: "{{count}} questions",
     addQuestion: "+ Add Question",
-    saveDraft: "Save as Draft",
+    saveDraft: "Save",
     saving: "Saving...",
     savedSuccess: "Saved!",
     savedFailed: "Save failed",

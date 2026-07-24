@@ -8,6 +8,7 @@ import { getGenerationJobs } from "@/features/interview/services/interview.servi
 import type { GenerationSession } from "@/features/interview/types/generation-session";
 import { useLanguage } from "@/shared/providers/language-context";
 import { portalHeading, portalSubtext } from "@/shared/utils/portal-ui";
+import { useCountUp } from "@/shared/hooks/use-count-up";
 
 const icons = [FileText, Zap, BarChart3];
 const iconBg = "bg-gray-100 dark:bg-gray-800 shadow-sm ring-1 ring-black/5 dark:ring-white/10";
@@ -18,6 +19,7 @@ export function HistoryStats() {
   const labels = t.historyPage.statLabels;
 
   const [stats, setStats] = useState({ total: 0, questions: 0, thisMonth: 0 });
+  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     function computeStats(sessions: GenerationSession[]) {
@@ -31,6 +33,7 @@ export function HistoryStats() {
         questions: sessions.reduce((acc, s) => acc + (s.generatedQuestions?.length ?? 0), 0),
         thisMonth: thisMonth.length,
       });
+      setLoaded(true);
     }
 
     const localSessions = getLocalSessions();
@@ -65,11 +68,14 @@ export function HistoryStats() {
       })) as GenerationSession[]));
   }, []);
 
-  const values = [String(stats.total), String(stats.questions), String(stats.thisMonth)];
+  const d0 = useCountUp(stats.total, loaded);
+  const d1 = useCountUp(stats.questions, loaded);
+  const d2 = useCountUp(stats.thisMonth, loaded);
+  const displays = [d0, d1, d2];
 
   return (
     <div className="grid grid-cols-3 gap-3 sm:gap-4 mb-6">
-      {values.map((value, i) => {
+      {displays.map((display, i) => {
         const Icon = icons[i];
         return (
           <div
@@ -82,7 +88,7 @@ export function HistoryStats() {
               <Icon size={20} className={cn("hidden sm:block", iconColor)} />
             </div>
             <div className="min-w-0">
-              <p className={cn("text-lg sm:text-2xl font-bold leading-none", portalHeading)}>{value}</p>
+              <p className={cn("text-lg sm:text-2xl font-bold leading-none", portalHeading)}>{display}</p>
               <p className={cn("text-[11px] sm:text-sm mt-0.5 sm:mt-1 leading-tight", portalSubtext)}>{labels[i]}</p>
             </div>
           </div>

@@ -2524,7 +2524,7 @@ Yêu cầu:
     breadcrumbReview: "Xem lại",
     questionCount: "{{count}} câu hỏi",
     addQuestion: "+ Thêm câu hỏi",
-    saveDraft: "Lưu bản nháp",
+    saveDraft: "Lưu",
     saving: "Đang lưu...",
     savedSuccess: "Đã lưu!",
     savedFailed: "Lưu thất bại",
