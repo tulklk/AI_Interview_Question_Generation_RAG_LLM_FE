@@ -484,6 +484,7 @@
   notificationMessages: {
     hrQuestionsGenerated: "Questions generated for {{title}}",
     candidateFeedbackReady: "Your AI feedback for {{title}} is ready",
+    candidateInvitationReceived: "{{company}} invited you to interview for {{title}}",
   },
 
   appShell: {
@@ -1758,6 +1759,7 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
       "/jobseeker/dashboard": "Dashboard",
       "/jobseeker/practice": "Practice Now",
       "/jobseeker/saved": "Saved",
+      "/jobseeker/invitations": "Invitations",
       "/jobseeker/history": "History",
       "/jobseeker/profile": "Profile",
       "/jobseeker/settings": "Settings",
@@ -1988,6 +1990,33 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
     emptyState: "You haven't saved any question sets yet. Bookmark a set from the marketplace to see it here.",
     loadFailed: "Failed to load your saved sets.",
     retryBtn: "Retry",
+  },
+
+  jobseekerInvitationsPage: {
+    heading: "Invitations",
+    subtext: "Interview invitations sent to you by recruiters, based on your practice performance.",
+    emptyState: "No invitations yet. Keep practicing — recruiters may invite you to interview based on your results.",
+    loadFailed: "Failed to load your invitations.",
+    retryBtn: "Retry",
+    statusPending: "Pending",
+    statusAccepted: "Accepted",
+    statusRejected: "Rejected",
+    filterAll: "All",
+    noMatchingInvitations: "No invitations match this filter.",
+    acceptBtn: "Accept",
+    rejectBtn: "Decline",
+    acceptSuccess: "Invitation accepted",
+    acceptFailed: "Couldn't accept the invitation. Please try again.",
+    rejectSuccess: "Invitation declined",
+    rejectFailed: "Couldn't decline the invitation. Please try again.",
+    alreadyResponded: "You've already responded to this invitation.",
+    rejectConfirm: {
+      title: "Decline this invitation?",
+      message: "You won't be able to undo this. The recruiter will see that you declined.",
+      confirmLabel: "Decline",
+      cancelLabel: "Cancel",
+    },
+    noMessage: "No message from the recruiter.",
   },
 
   jobseekerHistoryPage: {

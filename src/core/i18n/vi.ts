@@ -486,6 +486,7 @@ export const vi: Translations = {
   notificationMessages: {
     hrQuestionsGenerated: "Đã tạo xong câu hỏi cho {{title}}",
     candidateFeedbackReady: "Kết quả AI cho {{title}} đã sẵn sàng",
+    candidateInvitationReceived: "{{company}} mời bạn phỏng vấn cho {{title}}",
   },
 
   appShell: {
@@ -1757,6 +1758,7 @@ Yêu cầu:
       "/jobseeker/dashboard": "Dashboard",
       "/jobseeker/practice": "Luyện Tập Ngay",
       "/jobseeker/saved": "Đã lưu",
+      "/jobseeker/invitations": "Lời mời",
       "/jobseeker/history": "Lịch sử",
       "/jobseeker/profile": "Hồ sơ",
       "/jobseeker/settings": "Cài đặt",
@@ -1987,6 +1989,33 @@ Yêu cầu:
     emptyState: "Bạn chưa lưu bộ câu hỏi nào. Hãy lưu một bộ từ trang tìm kiếm để xem ở đây.",
     loadFailed: "Không thể tải danh sách đã lưu.",
     retryBtn: "Thử lại",
+  },
+
+  jobseekerInvitationsPage: {
+    heading: "Lời mời phỏng vấn",
+    subtext: "Lời mời phỏng vấn từ nhà tuyển dụng, dựa trên kết quả luyện tập của bạn.",
+    emptyState: "Chưa có lời mời nào. Hãy tiếp tục luyện tập — nhà tuyển dụng có thể mời bạn phỏng vấn dựa trên kết quả của bạn.",
+    loadFailed: "Không thể tải danh sách lời mời.",
+    retryBtn: "Thử lại",
+    statusPending: "Đang chờ",
+    statusAccepted: "Đã chấp nhận",
+    statusRejected: "Đã từ chối",
+    filterAll: "Tất cả",
+    noMatchingInvitations: "Không có lời mời nào phù hợp với bộ lọc này.",
+    acceptBtn: "Chấp nhận",
+    rejectBtn: "Từ chối",
+    acceptSuccess: "Đã chấp nhận lời mời",
+    acceptFailed: "Không thể chấp nhận lời mời. Vui lòng thử lại.",
+    rejectSuccess: "Đã từ chối lời mời",
+    rejectFailed: "Không thể từ chối lời mời. Vui lòng thử lại.",
+    alreadyResponded: "Bạn đã phản hồi lời mời này rồi.",
+    rejectConfirm: {
+      title: "Từ chối lời mời này?",
+      message: "Bạn sẽ không thể hoàn tác. Nhà tuyển dụng sẽ thấy bạn đã từ chối.",
+      confirmLabel: "Từ chối",
+      cancelLabel: "Hủy",
+    },
+    noMessage: "Nhà tuyển dụng không để lại lời nhắn.",
   },
 
   jobseekerHistoryPage: {
