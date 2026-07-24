@@ -5,6 +5,8 @@ import { motion } from "framer-motion";
 import { Search, Sparkles, AlertCircle, RefreshCw, Loader2, ChevronDown, Check, X } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { listQuestionSets, getBookmarkedSetIds } from "@/features/candidate/services/question-set.service";
+import { listCompanies, type Company } from "@/features/admin/services/admin-company.service";
+import { getCompanyInitials, getCompanyColor } from "@/features/candidate/utils/company-visual";
 import { QuestionSetCard } from "./question-set-card";
 import { useLanguage } from "@/shared/providers/language-context";
 import type { Difficulty, QuestionSet } from "@/features/candidate/types/jobseeker";
@@ -52,6 +54,9 @@ interface FilterBarLabels {
   skillsSelected: string;
   skillsSearchPlaceholder: string;
   clearAll: string;
+  companyDropdownLabel: string;
+  allCompanies: string;
+  companySearchPlaceholder: string;
 }
 
 interface FilterBarProps {
@@ -65,6 +70,9 @@ interface FilterBarProps {
   selectedSkills: string[];
   onToggleSkill: (s: string) => void;
   onClearSkills: () => void;
+  companies: Company[];
+  selectedCompanyId: string | null;
+  onSelectCompany: (id: string | null) => void;
   labels: FilterBarLabels;
 }
 
@@ -72,23 +80,33 @@ function FilterBar({
   search, onSearchChange, searchInputRef, searchPlaceholder,
   difficulty, onDifficultyChange,
   availableSkills, selectedSkills, onToggleSkill, onClearSkills,
+  companies, selectedCompanyId, onSelectCompany,
   labels: p,
 }: FilterBarProps) {
   const [diffOpen, setDiffOpen] = useState(false);
   const [skillOpen, setSkillOpen] = useState(false);
   const [skillSearch, setSkillSearch] = useState("");
+  const [companyOpen, setCompanyOpen] = useState(false);
+  const [companySearch, setCompanySearch] = useState("");
 
   const diffRef = useRef<HTMLDivElement>(null);
   const skillRef = useRef<HTMLDivElement>(null);
+  const companyRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     function handler(e: MouseEvent) {
       if (diffRef.current && !diffRef.current.contains(e.target as Node)) setDiffOpen(false);
       if (skillRef.current && !skillRef.current.contains(e.target as Node)) setSkillOpen(false);
+      if (companyRef.current && !companyRef.current.contains(e.target as Node)) setCompanyOpen(false);
     }
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, []);
+
+  const filteredCompanies = companySearch.trim()
+    ? companies.filter((c) => c.name.toLowerCase().includes(companySearch.toLowerCase()))
+    : companies;
+  const selectedCompany = companies.find((c) => c.id === selectedCompanyId) ?? null;
 
   const filteredSkills = skillSearch.trim()
     ? availableSkills.filter((s) => s.toLowerCase().includes(skillSearch.toLowerCase()))
@@ -176,6 +194,97 @@ function FilterBar({
             </div>
           )}
         </div>
+
+        {/* Company single-select dropdown */}
+        {companies.length > 0 && (
+          <div ref={companyRef} className="relative shrink-0">
+            <button
+              type="button"
+              onClick={() => { setCompanyOpen((v) => !v); setDiffOpen(false); setSkillOpen(false); }}
+              className={cn(
+                "flex items-center gap-2 h-10 px-3.5 rounded-lg text-[13px] font-medium transition-all whitespace-nowrap max-w-44",
+                portalInput,
+                companyOpen ? "border-primary shadow-[0_0_0_3px_rgba(108,71,255,0.1)]" : "",
+              )}
+            >
+              <span className="text-[11px] font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500 hidden sm:block shrink-0">
+                {p.companyDropdownLabel}
+              </span>
+              <span className={cn("font-semibold truncate", selectedCompany ? "text-primary" : portalSubtextAlt)}>
+                {selectedCompany ? selectedCompany.name : p.allCompanies}
+              </span>
+              {selectedCompany && (
+                <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
+              )}
+              <ChevronDown size={13} className={cn("text-gray-400 transition-transform shrink-0", companyOpen && "rotate-180")} />
+            </button>
+
+            {companyOpen && (
+              <div className={cn(dropdownBase, "right-0 w-64")}>
+                <div className="p-2 border-b border-gray-100 dark:border-gray-800">
+                  <div className={cn("flex items-center gap-2 rounded-lg px-2.5 h-8", portalInput)}>
+                    <Search size={12} className="text-gray-400 shrink-0" />
+                    <input
+                      type="text"
+                      value={companySearch}
+                      onChange={(e) => setCompanySearch(e.target.value)}
+                      placeholder={p.companySearchPlaceholder}
+                      className="flex-1 text-[12px] bg-transparent outline-none"
+                      autoFocus
+                    />
+                  </div>
+                </div>
+
+                <div className="max-h-52 overflow-y-auto py-1">
+                  <button
+                    type="button"
+                    onClick={() => { onSelectCompany(null); setCompanyOpen(false); }}
+                    className={cn(optionBase, selectedCompanyId === null ? "bg-primary/5 dark:bg-primary/10" : "")}
+                  >
+                    <span className={cn("flex-1 text-left", selectedCompanyId === null ? "font-semibold text-primary" : portalSubtextAlt)}>
+                      {p.allCompanies}
+                    </span>
+                    {selectedCompanyId === null && <Check size={13} className="text-primary shrink-0" />}
+                  </button>
+                  {filteredCompanies.map((c) => {
+                    const active = selectedCompanyId === c.id;
+                    return (
+                      <button
+                        key={c.id}
+                        type="button"
+                        onClick={() => { onSelectCompany(c.id); setCompanyOpen(false); }}
+                        className={cn(optionBase, active ? "bg-primary/5 dark:bg-primary/10" : "")}
+                      >
+                        {c.logoUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={c.logoUrl}
+                            alt=""
+                            referrerPolicy="no-referrer"
+                            className="w-5 h-5 rounded object-cover shrink-0"
+                          />
+                        ) : (
+                          <span className={cn("w-5 h-5 rounded flex items-center justify-center text-white text-[9px] font-bold shrink-0", getCompanyColor(c.name))}>
+                            {getCompanyInitials(c.name)}
+                          </span>
+                        )}
+                        <span className={cn("flex-1 text-left truncate", active ? "font-semibold text-primary" : portalSubtextAlt)}>
+                          {c.name}
+                        </span>
+                        {active && <Check size={13} className="text-primary shrink-0" />}
+                      </button>
+                    );
+                  })}
+                  {filteredCompanies.length === 0 && (
+                    <p className={cn("text-[12px] text-center py-4", portalSubtextAlt)}>
+                      {p.companySearchPlaceholder}
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Skills multi-select dropdown */}
         {availableSkills.length > 0 && (
@@ -266,9 +375,17 @@ function FilterBar({
         )}
       </div>
 
-      {/* Active skill tags */}
-      {selectedSkills.length > 0 && (
+      {/* Active company + skill tags */}
+      {(selectedCompany || selectedSkills.length > 0) && (
         <div className="flex flex-wrap gap-1.5 mt-2.5 pt-2.5 border-t border-gray-100 dark:border-gray-800">
+          {selectedCompany && (
+            <span className="inline-flex items-center gap-1 bg-primary/10 dark:bg-primary/20 text-primary text-[11px] font-medium px-2.5 py-1 rounded-full">
+              {selectedCompany.name}
+              <button type="button" onClick={() => onSelectCompany(null)} className="hover:text-primary/60 transition-colors">
+                <X size={10} />
+              </button>
+            </span>
+          )}
           {selectedSkills.map((skill) => (
             <span
               key={skill}
@@ -296,6 +413,8 @@ export function MarketplacePage() {
   const [difficulty, setDifficulty] = useState<"All" | Difficulty>("All");
   const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
   const [availableSkills, setAvailableSkills] = useState<string[]>([]);
+  const [companies, setCompanies] = useState<Company[]>([]);
+  const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
 
   const [sets, setSets] = useState<QuestionSet[]>([]);
   const [bookmarkedIds, setBookmarkedIds] = useState<Set<string>>(new Set());
@@ -326,6 +445,9 @@ export function MarketplacePage() {
       })
       .catch(() => {});
     getBookmarkedSetIds().then(setBookmarkedIds);
+    listCompanies({ pageSize: 100 })
+      .then((res) => setCompanies(res.items))
+      .catch(() => {});
   }, []);
 
   function toggleSkill(skill: string) {
@@ -345,6 +467,7 @@ export function MarketplacePage() {
     listQuestionSets({
       difficulty: difficulty === "All" ? undefined : difficulty,
       skills: selectedSkills.length > 0 ? selectedSkills : undefined,
+      companyId: selectedCompanyId ?? undefined,
       page: 1,
       pageSize: isSearching ? SEARCH_FETCH_SIZE : PAGE_SIZE,
     })
@@ -365,7 +488,7 @@ export function MarketplacePage() {
     return () => {
       cancelled = true;
     };
-  }, [debouncedSearch, difficulty, selectedSkills, reloadKey]);
+  }, [debouncedSearch, difficulty, selectedSkills, selectedCompanyId, reloadKey]);
 
   function loadMore() {
     const nextPage = page + 1;
@@ -373,6 +496,7 @@ export function MarketplacePage() {
     listQuestionSets({
       difficulty: difficulty === "All" ? undefined : difficulty,
       skills: selectedSkills.length > 0 ? selectedSkills : undefined,
+      companyId: selectedCompanyId ?? undefined,
       page: nextPage,
       pageSize: PAGE_SIZE,
     })
@@ -438,6 +562,9 @@ export function MarketplacePage() {
         selectedSkills={selectedSkills}
         onToggleSkill={toggleSkill}
         onClearSkills={() => setSelectedSkills([])}
+        companies={companies}
+        selectedCompanyId={selectedCompanyId}
+        onSelectCompany={setSelectedCompanyId}
         labels={p}
       />
       </motion.div>
