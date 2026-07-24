@@ -2557,6 +2557,8 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
     timeLimitSaveSuccess: "Time limit updated.",
     timeLimitSaveFailed: "Couldn't update the time limit. Please try again.",
     notCompletedBanner: "This session has status: {{status}}. Please wait or check back later.",
+    showSampleAnswer: "Show Sample Answer",
+    hideSampleAnswer: "Hide Sample Answer",
     questionActions: {
       edit: "Edit",
       delete: "Delete",
@@ -2605,6 +2607,8 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
       applyBtn: "Apply to Question",
       sending: "Thinking...",
       errorMsg: "Something went wrong. Please try again.",
+      suggestionLabel: "Suggested Question",
+      applySuggestionBtn: "Apply this question",
       examplePrompts: [
         "Make this question more difficult",
         "Add a follow-up question",

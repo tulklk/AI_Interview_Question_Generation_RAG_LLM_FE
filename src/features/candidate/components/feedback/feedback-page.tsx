@@ -547,7 +547,7 @@ export function FeedbackPage({ session, feedback, scoring, setTitle, companyName
                         {/* Your answer */}
                         <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4 border border-gray-100 dark:border-gray-700/50">
                           <p className={cn("text-[11px] font-[700] uppercase tracking-wide mb-2", portalSubtextAlt)}>{p.yourAnswer}</p>
-                          <p className={cn("text-[13px] leading-[22px] whitespace-pre-wrap", portalHeadingAlt)}>{q.answerText}</p>
+                          <QuestionContent text={q.answerText ?? ""} className={cn("text-[13px] leading-[22px]", portalHeadingAlt)} />
                         </div>
 
                         {/* AI evaluation — only when this question's evaluation actually succeeded */}

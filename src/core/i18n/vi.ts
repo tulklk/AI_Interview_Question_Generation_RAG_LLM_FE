@@ -2556,6 +2556,8 @@ Yêu cầu:
     timeLimitSaveSuccess: "Đã cập nhật giới hạn thời gian.",
     timeLimitSaveFailed: "Không thể cập nhật giới hạn thời gian. Vui lòng thử lại.",
     notCompletedBanner: "Phiên này có trạng thái: {{status}}. Vui lòng chờ hoặc kiểm tra lại sau.",
+    showSampleAnswer: "Xem câu trả lời mẫu",
+    hideSampleAnswer: "Ẩn câu trả lời mẫu",
     questionActions: {
       edit: "Chỉnh sửa",
       delete: "Xóa",
@@ -2604,6 +2606,8 @@ Yêu cầu:
       applyBtn: "Áp dụng vào câu hỏi",
       sending: "Đang suy nghĩ...",
       errorMsg: "Đã xảy ra lỗi. Vui lòng thử lại.",
+      suggestionLabel: "Câu hỏi đề xuất",
+      applySuggestionBtn: "Áp dụng câu hỏi này",
       examplePrompts: [
         "Làm câu hỏi này khó hơn",
         "Thêm câu hỏi tiếp theo",
