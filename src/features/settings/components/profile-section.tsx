@@ -12,6 +12,7 @@ import { getCurrentUser, updateHrProfile } from "@/features/auth/services/user.s
 import { AvatarUpload } from "@/shared/components/common/avatar-upload";
 import { uploadAvatarToCloudinary } from "@/shared/utils/cloudinary";
 import { mapAvatarUploadError } from "@/shared/utils/avatar-upload-messages";
+import { isValidUrl } from "@/shared/utils/url-validation";
 import { portalDivider, portalHeading, portalInput, portalMutedBg, portalSubtext } from "@/shared/utils/portal-ui";
 interface HrProfileForm {
   fullName: string;
@@ -84,6 +85,7 @@ export function ProfileSection() {
   const [form, setForm] = useState<HrProfileForm>(EMPTY);
   const [snapshot, setSnapshot] = useState<HrProfileForm>(EMPTY);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [linkedInTouched, setLinkedInTouched] = useState(false);
 
   const loadProfile = useCallback(async () => {
     setLoading(true);
@@ -118,15 +120,20 @@ export function ProfileSection() {
     setForm(snapshot);
     setEditing(false);
     setUploadingAvatar(false);
+    setLinkedInTouched(false);
   }
 
   function handleAvatarUploadError(code: string) {
     addToast("error", mapAvatarUploadError(code, sp));
   }
 
+  const linkedInInvalid = editing && !isValidUrl(form.linkedInUrl);
+  const linkedInError = linkedInInvalid && linkedInTouched;
+
   async function handleSave() {
-    if (!form.fullName.trim()) {
-      addToast("error", sp.saveFailed);
+    if (!form.fullName.trim() || linkedInInvalid) {
+      setLinkedInTouched(true);
+      addToast("error", linkedInInvalid ? sp.invalidUrl : sp.saveFailed);
       return;
     }
     setSaving(true);
@@ -184,7 +191,7 @@ export function ProfileSection() {
             <button
               type="button"
               onClick={() => void handleSave()}
-              disabled={saving || uploadingAvatar}
+              disabled={saving || uploadingAvatar || linkedInError}
               className="shimmer-button flex-1 sm:flex-none flex items-center justify-center gap-1.5 h-9 px-4 text-sm font-semibold text-white hr-cta-btn rounded-lg disabled:opacity-60"
             >
               {saving ? (
@@ -301,9 +308,11 @@ export function ProfileSection() {
               type="url"
               value={form.linkedInUrl}
               onChange={(e) => setForm((prev) => ({ ...prev, linkedInUrl: e.target.value }))}
+              onBlur={() => setLinkedInTouched(true)}
               disabled={saving || uploadingAvatar}
-              className={inputCls}
+              className={cn(inputCls, linkedInError && "border-red-400 dark:border-red-500 focus:ring-red-200 dark:focus:ring-red-900/40")}
             />
+            {linkedInError && <p className="text-xs text-red-500 mt-1">{sp.invalidUrl}</p>}
           </FormField>
 
           <FormField label={sp.bio} htmlFor="bio">
