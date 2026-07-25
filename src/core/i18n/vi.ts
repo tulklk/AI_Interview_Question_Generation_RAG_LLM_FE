@@ -951,6 +951,11 @@ Yêu cầu:
       deleteTitle: "Xóa",
       deleteFailed: "Không thể xóa. Vui lòng thử lại.",
       deleteSuccess: "Đã xóa bộ câu hỏi thành công.",
+      bookmarkAddTitle: "Lưu vào mục yêu thích",
+      bookmarkRemoveTitle: "Bỏ lưu",
+      bookmarkAdded: "Đã lưu vào mục yêu thích.",
+      bookmarkRemoved: "Đã bỏ lưu.",
+      bookmarkFailed: "Không thể cập nhật. Vui lòng thử lại.",
     },
     deleteModal: {
       title: "Xác nhận xóa",
@@ -958,6 +963,19 @@ Yêu cầu:
       body: "Bạn có chắc chắn muốn xóa bộ câu hỏi này không?",
       cancel: "Hủy",
       confirm: "Xóa",
+    },
+    tabs: {
+      all: "Tất cả",
+      saved: "Đã lưu",
+    },
+    saved: {
+      loadFailed: "Không thể tải danh sách đã lưu.",
+      retryBtn: "Thử lại",
+      emptyTitle: "Chưa có bộ câu hỏi nào được lưu",
+      emptySubtext: "Bookmark một bộ câu hỏi trong danh sách để tìm lại nhanh tại đây.",
+      removeBtn: "Bỏ lưu",
+      removeSuccess: "Đã bỏ lưu.",
+      removeFailed: "Không thể bỏ lưu. Vui lòng thử lại.",
     },
   },
 
@@ -2345,6 +2363,25 @@ Yêu cầu:
     nextPage: "Tiếp",
   },
 
+  practitionersPage: {
+    heading: "Ứng viên đã luyện tập",
+    subtext: "Danh sách ứng viên đã luyện tập với bộ câu hỏi này.",
+    loading: "Đang tải danh sách…",
+    loadFailed: "Không thể tải danh sách ứng viên.",
+    retryBtn: "Thử lại",
+    emptyTitle: "Chưa có ai luyện tập bộ này",
+    emptySubtext: "Khi ứng viên bắt đầu luyện tập, họ sẽ xuất hiện tại đây.",
+    candidate: "Ứng viên",
+    score: "Điểm",
+    status: "Trạng thái",
+    completedAt: "Hoàn thành",
+    statusLabels: {
+      inProgress: "Đang làm",
+      completed: "Đã hoàn thành",
+      abandoned: "Đã bỏ dở",
+    },
+  },
+
   jobseekerSettingsPage: {
     heading: "Cài đặt",
     subtitle: "Quản lý tùy chọn tài khoản và quyền riêng tư",
@@ -2606,6 +2643,14 @@ Yêu cầu:
     notCompletedBanner: "Phiên này có trạng thái: {{status}}. Vui lòng chờ hoặc kiểm tra lại sau.",
     showSampleAnswer: "Xem câu trả lời mẫu",
     hideSampleAnswer: "Ẩn câu trả lời mẫu",
+    renameTitleBtn: "Đổi tên",
+    renameSuccess: "Đã cập nhật tên bộ câu hỏi.",
+    renameFailed: "Không thể cập nhật tên. Vui lòng thử lại.",
+    bookmarkAddTitle: "Lưu vào mục yêu thích",
+    bookmarkRemoveTitle: "Bỏ lưu",
+    bookmarkAdded: "Đã lưu vào mục yêu thích.",
+    bookmarkRemoved: "Đã bỏ lưu.",
+    bookmarkFailed: "Không thể cập nhật. Vui lòng thử lại.",
     questionActions: {
       edit: "Chỉnh sửa",
       delete: "Xóa",

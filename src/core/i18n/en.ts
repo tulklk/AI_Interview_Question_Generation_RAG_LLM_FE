@@ -949,6 +949,11 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
       deleteTitle: "Delete",
       deleteFailed: "Could not delete. Please try again.",
       deleteSuccess: "Question set deleted successfully.",
+      bookmarkAddTitle: "Save to bookmarks",
+      bookmarkRemoveTitle: "Remove bookmark",
+      bookmarkAdded: "Saved to bookmarks.",
+      bookmarkRemoved: "Removed from bookmarks.",
+      bookmarkFailed: "Couldn't update bookmark. Please try again.",
     },
     deleteModal: {
       title: "Confirm Delete",
@@ -956,6 +961,19 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
       body: "Are you sure you want to delete this question set?",
       cancel: "Cancel",
       confirm: "Delete",
+    },
+    tabs: {
+      all: "All",
+      saved: "Saved",
+    },
+    saved: {
+      loadFailed: "Failed to load your saved question sets.",
+      retryBtn: "Retry",
+      emptyTitle: "No saved question sets yet",
+      emptySubtext: "Bookmark a question set from the list to find it here quickly.",
+      removeBtn: "Remove bookmark",
+      removeSuccess: "Removed from bookmarks.",
+      removeFailed: "Couldn't remove bookmark. Please try again.",
     },
   },
 
@@ -2346,6 +2364,25 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
     nextPage: "Next",
   },
 
+  practitionersPage: {
+    heading: "Practitioners",
+    subtext: "Candidates who have practiced this question set.",
+    loading: "Loading practitioners…",
+    loadFailed: "Failed to load practitioners.",
+    retryBtn: "Retry",
+    emptyTitle: "No one has practiced this set yet",
+    emptySubtext: "Once candidates start practicing, they'll show up here.",
+    candidate: "Candidate",
+    score: "Score",
+    status: "Status",
+    completedAt: "Completed",
+    statusLabels: {
+      inProgress: "In progress",
+      completed: "Completed",
+      abandoned: "Abandoned",
+    },
+  },
+
   jobseekerSettingsPage: {
     heading: "Settings",
     subtitle: "Manage your account preferences and privacy",
@@ -2607,6 +2644,14 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
     notCompletedBanner: "This session has status: {{status}}. Please wait or check back later.",
     showSampleAnswer: "Show Sample Answer",
     hideSampleAnswer: "Hide Sample Answer",
+    renameTitleBtn: "Rename",
+    renameSuccess: "Title updated.",
+    renameFailed: "Couldn't update the title. Please try again.",
+    bookmarkAddTitle: "Save to bookmarks",
+    bookmarkRemoveTitle: "Remove bookmark",
+    bookmarkAdded: "Saved to bookmarks.",
+    bookmarkRemoved: "Removed from bookmarks.",
+    bookmarkFailed: "Couldn't update bookmark. Please try again.",
     questionActions: {
       edit: "Edit",
       delete: "Delete",
