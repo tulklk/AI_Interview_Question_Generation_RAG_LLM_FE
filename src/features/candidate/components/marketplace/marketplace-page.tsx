@@ -261,6 +261,8 @@ function FilterBar({
                             src={c.logoUrl}
                             alt=""
                             referrerPolicy="no-referrer"
+                            loading="lazy"
+                            decoding="async"
                             className="w-5 h-5 rounded object-cover shrink-0"
                           />
                         ) : (

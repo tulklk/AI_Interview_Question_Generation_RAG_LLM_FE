@@ -358,6 +358,8 @@ export function CompanyManagement() {
                           <img
                             src={company.logoUrl}
                             alt={company.name}
+                            loading="lazy"
+                            decoding="async"
                             className="w-9 h-9 rounded-lg object-contain bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700"
                           />
                         ) : (

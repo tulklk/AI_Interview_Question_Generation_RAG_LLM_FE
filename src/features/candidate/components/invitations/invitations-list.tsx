@@ -109,6 +109,8 @@ function InvitationCard({
             src={invitation.companyLogoUrl}
             alt={invitation.companyName}
             referrerPolicy="no-referrer"
+            loading="lazy"
+            decoding="async"
             className="w-11 h-11 rounded-lg object-cover border border-gray-100 dark:border-gray-700 shrink-0"
           />
         ) : (

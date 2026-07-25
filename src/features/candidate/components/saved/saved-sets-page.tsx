@@ -26,6 +26,8 @@ function CompanyLogo({ set }: { set: QuestionSet }) {
         src={set.companyLogoUrl}
         alt={set.company}
         referrerPolicy="no-referrer"
+        loading="lazy"
+        decoding="async"
         className="w-9 h-9 rounded-lg object-cover border border-gray-100 dark:border-gray-700 shrink-0"
       />
     );

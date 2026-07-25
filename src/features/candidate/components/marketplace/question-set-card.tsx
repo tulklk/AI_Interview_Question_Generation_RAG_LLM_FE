@@ -113,6 +113,8 @@ export function QuestionSetCard({ set, initialBookmarked = false, onBookmarkChan
             <img
               src={set.companyLogoUrl}
               alt={set.company}
+              loading="lazy"
+              decoding="async"
               className="w-10 h-10 rounded-lg object-cover shrink-0 border border-gray-100 dark:border-gray-700"
             />
           ) : (
