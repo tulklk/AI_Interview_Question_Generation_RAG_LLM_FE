@@ -18,6 +18,7 @@ export interface HrProfileData {
   phoneNumber?: string;
   avatarUrl?: string | null;
   linkedInUrl?: string;
+  githubUrl?: string;
   bio?: string;
 }
 
@@ -41,6 +42,7 @@ export interface UpdateHrProfileRequest {
   phoneNumber?: string;
   avatarUrl?: string;
   linkedInUrl?: string;
+  githubUrl?: string;
   bio?: string;
 }
 

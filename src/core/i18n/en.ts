@@ -1013,6 +1013,7 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
       jobTitle: "Job Title",
       phoneNumber: "Phone Number",
       linkedInUrl: "LinkedIn URL",
+      githubUrl: "GitHub URL",
       invalidUrl: "Enter a valid URL (e.g. https://…)",
       avatarUrl: "Avatar URL",
       bio: "Bio",

@@ -1015,6 +1015,7 @@ Yêu cầu:
       jobTitle: "Chức danh",
       phoneNumber: "Số điện thoại",
       linkedInUrl: "LinkedIn",
+      githubUrl: "GitHub",
       invalidUrl: "Vui lòng nhập URL hợp lệ (vd: https://…)",
       avatarUrl: "URL ảnh đại diện",
       bio: "Giới thiệu",
