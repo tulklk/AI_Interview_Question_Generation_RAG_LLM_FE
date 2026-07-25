@@ -286,6 +286,8 @@ export function GenerateForm() {
     if (!hasRestoredRef.current) return;
     if (jobId && view !== "form") localStorage.setItem(SESSION_KEY_VIEW, view);
     else localStorage.removeItem(SESSION_KEY_VIEW);
+    // Notify the badge immediately instead of waiting on its polling interval
+    window.dispatchEvent(new CustomEvent("hr:bg-job-updated"));
   }, [view, jobId]);
 
   useEffect(() => {
