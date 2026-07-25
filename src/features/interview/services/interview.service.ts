@@ -833,15 +833,19 @@ export async function findQuestionSetForJob(jobId: string): Promise<HrQuestionSe
   }
 }
 
-/** All jobs' publish status in one call, keyed by jobId — for list views (e.g. HR History) that need it for every row without an N+1 fetch. */
-export async function getQuestionSetStatusByJob(): Promise<Map<string, "DRAFT" | "PUBLISHED">> {
+/** All jobs' question-set summary (id + publish status) in one call, keyed by
+ * jobId — the job list endpoint never includes questionSetId (only the
+ * single-job GET does), so list views (e.g. HR History) that need it for
+ * every row — to link/bookmark, or show publish status — cross-reference here
+ * instead of doing an N+1 fetch, or worse, two separate full-list fetches. */
+export async function getQuestionSetSummariesByJob(): Promise<Map<string, HrQuestionSetSummary>> {
   try {
     const { data } = await apiClient.get<{ data?: unknown } | unknown[]>("/api/hr/question-sets");
     const items = Array.isArray(data) ? data : Array.isArray((data as { data?: unknown })?.data) ? (data as { data: unknown[] }).data : [];
     const normalized = items.map(normalizeQuestionSetSummary).filter((s): s is HrQuestionSetSummary => s !== null);
-    const map = new Map<string, "DRAFT" | "PUBLISHED">();
+    const map = new Map<string, HrQuestionSetSummary>();
     for (const s of normalized) {
-      if (s.jobId) map.set(s.jobId, s.status);
+      if (s.jobId) map.set(s.jobId, s);
     }
     return map;
   } catch {
@@ -894,6 +898,156 @@ export async function setQuestionSetTimeLimit(
   } catch (err) {
     throw new Error(extractBeErrorMessage(err));
   }
+}
+
+export async function renameQuestionSetTitle(questionSetId: string, title: string): Promise<boolean> {
+  try {
+    await apiClient.put(`/api/hr/question-sets/${questionSetId}/title`, { title });
+    return true;
+  } catch (err) {
+    throw new Error(extractBeErrorMessage(err));
+  }
+}
+
+// ---------------------------------------------------------------------------
+// HR bookmarks — save favorite question sets for quick access later.
+// ---------------------------------------------------------------------------
+
+export interface HrBookmarkedSet {
+  id: string;
+  title: string;
+  status: "DRAFT" | "PUBLISHED";
+  questionsCount: number;
+  createdAt: string | null;
+  companyName: string;
+  companyLogoUrl: string | null;
+  /** Originating generation job id, if the BE includes it — lets the card deep-link to the review page. */
+  sessionId?: string;
+}
+
+function asRecord(val: unknown): Record<string, unknown> | null {
+  return val && typeof val === "object" ? (val as Record<string, unknown>) : null;
+}
+
+function pickStr(obj: Record<string, unknown>, ...keys: string[]): string {
+  for (const k of keys) {
+    const v = obj[k];
+    if (typeof v === "string" && v.trim()) return v.trim();
+  }
+  return "";
+}
+
+function pickNum(obj: Record<string, unknown>, ...keys: string[]): number {
+  for (const k of keys) {
+    const v = obj[k];
+    if (typeof v === "number") return v;
+  }
+  return 0;
+}
+
+function normalizeHrBookmarkedSet(raw: unknown): HrBookmarkedSet | null {
+  const src = asRecord(raw);
+  if (!src) return null;
+  const id = pickStr(src, "id", "questionSetId");
+  if (!id) return null;
+  const status = pickStr(src, "status").toUpperCase();
+  return {
+    id,
+    title: pickStr(src, "title", "jobTitle", "name") || "Untitled",
+    status: status === "PUBLISHED" ? "PUBLISHED" : "DRAFT",
+    questionsCount: pickNum(src, "questionsCount", "totalQuestions", "questionCount"),
+    createdAt: pickStr(src, "createdAt", "savedAt", "generatedAt") || null,
+    companyName: pickStr(src, "companyName", "company"),
+    companyLogoUrl: pickStr(src, "companyLogo", "companyLogoUrl") || null,
+    sessionId: pickStr(src, "sessionId", "jobId") || undefined,
+  };
+}
+
+function extractItemList(raw: unknown): unknown[] {
+  const root = asRecord(raw);
+  if (!root) return Array.isArray(raw) ? raw : [];
+  const data = asRecord(root.data) ?? root;
+  if (Array.isArray(data)) return data;
+  if (Array.isArray(data.items)) return data.items as unknown[];
+  return [];
+}
+
+/** Toggles the bookmark on an HR question set and returns the new state. */
+export async function toggleHrBookmark(questionSetId: string): Promise<boolean> {
+  const res = await apiClient.post(`/api/hr/question-sets/${questionSetId}/bookmark`);
+  const root = asRecord(res.data);
+  const data = root ? asRecord(root.data) : null;
+  return (data ?? root)?.bookmarked === true;
+}
+
+/** Ids of all question sets the HR has bookmarked — for cross-referencing row state. */
+export async function getHrBookmarkedSetIds(): Promise<Set<string>> {
+  try {
+    const res = await apiClient.get("/api/hr/bookmarks");
+    const ids = extractItemList(res.data)
+      .map((raw) => asRecord(raw))
+      .filter((r): r is Record<string, unknown> => r !== null)
+      .map((r) => pickStr(r, "id", "questionSetId"))
+      .filter((id) => id !== "");
+    return new Set(ids);
+  } catch {
+    return new Set();
+  }
+}
+
+export async function listHrBookmarks(): Promise<HrBookmarkedSet[]> {
+  const res = await apiClient.get("/api/hr/bookmarks");
+  return extractItemList(res.data)
+    .map(normalizeHrBookmarkedSet)
+    .filter((s): s is HrBookmarkedSet => s !== null);
+}
+
+// ---------------------------------------------------------------------------
+// Practitioners — candidates who have practiced a given HR question set.
+// ---------------------------------------------------------------------------
+
+export type PractitionerSessionStatus = "IN_PROGRESS" | "COMPLETED" | "ABANDONED";
+
+export interface Practitioner {
+  id: string;
+  candidateName: string;
+  candidateEmail: string;
+  score: number | null;
+  status: PractitionerSessionStatus;
+  completedAt: string | null;
+  startedAt: string | null;
+}
+
+function normalizePractitionerStatus(raw: string): PractitionerSessionStatus {
+  const u = raw.toUpperCase();
+  return u === "COMPLETED" || u === "ABANDONED" ? u : "IN_PROGRESS";
+}
+
+function normalizePractitioner(raw: unknown, index: number): Practitioner | null {
+  const src = asRecord(raw);
+  if (!src) return null;
+  // BE doesn't return a session/attempt id at all — synthesize one from the
+  // candidate + attempt start time (unique per row) so React keys stay stable.
+  const candidateUserId = pickStr(src, "candidateUserId", "id", "sessionId", "practiceSessionId");
+  if (!candidateUserId) return null;
+  const startedAt = typeof src.startedAt === "string" ? src.startedAt : null;
+  const scoreRaw = src.score ?? src.overallScore;
+  return {
+    id: `${candidateUserId}-${startedAt ?? index}`,
+    candidateName: pickStr(src, "candidateName", "fullName", "name"),
+    candidateEmail: pickStr(src, "candidateEmail", "email"),
+    score: typeof scoreRaw === "number" ? scoreRaw : null,
+    status: normalizePractitionerStatus(pickStr(src, "status") || "IN_PROGRESS"),
+    completedAt: typeof src.completedAt === "string" ? src.completedAt : null,
+    startedAt,
+  };
+}
+
+export async function getPractitioners(questionSetId: string): Promise<Practitioner[]> {
+  const res = await apiClient.get(`/api/hr/question-sets/${questionSetId}/practitioners`);
+  return extractItemList(res.data)
+    .map((raw, i) => normalizePractitioner(raw, i))
+    .filter((p): p is Practitioner => p !== null);
 }
 
 // ---------------------------------------------------------------------------
