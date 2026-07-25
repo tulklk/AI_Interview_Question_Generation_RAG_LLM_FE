@@ -211,7 +211,11 @@ function mapJobToSession(job: BackendJob): GenerationSession {
   return {
     id,
     jobTitle: role || "Interview Questions",
-    jdContent: job.jobDescription ?? job.jobDescriptionPreview,
+    jdContent:
+      job.jobDescription ??
+      job.jobDescriptionPreview ??
+      (job.input as { jobDescription?: string; jobDescriptionPreview?: string } | undefined)?.jobDescription ??
+      (job.input as { jobDescription?: string; jobDescriptionPreview?: string } | undefined)?.jobDescriptionPreview,
     hrOwner: "",
     status: mapJobPhaseToStatus(job.phase ?? job.status ?? "COMPLETED"),
     planDraft: {
@@ -653,14 +657,55 @@ export async function exportPlanQuestions(jobId: string, fileName: string): Prom
   URL.revokeObjectURL(url);
 }
 
+// BE's single-question-set GET uses its own field names (questionSetId, title,
+// sourceJobId, lowercase questionType/difficulty, "order") rather than the
+// GeneratedQuestion/DraftQuestionSet shape — normalize instead of raw-casting.
+function normalizeDraftQuestion(raw: unknown, index: number): GeneratedQuestion | null {
+  const src = raw as Record<string, unknown> | null;
+  if (!src || typeof src !== "object") return null;
+  const question = typeof src.question === "string" ? src.question : "";
+  if (!question) return null;
+  return {
+    id: (typeof src.id === "string" && src.id) || `q-${index}`,
+    question,
+    questionType: normalizeQuestionType(typeof src.questionType === "string" ? src.questionType : undefined),
+    difficulty: normalizeDifficulty(typeof src.difficulty === "string" ? src.difficulty : undefined),
+    rationale: typeof src.rationale === "string" ? src.rationale : undefined,
+    sampleAnswer: typeof src.sampleAnswer === "string" ? src.sampleAnswer : undefined,
+    citations: [],
+    orderIndex: typeof src.order === "number" ? src.order : typeof src.orderIndex === "number" ? src.orderIndex : index,
+  };
+}
+
+function normalizeDraft(raw: unknown): DraftQuestionSet | null {
+  const src = raw as Record<string, unknown> | null;
+  if (!src || typeof src !== "object") return null;
+  const id = [src.questionSetId, src.id].find((v): v is string => typeof v === "string" && v.trim() !== "");
+  if (!id) return null;
+  const sessionId = [src.sourceJobId, src.jobId, src.sessionId].find((v): v is string => typeof v === "string" && v.trim() !== "");
+  const jobTitle = [src.title, src.jobTitle].find((v): v is string => typeof v === "string" && v.trim() !== "");
+  const status = src.status === "PUBLISHED" ? "PUBLISHED" : "DRAFT";
+  const questions = Array.isArray(src.questions)
+    ? src.questions.map((q, i) => normalizeDraftQuestion(q, i)).filter((q): q is GeneratedQuestion => q !== null)
+    : [];
+  return {
+    id,
+    sessionId: sessionId ?? "",
+    jobTitle: jobTitle ?? "Untitled",
+    generatedAt: typeof src.generatedAt === "string" ? src.generatedAt : "",
+    status,
+    timeLimitMinutes: typeof src.timeLimitMinutes === "number" ? src.timeLimitMinutes : null,
+    questions,
+  };
+}
+
 export async function getDraft(questionSetId: string): Promise<DraftQuestionSet | null> {
   try {
-    const { data } = await apiClient.get<{ data?: DraftQuestionSet } | DraftQuestionSet>(
+    const { data } = await apiClient.get<{ data?: unknown } | unknown>(
       `/api/hr/question-sets/${questionSetId}`
     );
-    const draft =
-      (data as { data?: DraftQuestionSet }).data ?? (data as DraftQuestionSet);
-    return draft ?? null;
+    const root = (data as { data?: unknown })?.data ?? data;
+    return normalizeDraft(root);
   } catch {
     return null;
   }
