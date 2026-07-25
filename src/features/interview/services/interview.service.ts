@@ -368,7 +368,36 @@ export async function getGenerationPlans(): Promise<GenerationSession[]> {
   }
 }
 
+// Several pages (AppShell notifications, History table/stats, HR dashboard)
+// independently call getGenerationJobs() and often mount within moments of
+// each other during navigation — cache briefly and de-dupe concurrent calls
+// so they share one network round-trip instead of firing one each.
+const GENERATION_JOBS_TTL_MS = 15000;
+let generationJobsCache: { data: GenerationSession[]; ts: number } | null = null;
+let generationJobsInFlight: Promise<GenerationSession[]> | null = null;
+
+export function invalidateGenerationJobsCache(): void {
+  generationJobsCache = null;
+}
+
+if (typeof window !== "undefined") {
+  window.addEventListener("hr:bg-job-updated", invalidateGenerationJobsCache);
+  window.addEventListener("hr:job-status-changed", invalidateGenerationJobsCache);
+}
+
 export async function getGenerationJobs(): Promise<GenerationSession[]> {
+  if (generationJobsCache && Date.now() - generationJobsCache.ts < GENERATION_JOBS_TTL_MS) {
+    return generationJobsCache.data;
+  }
+  if (generationJobsInFlight) return generationJobsInFlight;
+
+  generationJobsInFlight = fetchGenerationJobs().finally(() => {
+    generationJobsInFlight = null;
+  });
+  return generationJobsInFlight;
+}
+
+async function fetchGenerationJobs(): Promise<GenerationSession[]> {
   try {
     // BE defaults to PageSize=20 if unspecified — this table paginates/filters
     // client-side over the full list, so a small default would silently hide
@@ -390,7 +419,9 @@ export async function getGenerationJobs(): Promise<GenerationSession[]> {
     } else if (data?.items) {
       jobs = data.items;
     }
-    return jobs.map(mapJobToSession);
+    const sessions = jobs.map(mapJobToSession);
+    generationJobsCache = { data: sessions, ts: Date.now() };
+    return sessions;
   } catch {
     return [];
   }
@@ -596,6 +627,7 @@ export async function saveJobDraft(jobId: string): Promise<string | null> {
 export async function deleteGenerationPlan(jobId: string): Promise<boolean> {
   try {
     await apiClient.delete(`/api/hr/question-generation-plans/${jobId}`);
+    invalidateGenerationJobsCache();
     return true;
   } catch (err) {
     // BE rejects (409) once the session has been saved as a draft/question-set —
