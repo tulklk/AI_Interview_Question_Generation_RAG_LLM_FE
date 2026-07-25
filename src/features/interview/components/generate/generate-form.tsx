@@ -17,7 +17,7 @@ import { AiLoadingSpinner } from "@/shared/components/common/ai-loading-spinner"
 import { JdInputCard } from "./jd-input-card";
 import { KbDocPicker } from "./kb-doc-picker";
 import { PlanEditCard } from "./plan-edit-card";
-import { ReviewQuestionsSection } from "@/features/question/components/review-questions-section";
+import { ReviewQuestionsSection } from "@/features/question/components/review-questions-section.lazy";
 import type { PlanDraft, QuestionType, GeneratedQuestion } from "@/features/interview/types/generation-session";
 import type { KnowledgeDocument } from "@/features/knowledge/types/knowledge";
 import { useHrSubscription } from "@/features/hr/context/hr-subscription-context";
