@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { getGenerationJobs, getGenerationPlans } from "@/features/interview/services/interview.service";
 import { listRecommendations } from "@/features/hr/services/recommendation.service";
-import type { GenerationSession } from "@/features/interview/types/generation-session";
+import { getHrDashboard } from "@/features/hr/services/hr-dashboard.service";
+import type { GenerationSession, QuestionType, DifficultyLevel } from "@/features/interview/types/generation-session";
 import type { CandidateRecommendation } from "@/features/hr/services/recommendation.service";
 
 export interface DailyActivity {
@@ -28,6 +29,9 @@ export interface HrDashboardData {
   dailyActivity: DailyActivity[];   // last 30 days
   questionTypeDistribution: QuestionTypeCount[];
   recentSessions: GenerationSession[];
+  /** Week-over-week trend supplied directly by the BE aggregate, when available —
+   *  preferred over the client-side 14-day dailyActivity heuristic. */
+  weekOverWeekTrend: "up" | "down" | "flat" | null;
   loading: boolean;
   error: boolean;
   reload: () => void;
@@ -80,9 +84,61 @@ function buildTypeDistribution(sessions: GenerationSession[]): QuestionTypeCount
     .sort((a, b) => b.count - a.count);
 }
 
+/** Turns an aggregate recent-session summary into a minimal, render-compatible GenerationSession. */
+function toGenerationSessionStub(row: {
+  id: string; role: string; level: string; status: string; questionsCount: number; createdAt: string;
+}): GenerationSession {
+  const questionType: QuestionType = "Technical";
+  const difficulty: DifficultyLevel = "Medium";
+  const createdAt = row.createdAt || new Date().toISOString();
+  return {
+    id: row.id,
+    jobTitle: row.role || "Interview Questions",
+    hrOwner: "",
+    status: (row.status as GenerationSession["status"]) || "COMPLETED",
+    planDraft: row.role
+      ? {
+          role: row.role,
+          level: row.level,
+          difficulty,
+          questionCount: row.questionsCount,
+          questionTypes: [questionType],
+          topics: [],
+        }
+      : undefined,
+    generatedQuestions: Array.from({ length: row.questionsCount }, (_, i) => ({
+      id: `${row.id}-stub-${i}`,
+      question: "x",
+      questionType,
+      difficulty,
+      orderIndex: i,
+    })),
+    createdAt,
+    updatedAt: createdAt,
+  };
+}
+
+function toRecommendationStub(row: {
+  id: string; candidateName: string; candidateEmail: string; targetRole: string; score: number; status: CandidateRecommendation["status"];
+}): CandidateRecommendation {
+  return {
+    id: row.id,
+    candidateName: row.candidateName,
+    candidateEmail: row.candidateEmail,
+    targetRole: row.targetRole,
+    techStack: [],
+    score: row.score,
+    questionSetId: "",
+    questionSetTitle: "",
+    completedAt: null,
+    status: row.status,
+  };
+}
+
 export function useHrDashboard(): HrDashboardData {
   const [sessions, setSessions] = useState<GenerationSession[]>([]);
   const [candidates, setCandidates] = useState<CandidateRecommendation[]>([]);
+  const [aggregate, setAggregate] = useState<Awaited<ReturnType<typeof getHrDashboard>>>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
@@ -93,35 +149,68 @@ export function useHrDashboard(): HrDashboardData {
     let cancelled = false;
     setLoading(true);
     setError(false);
+    setAggregate(null);
 
-    Promise.all([
-      getGenerationJobs(),
-      getGenerationPlans().catch(() => [] as Awaited<ReturnType<typeof getGenerationPlans>>),
-      listRecommendations({ pageSize: 20 }).catch(() => ({ items: [], totalCount: 0 })),
-    ])
-      .then(([jobs, plans, recs]) => {
+    getHrDashboard({ activityDays: 30, recentLimit: 7, recommendationsLimit: 20 })
+      .then((agg) => {
         if (cancelled) return;
-        // Enrich sessions with actual job titles from the plans API
-        // (the jobs API returns a generic "Interview Questions" fallback when no role is set)
-        const planTitleMap = new Map(plans.map((p) => [p.id, p.jobTitle]));
-        const enriched = jobs.map((s) => ({
-          ...s,
-          jobTitle: planTitleMap.get(s.id) || s.jobTitle,
-        }));
-        setSessions(enriched);
-        setCandidates(recs.items);
+        if (agg) {
+          setAggregate(agg);
+          setLoading(false);
+          return;
+        }
+        throw new Error("dashboard aggregate unavailable");
       })
       .catch(() => {
-        if (!cancelled) setError(true);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
+        // Fallback: old per-endpoint client-side aggregation.
+        Promise.all([
+          getGenerationJobs(),
+          getGenerationPlans().catch(() => [] as Awaited<ReturnType<typeof getGenerationPlans>>),
+          listRecommendations({ pageSize: 20 }).catch(() => ({ items: [], totalCount: 0 })),
+        ])
+          .then(([jobs, plans, recs]) => {
+            if (cancelled) return;
+            const planTitleMap = new Map(plans.map((p) => [p.id, p.jobTitle]));
+            const enriched = jobs.map((s) => ({
+              ...s,
+              jobTitle: planTitleMap.get(s.id) || s.jobTitle,
+            }));
+            setSessions(enriched);
+            setCandidates(recs.items);
+          })
+          .catch(() => {
+            if (!cancelled) setError(true);
+          })
+          .finally(() => {
+            if (!cancelled) setLoading(false);
+          });
       });
 
     return () => {
       cancelled = true;
     };
   }, [reloadKey]);
+
+  if (aggregate) {
+    const recentSessions = aggregate.recentSessions.map(toGenerationSessionStub);
+    return {
+      sessions: [],
+      candidates: aggregate.topRecommendations.map(toRecommendationStub),
+      totalSessions: aggregate.kpis?.totalSessions ?? 0,
+      completedSessions: aggregate.kpis?.completedSessions ?? 0,
+      totalQuestionsGenerated: aggregate.kpis?.totalQuestionsGenerated ?? 0,
+      successRate: aggregate.kpis?.successRate ?? 0,
+      thisMonthSessions: aggregate.kpis?.thisMonthSessions ?? 0,
+      topRole: aggregate.kpis?.topRole ?? "",
+      dailyActivity: aggregate.dailyActivity,
+      questionTypeDistribution: aggregate.questionTypeDistribution,
+      recentSessions,
+      weekOverWeekTrend: aggregate.insights?.weekOverWeekTrend ?? null,
+      loading,
+      error,
+      reload,
+    };
+  }
 
   const completedSessions = sessions.filter((s) => s.status === "COMPLETED").length;
   const totalSessions = sessions.length;
@@ -159,6 +248,7 @@ export function useHrDashboard(): HrDashboardData {
     dailyActivity,
     questionTypeDistribution,
     recentSessions,
+    weekOverWeekTrend: null,
     loading,
     error,
     reload,

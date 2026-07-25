@@ -215,17 +215,28 @@ function buildInsights(data: ReturnType<typeof useHrDashboard>, labels: {
     });
   }
 
-  // Recent trend: compare last 7 days vs prior 7 days
-  const activity = data.dailyActivity;
-  if (activity.length >= 14) {
-    const last7 = activity.slice(-7).reduce((s, d) => s + d.sessions, 0);
-    const prior7 = activity.slice(-14, -7).reduce((s, d) => s + d.sessions, 0);
-    const trendText = last7 > prior7 ? labels.trendUp : last7 < prior7 ? labels.trendDown : labels.trendFlat;
+  // Recent trend: prefer the BE's week-over-week figure; fall back to
+  // comparing last 7 days vs prior 7 days from dailyActivity.
+  if (data.weekOverWeekTrend) {
+    const trend = data.weekOverWeekTrend;
+    const trendText = trend === "up" ? labels.trendUp : trend === "down" ? labels.trendDown : labels.trendFlat;
     insights.push({
       icon: CalendarDays,
-      color: last7 > prior7 ? "text-emerald-600 dark:text-emerald-400" : last7 < prior7 ? "text-red-500 dark:text-red-400" : "text-gray-600 dark:text-gray-400",
+      color: trend === "up" ? "text-emerald-600 dark:text-emerald-400" : trend === "down" ? "text-red-500 dark:text-red-400" : "text-gray-600 dark:text-gray-400",
       text: trendText,
     });
+  } else {
+    const activity = data.dailyActivity;
+    if (activity.length >= 14) {
+      const last7 = activity.slice(-7).reduce((s, d) => s + d.sessions, 0);
+      const prior7 = activity.slice(-14, -7).reduce((s, d) => s + d.sessions, 0);
+      const trendText = last7 > prior7 ? labels.trendUp : last7 < prior7 ? labels.trendDown : labels.trendFlat;
+      insights.push({
+        icon: CalendarDays,
+        color: last7 > prior7 ? "text-emerald-600 dark:text-emerald-400" : last7 < prior7 ? "text-red-500 dark:text-red-400" : "text-gray-600 dark:text-gray-400",
+        text: trendText,
+      });
+    }
   }
 
   return insights;
@@ -508,7 +519,7 @@ export function HrDashboard() {
                     return (
                       <tr key={session.id} className="hover:bg-gray-50/70 dark:hover:bg-gray-800/40 transition-colors">
                         <td className="px-4 py-3">
-                          <Link href={`/hr/generate/${session.id}`} className={cn("font-medium hover:text-primary transition-colors line-clamp-1", portalHeadingAlt)}>
+                          <Link href={`/hr/history/${session.id}`} className={cn("font-medium hover:text-primary transition-colors line-clamp-1", portalHeadingAlt)}>
                             {session.planDraft?.role || session.jobTitle || "—"}
                           </Link>
                           {session.planDraft?.level && (
