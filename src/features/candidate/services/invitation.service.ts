@@ -53,7 +53,7 @@ function normalizeInvitation(raw: unknown): CandidateInvitation | null {
     questionSetTitle: pickStr(src, "questionSetTitle", "setTitle", "title"),
     message: pickNullableStr(src, "message"),
     status: normalizeStatus(pickStr(src, "status") || "PENDING"),
-    createdAt: pickNullableStr(src, "createdAt", "sentAt"),
+    createdAt: pickNullableStr(src, "createdAt", "sentAt", "invitedAt"),
     respondedAt: pickNullableStr(src, "respondedAt"),
   };
 }

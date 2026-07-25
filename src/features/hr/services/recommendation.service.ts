@@ -75,7 +75,7 @@ function normalizeRec(raw: unknown): CandidateRecommendation | null {
     score: pickNum(src, "score", "overallScore"),
     questionSetId: pickStr(src, "questionSetId"),
     questionSetTitle: pickStr(src, "questionSetTitle", "setTitle", "title"),
-    completedAt: typeof src.completedAt === "string" ? src.completedAt : null,
+    completedAt: pickStr(src, "completedAt", "recommendedAt") || null,
     status: normalizeStatus(pickStr(src, "status") || "NEW"),
     recommendationReason:
       typeof src.recommendationReason === "string"
