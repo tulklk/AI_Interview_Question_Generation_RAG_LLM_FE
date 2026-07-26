@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { useLanguage, type Lang } from "@/shared/providers/language-context";
-import type { PracticeSessionDetail, AnswerEvaluation } from "@/features/candidate/services/practice-session.service";
+import type { PracticeSessionDetail, AnswerEvaluation, SessionAiInsight } from "@/features/candidate/services/practice-session.service";
 import { CategoryPill, Pill, getScoreLevel, getScoreBadgeClass } from "@/features/candidate/components/ui/pill";
 import { translateDimensionKey, translateQuestionCategory } from "@/features/candidate/utils/skill-labels";
 import { getCompanyColor, getCompanyInitials } from "@/features/candidate/utils/company-visual";
@@ -187,6 +187,8 @@ function PendingScoreRing({ scoring, trackStroke }: { scoring: boolean; trackStr
 interface FeedbackPageProps {
   session: PracticeSessionDetail;
   feedback: Record<string, AnswerEvaluation>;
+  /** BE-generated overall takeaway (GET .../feedback) — null while unavailable, falls back to a canned score-bucket message. */
+  aiInsight?: SessionAiInsight | null;
   scoring: boolean;
   setTitle?: string;
   companyName?: string;
@@ -194,7 +196,7 @@ interface FeedbackPageProps {
   previousScore?: number | null;
 }
 
-export function FeedbackPage({ session, feedback, scoring, setTitle, companyName, previousScore }: FeedbackPageProps) {
+export function FeedbackPage({ session, feedback, aiInsight, scoring, setTitle, companyName, previousScore }: FeedbackPageProps) {
   const { t, lang } = useLanguage();
   const p = t.jobseekerFeedbackPage;
   const chart = useChartTheme();
@@ -236,9 +238,10 @@ export function FeedbackPage({ session, feedback, scoring, setTitle, companyName
     });
   }
 
-  const aiInsight = hasScore
-    ? (score >= 80 ? p.insightExcellent : score >= 65 ? p.insightGood : p.insightNeedsWork)
-    : null;
+  const beInsightText = aiInsight ? (lang === "vi" ? aiInsight.vi : aiInsight.en) || null : null;
+  const insightText = beInsightText
+    ?? (hasScore ? (score >= 80 ? p.insightExcellent : score >= 65 ? p.insightGood : p.insightNeedsWork) : null);
+  const skillsToImprove = aiInsight ? (lang === "vi" ? aiInsight.skillsToImproveVi : aiInsight.skillsToImproveEn) : [];
 
   const companyInitials = companyName ? getCompanyInitials(companyName) : "";
   const companyColor = companyName ? getCompanyColor(companyName) : "bg-gray-400";
@@ -316,8 +319,22 @@ export function FeedbackPage({ session, feedback, scoring, setTitle, companyName
                 <div className="flex flex-col gap-2">
                   <div>
                     <p className="text-[12px] font-[700] text-primary mb-1">{p.aiInsight}</p>
-                    <p className={cn("text-[13px] leading-[20px]", portalHeadingAlt)}>{aiInsight}</p>
+                    <p className={cn("text-[13px] leading-[20px]", portalHeadingAlt)}>{insightText}</p>
                   </div>
+                  {skillsToImprove.length > 0 && (
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <Target size={12} className="text-amber-600 dark:text-amber-400 shrink-0" />
+                      <span className={cn("text-[11px] font-semibold", portalSubtextAlt)}>{p.skillsToImprove}:</span>
+                      {skillsToImprove.map((skill) => (
+                        <span
+                          key={skill}
+                          className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400"
+                        >
+                          {skill}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                   {executiveSummary?.strongPoint && (
                     <p className={cn("text-[12px] leading-[18px] flex items-start gap-1.5", portalSubtextAlt)}>
                       <CheckCircle2 size={12} className="text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
