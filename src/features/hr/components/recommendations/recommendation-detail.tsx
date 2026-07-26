@@ -156,8 +156,15 @@ interface InviteModalProps {
   actionLabels: ReturnType<typeof useLanguage>["t"]["hrRecommendationsPage"];
 }
 
+function buildDefaultInviteMessage(template: string, rec: CandidateRecommendation): string {
+  return template
+    .replace("{{name}}", rec.candidateName || "")
+    .replace("{{title}}", rec.questionSetTitle || "")
+    .replace("{{score}}", String(rec.score));
+}
+
 function InviteModal({ rec, onClose, onSent, labels, actionLabels }: InviteModalProps) {
-  const [message, setMessage] = useState("");
+  const [message, setMessage] = useState(() => buildDefaultInviteMessage(labels.defaultMessage, rec));
   const [sending, setSending] = useState(false);
   const { addToast } = useToast();
   const p = actionLabels;
@@ -297,6 +304,10 @@ export function RecommendationDetail({ id }: { id: string }) {
   );
 
   const canAct = rec.status !== "INVITED" && rec.status !== "DISMISSED";
+  // BE allows re-shortlisting a dismissed recommendation to bring it back into
+  // play (confirmed live: dismiss → invite fails 409 "shortlist lại trước khi
+  // mời"), so DISMISSED isn't fully terminal like INVITED is.
+  const canRestore = rec.status === "DISMISSED";
   const initials = getInitials(rec.candidateName || rec.candidateEmail);
 
   return (
@@ -362,15 +373,19 @@ export function RecommendationDetail({ id }: { id: string }) {
                     {p.card.dismissBtn}
                   </button>
                 </>
+              ) : canRestore ? (
+                <button type="button" onClick={() => void handleShortlist()} disabled={busy !== null}
+                  className="flex items-center justify-center gap-2 h-9 px-4 text-[13px] font-semibold text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-950/40 hover:bg-violet-100 dark:hover:bg-violet-900/50 rounded-xl transition-colors disabled:opacity-50 border border-violet-200 dark:border-violet-800 w-full">
+                  {busy === "shortlist" ? <Loader2 size={13} className="animate-spin" /> : <Star size={13} />}
+                  {p.card.shortlistBtn}
+                </button>
               ) : (
                 <div className={cn(
                   "flex items-center justify-center gap-2 h-9 text-[13px] font-medium rounded-xl border",
-                  rec.status === "INVITED"
-                    ? "text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/30"
-                    : "text-gray-400 border-gray-200 dark:border-gray-700"
+                  "text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/30"
                 )}>
-                  {rec.status === "INVITED" ? <CheckCircle2 size={13} /> : <XIcon size={13} />}
-                  {rec.status === "INVITED" ? p.card.invited : p.card.dismissed}
+                  <CheckCircle2 size={13} />
+                  {p.card.invited}
                 </div>
               )}
             </div>

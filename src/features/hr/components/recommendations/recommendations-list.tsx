@@ -96,8 +96,15 @@ interface InviteModalProps {
   labels: ReturnType<typeof useLanguage>["t"]["hrRecommendationsPage"]["invite"];
 }
 
+function buildDefaultInviteMessage(template: string, rec: CandidateRecommendation): string {
+  return template
+    .replace("{{name}}", rec.candidateName || "")
+    .replace("{{title}}", rec.questionSetTitle || "")
+    .replace("{{score}}", String(rec.score));
+}
+
 function InviteModal({ rec, onClose, onSent, labels }: InviteModalProps) {
-  const [message, setMessage] = useState("");
+  const [message, setMessage] = useState(() => buildDefaultInviteMessage(labels.defaultMessage, rec));
   const [sending, setSending] = useState(false);
   const { addToast } = useToast();
   const { t } = useLanguage();
@@ -182,6 +189,11 @@ function CandidateRow({ rec, lang, labels, index, onStatusChange }: RowProps) {
   const { addToast } = useToast();
   const c = labels.card;
   const canAct = rec.status !== "INVITED" && rec.status !== "DISMISSED";
+  // BE allows re-shortlisting a dismissed recommendation to bring it back into
+  // play (confirmed live: dismiss → invite fails 409 "shortlist lại trước khi
+  // mời"), so DISMISSED isn't fully terminal like INVITED is — keep the
+  // shortlist action available instead of hiding every action.
+  const canRestore = rec.status === "DISMISSED";
   const initials = getInitials(rec.candidateName || rec.candidateEmail);
   const visibleSkills = rec.techStack.slice(0, 2);
   const extraSkills = rec.techStack.length - 2;
@@ -233,6 +245,9 @@ function CandidateRow({ rec, lang, labels, index, onStatusChange }: RowProps) {
                 {rec.candidateName || "—"}
               </p>
               <p className={cn("text-[11px] truncate", portalSubtextAlt)}>{rec.candidateEmail}</p>
+              {rec.targetRole && (
+                <p className="text-[10px] font-medium text-primary truncate mt-0.5">{rec.targetRole}</p>
+              )}
             </div>
           </div>
         </td>
@@ -302,6 +317,12 @@ function CandidateRow({ rec, lang, labels, index, onStatusChange }: RowProps) {
                   {busy === "dismiss" ? <Loader2 size={13} className="animate-spin" /> : <XIcon size={13} />}
                 </button>
               </>
+            ) : canRestore ? (
+              <button type="button" onClick={() => void handleShortlist()} disabled={busy !== null}
+                title={c.shortlistBtn}
+                className="h-7 w-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-violet-600 dark:hover:text-violet-400 hover:bg-violet-50 dark:hover:bg-violet-950/40 transition-colors disabled:opacity-40">
+                {busy === "shortlist" ? <Loader2 size={13} className="animate-spin" /> : <Star size={13} />}
+              </button>
             ) : null}
             <Link href={`/hr/candidate-recommendations/${rec.id}`}
               className="h-7 px-2.5 flex items-center text-[11px] font-semibold text-primary hover:bg-violet-50 dark:hover:bg-violet-950/40 rounded-lg transition-colors shrink-0">
