@@ -25,6 +25,7 @@ import {
   AlertCircle,
   Eye,
   ChevronDown,
+  RefreshCw,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import {
@@ -44,11 +45,14 @@ import { AvatarUpload } from "@/shared/components/common/avatar-upload";
 import { uploadAvatarToCloudinary } from "@/shared/utils/cloudinary";
 import { mapAvatarUploadError } from "@/shared/utils/avatar-upload-messages";
 import { Skeleton } from "@/shared/components/ui/skeleton";
+import { Toggle } from "@/shared/components/ui/toggle";
 import { SectionCard, Field } from "@/features/candidate/components/ui/section-card";
 import {
   getCv,
   uploadCv,
   deleteCv,
+  getCvSyncSettings,
+  updateCvSyncSettings,
   CvValidationError,
   type CvInfo,
 } from "@/features/candidate/services/candidate-cv.service";
@@ -57,6 +61,7 @@ import { ConfirmDialog } from "@/shared/components/ui/confirm-dialog";
 import { isValidUrl } from "@/shared/utils/url-validation";
 import {
   portalCard,
+  portalDivider,
   portalHeadingAlt,
   portalIconWell,
   portalInput,
@@ -152,6 +157,9 @@ export function CandidateProfile() {
   const [showAllCvSkills, setShowAllCvSkills] = useState(false);
   const cvFileInputRef = useRef<HTMLInputElement>(null);
 
+  const [cvSyncEnabled, setCvSyncEnabled] = useState<boolean | null>(null);
+  const [cvSyncSaving, setCvSyncSaving] = useState(false);
+
   const [stats, setStats] = useState<PracticeStats | null>(null);
   const [sessions, setSessions] = useState<CompletedSessionSummary[]>([]);
   const [statsLoading, setStatsLoading] = useState(true);
@@ -164,6 +172,23 @@ export function CandidateProfile() {
       .finally(() => { if (!cancelled) setCvLoading(false); });
     return () => { cancelled = true; };
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    getCvSyncSettings()
+      .then((enabled) => { if (!cancelled) setCvSyncEnabled(enabled); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
+
+  function handleToggleCvSync(next: boolean) {
+    if (cvSyncSaving) return;
+    setCvSyncSaving(true);
+    updateCvSyncSettings(next)
+      .then(() => setCvSyncEnabled(next))
+      .catch(() => addToast("error", p.cv.syncUpdateFailed))
+      .finally(() => setCvSyncSaving(false));
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -717,6 +742,21 @@ export function CandidateProfile() {
             className="hidden"
             onChange={handleCvFileChange}
           />
+
+          <div className={cn("flex items-center gap-3 pb-4 mb-4 border-b", portalDivider)}>
+            <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center shrink-0", portalIconWell)}>
+              <RefreshCw size={14} className="text-primary" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className={cn("text-[13px] font-semibold", portalHeadingAlt)}>{p.cv.syncToggleTitle}</p>
+              <p className={cn("text-[11px] leading-4 mt-0.5", portalSubtextAlt)}>{p.cv.syncToggleDescription}</p>
+            </div>
+            <Toggle
+              checked={cvSyncEnabled ?? true}
+              onChange={handleToggleCvSync}
+              disabled={cvSyncEnabled === null || cvSyncSaving}
+            />
+          </div>
 
           {cvLoading ? (
             <div className="h-12 flex items-center justify-center">
