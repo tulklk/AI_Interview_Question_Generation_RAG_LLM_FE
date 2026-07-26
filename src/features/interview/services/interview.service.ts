@@ -304,6 +304,52 @@ export async function createGenerationJob(payload: {
   }
 }
 
+function buildJobInputFormData(payload: {
+  jobDescription?: string;
+  hrNote?: string;
+  numberOfQuestions?: number;
+  difficulty?: string;
+  questionTypes?: string[];
+  skills?: string[];
+  file: File;
+}): FormData {
+  const form = new FormData();
+  if (payload.jobDescription) form.append("JobDescription", payload.jobDescription);
+  if (payload.hrNote) form.append("HrNote", payload.hrNote);
+  if (payload.numberOfQuestions !== undefined) form.append("NumberOfQuestions", String(payload.numberOfQuestions));
+  if (payload.difficulty) form.append("Difficulty", payload.difficulty);
+  if (payload.questionTypes?.length) form.append("QuestionTypes", payload.questionTypes.join(","));
+  if (payload.skills?.length) form.append("Skills", payload.skills.join(","));
+  form.append("File", payload.file);
+  return form;
+}
+
+/** Same as createGenerationJob, but lets the HR attach a JD file (PDF/DOC/DOCX) instead of/alongside pasted text. */
+export async function createGenerationJobFromFile(payload: {
+  jobDescription?: string;
+  hrNote?: string;
+  numberOfQuestions?: number;
+  difficulty?: string;
+  questionTypes?: string[];
+  skills?: string[];
+  file: File;
+}): Promise<string | null> {
+  try {
+    const { data } = await apiClient.post<CreateJobResponseData>(
+      "/api/hr/question-generation-jobs/plan/upload",
+      buildJobInputFormData(payload),
+      { headers: { "Content-Type": "multipart/form-data" } }
+    );
+    const id = data?.data?.jobId ?? data?.data?.id ?? data?.jobId ?? data?.id;
+    return id ?? null;
+  } catch (err) {
+    const respData = (err as { response?: { data?: { detail?: string; error?: string; errors?: string[] } } })?.response?.data;
+    const detail = respData?.detail ?? respData?.errors?.[0] ?? respData?.error;
+    if (detail) throw new Error(detail);
+    return null;
+  }
+}
+
 export async function getGenerationJob(id: string): Promise<GenerationSession | null> {
   try {
     const { data } = await apiClient.get<BackendJob | { data?: BackendJob }>(
@@ -487,6 +533,31 @@ export async function updateJobInput(
 ): Promise<boolean> {
   try {
     await apiClient.put(`/api/hr/question-generation-jobs/${jobId}/input`, payload);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Same as updateJobInput, but lets the HR attach a replacement JD file instead of/alongside pasted text. */
+export async function updateJobInputFromFile(
+  jobId: string,
+  payload: {
+    jobDescription?: string;
+    hrNote?: string;
+    numberOfQuestions?: number;
+    difficulty?: string;
+    questionTypes?: string[];
+    skills?: string[];
+    file: File;
+  }
+): Promise<boolean> {
+  try {
+    await apiClient.put(
+      `/api/hr/question-generation-jobs/${jobId}/input/upload`,
+      buildJobInputFormData(payload),
+      { headers: { "Content-Type": "multipart/form-data" } }
+    );
     return true;
   } catch {
     return false;
