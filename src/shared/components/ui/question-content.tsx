@@ -27,6 +27,23 @@ function parse(text: string): Segment[] {
   return segments;
 }
 
+function renderInline(text: string, keyPrefix: string) {
+  const parts = text.split(/(`[^`\n]+`)/g).filter((p) => p !== "");
+  if (parts.length === 1 && !parts[0].startsWith("`")) return text;
+  return parts.map((part, i) =>
+    part.startsWith("`") && part.endsWith("`") && part.length > 1 ? (
+      <code
+        key={`${keyPrefix}-${i}`}
+        className="px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-[0.9em] font-mono text-primary whitespace-pre-wrap"
+      >
+        {part.slice(1, -1)}
+      </code>
+    ) : (
+      <span key={`${keyPrefix}-${i}`}>{part}</span>
+    )
+  );
+}
+
 interface QuestionContentProps {
   text: string;
   className?: string;
@@ -37,7 +54,7 @@ export function QuestionContent({ text, className }: QuestionContentProps) {
   const hasCode = segments.some((s) => s.type === "code");
 
   if (!hasCode) {
-    return <p className={className}>{text}</p>;
+    return <p className={cn("whitespace-pre-wrap", className)}>{renderInline(text, "root")}</p>;
   }
 
   return (
@@ -48,7 +65,7 @@ export function QuestionContent({ text, className }: QuestionContentProps) {
           if (!trimmed) return null;
           return (
             <p key={i} className="leading-relaxed whitespace-pre-wrap">
-              {trimmed}
+              {renderInline(trimmed, String(i))}
             </p>
           );
         }

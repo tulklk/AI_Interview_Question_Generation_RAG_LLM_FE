@@ -17,6 +17,7 @@ import { getInitials, resolveAvatarUrl } from "@/shared/utils/user-display";
 import { formatRelativeTime } from "@/shared/utils/relative-time";
 import type { NotificationItem } from "@/shared/components/common/notification-bell";
 import { listCompletedSessions } from "@/features/candidate/services/practice-session.service";
+import { listInvitations } from "@/features/candidate/services/invitation.service";
 import { ScoringProgressBadge } from "@/features/candidate/components/ui/scoring-progress-badge";
 import {
   CandidateSubscriptionProvider,
@@ -55,20 +56,44 @@ function JobseekerAppShellInner({
     return () => { document.body.style.overflow = ""; };
   }, [sidebarOpen]);
 
-  // Derive notifications from recently completed practice sessions (feedback ready).
+  // Derive notifications from recently completed practice sessions (feedback ready)
+  // and pending interview invitations, merged and sorted by recency.
   useEffect(() => {
     let cancelled = false;
-    listCompletedSessions({ pageSize: 5 })
-      .then((res) => {
+    Promise.all([
+      listCompletedSessions({ pageSize: 5 }),
+      listInvitations().catch(() => []),
+    ])
+      .then(([sessionsRes, invitations]) => {
         if (cancelled) return;
-        const items: NotificationItem[] = [...res.items]
-          .sort((a, b) => new Date(b.completedAt ?? 0).getTime() - new Date(a.completedAt ?? 0).getTime())
+
+        const feedbackEntries = sessionsRes.items.map((s) => ({
+          id: s.id,
+          iso: s.completedAt,
+          message: t.notificationMessages.candidateFeedbackReady.replace("{{title}}", s.setTitle || "—"),
+          href: `/jobseeker/practice/${s.id}/result`,
+        }));
+
+        const invitationEntries = invitations
+          .filter((i) => i.status === "PENDING")
+          .map((i) => ({
+            id: i.id,
+            iso: i.createdAt,
+            message: t.notificationMessages.candidateInvitationReceived
+              .replace("{{company}}", i.companyName || "—")
+              .replace("{{title}}", i.questionSetTitle || "—"),
+            href: "/jobseeker/invitations",
+          }));
+
+        const items: NotificationItem[] = [...feedbackEntries, ...invitationEntries]
+          .sort((a, b) => new Date(b.iso ?? 0).getTime() - new Date(a.iso ?? 0).getTime())
           .slice(0, 5)
-          .map((s) => ({
-            id: s.id,
-            message: t.notificationMessages.candidateFeedbackReady.replace("{{title}}", s.setTitle || "—"),
-            time: formatRelativeTime(s.completedAt, lang),
-            read: !s.completedAt || Date.now() - new Date(s.completedAt).getTime() > UNREAD_WINDOW_MS,
+          .map((entry) => ({
+            id: entry.id,
+            message: entry.message,
+            time: formatRelativeTime(entry.iso ?? undefined, lang),
+            read: !entry.iso || Date.now() - new Date(entry.iso).getTime() > UNREAD_WINDOW_MS,
+            href: entry.href,
           }));
         setNotifications(items);
       })

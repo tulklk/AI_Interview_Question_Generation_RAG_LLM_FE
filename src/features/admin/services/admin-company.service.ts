@@ -133,6 +133,13 @@ export async function createCompany(payload: CreateCompanyPayload): Promise<Comp
   return company;
 }
 
+/** All-or-nothing: if any entry fails validation (incl. duplicate names within the list), the BE creates none of them. Max 50 per call. */
+export async function createCompaniesBulk(companies: CreateCompanyPayload[]): Promise<Company[]> {
+  const res = await apiClient.post("/api/companies/bulk", { companies });
+  const items = extractItems(res.data);
+  return items.map(normalizeCompany).filter((c): c is Company => c !== null);
+}
+
 export async function getCompanyById(id: string): Promise<Company> {
   const res = await apiClient.get(`/api/companies/${id}`);
   const company = normalizeCompany(res.data);

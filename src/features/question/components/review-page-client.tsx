@@ -1,14 +1,17 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, AlertCircle, Sparkles, ArrowRight } from "lucide-react";
+import { ArrowLeft, AlertCircle, Sparkles, ArrowRight, Pencil, Check, X, Loader2, Bookmark, Users } from "lucide-react";
 import { AiLoadingSpinner } from "@/shared/components/common/ai-loading-spinner";
 import { SessionStatusBadge } from "@/features/interview/components/history/session-status-badge";
-import { ReviewQuestionsSection } from "@/features/question/components/review-questions-section";
+import { ReviewQuestionsSection } from "@/features/question/components/review-questions-section.lazy";
 import { useLanguage } from "@/shared/providers/language-context";
+import { useToast } from "@/shared/providers/toast-context";
 import { cn } from "@/lib/cn";
-import { portalHeading, portalSubtext } from "@/shared/utils/portal-ui";
+import { portalHeading, portalInput, portalSubtext } from "@/shared/utils/portal-ui";
+import { getHrBookmarkedSetIds, toggleHrBookmark } from "@/features/interview/services/interview.service";
 import type { GenerationSession, GeneratedQuestion } from "@/features/interview/types/generation-session";
 
 interface ReviewPageClientProps {
@@ -21,6 +24,7 @@ interface ReviewPageClientProps {
   onPublishStatusChange?: (status: "DRAFT" | "PUBLISHED") => void;
   onDraftSaved?: (questionSetId: string) => void;
   initialTimeLimitMinutes?: number | null;
+  onRenameTitle?: (title: string) => Promise<boolean>;
 }
 
 export function ReviewPageClient({
@@ -33,11 +37,65 @@ export function ReviewPageClient({
   onPublishStatusChange,
   onDraftSaved,
   initialTimeLimitMinutes,
+  onRenameTitle,
 }: ReviewPageClientProps) {
   const { t } = useLanguage();
   const rp = t.reviewPage;
   const gsp = t.generationSessionPage;
   const router = useRouter();
+  const { addToast } = useToast();
+
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [titleValue, setTitleValue] = useState(session.jobTitle);
+  const [savingTitle, setSavingTitle] = useState(false);
+
+  const [bookmarked, setBookmarked] = useState(false);
+  const [bookmarkBusy, setBookmarkBusy] = useState(false);
+
+  useEffect(() => {
+    if (!questionSetId) return;
+    let cancelled = false;
+    getHrBookmarkedSetIds().then((ids) => {
+      if (!cancelled) setBookmarked(ids.has(questionSetId));
+    });
+    return () => { cancelled = true; };
+  }, [questionSetId]);
+
+  async function handleToggleBookmark() {
+    if (!questionSetId || bookmarkBusy) return;
+    setBookmarkBusy(true);
+    try {
+      const next = await toggleHrBookmark(questionSetId);
+      setBookmarked(next);
+      addToast("success", next ? rp.bookmarkAdded : rp.bookmarkRemoved);
+    } catch {
+      addToast("error", rp.bookmarkFailed);
+    } finally {
+      setBookmarkBusy(false);
+    }
+  }
+
+  function startEditTitle() {
+    setTitleValue(session.jobTitle);
+    setEditingTitle(true);
+  }
+
+  function cancelEditTitle() {
+    setEditingTitle(false);
+    setTitleValue(session.jobTitle);
+  }
+
+  async function saveTitle() {
+    const next = titleValue.trim();
+    if (!next || next === session.jobTitle || !onRenameTitle || savingTitle) {
+      setEditingTitle(false);
+      return;
+    }
+    setSavingTitle(true);
+    const ok = await onRenameTitle(next);
+    setSavingTitle(false);
+    if (ok) setEditingTitle(false);
+  }
 
   function continueToGenerate() {
     localStorage.setItem("hr_gen_job", session.id);
@@ -63,11 +121,90 @@ export function ReviewPageClient({
           {rp.backToHistory}
         </Link>
         <div className="flex items-start justify-between gap-4 flex-wrap">
-          <div>
-            <h2 className={cn("text-2xl font-bold", portalHeading)}>{session.jobTitle}</h2>
+          <div className="min-w-0 flex-1">
+            {editingTitle ? (
+              <div className="flex items-center gap-1.5">
+                <input
+                  autoFocus
+                  value={titleValue}
+                  onChange={(e) => setTitleValue(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") void saveTitle();
+                    if (e.key === "Escape") cancelEditTitle();
+                  }}
+                  disabled={savingTitle}
+                  maxLength={500}
+                  className={cn(
+                    "text-xl font-bold rounded-lg px-2.5 py-1 outline-none focus:border-primary max-w-md",
+                    portalInput
+                  )}
+                />
+                <button
+                  type="button"
+                  onClick={() => void saveTitle()}
+                  disabled={savingTitle || !titleValue.trim()}
+                  title={rp.questionActions.save}
+                  className="w-7 h-7 flex items-center justify-center rounded-lg text-primary hover:bg-primary/10 disabled:opacity-40 transition-colors"
+                >
+                  {savingTitle ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
+                </button>
+                <button
+                  type="button"
+                  onClick={cancelEditTitle}
+                  disabled={savingTitle}
+                  title={rp.questionActions.cancel}
+                  className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-40 transition-colors"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 group">
+                <h2 className={cn("text-2xl font-bold truncate", portalHeading)}>{session.jobTitle}</h2>
+                {onRenameTitle && (
+                  <button
+                    type="button"
+                    onClick={startEditTitle}
+                    title={rp.renameTitleBtn}
+                    className="w-7 h-7 shrink-0 flex items-center justify-center rounded-lg text-gray-400 dark:text-gray-500 opacity-0 group-hover:opacity-100 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all"
+                  >
+                    <Pencil size={13} />
+                  </button>
+                )}
+              </div>
+            )}
             <p className={cn("text-sm mt-1", portalSubtext)}>{rp.subtext}</p>
           </div>
-          <SessionStatusBadge status={session.status} size="md" />
+          <div className="flex items-center gap-2 shrink-0">
+            {questionSetId && (
+              <Link
+                href={`/hr/question-sets/${questionSetId}/practitioners`}
+                title={t.practitionersPage.heading}
+                className="w-9 h-9 flex items-center justify-center rounded-lg border border-gray-200 dark:border-gray-700 text-gray-400 dark:text-gray-500 hover:text-primary hover:bg-primary/5 transition-colors"
+              >
+                <Users size={14} />
+              </Link>
+            )}
+            {questionSetId && (
+              <button
+                type="button"
+                onClick={() => void handleToggleBookmark()}
+                disabled={bookmarkBusy}
+                title={bookmarked ? rp.bookmarkRemoveTitle : rp.bookmarkAddTitle}
+                className={cn(
+                  "w-9 h-9 flex items-center justify-center rounded-lg border transition-colors disabled:opacity-40",
+                  bookmarked
+                    ? "text-amber-500 border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30"
+                    : "text-gray-400 dark:text-gray-500 border-gray-200 dark:border-gray-700 hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-950/30"
+                )}
+              >
+                {bookmarkBusy
+                  ? <Loader2 size={14} className="animate-spin" />
+                  : <Bookmark size={14} fill={bookmarked ? "currentColor" : "none"} />}
+              </button>
+            )}
+            <SessionStatusBadge status={session.status} size="md" />
+          </div>
         </div>
       </div>
 

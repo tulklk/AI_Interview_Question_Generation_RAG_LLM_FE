@@ -232,9 +232,16 @@ export function PricingSection() {
   const { user } = useUser();
 
   const [candidatePlanId, setCandidatePlanId] = useState<string | null>(null);
+  // getUserRole() reads localStorage — start null (matches SSR) and resolve
+  // on mount, otherwise a logged-in client's first render disagrees with the
+  // server-rendered HTML and triggers a hydration mismatch.
+  const [role, setRole] = useState<string | null>(null);
+
+  useEffect(() => {
+    setRole(getUserRole());
+  }, []);
 
   const isLoggedIn = Boolean(user);
-  const role = getUserRole();
   const isJobSeeker =
     !role ||
     role.toUpperCase().includes("JOB") ||

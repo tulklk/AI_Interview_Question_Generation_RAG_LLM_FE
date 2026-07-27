@@ -201,13 +201,12 @@ function normalizeDimensionScores(raw: unknown): Record<string, number> | null {
 }
 
 /**
- * Per-question AI evaluation. BE has no GET endpoint for this — it's only ever
- * returned inline, once, in the POST .../answers response — so it's captured
- * there and carried to the results page via sessionStorage (see
- * saveAnswerEvaluation/readAnswerEvaluations below). If the candidate views
- * results in a new tab/browser session, this data is simply unavailable and
- * the per-question breakdown is omitted — a real limitation of not having a
- * persisted BE source, not a bug in the FE capture itself.
+ * Per-question AI evaluation. Also returned inline, once, in the POST
+ * .../answers response right after submitting — captured there and carried
+ * via sessionStorage (see saveAnswerEvaluation/readAnswerEvaluations below)
+ * so the score can render instantly without waiting on a round trip. The
+ * GET .../feedback endpoint (getSessionFeedback) is the persisted source of
+ * truth used to hydrate/replace this when viewing results later.
  */
 export interface AnswerEvaluation {
   score: number | null;
@@ -253,6 +252,67 @@ function saveAnswerEvaluation(sessionId: string, questionId: string, evaluation:
     window.sessionStorage.setItem(feedbackStorageKey(sessionId), JSON.stringify(map));
   } catch {
     // Best-effort only — worst case that question's AI eval just doesn't render later.
+  }
+}
+
+/** Localized overall takeaway for a completed session, plus the skills it flags for improvement. */
+export interface SessionAiInsight {
+  vi: string;
+  en: string;
+  skillsToImproveVi: string[];
+  skillsToImproveEn: string[];
+}
+
+/** Persisted per-session feedback from GET .../feedback — the durable counterpart to the inline, sessionStorage-only AnswerEvaluation capture above. */
+export interface SessionFeedback {
+  overallScore: number | null;
+  aiInsight: SessionAiInsight | null;
+  evaluations: Record<string, AnswerEvaluation>;
+}
+
+function normalizeAiInsight(raw: unknown): SessionAiInsight | null {
+  const src = asRecord(raw);
+  if (!src) return null;
+  const vi = pickString(src, "vi");
+  const en = pickString(src, "en");
+  if (!vi && !en) return null;
+  const skills = asRecord(src.skillsToImprove);
+  return {
+    vi,
+    en,
+    skillsToImproveVi: skills && Array.isArray(skills.vi) ? skills.vi.filter((s): s is string => typeof s === "string") : [],
+    skillsToImproveEn: skills && Array.isArray(skills.en) ? skills.en.filter((s): s is string => typeof s === "string") : [],
+  };
+}
+
+/**
+ * Fetches the persisted feedback for a completed session — works for any
+ * session regardless of which tab/device/browser it was completed in,
+ * unlike readAnswerEvaluations (sessionStorage, same-tab-only). Returns null
+ * on any failure (404 before scoring finishes, network error, etc.) so
+ * callers can fall back to the sessionStorage capture.
+ */
+export async function getSessionFeedback(sessionId: string): Promise<SessionFeedback | null> {
+  try {
+    const res = await apiClient.get(`${BASE}/${sessionId}/feedback`);
+    const src = extractData(res.data);
+    if (!src) return null;
+    const items = Array.isArray(src.items) ? src.items : [];
+    const evaluations: Record<string, AnswerEvaluation> = {};
+    for (const item of items) {
+      const itemSrc = asRecord(item);
+      if (!itemSrc) continue;
+      const questionId = pickString(itemSrc, "questionId");
+      const evaluation = normalizeAnswerEvaluation(item);
+      if (questionId && evaluation) evaluations[questionId] = evaluation;
+    }
+    return {
+      overallScore: pickNullableNumber(src, "overallScore"),
+      aiInsight: normalizeAiInsight(src.aiInsight),
+      evaluations,
+    };
+  } catch {
+    return null;
   }
 }
 

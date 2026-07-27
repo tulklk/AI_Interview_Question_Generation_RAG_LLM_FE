@@ -12,6 +12,7 @@ import { getCurrentUser, updateHrProfile } from "@/features/auth/services/user.s
 import { AvatarUpload } from "@/shared/components/common/avatar-upload";
 import { uploadAvatarToCloudinary } from "@/shared/utils/cloudinary";
 import { mapAvatarUploadError } from "@/shared/utils/avatar-upload-messages";
+import { isValidUrl } from "@/shared/utils/url-validation";
 import { portalDivider, portalHeading, portalInput, portalMutedBg, portalSubtext } from "@/shared/utils/portal-ui";
 interface HrProfileForm {
   fullName: string;
@@ -20,6 +21,7 @@ interface HrProfileForm {
   jobTitle: string;
   phoneNumber: string;
   linkedInUrl: string;
+  githubUrl: string;
   avatarUrl: string;
   bio: string;
   companyId?: string;
@@ -32,6 +34,7 @@ const EMPTY: HrProfileForm = {
   jobTitle: "",
   phoneNumber: "",
   linkedInUrl: "",
+  githubUrl: "",
   avatarUrl: "",
   bio: "",
 };
@@ -84,6 +87,8 @@ export function ProfileSection() {
   const [form, setForm] = useState<HrProfileForm>(EMPTY);
   const [snapshot, setSnapshot] = useState<HrProfileForm>(EMPTY);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [linkedInTouched, setLinkedInTouched] = useState(false);
+  const [githubTouched, setGithubTouched] = useState(false);
 
   const loadProfile = useCallback(async () => {
     setLoading(true);
@@ -97,6 +102,7 @@ export function ProfileSection() {
         jobTitle: hp?.jobTitle ?? "",
         phoneNumber: hp?.phoneNumber ?? "",
         linkedInUrl: hp?.linkedInUrl ?? "",
+        githubUrl: hp?.githubUrl ?? "",
         avatarUrl: typeof hp?.avatarUrl === "string" ? hp.avatarUrl : user.avatarUrl ?? "",
         bio: hp?.bio ?? "",
         companyId: hp?.companyId,
@@ -118,15 +124,24 @@ export function ProfileSection() {
     setForm(snapshot);
     setEditing(false);
     setUploadingAvatar(false);
+    setLinkedInTouched(false);
+    setGithubTouched(false);
   }
 
   function handleAvatarUploadError(code: string) {
     addToast("error", mapAvatarUploadError(code, sp));
   }
 
+  const linkedInInvalid = editing && !isValidUrl(form.linkedInUrl);
+  const githubInvalid = editing && !isValidUrl(form.githubUrl);
+  const linkedInError = linkedInInvalid && linkedInTouched;
+  const githubError = githubInvalid && githubTouched;
+
   async function handleSave() {
-    if (!form.fullName.trim()) {
-      addToast("error", sp.saveFailed);
+    if (!form.fullName.trim() || linkedInInvalid || githubInvalid) {
+      setLinkedInTouched(true);
+      setGithubTouched(true);
+      addToast("error", linkedInInvalid || githubInvalid ? sp.invalidUrl : sp.saveFailed);
       return;
     }
     setSaving(true);
@@ -138,6 +153,7 @@ export function ProfileSection() {
         jobTitle: form.jobTitle.trim() || undefined,
         phoneNumber: form.phoneNumber.trim() || undefined,
         linkedInUrl: form.linkedInUrl.trim() || undefined,
+        githubUrl: form.githubUrl.trim() || undefined,
         avatarUrl: form.avatarUrl.trim() || undefined,
         bio: form.bio.trim() || undefined,
       });
@@ -184,7 +200,7 @@ export function ProfileSection() {
             <button
               type="button"
               onClick={() => void handleSave()}
-              disabled={saving || uploadingAvatar}
+              disabled={saving || uploadingAvatar || linkedInError || githubError}
               className="shimmer-button flex-1 sm:flex-none flex items-center justify-center gap-1.5 h-9 px-4 text-sm font-semibold text-white hr-cta-btn rounded-lg disabled:opacity-60"
             >
               {saving ? (
@@ -237,6 +253,7 @@ export function ProfileSection() {
           <ViewField label={sp.jobTitle} value={form.jobTitle} />
           <ViewField label={sp.phoneNumber} value={form.phoneNumber} />
           <ViewUrlField label={sp.linkedInUrl} url={form.linkedInUrl} />
+          <ViewUrlField label={sp.githubUrl} url={form.githubUrl} />
           <ViewField label={sp.bio} value={form.bio} />
         </div>
       ) : (
@@ -301,9 +318,24 @@ export function ProfileSection() {
               type="url"
               value={form.linkedInUrl}
               onChange={(e) => setForm((prev) => ({ ...prev, linkedInUrl: e.target.value }))}
+              onBlur={() => setLinkedInTouched(true)}
               disabled={saving || uploadingAvatar}
-              className={inputCls}
+              className={cn(inputCls, linkedInError && "border-red-400 dark:border-red-500 focus:ring-red-200 dark:focus:ring-red-900/40")}
             />
+            {linkedInError && <p className="text-xs text-red-500 mt-1">{sp.invalidUrl}</p>}
+          </FormField>
+
+          <FormField label={sp.githubUrl} htmlFor="github">
+            <input
+              id="github"
+              type="url"
+              value={form.githubUrl}
+              onChange={(e) => setForm((prev) => ({ ...prev, githubUrl: e.target.value }))}
+              onBlur={() => setGithubTouched(true)}
+              disabled={saving || uploadingAvatar}
+              className={cn(inputCls, githubError && "border-red-400 dark:border-red-500 focus:ring-red-200 dark:focus:ring-red-900/40")}
+            />
+            {githubError && <p className="text-xs text-red-500 mt-1">{sp.invalidUrl}</p>}
           </FormField>
 
           <FormField label={sp.bio} htmlFor="bio">

@@ -108,6 +108,7 @@ function normalizeHrProfile(
     avatarUrl:
       typeof avatarRaw === "string" ? avatarRaw : avatarRaw === null ? null : undefined,
     linkedInUrl: pickOptionalString(profile, "linkedInUrl", "LinkedInUrl") || undefined,
+    githubUrl: pickOptionalString(profile, "githubUrl", "GithubUrl") || undefined,
     bio: pickOptionalString(profile, "bio", "Bio") || undefined,
   };
 }

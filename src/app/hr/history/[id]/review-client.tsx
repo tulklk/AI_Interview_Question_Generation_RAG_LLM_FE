@@ -6,12 +6,13 @@ import { AlertCircle } from "lucide-react";
 import { AiLoadingSpinner } from "@/shared/components/common/ai-loading-spinner";
 import { AppShell } from "@/features/hr/components/layout/app-shell";
 import { ReviewPageClient } from "@/features/question/components/review-page-client";
-import { getGenerationJob, getJobQuestions, getDraft, findQuestionSetForJob } from "@/features/interview/services/interview.service";
+import { getGenerationJob, getJobQuestions, getDraft, findQuestionSetForJob, renameQuestionSetTitle } from "@/features/interview/services/interview.service";
 import { getLocalSession, toGenerationSession } from "@/features/interview/utils/local-history";
 import type { GenerationSession, DraftQuestionSet, GenerationStatus } from "@/features/interview/types/generation-session";
 import { cn } from "@/lib/cn";
 import { portalHeading, portalSubtext } from "@/shared/utils/portal-ui";
 import { useLanguage } from "@/shared/providers/language-context";
+import { useToast } from "@/shared/providers/toast-context";
 
 const QUESTION_GENERATING_STATUSES: GenerationStatus[] = [
   "CONFIRMED", "QUEUED", "QUESTION_QUEUED", "QUESTION_PROCESSING", "PROCESSING",
@@ -64,6 +65,7 @@ export function HrReviewPageClient() {
   const router = useRouter();
   const { t } = useLanguage();
   const rp = t.reviewPage;
+  const { addToast } = useToast();
   const [session, setSession] = useState<GenerationSession | null>(null);
   const [draft, setDraft] = useState<DraftQuestionSet | null>(null);
   const [questionSetId, setQuestionSetId] = useState<string | undefined>(undefined);
@@ -224,6 +226,19 @@ export function HrReviewPageClient() {
     setPublishStatus((prev) => prev ?? "DRAFT");
   }
 
+  async function handleRenameTitle(title: string): Promise<boolean> {
+    if (!questionSetId) return false;
+    try {
+      await renameQuestionSetTitle(questionSetId, title);
+      setSession((prev) => (prev ? { ...prev, jobTitle: title } : prev));
+      addToast("success", rp.renameSuccess);
+      return true;
+    } catch {
+      addToast("error", rp.renameFailed);
+      return false;
+    }
+  }
+
   return (
     <AppShell
       breadcrumb={[
@@ -257,6 +272,7 @@ export function HrReviewPageClient() {
           onPublishStatusChange={setPublishStatus}
           onDraftSaved={handleDraftSaved}
           initialTimeLimitMinutes={draft?.timeLimitMinutes}
+          onRenameTitle={questionSetId ? handleRenameTitle : undefined}
         />
       )}
     </AppShell>

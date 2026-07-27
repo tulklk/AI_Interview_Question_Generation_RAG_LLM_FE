@@ -15,9 +15,10 @@ import {
 } from "lucide-react";
 import { AiLoadingSpinner } from "@/shared/components/common/ai-loading-spinner";
 import { JdInputCard } from "./jd-input-card";
+import { FileUploadArea } from "./file-upload-area";
 import { KbDocPicker } from "./kb-doc-picker";
 import { PlanEditCard } from "./plan-edit-card";
-import { ReviewQuestionsSection } from "@/features/question/components/review-questions-section";
+import { ReviewQuestionsSection } from "@/features/question/components/review-questions-section.lazy";
 import type { PlanDraft, QuestionType, GeneratedQuestion } from "@/features/interview/types/generation-session";
 import type { KnowledgeDocument } from "@/features/knowledge/types/knowledge";
 import { useHrSubscription } from "@/features/hr/context/hr-subscription-context";
@@ -34,12 +35,14 @@ import {
 } from "@/shared/utils/portal-ui";
 import {
   createGenerationJob,
+  createGenerationJobFromFile,
   getGenerationJob,
   updateJobPlan,
   approvePlan,
   retryPlan,
   retryQuestions,
   updateJobInput,
+  updateJobInputFromFile,
   getJobQuestions,
 } from "@/features/interview/services/interview.service";
 
@@ -178,6 +181,7 @@ export function GenerateForm() {
   // ── Form inputs — always default for SSR, restored from localStorage in useEffect ──
   const [view,        setView]        = useState<FlowView>("form");
   const [jdText,      setJdText]      = useState("");
+  const [jdFile,      setJdFile]      = useState<File | null>(null);
   const [selectedDoc, setSelectedDoc] = useState<KnowledgeDocument | null>(null);
   const [note,        setNote]        = useState("");
 
@@ -318,6 +322,8 @@ export function GenerateForm() {
     if (!hasRestoredRef.current) return;
     if (jobId && view !== "form") localStorage.setItem(SESSION_KEY_VIEW, view);
     else localStorage.removeItem(SESSION_KEY_VIEW);
+    // Notify the badge immediately instead of waiting on its polling interval
+    window.dispatchEvent(new CustomEvent("hr:bg-job-updated"));
   }, [view, jobId]);
 
   useEffect(() => {
@@ -641,14 +647,16 @@ export function GenerateForm() {
   }
 
   async function handleSubmitForm() {
-    if (!jdText.trim()) {
-      setFormError("Vui lòng nhập mô tả công việc.");
-      return;
-    }
-    const wordCount = jdText.trim().split(/\s+/).filter(Boolean).length;
-    if (wordCount < 100) {
-      setFormError(`Mô tả công việc cần ít nhất 100 từ (hiện tại: ${wordCount} từ).`);
-      return;
+    if (!jdFile) {
+      if (!jdText.trim()) {
+        setFormError("Vui lòng nhập mô tả công việc.");
+        return;
+      }
+      const wordCount = jdText.trim().split(/\s+/).filter(Boolean).length;
+      if (wordCount < 100) {
+        setFormError(`Mô tả công việc cần ít nhất 100 từ (hiện tại: ${wordCount} từ).`);
+        return;
+      }
     }
 
     setFormError(null);
@@ -656,14 +664,23 @@ export function GenerateForm() {
 
     let jId: string | null = null;
     try {
-      jId = await createGenerationJob({
-        jobDescription:    jdText               || undefined,
-        hrNote:            note                 || undefined,
-        numberOfQuestions: Math.min(10, limits.maxQuestionsPerRun),
-        difficulty:        "medium",
-        questionTypes:     ["technical", "behavioral"],
-        ...(selectedDoc ? { knowledgeDocumentId: selectedDoc.id } : {}),
-      });
+      jId = jdFile
+        ? await createGenerationJobFromFile({
+            jobDescription:    jdText               || undefined,
+            hrNote:            note                 || undefined,
+            numberOfQuestions: Math.min(10, limits.maxQuestionsPerRun),
+            difficulty:        "medium",
+            questionTypes:     ["technical", "behavioral"],
+            file:              jdFile,
+          })
+        : await createGenerationJob({
+            jobDescription:    jdText               || undefined,
+            hrNote:            note                 || undefined,
+            numberOfQuestions: Math.min(10, limits.maxQuestionsPerRun),
+            difficulty:        "medium",
+            questionTypes:     ["technical", "behavioral"],
+            ...(selectedDoc ? { knowledgeDocumentId: selectedDoc.id } : {}),
+          });
     } catch (err) {
       setFormError(err instanceof Error ? err.message : "Không thể tạo job. Vui lòng kiểm tra lại nội dung JD và thử lại.");
       return;
@@ -739,15 +756,21 @@ export function GenerateForm() {
 
   async function handleEditInputResubmit() {
     if (!jobId) return;
-    if (!jdText.trim()) {
+    if (!jdFile && !jdText.trim()) {
       setFormError("Vui lòng nhập JD.");
       return;
     }
     setFormError(null);
-    const ok = await updateJobInput(jobId, {
-      jobDescription: jdText || undefined,
-      hrNote:         note   || undefined,
-    });
+    const ok = jdFile
+      ? await updateJobInputFromFile(jobId, {
+          jobDescription: jdText || undefined,
+          hrNote:         note   || undefined,
+          file:           jdFile,
+        })
+      : await updateJobInput(jobId, {
+          jobDescription: jdText || undefined,
+          hrNote:         note   || undefined,
+        });
     if (ok) startPolling(jobId, "plan");
     else setFormError("Cập nhật input thất bại.");
   }
@@ -939,6 +962,7 @@ export function GenerateForm() {
                     portalInput
                   )}
                 />
+                <FileUploadArea onFileChange={setJdFile} />
                 <button
                   type="button"
                   onClick={handleEditInputResubmit}
@@ -1066,6 +1090,11 @@ export function GenerateForm() {
         <JdInputCard value={jdText} onChange={setJdText} />
       </div>
 
+      <div className="animate-fade-up" style={{ animationDelay: "40ms" }}>
+        <p className={cn("text-xs font-medium mb-1.5", portalSubtext)}>{t.generatePage.jdInput.orUploadFile}</p>
+        <FileUploadArea onFileChange={setJdFile} />
+      </div>
+
       <div className="animate-fade-up" style={{ animationDelay: "60ms" }}>
         <KbDocPicker selectedDocId={selectedDoc?.id ?? null} onSelect={setSelectedDoc} />
       </div>
@@ -1094,9 +1123,9 @@ export function GenerateForm() {
         const MIN_CHARS = 400;
         const trimmed = jdText.trim();
         const charCount = trimmed.length;
-        const tooShort = charCount > 0 && charCount < MIN_CHARS;
+        const tooShort = !jdFile && charCount > 0 && charCount < MIN_CHARS;
         const remaining = MIN_CHARS - charCount;
-        const jdValid = charCount >= MIN_CHARS;
+        const jdValid = jdFile !== null || charCount >= MIN_CHARS;
         const submitDisabled = generateDisabled || !jdValid;
         return (
           <>
@@ -1105,7 +1134,7 @@ export function GenerateForm() {
                 {t.generatePage.jdInput.needMoreChars.replace("{{n}}", String(remaining))}
               </p>
             )}
-            {!trimmed && (
+            {!trimmed && !jdFile && (
               <p className="text-xs text-gray-400 dark:text-gray-500 -mt-1" style={{ animationDelay: "160ms" }}>
                 {t.generatePage.jdInput.minCharsHint}
               </p>
