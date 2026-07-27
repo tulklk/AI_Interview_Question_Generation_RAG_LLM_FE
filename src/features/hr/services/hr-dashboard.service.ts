@@ -143,7 +143,7 @@ function normalizeRecentSessions(src: Record<string, unknown>): HrDashboardRecen
     .filter((r): r is Record<string, unknown> => r !== null)
     .map((r) => ({
       id: pickStr(r, "id", "jobId", "sessionId"),
-      role: pickStr(r, "role", "roleTitle", "jobTitle", "title"),
+      role: pickStr(r, "title", "jobTitle", "roleTitle", "role"),
       level: pickStr(r, "level", "experienceLevel"),
       status: pickStr(r, "status") || "COMPLETED",
       questionsCount: pickNum(r, "questionsCount", "questionCount", "totalQuestions"),

@@ -283,9 +283,15 @@ html {
 
 body {
   margin: 0;
+  overflow-x: hidden;
   background-color: #F8FAFC;
   color: #111827;
   font-family: var(--font-be-vietnam-pro), "Be Vietnam Pro", system-ui, -apple-system, sans-serif;
+  transition: opacity 140ms ease;
+}
+
+body.lang-switching {
+  opacity: 0;
 }
 
 .dark body {
@@ -521,16 +527,19 @@ body {
   position: absolute;
   inset: 0;
   background-image:
-    linear-gradient(rgba(148, 163, 184, 0.05) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(148, 163, 184, 0.05) 1px, transparent 1px);
+    linear-gradient(rgba(71, 85, 105, 0.1) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(71, 85, 105, 0.1) 1px, transparent 1px);
   background-size: 56px 56px;
   -webkit-mask-image: radial-gradient(ellipse 70% 55% at 50% 0%, #000 35%, transparent 85%);
   mask-image: radial-gradient(ellipse 70% 55% at 50% 0%, #000 35%, transparent 85%);
-  opacity: 0.6;
+  opacity: 1;
   pointer-events: none;
 }
 
 .dark .bg-grid-pattern {
+  background-image:
+    linear-gradient(rgba(148, 163, 184, 0.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(148, 163, 184, 0.07) 1px, transparent 1px);
   opacity: 1;
 }
 
@@ -1223,19 +1232,19 @@ body {
   inset: 0;
   pointer-events: none;
   background-image:
-    linear-gradient(rgba(124, 58, 237, 0.05) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(124, 58, 237, 0.05) 1px, transparent 1px);
+    linear-gradient(rgba(71, 85, 105, 0.11) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(71, 85, 105, 0.11) 1px, transparent 1px);
   background-size: 48px 48px;
-  -webkit-mask-image: radial-gradient(ellipse 75% 60% at 50% 35%, #000 30%, transparent 85%);
-  mask-image: radial-gradient(ellipse 75% 60% at 50% 35%, #000 30%, transparent 85%);
-  opacity: 0.6;
+  -webkit-mask-image: radial-gradient(ellipse 90% 80% at 50% 50%, #000 40%, transparent 90%);
+  mask-image: radial-gradient(ellipse 90% 80% at 50% 50%, #000 40%, transparent 90%);
+  opacity: 1;
 }
 
 .dark .auth-grid-pattern {
   background-image:
-    linear-gradient(rgba(148, 163, 184, 0.07) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(148, 163, 184, 0.07) 1px, transparent 1px);
-  opacity: 0.45;
+    linear-gradient(rgba(148, 163, 184, 0.13) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(148, 163, 184, 0.13) 1px, transparent 1px);
+  opacity: 1;
 }
 
 /* ── Drifting particles / stars behind the form ── */

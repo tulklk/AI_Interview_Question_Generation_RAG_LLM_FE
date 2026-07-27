@@ -192,11 +192,12 @@ interface FeedbackPageProps {
   scoring: boolean;
   setTitle?: string;
   companyName?: string;
+  companyLogoUrl?: string | null;
   /** Score of the most recent other completed attempt of this same set — undefined while still loading, null when there isn't one. */
   previousScore?: number | null;
 }
 
-export function FeedbackPage({ session, feedback, aiInsight, scoring, setTitle, companyName, previousScore }: FeedbackPageProps) {
+export function FeedbackPage({ session, feedback, aiInsight, scoring, setTitle, companyName, companyLogoUrl, previousScore }: FeedbackPageProps) {
   const { t, lang } = useLanguage();
   const p = t.jobseekerFeedbackPage;
   const chart = useChartTheme();
@@ -301,9 +302,17 @@ export function FeedbackPage({ session, feedback, aiInsight, scoring, setTitle, 
           {(setTitle || companyName) && (
             <div className="flex items-center gap-2 mb-4">
               {companyName && (
-                <div className={cn("w-6 h-6 rounded-lg flex items-center justify-center text-white text-[10px] font-bold", companyColor)}>
-                  {companyInitials}
-                </div>
+                companyLogoUrl ? (
+                  <img
+                    src={companyLogoUrl}
+                    alt={companyName}
+                    className="w-6 h-6 rounded-lg object-cover shrink-0 border border-gray-100/20 dark:border-gray-700"
+                  />
+                ) : (
+                  <div className={cn("w-6 h-6 rounded-lg flex items-center justify-center text-white text-[10px] font-bold", companyColor)}>
+                    {companyInitials}
+                  </div>
+                )
               )}
               <p className={cn("text-[14px]", portalSubtextAlt)}>
                 {[setTitle, companyName].filter(Boolean).join(" · ")}

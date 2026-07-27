@@ -574,9 +574,17 @@ export function PracticeSession({ set }: PracticeSessionProps) {
       <header className={cn("hr-topbar px-4 md:px-8 h-14 flex items-center justify-between shrink-0 border-b gap-2", portalDivider)}>
         {/* Left: set info */}
         <div className="flex items-center gap-2 min-w-0">
-          <div className={cn("w-7 h-7 rounded-lg text-white text-[11px] font-bold flex items-center justify-center shrink-0", set.companyColor)}>
-            {set.companyInitials}
-          </div>
+          {set.companyLogoUrl ? (
+            <img
+              src={set.companyLogoUrl}
+              alt={set.company}
+              className="w-7 h-7 rounded-lg object-cover shrink-0 border border-gray-100/20 dark:border-gray-700"
+            />
+          ) : (
+            <div className={cn("w-7 h-7 rounded-lg text-white text-[11px] font-bold flex items-center justify-center shrink-0", set.companyColor)}>
+              {set.companyInitials}
+            </div>
+          )}
           <div className="min-w-0 hidden sm:block">
             <p className={cn("text-[13px] font-semibold leading-none truncate", portalHeadingAlt)}>{set.title}</p>
             <p className={cn("text-[11px] mt-0.5", portalSubtextAlt)}>{set.company}</p>
