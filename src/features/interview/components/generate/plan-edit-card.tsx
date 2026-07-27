@@ -33,6 +33,7 @@ const DIFFICULTIES = ["Easy", "Medium", "Hard"];
 
 const EXPERIENCE_LEVELS = [
   "Intern",
+  "Fresher",
   "Junior",
   "Mid-level",
   "Senior",

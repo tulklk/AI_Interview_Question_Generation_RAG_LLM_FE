@@ -17,6 +17,7 @@ import { motion, AnimatePresence, type Variants } from "framer-motion";
 import { type RegisterRoleKey } from "@/features/auth/utils/google-onboarding";
 import { SocialOAuthRow } from "@/features/auth/components/social-oauth-buttons";
 import { useRegister } from "@/features/auth/hooks/use-register";
+import { useTheme } from "@/shared/providers/theme-context";
 
 // ── Animation variants ───────────────────────────────────────────────────────
 
@@ -131,7 +132,11 @@ export function RegisterForm({ registerRole = "hr" }: RegisterFormProps) {
     handleGoogle,
     handleBackFromStep2,
     handleSubmit,
+    serverError,
   } = useRegister(registerRole);
+
+  const { theme } = useTheme();
+  const isDark = theme === "dark";
 
   const inputBase =
     "auth-input-glow w-full pl-10 pr-4 py-2.5 text-sm border border-gray-200 rounded-lg bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors placeholder:text-gray-400 dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100 dark:placeholder:text-gray-500";
@@ -215,8 +220,8 @@ export function RegisterForm({ registerRole = "hr" }: RegisterFormProps) {
           <motion.span
             className="relative w-7 h-7 rounded-full text-xs font-bold flex items-center justify-center"
             animate={{
-              backgroundColor: step === 2 ? "#6c47ff" : "#e5e7eb",
-              color: step === 2 ? "#ffffff" : "#9ca3af",
+              backgroundColor: step === 2 ? "#6c47ff" : isDark ? "#374151" : "#e5e7eb",
+              color: step === 2 ? "#ffffff" : isDark ? "#6b7280" : "#9ca3af",
               scale: step === 2 ? [1, 1.18, 1] : 1,
             }}
             transition={{ duration: 0.35 }}
@@ -228,7 +233,7 @@ export function RegisterForm({ registerRole = "hr" }: RegisterFormProps) {
         <motion.span
           className="text-xs"
           animate={{
-            color: step === 2 ? "#6c47ff" : "#9ca3af",
+            color: step === 2 ? "#6c47ff" : isDark ? "#6b7280" : "#9ca3af",
             fontWeight: step === 2 ? 700 : 500,
           }}
           transition={{ duration: 0.3 }}
@@ -561,6 +566,17 @@ export function RegisterForm({ registerRole = "hr" }: RegisterFormProps) {
                     <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-primary font-semibold hover:underline">{rp.privacyPolicy}</a>
                   </p>
                 </motion.div>
+
+                {/* Server error banner */}
+                {serverError && (
+                  <motion.div
+                    variants={fieldRow}
+                    className="flex items-start gap-2.5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-800/60 dark:bg-red-950/30 dark:text-red-400"
+                  >
+                    <span className="mt-0.5 shrink-0 text-red-500 dark:text-red-400">✕</span>
+                    <span>{serverError}</span>
+                  </motion.div>
+                )}
 
                 {/* Submit */}
                 <motion.div variants={fieldRow}>

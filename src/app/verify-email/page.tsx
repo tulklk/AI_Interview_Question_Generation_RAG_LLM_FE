@@ -7,7 +7,7 @@ import { Mail, ArrowLeft, CheckCircle2, AlertCircle, Loader2 } from "lucide-reac
 import { verifyEmail, resendVerification } from "@/features/auth/services/auth.service";
 import { useLanguage } from "@/shared/providers/language-context";
 import { useToast } from "@/shared/providers/toast-context";
-import { AuthPageToolbar } from "@/features/auth/components/auth-page-toolbar";
+import { BrandLogo } from "@/shared/components/common/brand-logo";
 import { cn } from "@/lib/cn";
 
 const COOLDOWN = 60;
@@ -269,7 +269,13 @@ export default function VerifyEmailPage() {
   return (
     <div className="relative flex h-screen items-center justify-center bg-white dark:bg-gray-950 px-8">
       <div className="absolute top-6 right-8 z-10">
-        <AuthPageToolbar />
+        <BrandLogo
+          href="/"
+          className="justify-end"
+          logoClassName="w-10 h-10"
+          titleClassName="text-[16px]"
+          subtitleClassName="text-[11px]"
+        />
       </div>
       <Suspense>
         <VerifyEmailContent />
