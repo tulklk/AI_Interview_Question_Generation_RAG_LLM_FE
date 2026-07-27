@@ -10,7 +10,7 @@ import { FloatingWidgets } from "@/features/guest/components/floating-widgets";
 
 export default function RootPage() {
   return (
-    <main className="relative overflow-x-hidden">
+    <main className="relative">
       {/* ── Animated background: shifting gradient layers + aurora mesh ── */}
       <div
         className="animated-bg-stack fixed inset-0 z-0 pointer-events-none isolate"
