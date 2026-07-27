@@ -4,13 +4,13 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FileText, Calendar, ArrowUpDown, Eye, Download, Trash2, Inbox, Loader2, AlertTriangle, ChevronLeft, ChevronRight, SearchX, Globe, GlobeOff, PenLine } from "lucide-react";
+import { FileText, Calendar, ArrowUpDown, Eye, Download, Trash2, Inbox, Loader2, AlertTriangle, ChevronLeft, ChevronRight, SearchX, Globe, GlobeOff, PenLine, Bookmark, Users } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { useLanguage } from "@/shared/providers/language-context";
 import { useToast } from "@/shared/providers/toast-context";
 import { useHrSubscription } from "@/features/hr/context/hr-subscription-context";
 import { getLocalSessions, toGenerationSession } from "@/features/interview/utils/local-history";
-import { getGenerationJobs, getGenerationPlans, getQuestionSetStatusByJob, deleteGenerationPlan, exportPlanQuestions, publishQuestionSet, unpublishQuestionSet } from "@/features/interview/services/interview.service";
+import { getGenerationJobs, getGenerationPlans, getQuestionSetSummariesByJob, deleteGenerationPlan, exportPlanQuestions, publishQuestionSet, unpublishQuestionSet, toggleHrBookmark, getHrBookmarkedSetIds } from "@/features/interview/services/interview.service";
 import type { GenerationSession, GenerationStatus } from "@/features/interview/types/generation-session";
 import { SessionStatusBadge } from "@/features/interview/components/history/session-status-badge";
 import {
@@ -171,6 +171,9 @@ export function HistoryTable({ search = "", role = "", level = "", experience = 
 
   const [sessions, setSessions] = useState<GenerationSession[]>([]);
   const [publishMap, setPublishMap] = useState<Map<string, "DRAFT" | "PUBLISHED">>(new Map());
+  const [questionSetIdMap, setQuestionSetIdMap] = useState<Map<string, string>>(new Map());
+  const [bookmarkedIds, setBookmarkedIds] = useState<Set<string>>(new Set());
+  const [bookmarkingId, setBookmarkingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [exportingId, setExportingId] = useState<string | null>(null);
@@ -250,6 +253,25 @@ export function HistoryTable({ search = "", role = "", level = "", experience = 
     router.push("/hr/generate");
   }
 
+  async function handleToggleBookmark(session: GenerationSession) {
+    const qsId = questionSetIdMap.get(session.id);
+    if (!qsId || bookmarkingId) return;
+    setBookmarkingId(session.id);
+    try {
+      const bookmarked = await toggleHrBookmark(qsId);
+      setBookmarkedIds((prev) => {
+        const next = new Set(prev);
+        if (bookmarked) next.add(qsId); else next.delete(qsId);
+        return next;
+      });
+      addToast("success", bookmarked ? ht.bookmarkAdded : ht.bookmarkRemoved);
+    } catch {
+      addToast("error", ht.bookmarkFailed);
+    } finally {
+      setBookmarkingId(null);
+    }
+  }
+
   async function handleExport(session: GenerationSession) {
     if (session.status !== "COMPLETED") return;
     setExportingId(session.id);
@@ -267,7 +289,17 @@ export function HistoryTable({ search = "", role = "", level = "", experience = 
       .filter((s) => !s.backendJobId)
       .map(toGenerationSession);
 
-    getQuestionSetStatusByJob().then(setPublishMap);
+    getQuestionSetSummariesByJob().then((summaries) => {
+      const statusMap = new Map<string, "DRAFT" | "PUBLISHED">();
+      const idMap = new Map<string, string>();
+      for (const [jobId, s] of summaries) {
+        statusMap.set(jobId, s.status);
+        idMap.set(jobId, s.questionSetId);
+      }
+      setPublishMap(statusMap);
+      setQuestionSetIdMap(idMap);
+    });
+    getHrBookmarkedSetIds().then(setBookmarkedIds);
 
     // Fetch all jobs (all statuses including in-progress), then enrich with
     // level/jobTitle metadata from plans API for completed sessions.
@@ -458,6 +490,9 @@ export function HistoryTable({ search = "", role = "", level = "", experience = 
     const canManagePublish = session.status === "COMPLETED" && publishStatus !== undefined;
     const isPublishing = publishingTableId === session.id;
     const isUnpublishing = unpublishingTableId === session.id;
+    const questionSetId = questionSetIdMap.get(session.id);
+    const isBookmarked = !!questionSetId && bookmarkedIds.has(questionSetId);
+    const isBookmarking = bookmarkingId === session.id;
 
     return (
       <>
@@ -469,6 +504,37 @@ export function HistoryTable({ search = "", role = "", level = "", experience = 
         >
           <Eye size={14} />
         </button>
+
+        {/* Bookmark toggle — only once a question set exists */}
+        {questionSetId && (
+          <button
+            type="button"
+            onClick={() => void handleToggleBookmark(session)}
+            disabled={isBookmarking}
+            title={isBookmarked ? ht.bookmarkRemoveTitle : ht.bookmarkAddTitle}
+            className={cn(
+              "p-2 rounded-lg transition-colors disabled:opacity-40 inline-flex",
+              isBookmarked
+                ? "text-amber-500 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/40"
+                : "text-gray-400 dark:text-gray-500 hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-950/40"
+            )}
+          >
+            {isBookmarking
+              ? <Loader2 size={14} className="animate-spin" />
+              : <Bookmark size={14} fill={isBookmarked ? "currentColor" : "none"} />}
+          </button>
+        )}
+
+        {/* Practitioners — only once a question set exists */}
+        {questionSetId && (
+          <Link
+            href={`/hr/question-sets/${questionSetId}/practitioners`}
+            title={t.practitionersPage.heading}
+            className="p-2 text-gray-400 dark:text-gray-500 hover:text-[#7C3AED] dark:hover:text-[#a78bff] hover:bg-violet-50 dark:hover:bg-violet-950/40 rounded-lg transition-colors inline-flex"
+          >
+            <Users size={14} />
+          </Link>
+        )}
 
         {/* Publish button — only for DRAFT */}
         {canManagePublish && publishStatus === "DRAFT" && (

@@ -49,6 +49,8 @@ function SessionRow({ session, scoreDelta, bookmarked, onToggleBookmark, pending
         <img
           src={session.companyLogoUrl}
           alt={session.company}
+          loading="lazy"
+          decoding="async"
           className="w-9 h-9 rounded-lg object-cover shrink-0 border border-gray-100 dark:border-gray-700"
         />
       ) : (

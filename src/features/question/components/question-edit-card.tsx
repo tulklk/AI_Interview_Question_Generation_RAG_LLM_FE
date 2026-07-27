@@ -15,6 +15,7 @@ import {
   Lock,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
+import { QuestionContent } from "@/shared/components/ui/question-content";
 import { useLanguage } from "@/shared/providers/language-context";
 import {
   portalBanner,
@@ -276,7 +277,7 @@ export function QuestionEditCard({
                     ) : (
                       <Check size={13} />
                     )}
-                    {isSaving ? "Đang lưu..." : rp.questionActions.save}
+                    {isSaving ? rp.saving : rp.questionActions.save}
                   </button>
                   <button
                     type="button"
@@ -296,9 +297,7 @@ export function QuestionEditCard({
               </div>
             ) : (
               <>
-                <p className={cn("text-sm leading-relaxed font-medium", portalHeading)}>
-                  {question.question}
-                </p>
+                <QuestionContent text={question.question} className={cn("text-sm leading-relaxed font-medium", portalHeading)} />
 
                 {/* Toggle answer */}
                 <button
@@ -306,7 +305,7 @@ export function QuestionEditCard({
                   className="flex items-center gap-1 mt-3 text-xs font-semibold text-primary hover:text-[#5535dd] transition-colors"
                 >
                   {isAnswerOpen ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
-                  {isAnswerOpen ? "Hide Sample Answer" : "Show Sample Answer"}
+                  {isAnswerOpen ? rp.hideSampleAnswer : rp.showSampleAnswer}
                 </button>
 
                 {isAnswerOpen && (
@@ -318,9 +317,7 @@ export function QuestionEditCard({
                       </span>
                     </div>
                     {question.sampleAnswer && (
-                      <p className={cn("text-sm leading-relaxed", portalHeading)}>
-                        {question.sampleAnswer}
-                      </p>
+                      <QuestionContent text={question.sampleAnswer} className={cn("text-sm leading-relaxed", portalHeading)} />
                     )}
                     {question.rationale && (
                       <p className={cn("text-xs mt-2", portalSubtext)}>

@@ -14,6 +14,9 @@ export interface CandidateRecommendation {
   completedAt: string | null;
   status: RecommendationStatus;
   recommendationReason?: string | null;
+  /** Only set once the candidate has ACCEPTED the invite — sent by the candidate themself, not their profile phone. */
+  invitationResponseMessage: string | null;
+  invitationSharedPhoneNumber: string | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -46,6 +49,14 @@ function pickNum(obj: Record<string, unknown>, ...keys: string[]): number {
   return 0;
 }
 
+function pickNullableStr(obj: Record<string, unknown>, ...keys: string[]): string | null {
+  for (const k of keys) {
+    const v = obj[k];
+    if (typeof v === "string" && v.trim()) return v.trim();
+  }
+  return null;
+}
+
 function pickStrArr(obj: Record<string, unknown>, ...keys: string[]): string[] {
   for (const k of keys) {
     const v = obj[k];
@@ -75,7 +86,7 @@ function normalizeRec(raw: unknown): CandidateRecommendation | null {
     score: pickNum(src, "score", "overallScore"),
     questionSetId: pickStr(src, "questionSetId"),
     questionSetTitle: pickStr(src, "questionSetTitle", "setTitle", "title"),
-    completedAt: typeof src.completedAt === "string" ? src.completedAt : null,
+    completedAt: pickStr(src, "completedAt", "recommendedAt") || null,
     status: normalizeStatus(pickStr(src, "status") || "NEW"),
     recommendationReason:
       typeof src.recommendationReason === "string"
@@ -83,6 +94,8 @@ function normalizeRec(raw: unknown): CandidateRecommendation | null {
         : typeof src.reason === "string"
           ? src.reason
           : null,
+    invitationResponseMessage: pickNullableStr(src, "invitationResponseMessage"),
+    invitationSharedPhoneNumber: pickNullableStr(src, "invitationSharedPhoneNumber"),
   };
 }
 
@@ -112,7 +125,6 @@ export interface ListRecommendationsParams {
   pageSize?: number;
   status?: string;
   questionSetId?: string;
-  minScore?: number;
 }
 
 export async function listRecommendations(
@@ -124,7 +136,6 @@ export async function listRecommendations(
       PageSize: params.pageSize ?? 12,
       Status: params.status || undefined,
       QuestionSetId: params.questionSetId || undefined,
-      MinScore: params.minScore ?? undefined,
     },
   });
   const items = extractList(res.data)

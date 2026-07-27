@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Be_Vietnam_Pro } from "next/font/google";
+import Script from "next/script";
 import "./globals.css";
 import { Providers } from "./providers";
 
@@ -28,7 +29,9 @@ export default function RootLayout({
   return (
     <html lang="en" className={beVietnamPro.variable} suppressHydrationWarning>
       <head>
-        <script
+        <Script
+          id="theme-fouc-guard"
+          strategy="beforeInteractive"
           dangerouslySetInnerHTML={{
             __html: `(function(){try{var p=localStorage.getItem("hiregena-theme");var dark=p==="dark"||(p!=="light"&&window.matchMedia("(prefers-color-scheme: dark)").matches);if(dark){document.documentElement.classList.add("dark");document.documentElement.style.colorScheme="dark";}}catch(e){}})();`,
           }}

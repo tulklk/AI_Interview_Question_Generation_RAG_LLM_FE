@@ -25,6 +25,7 @@ import {
   AlertCircle,
   Eye,
   ChevronDown,
+  RefreshCw,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import {
@@ -44,18 +45,23 @@ import { AvatarUpload } from "@/shared/components/common/avatar-upload";
 import { uploadAvatarToCloudinary } from "@/shared/utils/cloudinary";
 import { mapAvatarUploadError } from "@/shared/utils/avatar-upload-messages";
 import { Skeleton } from "@/shared/components/ui/skeleton";
+import { Toggle } from "@/shared/components/ui/toggle";
 import { SectionCard, Field } from "@/features/candidate/components/ui/section-card";
 import {
   getCv,
   uploadCv,
   deleteCv,
+  getCvSyncSettings,
+  updateCvSyncSettings,
   CvValidationError,
   type CvInfo,
 } from "@/features/candidate/services/candidate-cv.service";
 import { formatRelativeTime } from "@/shared/utils/relative-time";
 import { ConfirmDialog } from "@/shared/components/ui/confirm-dialog";
+import { isValidUrl } from "@/shared/utils/url-validation";
 import {
   portalCard,
+  portalDivider,
   portalHeadingAlt,
   portalIconWell,
   portalInput,
@@ -139,6 +145,8 @@ export function CandidateProfile() {
   const [snapshot, setSnapshot] = useState<ProfileFormState>(EMPTY_FORM);
   const [skillInput, setSkillInput] = useState("");
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [linkedInTouched, setLinkedInTouched] = useState(false);
+  const [githubTouched, setGithubTouched] = useState(false);
 
   const [cv, setCv] = useState<CvInfo | null>(null);
   const [cvLoading, setCvLoading] = useState(true);
@@ -148,6 +156,9 @@ export function CandidateProfile() {
   const [showCvInsights, setShowCvInsights] = useState(false);
   const [showAllCvSkills, setShowAllCvSkills] = useState(false);
   const cvFileInputRef = useRef<HTMLInputElement>(null);
+
+  const [cvSyncEnabled, setCvSyncEnabled] = useState<boolean | null>(null);
+  const [cvSyncSaving, setCvSyncSaving] = useState(false);
 
   const [stats, setStats] = useState<PracticeStats | null>(null);
   const [sessions, setSessions] = useState<CompletedSessionSummary[]>([]);
@@ -161,6 +172,23 @@ export function CandidateProfile() {
       .finally(() => { if (!cancelled) setCvLoading(false); });
     return () => { cancelled = true; };
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    getCvSyncSettings()
+      .then((enabled) => { if (!cancelled) setCvSyncEnabled(enabled); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
+
+  function handleToggleCvSync(next: boolean) {
+    if (cvSyncSaving) return;
+    setCvSyncSaving(true);
+    updateCvSyncSettings(next)
+      .then(() => setCvSyncEnabled(next))
+      .catch(() => addToast("error", p.cv.syncUpdateFailed))
+      .finally(() => setCvSyncSaving(false));
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -313,15 +341,24 @@ export function CandidateProfile() {
     setForm(snapshot);
     setEditing(false);
     setUploadingAvatar(false);
+    setLinkedInTouched(false);
+    setGithubTouched(false);
   }
 
   function handleAvatarUploadError(code: string) {
     addToast("error", mapAvatarUploadError(code, p));
   }
 
+  const linkedInInvalid = editing && !isValidUrl(form.linkedInUrl);
+  const githubInvalid = editing && !isValidUrl(form.githubUrl);
+  const linkedInError = linkedInInvalid && linkedInTouched;
+  const githubError = githubInvalid && githubTouched;
+
   async function handleSave() {
-    if (!form.fullName.trim()) {
-      addToast("error", p.saveFailed);
+    if (!form.fullName.trim() || linkedInInvalid || githubInvalid) {
+      setLinkedInTouched(true);
+      setGithubTouched(true);
+      addToast("error", linkedInInvalid || githubInvalid ? p.invalidUrl : p.saveFailed);
       return;
     }
     setSaving(true);
@@ -558,7 +595,7 @@ export function CandidateProfile() {
               <button
                 type="button"
                 onClick={() => void handleSave()}
-                disabled={saving || uploadingAvatar}
+                disabled={saving || uploadingAvatar || linkedInError || githubError}
                 className="shimmer-button flex items-center gap-1.5 h-8.5 px-4 text-[12px] font-semibold text-white hr-cta-btn rounded-lg disabled:opacity-60"
               >
                 {saving ? (
@@ -705,6 +742,21 @@ export function CandidateProfile() {
             className="hidden"
             onChange={handleCvFileChange}
           />
+
+          <div className={cn("flex items-center gap-3 pb-4 mb-4 border-b", portalDivider)}>
+            <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center shrink-0", portalIconWell)}>
+              <RefreshCw size={14} className="text-primary" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className={cn("text-[13px] font-semibold", portalHeadingAlt)}>{p.cv.syncToggleTitle}</p>
+              <p className={cn("text-[11px] leading-4 mt-0.5", portalSubtextAlt)}>{p.cv.syncToggleDescription}</p>
+            </div>
+            <Toggle
+              checked={cvSyncEnabled ?? true}
+              onChange={handleToggleCvSync}
+              disabled={cvSyncEnabled === null || cvSyncSaving}
+            />
+          </div>
 
           {cvLoading ? (
             <div className="h-12 flex items-center justify-center">
@@ -929,14 +981,18 @@ export function CandidateProfile() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-5">
             <Field label={p.linkedInUrl}>
               {editing ? (
-                <div className="relative">
-                  <Link size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                  <input
-                    type="url"
-                    value={form.linkedInUrl}
-                    onChange={(e) => setForm((prev) => ({ ...prev, linkedInUrl: e.target.value }))}
-                    className={cn(INPUT_CLASS, "pl-9")}
-                  />
+                <div>
+                  <div className="relative">
+                    <Link size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <input
+                      type="url"
+                      value={form.linkedInUrl}
+                      onChange={(e) => setForm((prev) => ({ ...prev, linkedInUrl: e.target.value }))}
+                      onBlur={() => setLinkedInTouched(true)}
+                      className={cn(INPUT_CLASS, "pl-9", linkedInError && "border-red-400 dark:border-red-500 focus:shadow-[0_0_0_3px_rgba(248,113,113,0.15)]")}
+                    />
+                  </div>
+                  {linkedInError && <p className="text-xs text-red-500 mt-1">{p.invalidUrl}</p>}
                 </div>
               ) : (
                 displayUrl(form.linkedInUrl)
@@ -945,14 +1001,18 @@ export function CandidateProfile() {
 
             <Field label={p.githubUrl}>
               {editing ? (
-                <div className="relative">
-                  <Link size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                  <input
-                    type="url"
-                    value={form.githubUrl}
-                    onChange={(e) => setForm((prev) => ({ ...prev, githubUrl: e.target.value }))}
-                    className={cn(INPUT_CLASS, "pl-9")}
-                  />
+                <div>
+                  <div className="relative">
+                    <Link size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <input
+                      type="url"
+                      value={form.githubUrl}
+                      onChange={(e) => setForm((prev) => ({ ...prev, githubUrl: e.target.value }))}
+                      onBlur={() => setGithubTouched(true)}
+                      className={cn(INPUT_CLASS, "pl-9", githubError && "border-red-400 dark:border-red-500 focus:shadow-[0_0_0_3px_rgba(248,113,113,0.15)]")}
+                    />
+                  </div>
+                  {githubError && <p className="text-xs text-red-500 mt-1">{p.invalidUrl}</p>}
                 </div>
               ) : (
                 displayUrl(form.githubUrl)

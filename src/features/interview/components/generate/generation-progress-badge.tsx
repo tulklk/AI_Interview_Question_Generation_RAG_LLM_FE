@@ -339,7 +339,9 @@ export function GenerationProgressBadge() {
     }
 
     sync();
-    const id = setInterval(sync, 800);
+    // Primary sync now happens via the "hr:bg-job-updated" event dispatched right after
+    // localStorage writes; this interval is only a safety net for missed events.
+    const id = setInterval(sync, 5000);
     window.addEventListener("hr:bg-job-updated", sync);
     return () => {
       clearInterval(id);

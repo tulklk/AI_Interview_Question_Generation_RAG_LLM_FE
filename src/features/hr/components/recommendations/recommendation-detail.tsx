@@ -1,12 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import {
   ArrowLeft, Star, X as XIcon, Mail, Loader2,
   AlertCircle, RefreshCw, CheckCircle2, Clock, Send,
-  User, Briefcase, Hash, Sparkles,
+  User, Briefcase, Hash, Sparkles, Phone, MessageSquare,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { useLanguage } from "@/shared/providers/language-context";
@@ -52,7 +53,7 @@ function avatarColor(name: string): string {
 // Score Ring
 // ---------------------------------------------------------------------------
 
-function ScoreRing({ score }: { score: number }) {
+function ScoreRing({ score, labels }: { score: number; labels: ReturnType<typeof useLanguage>["t"]["hrRecommendationsPage"]["detail"] }) {
   const radius = 36;
   const circ = 2 * Math.PI * radius;
   const dash = (Math.min(100, Math.max(0, score)) / 100) * circ;
@@ -84,10 +85,10 @@ function ScoreRing({ score }: { score: number }) {
       </div>
       <div>
         <p className={cn("text-[11px] font-semibold uppercase tracking-wider mb-0.5", portalSubtextAlt)}>
-          Điểm tổng
+          {labels.overallScore}
         </p>
         <p className={cn("text-[15px] font-bold", textColor)}>
-          {score >= 85 ? "Rất phù hợp" : score >= 70 ? "Phù hợp" : "Cần xem xét"}
+          {score >= 85 ? labels.scoreExcellent : score >= 70 ? labels.scoreGood : labels.scoreFair}
         </p>
         <div className="mt-1.5 w-32 h-1.5 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
           <motion.div
@@ -156,11 +157,31 @@ interface InviteModalProps {
   actionLabels: ReturnType<typeof useLanguage>["t"]["hrRecommendationsPage"];
 }
 
+function buildDefaultInviteMessage(template: string, rec: CandidateRecommendation): string {
+  return template
+    .replace("{{name}}", rec.candidateName || "")
+    .replace("{{title}}", rec.questionSetTitle || "")
+    .replace("{{score}}", String(rec.score));
+}
+
 function InviteModal({ rec, onClose, onSent, labels, actionLabels }: InviteModalProps) {
-  const [message, setMessage] = useState("");
+  const [message, setMessage] = useState(() => buildDefaultInviteMessage(labels.defaultMessage, rec));
   const [sending, setSending] = useState(false);
   const { addToast } = useToast();
   const p = actionLabels;
+
+  useEffect(() => {
+    document.body.style.overflow = "hidden";
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.body.style.overflow = "";
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function handleSend() {
     setSending(true);
@@ -177,49 +198,58 @@ function InviteModal({ rec, onClose, onSent, labels, actionLabels }: InviteModal
     }
   }
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
-      <motion.div
-        initial={{ opacity: 0, scale: 0.96, y: 8 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        className="relative z-10 w-full max-w-md bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-100 dark:border-gray-800"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className={cn("flex items-center justify-between px-5 py-4 border-b", portalDivider)}>
-          <p className="text-[15px] font-bold text-gray-900 dark:text-gray-100">{labels.modalTitle}</p>
-          <button type="button" onClick={onClose}
-            className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
-            <XIcon size={14} />
-          </button>
-        </div>
-        <div className="px-5 py-4 flex flex-col gap-3">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-[12px] font-medium text-gray-500 dark:text-gray-400">{labels.to}:</span>
-            <span className="text-[13px] font-semibold text-gray-900 dark:text-gray-100">{rec.candidateName}</span>
-            <span className="text-[12px] text-gray-400 dark:text-gray-500">({rec.candidateEmail})</span>
+  return createPortal(
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      className="fixed inset-0 z-50 flex flex-col bg-white dark:bg-gray-900"
+    >
+      {/* Header */}
+      <div className={cn("flex items-center justify-between px-5 sm:px-8 py-4 border-b shrink-0", portalDivider)}>
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-9 h-9 rounded-xl bg-violet-50 dark:bg-violet-950/40 flex items-center justify-center shrink-0">
+            <Mail size={16} className="text-violet-600 dark:text-violet-400" />
           </div>
+          <div className="min-w-0">
+            <p className="text-[15px] font-bold text-gray-900 dark:text-gray-100 truncate">{labels.modalTitle}</p>
+            <p className="text-[12px] text-gray-500 dark:text-gray-400 truncate">
+              {labels.to}: <span className="font-semibold text-gray-700 dark:text-gray-300">{rec.candidateName}</span> ({rec.candidateEmail})
+            </p>
+          </div>
+        </div>
+        <button type="button" onClick={onClose}
+          className="w-9 h-9 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors shrink-0">
+          <XIcon size={18} />
+        </button>
+      </div>
+
+      {/* Content */}
+      <div className="flex-1 overflow-y-auto px-5 sm:px-8 py-6">
+        <div className="max-w-2xl mx-auto h-full flex flex-col">
           <textarea
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             placeholder={labels.messagePlaceholder}
-            rows={4}
-            className="w-full text-[13px] bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2.5 outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 resize-none placeholder:text-gray-400 dark:placeholder:text-gray-500 text-gray-900 dark:text-gray-100 transition-all"
+            className="w-full flex-1 min-h-64 text-[14px] leading-relaxed bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-3.5 outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 resize-none placeholder:text-gray-400 dark:placeholder:text-gray-500 text-gray-900 dark:text-gray-100 transition-all"
+            autoFocus
           />
         </div>
-        <div className={cn("flex items-center justify-end gap-2 px-5 py-4 border-t", portalDivider)}>
-          <button type="button" onClick={onClose} disabled={sending}
-            className="h-9 px-4 text-[13px] font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg transition-colors disabled:opacity-50">
-            {labels.cancelBtn}
-          </button>
-          <button type="button" onClick={() => void handleSend()} disabled={sending}
-            className="shimmer-button flex items-center gap-1.5 h-9 px-4 text-[13px] font-semibold text-white hr-cta-btn rounded-lg disabled:opacity-60">
-            {sending ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
-            {sending ? labels.sending : labels.sendBtn}
-          </button>
-        </div>
-      </motion.div>
-    </div>
+      </div>
+
+      {/* Footer */}
+      <div className={cn("flex items-center justify-end gap-2 px-5 sm:px-8 py-4 border-t shrink-0", portalDivider)}>
+        <button type="button" onClick={onClose} disabled={sending}
+          className="h-10 px-5 text-[13px] font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg transition-colors disabled:opacity-50">
+          {labels.cancelBtn}
+        </button>
+        <button type="button" onClick={() => void handleSend()} disabled={sending}
+          className="shimmer-button flex items-center gap-1.5 h-10 px-5 text-[13px] font-semibold text-white hr-cta-btn rounded-lg disabled:opacity-60">
+          {sending ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
+          {sending ? labels.sending : labels.sendBtn}
+        </button>
+      </div>
+    </motion.div>,
+    document.body
   );
 }
 
@@ -297,6 +327,10 @@ export function RecommendationDetail({ id }: { id: string }) {
   );
 
   const canAct = rec.status !== "INVITED" && rec.status !== "DISMISSED";
+  // BE allows re-shortlisting a dismissed recommendation to bring it back into
+  // play (confirmed live: dismiss → invite fails 409 "shortlist lại trước khi
+  // mời"), so DISMISSED isn't fully terminal like INVITED is.
+  const canRestore = rec.status === "DISMISSED";
   const initials = getInitials(rec.candidateName || rec.candidateEmail);
 
   return (
@@ -334,7 +368,7 @@ export function RecommendationDetail({ id }: { id: string }) {
             </div>
 
             <div className={cn("border-t pt-4", portalDivider)}>
-              <ScoreRing score={rec.score} />
+              <ScoreRing score={rec.score} labels={p.detail} />
             </div>
 
             {/* Action buttons */}
@@ -362,15 +396,19 @@ export function RecommendationDetail({ id }: { id: string }) {
                     {p.card.dismissBtn}
                   </button>
                 </>
+              ) : canRestore ? (
+                <button type="button" onClick={() => void handleShortlist()} disabled={busy !== null}
+                  className="flex items-center justify-center gap-2 h-9 px-4 text-[13px] font-semibold text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-950/40 hover:bg-violet-100 dark:hover:bg-violet-900/50 rounded-xl transition-colors disabled:opacity-50 border border-violet-200 dark:border-violet-800 w-full">
+                  {busy === "shortlist" ? <Loader2 size={13} className="animate-spin" /> : <Star size={13} />}
+                  {p.card.shortlistBtn}
+                </button>
               ) : (
                 <div className={cn(
                   "flex items-center justify-center gap-2 h-9 text-[13px] font-medium rounded-xl border",
-                  rec.status === "INVITED"
-                    ? "text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/30"
-                    : "text-gray-400 border-gray-200 dark:border-gray-700"
+                  "text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/30"
                 )}>
-                  {rec.status === "INVITED" ? <CheckCircle2 size={13} /> : <XIcon size={13} />}
-                  {rec.status === "INVITED" ? p.card.invited : p.card.dismissed}
+                  <CheckCircle2 size={13} />
+                  {p.card.invited}
                 </div>
               )}
             </div>
@@ -382,11 +420,11 @@ export function RecommendationDetail({ id }: { id: string }) {
           {/* Info card */}
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}
             className="hr-glass-card p-5 flex flex-col gap-4">
-            <h2 className={cn("text-[13px] font-bold uppercase tracking-wider", portalSubtextAlt)}>Thông tin</h2>
+            <h2 className={cn("text-[13px] font-bold uppercase tracking-wider", portalSubtextAlt)}>{p.detail.info}</h2>
 
             <div className="flex flex-col gap-4 divide-y divide-gray-100 dark:divide-gray-800">
               {rec.targetRole && (
-                <DetailRow icon={Briefcase} label="Vai trò ứng tuyển">
+                <DetailRow icon={Briefcase} label={p.card.targetRole}>
                   {rec.targetRole}
                 </DetailRow>
               )}
@@ -401,13 +439,43 @@ export function RecommendationDetail({ id }: { id: string }) {
 
               {rec.completedAt && (
                 <div className="pt-3">
-                  <DetailRow icon={Clock} label="Hoàn thành">
+                  <DetailRow icon={Clock} label={p.detail.completedAt}>
                     {formatRelativeTime(rec.completedAt, lang)}
                   </DetailRow>
                 </div>
               )}
             </div>
           </motion.div>
+
+          {/* Candidate-shared contact info (from accepting the invite) */}
+          {(rec.invitationResponseMessage || rec.invitationSharedPhoneNumber) && (
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08 }}
+              className="hr-glass-card p-5">
+              <div className="flex items-center gap-2 mb-1">
+                <div className="w-7 h-7 rounded-lg bg-emerald-100 dark:bg-emerald-950/50 flex items-center justify-center shrink-0">
+                  <Phone size={13} className="text-emerald-600 dark:text-emerald-400" />
+                </div>
+                <h2 className={cn("text-[13px] font-bold uppercase tracking-wider", portalSubtextAlt)}>
+                  {p.detail.candidateContactTitle}
+                </h2>
+              </div>
+              <p className={cn("text-[11px] mb-3", portalSubtextAlt)}>{p.detail.candidateContactSubtitle}</p>
+              <div className="flex flex-col gap-3">
+                {rec.invitationSharedPhoneNumber && (
+                  <DetailRow icon={Phone} label={p.detail.candidateContactPhone}>
+                    <a href={`tel:${rec.invitationSharedPhoneNumber}`} className="hover:text-primary transition-colors">
+                      {rec.invitationSharedPhoneNumber}
+                    </a>
+                  </DetailRow>
+                )}
+                {rec.invitationResponseMessage && (
+                  <DetailRow icon={MessageSquare} label={p.detail.candidateContactMessage}>
+                    <span className="whitespace-pre-line leading-relaxed">{rec.invitationResponseMessage}</span>
+                  </DetailRow>
+                )}
+              </div>
+            </motion.div>
+          )}
 
           {/* Skills */}
           {rec.techStack.length > 0 && (

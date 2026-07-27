@@ -10,10 +10,12 @@ import { FeedbackPage } from "./feedback-page";
 import {
   getPracticeSession,
   readAnswerEvaluations,
+  getSessionFeedback,
   listCompletedSessions,
   ForbiddenError,
   type PracticeSessionDetail,
   type AnswerEvaluation,
+  type SessionAiInsight,
 } from "@/features/candidate/services/practice-session.service";
 import { getQuestionSetById } from "@/features/candidate/services/question-set.service";
 import type { QuestionSet } from "@/features/candidate/types/jobseeker";
@@ -35,6 +37,7 @@ export function FeedbackResultClient() {
 
   const [session, setSession] = useState<PracticeSessionDetail | null>(null);
   const [feedback, setFeedback] = useState<Record<string, AnswerEvaluation>>({});
+  const [aiInsight, setAiInsight] = useState<SessionAiInsight | null>(null);
   const [set, setSet] = useState<QuestionSet | null>(null);
   const [previousScore, setPreviousScore] = useState<number | null | undefined>(undefined);
   const [loading, setLoading] = useState(true);
@@ -55,6 +58,7 @@ export function FeedbackResultClient() {
     setForbidden(false);
     setSet(null);
     setFeedback({});
+    setAiInsight(null);
     setPreviousScore(undefined);
     pollAttemptsRef.current = 0;
 
@@ -92,9 +96,15 @@ export function FeedbackResultClient() {
           return;
         }
         setSession(s);
-        // Per-question AI evaluation only ever arrives inline in the submit-answer
-        // response (captured live during the session) — read whatever was saved.
+        // Show whatever was captured live in this tab immediately, then hydrate
+        // from the persisted GET .../feedback endpoint (works across tabs/devices,
+        // and also carries the overall aiInsight the inline capture never has).
         setFeedback(readAnswerEvaluations(s.id));
+        getSessionFeedback(s.id).then((fb) => {
+          if (cancelled || !fb) return;
+          if (Object.keys(fb.evaluations).length > 0) setFeedback(fb.evaluations);
+          setAiInsight(fb.aiInsight);
+        });
         if (s.overallScore === null) {
           wasScoring.current = true;
           setScoring(true);
@@ -188,7 +198,7 @@ export function FeedbackResultClient() {
       )}
 
       {!loading && !error && !forbidden && session && (
-        <FeedbackPage session={session} feedback={feedback} scoring={scoring} setTitle={set?.title} companyName={set?.company} previousScore={previousScore} />
+        <FeedbackPage session={session} feedback={feedback} aiInsight={aiInsight} scoring={scoring} setTitle={set?.title} companyName={set?.company} previousScore={previousScore} />
       )}
     </JobseekerAppShell>
   );

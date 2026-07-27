@@ -101,6 +101,8 @@ export function AdminCompanyTable({
                     <img
                       src={company.logoUrl}
                       alt={company.name}
+                      loading="lazy"
+                      decoding="async"
                       className="w-full h-full object-contain"
                     />
                   ) : (

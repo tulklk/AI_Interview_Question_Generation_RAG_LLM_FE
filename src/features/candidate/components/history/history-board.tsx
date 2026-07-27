@@ -267,7 +267,7 @@ export function HistoryBoard() {
                 <div className="flex items-center gap-3 min-w-0">
                   {session.companyLogoUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={session.companyLogoUrl} alt={session.company} className="w-8 h-8 rounded-lg object-cover shrink-0 border border-gray-100 dark:border-gray-700" />
+                    <img src={session.companyLogoUrl} alt={session.company} loading="lazy" decoding="async" className="w-8 h-8 rounded-lg object-cover shrink-0 border border-gray-100 dark:border-gray-700" />
                   ) : (
                     <div className={cn("w-8 h-8 rounded-lg text-white text-[11px] font-bold flex items-center justify-center shrink-0", getCompanyColor(session.company))}>
                       {getCompanyInitials(session.company)}
@@ -334,7 +334,7 @@ export function HistoryBoard() {
               <div className="flex items-start gap-3">
                 {session.companyLogoUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={session.companyLogoUrl} alt={session.company} className="w-9 h-9 rounded-lg object-cover shrink-0 border border-gray-100 dark:border-gray-700" />
+                  <img src={session.companyLogoUrl} alt={session.company} loading="lazy" decoding="async" className="w-9 h-9 rounded-lg object-cover shrink-0 border border-gray-100 dark:border-gray-700" />
                 ) : (
                   <div className={cn("w-9 h-9 rounded-lg text-white text-[11px] font-bold flex items-center justify-center shrink-0", getCompanyColor(session.company))}>
                     {getCompanyInitials(session.company)}

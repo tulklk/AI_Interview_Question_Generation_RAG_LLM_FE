@@ -10,6 +10,7 @@ import { useToast } from "@/shared/providers/toast-context";
 import {
   listCompanies,
   createCompany,
+  createCompaniesBulk,
   updateCompany,
   deleteCompany,
 } from "@/features/admin/services/admin-company.service";
@@ -17,6 +18,29 @@ import type { Company } from "@/features/admin/services/admin-company.service";
 import { LogoUploadField } from "@/features/admin/components/companies/logo-upload-field";
 
 const PAGE_SIZE = 10;
+const MAX_BULK_COMPANIES = 50;
+
+interface NewCompanyRow {
+  id: string;
+  name: string;
+  logo: string;
+  website: string;
+  description: string;
+  nameTouched: boolean;
+  websiteTouched: boolean;
+}
+
+function emptyCompanyRow(): NewCompanyRow {
+  return {
+    id: Math.random().toString(36).slice(2),
+    name: "",
+    logo: "",
+    website: "",
+    description: "",
+    nameTouched: false,
+    websiteTouched: false,
+  };
+}
 
 function isValidUrl(val: string): boolean {
   if (!val.trim()) return true;
@@ -60,14 +84,9 @@ export function CompanyManagement() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Create modal
+  // Create modal (supports adding several rows for a bulk create in one request)
   const [showCreate, setShowCreate] = useState(false);
-  const [newName, setNewName] = useState("");
-  const [newLogo, setNewLogo] = useState("");
-  const [newWebsite, setNewWebsite] = useState("");
-  const [newDescription, setNewDescription] = useState("");
-  const [nameTouched, setNameTouched] = useState(false);
-  const [newWebsiteTouched, setNewWebsiteTouched] = useState(false);
+  const [newRows, setNewRows] = useState<NewCompanyRow[]>([emptyCompanyRow()]);
   const [createFormError, setCreateFormError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
 
@@ -120,12 +139,7 @@ export function CompanyManagement() {
 
   // --- Create ---
   function openCreate() {
-    setNewName("");
-    setNewLogo("");
-    setNewWebsite("");
-    setNewDescription("");
-    setNameTouched(false);
-    setNewWebsiteTouched(false);
+    setNewRows([emptyCompanyRow()]);
     setCreateFormError(null);
     setShowCreate(true);
   }
@@ -134,22 +148,38 @@ export function CompanyManagement() {
     setShowCreate(false);
   }
 
+  function addNewRow() {
+    setNewRows((prev) => (prev.length >= MAX_BULK_COMPANIES ? prev : [...prev, emptyCompanyRow()]));
+  }
+
+  function removeNewRow(id: string) {
+    setNewRows((prev) => (prev.length <= 1 ? prev : prev.filter((r) => r.id !== id)));
+  }
+
+  function updateNewRow(id: string, patch: Partial<NewCompanyRow>) {
+    setNewRows((prev) => prev.map((r) => (r.id === id ? { ...r, ...patch } : r)));
+  }
+
   async function handleCreate() {
-    setNameTouched(true);
-    setNewWebsiteTouched(true);
-    const nameOk = !!newName.trim();
-    const websiteOk = isValidUrl(newWebsite);
-    if (!nameOk || !websiteOk) return;
+    setNewRows((prev) => prev.map((r) => ({ ...r, nameTouched: true, websiteTouched: true })));
+    const allValid = newRows.every((r) => r.name.trim() && isValidUrl(r.website));
+    if (!allValid) return;
     setCreating(true);
     setCreateFormError(null);
     try {
-      await createCompany({
-        name: newName.trim(),
-        logoUrl: newLogo.trim() || undefined,
-        websiteUrl: newWebsite.trim() || undefined,
-        description: newDescription.trim() || undefined,
-      });
-      addToast("success", c.createSuccess);
+      const payloads = newRows.map((r) => ({
+        name: r.name.trim(),
+        logoUrl: r.logo.trim() || undefined,
+        websiteUrl: r.website.trim() || undefined,
+        description: r.description.trim() || undefined,
+      }));
+      if (payloads.length === 1) {
+        await createCompany(payloads[0]);
+        addToast("success", c.createSuccess);
+      } else {
+        await createCompaniesBulk(payloads);
+        addToast("success", c.createBulkSuccess.replace("{{count}}", String(payloads.length)));
+      }
       closeCreate();
       setPage(1);
       setAppliedSearch("");
@@ -160,7 +190,7 @@ export function CompanyManagement() {
       if (apiMsg) {
         setCreateFormError(apiMsg);
       } else {
-        addToast("error", c.createError);
+        addToast("error", newRows.length > 1 ? c.createBulkError : c.createError);
       }
     } finally {
       setCreating(false);
@@ -238,8 +268,6 @@ export function CompanyManagement() {
     }
   }
 
-  const nameError = nameTouched && !newName.trim();
-  const websiteError = newWebsiteTouched && newWebsite.trim() !== "" && !isValidUrl(newWebsite);
   const editNameError = editNameTouched && !editName.trim();
   const editWebsiteError = editWebsiteTouched && editWebsite.trim() !== "" && !isValidUrl(editWebsite);
 
@@ -358,6 +386,8 @@ export function CompanyManagement() {
                           <img
                             src={company.logoUrl}
                             alt={company.name}
+                            loading="lazy"
+                            decoding="async"
                             className="w-9 h-9 rounded-lg object-contain bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700"
                           />
                         ) : (
@@ -484,93 +514,136 @@ export function CompanyManagement() {
                   </button>
                 </div>
 
-                <div className="space-y-4 mb-6">
-                  {/* Name */}
-                  <div className="space-y-1.5">
-                    <label className={cn("text-sm font-medium", portalHeadingAlt)}>
-                      {c.modal.nameLabel} <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={newName}
-                      onChange={(e) => setNewName(e.target.value)}
-                      onBlur={() => setNameTouched(true)}
-                      placeholder={c.modal.namePlaceholder}
-                      className={cn(
-                        "w-full rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 transition-colors",
-                        nameError
-                          ? "border-red-400 dark:border-red-600 focus:ring-red-200 dark:focus:ring-red-900"
-                          : "focus:ring-primary/20 focus:border-primary",
-                        portalInput
-                      )}
-                      autoFocus
-                    />
-                    {nameError && (
-                      <p className="flex items-center gap-1 text-xs text-red-500 font-medium">
-                        <AlertCircle size={11} />
-                        {c.modal.nameRequired}
-                      </p>
-                    )}
-                  </div>
+                <div className="space-y-4 mb-4 max-h-[55vh] overflow-y-auto pr-0.5">
+                  {newRows.map((row, idx) => {
+                    const rowNameError = row.nameTouched && !row.name.trim();
+                    const rowWebsiteError = row.websiteTouched && row.website.trim() !== "" && !isValidUrl(row.website);
+                    return (
+                      <div
+                        key={row.id}
+                        className={cn(
+                          "space-y-4",
+                          newRows.length > 1 && "rounded-xl border border-gray-100 dark:border-gray-800 p-3.5 relative"
+                        )}
+                      >
+                        {newRows.length > 1 && (
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-semibold text-gray-400 dark:text-gray-500">
+                              {c.modal.companyIndex.replace("{{index}}", String(idx + 1))}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => removeNewRow(row.id)}
+                              disabled={creating}
+                              title={c.modal.removeCompany}
+                              className="text-gray-400 hover:text-red-500 transition-colors disabled:opacity-40"
+                            >
+                              <X size={14} />
+                            </button>
+                          </div>
+                        )}
 
-                  {/* Logo */}
-                  <div className="space-y-1.5">
-                    <label className={cn("text-sm font-medium", portalHeadingAlt)}>
-                      {c.modal.logoLabel}
-                    </label>
-                    <LogoUploadField
-                      value={newLogo}
-                      onChange={setNewLogo}
-                      disabled={creating}
-                      labels={c.modal}
-                      inputClassName={portalInput}
-                    />
-                  </div>
+                        {/* Name */}
+                        <div className="space-y-1.5">
+                          <label className={cn("text-sm font-medium", portalHeadingAlt)}>
+                            {c.modal.nameLabel} <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            value={row.name}
+                            onChange={(e) => updateNewRow(row.id, { name: e.target.value })}
+                            onBlur={() => updateNewRow(row.id, { nameTouched: true })}
+                            placeholder={c.modal.namePlaceholder}
+                            className={cn(
+                              "w-full rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 transition-colors",
+                              rowNameError
+                                ? "border-red-400 dark:border-red-600 focus:ring-red-200 dark:focus:ring-red-900"
+                                : "focus:ring-primary/20 focus:border-primary",
+                              portalInput
+                            )}
+                            autoFocus={idx === 0}
+                          />
+                          {rowNameError && (
+                            <p className="flex items-center gap-1 text-xs text-red-500 font-medium">
+                              <AlertCircle size={11} />
+                              {c.modal.nameRequired}
+                            </p>
+                          )}
+                        </div>
 
-                  {/* Website */}
-                  <div className="space-y-1.5">
-                    <label className={cn("text-sm font-medium", portalHeadingAlt)}>
-                      {c.modal.websiteLabel}
-                    </label>
-                    <input
-                      type="url"
-                      value={newWebsite}
-                      onChange={(e) => setNewWebsite(e.target.value)}
-                      onBlur={() => setNewWebsiteTouched(true)}
-                      placeholder={c.modal.websitePlaceholder}
-                      className={cn(
-                        "w-full rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 transition-colors",
-                        websiteError
-                          ? "border-red-400 dark:border-red-600 focus:ring-red-200 dark:focus:ring-red-900"
-                          : "focus:ring-primary/20 focus:border-primary",
-                        portalInput
-                      )}
-                    />
-                    {websiteError && (
-                      <p className="flex items-center gap-1 text-xs text-red-500 font-medium">
-                        <AlertCircle size={11} />
-                        {c.modal.websiteInvalid}
-                      </p>
-                    )}
-                  </div>
+                        {/* Logo */}
+                        <div className="space-y-1.5">
+                          <label className={cn("text-sm font-medium", portalHeadingAlt)}>
+                            {c.modal.logoLabel}
+                          </label>
+                          <LogoUploadField
+                            value={row.logo}
+                            onChange={(url) => updateNewRow(row.id, { logo: url })}
+                            disabled={creating}
+                            labels={c.modal}
+                            inputClassName={portalInput}
+                          />
+                        </div>
 
-                  {/* Description */}
-                  <div className="space-y-1.5">
-                    <label className={cn("text-sm font-medium", portalHeadingAlt)}>
-                      {c.modal.descriptionLabel}
-                    </label>
-                    <textarea
-                      value={newDescription}
-                      onChange={(e) => setNewDescription(e.target.value)}
-                      placeholder={c.modal.descriptionPlaceholder}
-                      rows={3}
-                      className={cn(
-                        "w-full rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors resize-none",
-                        portalInput
-                      )}
-                    />
-                  </div>
+                        {/* Website */}
+                        <div className="space-y-1.5">
+                          <label className={cn("text-sm font-medium", portalHeadingAlt)}>
+                            {c.modal.websiteLabel}
+                          </label>
+                          <input
+                            type="url"
+                            value={row.website}
+                            onChange={(e) => updateNewRow(row.id, { website: e.target.value })}
+                            onBlur={() => updateNewRow(row.id, { websiteTouched: true })}
+                            placeholder={c.modal.websitePlaceholder}
+                            className={cn(
+                              "w-full rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 transition-colors",
+                              rowWebsiteError
+                                ? "border-red-400 dark:border-red-600 focus:ring-red-200 dark:focus:ring-red-900"
+                                : "focus:ring-primary/20 focus:border-primary",
+                              portalInput
+                            )}
+                          />
+                          {rowWebsiteError && (
+                            <p className="flex items-center gap-1 text-xs text-red-500 font-medium">
+                              <AlertCircle size={11} />
+                              {c.modal.websiteInvalid}
+                            </p>
+                          )}
+                        </div>
+
+                        {/* Description */}
+                        <div className="space-y-1.5">
+                          <label className={cn("text-sm font-medium", portalHeadingAlt)}>
+                            {c.modal.descriptionLabel}
+                          </label>
+                          <textarea
+                            value={row.description}
+                            onChange={(e) => updateNewRow(row.id, { description: e.target.value })}
+                            placeholder={c.modal.descriptionPlaceholder}
+                            rows={3}
+                            className={cn(
+                              "w-full rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors resize-none",
+                              portalInput
+                            )}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
+
+                {newRows.length < MAX_BULK_COMPANIES && (
+                  <button
+                    type="button"
+                    onClick={addNewRow}
+                    disabled={creating}
+                    className="w-full flex items-center justify-center gap-1.5 mb-4 py-2 text-xs font-semibold text-primary border border-dashed border-primary/30 rounded-xl hover:bg-primary/5 transition-colors disabled:opacity-50"
+                  >
+                    <Plus size={12} />
+                    {c.modal.addAnother}
+                  </button>
+                )}
 
                 {createFormError && (
                   <div className="flex items-start gap-2 rounded-xl bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/50 px-3 py-2.5 mb-4">
@@ -603,6 +676,8 @@ export function CompanyManagement() {
                         <Loader2 size={14} className="animate-spin" />
                         {c.modal.creating}
                       </>
+                    ) : newRows.length > 1 ? (
+                      c.modal.createBulk.replace("{{count}}", String(newRows.length))
                     ) : (
                       c.modal.create
                     )}
