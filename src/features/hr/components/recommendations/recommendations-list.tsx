@@ -1,12 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import {
   Users, RefreshCw, AlertCircle, Search,
   ChevronLeft, ChevronRight, Star, X as XIcon,
-  Mail, CheckCircle2, Loader2, Send, SlidersHorizontal,
+  Mail, CheckCircle2, Loader2, Send, SlidersHorizontal, Phone,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { useLanguage, type Lang } from "@/shared/providers/language-context";
@@ -96,12 +97,32 @@ interface InviteModalProps {
   labels: ReturnType<typeof useLanguage>["t"]["hrRecommendationsPage"]["invite"];
 }
 
+function buildDefaultInviteMessage(template: string, rec: CandidateRecommendation): string {
+  return template
+    .replace("{{name}}", rec.candidateName || "")
+    .replace("{{title}}", rec.questionSetTitle || "")
+    .replace("{{score}}", String(rec.score));
+}
+
 function InviteModal({ rec, onClose, onSent, labels }: InviteModalProps) {
-  const [message, setMessage] = useState("");
+  const [message, setMessage] = useState(() => buildDefaultInviteMessage(labels.defaultMessage, rec));
   const [sending, setSending] = useState(false);
   const { addToast } = useToast();
   const { t } = useLanguage();
   const p = t.hrRecommendationsPage;
+
+  useEffect(() => {
+    document.body.style.overflow = "hidden";
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.body.style.overflow = "";
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function handleSend() {
     setSending(true);
@@ -118,49 +139,58 @@ function InviteModal({ rec, onClose, onSent, labels }: InviteModalProps) {
     }
   }
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
-      <motion.div
-        initial={{ opacity: 0, scale: 0.96, y: 8 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        className="relative z-10 w-full max-w-md bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-100 dark:border-gray-800"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className={cn("flex items-center justify-between px-5 py-4 border-b", portalDivider)}>
-          <p className="text-[15px] font-bold text-gray-900 dark:text-gray-100">{labels.modalTitle}</p>
-          <button type="button" onClick={onClose}
-            className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
-            <XIcon size={14} />
-          </button>
-        </div>
-        <div className="px-5 py-4 flex flex-col gap-3">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-[12px] font-medium text-gray-500 dark:text-gray-400">{labels.to}:</span>
-            <span className="text-[13px] font-semibold text-gray-900 dark:text-gray-100">{rec.candidateName}</span>
-            <span className="text-[12px] text-gray-400 dark:text-gray-500">({rec.candidateEmail})</span>
+  return createPortal(
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      className="fixed inset-0 z-50 flex flex-col bg-white dark:bg-gray-900"
+    >
+      {/* Header */}
+      <div className={cn("flex items-center justify-between px-5 sm:px-8 py-4 border-b shrink-0", portalDivider)}>
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-9 h-9 rounded-xl bg-violet-50 dark:bg-violet-950/40 flex items-center justify-center shrink-0">
+            <Mail size={16} className="text-violet-600 dark:text-violet-400" />
           </div>
+          <div className="min-w-0">
+            <p className="text-[15px] font-bold text-gray-900 dark:text-gray-100 truncate">{labels.modalTitle}</p>
+            <p className="text-[12px] text-gray-500 dark:text-gray-400 truncate">
+              {labels.to}: <span className="font-semibold text-gray-700 dark:text-gray-300">{rec.candidateName}</span> ({rec.candidateEmail})
+            </p>
+          </div>
+        </div>
+        <button type="button" onClick={onClose}
+          className="w-9 h-9 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors shrink-0">
+          <XIcon size={18} />
+        </button>
+      </div>
+
+      {/* Content */}
+      <div className="flex-1 overflow-y-auto px-5 sm:px-8 py-6">
+        <div className="max-w-2xl mx-auto h-full flex flex-col">
           <textarea
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             placeholder={labels.messagePlaceholder}
-            rows={4}
-            className="w-full text-[13px] bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2.5 outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 resize-none placeholder:text-gray-400 dark:placeholder:text-gray-500 text-gray-900 dark:text-gray-100 transition-all"
+            className="w-full flex-1 min-h-64 text-[14px] leading-relaxed bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-3.5 outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 resize-none placeholder:text-gray-400 dark:placeholder:text-gray-500 text-gray-900 dark:text-gray-100 transition-all"
+            autoFocus
           />
         </div>
-        <div className={cn("flex items-center justify-end gap-2 px-5 py-4 border-t", portalDivider)}>
-          <button type="button" onClick={onClose} disabled={sending}
-            className="h-9 px-4 text-[13px] font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg transition-colors disabled:opacity-50">
-            {labels.cancelBtn}
-          </button>
-          <button type="button" onClick={() => void handleSend()} disabled={sending}
-            className="shimmer-button flex items-center gap-1.5 h-9 px-4 text-[13px] font-semibold text-white hr-cta-btn rounded-lg disabled:opacity-60">
-            {sending ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
-            {sending ? labels.sending : labels.sendBtn}
-          </button>
-        </div>
-      </motion.div>
-    </div>
+      </div>
+
+      {/* Footer */}
+      <div className={cn("flex items-center justify-end gap-2 px-5 sm:px-8 py-4 border-t shrink-0", portalDivider)}>
+        <button type="button" onClick={onClose} disabled={sending}
+          className="h-10 px-5 text-[13px] font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg transition-colors disabled:opacity-50">
+          {labels.cancelBtn}
+        </button>
+        <button type="button" onClick={() => void handleSend()} disabled={sending}
+          className="shimmer-button flex items-center gap-1.5 h-10 px-5 text-[13px] font-semibold text-white hr-cta-btn rounded-lg disabled:opacity-60">
+          {sending ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
+          {sending ? labels.sending : labels.sendBtn}
+        </button>
+      </div>
+    </motion.div>,
+    document.body
   );
 }
 
@@ -182,6 +212,11 @@ function CandidateRow({ rec, lang, labels, index, onStatusChange }: RowProps) {
   const { addToast } = useToast();
   const c = labels.card;
   const canAct = rec.status !== "INVITED" && rec.status !== "DISMISSED";
+  // BE allows re-shortlisting a dismissed recommendation to bring it back into
+  // play (confirmed live: dismiss → invite fails 409 "shortlist lại trước khi
+  // mời"), so DISMISSED isn't fully terminal like INVITED is — keep the
+  // shortlist action available instead of hiding every action.
+  const canRestore = rec.status === "DISMISSED";
   const initials = getInitials(rec.candidateName || rec.candidateEmail);
   const visibleSkills = rec.techStack.slice(0, 2);
   const extraSkills = rec.techStack.length - 2;
@@ -233,6 +268,9 @@ function CandidateRow({ rec, lang, labels, index, onStatusChange }: RowProps) {
                 {rec.candidateName || "—"}
               </p>
               <p className={cn("text-[11px] truncate", portalSubtextAlt)}>{rec.candidateEmail}</p>
+              {rec.targetRole && (
+                <p className="text-[10px] font-medium text-primary truncate mt-0.5">{rec.targetRole}</p>
+              )}
             </div>
           </div>
         </td>
@@ -272,7 +310,18 @@ function CandidateRow({ rec, lang, labels, index, onStatusChange }: RowProps) {
 
         {/* Status */}
         <td className="px-4 py-3.5 hidden sm:table-cell">
-          <StatusBadge status={rec.status} labels={c} />
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <StatusBadge status={rec.status} labels={c} />
+            {(rec.invitationResponseMessage || rec.invitationSharedPhoneNumber) && (
+              <span
+                title={c.contactShared}
+                className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400 whitespace-nowrap"
+              >
+                <Phone size={10} />
+                {c.contactBadge}
+              </span>
+            )}
+          </div>
         </td>
 
         {/* Actions */}
@@ -302,6 +351,12 @@ function CandidateRow({ rec, lang, labels, index, onStatusChange }: RowProps) {
                   {busy === "dismiss" ? <Loader2 size={13} className="animate-spin" /> : <XIcon size={13} />}
                 </button>
               </>
+            ) : canRestore ? (
+              <button type="button" onClick={() => void handleShortlist()} disabled={busy !== null}
+                title={c.shortlistBtn}
+                className="h-7 w-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-violet-600 dark:hover:text-violet-400 hover:bg-violet-50 dark:hover:bg-violet-950/40 transition-colors disabled:opacity-40">
+                {busy === "shortlist" ? <Loader2 size={13} className="animate-spin" /> : <Star size={13} />}
+              </button>
             ) : null}
             <Link href={`/hr/candidate-recommendations/${rec.id}`}
               className="h-7 px-2.5 flex items-center text-[11px] font-semibold text-primary hover:bg-violet-50 dark:hover:bg-violet-950/40 rounded-lg transition-colors shrink-0">
@@ -364,23 +419,25 @@ export function RecommendationsList() {
     setLoading(true);
     setError(false);
     try {
-      const res = await listRecommendations({ page, pageSize: PAGE_SIZE, status: statusFilter || undefined, minScore });
+      const res = await listRecommendations({ page, pageSize: PAGE_SIZE, status: statusFilter || undefined });
       setItems(res.items);
       setTotalCount(res.totalCount);
     } catch { setError(true); }
     finally { setLoading(false); }
-  }, [page, statusFilter, minScore]);
+  }, [page, statusFilter]);
 
   useEffect(() => { void fetchData(); }, [fetchData]);
-  useEffect(() => { setPage(1); }, [statusFilter, minScore]);
+  useEffect(() => { setPage(1); }, [statusFilter]);
 
   function handleStatusChange(id: string, status: RecommendationStatus) {
     setItems((prev) => prev.map((r) => (r.id === id ? { ...r, status } : r)));
   }
 
-  const displayed = searchSet.trim()
-    ? items.filter((r) => r.questionSetTitle.toLowerCase().includes(searchSet.toLowerCase()))
-    : items;
+  // BE doesn't support a MinScore query param — filter client-side over the
+  // current page's items instead (same approach as the question-set search below).
+  const displayed = items
+    .filter((r) => (minScore === undefined ? true : r.score >= minScore))
+    .filter((r) => (searchSet.trim() ? r.questionSetTitle.toLowerCase().includes(searchSet.toLowerCase()) : true));
 
   return (
     <div>
@@ -436,7 +493,7 @@ export function RecommendationsList() {
             type="text"
             value={searchSet}
             onChange={(e) => setSearchSet(e.target.value)}
-            placeholder={p.filters.allStatuses}
+            placeholder={p.searchPlaceholder}
             className="w-full h-8 pl-7 pr-3 text-[12px] bg-gray-100 dark:bg-gray-800 border-0 rounded-lg text-gray-700 dark:text-gray-300 placeholder:text-gray-400 outline-none focus:ring-2 focus:ring-primary/20 transition-colors"
           />
         </div>
@@ -485,19 +542,19 @@ export function RecommendationsList() {
               <thead>
                 <tr className="border-b border-gray-100 dark:border-gray-800 bg-gray-50/80 dark:bg-gray-800/40">
                   <th className={cn("text-left px-5 py-3 text-[11px] font-semibold uppercase tracking-wider", portalSubtextAlt)}>
-                    {p.card.targetRole.replace(":", "") || "Ứng viên"}
+                    {p.card.candidate}
                   </th>
                   <th className={cn("text-left px-4 py-3 text-[11px] font-semibold uppercase tracking-wider hidden md:table-cell", portalSubtextAlt)}>
-                    Bộ câu hỏi
+                    {p.card.questionSet}
                   </th>
                   <th className={cn("text-left px-4 py-3 text-[11px] font-semibold uppercase tracking-wider hidden lg:table-cell", portalSubtextAlt)}>
-                    Kỹ năng
+                    {p.detail.skills}
                   </th>
                   <th className={cn("text-center px-4 py-3 text-[11px] font-semibold uppercase tracking-wider", portalSubtextAlt)}>
-                    Điểm
+                    {p.card.score}
                   </th>
                   <th className={cn("text-left px-4 py-3 text-[11px] font-semibold uppercase tracking-wider hidden sm:table-cell", portalSubtextAlt)}>
-                    Trạng thái
+                    {p.card.status}
                   </th>
                   <th className="px-4 py-3 w-36" />
                 </tr>
@@ -523,7 +580,7 @@ export function RecommendationsList() {
       {!loading && !error && totalPages > 1 && (
         <div className="flex items-center justify-between mt-5">
           <p className={cn("text-[12px]", portalSubtextAlt)}>
-            {p.page} {page} / {totalPages} · {totalCount} ứng viên
+            {p.page} {page} / {totalPages} · {totalCount} {p.card.candidate}
           </p>
           <div className="flex items-center gap-2">
             <button type="button" onClick={() => setPage((n) => Math.max(1, n - 1))} disabled={page === 1}

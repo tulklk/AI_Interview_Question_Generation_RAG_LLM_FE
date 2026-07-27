@@ -211,7 +211,11 @@ function mapJobToSession(job: BackendJob): GenerationSession {
   return {
     id,
     jobTitle: role || "Interview Questions",
-    jdContent: job.jobDescription ?? job.jobDescriptionPreview,
+    jdContent:
+      job.jobDescription ??
+      job.jobDescriptionPreview ??
+      (job.input as { jobDescription?: string; jobDescriptionPreview?: string } | undefined)?.jobDescription ??
+      (job.input as { jobDescription?: string; jobDescriptionPreview?: string } | undefined)?.jobDescriptionPreview,
     hrOwner: "",
     status: mapJobPhaseToStatus(job.phase ?? job.status ?? "COMPLETED"),
     planDraft: {
@@ -300,6 +304,52 @@ export async function createGenerationJob(payload: {
   }
 }
 
+function buildJobInputFormData(payload: {
+  jobDescription?: string;
+  hrNote?: string;
+  numberOfQuestions?: number;
+  difficulty?: string;
+  questionTypes?: string[];
+  skills?: string[];
+  file: File;
+}): FormData {
+  const form = new FormData();
+  if (payload.jobDescription) form.append("JobDescription", payload.jobDescription);
+  if (payload.hrNote) form.append("HrNote", payload.hrNote);
+  if (payload.numberOfQuestions !== undefined) form.append("NumberOfQuestions", String(payload.numberOfQuestions));
+  if (payload.difficulty) form.append("Difficulty", payload.difficulty);
+  if (payload.questionTypes?.length) form.append("QuestionTypes", payload.questionTypes.join(","));
+  if (payload.skills?.length) form.append("Skills", payload.skills.join(","));
+  form.append("File", payload.file);
+  return form;
+}
+
+/** Same as createGenerationJob, but lets the HR attach a JD file (PDF/DOC/DOCX) instead of/alongside pasted text. */
+export async function createGenerationJobFromFile(payload: {
+  jobDescription?: string;
+  hrNote?: string;
+  numberOfQuestions?: number;
+  difficulty?: string;
+  questionTypes?: string[];
+  skills?: string[];
+  file: File;
+}): Promise<string | null> {
+  try {
+    const { data } = await apiClient.post<CreateJobResponseData>(
+      "/api/hr/question-generation-jobs/plan/upload",
+      buildJobInputFormData(payload),
+      { headers: { "Content-Type": "multipart/form-data" } }
+    );
+    const id = data?.data?.jobId ?? data?.data?.id ?? data?.jobId ?? data?.id;
+    return id ?? null;
+  } catch (err) {
+    const respData = (err as { response?: { data?: { detail?: string; error?: string; errors?: string[] } } })?.response?.data;
+    const detail = respData?.detail ?? respData?.errors?.[0] ?? respData?.error;
+    if (detail) throw new Error(detail);
+    return null;
+  }
+}
+
 export async function getGenerationJob(id: string): Promise<GenerationSession | null> {
   try {
     const { data } = await apiClient.get<BackendJob | { data?: BackendJob }>(
@@ -368,7 +418,36 @@ export async function getGenerationPlans(): Promise<GenerationSession[]> {
   }
 }
 
+// Several pages (AppShell notifications, History table/stats, HR dashboard)
+// independently call getGenerationJobs() and often mount within moments of
+// each other during navigation — cache briefly and de-dupe concurrent calls
+// so they share one network round-trip instead of firing one each.
+const GENERATION_JOBS_TTL_MS = 15000;
+let generationJobsCache: { data: GenerationSession[]; ts: number } | null = null;
+let generationJobsInFlight: Promise<GenerationSession[]> | null = null;
+
+export function invalidateGenerationJobsCache(): void {
+  generationJobsCache = null;
+}
+
+if (typeof window !== "undefined") {
+  window.addEventListener("hr:bg-job-updated", invalidateGenerationJobsCache);
+  window.addEventListener("hr:job-status-changed", invalidateGenerationJobsCache);
+}
+
 export async function getGenerationJobs(): Promise<GenerationSession[]> {
+  if (generationJobsCache && Date.now() - generationJobsCache.ts < GENERATION_JOBS_TTL_MS) {
+    return generationJobsCache.data;
+  }
+  if (generationJobsInFlight) return generationJobsInFlight;
+
+  generationJobsInFlight = fetchGenerationJobs().finally(() => {
+    generationJobsInFlight = null;
+  });
+  return generationJobsInFlight;
+}
+
+async function fetchGenerationJobs(): Promise<GenerationSession[]> {
   try {
     // BE defaults to PageSize=20 if unspecified — this table paginates/filters
     // client-side over the full list, so a small default would silently hide
@@ -390,7 +469,9 @@ export async function getGenerationJobs(): Promise<GenerationSession[]> {
     } else if (data?.items) {
       jobs = data.items;
     }
-    return jobs.map(mapJobToSession);
+    const sessions = jobs.map(mapJobToSession);
+    generationJobsCache = { data: sessions, ts: Date.now() };
+    return sessions;
   } catch {
     return [];
   }
@@ -452,6 +533,31 @@ export async function updateJobInput(
 ): Promise<boolean> {
   try {
     await apiClient.put(`/api/hr/question-generation-jobs/${jobId}/input`, payload);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Same as updateJobInput, but lets the HR attach a replacement JD file instead of/alongside pasted text. */
+export async function updateJobInputFromFile(
+  jobId: string,
+  payload: {
+    jobDescription?: string;
+    hrNote?: string;
+    numberOfQuestions?: number;
+    difficulty?: string;
+    questionTypes?: string[];
+    skills?: string[];
+    file: File;
+  }
+): Promise<boolean> {
+  try {
+    await apiClient.put(
+      `/api/hr/question-generation-jobs/${jobId}/input/upload`,
+      buildJobInputFormData(payload),
+      { headers: { "Content-Type": "multipart/form-data" } }
+    );
     return true;
   } catch {
     return false;
@@ -596,6 +702,7 @@ export async function saveJobDraft(jobId: string): Promise<string | null> {
 export async function deleteGenerationPlan(jobId: string): Promise<boolean> {
   try {
     await apiClient.delete(`/api/hr/question-generation-plans/${jobId}`);
+    invalidateGenerationJobsCache();
     return true;
   } catch (err) {
     // BE rejects (409) once the session has been saved as a draft/question-set —
@@ -621,14 +728,55 @@ export async function exportPlanQuestions(jobId: string, fileName: string): Prom
   URL.revokeObjectURL(url);
 }
 
+// BE's single-question-set GET uses its own field names (questionSetId, title,
+// sourceJobId, lowercase questionType/difficulty, "order") rather than the
+// GeneratedQuestion/DraftQuestionSet shape — normalize instead of raw-casting.
+function normalizeDraftQuestion(raw: unknown, index: number): GeneratedQuestion | null {
+  const src = raw as Record<string, unknown> | null;
+  if (!src || typeof src !== "object") return null;
+  const question = typeof src.question === "string" ? src.question : "";
+  if (!question) return null;
+  return {
+    id: (typeof src.id === "string" && src.id) || `q-${index}`,
+    question,
+    questionType: normalizeQuestionType(typeof src.questionType === "string" ? src.questionType : undefined),
+    difficulty: normalizeDifficulty(typeof src.difficulty === "string" ? src.difficulty : undefined),
+    rationale: typeof src.rationale === "string" ? src.rationale : undefined,
+    sampleAnswer: typeof src.sampleAnswer === "string" ? src.sampleAnswer : undefined,
+    citations: [],
+    orderIndex: typeof src.order === "number" ? src.order : typeof src.orderIndex === "number" ? src.orderIndex : index,
+  };
+}
+
+function normalizeDraft(raw: unknown): DraftQuestionSet | null {
+  const src = raw as Record<string, unknown> | null;
+  if (!src || typeof src !== "object") return null;
+  const id = [src.questionSetId, src.id].find((v): v is string => typeof v === "string" && v.trim() !== "");
+  if (!id) return null;
+  const sessionId = [src.sourceJobId, src.jobId, src.sessionId].find((v): v is string => typeof v === "string" && v.trim() !== "");
+  const jobTitle = [src.title, src.jobTitle].find((v): v is string => typeof v === "string" && v.trim() !== "");
+  const status = src.status === "PUBLISHED" ? "PUBLISHED" : "DRAFT";
+  const questions = Array.isArray(src.questions)
+    ? src.questions.map((q, i) => normalizeDraftQuestion(q, i)).filter((q): q is GeneratedQuestion => q !== null)
+    : [];
+  return {
+    id,
+    sessionId: sessionId ?? "",
+    jobTitle: jobTitle ?? "Untitled",
+    generatedAt: typeof src.generatedAt === "string" ? src.generatedAt : "",
+    status,
+    timeLimitMinutes: typeof src.timeLimitMinutes === "number" ? src.timeLimitMinutes : null,
+    questions,
+  };
+}
+
 export async function getDraft(questionSetId: string): Promise<DraftQuestionSet | null> {
   try {
-    const { data } = await apiClient.get<{ data?: DraftQuestionSet } | DraftQuestionSet>(
+    const { data } = await apiClient.get<{ data?: unknown } | unknown>(
       `/api/hr/question-sets/${questionSetId}`
     );
-    const draft =
-      (data as { data?: DraftQuestionSet }).data ?? (data as DraftQuestionSet);
-    return draft ?? null;
+    const root = (data as { data?: unknown })?.data ?? data;
+    return normalizeDraft(root);
   } catch {
     return null;
   }
@@ -756,15 +904,19 @@ export async function findQuestionSetForJob(jobId: string): Promise<HrQuestionSe
   }
 }
 
-/** All jobs' publish status in one call, keyed by jobId — for list views (e.g. HR History) that need it for every row without an N+1 fetch. */
-export async function getQuestionSetStatusByJob(): Promise<Map<string, "DRAFT" | "PUBLISHED">> {
+/** All jobs' question-set summary (id + publish status) in one call, keyed by
+ * jobId — the job list endpoint never includes questionSetId (only the
+ * single-job GET does), so list views (e.g. HR History) that need it for
+ * every row — to link/bookmark, or show publish status — cross-reference here
+ * instead of doing an N+1 fetch, or worse, two separate full-list fetches. */
+export async function getQuestionSetSummariesByJob(): Promise<Map<string, HrQuestionSetSummary>> {
   try {
     const { data } = await apiClient.get<{ data?: unknown } | unknown[]>("/api/hr/question-sets");
     const items = Array.isArray(data) ? data : Array.isArray((data as { data?: unknown })?.data) ? (data as { data: unknown[] }).data : [];
     const normalized = items.map(normalizeQuestionSetSummary).filter((s): s is HrQuestionSetSummary => s !== null);
-    const map = new Map<string, "DRAFT" | "PUBLISHED">();
+    const map = new Map<string, HrQuestionSetSummary>();
     for (const s of normalized) {
-      if (s.jobId) map.set(s.jobId, s.status);
+      if (s.jobId) map.set(s.jobId, s);
     }
     return map;
   } catch {
@@ -817,6 +969,156 @@ export async function setQuestionSetTimeLimit(
   } catch (err) {
     throw new Error(extractBeErrorMessage(err));
   }
+}
+
+export async function renameQuestionSetTitle(questionSetId: string, title: string): Promise<boolean> {
+  try {
+    await apiClient.put(`/api/hr/question-sets/${questionSetId}/title`, { title });
+    return true;
+  } catch (err) {
+    throw new Error(extractBeErrorMessage(err));
+  }
+}
+
+// ---------------------------------------------------------------------------
+// HR bookmarks — save favorite question sets for quick access later.
+// ---------------------------------------------------------------------------
+
+export interface HrBookmarkedSet {
+  id: string;
+  title: string;
+  status: "DRAFT" | "PUBLISHED";
+  questionsCount: number;
+  createdAt: string | null;
+  companyName: string;
+  companyLogoUrl: string | null;
+  /** Originating generation job id, if the BE includes it — lets the card deep-link to the review page. */
+  sessionId?: string;
+}
+
+function asRecord(val: unknown): Record<string, unknown> | null {
+  return val && typeof val === "object" ? (val as Record<string, unknown>) : null;
+}
+
+function pickStr(obj: Record<string, unknown>, ...keys: string[]): string {
+  for (const k of keys) {
+    const v = obj[k];
+    if (typeof v === "string" && v.trim()) return v.trim();
+  }
+  return "";
+}
+
+function pickNum(obj: Record<string, unknown>, ...keys: string[]): number {
+  for (const k of keys) {
+    const v = obj[k];
+    if (typeof v === "number") return v;
+  }
+  return 0;
+}
+
+function normalizeHrBookmarkedSet(raw: unknown): HrBookmarkedSet | null {
+  const src = asRecord(raw);
+  if (!src) return null;
+  const id = pickStr(src, "id", "questionSetId");
+  if (!id) return null;
+  const status = pickStr(src, "status").toUpperCase();
+  return {
+    id,
+    title: pickStr(src, "title", "jobTitle", "name") || "Untitled",
+    status: status === "PUBLISHED" ? "PUBLISHED" : "DRAFT",
+    questionsCount: pickNum(src, "questionsCount", "totalQuestions", "questionCount"),
+    createdAt: pickStr(src, "createdAt", "savedAt", "generatedAt") || null,
+    companyName: pickStr(src, "companyName", "company"),
+    companyLogoUrl: pickStr(src, "companyLogo", "companyLogoUrl") || null,
+    sessionId: pickStr(src, "sessionId", "jobId") || undefined,
+  };
+}
+
+function extractItemList(raw: unknown): unknown[] {
+  const root = asRecord(raw);
+  if (!root) return Array.isArray(raw) ? raw : [];
+  const data = asRecord(root.data) ?? root;
+  if (Array.isArray(data)) return data;
+  if (Array.isArray(data.items)) return data.items as unknown[];
+  return [];
+}
+
+/** Toggles the bookmark on an HR question set and returns the new state. */
+export async function toggleHrBookmark(questionSetId: string): Promise<boolean> {
+  const res = await apiClient.post(`/api/hr/question-sets/${questionSetId}/bookmark`);
+  const root = asRecord(res.data);
+  const data = root ? asRecord(root.data) : null;
+  return (data ?? root)?.bookmarked === true;
+}
+
+/** Ids of all question sets the HR has bookmarked — for cross-referencing row state. */
+export async function getHrBookmarkedSetIds(): Promise<Set<string>> {
+  try {
+    const res = await apiClient.get("/api/hr/bookmarks");
+    const ids = extractItemList(res.data)
+      .map((raw) => asRecord(raw))
+      .filter((r): r is Record<string, unknown> => r !== null)
+      .map((r) => pickStr(r, "id", "questionSetId"))
+      .filter((id) => id !== "");
+    return new Set(ids);
+  } catch {
+    return new Set();
+  }
+}
+
+export async function listHrBookmarks(): Promise<HrBookmarkedSet[]> {
+  const res = await apiClient.get("/api/hr/bookmarks");
+  return extractItemList(res.data)
+    .map(normalizeHrBookmarkedSet)
+    .filter((s): s is HrBookmarkedSet => s !== null);
+}
+
+// ---------------------------------------------------------------------------
+// Practitioners — candidates who have practiced a given HR question set.
+// ---------------------------------------------------------------------------
+
+export type PractitionerSessionStatus = "IN_PROGRESS" | "COMPLETED" | "ABANDONED";
+
+export interface Practitioner {
+  id: string;
+  candidateName: string;
+  candidateEmail: string;
+  score: number | null;
+  status: PractitionerSessionStatus;
+  completedAt: string | null;
+  startedAt: string | null;
+}
+
+function normalizePractitionerStatus(raw: string): PractitionerSessionStatus {
+  const u = raw.toUpperCase();
+  return u === "COMPLETED" || u === "ABANDONED" ? u : "IN_PROGRESS";
+}
+
+function normalizePractitioner(raw: unknown, index: number): Practitioner | null {
+  const src = asRecord(raw);
+  if (!src) return null;
+  // BE doesn't return a session/attempt id at all — synthesize one from the
+  // candidate + attempt start time (unique per row) so React keys stay stable.
+  const candidateUserId = pickStr(src, "candidateUserId", "id", "sessionId", "practiceSessionId");
+  if (!candidateUserId) return null;
+  const startedAt = typeof src.startedAt === "string" ? src.startedAt : null;
+  const scoreRaw = src.score ?? src.overallScore;
+  return {
+    id: `${candidateUserId}-${startedAt ?? index}`,
+    candidateName: pickStr(src, "candidateName", "fullName", "name"),
+    candidateEmail: pickStr(src, "candidateEmail", "email"),
+    score: typeof scoreRaw === "number" ? scoreRaw : null,
+    status: normalizePractitionerStatus(pickStr(src, "status") || "IN_PROGRESS"),
+    completedAt: typeof src.completedAt === "string" ? src.completedAt : null,
+    startedAt,
+  };
+}
+
+export async function getPractitioners(questionSetId: string): Promise<Practitioner[]> {
+  const res = await apiClient.get(`/api/hr/question-sets/${questionSetId}/practitioners`);
+  return extractItemList(res.data)
+    .map((raw, i) => normalizePractitioner(raw, i))
+    .filter((p): p is Practitioner => p !== null);
 }
 
 // ---------------------------------------------------------------------------

@@ -13,6 +13,7 @@ import {
   portalSubtext,
 } from "@/shared/utils/portal-ui";
 import { askAIAboutQuestion, getQuestionAIChat } from "@/features/question/services/question.service";
+import { QuestionContent } from "@/shared/components/ui/question-content";
 import type { GeneratedQuestion, QuestionSuggestion } from "@/features/interview/types/generation-session";
 
 interface AskAIPanelProps {
@@ -32,23 +33,23 @@ interface ChatMessage {
 function SuggestionCard({
   suggestion,
   onApply,
+  labels,
 }: {
   suggestion: QuestionSuggestion;
   onApply: () => void;
+  labels: ReturnType<typeof useLanguage>["t"]["reviewPage"]["askAI"];
 }) {
   return (
     <div className="mt-3 rounded-xl border border-primary/25 bg-primary/5 dark:bg-primary/10 overflow-hidden">
       {/* Card header */}
       <div className="flex items-center gap-1.5 px-3 py-2 border-b border-primary/15">
         <Sparkles size={11} className="text-primary shrink-0" />
-        <span className="text-[10px] font-semibold text-primary uppercase tracking-wide">Câu hỏi đề xuất</span>
+        <span className="text-[10px] font-semibold text-primary uppercase tracking-wide">{labels.suggestionLabel}</span>
       </div>
 
       {/* Question text */}
       <div className="px-3 py-2.5">
-        <p className="text-xs leading-relaxed text-gray-800 dark:text-gray-200 whitespace-pre-wrap">
-          {suggestion.question}
-        </p>
+        <QuestionContent text={suggestion.question} className="text-xs leading-relaxed text-gray-800 dark:text-gray-200" />
 
         {/* Optional metadata badges */}
         {(suggestion.difficulty || suggestion.questionType) && (
@@ -82,7 +83,7 @@ function SuggestionCard({
           className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg bg-primary text-white text-xs font-semibold hover:bg-primary/90 transition-colors"
         >
           <CheckCircle2 size={12} />
-          Áp dụng câu hỏi này
+          {labels.applySuggestionBtn}
         </button>
       </div>
     </div>
@@ -241,7 +242,7 @@ export function AskAIPanel({
                         : cn(portalMutedBg, portalHeading)
                     )}
                   >
-                    <p className="whitespace-pre-wrap">{msg.content}</p>
+                    <QuestionContent text={msg.content} />
                   </div>
 
                   {/* Suggestion card — shown below the AI bubble for the most recent AI reply */}
@@ -249,6 +250,7 @@ export function AskAIPanel({
                     <SuggestionCard
                       suggestion={msg.suggestion}
                       onApply={() => onApplySuggestion(msg.suggestion!)}
+                      labels={ai}
                     />
                   )}
                 </div>

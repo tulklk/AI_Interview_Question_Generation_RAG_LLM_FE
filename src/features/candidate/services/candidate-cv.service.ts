@@ -118,3 +118,21 @@ export async function uploadCv(file: File): Promise<UploadCvResult> {
 export async function deleteCv(): Promise<void> {
   await apiClient.delete("/api/candidate/cv");
 }
+
+/**
+ * Whether uploading a CV also overwrites personal info (name, phone, address,
+ * GitHub, LinkedIn) on the profile. Defaults to true until the candidate
+ * changes it. When off, an upload only refreshes the TechStack — any info
+ * the candidate has since hand-edited in their profile is left alone.
+ */
+export async function getCvSyncSettings(): Promise<boolean> {
+  const res = await apiClient.get("/api/candidate/cv/sync-settings");
+  const root = asRecord(res.data);
+  const src = root ? (asRecord(root.data) ?? root) : null;
+  const value = src?.autoSyncProfileFromCv;
+  return typeof value === "boolean" ? value : true;
+}
+
+export async function updateCvSyncSettings(enabled: boolean): Promise<void> {
+  await apiClient.put("/api/candidate/cv/sync-settings", { autoSyncProfileFromCv: enabled });
+}

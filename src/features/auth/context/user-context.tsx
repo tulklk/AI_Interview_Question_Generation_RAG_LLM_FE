@@ -5,6 +5,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useMemo,
   useState,
 } from "react";
 import type { ReactNode } from "react";
@@ -84,8 +85,13 @@ export function UserProvider({ children }: { children: ReactNode }) {
     refreshUser().finally(() => setLoading(false));
   }, [refreshUser]);
 
+  const value = useMemo(
+    () => ({ user, loading, refreshUser, clearUser }),
+    [user, loading, refreshUser, clearUser]
+  );
+
   return (
-    <UserContext.Provider value={{ user, loading, refreshUser, clearUser }}>
+    <UserContext.Provider value={value}>
       {children}
     </UserContext.Provider>
   );

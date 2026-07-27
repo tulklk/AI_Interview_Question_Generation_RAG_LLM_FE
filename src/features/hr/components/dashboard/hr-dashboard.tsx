@@ -215,17 +215,28 @@ function buildInsights(data: ReturnType<typeof useHrDashboard>, labels: {
     });
   }
 
-  // Recent trend: compare last 7 days vs prior 7 days
-  const activity = data.dailyActivity;
-  if (activity.length >= 14) {
-    const last7 = activity.slice(-7).reduce((s, d) => s + d.sessions, 0);
-    const prior7 = activity.slice(-14, -7).reduce((s, d) => s + d.sessions, 0);
-    const trendText = last7 > prior7 ? labels.trendUp : last7 < prior7 ? labels.trendDown : labels.trendFlat;
+  // Recent trend: prefer the BE's week-over-week figure; fall back to
+  // comparing last 7 days vs prior 7 days from dailyActivity.
+  if (data.weekOverWeekTrend) {
+    const trend = data.weekOverWeekTrend;
+    const trendText = trend === "up" ? labels.trendUp : trend === "down" ? labels.trendDown : labels.trendFlat;
     insights.push({
       icon: CalendarDays,
-      color: last7 > prior7 ? "text-emerald-600 dark:text-emerald-400" : last7 < prior7 ? "text-red-500 dark:text-red-400" : "text-gray-600 dark:text-gray-400",
+      color: trend === "up" ? "text-emerald-600 dark:text-emerald-400" : trend === "down" ? "text-red-500 dark:text-red-400" : "text-gray-600 dark:text-gray-400",
       text: trendText,
     });
+  } else {
+    const activity = data.dailyActivity;
+    if (activity.length >= 14) {
+      const last7 = activity.slice(-7).reduce((s, d) => s + d.sessions, 0);
+      const prior7 = activity.slice(-14, -7).reduce((s, d) => s + d.sessions, 0);
+      const trendText = last7 > prior7 ? labels.trendUp : last7 < prior7 ? labels.trendDown : labels.trendFlat;
+      insights.push({
+        icon: CalendarDays,
+        color: last7 > prior7 ? "text-emerald-600 dark:text-emerald-400" : last7 < prior7 ? "text-red-500 dark:text-red-400" : "text-gray-600 dark:text-gray-400",
+        text: trendText,
+      });
+    }
   }
 
   return insights;
@@ -508,7 +519,7 @@ export function HrDashboard() {
                     return (
                       <tr key={session.id} className="hover:bg-gray-50/70 dark:hover:bg-gray-800/40 transition-colors">
                         <td className="px-4 py-3">
-                          <Link href={`/hr/generate/${session.id}`} className={cn("font-medium hover:text-primary transition-colors line-clamp-1", portalHeadingAlt)}>
+                          <Link href={`/hr/history/${session.id}`} className={cn("font-medium hover:text-primary transition-colors line-clamp-1", portalHeadingAlt)}>
                             {session.planDraft?.role || session.jobTitle || "—"}
                           </Link>
                           {session.planDraft?.level && (
@@ -571,7 +582,7 @@ export function HrDashboard() {
             <p className={cn("text-[11px] font-semibold uppercase tracking-wider px-3 pt-3 pb-1", portalSubtextAlt)}>{p.quickActions.title}</p>
             <QuickAction icon={Zap} iconBg="bg-violet-100 dark:bg-violet-950/50" iconColor="text-violet-600 dark:text-violet-400" label={p.quickActions.generate} desc={p.quickActions.generateDesc} href="/hr/generate" />
             <QuickAction icon={History} iconBg="bg-gray-100 dark:bg-gray-800" iconColor="text-gray-600 dark:text-gray-400" label={p.quickActions.history} desc={p.quickActions.historyDesc} href="/hr/history" />
-            <QuickAction icon={Users} iconBg="bg-blue-100 dark:bg-blue-950/50" iconColor="text-blue-600 dark:text-blue-400" label={p.quickActions.candidates} desc={p.quickActions.candidatesDesc} href="/hr/candidates" />
+            <QuickAction icon={Users} iconBg="bg-blue-100 dark:bg-blue-950/50" iconColor="text-blue-600 dark:text-blue-400" label={p.quickActions.candidates} desc={p.quickActions.candidatesDesc} href="/hr/candidate-recommendations" />
             <QuickAction icon={Settings} iconBg="bg-emerald-100 dark:bg-emerald-950/50" iconColor="text-emerald-600 dark:text-emerald-400" label={p.quickActions.settings} desc={p.quickActions.settingsDesc} href="/hr/settings" />
           </motion.div>
         </div>
@@ -589,7 +600,7 @@ export function HrDashboard() {
               <p className={cn("text-[11px] mt-0.5", portalSubtextAlt)}>{p.candidates.subtitle}</p>
             </div>
           </div>
-          <Link href="/hr/candidates" className="text-[12px] font-semibold text-primary hover:text-primary-hover transition-colors">
+          <Link href="/hr/candidate-recommendations" className="text-[12px] font-semibold text-primary hover:text-primary-hover transition-colors">
             {p.candidates.viewAll}
           </Link>
         </div>
@@ -640,7 +651,7 @@ export function HrDashboard() {
           <span className={cn("text-[12px]", portalSubtextAlt)}>{p.subscription.title}:</span>
           <span className="text-[12px] font-bold text-primary">{planLabel}</span>
         </div>
-        <Link href="/hr/settings/billing" className="text-[12px] font-semibold text-primary hover:underline flex items-center gap-1">
+        <Link href="/hr/settings?tab=billing" className="text-[12px] font-semibold text-primary hover:underline flex items-center gap-1">
           {p.subscription.upgrade} <ArrowRight size={12} />
         </Link>
       </div>

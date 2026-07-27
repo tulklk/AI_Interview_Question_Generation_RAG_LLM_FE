@@ -11,6 +11,7 @@ import { BrandLogo } from "@/shared/components/common/brand-logo";
 import { SidebarUserFooter } from "@/features/hr/components/layout/sidebar-user-footer";
 import { useCandidateSubscription } from "@/features/candidate/context/candidate-subscription-context";
 import { getPracticeStats } from "@/features/candidate/services/practice-session.service";
+import { listInvitations } from "@/features/candidate/services/invitation.service";
 
 interface JobseekerSidebarProps {
   open?: boolean;
@@ -32,6 +33,13 @@ export function JobseekerSidebar({ open, onClose, onOpenUpgrade }: JobseekerSide
       .catch(() => {});
   }, []);
 
+  const [pendingInvitations, setPendingInvitations] = useState<number | null>(null);
+  useEffect(() => {
+    listInvitations()
+      .then((items) => setPendingInvitations(items.filter((i) => i.status === "PENDING").length))
+      .catch(() => {});
+  }, []);
+
   const sidebarContent = (
     <>
       <div className="px-5 pt-6 pb-2">
@@ -50,7 +58,10 @@ export function JobseekerSidebar({ open, onClose, onOpenUpgrade }: JobseekerSide
           {jobseekerNavItems.map((item) => {
             const isActive = pathname.startsWith(item.href);
             const label = s.nav[item.href as keyof typeof s.nav] ?? item.label;
-            const badge = item.href === "/jobseeker/history" ? historyCount || undefined : item.badge;
+            const badge =
+              item.href === "/jobseeker/history" ? historyCount || undefined
+              : item.href === "/jobseeker/invitations" ? pendingInvitations || undefined
+              : item.badge;
 
             return (
               <li key={item.href}>
