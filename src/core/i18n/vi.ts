@@ -2047,6 +2047,18 @@ Yêu cầu:
       cancelLabel: "Hủy",
     },
     noMessage: "Nhà tuyển dụng không để lại lời nhắn.",
+    acceptModal: {
+      title: "Chấp nhận lời mời",
+      subtitle: "Bạn có thể để lại lời nhắn hoặc số điện thoại để nhà tuyển dụng liên hệ (không bắt buộc).",
+      messageLabel: "Lời nhắn (không bắt buộc)",
+      messagePlaceholder: "VD: Có thể nghe máy vào buổi chiều các ngày trong tuần...",
+      phoneLabel: "Số điện thoại (không bắt buộc)",
+      phonePlaceholder: "0912345678",
+      phoneInvalid: "Vui lòng nhập số điện thoại hợp lệ (10 số, bắt đầu bằng 0).",
+      cancelBtn: "Hủy",
+      confirmBtn: "Chấp nhận lời mời",
+      accepting: "Đang xử lý…",
+    },
   },
 
   jobseekerHistoryPage: {
@@ -2332,6 +2344,8 @@ Yêu cầu:
       dismissed: "Đã bỏ qua",
       viewed: "Đã xem",
       new: "Mới",
+      contactShared: "Ứng viên đã để lại thông tin liên hệ",
+      contactBadge: "Có liên hệ",
     },
     invite: {
       modalTitle: "Gửi lời mời phỏng vấn",
@@ -2355,6 +2369,10 @@ Yêu cầu:
       scoreExcellent: "Rất phù hợp",
       scoreGood: "Phù hợp",
       scoreFair: "Tạm được",
+      candidateContactTitle: "Thông tin liên hệ ứng viên",
+      candidateContactSubtitle: "Do ứng viên tự để lại khi chấp nhận lời mời của bạn.",
+      candidateContactPhone: "Số điện thoại",
+      candidateContactMessage: "Lời nhắn",
     },
     backToList: "Quay lại danh sách",
     searchPlaceholder: "Tìm theo bộ câu hỏi…",

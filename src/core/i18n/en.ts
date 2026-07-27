@@ -2048,6 +2048,18 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
       cancelLabel: "Cancel",
     },
     noMessage: "No message from the recruiter.",
+    acceptModal: {
+      title: "Accept invitation",
+      subtitle: "Optionally leave a note or phone number so the recruiter can reach you.",
+      messageLabel: "Message (optional)",
+      messagePlaceholder: "e.g. Available for a call any weekday afternoon...",
+      phoneLabel: "Phone number (optional)",
+      phonePlaceholder: "0912345678",
+      phoneInvalid: "Enter a valid phone number (10 digits, starting with 0).",
+      cancelBtn: "Cancel",
+      confirmBtn: "Accept invitation",
+      accepting: "Accepting…",
+    },
   },
 
   jobseekerHistoryPage: {
@@ -2333,6 +2345,8 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
       dismissed: "Dismissed",
       viewed: "Viewed",
       new: "New",
+      contactShared: "Candidate shared contact info",
+      contactBadge: "Has contact info",
     },
     invite: {
       modalTitle: "Send Interview Invitation",
@@ -2356,6 +2370,10 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
       scoreExcellent: "Excellent match",
       scoreGood: "Good match",
       scoreFair: "Fair match",
+      candidateContactTitle: "Candidate's contact info",
+      candidateContactSubtitle: "Shared by the candidate when they accepted your invitation.",
+      candidateContactPhone: "Phone",
+      candidateContactMessage: "Message",
     },
     backToList: "Back to Recommendations",
     searchPlaceholder: "Search by question set…",
