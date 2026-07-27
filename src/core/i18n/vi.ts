@@ -2545,7 +2545,7 @@ Yêu cầu:
     publishConfirmMessage: "Ứng viên sẽ có thể xem và luyện tập với bộ câu hỏi này trên marketplace.",
     unpublishConfirmTitle: "Gỡ đăng bộ câu hỏi này?",
     unpublishConfirmMessage: "Bộ câu hỏi sẽ bị gỡ khỏi marketplace và ứng viên sẽ không còn tìm thấy nữa.",
-    statusDraft: "Bản nháp",
+    statusDraft: "Đã lưu",
     statusPublished: "Đã đăng",
     publishMinHint: "Cần tối thiểu {{min}} câu hỏi để đăng ({{count}}/{{min}}).",
     saveDraftFirstHint: "Hãy lưu bản nháp trước để có thể đăng bộ câu hỏi.",
