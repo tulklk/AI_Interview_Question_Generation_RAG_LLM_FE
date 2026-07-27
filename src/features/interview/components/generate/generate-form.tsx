@@ -22,6 +22,7 @@ import { ReviewQuestionsSection } from "@/features/question/components/review-qu
 import type { PlanDraft, QuestionType, GeneratedQuestion } from "@/features/interview/types/generation-session";
 import type { KnowledgeDocument } from "@/features/knowledge/types/knowledge";
 import { useHrSubscription } from "@/features/hr/context/hr-subscription-context";
+import { useUser } from "@/features/auth/context/user-context";
 import { isOverPlanUsageQuota } from "@/features/hr/data/hr-subscription";
 import { useLanguage } from "@/shared/providers/language-context";
 import { cn } from "@/lib/cn";
@@ -129,6 +130,7 @@ const SESSION_KEY_VIEW  = "hr_gen_view";
 const SESSION_KEY_PLAN  = "hr_gen_plan";
 const SESSION_KEY_JD    = "hr_gen_jd";
 const SESSION_KEY_PHASE = "hr_gen_polling_phase";
+const SESSION_KEY_USER  = "hr_gen_owner";
 
 function readSavedView(): FlowView {
   if (typeof window === "undefined") return "form";
@@ -143,7 +145,7 @@ function readSavedPlan(): PlanDraft | null {
 }
 
 function clearAllSessionKeys() {
-  [SESSION_KEY, SESSION_KEY_VIEW, SESSION_KEY_PLAN, SESSION_KEY_JD, SESSION_KEY_PHASE].forEach(
+  [SESSION_KEY, SESSION_KEY_VIEW, SESSION_KEY_PLAN, SESSION_KEY_JD, SESSION_KEY_PHASE, SESSION_KEY_USER].forEach(
     (k) => localStorage.removeItem(k)
   );
 }
@@ -174,6 +176,7 @@ function clearBgJobKeys() {
 export function GenerateForm() {
   const { t }  = useLanguage();
   const { planId, limits, hasFeature } = useHrSubscription();
+  const { user } = useUser();
 
   // ── Form inputs — always default for SSR, restored from localStorage in useEffect ──
   const [view,        setView]        = useState<FlowView>("form");
@@ -279,12 +282,41 @@ export function GenerateForm() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Persist session to localStorage — skip until restore has run to avoid wiping saved data
+  // Persist session to localStorage — skip until restore has run to avoid wiping saved data.
+  // Also validates session ownership when user first becomes available.
   useEffect(() => {
     if (!hasRestoredRef.current) return;
-    if (jobId) localStorage.setItem(SESSION_KEY, jobId);
-    else localStorage.removeItem(SESSION_KEY);
-  }, [jobId]);
+    if (user?.id) {
+      const savedOwner = localStorage.getItem(SESSION_KEY_USER);
+      if (savedOwner && savedOwner !== user.id) {
+        pollingActiveRef.current = false;
+        if (pollingRef.current) clearTimeout(pollingRef.current);
+        clearAllSessionKeys();
+        clearBgJobKeys();
+        setView("form");
+        setJobId(null);
+        setPlan(null);
+        setQuestions([]);
+        setFormError(null);
+        setFailureMessage(null);
+        setCanRetryPlan(false);
+        setCanRetryQs(false);
+        setCanEditInput(false);
+        setJdText("");
+        setNote("");
+        setSelectedDoc(null);
+        return;
+      }
+    }
+    if (jobId) {
+      localStorage.setItem(SESSION_KEY, jobId);
+      if (user?.id) localStorage.setItem(SESSION_KEY_USER, user.id);
+    } else {
+      localStorage.removeItem(SESSION_KEY);
+      localStorage.removeItem(SESSION_KEY_USER);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [jobId, user?.id]);
 
   useEffect(() => {
     if (!hasRestoredRef.current) return;

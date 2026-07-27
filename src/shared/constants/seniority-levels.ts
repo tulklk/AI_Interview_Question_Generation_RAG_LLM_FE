@@ -1,1 +1,1 @@
-export const SENIORITY_LEVELS = ["Intern", "Junior", "Mid-level", "Senior", "Lead"] as const;
+export const SENIORITY_LEVELS = ["Intern", "Fresher", "Junior", "Mid-level", "Senior", "Lead"] as const;

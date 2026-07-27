@@ -8,7 +8,7 @@ import { useLanguage } from "@/shared/providers/language-context";
 
 const roleKeys = ["Frontend", "Backend", "Data", "Product", "Design", "DevOps", "ML"];
 const difficultyKeys = ["Easy", "Medium", "Hard"];
-const experienceKeys = ["Intern", "Junior", "Mid-Level", "Senior", "Lead"];
+const experienceKeys = ["Intern", "Fresher", "Junior", "Mid-Level", "Senior", "Lead"];
 
 interface FilterOption { value: string; label: string }
 

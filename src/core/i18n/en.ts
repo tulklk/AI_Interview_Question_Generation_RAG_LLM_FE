@@ -2661,7 +2661,7 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
     publishConfirmMessage: "Candidates will be able to see and practice with this question set on the marketplace.",
     unpublishConfirmTitle: "Unpublish this question set?",
     unpublishConfirmMessage: "This question set will be removed from the marketplace and candidates won't be able to find it anymore.",
-    statusDraft: "Draft",
+    statusDraft: "Saved",
     statusPublished: "Published",
     publishMinHint: "Need at least {{min}} questions to publish ({{count}}/{{min}}).",
     saveDraftFirstHint: "Save a draft first to enable publishing.",
