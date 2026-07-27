@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { motion } from "framer-motion";
 import {
@@ -198,7 +198,7 @@ export function CandidateBillingPage() {
   const { t } = useLanguage();
   const { user } = useUser();
   const { addToast } = useToast();
-  const { refreshSubscription } = useCandidateSubscription();
+  const { planType: contextPlanType, refreshSubscription } = useCandidateSubscription();
   const b = t.jobseekerSettingsPage.billing;
 
   const [subscription, setSubscription] = useState<CandidateSubscription | null>(null);
@@ -208,26 +208,37 @@ export function CandidateBillingPage() {
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [showCancel, setShowCancel] = useState(false);
 
-  useEffect(() => {
-    async function load() {
-      setLoading(true);
-      try {
-        const [sub, use, hist] = await Promise.all([
-          getCandidateSubscription(),
-          getCandidateBillingUsage(),
-          getCandidatePaymentHistory(),
-        ]);
-        setSubscription(sub);
-        setUsage(use);
-        setHistory(hist);
-      } catch {
-        addToast("error", "Failed to load billing information.");
-      } finally {
-        setLoading(false);
-      }
+  const loadBillingData = useCallback(async (showLoader = true) => {
+    if (showLoader) setLoading(true);
+    try {
+      const [sub, use, hist] = await Promise.all([
+        getCandidateSubscription(),
+        getCandidateBillingUsage(),
+        getCandidatePaymentHistory(),
+      ]);
+      setSubscription(sub);
+      setUsage(use);
+      setHistory(hist);
+    } catch {
+      if (showLoader) addToast("error", "Failed to load billing information.");
+    } finally {
+      if (showLoader) setLoading(false);
     }
-    load();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [addToast]);
+
+  // Initial load
+  useEffect(() => {
+    void loadBillingData(true);
+  }, [loadBillingData]);
+
+  // Re-fetch when plan changes externally (e.g., upgraded from sidebar modal)
+  const prevPlanRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (prevPlanRef.current !== null && prevPlanRef.current !== contextPlanType) {
+      void loadBillingData(false);
+    }
+    prevPlanRef.current = contextPlanType;
+  }, [contextPlanType, loadBillingData]);
 
   if (loading) {
     return (
