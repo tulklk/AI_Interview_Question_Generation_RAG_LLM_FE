@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { Mail, AlertCircle, RefreshCw, Check, X, Loader2, ChevronRight, SlidersHorizontal } from "lucide-react";
+import { createPortal } from "react-dom";
+import { Mail, AlertCircle, RefreshCw, Check, X, Loader2, ChevronRight, SlidersHorizontal, Send } from "lucide-react";
 import { cn } from "@/lib/cn";
 import {
   listInvitations,
@@ -44,6 +45,119 @@ function StatusBadge({ status, labels }: { status: InvitationStatus; labels: Sta
   );
 }
 
+const PHONE_RE = /^0\d{9}$/;
+
+interface AcceptModalProps {
+  invitation: CandidateInvitation;
+  onClose: () => void;
+  onAccept: (payload: { responseMessage?: string; phoneNumber?: string }) => Promise<void>;
+}
+
+function AcceptModal({ invitation, onClose, onAccept }: AcceptModalProps) {
+  const { t } = useLanguage();
+  const p = t.jobseekerInvitationsPage;
+  const m = p.acceptModal;
+  const [message, setMessage] = useState("");
+  const [phone, setPhone] = useState("");
+  const [phoneTouched, setPhoneTouched] = useState(false);
+  const [accepting, setAccepting] = useState(false);
+
+  const phoneInvalid = phoneTouched && phone.trim() !== "" && !PHONE_RE.test(phone.trim());
+
+  useEffect(() => {
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = ""; };
+  }, []);
+
+  async function handleConfirm() {
+    if (phone.trim() && !PHONE_RE.test(phone.trim())) {
+      setPhoneTouched(true);
+      return;
+    }
+    setAccepting(true);
+    try {
+      await onAccept({ responseMessage: message.trim() || undefined, phoneNumber: phone.trim() || undefined });
+    } finally {
+      setAccepting(false);
+    }
+  }
+
+  return createPortal(
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={accepting ? undefined : onClose}>
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+      <div
+        className="relative z-10 w-full max-w-md bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-100 dark:border-gray-800"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-gray-800">
+          <p className="text-[15px] font-bold text-gray-900 dark:text-gray-100">{m.title}</p>
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={accepting}
+            className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors disabled:opacity-50"
+          >
+            <X size={14} />
+          </button>
+        </div>
+        <div className="px-5 py-4 flex flex-col gap-3.5">
+          <p className={cn("text-[12px] leading-relaxed", portalSubtextAlt)}>{m.subtitle}</p>
+          <div className="space-y-1.5">
+            <label className={cn("text-[12px] font-semibold", portalHeadingAlt)}>{m.messageLabel}</label>
+            <textarea
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              placeholder={m.messagePlaceholder}
+              rows={3}
+              maxLength={2000}
+              className="w-full text-[13px] bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2.5 outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 resize-none placeholder:text-gray-400 dark:placeholder:text-gray-500 text-gray-900 dark:text-gray-100 transition-all"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label className={cn("text-[12px] font-semibold", portalHeadingAlt)}>{m.phoneLabel}</label>
+            <input
+              type="tel"
+              inputMode="numeric"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
+              onBlur={() => setPhoneTouched(true)}
+              maxLength={10}
+              placeholder={m.phonePlaceholder}
+              className={cn(
+                "w-full text-[13px] bg-gray-50 dark:bg-gray-800 border rounded-xl px-3 py-2.5 outline-none focus:ring-2 placeholder:text-gray-400 dark:placeholder:text-gray-500 text-gray-900 dark:text-gray-100 transition-all",
+                phoneInvalid
+                  ? "border-red-400 dark:border-red-600 focus:ring-red-200 dark:focus:ring-red-900"
+                  : "border-gray-200 dark:border-gray-700 focus:border-primary focus:ring-primary/10"
+              )}
+            />
+            {phoneInvalid && <p className="text-[11px] text-red-500 font-medium">{m.phoneInvalid}</p>}
+          </div>
+        </div>
+        <div className="flex items-center justify-end gap-2 px-5 py-4 border-t border-gray-100 dark:border-gray-800">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={accepting}
+            className="h-9 px-4 text-[13px] font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg transition-colors disabled:opacity-50"
+          >
+            {m.cancelBtn}
+          </button>
+          <button
+            type="button"
+            onClick={() => void handleConfirm()}
+            disabled={accepting}
+            className="shimmer-button flex items-center gap-1.5 h-9 px-4 text-[13px] font-semibold text-white hr-cta-btn rounded-lg disabled:opacity-60"
+          >
+            {accepting ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
+            {accepting ? m.accepting : m.confirmBtn}
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
 function InvitationCard({
   invitation,
   index,
@@ -58,16 +172,17 @@ function InvitationCard({
   const { addToast } = useToast();
   const [busy, setBusy] = useState<"accept" | "reject" | null>(null);
   const [showRejectConfirm, setShowRejectConfirm] = useState(false);
+  const [showAcceptModal, setShowAcceptModal] = useState(false);
 
   const canAct = invitation.status === "PENDING";
 
-  async function handleAccept() {
-    if (busy) return;
+  async function handleAccept(payload: { responseMessage?: string; phoneNumber?: string }) {
     setBusy("accept");
     try {
-      await acceptInvitation(invitation.id);
+      await acceptInvitation(invitation.id, payload);
       onStatusChange(invitation.id, "ACCEPTED");
       addToast("success", p.acceptSuccess);
+      setShowAcceptModal(false);
     } catch (err: unknown) {
       const status = (err as { response?: { status?: number } })?.response?.status;
       addToast("error", status === 409 ? p.alreadyResponded : p.acceptFailed);
@@ -157,11 +272,11 @@ function InvitationCard({
             </button>
             <button
               type="button"
-              onClick={() => void handleAccept()}
+              onClick={() => setShowAcceptModal(true)}
               disabled={busy !== null}
               className="shimmer-button flex items-center gap-1.5 h-9 px-3.5 text-[12px] font-semibold text-white hr-cta-btn rounded-lg disabled:opacity-60"
             >
-              {busy === "accept" ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}
+              <Check size={13} />
               {p.acceptBtn}
             </button>
           </div>
@@ -188,6 +303,14 @@ function InvitationCard({
         onConfirm={() => void handleReject()}
         onCancel={() => setShowRejectConfirm(false)}
       />
+
+      {showAcceptModal && (
+        <AcceptModal
+          invitation={invitation}
+          onClose={() => setShowAcceptModal(false)}
+          onAccept={handleAccept}
+        />
+      )}
     </>
   );
 }

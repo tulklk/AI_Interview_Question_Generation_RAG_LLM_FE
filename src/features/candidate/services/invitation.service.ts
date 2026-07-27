@@ -74,8 +74,20 @@ export async function listInvitations(): Promise<CandidateInvitation[]> {
     .filter((i): i is CandidateInvitation => i !== null);
 }
 
-export async function acceptInvitation(id: string): Promise<void> {
-  await apiClient.post(`/api/candidate/invitations/${id}/accept`);
+export interface AcceptInvitationPayload {
+  /** Optional note for the HR, max 2000 chars. */
+  responseMessage?: string;
+  /** Optional phone number in 0xxxxxxxxx format — candidate's own choice to share, only visible to the inviting HR. */
+  phoneNumber?: string;
+}
+
+export async function acceptInvitation(id: string, payload?: AcceptInvitationPayload): Promise<void> {
+  const responseMessage = payload?.responseMessage?.trim();
+  const phoneNumber = payload?.phoneNumber?.trim();
+  await apiClient.post(`/api/candidate/invitations/${id}/accept`, {
+    responseMessage: responseMessage || undefined,
+    phoneNumber: phoneNumber || undefined,
+  });
 }
 
 export async function rejectInvitation(id: string): Promise<void> {
