@@ -26,7 +26,6 @@ import {
   portalSubtext,
 } from "@/shared/utils/portal-ui";
 import type { GeneratedQuestion, DifficultyLevel, QuestionType, QuestionSuggestion } from "@/features/interview/types/generation-session";
-import { AskAIPanel } from "./ask-ai-panel";
 
 const QUESTION_TYPES: QuestionType[] = ["Technical", "Behavioral", "Situational", "System-design", "Problem-solving"];
 const DIFFICULTIES: DifficultyLevel[] = ["Easy", "Medium", "Hard"];
@@ -54,6 +53,7 @@ interface QuestionEditCardProps {
   isDragging?: boolean;
   /** Set is PUBLISHED — BE rejects add/edit/delete/reorder, so hide those affordances. */
   locked?: boolean;
+  isAskAIActive?: boolean;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   dragHandleListeners?: Record<string, any>;
   onSave: (updated: Partial<GeneratedQuestion>) => Promise<boolean>;
@@ -61,6 +61,7 @@ interface QuestionEditCardProps {
   onDelete: () => void;
   onMoveUp: () => void;
   onMoveDown: () => void;
+  onAskAI?: (applyCallback: (s: QuestionSuggestion) => void) => void;
 }
 
 export function QuestionEditCard({
@@ -71,19 +72,20 @@ export function QuestionEditCard({
   isLast = false,
   isDragging = false,
   locked = false,
+  isAskAIActive = false,
   dragHandleListeners,
   onSave,
   onEditingChange,
   onDelete,
   onMoveUp,
   onMoveDown,
+  onAskAI,
 }: QuestionEditCardProps) {
   const { t } = useLanguage();
   const rp = t.reviewPage;
   const [isAnswerOpen, setIsAnswerOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [showAskAI, setShowAskAI] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   // Edit state
@@ -132,7 +134,6 @@ export function QuestionEditCard({
     setEditRationale(suggestion.rationale ?? question.rationale ?? "");
     setEditSampleAnswer(suggestion.sampleAnswer ?? question.sampleAnswer ?? "");
     setIsEditing(true);
-    setShowAskAI(false);
   }
 
   return (
@@ -345,11 +346,11 @@ export function QuestionEditCard({
             <div className="hidden sm:flex flex-col items-center gap-1 shrink-0">
               <button
                 type="button"
-                onClick={() => setShowAskAI(!showAskAI)}
+                onClick={() => onAskAI?.(handleApplyAISuggestion)}
                 title={rp.questionActions.askAI}
                 className={cn(
                   "w-7 h-7 flex items-center justify-center rounded-lg transition-colors",
-                  showAskAI
+                  isAskAIActive
                     ? "bg-primary/10 text-primary"
                     : "text-gray-400 dark:text-gray-500 hover:text-primary hover:bg-primary/10"
                 )}
@@ -410,11 +411,11 @@ export function QuestionEditCard({
           <div className="sm:hidden flex items-center gap-1 mt-3 pt-2.5 border-t border-gray-100 dark:border-gray-800">
             <button
               type="button"
-              onClick={() => setShowAskAI(!showAskAI)}
+              onClick={() => onAskAI?.(handleApplyAISuggestion)}
               title={rp.questionActions.askAI}
               className={cn(
                 "flex-1 flex items-center justify-center gap-1.5 py-1.5 text-xs rounded-lg transition-colors",
-                showAskAI
+                isAskAIActive
                   ? "bg-primary/10 text-primary"
                   : "text-gray-500 dark:text-gray-400 hover:text-primary hover:bg-primary/10"
               )}
@@ -495,15 +496,6 @@ export function QuestionEditCard({
         )}
       </div>
 
-      {/* Ask AI Panel */}
-      {showAskAI && (
-        <AskAIPanel
-          question={question}
-          sessionId={sessionId}
-          onApplySuggestion={handleApplyAISuggestion}
-          onClose={() => setShowAskAI(false)}
-        />
-      )}
     </div>
   );
 }

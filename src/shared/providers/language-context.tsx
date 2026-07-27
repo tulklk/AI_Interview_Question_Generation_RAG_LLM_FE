@@ -39,10 +39,21 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
 
   const setLang = useCallback((l: Lang) => {
     localStorage.setItem(STORAGE_KEY, l);
-    loadDictionary(l).then((dict) => {
-      setLangState(l);
-      setT(dict);
-    });
+    document.body.classList.add("lang-switching");
+    // Wait for fade-out to finish, then swap all translated strings
+    const timer = setTimeout(() => {
+      loadDictionary(l).then((dict) => {
+        setLangState(l);
+        setT(dict);
+        // Two rAF frames to let React flush the re-render before fading back in
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            document.body.classList.remove("lang-switching");
+          });
+        });
+      });
+    }, 140);
+    return () => clearTimeout(timer);
   }, []);
 
   useEffect(() => {

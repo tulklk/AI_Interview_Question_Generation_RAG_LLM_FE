@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
 import { Plus, BookMarked, CheckCircle2, Loader2, AlertCircle, RefreshCw, ChevronLeft, ChevronRight, X, Check, Rocket, Undo2, Globe, PenLine, Lock, Clock, Pencil } from "lucide-react";
@@ -32,7 +33,7 @@ import {
   portalSubtext,
   portalMutedBg,
 } from "@/shared/utils/portal-ui";
-import type { GeneratedQuestion, GenerationStatus } from "@/features/interview/types/generation-session";
+import type { GeneratedQuestion, GenerationStatus, QuestionSuggestion } from "@/features/interview/types/generation-session";
 import { updateLocalSessionQuestions } from "@/features/interview/utils/local-history";
 import {
   updateJobQuestion,
@@ -50,6 +51,7 @@ import {
   getDraft,
 } from "@/features/interview/services/interview.service";
 import { QuestionEditCard } from "./question-edit-card";
+import { AskAIPanel } from "./ask-ai-panel";
 import { AddQuestionDialog } from "./add-question-dialog";
 import { TimeLimitDialog } from "./time-limit-dialog";
 import { ConfirmDialog } from "@/shared/components/ui/confirm-dialog";
@@ -64,11 +66,13 @@ interface SortableCardProps {
   isFirst: boolean;
   isLast: boolean;
   locked?: boolean;
+  isAskAIActive?: boolean;
   onSave: (changes: Partial<GeneratedQuestion>) => Promise<boolean>;
   onEditingChange: (editing: boolean) => void;
   onDelete: () => void;
   onMoveUp: () => void;
   onMoveDown: () => void;
+  onAskAI?: (applyCallback: (s: QuestionSuggestion) => void) => void;
 }
 
 function SortableCard({
@@ -78,11 +82,13 @@ function SortableCard({
   isFirst,
   isLast,
   locked,
+  isAskAIActive,
   onSave,
   onEditingChange,
   onDelete,
   onMoveUp,
   onMoveDown,
+  onAskAI,
 }: SortableCardProps) {
   const {
     attributes,
@@ -111,12 +117,14 @@ function SortableCard({
         isFirst={isFirst}
         isLast={isLast}
         locked={locked}
+        isAskAIActive={isAskAIActive}
         dragHandleListeners={locked ? undefined : listeners}
         onSave={onSave}
         onEditingChange={onEditingChange}
         onDelete={onDelete}
         onMoveUp={onMoveUp}
         onMoveDown={onMoveDown}
+        onAskAI={onAskAI}
       />
     </div>
   );
@@ -171,6 +179,7 @@ export function ReviewQuestionsSection({
   const [page, setPage] = useState(1);
   const [publishConfirmAction, setPublishConfirmAction] = useState<PublishAction>(null);
   const [publishing, setPublishing] = useState(false);
+  const [askAIState, setAskAIState] = useState<{ question: GeneratedQuestion; onApply: (s: QuestionSuggestion) => void } | null>(null);
 
   const router = useRouter();
   const isEditable = status === "COMPLETED" && !readOnly;
@@ -249,6 +258,10 @@ export function ReviewQuestionsSection({
   function handleStayToSave() {
     setShowNavWarning(false);
     setPendingHref(null);
+  }
+
+  function handleOpenAskAI(question: GeneratedQuestion, applyFn: (s: QuestionSuggestion) => void) {
+    setAskAIState({ question, onApply: applyFn });
   }
 
   function handleDragStart(event: DragStartEvent) {
@@ -773,11 +786,13 @@ export function ReviewQuestionsSection({
                           isFirst={globalIdx === 0}
                           isLast={globalIdx === questions.length - 1}
                           locked={isLocked}
+                          isAskAIActive={askAIState?.question.id === q.id}
                           onSave={(changes) => handleSaveQuestion(q.id, changes)}
                           onEditingChange={(editing) => handleEditingChange(q.id, editing)}
                           onDelete={() => handleDelete(q.id)}
                           onMoveUp={() => handleMoveUp(globalIdx)}
                           onMoveDown={() => handleMoveDown(globalIdx)}
+                          onAskAI={(applyFn) => handleOpenAskAI(q, applyFn)}
                         />
                       </div>
                     );
@@ -877,6 +892,21 @@ export function ReviewQuestionsSection({
           onClose={() => setShowAddDialog(false)}
         />
       )}
+
+      {/* Shared AskAI bottom sheet — one panel for all question cards */}
+      <AnimatePresence>
+        {askAIState && (
+          <AskAIPanel
+            question={askAIState.question}
+            sessionId={sessionId}
+            onApplySuggestion={(s) => {
+              askAIState.onApply(s);
+              setAskAIState(null);
+            }}
+            onClose={() => setAskAIState(null)}
+          />
+        )}
+      </AnimatePresence>
 
       {/* Unsaved-changes navigation warning */}
       {showNavWarning && createPortal(
