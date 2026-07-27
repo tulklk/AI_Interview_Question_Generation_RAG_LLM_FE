@@ -27,6 +27,7 @@ export const jobRoles: JobRole[] = [
 
 export const experienceLevels: ExperienceLevel[] = [
   { id: "intern", label: "Intern / Trainee (< 1 year)" },
+  { id: "fresher", label: "Fresher (< 1 year)" },
   { id: "junior", label: "Junior (0–2 years)" },
   { id: "midlevel", label: "Mid-Level (2–5 years)" },
   { id: "senior", label: "Senior (5+ years)" },

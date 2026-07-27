@@ -33,8 +33,6 @@ export const navItems: NavItem[] = [
     label: "History",
     href: "/hr/history",
     icon: History,
-    badge: 7,
-    badgeVariant: "count",
   },
   {
     label: "Knowledge Base",

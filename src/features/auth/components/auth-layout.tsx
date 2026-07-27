@@ -1,4 +1,6 @@
-import { ReactNode } from "react";
+"use client";
+
+import { ReactNode, useRef, useState, useCallback, useEffect } from "react";
 import { LoginHero } from "@/features/auth/components/login-hero";
 import { Auth3DVisual } from "@/features/auth/components/auth-3d-visual";
 import { BrandLogo } from "@/shared/components/common/brand-logo";
@@ -22,6 +24,21 @@ const particlePositions = [
 ];
 
 export function AuthLayout({ children, formAreaClassName = "items-center justify-center" }: AuthLayoutProps) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const lastScrollY = useRef(0);
+  const [logoVisible, setLogoVisible] = useState(true);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => { setMounted(true); }, []);
+
+  const handleScroll = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const current = el.scrollTop;
+    setLogoVisible(current <= lastScrollY.current || current < 10);
+    lastScrollY.current = current;
+  }, []);
+
   return (
     <div className="auth-page flex h-screen overflow-hidden">
       {/* Multi-layer background, toggled by theme */}
@@ -61,7 +78,15 @@ export function AuthLayout({ children, formAreaClassName = "items-center justify
           <div className="auth-panel-orb auth-panel-orb--3" style={{ width: 220, height: 220, top: "40%", right: "16%" }} />
         </div>
 
-        <div className="absolute top-6 right-6 sm:right-8 z-20 animate-fade-in">
+        <div
+          className="absolute top-6 right-6 sm:right-8 z-20"
+          style={{
+            transition: "opacity 0.3s ease, transform 0.3s ease",
+            opacity: mounted && logoVisible ? 1 : 0,
+            transform: logoVisible ? "translateY(0)" : "translateY(-8px)",
+            pointerEvents: mounted && logoVisible ? "auto" : "none",
+          }}
+        >
           <BrandLogo
             href="/"
             className="justify-end max-w-[min(100%,280px)]"
@@ -71,7 +96,11 @@ export function AuthLayout({ children, formAreaClassName = "items-center justify
           />
         </div>
 
-        <div className={`relative z-10 flex-1 overflow-y-auto px-6 sm:px-8 pt-20 pb-10 flex auth-card-3d-perspective ${formAreaClassName}`}>
+        <div
+          ref={scrollRef}
+          onScroll={handleScroll}
+          className={`relative z-10 flex-1 overflow-y-auto px-6 sm:px-8 pt-20 pb-10 flex auth-card-3d-perspective ${formAreaClassName}`}
+        >
           <div className="auth-glass-card w-full max-w-lg px-6 sm:px-10 py-8 sm:py-10">{children}</div>
         </div>
       </div>

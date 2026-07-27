@@ -62,6 +62,7 @@ export function useRegister(registerRole: RegisterRoleKey = "hr") {
   const [agreed, setAgreed] = useState(false);
   const [loading, setLoading] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<RegisterFieldErrors>({});
+  const [serverError, setServerError] = useState<string | null>(null);
 
   const companyRef = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -219,11 +220,13 @@ export function useRegister(registerRole: RegisterRoleKey = "hr") {
     }
     setStep(1);
     setFieldErrors({});
+    setServerError(null);
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setFieldErrors({});
+    setServerError(null);
 
     if (!agreed) {
       addToast("error", rp.mustAgree);
@@ -258,7 +261,7 @@ export function useRegister(registerRole: RegisterRoleKey = "hr") {
         email: email.trim(),
         password,
         confirmPassword,
-        companyId,
+        companyId: companyId || undefined,
         companyName: companyName.trim(),
         jobTitle: jobTitle.trim(),
       });
@@ -267,25 +270,27 @@ export function useRegister(registerRole: RegisterRoleKey = "hr") {
       const axiosErr = err as AxiosError<ApiErrorResponse>;
       const status = axiosErr.response?.status;
       const data = axiosErr.response?.data;
-      const msg = data?.message ?? "";
+      const msg = data?.message ?? data?.error ?? "";
 
       if (status === 409 || msg.toLowerCase().includes("email")) {
         setFieldErrors({ email: rp.emailAlreadyUsed });
+        stepDir.current = -1;
         setStep(1);
       } else if (Array.isArray(data?.errors) && data.errors.length > 0) {
-        const errMsg = (data.errors as string[]).join(" ");
-        const lower = errMsg.toLowerCase();
+        const errStrings = data.errors as string[];
+        const lower = errStrings.join(" ").toLowerCase();
         if (lower.includes("mật khẩu") || lower.includes("password")) {
-          setFieldErrors({ password: errMsg });
+          setFieldErrors({ password: errStrings.join(" ") });
           stepDir.current = -1;
           setStep(1);
         } else {
-          addToast("error", errMsg);
+          const headline = data?.error || data?.message || rp.registrationFailed;
+          setServerError(headline);
         }
       } else if (data?.errors && typeof data.errors === "object") {
         setFieldErrors(data.errors as RegisterFieldErrors);
       } else {
-        addToast("error", isGoogleSignup ? rp.profileCompleteFailed : rp.registrationFailed);
+        setServerError(msg || (isGoogleSignup ? rp.profileCompleteFailed : rp.registrationFailed));
       }
     } finally {
       setLoading(false);
@@ -315,6 +320,7 @@ export function useRegister(registerRole: RegisterRoleKey = "hr") {
     agreed,
     loading,
     fieldErrors,
+    serverError,
     companyRef,
     passwordStrength,
     strengthLabel,
