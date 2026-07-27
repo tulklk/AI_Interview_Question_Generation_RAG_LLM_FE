@@ -582,7 +582,7 @@ export function HrDashboard() {
             <p className={cn("text-[11px] font-semibold uppercase tracking-wider px-3 pt-3 pb-1", portalSubtextAlt)}>{p.quickActions.title}</p>
             <QuickAction icon={Zap} iconBg="bg-violet-100 dark:bg-violet-950/50" iconColor="text-violet-600 dark:text-violet-400" label={p.quickActions.generate} desc={p.quickActions.generateDesc} href="/hr/generate" />
             <QuickAction icon={History} iconBg="bg-gray-100 dark:bg-gray-800" iconColor="text-gray-600 dark:text-gray-400" label={p.quickActions.history} desc={p.quickActions.historyDesc} href="/hr/history" />
-            <QuickAction icon={Users} iconBg="bg-blue-100 dark:bg-blue-950/50" iconColor="text-blue-600 dark:text-blue-400" label={p.quickActions.candidates} desc={p.quickActions.candidatesDesc} href="/hr/candidates" />
+            <QuickAction icon={Users} iconBg="bg-blue-100 dark:bg-blue-950/50" iconColor="text-blue-600 dark:text-blue-400" label={p.quickActions.candidates} desc={p.quickActions.candidatesDesc} href="/hr/candidate-recommendations" />
             <QuickAction icon={Settings} iconBg="bg-emerald-100 dark:bg-emerald-950/50" iconColor="text-emerald-600 dark:text-emerald-400" label={p.quickActions.settings} desc={p.quickActions.settingsDesc} href="/hr/settings" />
           </motion.div>
         </div>
@@ -600,7 +600,7 @@ export function HrDashboard() {
               <p className={cn("text-[11px] mt-0.5", portalSubtextAlt)}>{p.candidates.subtitle}</p>
             </div>
           </div>
-          <Link href="/hr/candidates" className="text-[12px] font-semibold text-primary hover:text-primary-hover transition-colors">
+          <Link href="/hr/candidate-recommendations" className="text-[12px] font-semibold text-primary hover:text-primary-hover transition-colors">
             {p.candidates.viewAll}
           </Link>
         </div>
@@ -651,7 +651,7 @@ export function HrDashboard() {
           <span className={cn("text-[12px]", portalSubtextAlt)}>{p.subscription.title}:</span>
           <span className="text-[12px] font-bold text-primary">{planLabel}</span>
         </div>
-        <Link href="/hr/settings/billing" className="text-[12px] font-semibold text-primary hover:underline flex items-center gap-1">
+        <Link href="/hr/settings?tab=billing" className="text-[12px] font-semibold text-primary hover:underline flex items-center gap-1">
           {p.subscription.upgrade} <ArrowRight size={12} />
         </Link>
       </div>
