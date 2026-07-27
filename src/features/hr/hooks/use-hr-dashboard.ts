@@ -132,6 +132,8 @@ function toRecommendationStub(row: {
     questionSetTitle: "",
     completedAt: null,
     status: row.status,
+    invitationResponseMessage: null,
+    invitationSharedPhoneNumber: null,
   };
 }
 

@@ -14,6 +14,9 @@ export interface CandidateRecommendation {
   completedAt: string | null;
   status: RecommendationStatus;
   recommendationReason?: string | null;
+  /** Only set once the candidate has ACCEPTED the invite — sent by the candidate themself, not their profile phone. */
+  invitationResponseMessage: string | null;
+  invitationSharedPhoneNumber: string | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -44,6 +47,14 @@ function pickNum(obj: Record<string, unknown>, ...keys: string[]): number {
     }
   }
   return 0;
+}
+
+function pickNullableStr(obj: Record<string, unknown>, ...keys: string[]): string | null {
+  for (const k of keys) {
+    const v = obj[k];
+    if (typeof v === "string" && v.trim()) return v.trim();
+  }
+  return null;
 }
 
 function pickStrArr(obj: Record<string, unknown>, ...keys: string[]): string[] {
@@ -83,6 +94,8 @@ function normalizeRec(raw: unknown): CandidateRecommendation | null {
         : typeof src.reason === "string"
           ? src.reason
           : null,
+    invitationResponseMessage: pickNullableStr(src, "invitationResponseMessage"),
+    invitationSharedPhoneNumber: pickNullableStr(src, "invitationSharedPhoneNumber"),
   };
 }
 
