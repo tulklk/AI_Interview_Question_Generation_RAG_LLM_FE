@@ -734,6 +734,11 @@ export function HistoryTable({ search = "", role = "", level = "", experience = 
                 <span className={cn("font-semibold text-sm leading-snug block", portalHeading)}>{title}</span>
                 <div className="mt-1 flex items-center gap-1.5 flex-wrap">
                   <SessionStatusBadge status={session.status} />
+                  {session.isFromStudio && (
+                    <span className="inline-flex items-center text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#6c47ff]/10 text-[#6c47ff]">
+                      Studio
+                    </span>
+                  )}
                   {publishMap.has(session.id) && (
                     <PublishStatusBadge
                       status={publishMap.get(session.id)!}
@@ -814,7 +819,14 @@ export function HistoryTable({ search = "", role = "", level = "", experience = 
                     <div className="w-7 h-7 rounded-lg hr-icon-box flex items-center justify-center shrink-0">
                       <FileText size={13} className="text-[#7C3AED] dark:text-[#a78bff]" />
                     </div>
-                    <span className={cn("font-medium text-sm", portalHeading)}>{title}</span>
+                    <div className="min-w-0">
+                      <span className={cn("font-medium text-sm block", portalHeading)}>{title}</span>
+                      {session.isFromStudio && (
+                        <span className="mt-1 inline-flex items-center text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#6c47ff]/10 text-[#6c47ff]">
+                          Studio
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </td>
                 <td className="px-4 py-3.5">

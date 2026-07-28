@@ -27,5 +27,8 @@ export function isHrNavActive(itemHref: string, pathname: string): boolean {
   if (h === "/hr/history") {
     return p === "/hr/history" || p.startsWith(`${h}/`);
   }
+  if (h === "/hr/generate-v2") {
+    return p === "/hr/generate-v2";
+  }
   return p === h;
 }

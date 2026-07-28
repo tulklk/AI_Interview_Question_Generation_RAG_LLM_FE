@@ -15,6 +15,7 @@ interface SelectFieldProps {
   placeholder?: string;
   required?: boolean;
   id?: string;
+  disabled?: boolean;
 }
 
 export function SelectField({
@@ -25,6 +26,7 @@ export function SelectField({
   placeholder = "Select...",
   required,
   id,
+  disabled,
 }: SelectFieldProps) {
   return (
     <div className="flex flex-col gap-1.5">
@@ -41,8 +43,9 @@ export function SelectField({
         <select
           id={id}
           value={value}
+          disabled={disabled}
           onChange={(e) => onChange(e.target.value)}
-          className="w-full appearance-none bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg px-3.5 py-2.5 pr-9 text-sm text-gray-700 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
+          className="w-full appearance-none bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg px-3.5 py-2.5 pr-9 text-sm text-gray-700 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors disabled:cursor-not-allowed disabled:opacity-50"
         >
           <option value="" disabled>
             {placeholder}

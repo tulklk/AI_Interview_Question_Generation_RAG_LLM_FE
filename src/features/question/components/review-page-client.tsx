@@ -204,6 +204,11 @@ export function ReviewPageClient({
               </button>
             )}
             <SessionStatusBadge status={session.status} size="md" />
+            {session.isFromStudio && (
+              <span className="inline-flex items-center text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#6c47ff]/10 text-[#6c47ff]">
+                Studio
+              </span>
+            )}
           </div>
         </div>
       </div>
@@ -227,7 +232,7 @@ export function ReviewPageClient({
               <span className={cn("font-medium", portalHeading)}>{session.planDraft.level}</span>
             </div>
             <div className="flex gap-1.5 flex-wrap">
-              {session.planDraft.questionTypes.map((qt) => (
+              {[...new Set(session.planDraft.questionTypes)].map((qt) => (
                 <span
                   key={qt}
                   className="text-xs font-semibold px-2 py-0.5 rounded-md bg-primary/10 text-primary"
@@ -326,6 +331,7 @@ export function ReviewPageClient({
             onPublishStatusChange={onPublishStatusChange}
             onDraftSaved={onDraftSaved}
             initialTimeLimitMinutes={initialTimeLimitMinutes}
+            isFromStudio={session.isFromStudio}
           />
         </div>
       )}

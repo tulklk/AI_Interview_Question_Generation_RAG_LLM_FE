@@ -67,6 +67,7 @@ interface SortableCardProps {
   isLast: boolean;
   locked?: boolean;
   isAskAIActive?: boolean;
+  studioFormat?: boolean;
   onSave: (changes: Partial<GeneratedQuestion>) => Promise<boolean>;
   onEditingChange: (editing: boolean) => void;
   onDelete: () => void;
@@ -83,6 +84,7 @@ function SortableCard({
   isLast,
   locked,
   isAskAIActive,
+  studioFormat,
   onSave,
   onEditingChange,
   onDelete,
@@ -118,6 +120,7 @@ function SortableCard({
         isLast={isLast}
         locked={locked}
         isAskAIActive={isAskAIActive}
+        studioFormat={studioFormat}
         dragHandleListeners={locked ? undefined : listeners}
         onSave={onSave}
         onEditingChange={onEditingChange}
@@ -141,6 +144,8 @@ interface ReviewQuestionsSectionProps {
   onPublishStatusChange?: (status: "DRAFT" | "PUBLISHED") => void;
   onDraftSaved?: (questionSetId: string) => void;
   initialTimeLimitMinutes?: number | null;
+  /** SCRUM-374: job từ Studio — card dùng format sample + rubric. */
+  isFromStudio?: boolean;
 }
 
 type SaveState = "idle" | "saving" | "saved" | "error";
@@ -161,6 +166,7 @@ export function ReviewQuestionsSection({
   onPublishStatusChange,
   onDraftSaved,
   initialTimeLimitMinutes,
+  isFromStudio = false,
 }: ReviewQuestionsSectionProps) {
   const { t } = useLanguage();
   const rp = t.reviewPage;
@@ -327,6 +333,9 @@ export function ReviewQuestionsSection({
       difficulty: changes.difficulty,
       rationale: changes.rationale ?? null,
       sampleAnswer: changes.sampleAnswer ?? null,
+      ...(changes.scoringRubric !== undefined
+        ? { scoringRubric: changes.scoringRubric ?? null }
+        : {}),
     };
 
     // Once a question set exists, edits must go straight to it — editing the
@@ -787,6 +796,7 @@ export function ReviewQuestionsSection({
                           isLast={globalIdx === questions.length - 1}
                           locked={isLocked}
                           isAskAIActive={askAIState?.question.id === q.id}
+                          studioFormat={isFromStudio || !!q.scoringRubric?.trim()}
                           onSave={(changes) => handleSaveQuestion(q.id, changes)}
                           onEditingChange={(editing) => handleEditingChange(q.id, editing)}
                           onDelete={() => handleDelete(q.id)}
@@ -815,6 +825,7 @@ export function ReviewQuestionsSection({
                         isFirst={false}
                         isLast={false}
                         isDragging
+                        studioFormat={isFromStudio || !!dragged.scoringRubric?.trim()}
                         onSave={() => Promise.resolve(true)}
                         onDelete={() => {}}
                         onMoveUp={() => {}}
