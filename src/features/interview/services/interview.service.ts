@@ -87,6 +87,8 @@ interface BackendJobFailure {
 interface BackendJob {
   id?: string;
   jobId?: string;
+  title?: string;
+  jobTitle?: string;
   jobDescription?: string;
   jobDescriptionPreview?: string;
   hrNote?: string;
@@ -249,7 +251,7 @@ function mapJobPhaseToStatus(phase: string): GenerationStatus {
 
 function mapJobToSession(job: BackendJob): GenerationSession {
   const summ = job.summary;
-  const role = job.plan?.roleTitle ?? summ?.role ?? "";
+  const role = job.title ?? job.jobTitle ?? job.plan?.roleTitle ?? summ?.role ?? "";
   const id = job.jobId ?? job.id ?? "";
   const ui = job.ui;
   const meta = job.meta;
@@ -1186,11 +1188,33 @@ export async function getPractitioners(questionSetId: string): Promise<Practitio
 export async function askAIAboutQuestion(
   jobId: string,
   questionId: string,
-  prompt: string
+  prompt: string,
+  currentQuestion?: {
+    question: string;
+    questionType: string;
+    difficulty: string;
+    skill?: string;
+    focusArea?: string;
+    rationale?: string;
+    sampleAnswer?: string;
+  }
 ): Promise<{ reply: string; suggestion: QuestionSuggestion | null }> {
   const { data } = await apiClient.post(
     `/api/hr/question-generation-jobs/${jobId}/questions/${questionId}/ask-ai`,
-    { message: prompt }
+    {
+      message: prompt,
+      ...(currentQuestion && {
+        currentQuestion: {
+          question: currentQuestion.question,
+          questionType: currentQuestion.questionType,
+          difficulty: currentQuestion.difficulty,
+          skill: currentQuestion.skill ?? "",
+          focusArea: currentQuestion.focusArea ?? "",
+          rationale: currentQuestion.rationale ?? "",
+          sampleAnswer: currentQuestion.sampleAnswer ?? "",
+        },
+      }),
+    }
   );
   const inner = (data as Record<string, unknown>)?.data ?? data;
   if (typeof inner === "string") return { reply: inner, suggestion: null };
@@ -1227,8 +1251,13 @@ export async function getQuestionAIChat(
     `/api/hr/question-generation-jobs/${jobId}/questions/${questionId}/ai-chat`
   );
   const inner = (data as Record<string, unknown>)?.data ?? data;
-  if (!Array.isArray(inner)) return [];
-  return (inner as Record<string, unknown>[]).map((item) => ({
+  const arr = Array.isArray(inner)
+    ? inner
+    : Array.isArray((inner as Record<string, unknown>)?.messages)
+    ? ((inner as Record<string, unknown>).messages as Record<string, unknown>[])
+    : null;
+  if (!arr) return [];
+  return arr.map((item) => ({
     id: String(item.id ?? item.Id ?? `${Date.now()}-${Math.random()}`),
     questionId,
     role: (item.role as "ai" | "hr") ?? "ai",

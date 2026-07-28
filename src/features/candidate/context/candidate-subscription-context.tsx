@@ -17,16 +17,25 @@ interface CandidateSubscriptionContextValue {
   refreshSubscription: () => Promise<void>;
 }
 
+const PLAN_CACHE_KEY = "hiregena-candidate-plan";
+
+function readCachedPlan(): CandidatePlanType {
+  if (typeof window === "undefined") return "FREE";
+  const v = localStorage.getItem(PLAN_CACHE_KEY);
+  return v === "PREMIUM" ? "PREMIUM" : "FREE";
+}
+
 const CandidateSubscriptionContext =
   createContext<CandidateSubscriptionContextValue | null>(null);
 
 export function CandidateSubscriptionProvider({ children }: { children: ReactNode }) {
-  const [planType, setPlanType] = useState<CandidatePlanType>("FREE");
+  const [planType, setPlanType] = useState<CandidatePlanType>(readCachedPlan);
 
   const refreshSubscription = useCallback(async () => {
     try {
       const sub = await getCandidateSubscription();
       setPlanType(sub.planType);
+      localStorage.setItem(PLAN_CACHE_KEY, sub.planType);
     } catch {
       // keep current state on error
     }

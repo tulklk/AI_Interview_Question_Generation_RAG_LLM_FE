@@ -198,7 +198,7 @@ export function FeedbackResultClient() {
       )}
 
       {!loading && !error && !forbidden && session && (
-        <FeedbackPage session={session} feedback={feedback} aiInsight={aiInsight} scoring={scoring} setTitle={set?.title} companyName={set?.company} previousScore={previousScore} />
+        <FeedbackPage session={session} feedback={feedback} aiInsight={aiInsight} scoring={scoring} setTitle={set?.title} companyName={set?.company} companyLogoUrl={set?.companyLogoUrl} previousScore={previousScore} />
       )}
     </JobseekerAppShell>
   );

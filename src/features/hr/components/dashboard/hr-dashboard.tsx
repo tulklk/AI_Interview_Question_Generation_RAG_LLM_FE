@@ -515,47 +515,50 @@ export function HrDashboard() {
               </Link>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-[12px]">
-                <thead>
-                  <tr className="border-b border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/40">
-                    <th className={cn("text-left px-4 py-2.5 font-semibold", portalSubtextAlt)}>{p.recentSessions.role}</th>
-                    <th className={cn("text-left px-4 py-2.5 font-semibold", portalSubtextAlt)}>{p.recentSessions.status}</th>
-                    <th className={cn("text-right px-4 py-2.5 font-semibold", portalSubtextAlt)}>{p.recentSessions.questions}</th>
-                    <th className={cn("text-right px-4 py-2.5 font-semibold", portalSubtextAlt)}>{p.recentSessions.created}</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-                  {data.recentSessions.map((session) => {
-                    const qCount = (session.generatedQuestions ?? []).filter((q) => q.question).length
-                      || session.planDraft?.questionCount
-                      || session.generatedQuestions?.length
-                      || 0;
-                    const dateStr = new Date(session.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric" });
-                    return (
-                      <tr key={session.id} className="hover:bg-gray-50/70 dark:hover:bg-gray-800/40 transition-colors">
-                        <td className="px-4 py-3">
-                          <Link href={`/hr/history/${session.id}`} className={cn("font-medium hover:text-primary transition-colors line-clamp-1", portalHeadingAlt)}>
-                            {session.planDraft?.role || session.jobTitle || "—"}
-                          </Link>
-                          {session.planDraft?.level && (
-                            <span className={cn("text-[10px]", portalSubtextAlt)}>{session.planDraft.level}</span>
-                          )}
-                        </td>
-                        <td className="px-4 py-3">
-                          {sessionStatusBadge(session.status, p.recentSessions.statusLabel)}
-                        </td>
-                        <td className={cn("px-4 py-3 text-right tabular-nums font-medium", portalHeadingAlt)}>
-                          {qCount > 0 ? qCount : "—"}
-                        </td>
-                        <td className={cn("px-4 py-3 text-right tabular-nums", portalSubtextAlt)}>
-                          {dateStr}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+            <div>
+              {/* Column headers */}
+              <div className="flex items-center gap-4 px-5 py-2.5 border-b border-gray-100 dark:border-gray-800/60">
+                <span className={cn("flex-1 text-[10px] font-semibold uppercase tracking-wider", portalSubtextAlt)}>{p.recentSessions.role}</span>
+                <span className={cn("w-28 shrink-0 text-[10px] font-semibold uppercase tracking-wider", portalSubtextAlt)}>{p.recentSessions.status}</span>
+                <span className={cn("w-8 shrink-0 text-right text-[10px] font-semibold uppercase tracking-wider", portalSubtextAlt)}>{p.recentSessions.questions}</span>
+                <span className={cn("w-14 shrink-0 text-right text-[10px] font-semibold uppercase tracking-wider", portalSubtextAlt)}>{p.recentSessions.created}</span>
+              </div>
+              {/* Rows */}
+              <div className="divide-y divide-gray-100 dark:divide-gray-800/60">
+                {data.recentSessions.map((session) => {
+                  const qCount = (session.generatedQuestions ?? []).filter((q) => q.question).length
+                    || session.planDraft?.questionCount
+                    || session.generatedQuestions?.length
+                    || 0;
+                  const dateStr = new Date(session.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+                  const jobTitle = session.jobTitle || session.planDraft?.role || "—";
+                  return (
+                    <Link
+                      key={session.id}
+                      href={`/hr/history/${session.id}`}
+                      className="flex items-center gap-4 px-5 py-3.5 hover:bg-gray-50/80 dark:hover:bg-gray-800/40 transition-colors group"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <p className={cn("text-[13px] font-semibold truncate leading-tight group-hover:text-primary transition-colors", portalHeadingAlt)}>
+                          {jobTitle}
+                        </p>
+                        {session.planDraft?.level && (
+                          <p className={cn("text-[11px] mt-0.5", portalSubtextAlt)}>{session.planDraft.level}</p>
+                        )}
+                      </div>
+                      <div className="w-28 shrink-0">
+                        {sessionStatusBadge(session.status, p.recentSessions.statusLabel)}
+                      </div>
+                      <div className={cn("w-8 shrink-0 text-right tabular-nums font-semibold text-[13px]", portalHeadingAlt)}>
+                        {qCount > 0 ? qCount : "—"}
+                      </div>
+                      <div className={cn("w-14 shrink-0 text-right text-[11px] whitespace-nowrap", portalSubtextAlt)}>
+                        {dateStr}
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
             </div>
           )}
         </motion.div>

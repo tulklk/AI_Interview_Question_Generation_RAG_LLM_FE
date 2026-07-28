@@ -183,11 +183,27 @@ export function useHrDashboard(): HrDashboardData {
     setError(false);
     setAggregate(null);
 
-    getHrDashboard({ activityDays: 30, recentLimit: 7, recommendationsLimit: 20 })
-      .then((agg) => {
+    // Fetch aggregate and plans in parallel — plans provide real job titles that
+    // the aggregate's recentSessions may not include.
+    Promise.all([
+      getHrDashboard({ activityDays: 30, recentLimit: 7, recommendationsLimit: 20 }).catch(() => null),
+      getGenerationPlans().catch(() => [] as Awaited<ReturnType<typeof getGenerationPlans>>),
+    ])
+      .then(([agg, plans]) => {
         if (cancelled) return;
         if (agg) {
-          setAggregate(agg);
+          if (plans.length > 0) {
+            const titleMap = new Map(plans.map((p) => [p.id, p.jobTitle]));
+            setAggregate({
+              ...agg,
+              recentSessions: agg.recentSessions.map((row) => ({
+                ...row,
+                role: titleMap.get(row.id) || row.role,
+              })),
+            });
+          } else {
+            setAggregate(agg);
+          }
           setLoading(false);
           return;
         }

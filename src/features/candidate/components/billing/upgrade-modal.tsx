@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { motion } from "framer-motion";
 import { Crown, Check, X } from "lucide-react";
 import { cn } from "@/lib/cn";
@@ -36,8 +37,10 @@ export function UpgradeModal({ onClose, onDone }: UpgradeModalProps) {
   const b = t.jobseekerSettingsPage.billing;
   const [cycle, setCycle] = useState<"MONTHLY" | "YEARLY">("MONTHLY");
   const [loading, setLoading] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
     const handleKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
     document.addEventListener("keydown", handleKey);
     return () => document.removeEventListener("keydown", handleKey);
@@ -47,6 +50,8 @@ export function UpgradeModal({ onClose, onDone }: UpgradeModalProps) {
     setLoading(true);
     try {
       await upgradeToPremium({ billingCycle: cycle });
+      // Give the backend a moment to fully process the upgrade before re-fetching
+      await new Promise((resolve) => setTimeout(resolve, 800));
       const [sub, use, hist] = await Promise.all([
         getCandidateSubscription(),
         getCandidateBillingUsage(),
@@ -180,5 +185,5 @@ export function UpgradeModal({ onClose, onDone }: UpgradeModalProps) {
     </div>
   );
 
-  return modal;
+  return mounted ? createPortal(modal, document.body) : null;
 }
