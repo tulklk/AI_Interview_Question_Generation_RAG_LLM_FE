@@ -166,11 +166,6 @@ export function PractitionersPage({ questionSetId }: { questionSetId: string }) 
             <h2 className={cn("text-2xl font-bold", portalHeading)}>{set.jobTitle}</h2>
             <p className={cn("text-sm mt-1", portalSubtext)}>{p.subtext}</p>
           </div>
-          {items.length > 0 && (
-            <span className="text-[12px] font-semibold px-2.5 py-1 rounded-full bg-violet-100 dark:bg-violet-950/60 text-violet-700 dark:text-violet-400 shrink-0 mt-1">
-              {items.length}
-            </span>
-          )}
         </div>
         <button
           type="button"

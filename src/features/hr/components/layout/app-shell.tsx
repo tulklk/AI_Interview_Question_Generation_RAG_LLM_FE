@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { Sidebar } from "./sidebar";
 import { TopHeader } from "./top-header";
 import { GenerationProgressBadge } from "@/features/interview/components/generate/generation-progress-badge";
+import { StudioProgressBadge } from "@/features/studio/components/studio-progress-badge";
 import { useLanguage } from "@/shared/providers/language-context";
 import { useToast } from "@/shared/providers/toast-context";
 import { useHrSubscription } from "@/features/hr/context/hr-subscription-context";
@@ -151,6 +152,7 @@ export function AppShell({ children, breadcrumb, pageTitle, fullWidth = false }:
           </div>
         </main>
         <GenerationProgressBadge />
+        <StudioProgressBadge />
       </div>
     </div>
   );
