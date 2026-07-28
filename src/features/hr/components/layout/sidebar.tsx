@@ -11,6 +11,7 @@ import { useLanguage } from "@/shared/providers/language-context";
 import { useHrSubscription } from "@/features/hr/context/hr-subscription-context";
 import { BrandLogo } from "@/shared/components/common/brand-logo";
 import { SidebarUserFooter } from "@/features/hr/components/layout/sidebar-user-footer";
+import { HrUpgradeModal } from "@/features/hr/components/billing/hr-upgrade-modal";
 import type { HrPlanId } from "@/features/hr/types/hr-subscription";
 
 interface SidebarProps {
@@ -22,6 +23,7 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
   const pathname = usePathname();
   const { t } = useLanguage();
   const { planId } = useHrSubscription();
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const planShortBadge = t.settingsPage.subscription.planShortBadge as Record<HrPlanId, string>;
   const planNames = t.settingsPage.subscription.planNames as Record<HrPlanId, string>;
   const short = planShortBadge[planId]?.trim();
@@ -171,35 +173,55 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
 
       {/* ── Plan section ──────────────────────────────────────────────── */}
       <div className="px-4 mb-1">
-        <Link
-          href="/hr/settings"
-          className="flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors group"
-        >
-          <div className="w-6 h-6 rounded-md bg-teal-50 dark:bg-teal-950/40 flex items-center justify-center shrink-0">
-            <CreditCard size={12} className="text-teal-500 dark:text-teal-400" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-xs font-semibold text-gray-800 dark:text-gray-100 leading-tight truncate">
-              {planNames[planId]}
-            </p>
-            <p className="text-[10px] font-semibold text-[#7C3AED] dark:text-[#a78bff] leading-tight">
-              {planId === "basic" ? s.planSection.upgradeBtn : s.planSection.manageBtn}
-            </p>
-          </div>
-          {short && (
-            <span
-              className={cn(
-                "text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0",
-                planId === "basic" && "text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-800",
-                planId === "professional" && "text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60",
-                planId === "business" && "text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/60",
-                planId === "enterprise" && "text-violet-700 dark:text-violet-300 bg-violet-50 dark:bg-violet-950/60"
-              )}
-            >
-              {short}
-            </span>
-          )}
-        </Link>
+        {planId === "basic" ? (
+          <button
+            type="button"
+            onClick={() => setShowUpgradeModal(true)}
+            className="w-full flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-left"
+          >
+            <CreditCard size={12} className="text-gray-400 dark:text-gray-500 shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="text-[11px] font-semibold text-gray-700 dark:text-gray-300 leading-tight truncate">
+                {planNames[planId]}
+              </p>
+              <p className="text-[10px] text-[#7C3AED] dark:text-[#a78bff] leading-tight">
+                {s.planSection.upgradeBtn}
+              </p>
+            </div>
+            {short && (
+              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full shrink-0 text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800">
+                {short}
+              </span>
+            )}
+          </button>
+        ) : (
+          <Link
+            href="/hr/settings?tab=billing"
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors group"
+          >
+            <CreditCard size={12} className="text-gray-400 dark:text-gray-500 shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="text-[11px] font-semibold text-gray-700 dark:text-gray-300 leading-tight truncate">
+                {planNames[planId]}
+              </p>
+              <p className="text-[10px] text-[#7C3AED] dark:text-[#a78bff] leading-tight">
+                {s.planSection.manageBtn}
+              </p>
+            </div>
+            {short && (
+              <span
+                className={cn(
+                  "text-[9px] font-bold px-1.5 py-0.5 rounded-full shrink-0",
+                  planId === "professional" && "text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60",
+                  planId === "business" && "text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/60",
+                  planId === "enterprise" && "text-violet-700 dark:text-violet-300 bg-violet-50 dark:bg-violet-950/60"
+                )}
+              >
+                {short}
+              </span>
+            )}
+          </Link>
+        )}
       </div>
 
       <SidebarUserFooter
@@ -239,6 +261,10 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
           {sidebarContent}
         </div>
       </div>
+
+      {showUpgradeModal && (
+        <HrUpgradeModal onClose={() => setShowUpgradeModal(false)} />
+      )}
     </>
   );
 }

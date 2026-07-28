@@ -17,6 +17,16 @@ import type {
 } from "@/features/studio/types/studio.types";
 import type { ApplyPlanSettingsPayload } from "@/features/studio/types/studio.types";
 
+const STUDIO_TASK_KEY = "studio_active_task";
+
+function broadcastStudioTask(task: "streaming" | "generating" | null) {
+  try {
+    if (task) localStorage.setItem(STUDIO_TASK_KEY, task);
+    else localStorage.removeItem(STUDIO_TASK_KEY);
+    window.dispatchEvent(new CustomEvent("studio:task-changed", { detail: { task } }));
+  } catch { /* ignore */ }
+}
+
 export function useStudio() {
   const { addToast } = useToast();
   const [loading, setLoading] = useState(true);
@@ -35,10 +45,25 @@ export function useStudio() {
   const [generationRun, setGenerationRun] = useState<GenerationRun | null>(null);
   const [isGeneratingQuestions, setIsGeneratingQuestions] = useState(false);
 
+  useEffect(() => {
+    if (isStreaming) broadcastStudioTask("streaming");
+    else if (isGeneratingQuestions) broadcastStudioTask("generating");
+    else broadcastStudioTask(null);
+  }, [isStreaming, isGeneratingQuestions]);
+
   const normalizeSettings = useCallback((s: StudioSettings | null): StudioSettings | null => {
     if (!s) return null;
+    const minutes = Number(s.interviewLengthMinutes);
+    const questions = Number(s.numberOfQuestions);
     return {
       ...s,
+      interviewLengthMinutes: Number.isFinite(minutes) && minutes >= 15 && minutes <= 180 ? minutes : 60,
+      numberOfQuestions: Number.isFinite(questions) && questions >= 5 && questions <= 50 ? questions : 15,
+      difficulty: s.difficulty ?? "Medium",
+      questionTone: s.questionTone ?? "Professional",
+      includeSampleAnswers: s.includeSampleAnswers ?? true,
+      includeScoringRubric: s.includeScoringRubric ?? true,
+      outputFormat: s.outputFormat ?? "StructuredInterviewKit",
       questionTypes:
         Array.isArray(s.questionTypes) && s.questionTypes.length > 0
           ? s.questionTypes
@@ -423,19 +448,29 @@ export function useStudio() {
 
   const updateSettingField = useCallback(async (patch: Partial<StudioSettings>) => {
     if (!project || !settings) return;
+    const rawMinutes = Number(patch.interviewLengthMinutes ?? settings.interviewLengthMinutes ?? 60);
+    const rawQuestions = Number(patch.numberOfQuestions ?? settings.numberOfQuestions ?? 15);
     const next = {
-      interviewLengthMinutes: patch.interviewLengthMinutes ?? settings.interviewLengthMinutes,
-      numberOfQuestions: patch.numberOfQuestions ?? settings.numberOfQuestions,
-      difficulty: patch.difficulty ?? settings.difficulty,
-      questionTone: patch.questionTone ?? settings.questionTone,
-      includeSampleAnswers: patch.includeSampleAnswers ?? settings.includeSampleAnswers,
-      includeScoringRubric: patch.includeScoringRubric ?? settings.includeScoringRubric,
-      outputFormat: patch.outputFormat ?? settings.outputFormat,
+      interviewLengthMinutes: Number.isFinite(rawMinutes) ? Math.min(180, Math.max(15, rawMinutes)) : 60,
+      numberOfQuestions: Number.isFinite(rawQuestions) ? Math.min(50, Math.max(5, rawQuestions)) : 15,
+      difficulty: patch.difficulty ?? settings.difficulty ?? "Medium",
+      questionTone: patch.questionTone ?? settings.questionTone ?? "Professional",
+      includeSampleAnswers: patch.includeSampleAnswers ?? settings.includeSampleAnswers ?? true,
+      includeScoringRubric: patch.includeScoringRubric ?? settings.includeScoringRubric ?? true,
+      outputFormat: patch.outputFormat ?? settings.outputFormat ?? "StructuredInterviewKit",
       questionTypes: patch.questionTypes ?? settings.questionTypes ?? ["technical", "system_design", "problem_solving", "behavioral"],
     };
-    const updated = await studioApi.updateSettings(project.id, next);
-    setSettings(normalizeSettings(updated));
-  }, [normalizeSettings, project, settings]);
+    // Optimistic update — reflect changes immediately in UI without waiting for API
+    const prevSettings = settings;
+    setSettings((prev) => prev ? { ...prev, ...next } : prev);
+    try {
+      const updated = await studioApi.updateSettings(project.id, next);
+      setSettings(normalizeSettings(updated));
+    } catch (error) {
+      setSettings(prevSettings);
+      addToast("error", extractErrorMessage(error));
+    }
+  }, [addToast, normalizeSettings, project, settings]);
 
   const applySettingsToPlan = useCallback(async () => {
     if (!project || !currentPlan || !settings) return;
@@ -469,8 +504,33 @@ export function useStudio() {
 
   const saveDraftAction = useCallback(async () => {
     if (!project) return;
-    await studioApi.saveDraft(project.id);
+    const result = await studioApi.saveDraft(project.id);
+    if (result?.questionSetId) {
+      setProject((prev) => prev ? { ...prev, questionSetId: result.questionSetId } : prev);
+    }
     addToast("success", "Đã lưu draft.");
+  }, [addToast, project]);
+
+  const togglePublish = useCallback(async () => {
+    if (!project) return;
+    const questionSetId = project.questionSetId;
+    if (!questionSetId) {
+      addToast("error", "Chưa có bộ câu hỏi để publish. Hãy lưu nháp trước.");
+      return;
+    }
+    try {
+      if (project.isPublished) {
+        await studioApi.unpublishProject(questionSetId);
+        setProject((prev) => prev ? { ...prev, isPublished: false } : prev);
+        addToast("success", "Đã unpublish bộ câu hỏi.");
+      } else {
+        await studioApi.publishProject(questionSetId);
+        setProject((prev) => prev ? { ...prev, isPublished: true } : prev);
+        addToast("success", "Đã publish bộ câu hỏi.");
+      }
+    } catch (error) {
+      addToast("error", extractErrorMessage(error));
+    }
   }, [addToast, project]);
 
   const createShare = useCallback(async () => {
@@ -538,6 +598,7 @@ export function useStudio() {
       refreshGenerationStatus,
       updateSettingField,
       saveDraftAction,
+      togglePublish,
       createShare,
       createNewSession,
       refreshPlanAndSettings,
@@ -568,6 +629,7 @@ export function useStudio() {
       refineCurrentPlan,
       applySettingsToPlan,
       saveDraftAction,
+      togglePublish,
       saveJobDescription,
       sendMessage,
       settings,

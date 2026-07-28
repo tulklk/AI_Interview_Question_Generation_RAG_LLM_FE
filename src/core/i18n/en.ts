@@ -945,6 +945,7 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
       level: "Level",
       date: "Date",
       questions: "Questions",
+      status: "Status",
       actions: "Actions",
       exportDisabledTitle: "Export only available for completed jobs",
       exportTitle: "Download Excel",

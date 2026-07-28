@@ -39,8 +39,13 @@ export async function updateProject(projectId: string, name: string, description
   return data;
 }
 
-export async function saveDraft(projectId: string): Promise<void> {
-  await apiClient.post(`/api/studio/projects/${projectId}/save-draft`);
+export async function saveDraft(projectId: string): Promise<{ questionSetId?: string | null }> {
+  try {
+    const { data } = await apiClient.post<{ questionSetId?: string }>(`/api/studio/projects/${projectId}/save-draft`);
+    return { questionSetId: data?.questionSetId ?? null };
+  } catch {
+    return {};
+  }
 }
 
 export async function upsertJobDescription(projectId: string, content: string, sourceType: "PastedText" | "UploadedFile"): Promise<void> {
@@ -286,6 +291,14 @@ export async function regenerateQuestion(projectId: string, questionId: string, 
 export async function listGenerationRuns(projectId: string): Promise<GenerationRun[]> {
   const { data } = await apiClient.get<GenerationRun[]>(`/api/studio/projects/${projectId}/question-generation-runs`);
   return data;
+}
+
+export async function publishProject(questionSetId: string): Promise<void> {
+  await apiClient.post(`/api/hr/question-sets/${questionSetId}/publish`);
+}
+
+export async function unpublishProject(questionSetId: string): Promise<void> {
+  await apiClient.post(`/api/hr/question-sets/${questionSetId}/unpublish`);
 }
 
 export async function createShareLink(projectId: string, permission: "View" | "Edit", expiresAt?: string): Promise<ShareLink> {

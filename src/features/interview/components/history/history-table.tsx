@@ -34,11 +34,16 @@ function PublishStatusBadge({ status, labels }: { status: "DRAFT" | "PUBLISHED";
   );
 }
 
-function formatDate(iso: string): string {
+function formatDate(iso: string, lang: "en" | "vi"): string {
   const d = new Date(iso);
   const now = new Date();
-  const diffMs = now.getTime() - d.getTime();
-  const diffDays = Math.floor(diffMs / 86400000);
+  const diffDays = Math.floor((now.getTime() - d.getTime()) / 86400000);
+  if (lang === "vi") {
+    if (diffDays === 0) return "Hôm nay";
+    if (diffDays === 1) return "Hôm qua";
+    if (diffDays < 7) return `${diffDays} ngày trước`;
+    return d.toLocaleDateString("vi-VN", { day: "2-digit", month: "short", year: "numeric" });
+  }
   if (diffDays === 0) return "Today";
   if (diffDays === 1) return "Yesterday";
   if (diffDays < 7) return `${diffDays} days ago`;
@@ -160,7 +165,7 @@ function resolveSessionDestination(session: GenerationSession): { type: "history
 }
 
 export function HistoryTable({ search = "", role = "", level = "", experience = "", status = "", publishStatus = "" }: HistoryTableProps) {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const { addToast } = useToast();
   const { hasFeature } = useHrSubscription();
   const router = useRouter();
@@ -204,8 +209,9 @@ export function HistoryTable({ search = "", role = "", level = "", experience = 
   }
 
   async function confirmPublishFromTable() {
-    const qsId = publishConfirmSession?.questionSetId;
-    if (!publishConfirmSession || !qsId) return;
+    if (!publishConfirmSession) return;
+    const qsId = questionSetIdMap.get(publishConfirmSession.id) ?? publishConfirmSession.questionSetId;
+    if (!qsId) return;
     const session = publishConfirmSession;
     setPublishConfirmSession(null);
     setPublishingTableId(session.id);
@@ -221,8 +227,9 @@ export function HistoryTable({ search = "", role = "", level = "", experience = 
   }
 
   async function confirmUnpublishFromTable() {
-    const qsId = unpublishConfirmSession?.questionSetId;
-    if (!unpublishConfirmSession || !qsId) return;
+    if (!unpublishConfirmSession) return;
+    const qsId = questionSetIdMap.get(unpublishConfirmSession.id) ?? unpublishConfirmSession.questionSetId;
+    if (!qsId) return;
     const session = unpublishConfirmSession;
     setUnpublishConfirmSession(null);
     setUnpublishingTableId(session.id);
@@ -425,7 +432,7 @@ export function HistoryTable({ search = "", role = "", level = "", experience = 
               <th className={cn("px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide", portalSubtext)}>{ht.level}</th>
               <ColumnHeader label={ht.date} />
               <ColumnHeader label={ht.questions} />
-              <th className={cn("px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide", portalSubtext)}>Status</th>
+              <th className={cn("px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide", portalSubtext)}>{ht.status}</th>
               <th className={cn("px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide", portalSubtext)}>{ht.actions}</th>
             </tr>
           </thead>
@@ -540,7 +547,7 @@ export function HistoryTable({ search = "", role = "", level = "", experience = 
         {canManagePublish && publishStatus === "DRAFT" && (
           <button
             type="button"
-            onClick={() => session.questionSetId
+            onClick={() => questionSetId
               ? setPublishConfirmSession(session)
               : router.push(`/hr/history/${session.id}`)
             }
@@ -558,7 +565,7 @@ export function HistoryTable({ search = "", role = "", level = "", experience = 
         {canManagePublish && publishStatus === "PUBLISHED" && (
           <button
             type="button"
-            onClick={() => session.questionSetId
+            onClick={() => questionSetId
               ? setUnpublishConfirmSession(session)
               : router.push(`/hr/history/${session.id}`)
             }
@@ -763,7 +770,7 @@ export function HistoryTable({ search = "", role = "", level = "", experience = 
               <div className="flex items-center gap-2">
                 <span className={cn("text-xs flex items-center gap-1", portalSubtext)}>
                   <Calendar size={11} />
-                  {formatDate(session.createdAt)}
+                  {formatDate(session.createdAt, lang)}
                 </span>
                 <span className="text-gray-300 dark:text-gray-600 text-xs select-none">·</span>
                 <span className={cn("text-xs font-medium", portalSubtext)}>
@@ -835,7 +842,7 @@ export function HistoryTable({ search = "", role = "", level = "", experience = 
                 <td className="px-4 py-3.5">
                   <div className={cn("flex items-center gap-1.5 text-sm", portalSubtext)}>
                     <Calendar size={13} className="text-gray-400 dark:text-gray-500 shrink-0" />
-                    {formatDate(session.createdAt)}
+                    {formatDate(session.createdAt, lang)}
                   </div>
                 </td>
                 <td className="px-4 py-3.5">
