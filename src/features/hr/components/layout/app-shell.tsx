@@ -24,9 +24,11 @@ interface AppShellProps {
   children: ReactNode;
   breadcrumb?: { label: string; href?: string }[];
   pageTitle: string;
+  /** Bỏ max-w-350 — Studio/trang rộng dùng hết chiều ngang main */
+  fullWidth?: boolean;
 }
 
-export function AppShell({ children, breadcrumb, pageTitle }: AppShellProps) {
+export function AppShell({ children, breadcrumb, pageTitle, fullWidth = false }: AppShellProps) {
   const { t, lang } = useLanguage();
   const pathname = usePathname();
   const { planId } = useHrSubscription();
@@ -138,7 +140,15 @@ export function AppShell({ children, breadcrumb, pageTitle }: AppShellProps) {
           <div className="hr-aurora-orb hr-aurora-orb--purple w-125 h-125 -top-30 -left-20" aria-hidden="true" />
           <div className="hr-aurora-orb hr-aurora-orb--cyan w-100 h-100 top-[30%] -right-15" aria-hidden="true" />
           <div className="hr-aurora-orb hr-aurora-orb--violet w-87.5 h-87.5 -bottom-20 left-[30%]" aria-hidden="true" />
-          <div className="relative max-w-350 mx-auto px-4 sm:px-6 md:px-8 py-5 md:py-7">{children}</div>
+          <div
+            className={
+              fullWidth
+                ? "relative w-full max-w-none px-3 sm:px-4 py-4 md:py-5"
+                : "relative max-w-350 mx-auto px-4 sm:px-6 md:px-8 py-5 md:py-7"
+            }
+          >
+            {children}
+          </div>
         </main>
         <GenerationProgressBadge />
       </div>

@@ -3,9 +3,17 @@ import { logger } from "@/core/logger/logger";
 
 /** Normalize an axios error into a human-readable message. */
 export function extractErrorMessage(error: unknown): string {
-  const axiosErr = error as AxiosError<{ message?: string; error?: string }> | undefined;
+  const axiosErr = error as AxiosError<{
+    message?: string;
+    error?: string;
+    title?: string;
+    detail?: string;
+    errorCode?: string;
+  }> | undefined;
   const data = axiosErr?.response?.data;
   if (data && typeof data === "object") {
+    if (typeof data.detail === "string" && data.detail) return data.detail;
+    if (typeof data.title === "string" && data.title) return data.title;
     if (typeof data.message === "string" && data.message) return data.message;
     if (typeof data.error === "string" && data.error) return data.error;
   }
