@@ -66,6 +66,8 @@ export interface GeneratedQuestion {
   difficulty: DifficultyLevel;
   rationale?: string;
   sampleAnswer?: string;
+  /** SCRUM-374: scoring rubric (từ evaluationCriteria BE / Studio). */
+  scoringRubric?: string;
   citations?: Citation[];
   orderIndex: number;
   isEdited?: boolean;
@@ -105,6 +107,8 @@ export interface GenerationSession {
   canEditInput?: boolean;
   canEditPlan?: boolean;
   canApprovePlan?: boolean;
+  /** SCRUM-374: job mirror từ Studio v2 — History dùng format câu hỏi Studio. */
+  isFromStudio?: boolean;
 }
 
 export interface DraftQuestionSet {

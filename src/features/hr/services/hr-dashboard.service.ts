@@ -96,10 +96,43 @@ function formatShortDate(iso: string): string {
   return `${String(d.getMonth() + 1).padStart(2, "0")}/${String(d.getDate()).padStart(2, "0")}`;
 }
 
-// Capitalizes only the leading letter — BE sends "system-design"/"problem-solving"
-// but the QuestionType union (and TYPE_COLORS keys) use "System-design"/"Problem-solving".
-function titleCase(raw: string): string {
-  return raw ? raw[0].toUpperCase() + raw.slice(1) : raw;
+// Chuẩn hóa type về canonical display key — gộp system_design/SystemDesign/system-design, v.v.
+const TYPE_ALIASES: Record<string, string> = {
+  technical: "Technical",
+  behavioral: "Behavioral",
+  situational: "Situational",
+  "system-design": "System-design",
+  system_design: "System-design",
+  systemdesign: "System-design",
+  "problem-solving": "Problem-solving",
+  problem_solving: "Problem-solving",
+  problemsolving: "Problem-solving",
+  "follow-up": "Follow-up",
+  follow_up: "Follow-up",
+  followup: "Follow-up",
+};
+
+function canonicalizeQuestionType(raw: string): string {
+  const trimmed = raw.trim();
+  if (!trimmed) return "";
+  const key = trimmed.toLowerCase().replace(/\s+/g, "-");
+  const compact = key.replace(/[_-]/g, "");
+  if (TYPE_ALIASES[key]) return TYPE_ALIASES[key];
+  if (TYPE_ALIASES[compact]) return TYPE_ALIASES[compact];
+  return trimmed
+    .replace(/_/g, "-")
+    .split("-")
+    .filter(Boolean)
+    .map((p) => p.charAt(0).toUpperCase() + p.slice(1).toLowerCase())
+    .join("-");
+}
+
+function normalizeRoleTitle(raw: string): string {
+  const trimmed = raw.trim();
+  if (!trimmed) return "";
+  // Chuỗi skills (nhiều dấu phẩy / quá dài) không phải role — bỏ để KPI không phình.
+  if ((trimmed.match(/,/g) ?? []).length >= 2 || trimmed.length > 72) return "";
+  return trimmed;
 }
 
 function normalizeKpis(src: Record<string, unknown>): HrDashboardKpis | null {
@@ -111,7 +144,7 @@ function normalizeKpis(src: Record<string, unknown>): HrDashboardKpis | null {
     totalQuestionsGenerated: pickNum(k, "totalQuestionsGenerated", "totalQuestions"),
     successRate: pickNum(k, "successRatePercent", "successRate"),
     thisMonthSessions: pickNum(k, "thisMonthSessions", "sessionsThisMonth"),
-    topRole: pickStr(k, "topRole", "mostCommonRole"),
+    topRole: normalizeRoleTitle(pickStr(k, "topRole", "mostCommonRole")),
   };
 }
 
@@ -127,14 +160,17 @@ function normalizeDailyActivity(src: Record<string, unknown>): HrDashboardDailyA
 }
 
 function normalizeQuestionTypes(src: Record<string, unknown>): HrDashboardQuestionType[] {
-  return pickArray(src, "questionTypeDistribution", "QuestionTypeDistribution")
-    .map((raw) => asRecord(raw))
-    .filter((r): r is Record<string, unknown> => r !== null)
-    .map((r) => ({
-      type: titleCase(pickStr(r, "type", "questionType", "label")),
-      count: pickNum(r, "count", "value"),
-    }))
-    .filter((d) => d.type !== "");
+  const merged = new Map<string, number>();
+  for (const raw of pickArray(src, "questionTypeDistribution", "QuestionTypeDistribution")) {
+    const r = asRecord(raw);
+    if (!r) continue;
+    const type = canonicalizeQuestionType(pickStr(r, "type", "questionType", "label"));
+    if (!type) continue;
+    merged.set(type, (merged.get(type) ?? 0) + pickNum(r, "count", "value"));
+  }
+  return Array.from(merged.entries())
+    .map(([type, count]) => ({ type, count }))
+    .sort((a, b) => b.count - a.count);
 }
 
 function normalizeRecentSessions(src: Record<string, unknown>): HrDashboardRecentSession[] {
