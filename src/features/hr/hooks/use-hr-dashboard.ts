@@ -62,12 +62,41 @@ function buildDailyActivity(sessions: GenerationSession[]): DailyActivity[] {
   return days;
 }
 
+/** Gộp biến thể type (system_design / SystemDesign / system-design → System-design). */
+function canonicalizeQuestionType(raw: string): string {
+  const trimmed = (raw || "Technical").trim();
+  const key = trimmed.toLowerCase().replace(/\s+/g, "-");
+  const compact = key.replace(/[_-]/g, "");
+  const aliases: Record<string, string> = {
+    technical: "Technical",
+    behavioral: "Behavioral",
+    situational: "Situational",
+    "system-design": "System-design",
+    system_design: "System-design",
+    systemdesign: "System-design",
+    "problem-solving": "Problem-solving",
+    problem_solving: "Problem-solving",
+    problemsolving: "Problem-solving",
+    "follow-up": "Follow-up",
+    follow_up: "Follow-up",
+    followup: "Follow-up",
+  };
+  if (aliases[key]) return aliases[key];
+  if (aliases[compact]) return aliases[compact];
+  return trimmed
+    .replace(/_/g, "-")
+    .split("-")
+    .filter(Boolean)
+    .map((p) => p.charAt(0).toUpperCase() + p.slice(1).toLowerCase())
+    .join("-");
+}
+
 function buildTypeDistribution(sessions: GenerationSession[]): QuestionTypeCount[] {
   const map = new Map<string, number>();
   sessions.forEach((s) => {
     (s.generatedQuestions ?? []).forEach((q) => {
       if (!q.question) return;
-      const t = q.questionType ?? "Technical";
+      const t = canonicalizeQuestionType(q.questionType ?? "Technical");
       map.set(t, (map.get(t) ?? 0) + 1);
     });
     // If no actual questions, count from planDraft questionTypes
@@ -75,7 +104,8 @@ function buildTypeDistribution(sessions: GenerationSession[]): QuestionTypeCount
       const types = s.planDraft?.questionTypes ?? [];
       const perType = Math.max(1, Math.floor(getQuestionCount(s) / Math.max(types.length, 1)));
       types.forEach((t) => {
-        map.set(t, (map.get(t) ?? 0) + perType);
+        const key = canonicalizeQuestionType(t);
+        map.set(key, (map.get(key) ?? 0) + perType);
       });
     }
   });
