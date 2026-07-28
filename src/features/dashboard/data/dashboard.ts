@@ -5,6 +5,7 @@ import {
   BarChart3,
   LayoutDashboard,
   Sparkles,
+  Wand2,
   History,
   Settings,
   BookOpen,
@@ -28,6 +29,11 @@ export const navItems: NavItem[] = [
     label: "Generate Questions",
     href: "/hr/generate",
     icon: Sparkles,
+  },
+  {
+    label: "Generate Questions v2",
+    href: "/hr/generate-v2",
+    icon: Wand2,
   },
   {
     label: "History",

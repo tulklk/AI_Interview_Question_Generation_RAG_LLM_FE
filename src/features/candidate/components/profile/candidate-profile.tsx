@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { motion } from "framer-motion";
 import {
   Edit2,
@@ -26,6 +27,7 @@ import {
   Eye,
   ChevronDown,
   RefreshCw,
+  Maximize2,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import {
@@ -110,6 +112,10 @@ const EMPTY_FORM: ProfileFormState = {
   avatarUrl: "",
 };
 
+function isImageCv(fileName: string | null | undefined): boolean {
+  return /\.(jpe?g|png|gif|webp|bmp)$/i.test(fileName || "");
+}
+
 function formFromUser(user: Awaited<ReturnType<typeof getCurrentUser>>): ProfileFormState {
   const cp = user.candidateProfile;
   const avatar =
@@ -155,6 +161,7 @@ export function CandidateProfile() {
   const [cvDeleteConfirmOpen, setCvDeleteConfirmOpen] = useState(false);
   const [showCvInsights, setShowCvInsights] = useState(false);
   const [showAllCvSkills, setShowAllCvSkills] = useState(false);
+  const [cvLightbox, setCvLightbox] = useState(false);
   const cvFileInputRef = useRef<HTMLInputElement>(null);
 
   const [cvSyncEnabled, setCvSyncEnabled] = useState<boolean | null>(null);
@@ -163,6 +170,19 @@ export function CandidateProfile() {
   const [stats, setStats] = useState<PracticeStats | null>(null);
   const [sessions, setSessions] = useState<CompletedSessionSummary[]>([]);
   const [statsLoading, setStatsLoading] = useState(true);
+
+  useEffect(() => {
+    if (!cvLightbox) return;
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") setCvLightbox(false);
+    }
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.body.style.overflow = "";
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [cvLightbox]);
 
   useEffect(() => {
     let cancelled = false;
@@ -566,6 +586,84 @@ export function CandidateProfile() {
           <p className={cn("text-[11px] mt-3 text-center", portalSubtextAlt)}>
             {achievements.filter((a) => a.earned).length}/{achievements.length} {p.earned}
           </p>
+        </motion.div>
+
+        {/* CV preview dưới Achievements — ảnh CV gần full (giống HR recommendation detail) */}
+        <motion.div
+          initial={{ opacity: 0, x: -16 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.15 }}
+          className="hr-glass-card overflow-hidden"
+        >
+          <div className="flex items-center justify-between px-3.5 py-2.5 border-b border-gray-100 dark:border-gray-800">
+            <div className="flex items-center gap-2 min-w-0">
+              <FileText size={13} className="text-blue-600 dark:text-blue-400 shrink-0" />
+              <p className={cn("text-[12px] font-bold truncate", portalHeadingAlt)}>{p.cv.title}</p>
+            </div>
+            {cv?.downloadUrl && (
+              <a
+                href={cv.downloadUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="h-7 px-2 flex items-center gap-1 text-[11px] font-semibold text-primary hover:bg-violet-50 dark:hover:bg-violet-950/40 rounded-lg transition-colors shrink-0"
+              >
+                <Download size={11} />
+                {p.cv.downloadBtn}
+              </a>
+            )}
+          </div>
+
+          {cvLoading ? (
+            <div className="h-[520px] flex items-center justify-center bg-gray-50 dark:bg-gray-900/40">
+              <Loader2 size={20} className="animate-spin text-primary" />
+            </div>
+          ) : cv && isImageCv(cv.fileName) && cv.downloadUrl ? (
+            <button
+              type="button"
+              onClick={() => setCvLightbox(true)}
+              className="group relative block w-full text-left max-h-[640px] overflow-y-auto bg-gray-50 dark:bg-gray-900/40 scrollbar-hide"
+              title={p.cv.previewHint}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={cv.downloadUrl}
+                alt={cv.fileName}
+                referrerPolicy="no-referrer"
+                className="w-full h-auto object-contain bg-white dark:bg-gray-950"
+              />
+              <span className="sticky bottom-0 inset-x-0 pointer-events-none flex justify-center pb-3 -mt-10">
+                <span className="opacity-90 group-hover:opacity-100 transition-opacity flex items-center gap-1.5 text-white text-[11px] font-semibold px-2.5 py-1.5 rounded-lg bg-black/55 shadow-sm">
+                  <Maximize2 size={11} />
+                  {p.cv.previewOpen}
+                </span>
+              </span>
+            </button>
+          ) : cv ? (
+            <a
+              href={cv.downloadUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full h-40 flex flex-col items-center justify-center gap-2 bg-gray-50 dark:bg-gray-900/40 hover:bg-gray-100 dark:hover:bg-gray-800/60 transition-colors"
+            >
+              <FileText size={22} className="text-gray-400" />
+              <span className={cn("text-[11px] font-medium px-3 text-center truncate max-w-full", portalSubtextAlt)}>
+                {cv.fileName}
+              </span>
+            </a>
+          ) : (
+            <div className="h-40 flex flex-col items-center justify-center gap-3 px-4 text-center">
+              <p className={cn("text-[12px]", portalSubtextAlt)}>{p.cv.emptyState}</p>
+              <button
+                type="button"
+                onClick={() => cvFileInputRef.current?.click()}
+                disabled={cvUploading}
+                className="shimmer-button flex items-center gap-1.5 h-8 px-3 text-[12px] font-semibold text-white hr-cta-btn rounded-lg disabled:opacity-60"
+              >
+                {cvUploading ? <Loader2 size={12} className="animate-spin" /> : <Upload size={12} />}
+                {cvUploading ? p.cv.uploading : p.cv.uploadBtn}
+              </button>
+            </div>
+          )}
         </motion.div>
       </div>
 
@@ -1033,6 +1131,36 @@ export function CandidateProfile() {
         onConfirm={handleCvDelete}
         onCancel={() => setCvDeleteConfirmOpen(false)}
       />
+
+      {cvLightbox && cv && isImageCv(cv.fileName) && cv.downloadUrl && typeof document !== "undefined" && createPortal(
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="fixed inset-0 z-50 flex flex-col bg-black/90"
+          onClick={() => setCvLightbox(false)}
+        >
+          <div className="flex items-center justify-between px-4 sm:px-6 py-3 shrink-0">
+            <p className="text-[13px] font-medium text-white/90 truncate">{cv.fileName}</p>
+            <button
+              type="button"
+              onClick={() => setCvLightbox(false)}
+              className="w-9 h-9 flex items-center justify-center rounded-lg text-white/80 hover:text-white hover:bg-white/10 transition-colors"
+            >
+              <X size={18} />
+            </button>
+          </div>
+          <div className="flex-1 overflow-auto flex items-start justify-center p-4 sm:p-8" onClick={(e) => e.stopPropagation()}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={cv.downloadUrl}
+              alt={cv.fileName}
+              referrerPolicy="no-referrer"
+              className="max-w-full h-auto rounded-lg shadow-2xl"
+            />
+          </div>
+        </motion.div>,
+        document.body
+      )}
     </div>
   );
 }

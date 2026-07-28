@@ -86,26 +86,26 @@ interface KpiCardProps {
 function KpiCard({ icon: Icon, iconBg, iconColor, label, desc, value, loading }: KpiCardProps) {
   const isNumeric = typeof value === "number" || /^\d+(?:\.\d+)?%?$/.test(String(value));
   return (
-    <div className="hr-glass-card p-5 flex flex-col gap-3">
-      <div className="flex items-start gap-3">
+    <div className="hr-glass-card p-5 flex flex-col gap-3 h-full min-h-[116px]">
+      <div className="flex items-start gap-3 min-w-0">
         <div className={cn("w-9 h-9 rounded-xl flex items-center justify-center shrink-0", iconBg)}>
           <Icon size={16} className={iconColor} />
         </div>
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <p className={cn("text-[11px] font-semibold uppercase tracking-wider truncate", portalSubtextAlt)}>{label}</p>
           <p className={cn("text-[10px] truncate", portalSubtextAlt)}>{desc}</p>
         </div>
       </div>
       {loading ? (
-        <div className="h-7 w-20 rounded-lg bg-gray-100 dark:bg-gray-800 animate-pulse" />
+        <div className="mt-auto h-7 w-20 rounded-lg bg-gray-100 dark:bg-gray-800 animate-pulse" />
       ) : (
         <p
           title={isNumeric ? undefined : String(value)}
           className={cn(
-            "font-extrabold tracking-tight",
+            "mt-auto font-extrabold tracking-tight min-w-0",
             isNumeric
               ? "text-[26px] leading-none tabular-nums"
-              : "text-[16px] leading-snug line-clamp-2",
+              : "text-[15px] leading-none truncate",
             portalHeadingAlt
           )}
         >
@@ -178,6 +178,15 @@ function scoreColor(score: number) {
 // AI Insights derived from real data
 // ---------------------------------------------------------------------------
 
+/** Chuỗi skills dài (".NET, C#, Azure...") không phải tên role — ẩn / rút gọn. */
+function sanitizeRoleLabel(raw: string): string | null {
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  const commaCount = (trimmed.match(/,/g) ?? []).length;
+  if (commaCount >= 2 || trimmed.length > 72) return null;
+  return trimmed;
+}
+
 function buildInsights(data: ReturnType<typeof useHrDashboard>, labels: {
   topRoleIs: string;
   successRateIs: string;
@@ -188,13 +197,15 @@ function buildInsights(data: ReturnType<typeof useHrDashboard>, labels: {
   trendDown: string;
   trendFlat: string;
 }) {
-  const insights: { icon: React.ElementType; color: string; text: string }[] = [];
+  const insights: { icon: React.ElementType; color: string; label: string; value: string }[] = [];
 
-  if (data.topRole) {
+  const role = sanitizeRoleLabel(data.topRole);
+  if (role) {
     insights.push({
       icon: Briefcase,
       color: "text-violet-600 dark:text-violet-400",
-      text: `${labels.topRoleIs}: "${data.topRole}"`,
+      label: labels.topRoleIs,
+      value: role,
     });
   }
 
@@ -202,7 +213,8 @@ function buildInsights(data: ReturnType<typeof useHrDashboard>, labels: {
     insights.push({
       icon: TrendingUp,
       color: data.successRate >= 70 ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400",
-      text: `${labels.successRateIs} ${data.successRate}%`,
+      label: labels.successRateIs,
+      value: `${data.successRate}%`,
     });
   }
 
@@ -211,7 +223,8 @@ function buildInsights(data: ReturnType<typeof useHrDashboard>, labels: {
     insights.push({
       icon: MessageSquareText,
       color: "text-blue-600 dark:text-blue-400",
-      text: `${labels.mostUsedType}: ${topType.type} (${topType.count})`,
+      label: labels.mostUsedType,
+      value: `${topType.type} · ${topType.count}`,
     });
   }
 
@@ -223,7 +236,8 @@ function buildInsights(data: ReturnType<typeof useHrDashboard>, labels: {
     insights.push({
       icon: CalendarDays,
       color: trend === "up" ? "text-emerald-600 dark:text-emerald-400" : trend === "down" ? "text-red-500 dark:text-red-400" : "text-gray-600 dark:text-gray-400",
-      text: trendText,
+      label: labels.recentTrend,
+      value: trendText,
     });
   } else {
     const activity = data.dailyActivity;
@@ -234,7 +248,8 @@ function buildInsights(data: ReturnType<typeof useHrDashboard>, labels: {
       insights.push({
         icon: CalendarDays,
         color: last7 > prior7 ? "text-emerald-600 dark:text-emerald-400" : last7 < prior7 ? "text-red-500 dark:text-red-400" : "text-gray-600 dark:text-gray-400",
-        text: trendText,
+        label: labels.recentTrend,
+        value: trendText,
       });
     }
   }
@@ -394,7 +409,7 @@ export function HrDashboard() {
       iconColor: "text-gray-600 dark:text-gray-400",
       label: p.kpi.topRole,
       desc: p.kpi.topRoleDesc,
-      value: data.topRole || "—",
+      value: sanitizeRoleLabel(data.topRole) || "—",
       loading: data.loading,
     },
   ];
@@ -431,10 +446,11 @@ export function HrDashboard() {
       )}
 
       {/* KPI Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-4 items-stretch">
         {kpis.map((kpi, i) => (
           <motion.div
             key={kpi.label}
+            className="h-full min-w-0"
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.05 }}
@@ -569,11 +585,26 @@ export function HrDashboard() {
             ) : insights.length === 0 ? (
               <p className={cn("text-[12px]", portalSubtextAlt)}>{p.insights.noInsights}</p>
             ) : (
-              <ul className="flex flex-col gap-3">
+              <ul className="flex flex-col gap-2">
                 {insights.map((ins, i) => (
-                  <li key={i} className="flex items-start gap-2.5">
-                    <ins.icon size={14} className={cn("mt-0.5 shrink-0", ins.color)} />
-                    <span className={cn("text-[12px] leading-snug", portalSubtextAlt)}>{ins.text}</span>
+                  <li
+                    key={i}
+                    className="flex items-start gap-2.5 rounded-xl border border-gray-100 bg-gray-50/70 px-3 py-2.5 dark:border-gray-800 dark:bg-gray-900/40"
+                  >
+                    <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-white dark:bg-gray-800">
+                      <ins.icon size={13} className={ins.color} />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className={cn("text-[10px] font-medium uppercase tracking-wide", portalSubtextAlt)}>
+                        {ins.label}
+                      </p>
+                      <p
+                        className={cn("mt-0.5 text-[12px] font-semibold leading-snug truncate", portalHeadingAlt)}
+                        title={ins.value}
+                      >
+                        {ins.value}
+                      </p>
+                    </div>
                   </li>
                 ))}
               </ul>

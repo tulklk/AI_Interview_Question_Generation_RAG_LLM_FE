@@ -8,6 +8,7 @@ import {
   ArrowLeft, Star, X as XIcon, Mail, Loader2,
   AlertCircle, RefreshCw, CheckCircle2, Clock, Send,
   User, Briefcase, Hash, Sparkles, Phone, MessageSquare,
+  Link2, Code2, MapPin, FileText, Download, Award, Maximize2,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { useLanguage } from "@/shared/providers/language-context";
@@ -15,10 +16,13 @@ import { useToast } from "@/shared/providers/toast-context";
 import { formatRelativeTime } from "@/shared/utils/relative-time";
 import {
   getRecommendation,
+  getRecommendationCv,
   shortlistRecommendation,
   dismissRecommendation,
   inviteRecommendation,
   type CandidateRecommendation,
+  type CandidateRecommendationDetail,
+  type RecommendationCvDownload,
   type RecommendationStatus,
 } from "@/features/hr/services/recommendation.service";
 import {
@@ -47,6 +51,13 @@ function avatarColor(name: string): string {
   let h = 0;
   for (const c of name) h = (h * 31 + c.charCodeAt(0)) & 0xffffffff;
   return AVATAR_COLORS[Math.abs(h) % AVATAR_COLORS.length];
+}
+
+function isImageCv(contentType: string | null | undefined, fileName: string | null | undefined): boolean {
+  const ct = (contentType || "").toLowerCase();
+  if (ct.startsWith("image/")) return true;
+  const name = (fileName || "").toLowerCase();
+  return /\.(jpe?g|png|gif|webp|bmp)$/i.test(name);
 }
 
 // ---------------------------------------------------------------------------
@@ -79,8 +90,8 @@ function ScoreRing({ score, labels }: { score: number; labels: ReturnType<typeof
           />
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className={cn("text-xl font-extrabold leading-none tabular-nums", textColor)}>{score}</span>
-          <span className="text-[9px] text-gray-400 dark:text-gray-500 font-medium">/100</span>
+          <span className={cn("text-[13px] font-extrabold leading-none tabular-nums", textColor)}>{score}</span>
+          <span className="text-[8px] text-gray-400 dark:text-gray-500 font-medium mt-0.5">/100</span>
         </div>
       </div>
       <div>
@@ -262,16 +273,21 @@ export function RecommendationDetail({ id }: { id: string }) {
   const p = t.hrRecommendationsPage;
   const router = useRouter();
 
-  const [rec, setRec] = useState<CandidateRecommendation | null>(null);
+  const [rec, setRec] = useState<CandidateRecommendationDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [busy, setBusy] = useState<"shortlist" | "dismiss" | null>(null);
+  const [cvBusy, setCvBusy] = useState(false);
+  const [cvPreview, setCvPreview] = useState<RecommendationCvDownload | null>(null);
+  const [cvPreviewLoading, setCvPreviewLoading] = useState(false);
+  const [cvLightbox, setCvLightbox] = useState(false);
   const [showInvite, setShowInvite] = useState(false);
   const { addToast } = useToast();
 
   const fetchData = useCallback(async () => {
     setLoading(true);
     setError(false);
+    setCvPreview(null);
     try {
       const data = await getRecommendation(id);
       if (!data) { setError(true); return; }
@@ -281,6 +297,34 @@ export function RecommendationDetail({ id }: { id: string }) {
   }, [id]);
 
   useEffect(() => { void fetchData(); }, [fetchData]);
+
+  // Lấy SAS URL để preview CV ảnh dưới identity card (SCRUM-377).
+  useEffect(() => {
+    if (!rec?.hasCv) {
+      setCvPreview(null);
+      return;
+    }
+    let cancelled = false;
+    setCvPreviewLoading(true);
+    void getRecommendationCv(rec.id)
+      .then((cv) => { if (!cancelled) setCvPreview(cv); })
+      .catch(() => { if (!cancelled) setCvPreview(null); })
+      .finally(() => { if (!cancelled) setCvPreviewLoading(false); });
+    return () => { cancelled = true; };
+  }, [rec?.id, rec?.hasCv]);
+
+  useEffect(() => {
+    if (!cvLightbox) return;
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") setCvLightbox(false);
+    }
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.body.style.overflow = "";
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [cvLightbox]);
 
   async function handleShortlist() {
     if (!rec) return;
@@ -304,6 +348,20 @@ export function RecommendationDetail({ id }: { id: string }) {
       const status = (err as { response?: { status?: number } })?.response?.status;
       addToast("error", status === 409 ? p.alreadyActed : p.dismissFailed);
     } finally { setBusy(null); }
+  }
+
+  async function handleDownloadCv() {
+    if (!rec?.hasCv) return;
+    setCvBusy(true);
+    try {
+      const cv = cvPreview ?? await getRecommendationCv(rec.id);
+      if (!cvPreview) setCvPreview(cv);
+      window.open(cv.downloadUrl, "_blank", "noopener,noreferrer");
+    } catch {
+      addToast("error", p.detail.cvDownloadFailed);
+    } finally {
+      setCvBusy(false);
+    }
   }
 
   // Loading
@@ -332,6 +390,41 @@ export function RecommendationDetail({ id }: { id: string }) {
   // mời"), so DISMISSED isn't fully terminal like INVITED is.
   const canRestore = rec.status === "DISMISSED";
   const initials = getInitials(rec.candidateName || rec.candidateEmail);
+  const hasSocial = !!(rec.linkedInUrl || rec.githubUrl);
+  const hasProfileContact = !!(rec.phoneNumber || rec.address || rec.bio);
+  const cvIsImage = isImageCv(cvPreview?.contentType, cvPreview?.cvFileName ?? rec.cvFileName);
+
+  const achievements = [
+    {
+      id: "first-practice",
+      title: p.detail.achievementItems.firstPractice.title,
+      description: p.detail.achievementItems.firstPractice.description,
+      icon: "🎯",
+      earned: rec.totalSessions >= 1,
+    },
+    {
+      id: "high-scorer",
+      title: p.detail.achievementItems.highScorer.title,
+      description: p.detail.achievementItems.highScorer.description,
+      icon: "⭐",
+      earned: rec.bestScore !== null && rec.bestScore >= 90,
+    },
+    {
+      id: "speed-demon",
+      title: p.detail.achievementItems.speedDemon.title,
+      description: p.detail.achievementItems.speedDemon.description,
+      icon: "⚡",
+      earned: rec.hasFastSession,
+    },
+    {
+      id: "consistent-learner",
+      title: p.detail.achievementItems.consistentLearner.title,
+      description: p.detail.achievementItems.consistentLearner.description,
+      icon: "📚",
+      earned: rec.totalSessions >= 20,
+    },
+  ];
+  const earnedCount = achievements.filter((a) => a.earned).length;
 
   return (
     <>
@@ -349,12 +442,22 @@ export function RecommendationDetail({ id }: { id: string }) {
             className="hr-glass-card p-5 flex flex-col gap-5">
             {/* Avatar + name */}
             <div className="flex flex-col items-center text-center gap-3 pt-2">
-              <div className={cn(
-                "w-16 h-16 rounded-2xl text-white text-xl font-extrabold flex items-center justify-center",
-                avatarColor(rec.candidateName || rec.id)
-              )}>
-                {initials || <User size={22} />}
-              </div>
+              {rec.avatarUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={rec.avatarUrl}
+                  alt={rec.candidateName}
+                  referrerPolicy="no-referrer"
+                  className="w-16 h-16 rounded-2xl object-cover"
+                />
+              ) : (
+                <div className={cn(
+                  "w-16 h-16 rounded-2xl text-white text-xl font-extrabold flex items-center justify-center",
+                  avatarColor(rec.candidateName || rec.id)
+                )}>
+                  {initials || <User size={22} />}
+                </div>
+              )}
               <div>
                 <h1 className={cn("text-[17px] font-bold leading-tight", portalHeading)}>
                   {rec.candidateName || "—"}
@@ -366,6 +469,26 @@ export function RecommendationDetail({ id }: { id: string }) {
               </div>
               <StatusChip status={rec.status} labels={p.card} />
             </div>
+
+            {/* Social quick links */}
+            {hasSocial && (
+              <div className="flex items-center justify-center gap-2">
+                {rec.linkedInUrl && (
+                  <a href={rec.linkedInUrl} target="_blank" rel="noopener noreferrer"
+                    title={p.detail.linkedIn}
+                    className="h-8 w-8 flex items-center justify-center rounded-lg bg-[#0A66C2]/10 text-[#0A66C2] hover:bg-[#0A66C2]/20 transition-colors">
+                    <Link2 size={14} />
+                  </a>
+                )}
+                {rec.githubUrl && (
+                  <a href={rec.githubUrl} target="_blank" rel="noopener noreferrer"
+                    title={p.detail.github}
+                    className="h-8 w-8 flex items-center justify-center rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
+                    <Code2 size={14} />
+                  </a>
+                )}
+              </div>
+            )}
 
             <div className={cn("border-t pt-4", portalDivider)}>
               <ScoreRing score={rec.score} labels={p.detail} />
@@ -413,6 +536,76 @@ export function RecommendationDetail({ id }: { id: string }) {
               )}
             </div>
           </motion.div>
+
+          {/* CV preview — ô nhỏ dưới identity card (ảnh CV) */}
+          {rec.hasCv && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.08 }}
+              className="hr-glass-card overflow-hidden"
+            >
+              <div className="flex items-center justify-between px-3.5 py-2.5 border-b border-gray-100 dark:border-gray-800">
+                <div className="flex items-center gap-2 min-w-0">
+                  <FileText size={13} className="text-blue-600 dark:text-blue-400 shrink-0" />
+                  <p className={cn("text-[12px] font-bold truncate", portalHeadingAlt)}>
+                    {p.detail.cvTitle}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => void handleDownloadCv()}
+                  disabled={cvBusy}
+                  className="h-7 px-2 flex items-center gap-1 text-[11px] font-semibold text-primary hover:bg-violet-50 dark:hover:bg-violet-950/40 rounded-lg transition-colors disabled:opacity-50 shrink-0"
+                >
+                  {cvBusy ? <Loader2 size={11} className="animate-spin" /> : <Download size={11} />}
+                  {p.detail.cvDownload}
+                </button>
+              </div>
+
+              {cvPreviewLoading ? (
+                <div className="h-[520px] flex items-center justify-center bg-gray-50 dark:bg-gray-900/40">
+                  <Loader2 size={20} className="animate-spin text-primary" />
+                </div>
+              ) : cvPreview && cvIsImage ? (
+                <button
+                  type="button"
+                  onClick={() => setCvLightbox(true)}
+                  className="group relative block w-full text-left max-h-[640px] overflow-y-auto bg-gray-50 dark:bg-gray-900/40 scrollbar-hide"
+                  title={p.detail.cvPreviewHint}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={cvPreview.downloadUrl}
+                    alt={cvPreview.cvFileName || "CV"}
+                    referrerPolicy="no-referrer"
+                    className="w-full h-auto object-contain bg-white dark:bg-gray-950"
+                  />
+                  <span className="sticky bottom-0 inset-x-0 pointer-events-none flex justify-center pb-3 -mt-10">
+                    <span className="opacity-90 group-hover:opacity-100 transition-opacity flex items-center gap-1.5 text-white text-[11px] font-semibold px-2.5 py-1.5 rounded-lg bg-black/55 shadow-sm">
+                      <Maximize2 size={11} />
+                      {p.detail.cvPreviewOpen}
+                    </span>
+                  </span>
+                </button>
+              ) : cvPreview ? (
+                <button
+                  type="button"
+                  onClick={() => void handleDownloadCv()}
+                  className="w-full h-40 flex flex-col items-center justify-center gap-2 bg-gray-50 dark:bg-gray-900/40 hover:bg-gray-100 dark:hover:bg-gray-800/60 transition-colors"
+                >
+                  <FileText size={22} className="text-gray-400" />
+                  <span className={cn("text-[11px] font-medium px-3 text-center truncate max-w-full", portalSubtextAlt)}>
+                    {cvPreview.cvFileName}
+                  </span>
+                </button>
+              ) : (
+                <div className="h-40 flex items-center justify-center px-4">
+                  <p className={cn("text-[12px] text-center", portalSubtext)}>{p.detail.cvEmpty}</p>
+                </div>
+              )}
+            </motion.div>
+          )}
         </div>
 
         {/* ── Right: Details ── */}
@@ -447,9 +640,121 @@ export function RecommendationDetail({ id }: { id: string }) {
             </div>
           </motion.div>
 
+          {/* Profile / contact / social */}
+          {(hasProfileContact || hasSocial) && (
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.07 }}
+              className="hr-glass-card p-5 flex flex-col gap-4">
+              <h2 className={cn("text-[13px] font-bold uppercase tracking-wider", portalSubtextAlt)}>
+                {p.detail.profileTitle}
+              </h2>
+              <div className="flex flex-col gap-4 divide-y divide-gray-100 dark:divide-gray-800">
+                {rec.bio && (
+                  <DetailRow icon={User} label={p.detail.bio}>
+                    <span className="whitespace-pre-line leading-relaxed font-normal">{rec.bio}</span>
+                  </DetailRow>
+                )}
+                {rec.phoneNumber && (
+                  <div className="pt-3">
+                    <DetailRow icon={Phone} label={p.detail.phone}>
+                      <a href={`tel:${rec.phoneNumber}`} className="hover:text-primary transition-colors">
+                        {rec.phoneNumber}
+                      </a>
+                    </DetailRow>
+                  </div>
+                )}
+                {rec.address && (
+                  <div className="pt-3">
+                    <DetailRow icon={MapPin} label={p.detail.address}>
+                      {rec.address}
+                    </DetailRow>
+                  </div>
+                )}
+                {rec.linkedInUrl && (
+                  <div className="pt-3">
+                    <DetailRow icon={Link2} label={p.detail.linkedIn}>
+                      <a href={rec.linkedInUrl} target="_blank" rel="noopener noreferrer"
+                        className="text-primary hover:underline break-all">
+                        {rec.linkedInUrl}
+                      </a>
+                    </DetailRow>
+                  </div>
+                )}
+                {rec.githubUrl && (
+                  <div className="pt-3">
+                    <DetailRow icon={Code2} label={p.detail.github}>
+                      <a href={rec.githubUrl} target="_blank" rel="noopener noreferrer"
+                        className="text-primary hover:underline break-all">
+                        {rec.githubUrl}
+                      </a>
+                    </DetailRow>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          )}
+
+          {/* CV */}
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.09 }}
+            className="hr-glass-card p-5 flex flex-col gap-3">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-lg bg-blue-100 dark:bg-blue-950/50 flex items-center justify-center shrink-0">
+                  <FileText size={13} className="text-blue-600 dark:text-blue-400" />
+                </div>
+                <h2 className={cn("text-[13px] font-bold uppercase tracking-wider", portalSubtextAlt)}>
+                  {p.detail.cvTitle}
+                </h2>
+              </div>
+              {rec.hasCv && (
+                <button type="button" onClick={() => void handleDownloadCv()} disabled={cvBusy}
+                  className="flex items-center gap-1.5 h-8 px-3 text-[12px] font-semibold text-primary hover:bg-violet-50 dark:hover:bg-violet-950/40 rounded-lg transition-colors disabled:opacity-50">
+                  {cvBusy ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />}
+                  {cvBusy ? p.detail.cvDownloading : p.detail.cvDownload}
+                </button>
+              )}
+            </div>
+            {rec.hasCv ? (
+              <>
+                <p className={cn("text-[13px] font-medium", portalHeadingAlt)}>
+                  {rec.cvFileName || "CV"}
+                  {rec.cvUploadedAt && (
+                    <span className={cn("font-normal ml-2", portalSubtextAlt)}>
+                      · {formatRelativeTime(rec.cvUploadedAt, lang)}
+                    </span>
+                  )}
+                </p>
+                {rec.cvSummary && (
+                  <div>
+                    <p className={cn("text-[10px] font-semibold uppercase tracking-wider mb-1", portalSubtextAlt)}>
+                      {p.detail.cvSummary}
+                    </p>
+                    <p className={cn("text-[13px] leading-relaxed", portalHeadingAlt)}>{rec.cvSummary}</p>
+                  </div>
+                )}
+                {rec.cvSkills.length > 0 && (
+                  <div>
+                    <p className={cn("text-[10px] font-semibold uppercase tracking-wider mb-2", portalSubtextAlt)}>
+                      {p.detail.cvSkills}
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {rec.cvSkills.map((s) => (
+                        <span key={s}
+                          className="text-[11px] font-medium px-2 py-0.5 rounded-md bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300">
+                          {s}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
+            ) : (
+              <p className={cn("text-[13px]", portalSubtext)}>{p.detail.cvEmpty}</p>
+            )}
+          </motion.div>
+
           {/* Candidate-shared contact info (from accepting the invite) */}
           {(rec.invitationResponseMessage || rec.invitationSharedPhoneNumber) && (
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08 }}
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
               className="hr-glass-card p-5">
               <div className="flex items-center gap-2 mb-1">
                 <div className="w-7 h-7 rounded-lg bg-emerald-100 dark:bg-emerald-950/50 flex items-center justify-center shrink-0">
@@ -479,7 +784,7 @@ export function RecommendationDetail({ id }: { id: string }) {
 
           {/* Skills */}
           {rec.techStack.length > 0 && (
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 }}
               className="hr-glass-card p-5">
               <h2 className={cn("text-[13px] font-bold uppercase tracking-wider mb-3", portalSubtextAlt)}>
                 {p.detail.skills}
@@ -495,9 +800,66 @@ export function RecommendationDetail({ id }: { id: string }) {
             </motion.div>
           )}
 
+          {/* Achievements */}
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.14 }}
+            className="hr-glass-card p-5">
+            <div className="flex items-center justify-between gap-3 mb-4">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-lg bg-amber-100 dark:bg-amber-950/50 flex items-center justify-center shrink-0">
+                  <Award size={13} className="text-amber-600 dark:text-amber-400" />
+                </div>
+                <h2 className={cn("text-[13px] font-bold uppercase tracking-wider", portalSubtextAlt)}>
+                  {p.detail.achievementsTitle}
+                </h2>
+              </div>
+              <span className={cn("text-[11px] font-semibold", portalSubtextAlt)}>
+                {earnedCount}/{achievements.length} {p.detail.earned}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-3 gap-2 mb-4">
+              <div className={cn("rounded-xl px-3 py-2 text-center", portalMutedBg)}>
+                <p className={cn("text-[15px] font-extrabold tabular-nums", portalHeadingAlt)}>{rec.totalSessions}</p>
+                <p className={cn("text-[10px]", portalSubtextAlt)}>{p.detail.totalSessions}</p>
+              </div>
+              <div className={cn("rounded-xl px-3 py-2 text-center", portalMutedBg)}>
+                <p className={cn("text-[15px] font-extrabold tabular-nums", portalHeadingAlt)}>
+                  {rec.averageScore != null ? rec.averageScore.toFixed(0) : "—"}
+                </p>
+                <p className={cn("text-[10px]", portalSubtextAlt)}>{p.detail.averageScore}</p>
+              </div>
+              <div className={cn("rounded-xl px-3 py-2 text-center", portalMutedBg)}>
+                <p className={cn("text-[15px] font-extrabold tabular-nums", portalHeadingAlt)}>
+                  {rec.bestScore != null ? rec.bestScore.toFixed(0) : "—"}
+                </p>
+                <p className={cn("text-[10px]", portalSubtextAlt)}>{p.detail.bestScore}</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {achievements.map((ach) => (
+                <div
+                  key={ach.id}
+                  className={cn(
+                    "flex items-start gap-2.5 rounded-xl px-3 py-2.5 border",
+                    ach.earned
+                      ? "border-amber-200 dark:border-amber-800/60 bg-amber-50/60 dark:bg-amber-950/20"
+                      : "border-gray-100 dark:border-gray-800 opacity-50"
+                  )}
+                >
+                  <span className="text-base leading-none mt-0.5">{ach.icon}</span>
+                  <div className="min-w-0">
+                    <p className={cn("text-[12px] font-semibold", portalHeadingAlt)}>{ach.title}</p>
+                    <p className={cn("text-[11px] mt-0.5", portalSubtextAlt)}>{ach.description}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+
           {/* Recommendation reason */}
           {rec.recommendationReason && (
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.16 }}
               className="hr-glass-card p-5">
               <div className="flex items-center gap-2 mb-3">
                 <div className="w-7 h-7 rounded-lg bg-amber-100 dark:bg-amber-950/50 flex items-center justify-center shrink-0">
@@ -523,6 +885,38 @@ export function RecommendationDetail({ id }: { id: string }) {
           onClose={() => setShowInvite(false)}
           onSent={() => setRec((r) => r ? { ...r, status: "INVITED" } : r)}
         />
+      )}
+
+      {cvLightbox && cvPreview && cvIsImage && typeof document !== "undefined" && createPortal(
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="fixed inset-0 z-50 flex flex-col bg-black/90"
+          onClick={() => setCvLightbox(false)}
+        >
+          <div className="flex items-center justify-between px-4 sm:px-6 py-3 shrink-0">
+            <p className="text-[13px] font-medium text-white/90 truncate">
+              {cvPreview.cvFileName || p.detail.cvTitle}
+            </p>
+            <button
+              type="button"
+              onClick={() => setCvLightbox(false)}
+              className="w-9 h-9 flex items-center justify-center rounded-lg text-white/80 hover:text-white hover:bg-white/10 transition-colors"
+            >
+              <XIcon size={18} />
+            </button>
+          </div>
+          <div className="flex-1 overflow-auto flex items-start justify-center p-4 sm:p-8" onClick={(e) => e.stopPropagation()}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={cvPreview.downloadUrl}
+              alt={cvPreview.cvFileName || "CV"}
+              referrerPolicy="no-referrer"
+              className="max-w-full h-auto rounded-lg shadow-2xl"
+            />
+          </div>
+        </motion.div>,
+        document.body
       )}
     </>
   );

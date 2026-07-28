@@ -2,6 +2,7 @@ import { apiClient } from "@/core/api/http-client";
 
 export type RecommendationStatus = "NEW" | "VIEWED" | "SHORTLISTED" | "INVITED" | "DISMISSED";
 
+/** List item — payload nhẹ (SCRUM-328). */
 export interface CandidateRecommendation {
   id: string;
   candidateName: string;
@@ -17,6 +18,32 @@ export interface CandidateRecommendation {
   /** Only set once the candidate has ACCEPTED the invite — sent by the candidate themself, not their profile phone. */
   invitationResponseMessage: string | null;
   invitationSharedPhoneNumber: string | null;
+}
+
+/** Detail — kèm profile/CV/stats (SCRUM-377). */
+export interface CandidateRecommendationDetail extends CandidateRecommendation {
+  avatarUrl: string | null;
+  bio: string | null;
+  address: string | null;
+  phoneNumber: string | null;
+  linkedInUrl: string | null;
+  githubUrl: string | null;
+  hasCv: boolean;
+  cvFileName: string | null;
+  cvUploadedAt: string | null;
+  cvSummary: string | null;
+  cvSkills: string[];
+  totalSessions: number;
+  averageScore: number | null;
+  bestScore: number | null;
+  hasFastSession: boolean;
+}
+
+export interface RecommendationCvDownload {
+  cvFileName: string;
+  contentType: string | null;
+  uploadedAt: string | null;
+  downloadUrl: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -49,6 +76,18 @@ function pickNum(obj: Record<string, unknown>, ...keys: string[]): number {
   return 0;
 }
 
+function pickNullableNum(obj: Record<string, unknown>, ...keys: string[]): number | null {
+  for (const k of keys) {
+    const v = obj[k];
+    if (typeof v === "number" && !Number.isNaN(v)) return v;
+    if (typeof v === "string" && v.trim()) {
+      const n = Number(v);
+      if (!Number.isNaN(n)) return n;
+    }
+  }
+  return null;
+}
+
 function pickNullableStr(obj: Record<string, unknown>, ...keys: string[]): string | null {
   for (const k of keys) {
     const v = obj[k];
@@ -63,6 +102,24 @@ function pickStrArr(obj: Record<string, unknown>, ...keys: string[]): string[] {
     if (Array.isArray(v)) return v.filter((x): x is string => typeof x === "string");
   }
   return [];
+}
+
+function pickBool(obj: Record<string, unknown>, ...keys: string[]): boolean {
+  for (const k of keys) {
+    const v = obj[k];
+    if (typeof v === "boolean") return v;
+  }
+  return false;
+}
+
+/** true nếu bất kỳ key nào có giá trị truthy (bool true hoặc string không rỗng). */
+function pickHasFlag(obj: Record<string, unknown>, ...keys: string[]): boolean {
+  for (const k of keys) {
+    const v = obj[k];
+    if (typeof v === "boolean" && v) return true;
+    if (typeof v === "string" && v.trim()) return true;
+  }
+  return false;
 }
 
 function normalizeStatus(raw: string): RecommendationStatus {
@@ -99,6 +156,36 @@ function normalizeRec(raw: unknown): CandidateRecommendation | null {
   };
 }
 
+function normalizeDetail(raw: unknown): CandidateRecommendationDetail | null {
+  const base = normalizeRec(raw);
+  if (!base) return null;
+  const src = asRecord(raw);
+  if (!src) return null;
+  const cvFileName = pickNullableStr(src, "cvFileName", "CvFileName");
+  const hasCv =
+    pickHasFlag(src, "hasCv", "HasCv")
+    || !!cvFileName
+    || !!pickNullableStr(src, "cvUploadedAt", "CvUploadedAt");
+  return {
+    ...base,
+    avatarUrl: pickNullableStr(src, "avatarUrl", "AvatarUrl"),
+    bio: pickNullableStr(src, "bio", "Bio"),
+    address: pickNullableStr(src, "address", "Address"),
+    phoneNumber: pickNullableStr(src, "phoneNumber", "PhoneNumber"),
+    linkedInUrl: pickNullableStr(src, "linkedInUrl", "LinkedInUrl", "linkedinUrl"),
+    githubUrl: pickNullableStr(src, "githubUrl", "GithubUrl"),
+    hasCv,
+    cvFileName,
+    cvUploadedAt: pickNullableStr(src, "cvUploadedAt", "CvUploadedAt"),
+    cvSummary: pickNullableStr(src, "cvSummary", "CvSummary"),
+    cvSkills: pickStrArr(src, "cvSkills", "CvSkills"),
+    totalSessions: pickNum(src, "totalSessions", "TotalSessions"),
+    averageScore: pickNullableNum(src, "averageScore", "AverageScore"),
+    bestScore: pickNullableNum(src, "bestScore", "BestScore"),
+    hasFastSession: pickBool(src, "hasFastSession", "HasFastSession"),
+  };
+}
+
 function extractList(res: unknown): unknown[] {
   const r = asRecord(res);
   if (!r) return [];
@@ -120,11 +207,18 @@ function extractTotal(res: unknown, fallback: number): number {
 // Public API
 // ---------------------------------------------------------------------------
 
+export type RecommendationSortBy = "score" | "date";
+export type RecommendationSortDir = "asc" | "desc";
+
 export interface ListRecommendationsParams {
   page?: number;
   pageSize?: number;
   status?: string;
   questionSetId?: string;
+  /** Server-side min overall score (SCRUM-328). */
+  minScore?: number;
+  sortBy?: RecommendationSortBy;
+  sortDir?: RecommendationSortDir;
 }
 
 export async function listRecommendations(
@@ -136,6 +230,9 @@ export async function listRecommendations(
       PageSize: params.pageSize ?? 12,
       Status: params.status || undefined,
       QuestionSetId: params.questionSetId || undefined,
+      MinScore: params.minScore,
+      SortBy: params.sortBy ?? "score",
+      SortDir: params.sortDir ?? "desc",
     },
   });
   const items = extractList(res.data)
@@ -144,15 +241,24 @@ export async function listRecommendations(
   return { items, totalCount: extractTotal(res.data, items.length) };
 }
 
-export async function getRecommendation(id: string): Promise<CandidateRecommendation | null> {
-  try {
-    const res = await apiClient.get(`/api/hr/recommendations/${id}`);
-    return normalizeRec(asRecord(res.data)?.data ?? res.data);
-  } catch {
-    // No single-item endpoint — fall back to searching the list
-    const { items } = await listRecommendations({ pageSize: 100 });
-    return items.find((r) => r.id === id) ?? null;
-  }
+export async function getRecommendation(id: string): Promise<CandidateRecommendationDetail | null> {
+  // SCRUM-377: detail trả profile/CV/stats — normalizeDetail.
+  const res = await apiClient.get(`/api/hr/recommendations/${id}`);
+  return normalizeDetail(asRecord(res.data)?.data ?? res.data);
+}
+
+export async function getRecommendationCv(id: string): Promise<RecommendationCvDownload> {
+  const res = await apiClient.get(`/api/hr/recommendations/${id}/cv`);
+  const src = asRecord(asRecord(res.data)?.data ?? res.data);
+  if (!src) throw new Error("Invalid CV response");
+  const downloadUrl = pickStr(src, "downloadUrl", "DownloadUrl");
+  if (!downloadUrl) throw new Error("Missing downloadUrl");
+  return {
+    cvFileName: pickStr(src, "cvFileName", "CvFileName") || "cv",
+    contentType: pickNullableStr(src, "contentType", "ContentType"),
+    uploadedAt: pickNullableStr(src, "uploadedAt", "UploadedAt"),
+    downloadUrl,
+  };
 }
 
 export async function shortlistRecommendation(id: string): Promise<void> {
