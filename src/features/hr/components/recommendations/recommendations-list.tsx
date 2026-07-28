@@ -20,6 +20,8 @@ import {
   inviteRecommendation,
   type CandidateRecommendation,
   type RecommendationStatus,
+  type RecommendationSortBy,
+  type RecommendationSortDir,
 } from "@/features/hr/services/recommendation.service";
 import {
   portalHeading,
@@ -195,7 +197,7 @@ function InviteModal({ rec, onClose, onSent, labels }: InviteModalProps) {
 }
 
 // ---------------------------------------------------------------------------
-// Table Row
+// Candidate card row
 // ---------------------------------------------------------------------------
 
 interface RowProps {
@@ -218,8 +220,9 @@ function CandidateRow({ rec, lang, labels, index, onStatusChange }: RowProps) {
   // shortlist action available instead of hiding every action.
   const canRestore = rec.status === "DISMISSED";
   const initials = getInitials(rec.candidateName || rec.candidateEmail);
-  const visibleSkills = rec.techStack.slice(0, 2);
-  const extraSkills = rec.techStack.length - 2;
+  const visibleSkills = rec.techStack.slice(0, 3);
+  const extraSkills = rec.techStack.length - 3;
+  const hasContact = !!(rec.invitationResponseMessage || rec.invitationSharedPhoneNumber);
 
   async function handleShortlist() {
     setBusy("shortlist");
@@ -245,126 +248,130 @@ function CandidateRow({ rec, lang, labels, index, onStatusChange }: RowProps) {
 
   return (
     <>
-      <motion.tr
+      <motion.div
         initial={{ opacity: 0, y: 6 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: index * 0.03 }}
         className={cn(
-          "group border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50/60 dark:hover:bg-gray-800/40 transition-colors",
-          (rec.status === "DISMISSED") && "opacity-55"
+          "group flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 px-4 sm:px-5 py-3.5",
+          "border-b border-gray-100 dark:border-gray-800 last:border-b-0",
+          "hover:bg-gray-50/60 dark:hover:bg-gray-800/40 transition-colors",
+          rec.status === "DISMISSED" && "opacity-55"
         )}
       >
-        {/* Candidate */}
-        <td className="px-5 py-3.5">
-          <div className="flex items-center gap-3">
-            <div className={cn(
-              "w-9 h-9 rounded-xl text-white text-[12px] font-bold flex items-center justify-center shrink-0",
-              avatarColor(rec.candidateName || rec.id)
-            )}>
-              {initials || "?"}
-            </div>
-            <div className="min-w-0">
+        {/* Left: avatar + identity */}
+        <div className="flex items-start gap-3 min-w-0 flex-1">
+          <div className={cn(
+            "w-10 h-10 rounded-xl text-white text-[12px] font-bold flex items-center justify-center shrink-0 mt-0.5",
+            avatarColor(rec.candidateName || rec.id)
+          )}>
+            {initials || "?"}
+          </div>
+
+          <div className="min-w-0 flex-1">
+            {/* Name + status */}
+            <div className="flex items-center gap-2 flex-wrap">
               <p className={cn("text-[13px] font-semibold leading-tight truncate", portalHeadingAlt)}>
                 {rec.candidateName || "—"}
               </p>
-              <p className={cn("text-[11px] truncate", portalSubtextAlt)}>{rec.candidateEmail}</p>
-              {rec.targetRole && (
-                <p className="text-[10px] font-medium text-primary truncate mt-0.5">{rec.targetRole}</p>
+              <StatusBadge status={rec.status} labels={c} />
+              {hasContact && (
+                <span
+                  title={c.contactShared}
+                  className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400 whitespace-nowrap"
+                >
+                  <Phone size={10} />
+                  {c.contactBadge}
+                </span>
               )}
             </div>
-          </div>
-        </td>
 
-        {/* Question set */}
-        <td className="px-4 py-3.5 hidden md:table-cell">
-          <p className={cn("text-[12px] font-medium truncate max-w-40", portalSubtextAlt)}>
-            {rec.questionSetTitle || "—"}
-          </p>
-          {rec.completedAt && (
-            <p className="text-[10px] text-gray-400 dark:text-gray-600 mt-0.5">
-              {formatRelativeTime(rec.completedAt, lang)}
+            {/* Email · role */}
+            <p className={cn("text-[11px] truncate mt-0.5", portalSubtextAlt)}>
+              {rec.candidateEmail}
+              {rec.targetRole && (
+                <span className="text-primary font-medium"> · {rec.targetRole}</span>
+              )}
             </p>
-          )}
-        </td>
 
-        {/* Skills */}
-        <td className="px-4 py-3.5 hidden lg:table-cell">
-          <div className="flex flex-wrap gap-1">
-            {visibleSkills.map((s) => (
-              <span key={s} className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300">
-                {s}
+            {/* Question set · time */}
+            <p className={cn("text-[11px] truncate mt-1", portalSubtextAlt)}>
+              <span className="font-medium text-gray-600 dark:text-gray-300">
+                {rec.questionSetTitle || "—"}
               </span>
-            ))}
-            {extraSkills > 0 && (
-              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-gray-100 dark:bg-gray-800 text-gray-500">
-                +{extraSkills}
-              </span>
+              {rec.completedAt && (
+                <span className="text-gray-400 dark:text-gray-600">
+                  {" · "}{formatRelativeTime(rec.completedAt, lang)}
+                </span>
+              )}
+            </p>
+
+            {/* Skills — tối đa 3 tag */}
+            {rec.techStack.length > 0 && (
+              <div className="flex flex-wrap gap-1 mt-1.5">
+                {visibleSkills.map((s) => (
+                  <span
+                    key={s}
+                    className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300"
+                  >
+                    {s}
+                  </span>
+                ))}
+                {extraSkills > 0 && (
+                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-gray-100 dark:bg-gray-800 text-gray-500">
+                    +{extraSkills}
+                  </span>
+                )}
+              </div>
             )}
           </div>
-        </td>
+        </div>
 
-        {/* Score */}
-        <td className="px-4 py-3.5 text-center">
+        {/* Right: score + actions */}
+        <div className="flex items-center gap-3 sm:gap-4 shrink-0 pl-12 sm:pl-2">
           <ScoreBadge score={rec.score} />
-        </td>
 
-        {/* Status */}
-        <td className="px-4 py-3.5 hidden sm:table-cell">
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <StatusBadge status={rec.status} labels={c} />
-            {(rec.invitationResponseMessage || rec.invitationSharedPhoneNumber) && (
-              <span
-                title={c.contactShared}
-                className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400 whitespace-nowrap"
-              >
-                <Phone size={10} />
-                {c.contactBadge}
-              </span>
-            )}
-          </div>
-        </td>
-
-        {/* Actions */}
-        <td className="px-4 py-3.5">
-          <div className="flex items-center gap-1.5 justify-end">
+          <div className="flex items-center gap-1">
             {canAct ? (
               <>
                 {rec.status !== "SHORTLISTED" ? (
                   <button type="button" onClick={() => void handleShortlist()} disabled={busy !== null}
                     title={c.shortlistBtn}
-                    className="h-7 w-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-violet-600 dark:hover:text-violet-400 hover:bg-violet-50 dark:hover:bg-violet-950/40 transition-colors disabled:opacity-40">
+                    className="h-8 w-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-violet-600 dark:hover:text-violet-400 hover:bg-violet-50 dark:hover:bg-violet-950/40 transition-colors disabled:opacity-40">
                     {busy === "shortlist" ? <Loader2 size={13} className="animate-spin" /> : <Star size={13} />}
                   </button>
                 ) : (
-                  <span title={c.shortlisted} className="h-7 w-7 flex items-center justify-center text-violet-500">
+                  <span title={c.shortlisted} className="h-8 w-8 flex items-center justify-center text-violet-500">
                     <CheckCircle2 size={13} />
                   </span>
                 )}
                 <button type="button" onClick={() => setShowInvite(true)} disabled={busy !== null}
                   title={c.inviteBtn}
-                  className="h-7 w-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 transition-colors disabled:opacity-40">
+                  className="h-8 w-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 transition-colors disabled:opacity-40">
                   <Mail size={13} />
                 </button>
                 <button type="button" onClick={() => void handleDismiss()} disabled={busy !== null}
                   title={c.dismissBtn}
-                  className="h-7 w-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors disabled:opacity-40">
+                  className="h-8 w-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors disabled:opacity-40">
                   {busy === "dismiss" ? <Loader2 size={13} className="animate-spin" /> : <XIcon size={13} />}
                 </button>
               </>
             ) : canRestore ? (
               <button type="button" onClick={() => void handleShortlist()} disabled={busy !== null}
                 title={c.shortlistBtn}
-                className="h-7 w-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-violet-600 dark:hover:text-violet-400 hover:bg-violet-50 dark:hover:bg-violet-950/40 transition-colors disabled:opacity-40">
+                className="h-8 w-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-violet-600 dark:hover:text-violet-400 hover:bg-violet-50 dark:hover:bg-violet-950/40 transition-colors disabled:opacity-40">
                 {busy === "shortlist" ? <Loader2 size={13} className="animate-spin" /> : <Star size={13} />}
               </button>
             ) : null}
-            <Link href={`/hr/candidate-recommendations/${rec.id}`}
-              className="h-7 px-2.5 flex items-center text-[11px] font-semibold text-primary hover:bg-violet-50 dark:hover:bg-violet-950/40 rounded-lg transition-colors shrink-0">
+            <Link
+              href={`/hr/candidate-recommendations/${rec.id}`}
+              className="h-8 px-2.5 flex items-center text-[11px] font-semibold text-primary hover:bg-violet-50 dark:hover:bg-violet-950/40 rounded-lg transition-colors shrink-0"
+            >
               {c.viewDetailBtn} →
             </Link>
           </div>
-        </td>
-      </motion.tr>
+        </div>
+      </motion.div>
 
       {showInvite && (
         <InviteModal
@@ -400,6 +407,15 @@ const SCORE_FILTERS: Array<{ key: string; min?: number }> = [
   { key: "score90plus", min: 90 },
 ];
 
+type SortOption = { key: string; sortBy: RecommendationSortBy; sortDir: RecommendationSortDir };
+
+const SORT_OPTIONS: SortOption[] = [
+  { key: "sortScoreDesc", sortBy: "score", sortDir: "desc" },
+  { key: "sortScoreAsc", sortBy: "score", sortDir: "asc" },
+  { key: "sortDateDesc", sortBy: "date", sortDir: "desc" },
+  { key: "sortDateAsc", sortBy: "date", sortDir: "asc" },
+];
+
 export function RecommendationsList() {
   const { t, lang } = useLanguage();
   const p = t.hrRecommendationsPage;
@@ -411,33 +427,43 @@ export function RecommendationsList() {
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState("");
   const [minScore, setMinScore] = useState<number | undefined>(undefined);
+  const [sortKey, setSortKey] = useState("sortScoreDesc");
   const [searchSet, setSearchSet] = useState("");
 
+  const sortOption = SORT_OPTIONS.find((o) => o.key === sortKey) ?? SORT_OPTIONS[0];
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
 
   const fetchData = useCallback(async () => {
     setLoading(true);
     setError(false);
     try {
-      const res = await listRecommendations({ page, pageSize: PAGE_SIZE, status: statusFilter || undefined });
+      const res = await listRecommendations({
+        page,
+        pageSize: PAGE_SIZE,
+        status: statusFilter || undefined,
+        minScore,
+        sortBy: sortOption.sortBy,
+        sortDir: sortOption.sortDir,
+      });
       setItems(res.items);
       setTotalCount(res.totalCount);
     } catch { setError(true); }
     finally { setLoading(false); }
-  }, [page, statusFilter]);
+  }, [page, statusFilter, minScore, sortOption.sortBy, sortOption.sortDir]);
 
   useEffect(() => { void fetchData(); }, [fetchData]);
-  useEffect(() => { setPage(1); }, [statusFilter]);
+  useEffect(() => { setPage(1); }, [statusFilter, minScore, sortKey]);
 
   function handleStatusChange(id: string, status: RecommendationStatus) {
     setItems((prev) => prev.map((r) => (r.id === id ? { ...r, status } : r)));
   }
 
-  // BE doesn't support a MinScore query param — filter client-side over the
-  // current page's items instead (same approach as the question-set search below).
-  const displayed = items
-    .filter((r) => (minScore === undefined ? true : r.score >= minScore))
-    .filter((r) => (searchSet.trim() ? r.questionSetTitle.toLowerCase().includes(searchSet.toLowerCase()) : true));
+  // Search title vẫn client-side (BE SCRUM-328 chưa hỗ trợ search title).
+  const displayed = items.filter((r) =>
+    searchSet.trim()
+      ? r.questionSetTitle.toLowerCase().includes(searchSet.toLowerCase())
+      : true
+  );
 
   return (
     <div>
@@ -476,13 +502,23 @@ export function RecommendationsList() {
           })}
         </div>
 
-        {/* Score filter */}
+        {/* Score filter — server-side MinScore (SCRUM-328) */}
         <select
           value={minScore ?? ""}
           onChange={(e) => setMinScore(e.target.value ? Number(e.target.value) : undefined)}
           className="h-8 px-3 text-[12px] font-medium bg-gray-100 dark:bg-gray-800 border-0 rounded-lg text-gray-700 dark:text-gray-300 outline-none focus:ring-2 focus:ring-primary/20 transition-colors cursor-pointer">
           {SCORE_FILTERS.map((f) => (
             <option key={f.key} value={f.min ?? ""}>{p.filters[f.key as keyof typeof p.filters]}</option>
+          ))}
+        </select>
+
+        {/* Sort — server-side SortBy/SortDir (SCRUM-328) */}
+        <select
+          value={sortKey}
+          onChange={(e) => setSortKey(e.target.value)}
+          className="h-8 px-3 text-[12px] font-medium bg-gray-100 dark:bg-gray-800 border-0 rounded-lg text-gray-700 dark:text-gray-300 outline-none focus:ring-2 focus:ring-primary/20 transition-colors cursor-pointer">
+          {SORT_OPTIONS.map((o) => (
+            <option key={o.key} value={o.key}>{p.filters[o.key as keyof typeof p.filters]}</option>
           ))}
         </select>
 
@@ -504,19 +540,19 @@ export function RecommendationsList() {
         </button>
       </div>
 
-      {/* Table */}
+      {/* List */}
       {loading ? (
         <div className="hr-glass-card overflow-hidden">
-          <div className="flex flex-col divide-y divide-gray-100 dark:divide-gray-800">
+          <div className="flex flex-col">
             {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="flex items-center gap-4 px-5 py-4">
-                <div className="w-9 h-9 rounded-xl bg-gray-200 dark:bg-gray-700 animate-pulse shrink-0" />
+              <div key={i} className="flex items-center gap-3 px-5 py-3.5 border-b border-gray-100 dark:border-gray-800 last:border-b-0">
+                <div className="w-10 h-10 rounded-xl bg-gray-200 dark:bg-gray-700 animate-pulse shrink-0" />
                 <div className="flex-1 flex flex-col gap-2">
-                  <div className="h-3.5 w-32 rounded bg-gray-200 dark:bg-gray-700 animate-pulse" />
-                  <div className="h-2.5 w-24 rounded bg-gray-100 dark:bg-gray-800 animate-pulse" />
+                  <div className="h-3.5 w-40 rounded bg-gray-200 dark:bg-gray-700 animate-pulse" />
+                  <div className="h-2.5 w-56 rounded bg-gray-100 dark:bg-gray-800 animate-pulse" />
+                  <div className="h-2.5 w-32 rounded bg-gray-100 dark:bg-gray-800 animate-pulse" />
                 </div>
-                <div className="h-6 w-16 rounded bg-gray-200 dark:bg-gray-700 animate-pulse" />
-                <div className="h-5 w-14 rounded-full bg-gray-200 dark:bg-gray-700 animate-pulse" />
+                <div className="h-8 w-10 rounded bg-gray-200 dark:bg-gray-700 animate-pulse" />
               </div>
             ))}
           </div>
@@ -537,42 +573,16 @@ export function RecommendationsList() {
         </div>
       ) : (
         <div className="hr-glass-card overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-gray-100 dark:border-gray-800 bg-gray-50/80 dark:bg-gray-800/40">
-                  <th className={cn("text-left px-5 py-3 text-[11px] font-semibold uppercase tracking-wider", portalSubtextAlt)}>
-                    {p.card.candidate}
-                  </th>
-                  <th className={cn("text-left px-4 py-3 text-[11px] font-semibold uppercase tracking-wider hidden md:table-cell", portalSubtextAlt)}>
-                    {p.card.questionSet}
-                  </th>
-                  <th className={cn("text-left px-4 py-3 text-[11px] font-semibold uppercase tracking-wider hidden lg:table-cell", portalSubtextAlt)}>
-                    {p.detail.skills}
-                  </th>
-                  <th className={cn("text-center px-4 py-3 text-[11px] font-semibold uppercase tracking-wider", portalSubtextAlt)}>
-                    {p.card.score}
-                  </th>
-                  <th className={cn("text-left px-4 py-3 text-[11px] font-semibold uppercase tracking-wider hidden sm:table-cell", portalSubtextAlt)}>
-                    {p.card.status}
-                  </th>
-                  <th className="px-4 py-3 w-36" />
-                </tr>
-              </thead>
-              <tbody>
-                {displayed.map((rec, i) => (
-                  <CandidateRow
-                    key={rec.id}
-                    rec={rec}
-                    lang={lang}
-                    labels={p}
-                    index={i}
-                    onStatusChange={handleStatusChange}
-                  />
-                ))}
-              </tbody>
-            </table>
-          </div>
+          {displayed.map((rec, i) => (
+            <CandidateRow
+              key={rec.id}
+              rec={rec}
+              lang={lang}
+              labels={p}
+              index={i}
+              onStatusChange={handleStatusChange}
+            />
+          ))}
         </div>
       )}
 
