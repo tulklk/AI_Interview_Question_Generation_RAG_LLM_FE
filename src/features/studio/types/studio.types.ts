@@ -20,6 +20,8 @@ export interface StudioProject {
   name: string;
   description?: string | null;
   status: StudioProjectStatus;
+  isPublished?: boolean;
+  questionSetId?: string | null;
 }
 
 export interface StudioProjectDetail extends StudioProject {

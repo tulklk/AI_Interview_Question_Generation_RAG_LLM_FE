@@ -8,8 +8,9 @@ import {
   ArrowLeft, Star, X as XIcon, Mail, Loader2,
   AlertCircle, RefreshCw, CheckCircle2, Clock, Send,
   User, Briefcase, Hash, Sparkles, Phone, MessageSquare,
-  Link2, Code2, MapPin, FileText, Download, Award, Maximize2,
+  MapPin, FileText, Download, Award, Maximize2,
 } from "lucide-react";
+import { FaLinkedinIn, FaGithub } from "react-icons/fa";
 import { cn } from "@/lib/cn";
 import { useLanguage } from "@/shared/providers/language-context";
 import { useToast } from "@/shared/providers/toast-context";
@@ -144,14 +145,12 @@ function StatusChip({ status, labels }: { status: RecommendationStatus; labels: 
 
 function DetailRow({ icon: Icon, label, children }: { icon: React.ElementType; label: string; children: React.ReactNode }) {
   return (
-    <div className="flex items-start gap-3">
-      <div className="w-7 h-7 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center shrink-0 mt-0.5">
-        <Icon size={13} className="text-gray-500 dark:text-gray-400" />
+    <div className="flex items-start gap-3 py-2.5">
+      <div className="w-5 h-5 rounded-md bg-gray-100 dark:bg-gray-800 flex items-center justify-center shrink-0 mt-0.5">
+        <Icon size={11} className="text-gray-500 dark:text-gray-400" />
       </div>
-      <div className="min-w-0">
-        <p className={cn("text-[10px] font-semibold uppercase tracking-wider mb-0.5", portalSubtextAlt)}>{label}</p>
-        <div className={cn("text-[13px] font-medium", portalHeadingAlt)}>{children}</div>
-      </div>
+      <p className={cn("text-[10px] font-semibold uppercase tracking-wider w-28 shrink-0 pt-0.5", portalSubtextAlt)}>{label}</p>
+      <div className={cn("text-[13px] font-medium flex-1 min-w-0", portalHeadingAlt)}>{children}</div>
     </div>
   );
 }
@@ -391,7 +390,6 @@ export function RecommendationDetail({ id }: { id: string }) {
   const canRestore = rec.status === "DISMISSED";
   const initials = getInitials(rec.candidateName || rec.candidateEmail);
   const hasSocial = !!(rec.linkedInUrl || rec.githubUrl);
-  const hasProfileContact = !!(rec.phoneNumber || rec.address || rec.bio);
   const cvIsImage = isImageCv(cvPreview?.contentType, cvPreview?.cvFileName ?? rec.cvFileName);
 
   const achievements = [
@@ -476,15 +474,15 @@ export function RecommendationDetail({ id }: { id: string }) {
                 {rec.linkedInUrl && (
                   <a href={rec.linkedInUrl} target="_blank" rel="noopener noreferrer"
                     title={p.detail.linkedIn}
-                    className="h-8 w-8 flex items-center justify-center rounded-lg bg-[#0A66C2]/10 text-[#0A66C2] hover:bg-[#0A66C2]/20 transition-colors">
-                    <Link2 size={14} />
+                    className="h-8 w-8 flex items-center justify-center rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
+                    <FaLinkedinIn size={14} />
                   </a>
                 )}
                 {rec.githubUrl && (
                   <a href={rec.githubUrl} target="_blank" rel="noopener noreferrer"
                     title={p.detail.github}
                     className="h-8 w-8 flex items-center justify-center rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
-                    <Code2 size={14} />
+                    <FaGithub size={14} />
                   </a>
                 )}
               </div>
@@ -537,7 +535,7 @@ export function RecommendationDetail({ id }: { id: string }) {
             </div>
           </motion.div>
 
-          {/* CV preview — ô nhỏ dưới identity card (ảnh CV) */}
+          {/* CV preview — below identity card */}
           {rec.hasCv && (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
@@ -564,14 +562,14 @@ export function RecommendationDetail({ id }: { id: string }) {
               </div>
 
               {cvPreviewLoading ? (
-                <div className="h-[520px] flex items-center justify-center bg-gray-50 dark:bg-gray-900/40">
+                <div className="h-130 flex items-center justify-center bg-gray-50 dark:bg-gray-900/40">
                   <Loader2 size={20} className="animate-spin text-primary" />
                 </div>
               ) : cvPreview && cvIsImage ? (
                 <button
                   type="button"
                   onClick={() => setCvLightbox(true)}
-                  className="group relative block w-full text-left max-h-[640px] overflow-y-auto bg-gray-50 dark:bg-gray-900/40 scrollbar-hide"
+                  className="group relative block w-full text-left max-h-160 overflow-y-auto bg-gray-50 dark:bg-gray-900/40 scrollbar-hide"
                   title={p.detail.cvPreviewHint}
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -606,92 +604,51 @@ export function RecommendationDetail({ id }: { id: string }) {
               )}
             </motion.div>
           )}
+
         </div>
 
         {/* ── Right: Details ── */}
         <div className="flex flex-col gap-4">
-          {/* Info card */}
+          {/* Overview — Info + Contact merged */}
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}
             className="hr-glass-card p-5 flex flex-col gap-4">
             <h2 className={cn("text-[13px] font-bold uppercase tracking-wider", portalSubtextAlt)}>{p.detail.info}</h2>
 
-            <div className="flex flex-col gap-4 divide-y divide-gray-100 dark:divide-gray-800">
+            <div className="flex flex-col divide-y divide-gray-100 dark:divide-gray-800 -my-0.5">
               {rec.targetRole && (
-                <DetailRow icon={Briefcase} label={p.card.targetRole}>
-                  {rec.targetRole}
+                <DetailRow icon={Briefcase} label={p.card.targetRole}>{rec.targetRole}</DetailRow>
+              )}
+              {rec.questionSetTitle && (
+                <DetailRow icon={Hash} label={p.card.questionSet}>{rec.questionSetTitle}</DetailRow>
+              )}
+              {rec.completedAt && (
+                <DetailRow icon={Clock} label={p.detail.completedAt}>{formatRelativeTime(rec.completedAt, lang)}</DetailRow>
+              )}
+              {rec.phoneNumber && (
+                <DetailRow icon={Phone} label={p.detail.phone}>
+                  <a href={`tel:${rec.phoneNumber}`} className="hover:text-primary transition-colors">{rec.phoneNumber}</a>
                 </DetailRow>
               )}
-
-              {rec.questionSetTitle && (
-                <div className="pt-3">
-                  <DetailRow icon={Hash} label={p.card.questionSet}>
-                    {rec.questionSetTitle}
-                  </DetailRow>
-                </div>
+              {rec.address && (
+                <DetailRow icon={MapPin} label={p.detail.address}>{rec.address}</DetailRow>
               )}
-
-              {rec.completedAt && (
-                <div className="pt-3">
-                  <DetailRow icon={Clock} label={p.detail.completedAt}>
-                    {formatRelativeTime(rec.completedAt, lang)}
-                  </DetailRow>
-                </div>
+              {rec.linkedInUrl && (
+                <DetailRow icon={FaLinkedinIn} label={p.detail.linkedIn}>
+                  <a href={rec.linkedInUrl} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline break-all">{rec.linkedInUrl}</a>
+                </DetailRow>
+              )}
+              {rec.githubUrl && (
+                <DetailRow icon={FaGithub} label={p.detail.github}>
+                  <a href={rec.githubUrl} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline break-all">{rec.githubUrl}</a>
+                </DetailRow>
+              )}
+              {rec.bio && (
+                <DetailRow icon={User} label={p.detail.bio}>
+                  <span className="whitespace-pre-line leading-relaxed font-normal">{rec.bio}</span>
+                </DetailRow>
               )}
             </div>
           </motion.div>
-
-          {/* Profile / contact / social */}
-          {(hasProfileContact || hasSocial) && (
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.07 }}
-              className="hr-glass-card p-5 flex flex-col gap-4">
-              <h2 className={cn("text-[13px] font-bold uppercase tracking-wider", portalSubtextAlt)}>
-                {p.detail.profileTitle}
-              </h2>
-              <div className="flex flex-col gap-4 divide-y divide-gray-100 dark:divide-gray-800">
-                {rec.bio && (
-                  <DetailRow icon={User} label={p.detail.bio}>
-                    <span className="whitespace-pre-line leading-relaxed font-normal">{rec.bio}</span>
-                  </DetailRow>
-                )}
-                {rec.phoneNumber && (
-                  <div className="pt-3">
-                    <DetailRow icon={Phone} label={p.detail.phone}>
-                      <a href={`tel:${rec.phoneNumber}`} className="hover:text-primary transition-colors">
-                        {rec.phoneNumber}
-                      </a>
-                    </DetailRow>
-                  </div>
-                )}
-                {rec.address && (
-                  <div className="pt-3">
-                    <DetailRow icon={MapPin} label={p.detail.address}>
-                      {rec.address}
-                    </DetailRow>
-                  </div>
-                )}
-                {rec.linkedInUrl && (
-                  <div className="pt-3">
-                    <DetailRow icon={Link2} label={p.detail.linkedIn}>
-                      <a href={rec.linkedInUrl} target="_blank" rel="noopener noreferrer"
-                        className="text-primary hover:underline break-all">
-                        {rec.linkedInUrl}
-                      </a>
-                    </DetailRow>
-                  </div>
-                )}
-                {rec.githubUrl && (
-                  <div className="pt-3">
-                    <DetailRow icon={Code2} label={p.detail.github}>
-                      <a href={rec.githubUrl} target="_blank" rel="noopener noreferrer"
-                        className="text-primary hover:underline break-all">
-                        {rec.githubUrl}
-                      </a>
-                    </DetailRow>
-                  </div>
-                )}
-              </div>
-            </motion.div>
-          )}
 
           {/* CV */}
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.09 }}
@@ -765,12 +722,10 @@ export function RecommendationDetail({ id }: { id: string }) {
                 </h2>
               </div>
               <p className={cn("text-[11px] mb-3", portalSubtextAlt)}>{p.detail.candidateContactSubtitle}</p>
-              <div className="flex flex-col gap-3">
+              <div className="flex flex-col divide-y divide-gray-100 dark:divide-gray-800 -my-0.5">
                 {rec.invitationSharedPhoneNumber && (
                   <DetailRow icon={Phone} label={p.detail.candidateContactPhone}>
-                    <a href={`tel:${rec.invitationSharedPhoneNumber}`} className="hover:text-primary transition-colors">
-                      {rec.invitationSharedPhoneNumber}
-                    </a>
+                    <a href={`tel:${rec.invitationSharedPhoneNumber}`} className="hover:text-primary transition-colors">{rec.invitationSharedPhoneNumber}</a>
                   </DetailRow>
                 )}
                 {rec.invitationResponseMessage && (
