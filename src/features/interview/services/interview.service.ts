@@ -30,6 +30,7 @@ interface BackendJobQuestion {
   difficulty?: string;
   rationale?: string;
   sampleAnswer?: string;
+  evaluationCriteria?: unknown;
   order?: number;
   orderIndex?: number;
 }
@@ -74,6 +75,7 @@ interface BackendJobMeta {
   hasDraft?: boolean;
   questionSetId?: string;
   questionCount?: number;
+  isFromStudio?: boolean;
 }
 
 interface BackendJobFailure {
@@ -102,6 +104,7 @@ interface BackendJob {
   updatedAt?: string;
   completedAt?: string | null;
   hasDraft?: boolean;
+  isFromStudio?: boolean;
   ui?: BackendJobUI;
   meta?: BackendJobMeta;
   failure?: BackendJobFailure;
@@ -185,6 +188,49 @@ function normalizeDifficulty(raw?: string): DifficultyLevel {
   return allowed.includes(normalized) ? normalized : "Medium";
 }
 
+/** SCRUM-374: evaluationCriteria (string[] | object[]) → text rubric như Studio. */
+function formatScoringRubric(raw?: unknown): string | undefined {
+  if (raw == null) return undefined;
+  if (typeof raw === "string") {
+    const t = raw.trim();
+    return t || undefined;
+  }
+  if (Array.isArray(raw)) {
+    const lines = raw
+      .map((item) => {
+        if (typeof item === "string") return item.trim();
+        if (item && typeof item === "object") {
+          const o = item as Record<string, unknown>;
+          if (typeof o.text === "string") return o.text.trim();
+          if (typeof o.criterion === "string") return o.criterion.trim();
+          if (typeof o.name === "string") return o.name.trim();
+        }
+        return "";
+      })
+      .filter(Boolean);
+    return lines.length > 0 ? lines.join("\n") : undefined;
+  }
+  return undefined;
+}
+
+function isStudioMirrorNote(hrNote?: string | null): boolean {
+  return !!hrNote && hrNote.trim().toUpperCase().startsWith("STUDIO_MIRROR");
+}
+
+function mapBackendQuestion(q: BackendJobQuestion, i: number): GeneratedQuestion {
+  return {
+    id: q.id ?? q.questionId ?? `q-${i}`,
+    question: q.question,
+    questionType: normalizeQuestionType(q.questionType),
+    difficulty: normalizeDifficulty(q.difficulty),
+    rationale: q.rationale,
+    sampleAnswer: q.sampleAnswer,
+    scoringRubric: formatScoringRubric(q.evaluationCriteria),
+    citations: [],
+    orderIndex: q.order ?? q.orderIndex ?? i,
+  };
+}
+
 function mapJobPhaseToStatus(phase: string): GenerationStatus {
   const p = phase.toUpperCase();
   if (p === "COMPLETED") return "COMPLETED";
@@ -240,16 +286,7 @@ function mapJobToSession(job: BackendJob): GenerationSession {
       summary: job.plan?.summary,
     },
     generatedQuestions: job.questions?.length
-      ? job.questions.map((q, i) => ({
-          id: q.id ?? q.questionId ?? `q-${i}`,
-          question: q.question,
-          questionType: normalizeQuestionType(q.questionType),
-          difficulty: normalizeDifficulty(q.difficulty),
-          rationale: q.rationale,
-          sampleAnswer: q.sampleAnswer,
-          citations: [],
-          orderIndex: q.order ?? q.orderIndex ?? i,
-        }))
+      ? job.questions.map((q, i) => mapBackendQuestion(q, i))
       // Use actual generated count from BE (meta or top-level) for the list count display
       : Array.from({ length: meta?.questionCount ?? job.questionCount ?? 0 }, (_, i) => ({
           id: `stub-${id}-${i}`,
@@ -273,6 +310,13 @@ function mapJobToSession(job: BackendJob): GenerationSession {
     canEditPlan: ui?.actions?.canEditPlan ?? false,
     canApprovePlan: ui?.actions?.canApprovePlan ?? false,
     failureMessage: job.failure?.reason ?? job.failure?.detail,
+    isFromStudio:
+      meta?.isFromStudio ??
+      job.isFromStudio ??
+      isStudioMirrorNote(
+        job.hrNote ??
+          (typeof job.input?.hrNote === "string" ? job.input.hrNote : undefined)
+      ),
   };
 }
 
@@ -592,16 +636,7 @@ export async function getJobQuestions(jobId: string): Promise<GeneratedQuestion[
       items = data.items;
     }
     return items
-      .map((q, i) => ({
-        id: q.id ?? q.questionId ?? `q-${i}`,
-        question: q.question,
-        questionType: normalizeQuestionType(q.questionType),
-        difficulty: normalizeDifficulty(q.difficulty),
-        rationale: q.rationale,
-        sampleAnswer: q.sampleAnswer,
-        citations: [],
-        orderIndex: q.order ?? q.orderIndex ?? i,
-      }))
+      .map((q, i) => mapBackendQuestion(q, i))
       .sort((a, b) => a.orderIndex - b.orderIndex);
   } catch {
     return [];
@@ -617,12 +652,21 @@ export async function updateJobQuestion(
     difficulty?: string;
     rationale?: string | null;
     sampleAnswer?: string | null;
+    scoringRubric?: string | null;
   }
 ): Promise<boolean> {
   try {
+    const body: Record<string, unknown> = { ...payload };
+    if ("scoringRubric" in payload) {
+      const rubric = payload.scoringRubric?.trim();
+      body.evaluationCriteria = rubric
+        ? rubric.split(/\n+/).map((s) => s.trim()).filter(Boolean)
+        : [];
+      delete body.scoringRubric;
+    }
     await apiClient.put(
       `/api/hr/question-generation-jobs/${jobId}/questions/${questionId}`,
-      payload
+      body
     );
     return true;
   } catch {
@@ -743,6 +787,7 @@ function normalizeDraftQuestion(raw: unknown, index: number): GeneratedQuestion 
     difficulty: normalizeDifficulty(typeof src.difficulty === "string" ? src.difficulty : undefined),
     rationale: typeof src.rationale === "string" ? src.rationale : undefined,
     sampleAnswer: typeof src.sampleAnswer === "string" ? src.sampleAnswer : undefined,
+    scoringRubric: formatScoringRubric(src.evaluationCriteria),
     citations: [],
     orderIndex: typeof src.order === "number" ? src.order : typeof src.orderIndex === "number" ? src.orderIndex : index,
   };
@@ -816,10 +861,19 @@ export async function updateQuestionSetQuestion(
     difficulty?: string;
     rationale?: string | null;
     sampleAnswer?: string | null;
+    scoringRubric?: string | null;
   }
 ): Promise<boolean> {
   try {
-    await apiClient.put(`/api/hr/question-sets/${questionSetId}/questions/${questionId}`, payload);
+    const body: Record<string, unknown> = { ...payload };
+    if ("scoringRubric" in payload) {
+      const rubric = payload.scoringRubric?.trim();
+      body.evaluationCriteria = rubric
+        ? rubric.split(/\n+/).map((s) => s.trim()).filter(Boolean)
+        : [];
+      delete body.scoringRubric;
+    }
+    await apiClient.put(`/api/hr/question-sets/${questionSetId}/questions/${questionId}`, body);
     return true;
   } catch {
     return false;

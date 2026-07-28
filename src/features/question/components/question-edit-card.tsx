@@ -26,7 +26,6 @@ import {
   portalSubtext,
 } from "@/shared/utils/portal-ui";
 import type { GeneratedQuestion, DifficultyLevel, QuestionType, QuestionSuggestion } from "@/features/interview/types/generation-session";
-import { AskAIPanel } from "./ask-ai-panel";
 
 const QUESTION_TYPES: QuestionType[] = ["Technical", "Behavioral", "Situational", "System-design", "Problem-solving"];
 const DIFFICULTIES: DifficultyLevel[] = ["Easy", "Medium", "Hard"];
@@ -54,6 +53,9 @@ interface QuestionEditCardProps {
   isDragging?: boolean;
   /** Set is PUBLISHED — BE rejects add/edit/delete/reorder, so hide those affordances. */
   locked?: boolean;
+  isAskAIActive?: boolean;
+  /** SCRUM-374: hiển thị sample + scoring rubric như Studio v2. */
+  studioFormat?: boolean;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   dragHandleListeners?: Record<string, any>;
   onSave: (updated: Partial<GeneratedQuestion>) => Promise<boolean>;
@@ -61,6 +63,7 @@ interface QuestionEditCardProps {
   onDelete: () => void;
   onMoveUp: () => void;
   onMoveDown: () => void;
+  onAskAI?: (applyCallback: (s: QuestionSuggestion) => void) => void;
 }
 
 export function QuestionEditCard({
@@ -71,20 +74,25 @@ export function QuestionEditCard({
   isLast = false,
   isDragging = false,
   locked = false,
+  isAskAIActive = false,
+  studioFormat = false,
   dragHandleListeners,
   onSave,
   onEditingChange,
   onDelete,
   onMoveUp,
   onMoveDown,
+  onAskAI,
 }: QuestionEditCardProps) {
   const { t } = useLanguage();
   const rp = t.reviewPage;
   const [isAnswerOpen, setIsAnswerOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [showAskAI, setShowAskAI] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  // SCRUM-374: dùng format Studio khi flag session hoặc câu hỏi đã có rubric
+  const useStudioFormat = studioFormat || !!question.scoringRubric?.trim();
 
   // Edit state
   const [editQuestion, setEditQuestion] = useState(question.question);
@@ -92,6 +100,7 @@ export function QuestionEditCard({
   const [editDifficulty, setEditDifficulty] = useState<DifficultyLevel>(question.difficulty);
   const [editRationale, setEditRationale] = useState(question.rationale ?? "");
   const [editSampleAnswer, setEditSampleAnswer] = useState(question.sampleAnswer ?? "");
+  const [editScoringRubric, setEditScoringRubric] = useState(question.scoringRubric ?? "");
 
   function startEdit() {
     setEditQuestion(question.question);
@@ -99,6 +108,7 @@ export function QuestionEditCard({
     setEditDifficulty(question.difficulty);
     setEditRationale(question.rationale ?? "");
     setEditSampleAnswer(question.sampleAnswer ?? "");
+    setEditScoringRubric(question.scoringRubric ?? "");
     setIsEditing(true);
     onEditingChange?.(true);
   }
@@ -111,13 +121,18 @@ export function QuestionEditCard({
   async function saveEdit() {
     if (isSaving) return;
     setIsSaving(true);
-    const ok = await onSave({
+    const payload: Partial<GeneratedQuestion> = {
       question: editQuestion,
       questionType: editType,
       difficulty: editDifficulty,
-      rationale: editRationale,
       sampleAnswer: editSampleAnswer,
-    });
+    };
+    if (useStudioFormat) {
+      payload.scoringRubric = editScoringRubric;
+    } else {
+      payload.rationale = editRationale;
+    }
+    const ok = await onSave(payload);
     setIsSaving(false);
     if (ok) {
       setIsEditing(false);
@@ -132,7 +147,6 @@ export function QuestionEditCard({
     setEditRationale(suggestion.rationale ?? question.rationale ?? "");
     setEditSampleAnswer(suggestion.sampleAnswer ?? question.sampleAnswer ?? "");
     setIsEditing(true);
-    setShowAskAI(false);
   }
 
   return (
@@ -236,11 +250,15 @@ export function QuestionEditCard({
                 </div>
                 <div>
                   <label className={cn("text-xs font-medium mb-1 block", portalHeading)}>
-                    {rp.questionFields.rationale}
+                    {useStudioFormat ? "Scoring rubric" : rp.questionFields.rationale}
                   </label>
                   <textarea
-                    value={editRationale}
-                    onChange={(e) => setEditRationale(e.target.value)}
+                    value={useStudioFormat ? editScoringRubric : editRationale}
+                    onChange={(e) =>
+                      useStudioFormat
+                        ? setEditScoringRubric(e.target.value)
+                        : setEditRationale(e.target.value)
+                    }
                     rows={2}
                     className={cn(
                       "w-full resize-none rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary",
@@ -299,42 +317,78 @@ export function QuestionEditCard({
               <>
                 <QuestionContent text={question.question} className={cn("text-sm leading-relaxed font-medium", portalHeading)} />
 
-                {/* Toggle answer */}
+                {/* Toggle answer / Studio sample+rubric */}
                 <button
                   onClick={() => setIsAnswerOpen(!isAnswerOpen)}
                   className="flex items-center gap-1 mt-3 text-xs font-semibold text-primary hover:text-[#5535dd] transition-colors"
                 >
                   {isAnswerOpen ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
-                  {isAnswerOpen ? rp.hideSampleAnswer : rp.showSampleAnswer}
+                  {useStudioFormat
+                    ? isAnswerOpen
+                      ? "Thu gọn sample & rubric"
+                      : "Sample answer & scoring rubric"
+                    : isAnswerOpen
+                      ? rp.hideSampleAnswer
+                      : rp.showSampleAnswer}
                 </button>
 
                 {isAnswerOpen && (
-                  <div className={cn("mt-3 rounded-lg p-4 animate-fade-up", portalBanner)}>
-                    <div className="flex items-center gap-1.5 mb-2">
-                      <Sparkles size={13} className="text-primary" />
-                      <span className="text-xs font-semibold text-primary">
-                        {t.resultsPage.questionCard.aiAnswerLabel}
-                      </span>
-                    </div>
-                    {question.sampleAnswer && (
-                      <QuestionContent text={question.sampleAnswer} className={cn("text-sm leading-relaxed", portalHeading)} />
-                    )}
-                    {question.rationale && (
-                      <p className={cn("text-xs mt-2", portalSubtext)}>
-                        <strong>Rationale:</strong> {question.rationale}
-                      </p>
-                    )}
-                    {question.citations && question.citations.length > 0 && (
-                      <div className="mt-2 space-y-1">
-                        {question.citations.map((cit, i) => (
-                          <p key={i} className={cn("text-xs", portalSubtext)}>
-                            📎 {cit.source}
-                            {cit.excerpt && ` — "${cit.excerpt}"`}
+                  useStudioFormat ? (
+                    <div className="mt-3 space-y-1.5 animate-fade-up">
+                      {question.sampleAnswer?.trim() ? (
+                        <div className="rounded-md border border-emerald-200/70 bg-emerald-50/80 px-3 py-2 dark:border-emerald-900 dark:bg-emerald-950/40">
+                          <p className="text-[10px] font-semibold uppercase tracking-wide text-emerald-800 dark:text-emerald-300">
+                            Sample answer
                           </p>
-                        ))}
+                          <QuestionContent
+                            text={question.sampleAnswer}
+                            className={cn("mt-0.5 text-sm leading-relaxed", portalHeading)}
+                          />
+                        </div>
+                      ) : (
+                        <p className={cn("text-[11px]", portalSubtext)}>Chưa có sample answer.</p>
+                      )}
+                      {question.scoringRubric?.trim() ? (
+                        <div className="rounded-md border border-amber-200/70 bg-amber-50/80 px-3 py-2 dark:border-amber-900 dark:bg-amber-950/40">
+                          <p className="text-[10px] font-semibold uppercase tracking-wide text-amber-900 dark:text-amber-200">
+                            Scoring rubric
+                          </p>
+                          <p className={cn("mt-0.5 text-sm whitespace-pre-wrap leading-relaxed", portalHeading)}>
+                            {question.scoringRubric}
+                          </p>
+                        </div>
+                      ) : (
+                        <p className={cn("text-[11px]", portalSubtext)}>Chưa có scoring rubric.</p>
+                      )}
+                    </div>
+                  ) : (
+                    <div className={cn("mt-3 rounded-lg p-4 animate-fade-up", portalBanner)}>
+                      <div className="flex items-center gap-1.5 mb-2">
+                        <Sparkles size={13} className="text-primary" />
+                        <span className="text-xs font-semibold text-primary">
+                          {t.resultsPage.questionCard.aiAnswerLabel}
+                        </span>
                       </div>
-                    )}
-                  </div>
+                      {question.sampleAnswer && (
+                        <QuestionContent text={question.sampleAnswer} className={cn("text-sm leading-relaxed", portalHeading)} />
+                      )}
+                      {question.rationale && (
+                        <p className={cn("text-xs mt-2", portalSubtext)}>
+                          <strong>Rationale:</strong> {question.rationale}
+                        </p>
+                      )}
+                      {question.citations && question.citations.length > 0 && (
+                        <div className="mt-2 space-y-1">
+                          {question.citations.map((cit, i) => (
+                            <p key={i} className={cn("text-xs", portalSubtext)}>
+                              📎 {cit.source}
+                              {cit.excerpt && ` — "${cit.excerpt}"`}
+                            </p>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )
                 )}
               </>
             )}
@@ -345,11 +399,11 @@ export function QuestionEditCard({
             <div className="hidden sm:flex flex-col items-center gap-1 shrink-0">
               <button
                 type="button"
-                onClick={() => setShowAskAI(!showAskAI)}
+                onClick={() => onAskAI?.(handleApplyAISuggestion)}
                 title={rp.questionActions.askAI}
                 className={cn(
                   "w-7 h-7 flex items-center justify-center rounded-lg transition-colors",
-                  showAskAI
+                  isAskAIActive
                     ? "bg-primary/10 text-primary"
                     : "text-gray-400 dark:text-gray-500 hover:text-primary hover:bg-primary/10"
                 )}
@@ -410,11 +464,11 @@ export function QuestionEditCard({
           <div className="sm:hidden flex items-center gap-1 mt-3 pt-2.5 border-t border-gray-100 dark:border-gray-800">
             <button
               type="button"
-              onClick={() => setShowAskAI(!showAskAI)}
+              onClick={() => onAskAI?.(handleApplyAISuggestion)}
               title={rp.questionActions.askAI}
               className={cn(
                 "flex-1 flex items-center justify-center gap-1.5 py-1.5 text-xs rounded-lg transition-colors",
-                showAskAI
+                isAskAIActive
                   ? "bg-primary/10 text-primary"
                   : "text-gray-500 dark:text-gray-400 hover:text-primary hover:bg-primary/10"
               )}
@@ -495,15 +549,6 @@ export function QuestionEditCard({
         )}
       </div>
 
-      {/* Ask AI Panel */}
-      {showAskAI && (
-        <AskAIPanel
-          question={question}
-          sessionId={sessionId}
-          onApplySuggestion={handleApplyAISuggestion}
-          onClose={() => setShowAskAI(false)}
-        />
-      )}
     </div>
   );
 }
