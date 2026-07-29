@@ -19,6 +19,7 @@ import {
 import type { AnalyzeJobDescriptionResponse, StudioDocument, StudioLibraryDocument } from "@/features/studio/types/studio.types";
 import * as studioApi from "@/features/studio/services/studio.service";
 import { cn } from "@/lib/cn";
+import { useLanguage } from "@/shared/providers/language-context";
 import { portalCard, portalHeading, portalSubtext } from "@/shared/utils/portal-ui";
 
 interface Props {
@@ -75,13 +76,15 @@ function JdFileIcon({ fileName }: { fileName: string }) {
 }
 
 function RagStatusChip({ status }: { status: string }) {
+  const { t } = useLanguage();
+  const src = t.studioPage.sources;
   const s = status.toUpperCase();
   const { bg, text, label } = s === "COMPLETED"
-    ? { bg: "bg-emerald-100 dark:bg-emerald-950/40", text: "text-emerald-800 dark:text-emerald-200", label: "Sẵn sàng" }
+    ? { bg: "bg-emerald-100 dark:bg-emerald-950/40", text: "text-emerald-800 dark:text-emerald-200", label: src.ragReady }
     : s === "PROCESSING" || s === "QUEUED" || s === "PENDING"
-      ? { bg: "bg-amber-100 dark:bg-amber-950/40", text: "text-amber-800 dark:text-amber-200", label: s === "PROCESSING" ? "Đang xử lý" : "Hàng chờ" }
+      ? { bg: "bg-amber-100 dark:bg-amber-950/40", text: "text-amber-800 dark:text-amber-200", label: s === "PROCESSING" ? src.ragProcessing : src.ragQueued }
       : s === "FAILED"
-        ? { bg: "bg-red-100 dark:bg-red-950/40", text: "text-red-800 dark:text-red-200", label: "Lỗi" }
+        ? { bg: "bg-red-100 dark:bg-red-950/40", text: "text-red-800 dark:text-red-200", label: src.ragFailed }
         : { bg: "bg-gray-100 dark:bg-gray-800", text: "text-gray-600 dark:text-gray-300", label: status };
   return (
     <span className={cn("inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-semibold", bg, text)}>
@@ -94,6 +97,8 @@ function RagStatusChip({ status }: { status: string }) {
 }
 
 function SectionLabel({ text, required }: { text: string; required?: boolean }) {
+  const { t } = useLanguage();
+  const src = t.studioPage.sources;
   return (
     <div className="flex items-center gap-1.5">
       <span className="text-xs font-semibold text-gray-700 dark:text-gray-200">{text}</span>
@@ -104,7 +109,7 @@ function SectionLabel({ text, required }: { text: string; required?: boolean }) 
             ? "bg-primary/10 text-primary"
             : "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400"
         )}>
-          {required ? "Bắt buộc" : "Tùy chọn"}
+          {required ? src.required : src.optional}
         </span>
       )}
     </div>
@@ -141,6 +146,8 @@ function SampleJdModal({
   onClose: () => void;
   onUse: (content: string) => void;
 }) {
+  const { t } = useLanguage();
+  const src = t.studioPage.sources;
   const [visible, setVisible] = useState(false);
   const [copied, setCopied] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -187,7 +194,7 @@ function SampleJdModal({
               <BookOpen size={15} className="text-violet-600 dark:text-violet-400" />
             </div>
             <div>
-              <p className={cn("text-sm font-semibold leading-tight", portalHeading)}>JD mẫu</p>
+              <p className={cn("text-sm font-semibold leading-tight", portalHeading)}>{src.sampleJd}</p>
               <p className={cn("mt-0.5 text-[11px]", portalSubtext)}>Fullstack Developer · 1–3 năm kinh nghiệm</p>
             </div>
           </div>
@@ -226,7 +233,7 @@ function SampleJdModal({
             )}
           >
             {copied ? <Check size={13} className="text-emerald-500" /> : <Copy size={13} />}
-            {copied ? "Đã sao chép" : "Copy"}
+            {copied ? src.copied : "Copy"}
           </button>
           <div className="flex-1" />
           <button
@@ -238,14 +245,14 @@ function SampleJdModal({
               portalHeading
             )}
           >
-            Đóng
+            {src.close}
           </button>
           <button
             type="button"
             onClick={() => { onUse(SAMPLE_JD); close(); }}
             className="shimmer-button h-8 rounded-lg px-4 text-xs font-semibold text-white hr-cta-btn"
           >
-            Dùng mẫu này
+            {src.useSample}
           </button>
         </div>
       </div>
@@ -268,6 +275,8 @@ export function SourcesPanel({
   projectId,
   locked = false,
 }: Props) {
+  const { t } = useLanguage();
+  const src = t.studioPage.sources;
   const [jdMode, setJdMode] = useState<JdMode>(jdFileName ? "upload" : "paste");
   const [sampleOpen, setSampleOpen] = useState(false);
   const [dragging, setDragging] = useState(false);
@@ -350,7 +359,7 @@ export function SourcesPanel({
       {locked && (
         <div
           className="absolute inset-0 z-10 cursor-not-allowed rounded-xl"
-          title="Đã khóa — bấm Tạo bộ mới để chỉnh Sources"
+          title={src.lockedTitle}
           aria-hidden
         />
       )}
@@ -360,7 +369,7 @@ export function SourcesPanel({
         <section className="space-y-2.5">
           <div className="space-y-1">
             <div className="flex items-center justify-between gap-2">
-              <span className="text-xs font-semibold text-gray-700 dark:text-gray-200">Mô tả công việc</span>
+              <span className="text-xs font-semibold text-gray-700 dark:text-gray-200">{src.jdTitle}</span>
               <button
                 type="button"
                 onClick={() => setSampleOpen(true)}
@@ -370,11 +379,11 @@ export function SourcesPanel({
                 )}
               >
                 <BookOpen size={10} />
-                JD mẫu
+                {src.sampleJd}
               </button>
             </div>
             <div className="flex items-center gap-1">
-              <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[9px] font-semibold text-primary">Bắt buộc</span>
+              <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[9px] font-semibold text-primary">{src.required}</span>
               {hasJd && (
                 <span className="flex items-center gap-0.5 rounded-full bg-emerald-50 px-1.5 py-0.5 text-[9px] font-medium text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
                   <Check className="h-2 w-2" strokeWidth={3} />
@@ -394,10 +403,10 @@ export function SourcesPanel({
                   "flex-1 rounded-md px-3 py-1.5 text-[11px] font-medium transition-colors",
                   jdMode === mode
                     ? "bg-primary text-white shadow-sm"
-                    : "text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
+                    : "text-gray-600 hover:bg-gray-200 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-gray-100"
                 )}
               >
-                {mode === "paste" ? "Paste text" : "Upload file"}
+                {mode === "paste" ? src.pasteMode : src.uploadMode}
               </button>
             ))}
           </div>
@@ -408,13 +417,15 @@ export function SourcesPanel({
               <textarea
                 value={jdContent}
                 onChange={(e) => onJdChange(e.target.value)}
-                placeholder="Dán mô tả công việc vào đây…"
+                placeholder={src.placeholder}
                 rows={10}
                 className="w-full min-h-48 max-h-80 resize-y rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-xs leading-relaxed text-gray-900 placeholder:text-gray-400 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/20 dark:border-gray-700 dark:bg-gray-900/80 dark:text-gray-100 dark:placeholder:text-gray-500"
               />
               <div className="flex items-center justify-between gap-2">
                 <p className={cn("text-[10px]", portalSubtext)}>
-                  {counts.words > 0 ? `${counts.words} từ · ${counts.chars} ký tự` : "Chưa có nội dung"}
+                  {counts.words > 0
+                    ? src.wordCount.replace("{{words}}", String(counts.words)).replace("{{chars}}", String(counts.chars))
+                    : src.noContent}
                 </p>
                 <button
                   type="button"
@@ -422,7 +433,7 @@ export function SourcesPanel({
                   disabled={!jdContent.trim()}
                   className="shrink-0 rounded-lg bg-primary px-2.5 py-1.5 text-[11px] font-medium text-white disabled:opacity-40 hover:bg-primary-hover transition-colors"
                 >
-                  Lưu & Phân tích
+                  {src.saveAndAnalyze}
                 </button>
               </div>
             </div>
@@ -435,15 +446,15 @@ export function SourcesPanel({
                     {jdFileName}
                   </p>
                   <p className={cn("text-[11px]", portalSubtext)}>
-                    Đã tải lên & phân tích · {counts.words} từ
+                    {src.uploadedInfo.replace("{{words}}", String(counts.words))}
                   </p>
                 </div>
                 <button
                   type="button"
                   onClick={() => fileRef.current?.click()}
-                  className="shrink-0 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-[11px] font-medium text-gray-700 hover:border-primary/40 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200"
+                  className="shrink-0 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-[11px] font-medium text-gray-700 transition-colors hover:border-primary/40 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200 dark:hover:border-gray-500 dark:hover:bg-gray-800 dark:hover:text-gray-100"
                 >
-                  Thay file
+                  {src.replaceFile}
                 </button>
               </div>
               <input ref={fileRef} type="file" className="hidden" accept={JD_ACCEPT} onChange={(e) => void handleJdFile(e.target.files?.[0])} />
@@ -456,7 +467,7 @@ export function SourcesPanel({
                   dragging ? "border-primary bg-primary/5 text-primary" : "border-gray-200 text-gray-400 dark:border-gray-700"
                 )}
               >
-                Kéo thả file mới để thay thế
+                {src.dropToReplace}
               </div>
             </div>
           ) : (
@@ -476,9 +487,9 @@ export function SourcesPanel({
                 <FileText size={22} className="text-primary" />
               )}
               <p className={cn("text-sm font-medium", portalHeading)}>
-                {uploading ? "Đang tải lên & phân tích…" : "Kéo thả hoặc chọn file JD"}
+                {uploading ? src.uploadingAnalyzing : src.dropOrClick}
               </p>
-              <p className={cn("text-xs", portalSubtext)}>PDF · DOCX · TXT · JPG · PNG · tối đa 20 MB</p>
+              <p className={cn("text-xs", portalSubtext)}>PDF · DOCX · TXT · JPG · PNG · max 20 MB</p>
               <input ref={fileRef} type="file" className="hidden" accept={JD_ACCEPT} onChange={(e) => void handleJdFile(e.target.files?.[0])} />
             </div>
           )}
@@ -488,14 +499,14 @@ export function SourcesPanel({
         {/* ── Auto-detected summary ── */}
         {summary && (
           <section className="space-y-1.5">
-            <SectionLabel text="Nhận diện tự động" />
+            <SectionLabel text={src.autoDetect} />
             <div className="rounded-xl border border-gray-100 bg-gray-50/60 p-2.5 dark:border-gray-800 dark:bg-gray-950/40">
               {/* Role / seniority / language */}
               <div className="grid grid-cols-2 gap-x-3 gap-y-1">
                 {[
-                  { label: "Vị trí", value: summary.detectedRole },
-                  { label: "Cấp độ", value: summary.detectedSeniority },
-                  { label: "Ngôn ngữ", value: summary.detectedLanguage },
+                  { label: src.colRole, value: summary.detectedRole },
+                  { label: src.colLevel, value: summary.detectedSeniority },
+                  { label: src.colLang, value: summary.detectedLanguage },
                 ].filter(({ value }) => Boolean(value)).map(({ label, value }) => (
                   <div key={label} className="min-w-0">
                     <p className="text-[9px] uppercase tracking-wide text-gray-400">{label}</p>
@@ -506,7 +517,7 @@ export function SourcesPanel({
               {/* Skills */}
               {skills.length > 0 && (
                 <div className="mt-2 space-y-1">
-                  <p className="text-[9px] uppercase tracking-wide text-gray-400">Kỹ năng · {skills.length}</p>
+                  <p className="text-[9px] uppercase tracking-wide text-gray-400">{src.colSkills} · {skills.length}</p>
                   <div className="flex flex-wrap gap-1">
                     {skills.slice(0, 8).map((skill) => (
                       <span key={skill} className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">
@@ -528,10 +539,10 @@ export function SourcesPanel({
         {/* ── Knowledge documents ── */}
         <section className="space-y-2.5">
           <div className="flex items-center justify-between gap-2">
-            <SectionLabel text="Tài liệu bổ sung" required={false} />
+            <SectionLabel text={src.additionalDocs} required={false} />
             {selectedDocCount > 0 && (
               <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
-                {selectedDocCount} đang dùng
+                {src.inUse.replace("{{count}}", String(selectedDocCount))}
               </span>
             )}
           </div>
@@ -540,15 +551,15 @@ export function SourcesPanel({
               <button
                 type="button"
                 onClick={() => setLibraryOpen((v) => !v)}
-                className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-gray-200 py-2 text-[11px] font-medium text-gray-600 hover:border-primary/40 hover:bg-primary/5 hover:text-primary dark:border-gray-700 dark:text-gray-300 transition-colors"
+                className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-gray-200 py-2 text-[11px] font-medium text-gray-600 whitespace-nowrap transition-colors hover:border-primary/40 hover:bg-primary/5 hover:text-primary dark:border-gray-700 dark:text-gray-300 dark:hover:border-primary/50 dark:hover:bg-primary/10 dark:hover:text-primary"
               >
                 <FolderOpen size={12} />
-                Từ Knowledge Base
+                {src.fromKb}
               </button>
             )}
-            <label className="inline-flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-gray-200 py-2 text-[11px] font-medium text-gray-600 hover:border-primary/40 hover:bg-primary/5 hover:text-primary dark:border-gray-700 dark:text-gray-300 transition-colors">
+            <label className="inline-flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-gray-200 py-2 text-[11px] font-medium text-gray-600 whitespace-nowrap transition-colors hover:border-primary/40 hover:bg-primary/5 hover:text-primary dark:border-gray-700 dark:text-gray-300 dark:hover:border-primary/50 dark:hover:bg-primary/10 dark:hover:text-primary">
               <Upload size={12} />
-              Upload file
+              {src.uploadDoc}
               <input type="file" className="hidden" accept=".pdf,.docx,.txt" onChange={(e) => { const f = e.target.files?.[0]; if (f) void onUploadDocument(f); }} />
             </label>
           </div>
@@ -557,8 +568,8 @@ export function SourcesPanel({
           {libraryOpen && (
             <div className="overflow-hidden rounded-xl border border-gray-200 dark:border-gray-700">
               <div className="flex items-center justify-between gap-2 border-b border-gray-100 bg-gray-50 px-3 py-2 dark:border-gray-800 dark:bg-gray-900/60">
-                <p className={cn("text-[11px] font-semibold", portalHeading)}>Chọn từ Knowledge Base</p>
-                <Link href="/hr/knowledge/" target="_blank" className="text-[10px] text-primary hover:underline">Quản lý KB</Link>
+                <p className={cn("text-[11px] font-semibold", portalHeading)}>{src.selectFromKb}</p>
+                <Link href="/hr/knowledge/" target="_blank" className="text-[10px] text-primary hover:underline">{src.manageKb}</Link>
               </div>
               {libraryLoading ? (
                 <div className="flex justify-center py-6">
@@ -566,9 +577,9 @@ export function SourcesPanel({
                 </div>
               ) : libraryDocs.length === 0 ? (
                 <div className="space-y-2 px-3 py-5 text-center">
-                  <p className={cn("text-xs", portalSubtext)}>Chưa có tài liệu trong Knowledge Base.</p>
+                  <p className={cn("text-xs", portalSubtext)}>{src.kbEmpty}</p>
                   <Link href="/hr/knowledge/" className="text-xs font-medium text-primary hover:underline">
-                    Upload tài liệu
+                    {src.uploadToKb}
                   </Link>
                 </div>
               ) : (
@@ -593,7 +604,7 @@ export function SourcesPanel({
                             {doc.fileName}
                           </span>
                           <span className={cn("shrink-0 text-[10px]", portalSubtext)}>
-                            {doc.alreadyAttached ? "Đã gắn" : ready ? `${doc.chunkCount ?? 0} chunks` : doc.status}
+                            {doc.alreadyAttached ? src.alreadyAttached : ready ? `${doc.chunkCount ?? 0} chunks` : doc.status}
                           </span>
                           {picked && <Check size={12} className="shrink-0 text-primary" strokeWidth={3} />}
                         </button>
@@ -604,16 +615,18 @@ export function SourcesPanel({
               )}
               <div className="flex items-center justify-between gap-2 border-t border-gray-100 px-3 py-2 dark:border-gray-800">
                 <p className={cn("text-[10px]", portalSubtext)}>
-                  {attachableCount === 0 ? "Không còn doc để gắn" : `Đã chọn ${pickedIds.size}/${attachableCount}`}
+                  {attachableCount === 0
+                    ? src.noMoreDocs
+                    : src.selectedCount.replace("{{done}}", String(pickedIds.size)).replace("{{total}}", String(attachableCount))}
                 </p>
                 <div className="flex gap-1.5">
                   <button type="button" onClick={() => setLibraryOpen(false)}
                     className="rounded-lg px-2.5 py-1 text-[11px] text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800">
-                    Đóng
+                    {src.close}
                   </button>
                   <button type="button" disabled={pickedIds.size === 0 || attaching || !onAttachFromLibrary} onClick={() => void handleAttach()}
                     className="rounded-lg bg-primary px-2.5 py-1 text-[11px] font-medium text-white disabled:opacity-40">
-                    {attaching ? "Đang gắn…" : `Gắn ${pickedIds.size > 0 ? pickedIds.size : ""} tài liệu`}
+                    {attaching ? src.attaching : src.attachDocs.replace("{{count}}", String(pickedIds.size))}
                   </button>
                 </div>
               </div>
@@ -623,7 +636,7 @@ export function SourcesPanel({
           {/* Document list */}
           {documents.length === 0 ? (
             <p className={cn("text-center text-xs", portalSubtext)}>
-              Chưa có tài liệu. Upload hoặc gắn từ KB để AI có thêm context.
+              {src.noDocs}
             </p>
           ) : (
             <div className="space-y-1.5">
@@ -647,7 +660,7 @@ export function SourcesPanel({
                       disabled={!ragDone && !doc.isSelected}
                       onChange={(e) => void onToggleDocument(doc.id, e.target.checked)}
                       className="mt-0.5 accent-primary"
-                      title={ragDone ? "Dùng trong plan & câu hỏi" : "Chờ RAG xử lý xong"}
+                      title={ragDone ? src.ragUseHint : src.ragWaitHint}
                     />
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-1.5">

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useToast } from "@/shared/providers/toast-context";
+import { useLanguage } from "@/shared/providers/language-context";
 import { extractErrorMessage } from "@/core/interceptors/error.interceptor";
 import * as studioApi from "@/features/studio/services/studio.service";
 import type {
@@ -29,6 +30,8 @@ function broadcastStudioTask(task: "streaming" | "generating" | null) {
 
 export function useStudio() {
   const { addToast } = useToast();
+  const { t } = useLanguage();
+  const tx = t.studioPage.toasts;
   const [loading, setLoading] = useState(true);
   const [project, setProject] = useState<StudioProject | null>(null);
   const [jdContent, setJdContent] = useState("");
@@ -64,6 +67,7 @@ export function useStudio() {
       includeSampleAnswers: s.includeSampleAnswers ?? true,
       includeScoringRubric: s.includeScoringRubric ?? true,
       outputFormat: s.outputFormat ?? "StructuredInterviewKit",
+      outputLanguage: s.outputLanguage ?? "Vietnamese",
       questionTypes:
         Array.isArray(s.questionTypes) && s.questionTypes.length > 0
           ? s.questionTypes
@@ -121,7 +125,7 @@ export function useStudio() {
         if (qs) setQuestions(qs.items);
       }
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Không tải được dữ liệu Studio.";
+      const message = error instanceof Error ? error.message : tx.loadFailed;
       addToast("error", message);
     } finally {
       setLoading(false);
@@ -144,6 +148,35 @@ export function useStudio() {
     return () => window.clearInterval(timer);
   }, [project, documents]);
 
+  // Auto-poll a pending generation run that was restored by bootstrap (e.g. after page reload /
+  // browser tab switch). Without this, progress would be frozen until the user clicks "Làm mới".
+  useEffect(() => {
+    if (!project || isGeneratingQuestions) return; // already tracked by the generateQuestions while-loop
+    if (!generationRun?.id) return;
+    if (generationRun.status !== "Generating" && generationRun.status !== "Pending") return;
+
+    const projectId = project.id;
+    const runId = generationRun.id;
+    const planId = currentPlan?.id ?? null;
+
+    const timer = window.setInterval(async () => {
+      const latest = await studioApi.getGenerationRun(projectId, runId).catch(() => null);
+      if (!latest) return;
+      setGenerationRun(latest);
+      if (latest.status === "Completed" && planId) {
+        const result = await studioApi
+          .listQuestions(projectId, { page: 1, pageSize: 100, planId })
+          .catch(() => null);
+        if (result) setQuestions(result.items);
+      }
+    }, 3000);
+
+    return () => window.clearInterval(timer);
+  // Depend on id+status so the timer restarts whenever the run progresses; isGeneratingQuestions
+  // ensures we don't double-poll while the generateQuestions while-loop is also running.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [project?.id, isGeneratingQuestions, generationRun?.id, generationRun?.status, currentPlan?.id]);
+
   const refreshPlanAndSettings = useCallback(async () => {
     if (!project) return;
     const [plan, studioSettings, planList] = await Promise.all([
@@ -152,7 +185,23 @@ export function useStudio() {
       studioApi.listPlans(project.id).catch(() => []),
     ]);
     setCurrentPlan(plan);
-    setSettings(normalizeSettings(studioSettings));
+    setSettings((prev) => {
+      if (!studioSettings) return prev;
+      const merged = prev
+        ? ({
+            ...prev,
+            ...Object.fromEntries(Object.entries(studioSettings).filter(([, v]) => v != null)),
+            // Output preference fields are only changed by the user (updateSettingField) or initial bootstrap.
+            // Never overwrite them from a mid-session refresh — the backend may return stale/default values.
+            outputLanguage: prev.outputLanguage,
+            questionTone: prev.questionTone,
+            outputFormat: prev.outputFormat,
+            includeSampleAnswers: prev.includeSampleAnswers,
+            includeScoringRubric: prev.includeScoringRubric,
+          } as typeof studioSettings)
+        : studioSettings;
+      return normalizeSettings(merged);
+    });
     setPlans(planList);
   }, [normalizeSettings, project]);
 
@@ -174,7 +223,7 @@ export function useStudio() {
     const summary = await studioApi.analyzeJobDescription(project.id);
     setJdFileName(null);
     setJdSummary(summary);
-    addToast("success", "Đã lưu và phân tích Job Description.");
+    addToast("success", tx.jdSaved);
     await refreshPlanAndSettings();
   }, [addToast, jdContent, project, refreshPlanAndSettings]);
 
@@ -184,7 +233,7 @@ export function useStudio() {
     setJdContent(result.content);
     setJdFileName(result.originalFileName ?? file.name);
     setJdSummary(result.summary);
-    addToast("success", `Đã upload JD: ${result.originalFileName ?? file.name}`);
+    addToast("success", tx.jdUploaded.replace("{{name}}", result.originalFileName ?? file.name));
     await refreshPlanAndSettings();
   }, [addToast, project, refreshPlanAndSettings]);
 
@@ -193,7 +242,7 @@ export function useStudio() {
     const uploaded = await studioApi.uploadDocument(project.id, file, true);
     setDocuments((prev) => [uploaded, ...prev.filter((d) => d.id !== uploaded.id)]);
     await refreshPlanAndSettings();
-    addToast("success", "Đã upload — đang ingest RAG (Queued).");
+    addToast("success", tx.docUploaded);
   }, [addToast, project, refreshPlanAndSettings]);
 
   /** SCRUM-373: gắn doc từ Knowledge Documents đã upload */
@@ -206,9 +255,9 @@ export function useStudio() {
         return [...attached, ...prev.filter((d) => !ids.has(d.id))];
       });
       await refreshPlanAndSettings();
-      addToast("success", `Đã gắn ${attached.length} tài liệu từ Knowledge Base.`);
+      addToast("success", tx.kbAttached.replace("{{count}}", String(attached.length)));
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Không thể gắn tài liệu từ Knowledge Base.";
+      const message = error instanceof Error ? error.message : tx.kbAttachFailed;
       addToast("error", message);
       throw error;
     }
@@ -221,7 +270,7 @@ export function useStudio() {
       setDocuments((prev) => prev.map((doc) => (doc.id === updated.id ? updated : doc)));
       await refreshPlanAndSettings();
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Không thể chọn tài liệu (cần RAG Completed).";
+      const message = error instanceof Error ? error.message : tx.docToggleFailed;
       addToast("error", message);
     }
   }, [addToast, project, refreshPlanAndSettings]);
@@ -230,7 +279,7 @@ export function useStudio() {
     if (!project) return;
     setIsStreaming(true);
     try {
-      addToast("success", "Đang retrieve RAG + tạo plan (có thể mất 1–2 phút)…");
+      addToast("success", tx.planCreating);
       setMessages((prev) => [
         ...prev.filter((m) => !m.content.startsWith("Refined message:")),
         {
@@ -246,7 +295,7 @@ export function useStudio() {
       const detail = await studioApi.getPlanDetail(project.id, summary.id);
       setCurrentPlan(detail);
       await refreshStudioState();
-      addToast("success", "Đã tạo plan từ RAG.");
+      addToast("success", tx.planCreated);
     } catch (error) {
       const message = extractErrorMessage(error);
       addToast("error", message);
@@ -270,7 +319,7 @@ export function useStudio() {
     // SCRUM-368: chat chỉ refine plan qua RAG — không SSE mock
     if (!project || !currentPlan || !message.trim()) return;
     if (currentPlan.status === "Approved") {
-      addToast("error", "Plan đã approve — không refine được. Bấm Tạo lại plan để chỉnh tiếp.");
+      addToast("error", tx.planAlreadyApproved);
       return;
     }
     setIsStreaming(true);
@@ -300,7 +349,7 @@ export function useStudio() {
     try {
       await studioApi.refinePlan(project.id, currentPlan.id, message);
       await refreshStudioState();
-      addToast("success", "Đã refine plan từ RAG.");
+      addToast("success", tx.planRefined);
     } catch (error) {
       const text = extractErrorMessage(error);
       addToast("error", text);
@@ -323,7 +372,7 @@ export function useStudio() {
       const after = (await studioApi.getCurrentPlan(project.id).catch(() => null))
         ?? (await studioApi.getPlanDetail(project.id, planId).catch(() => null));
       if (after) setCurrentPlan(after);
-      addToast("success", "Plan đã approve. Chat refine bị khóa — bấm Tạo lại plan nếu muốn chỉnh tiếp.");
+      addToast("success", tx.planApprovedMsg);
     } catch (error) {
       addToast("error", extractErrorMessage(error));
     }
@@ -332,7 +381,7 @@ export function useStudio() {
   const refineCurrentPlan = useCallback(async (instruction: string) => {
     if (!project || !currentPlan || !instruction.trim()) return;
     if (currentPlan.status === "Approved") {
-      addToast("error", "Plan đã approve — không refine được. Bấm Tạo lại plan để chỉnh tiếp.");
+      addToast("error", tx.planAlreadyApproved);
       return;
     }
     setIsStreaming(true);
@@ -346,10 +395,10 @@ export function useStudio() {
     };
     setMessages((prev) => [...prev, userMessage]);
     try {
-      addToast("success", "Đang retrieve RAG + refine plan…");
+      addToast("success", tx.planRefining);
       await studioApi.refinePlan(project.id, currentPlan.id, instruction);
       await refreshStudioState();
-      addToast("success", "Đã refine plan từ RAG.");
+      addToast("success", tx.planRefined);
     } catch (error) {
       const text = extractErrorMessage(error);
       addToast("error", text);
@@ -388,7 +437,6 @@ export function useStudio() {
     if (isGeneratingQuestions) return;
     setIsGeneratingQuestions(true);
     try {
-      addToast("success", "Đã gửi job RAG — đang sinh câu hỏi…");
       let run: GenerationRun;
       try {
         run = await studioApi.generateQuestions(project.id, {
@@ -398,8 +446,8 @@ export function useStudio() {
           includeScoringRubric: settings.includeScoringRubric,
         });
       } catch (error) {
-        const text = error instanceof Error ? error.message : "";
-        if (text.includes("QUESTIONS_ALREADY_EXIST")) {
+        const errMsg = extractErrorMessage(error);
+        if (errMsg.includes("QUESTIONS_ALREADY_EXIST") || errMsg.includes("questions_already_exist")) {
           run = await studioApi.generateQuestions(project.id, {
             planId: currentPlan.id,
             replaceExisting: true,
@@ -410,6 +458,7 @@ export function useStudio() {
           throw error;
         }
       }
+      addToast("success", tx.generationStarted);
 
       setGenerationRun(run);
 
@@ -436,9 +485,9 @@ export function useStudio() {
 
       const result = await studioApi.listQuestions(project.id, { page: 1, pageSize: 100, planId: currentPlan.id });
       setQuestions(result.items);
-      addToast("success", `Đã tạo ${result.items.length} câu hỏi từ RAG.`);
+      addToast("success", tx.generationDone.replace("{{count}}", String(result.items.length)));
     } catch (error) {
-      const message = error instanceof Error ? error.message : "RAG tạo câu hỏi thất bại.";
+      const message = extractErrorMessage(error) || tx.generationFailed;
       addToast("error", message);
       void refreshGenerationStatus();
     } finally {
@@ -458,6 +507,7 @@ export function useStudio() {
       includeSampleAnswers: patch.includeSampleAnswers ?? settings.includeSampleAnswers ?? true,
       includeScoringRubric: patch.includeScoringRubric ?? settings.includeScoringRubric ?? true,
       outputFormat: patch.outputFormat ?? settings.outputFormat ?? "StructuredInterviewKit",
+      outputLanguage: patch.outputLanguage ?? settings.outputLanguage ?? "Vietnamese",
       questionTypes: patch.questionTypes ?? settings.questionTypes ?? ["technical", "system_design", "problem_solving", "behavioral"],
     };
     // Optimistic update — reflect changes immediately in UI without waiting for API
@@ -465,7 +515,11 @@ export function useStudio() {
     setSettings((prev) => prev ? { ...prev, ...next } : prev);
     try {
       const updated = await studioApi.updateSettings(project.id, next);
-      setSettings(normalizeSettings(updated));
+      // Re-apply patch on top so explicit user changes survive if API returns null for a field
+      setSettings((prev) => {
+        const normalized = normalizeSettings(updated);
+        return normalized ? { ...normalized, ...patch } : prev;
+      });
     } catch (error) {
       setSettings(prevSettings);
       addToast("error", extractErrorMessage(error));
@@ -475,7 +529,7 @@ export function useStudio() {
   const applySettingsToPlan = useCallback(async () => {
     if (!project || !currentPlan || !settings) return;
     if (currentPlan.status === "Approved") {
-      addToast("error", "Plan đã approve — không áp dụng settings. Bấm Tạo lại plan.");
+      addToast("error", tx.planApprovedNoSettings);
       return;
     }
     setIsApplyingSettings(true);
@@ -490,10 +544,10 @@ export function useStudio() {
             ? settings.questionTypes
             : ["technical", "system_design", "problem_solving", "behavioral"],
       };
-      addToast("success", "Đang áp dụng quick controls vào plan…");
+      addToast("success", tx.applyingSettings);
       await studioApi.applyPlanSettings(project.id, currentPlan.id, payload);
       await refreshStudioState();
-      addToast("success", "Đã áp dụng settings vào plan (giữ cấu trúc/focus từ chat).");
+      addToast("success", tx.settingsApplied);
     } catch (error) {
       addToast("error", extractErrorMessage(error));
     } finally {
@@ -504,29 +558,43 @@ export function useStudio() {
 
   const saveDraftAction = useCallback(async () => {
     if (!project) return;
-    const result = await studioApi.saveDraft(project.id);
-    if (result?.questionSetId) {
-      setProject((prev) => prev ? { ...prev, questionSetId: result.questionSetId } : prev);
+    try {
+      await studioApi.saveDraft(project.id);
+      // Refresh project to reliably pick up the questionSetId assigned by the backend
+      const updated = await studioApi.getProject(project.id);
+      setProject(updated);
+      addToast("success", tx.draftSaved);
+    } catch (error) {
+      addToast("error", extractErrorMessage(error) || tx.draftSaveFailed);
     }
-    addToast("success", "Đã lưu draft.");
   }, [addToast, project]);
 
   const togglePublish = useCallback(async () => {
     if (!project) return;
-    const questionSetId = project.questionSetId;
-    if (!questionSetId) {
-      addToast("error", "Chưa có bộ câu hỏi để publish. Hãy lưu nháp trước.");
-      return;
-    }
     try {
+      let questionSetId = project.questionSetId;
+
+      // Auto-save draft if questionSetId is missing so publish can proceed
+      if (!questionSetId) {
+        await studioApi.saveDraft(project.id);
+        const updated = await studioApi.getProject(project.id);
+        setProject(updated);
+        questionSetId = updated.questionSetId ?? null;
+      }
+
+      if (!questionSetId) {
+        addToast("error", tx.publishNotFound);
+        return;
+      }
+
       if (project.isPublished) {
         await studioApi.unpublishProject(questionSetId);
         setProject((prev) => prev ? { ...prev, isPublished: false } : prev);
-        addToast("success", "Đã unpublish bộ câu hỏi.");
+        addToast("success", tx.unpublished);
       } else {
         await studioApi.publishProject(questionSetId);
         setProject((prev) => prev ? { ...prev, isPublished: true } : prev);
-        addToast("success", "Đã publish bộ câu hỏi.");
+        addToast("success", tx.published);
       }
     } catch (error) {
       addToast("error", extractErrorMessage(error));
@@ -538,7 +606,7 @@ export function useStudio() {
     const share = await studioApi.createShareLink(project.id, "View");
     const link = `${window.location.origin}/api/studio/shared/${share.token}`;
     await navigator.clipboard.writeText(link);
-    addToast("success", "Đã tạo link share và copy vào clipboard.");
+    addToast("success", tx.shareCreated);
   }, [addToast, project]);
 
   const createNewSession = useCallback(async () => {
@@ -558,7 +626,7 @@ export function useStudio() {
       setMessages([]);
       setGenerationRun(null);
       setIsGeneratingQuestions(false);
-      addToast("success", "Đã tạo bộ mới. Nhập JD + chọn tài liệu rồi Lập plan.");
+      addToast("success", tx.newSessionCreated);
     } catch (error) {
       addToast("error", extractErrorMessage(error));
     } finally {
