@@ -2,9 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Loader2, Sparkles, X } from "lucide-react";
 import { cn } from "@/lib/cn";
+import { useLanguage } from "@/shared/providers/language-context";
 
 type StudioTask = "streaming" | "generating" | null;
 
@@ -21,6 +22,7 @@ export function StudioProgressBadge() {
   const [dismissed, setDismissed] = useState(false);
   const [visible, setVisible] = useState(false);
   const pathname = usePathname();
+  const router = useRouter();
   const onStudioPage = pathname === "/hr/generate-v2";
 
   useEffect(() => {
@@ -57,12 +59,13 @@ export function StudioProgressBadge() {
     }
   }, [task, dismissed]);
 
+  const { t } = useLanguage();
+  const chip = t.studioPage.chip;
+
   if (!mounted || !task || dismissed) return null;
 
-  const title = task === "generating" ? "Đang sinh câu hỏi…" : "Đang tạo kế hoạch…";
-  const subtitle = task === "generating"
-    ? "RAG đang xử lý tập câu hỏi"
-    : "AI đang phân tích JD và xây dựng cấu trúc";
+  const title = task === "generating" ? chip.generatingQuestions : chip.creatingPlan;
+  const subtitle = task === "generating" ? chip.badgeGeneratingSub : chip.badgeStreamingSub;
 
   const badge = (
     <div className={cn(
@@ -70,12 +73,17 @@ export function StudioProgressBadge() {
       onStudioPage ? "bottom-20" : "bottom-6"
     )}>
       <div
+        role={!onStudioPage ? "button" : undefined}
+        tabIndex={!onStudioPage ? 0 : undefined}
+        onClick={() => { if (!onStudioPage) router.push("/hr/generate-v2"); }}
+        onKeyDown={(e) => { if (!onStudioPage && (e.key === "Enter" || e.key === " ")) router.push("/hr/generate-v2"); }}
         className={cn(
-          "relative flex items-center gap-3 pl-3 pr-4 py-3 rounded-2xl shadow-2xl select-none",
+          "relative flex items-center gap-2.5 pl-3 pr-3 py-2.5 rounded-2xl shadow-2xl select-none",
           "bg-white dark:bg-gray-900",
           "border border-gray-100 dark:border-gray-800",
-          "min-w-60 max-w-75",
+          "w-64",
           "transition-all ease-[cubic-bezier(0.34,1.56,0.64,1)] duration-350",
+          !onStudioPage && "cursor-pointer hover:shadow-violet-200/50 dark:hover:shadow-violet-900/30 hover:border-violet-200 dark:hover:border-violet-800",
           visible
             ? "opacity-100 translate-y-0 scale-100"
             : "opacity-0 translate-y-6 scale-95 pointer-events-none"
@@ -86,20 +94,20 @@ export function StudioProgressBadge() {
           <span className="relative inline-flex rounded-full h-3 w-3 bg-violet-500" />
         </span>
 
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-600">
-          <Loader2 size={16} className="animate-spin text-white" />
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-violet-600">
+          <Loader2 size={14} className="animate-spin text-white" />
         </div>
 
-        <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold leading-tight text-gray-900 dark:text-gray-50">{title}</p>
-          <p className="mt-0.5 text-xs leading-tight text-gray-500 dark:text-gray-400">{subtitle}</p>
+        <div className="min-w-0 flex-1 overflow-hidden">
+          <p className="truncate text-sm font-semibold leading-tight text-gray-900 dark:text-gray-50">{title}</p>
+          <p className="mt-0.5 truncate text-xs leading-tight text-gray-500 dark:text-gray-400">{subtitle}</p>
         </div>
 
         <button
           type="button"
           onClick={(e) => { e.stopPropagation(); setDismissed(true); }}
-          className="ml-1 shrink-0 rounded-full p-1 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-800 dark:hover:text-gray-200"
-          aria-label="Đóng"
+          className="shrink-0 rounded-full p-1 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-800 dark:hover:text-gray-200"
+          aria-label={t.studioPage.sources.close}
         >
           <X size={12} />
         </button>

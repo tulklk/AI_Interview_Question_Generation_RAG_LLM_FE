@@ -152,6 +152,8 @@ export interface StudioSettings {
   includeSampleAnswers: boolean;
   includeScoringRubric: boolean;
   outputFormat: string;
+  /** Vietnamese | English — ngôn ngữ đầu ra của câu hỏi được sinh */
+  outputLanguage: string;
   /** SCRUM-370: technical | system_design | problem_solving | behavioral | situational */
   questionTypes: string[];
   readiness: StudioReadiness;
