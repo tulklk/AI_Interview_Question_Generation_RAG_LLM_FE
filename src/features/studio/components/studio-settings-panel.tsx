@@ -5,6 +5,7 @@ import { Check, FileQuestion, Loader2, Sparkles } from "lucide-react";
 import { SelectField } from "@/shared/components/ui/select-field";
 import { Toggle } from "@/shared/components/ui/toggle";
 import { cn } from "@/lib/cn";
+import { useLanguage } from "@/shared/providers/language-context";
 import { portalCard, portalHeading, portalSubtext } from "@/shared/utils/portal-ui";
 import type { PlanDetail, StudioSettings } from "@/features/studio/types/studio.types";
 
@@ -106,6 +107,8 @@ function NumberInputField({
 }
 
 export function StudioSettingsPanel({ settings, plan, isApplying, locked = false, onChangeSetting, onApplyToPlan }: Props) {
+  const { t } = useLanguage();
+  const s = t.studioPage;
   const planApproved = plan?.status === "Approved";
   const canEdit = !locked && (!plan || plan.status === "AwaitingApproval" || plan.status === "Draft" || plan.status === "Rejected");
   const showApply = Boolean(!locked && plan && plan.status === "AwaitingApproval" && onApplyToPlan);
@@ -135,7 +138,7 @@ export function StudioSettingsPanel({ settings, plan, isApplying, locked = false
       {locked && (
         <div
           className="absolute inset-0 z-10 cursor-not-allowed rounded-xl"
-          title="Đã khóa — bấm Tạo bộ mới để chỉnh Studio"
+          title={s.settings.lockedTitle}
           aria-hidden
         />
       )}
@@ -146,9 +149,9 @@ export function StudioSettingsPanel({ settings, plan, isApplying, locked = false
           <div className="flex items-center gap-2 rounded-xl bg-emerald-50 px-3 py-2.5 dark:bg-emerald-950/30">
             <Check className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-300" strokeWidth={3} />
             <div className="min-w-0">
-              <p className="text-xs font-semibold text-emerald-800 dark:text-emerald-200">Sẵn sàng sinh câu hỏi</p>
+              <p className="text-xs font-semibold text-emerald-800 dark:text-emerald-200">{s.settings.readyToGenerate}</p>
               <p className="text-[10px] text-emerald-700 dark:text-emerald-300">
-                {plan ? `${plan.totalQuestions} câu · ${plan.interviewLengthMinutes} phút · ${sourcesCount} nguồn` : `${totalQ} câu`}
+                {plan ? `${plan.totalQuestions} ${s.settings.unitQuestions} · ${plan.interviewLengthMinutes} ${s.settings.unitMin} · ${s.settings.statSources}: ${sourcesCount}` : `${totalQ} ${s.settings.unitQuestions}`}
               </p>
             </div>
           </div>
@@ -157,10 +160,10 @@ export function StudioSettingsPanel({ settings, plan, isApplying, locked = false
             <Sparkles className="h-4 w-4 shrink-0 text-primary" />
             <div className="min-w-0">
               <p className={cn("text-xs font-semibold", portalHeading)}>
-                {planApproved ? "Kế hoạch đã duyệt" : "Kế hoạch chờ duyệt"}
+                {planApproved ? s.settings.planApproved : s.settings.planPending}
               </p>
               <p className={cn("text-[10px]", portalSubtext)}>
-                {plan.totalQuestions} câu · {plan.interviewLengthMinutes} phút · {sourcesCount} nguồn
+                {plan.totalQuestions} {s.settings.unitQuestions} · {plan.interviewLengthMinutes} {s.settings.unitMin} · {sourcesCount}
               </p>
             </div>
           </div>
@@ -169,16 +172,16 @@ export function StudioSettingsPanel({ settings, plan, isApplying, locked = false
         {/* ── Plan quick controls ── */}
         <section className="space-y-3 rounded-xl border border-gray-100 bg-gray-50/60 p-3 dark:border-gray-800 dark:bg-gray-900/40">
           <div className="flex items-center justify-between gap-2">
-            <SectionLabel text="Cấu hình kế hoạch" />
+            <SectionLabel text={s.settings.sectionPlan} />
             {planApproved && (
-              <span className="text-[10px] text-amber-600 dark:text-amber-400">Đã khóa</span>
+              <span className="text-[10px] text-amber-600 dark:text-amber-400">{s.settings.locked}</span>
             )}
           </div>
 
           <NumberInputField
-            label="Thời lượng"
+            label={s.settings.duration}
             value={settings?.interviewLengthMinutes ?? 60}
-            unit="phút"
+            unit={s.settings.unitMin}
             min={15}
             max={180}
             presets={[30, 45, 60, 75, 90, 120]}
@@ -186,9 +189,9 @@ export function StudioSettingsPanel({ settings, plan, isApplying, locked = false
             onChange={(v) => void onChangeSetting({ interviewLengthMinutes: v })}
           />
           <NumberInputField
-            label="Số câu hỏi"
+            label={s.settings.questionCount}
             value={settings?.numberOfQuestions ?? 15}
-            unit="câu"
+            unit={s.settings.unitQuestions}
             min={5}
             max={50}
             presets={[5, 10, 15, 20, 25, 30]}
@@ -196,13 +199,13 @@ export function StudioSettingsPanel({ settings, plan, isApplying, locked = false
             onChange={(v) => void onChangeSetting({ numberOfQuestions: v })}
           />
           <SelectField
-            label="Độ khó"
+            label={s.settings.difficulty}
             value={settings?.difficulty ?? "Medium"}
             onChange={(v) => void onChangeSetting({ difficulty: v as StudioSettings["difficulty"] })}
             options={[
-              { value: "Easy",   label: "Easy — câu hỏi cơ bản" },
-              { value: "Medium", label: "Medium — tiêu chuẩn" },
-              { value: "Hard",   label: "Hard — thử thách cao" },
+              { value: "Easy",   label: s.settings.easyDesc },
+              { value: "Medium", label: s.settings.mediumDesc },
+              { value: "Hard",   label: s.settings.hardDesc },
             ]}
             disabled={!canEdit || planApproved}
           />
@@ -210,9 +213,9 @@ export function StudioSettingsPanel({ settings, plan, isApplying, locked = false
           {/* Question types */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <p className={cn("text-xs font-medium", portalHeading)}>Loại câu hỏi</p>
+              <p className={cn("text-xs font-medium", portalHeading)}>{s.settings.questionTypes}</p>
               <span className={cn("text-[10px]", portalSubtext)}>
-                {selectedTypes.length}/{QUESTION_TYPE_OPTIONS.length} loại · ~{qPerType} câu/loại
+                {selectedTypes.length}/{QUESTION_TYPE_OPTIONS.length} · {s.settings.perType.replace("{{count}}", String(qPerType))}
               </span>
             </div>
             <div className="flex flex-wrap gap-1.5">
@@ -248,26 +251,26 @@ export function StudioSettingsPanel({ settings, plan, isApplying, locked = false
               className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-primary px-3 py-2.5 text-xs font-semibold text-white disabled:opacity-50 hover:bg-primary-hover transition-colors"
             >
               {isApplying ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" strokeWidth={3} />}
-              {isApplying ? "Đang áp dụng…" : "Áp dụng vào kế hoạch"}
+              {isApplying ? s.settings.applying : s.settings.applyToPlan}
             </button>
           )}
         </section>
 
         {/* ── Generate output ── */}
         <section className="space-y-3 rounded-xl border border-gray-100 bg-gray-50/60 p-3 dark:border-gray-800 dark:bg-gray-900/40">
-          <SectionLabel text="Tùy chọn output" />
+          <SectionLabel text={s.settings.sectionOutput} />
           <SelectField
-            label="Văn phong câu hỏi"
+            label={s.settings.toneLabel}
             value={settings?.questionTone ?? "Professional"}
             onChange={(v) => void onChangeSetting({ questionTone: v })}
             options={[
-              { value: "Professional", label: "Professional — trang trọng" },
-              { value: "Concise",      label: "Concise — ngắn gọn" },
-              { value: "Friendly",     label: "Friendly — thân thiện" },
+              { value: "Professional", label: "Professional" },
+              { value: "Concise",      label: "Concise" },
+              { value: "Friendly",     label: "Friendly" },
             ]}
           />
           <SelectField
-            label="Định dạng output"
+            label={s.settings.formatLabel}
             value={settings?.outputFormat ?? "StructuredInterviewKit"}
             onChange={(v) => void onChangeSetting({ outputFormat: v })}
             options={[
@@ -276,11 +279,20 @@ export function StudioSettingsPanel({ settings, plan, isApplying, locked = false
               { value: "TechnicalDeepDive",      label: "Technical Deep Dive" },
             ]}
           />
+          <SelectField
+            label={s.settings.languageLabel}
+            value={settings?.outputLanguage ?? "Vietnamese"}
+            onChange={(v) => void onChangeSetting({ outputLanguage: v })}
+            options={[
+              { value: "Vietnamese", label: "Tiếng Việt" },
+              { value: "English",    label: "English" },
+            ]}
+          />
           <div className="space-y-2.5">
             <div className="flex items-center justify-between">
               <div>
-                <p className={cn("text-xs font-medium", portalHeading)}>Sample answers</p>
-                <p className={cn("text-[10px]", portalSubtext)}>Gợi ý câu trả lời mẫu</p>
+                <p className={cn("text-xs font-medium", portalHeading)}>{s.settings.sampleAnswers}</p>
+                <p className={cn("text-[10px]", portalSubtext)}>{s.settings.sampleAnswersDesc}</p>
               </div>
               <Toggle
                 checked={settings?.includeSampleAnswers ?? true}
@@ -289,8 +301,8 @@ export function StudioSettingsPanel({ settings, plan, isApplying, locked = false
             </div>
             <div className="flex items-center justify-between">
               <div>
-                <p className={cn("text-xs font-medium", portalHeading)}>Scoring rubric</p>
-                <p className={cn("text-[10px]", portalSubtext)}>Tiêu chí đánh giá câu trả lời</p>
+                <p className={cn("text-xs font-medium", portalHeading)}>{s.settings.scoringRubric}</p>
+                <p className={cn("text-[10px]", portalSubtext)}>{s.settings.scoringRubricDesc}</p>
               </div>
               <Toggle
                 checked={settings?.includeScoringRubric ?? true}
@@ -305,16 +317,16 @@ export function StudioSettingsPanel({ settings, plan, isApplying, locked = false
           <section className="rounded-xl border border-gray-100 bg-gray-50/60 p-3 dark:border-gray-800 dark:bg-gray-900/40">
             <div className="mb-2.5 flex items-center gap-1.5">
               <FileQuestion className="h-3.5 w-3.5 text-gray-400" />
-              <SectionLabel text="Thống kê kế hoạch" />
+              <SectionLabel text={s.settings.sectionStats} />
             </div>
             <dl className="space-y-1.5">
               {[
-                { label: "Tổng số câu", value: String(plan.totalQuestions) },
-                { label: "Thời lượng",  value: `${plan.interviewLengthMinutes} phút` },
-                { label: "Phiên bản",   value: `Rev ${plan.revision}` },
-                { label: "Nguồn RAG",   value: `${sourcesCount} nguồn` },
+                { label: s.settings.statTotal,    value: String(plan.totalQuestions) },
+                { label: s.settings.statDuration, value: `${plan.interviewLengthMinutes} ${s.settings.unitMin}` },
+                { label: s.settings.statRevision, value: `Rev ${plan.revision}` },
+                { label: s.settings.statSources,  value: String(sourcesCount) },
                 {
-                  label: "Độ khó",
+                  label: s.settings.statDifficulty,
                   value: (() => {
                     const m = plan.difficultyMix ?? { easy: 0, medium: 0, hard: 0 };
                     const e = Math.round(m.easy * 100);

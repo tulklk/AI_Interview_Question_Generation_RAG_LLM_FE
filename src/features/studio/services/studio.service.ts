@@ -40,12 +40,8 @@ export async function updateProject(projectId: string, name: string, description
 }
 
 export async function saveDraft(projectId: string): Promise<{ questionSetId?: string | null }> {
-  try {
-    const { data } = await apiClient.post<{ questionSetId?: string }>(`/api/studio/projects/${projectId}/save-draft`);
-    return { questionSetId: data?.questionSetId ?? null };
-  } catch {
-    return {};
-  }
+  const { data } = await apiClient.post<{ questionSetId?: string }>(`/api/studio/projects/${projectId}/save-draft`);
+  return { questionSetId: data?.questionSetId ?? null };
 }
 
 export async function upsertJobDescription(projectId: string, content: string, sourceType: "PastedText" | "UploadedFile"): Promise<void> {

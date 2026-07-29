@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, Database, SlidersHorizontal } from "lucide-react";
 import { AiLoadingSpinner } from "@/shared/components/common/ai-loading-spinner";
 import { cn } from "@/lib/cn";
+import { useLanguage } from "@/shared/providers/language-context";
 import { useStudio } from "@/features/studio/hooks/use-studio";
 import { StudioTopBar } from "@/features/studio/components/studio-top-bar";
 import { StudioProgressBar } from "@/features/studio/components/studio-progress";
@@ -14,6 +15,8 @@ import { StudioActionBar } from "@/features/studio/components/studio-action-bar"
 
 export function StudioPage() {
   const studio = useStudio();
+  const { t } = useLanguage();
+  const s = t.studioPage;
   const [sourcesCollapsed, setSourcesCollapsed] = useState(false);
   const [inspectorCollapsed, setInspectorCollapsed] = useState(false);
 
@@ -22,9 +25,10 @@ export function StudioPage() {
     [studio.settings?.readiness?.canGenerateQuestions]
   );
 
+  // Only allow creating plan after JD is saved & analyzed (jdSummary set) or backend confirms it exists
   const canCreatePlan = useMemo(
-    () => Boolean(studio.jdContent?.trim()) || Boolean(studio.settings?.readiness?.hasJobDescription),
-    [studio.jdContent, studio.settings?.readiness?.hasJobDescription]
+    () => Boolean(studio.jdSummary) || Boolean(studio.settings?.readiness?.hasJobDescription),
+    [studio.jdSummary, studio.settings?.readiness?.hasJobDescription]
   );
 
   const hasJd = Boolean(studio.jdContent?.trim()) || Boolean(studio.settings?.readiness?.hasJobDescription);
@@ -36,7 +40,7 @@ export function StudioPage() {
   if (studio.loading) {
     return (
       <div className="flex h-[calc(100vh-80px)] items-center justify-center">
-        <AiLoadingSpinner text="Đang tải Studio…" />
+        <AiLoadingSpinner text={s.loading} />
       </div>
     );
   }
@@ -82,8 +86,8 @@ export function StudioPage() {
             <button
               type="button"
               onClick={() => setSourcesCollapsed(false)}
-              title="Nguồn dữ liệu"
-              aria-label="Mở rộng nguồn dữ liệu"
+              title={s.sourcesHeader}
+              aria-label={s.aria.expandSource}
               className="flex w-full flex-col items-center gap-3 rounded-xl border border-gray-200 bg-white py-4 text-gray-400 transition-colors hover:border-gray-300 hover:text-gray-600 dark:border-gray-800 dark:bg-gray-900 dark:hover:border-gray-700 dark:hover:text-gray-200"
             >
               <Database className="h-4 w-4" />
@@ -94,13 +98,13 @@ export function StudioPage() {
             <>
               <div className="mb-2 flex items-center justify-between px-1">
                 <span className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">
-                  Nguồn dữ liệu
+                  {s.sourcesHeader}
                 </span>
                 <button
                   type="button"
                   onClick={() => setSourcesCollapsed(true)}
                   className="rounded-lg p-1 text-gray-400 hover:bg-gray-50 hover:text-gray-600 dark:hover:bg-gray-800 dark:hover:text-gray-200"
-                  aria-label="Thu gọn Sources"
+                  aria-label={s.aria.collapseSource}
                 >
                   <ChevronLeft className="h-3.5 w-3.5" />
                 </button>
@@ -123,8 +127,8 @@ export function StudioPage() {
           )}
         </div>
 
-        {/* Main workspace */}
-        <div className="flex min-w-0 flex-1 flex-col" style={{ animation: "slideUpFade 0.42s cubic-bezier(0.25,0.46,0.45,0.94) 0.14s both" }}>
+        {/* Main workspace — self-start only when plan content exists to avoid empty space below sections */}
+        <div className={cn("flex min-w-0 flex-1 flex-col", studio.currentPlan && !studio.isStreaming ? "self-start" : "")} style={{ animation: "slideUpFade 0.42s cubic-bezier(0.25,0.46,0.45,0.94) 0.14s both" }}>
           <ChatPanel
             messages={studio.messages}
             isStreaming={studio.isStreaming}
@@ -194,8 +198,8 @@ export function StudioPage() {
             <button
               type="button"
               onClick={() => setInspectorCollapsed(false)}
-              title="Cấu hình kế hoạch"
-              aria-label="Mở rộng cấu hình"
+              title={s.settingsHeader}
+              aria-label={s.aria.expandSetting}
               className="flex w-full flex-col items-center gap-3 rounded-xl border border-gray-200 bg-white py-4 text-gray-400 transition-colors hover:border-gray-300 hover:text-gray-600 dark:border-gray-800 dark:bg-gray-900 dark:hover:border-gray-700 dark:hover:text-gray-200"
             >
               <SlidersHorizontal className="h-4 w-4" />
@@ -206,13 +210,13 @@ export function StudioPage() {
             <>
               <div className="mb-2 flex items-center justify-between px-1">
                 <span className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">
-                  Cấu hình kế hoạch
+                  {s.settingsHeader}
                 </span>
                 <button
                   type="button"
                   onClick={() => setInspectorCollapsed(true)}
                   className="rounded-lg p-1 text-gray-400 hover:bg-gray-50 hover:text-gray-600 dark:hover:bg-gray-800 dark:hover:text-gray-200"
-                  aria-label="Thu gọn Inspector"
+                  aria-label={s.aria.collapseSetting}
                 >
                   <ChevronRight className="h-3.5 w-3.5" />
                 </button>

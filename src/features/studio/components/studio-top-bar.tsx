@@ -2,6 +2,7 @@
 
 import { FolderPlus, Loader2, Save, Share2 } from "lucide-react";
 import { cn } from "@/lib/cn";
+import { useLanguage } from "@/shared/providers/language-context";
 
 interface Props {
   projectName?: string | null;
@@ -20,6 +21,8 @@ export function StudioTopBar({
   isGenerating,
   questionCount = 0,
 }: Props) {
+  const { t } = useLanguage();
+  const s = t.studioPage;
 
   return (
     <header
@@ -30,22 +33,22 @@ export function StudioTopBar({
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <h1 className="truncate text-2xl font-bold tracking-tight text-gray-900 dark:text-gray-50">
-                Interview Studio
+                {s.title}
               </h1>
               {questionCount > 0 && (
                 <span style={{ animation: "scaleInFade 0.35s cubic-bezier(0.34,1.56,0.64,1) both" }} className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-medium text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300">
-                  {questionCount} câu hỏi
+                  {s.questionsCount.replace("{{count}}", String(questionCount))}
                 </span>
               )}
               {isGenerating && (
                 <span style={{ animation: "scaleInFade 0.35s cubic-bezier(0.34,1.56,0.64,1) both" }} className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-900 dark:bg-amber-950/50 dark:text-amber-200">
                   <Loader2 className="h-3 w-3 animate-spin" />
-                  Đang sinh…
+                  {s.generatingBadge}
                 </span>
               )}
             </div>
             <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
-              Paste your job description or upload a file to get AI-powered, role-specific questions instantly
+              {s.subtitle}
             </p>
           </div>
         </div>
@@ -53,41 +56,47 @@ export function StudioTopBar({
         <div className="flex shrink-0 flex-wrap items-center gap-2">
           <button
             type="button"
+            disabled={isGenerating}
             onClick={onNewSession}
             className={cn(
-              "inline-flex items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700",
-              "hover:border-gray-300 hover:bg-gray-50",
-              "dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-gray-800"
+              "inline-flex items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 transition-colors",
+              "hover:border-gray-300 hover:bg-gray-100 hover:text-gray-900",
+              "dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:border-gray-600 dark:hover:bg-gray-800 dark:hover:text-gray-100",
+              "disabled:cursor-not-allowed disabled:opacity-50"
             )}
           >
             <FolderPlus className="h-4 w-4 text-primary" />
-            <span className="hidden sm:inline">Tạo bộ mới</span>
+            <span className="hidden sm:inline">{s.newSet}</span>
           </button>
 
           <button
             type="button"
+            disabled={isGenerating}
             onClick={onSaveDraft}
             className={cn(
-              "inline-flex items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700",
-              "hover:border-gray-300 hover:bg-gray-50",
-              "dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-gray-800"
+              "inline-flex items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 transition-colors",
+              "hover:border-gray-300 hover:bg-gray-100 hover:text-gray-900",
+              "dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:border-gray-600 dark:hover:bg-gray-800 dark:hover:text-gray-100",
+              "disabled:cursor-not-allowed disabled:opacity-50"
             )}
           >
             <Save className="h-4 w-4" />
-            <span className="hidden md:inline">Lưu nháp</span>
+            <span className="hidden md:inline">{s.save}</span>
           </button>
 
           <button
             type="button"
+            disabled={isGenerating}
             onClick={onShare}
             className={cn(
-              "inline-flex items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700",
-              "hover:border-gray-300 hover:bg-gray-50",
-              "dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-gray-800"
+              "inline-flex items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 transition-colors",
+              "hover:border-gray-300 hover:bg-gray-100 hover:text-gray-900",
+              "dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:border-gray-600 dark:hover:bg-gray-800 dark:hover:text-gray-100",
+              "disabled:cursor-not-allowed disabled:opacity-50"
             )}
           >
             <Share2 className="h-4 w-4" />
-            <span className="hidden md:inline">Chia sẻ</span>
+            <span className="hidden md:inline">{s.share}</span>
           </button>
 
         </div>
