@@ -23,7 +23,6 @@ import type { PlanDraft, QuestionType, GeneratedQuestion } from "@/features/inte
 import type { KnowledgeDocument } from "@/features/knowledge/types/knowledge";
 import { useHrSubscription } from "@/features/hr/context/hr-subscription-context";
 import { useUser } from "@/features/auth/context/user-context";
-import { isOverPlanUsageQuota } from "@/features/hr/data/hr-subscription";
 import { useLanguage } from "@/shared/providers/language-context";
 import { cn } from "@/lib/cn";
 import {
@@ -175,7 +174,7 @@ function clearBgJobKeys() {
 
 export function GenerateForm() {
   const { t }  = useLanguage();
-  const { planId, limits, hasFeature } = useHrSubscription();
+  const { canGenerateNow, cooldownEndsAt } = useHrSubscription();
   const { user } = useUser();
 
   // ── Form inputs — always default for SSR, restored from localStorage in useEffect ──
@@ -211,9 +210,8 @@ export function GenerateForm() {
   // Guard: persistence effects must not clear localStorage before restore runs
   const hasRestoredRef = useRef(false);
 
-  const quotaBlocked     = isOverPlanUsageQuota(planId);
-  const aiBlocked        = !hasFeature("aiPoweredGeneration");
-  const generateDisabled = quotaBlocked || aiBlocked;
+  const quotaBlocked     = !canGenerateNow;
+  const generateDisabled = quotaBlocked;
 
   // Cleanup polling on unmount
   useEffect(() => {
@@ -391,14 +389,14 @@ export function GenerateForm() {
                   role:          localPlan.role          || serverPlan?.role          || "",
                   level:         localPlan.level         || serverPlan?.level         || "",
                   difficulty:    localPlan.difficulty    || serverPlan?.difficulty    || "",
-                  questionCount: localPlan.questionCount || serverPlan?.questionCount || Math.min(10, limits.maxQuestionsPerRun),
+                  questionCount: localPlan.questionCount || serverPlan?.questionCount || 10,
                   questionTypes: localPlan.questionTypes?.length ? localPlan.questionTypes : (serverPlan?.questionTypes ?? ["Technical", "Behavioral"] as QuestionType[]),
                   topics:        localPlan.topics?.length        ? localPlan.topics        : (serverPlan?.topics ?? []),
                 }
               : serverPlan;
             setPlan(merged ?? {
               role: "", level: "",
-              questionCount: Math.min(10, limits.maxQuestionsPerRun),
+              questionCount: 10,
               questionTypes: ["Technical", "Behavioral"] as QuestionType[],
               topics: [],
             });
@@ -480,14 +478,14 @@ export function GenerateForm() {
                 role:          localPlan.role          || serverPlan?.role          || "",
                 level:         localPlan.level         || serverPlan?.level         || "",
                 difficulty:    localPlan.difficulty    || serverPlan?.difficulty    || "",
-                questionCount: localPlan.questionCount || serverPlan?.questionCount || Math.min(10, limits.maxQuestionsPerRun),
+                questionCount: localPlan.questionCount || serverPlan?.questionCount || 10,
                 questionTypes: localPlan.questionTypes?.length ? localPlan.questionTypes : (serverPlan?.questionTypes ?? ["Technical", "Behavioral"] as QuestionType[]),
                 topics:        localPlan.topics?.length        ? localPlan.topics        : (serverPlan?.topics ?? []),
               }
             : serverPlan;
           setPlan(merged ?? {
             role: "", level: "",
-            questionCount: Math.min(10, limits.maxQuestionsPerRun),
+            questionCount: 10,
             questionTypes: ["Technical", "Behavioral"] as QuestionType[],
             topics: [],
           });
@@ -639,7 +637,7 @@ export function GenerateForm() {
     return {
       role:          "",
       level:         "",
-      questionCount: Math.min(10, limits.maxQuestionsPerRun),
+      questionCount: 10,
       questionTypes: ["Technical", "Behavioral"] as QuestionType[],
       topics:        [],
       constraints:   note || undefined,
@@ -668,7 +666,7 @@ export function GenerateForm() {
         ? await createGenerationJobFromFile({
             jobDescription:    jdText               || undefined,
             hrNote:            note                 || undefined,
-            numberOfQuestions: Math.min(10, limits.maxQuestionsPerRun),
+            numberOfQuestions: 10,
             difficulty:        "medium",
             questionTypes:     ["technical", "behavioral"],
             file:              jdFile,
@@ -676,7 +674,7 @@ export function GenerateForm() {
         : await createGenerationJob({
             jobDescription:    jdText               || undefined,
             hrNote:            note                 || undefined,
-            numberOfQuestions: Math.min(10, limits.maxQuestionsPerRun),
+            numberOfQuestions: 10,
             difficulty:        "medium",
             questionTypes:     ["technical", "behavioral"],
             ...(selectedDoc ? { knowledgeDocumentId: selectedDoc.id } : {}),
@@ -1060,20 +1058,14 @@ export function GenerateForm() {
     <div className="space-y-4">
       <FlowStepIndicator currentStep={1} steps={t.generatePage.flowSteps} />
 
-      {aiBlocked && (
-        <div className="rounded-xl border border-indigo-200 dark:border-indigo-800 bg-indigo-50/90 dark:bg-indigo-950/40 px-4 py-3 text-sm text-indigo-950 dark:text-indigo-200 animate-fade-up">
-          <p className="font-semibold mb-1">{t.generatePage.noAiPlan.title}</p>
-          <p className="mb-2">{t.generatePage.noAiPlan.body}</p>
-          <Link href="/hr/settings?tab=billing" className="inline-flex font-semibold text-primary hover:underline">
-            {t.generatePage.noAiPlan.goToPlans}
-          </Link>
-        </div>
-      )}
-
-      {quotaBlocked && !aiBlocked && (
+      {quotaBlocked && (
         <div className="rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40 px-4 py-3 text-sm text-amber-950 dark:text-amber-200 animate-fade-up">
           <p className="font-semibold mb-1">{t.generatePage.quota.exceededTitle}</p>
-          <p className="mb-2">{t.generatePage.quota.exceededBody}</p>
+          <p className="mb-2">
+            {cooldownEndsAt
+              ? t.generatePage.quota.exceededBody.replace("{{time}}", cooldownEndsAt.toLocaleString())
+              : t.generatePage.quota.exceededBody}
+          </p>
           <Link href="/hr/settings?tab=billing" className="inline-flex font-semibold text-primary hover:underline">
             {t.generatePage.quota.goToBilling}
           </Link>

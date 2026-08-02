@@ -22,6 +22,8 @@ export interface PracticeQuestion {
   difficulty: Difficulty;
   skill?: string;
   timeLimit?: number; // seconds
+  /** Free plan: BE che nội dung (~80% câu) — FE hiện soft paywall */
+  isLocked?: boolean;
 }
 
 export interface QuestionSet {

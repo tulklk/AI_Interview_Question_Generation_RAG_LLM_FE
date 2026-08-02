@@ -173,7 +173,7 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
 
       {/* ── Plan section ──────────────────────────────────────────────── */}
       <div className="px-4 mb-1">
-        {planId === "basic" ? (
+        {planId === "HR_FREE" ? (
           <button
             type="button"
             onClick={() => setShowUpgradeModal(true)}
@@ -197,6 +197,7 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
         ) : (
           <Link
             href="/hr/settings?tab=billing"
+            onClick={() => handleNavClick("/hr/settings")}
             className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors group"
           >
             <CreditCard size={12} className="text-gray-400 dark:text-gray-500 shrink-0" />
@@ -210,12 +211,7 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
             </div>
             {short && (
               <span
-                className={cn(
-                  "text-[9px] font-bold px-1.5 py-0.5 rounded-full shrink-0",
-                  planId === "professional" && "text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60",
-                  planId === "business" && "text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/60",
-                  planId === "enterprise" && "text-violet-700 dark:text-violet-300 bg-violet-50 dark:bg-violet-950/60"
-                )}
+                className="text-[9px] font-bold px-1.5 py-0.5 rounded-full shrink-0 text-violet-700 dark:text-violet-300 bg-violet-50 dark:bg-violet-950/60"
               >
                 {short}
               </span>

@@ -140,6 +140,10 @@ function normalizeListItem(raw: unknown): AdminUserListItem | null {
   const avatarUrl =
     typeof avatarRaw === "string" ? avatarRaw : avatarRaw === null ? null : undefined;
 
+  const planCode =
+    pickOptionalString(src, "planCode", "PlanCode") || null;
+  const isPremium = pickBoolean(src, "isPremium", "IsPremium") ?? false;
+
   return {
     id: id || email,
     fullName: resolvedFullName,
@@ -150,6 +154,8 @@ function normalizeListItem(raw: unknown): AdminUserListItem | null {
     emailVerified,
     createdAt,
     avatarUrl,
+    planCode,
+    isPremium,
   };
 }
 

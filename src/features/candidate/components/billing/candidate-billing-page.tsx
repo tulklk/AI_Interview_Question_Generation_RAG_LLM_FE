@@ -27,6 +27,7 @@ import {
   getCandidatePaymentHistory,
   cancelSubscription,
 } from "@/features/candidate/services/candidate-billing.service";
+import { isPremiumPlanCode, listSubscriptionPlans } from "@/features/subscription/services/subscription.service";
 import { UpgradeModal } from "@/features/candidate/components/billing/upgrade-modal";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -207,6 +208,8 @@ export function CandidateBillingPage() {
   const [loading, setLoading] = useState(true);
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [showCancel, setShowCancel] = useState(false);
+  const [livePremiumMonthlyPrice, setLivePremiumMonthlyPrice] = useState<number | null>(null);
+  const [livePremiumCurrency, setLivePremiumCurrency] = useState<string>("VND");
 
   const loadBillingData = useCallback(async (showLoader = true) => {
     if (showLoader) setLoading(true);
@@ -230,6 +233,19 @@ export function CandidateBillingPage() {
   useEffect(() => {
     void loadBillingData(true);
   }, [loadBillingData]);
+
+  useEffect(() => {
+    void listSubscriptionPlans("Candidate")
+      .then((plans) => {
+        const premium = plans.find((p) => isPremiumPlanCode(p.code));
+        if (!premium) return;
+        setLivePremiumMonthlyPrice(Math.max(0, premium.priceMonthly));
+        setLivePremiumCurrency(premium.currency || "VND");
+      })
+      .catch(() => {
+        // giữ fallback nếu API lỗi
+      });
+  }, []);
 
   // Re-fetch when plan changes externally (e.g., upgraded from sidebar modal)
   const prevPlanRef = useRef<string | null>(null);
@@ -454,7 +470,13 @@ export function CandidateBillingPage() {
                 </p>
               </div>
               <div className="flex items-end gap-1">
-                <span className="text-3xl font-extrabold text-primary">$12.99</span>
+                <span className="text-3xl font-extrabold text-primary">
+                  {livePremiumMonthlyPrice === null ? (
+                    <span className="inline-block h-7 w-20 rounded bg-gray-200 dark:bg-gray-700 animate-pulse align-middle" />
+                  ) : (
+                    formatPrice(livePremiumMonthlyPrice, livePremiumCurrency)
+                  )}
+                </span>
                 <span className={cn("text-sm mb-0.5", portalSubtext)}>{b.perMonth}</span>
               </div>
             </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { CheckCircle2, XCircle, BadgeCheck } from "lucide-react";
 import { useLanguage } from "@/shared/providers/language-context";
@@ -11,6 +11,12 @@ import { CosmicField } from "@/features/guest/components/cosmic-field";
 import { useUser } from "@/features/auth";
 import { getUserRole } from "@/core/auth/permissions";
 import { getCandidateSubscription } from "@/features/candidate/services/candidate-billing.service";
+import {
+  getMySubscription,
+  isPremiumPlanCode,
+  listSubscriptionPlans,
+  type SubscriptionPlan,
+} from "@/features/subscription/services/subscription.service";
 import type { Translations } from "@/core/i18n/en";
 import type { PricingPlan } from "@/features/guest/types/guest";
 
@@ -18,9 +24,22 @@ type PlanI18n =
   | Translations["pricing"]["jobSeeker"]["plans"][number]
   | Translations["pricing"]["recruiter"]["plans"][number];
 
-/** Maps backend planType → pricing card id */
+function formatVnd(amount: number): string {
+  if (amount <= 0) return "0₫";
+  return `${Math.round(amount).toLocaleString("vi-VN")}₫`;
+}
+
 function candidatePlanIdFromType(planType: string): string {
   return planType === "PREMIUM" ? "premium" : "free";
+}
+
+function hrPlanIdFromCode(planCode: string): string {
+  return isPremiumPlanCode(planCode) ? "hr-premium" : "hr-free";
+}
+
+function applyLivePrice(plan: PricingPlan, live: SubscriptionPlan | undefined): PricingPlan {
+  if (!live) return plan;
+  return { ...plan, price: formatVnd(live.priceMonthly) };
 }
 
 function PricingPlanCard({
@@ -63,10 +82,8 @@ function PricingPlanCard({
       ? planT.badge
       : mostPopularLabel;
 
-  const isEnterpriseCta = plan.id === "enterprise" || plan.id === "hr-enterprise";
-  const isMutedLeadPlan = plan.id === "free" || plan.id === "hr-basic";
+  const isMutedLeadPlan = plan.id === "free" || plan.id === "hr-free";
 
-  // Determine CTA
   let ctaHref: string;
   let ctaLabel: string;
   let ctaClass: string;
@@ -79,20 +96,16 @@ function PricingPlanCard({
       : "bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-800";
   } else if (isLoggedIn) {
     ctaHref = upgradeHref;
-    ctaLabel = isEnterpriseCta ? planT.cta : upgradePlanLabel;
+    ctaLabel = plan.highlighted ? upgradePlanLabel : planT.cta;
     ctaClass = plan.highlighted
       ? "bg-white text-primary hover:bg-white/90 shadow-sm"
-      : isEnterpriseCta
-        ? "bg-gray-900 text-white hover:bg-gray-800 dark:bg-gray-100 dark:text-gray-900 dark:hover:bg-white"
-        : "bg-primary text-white hover:bg-primary/85";
+      : "bg-primary text-white hover:bg-primary/85";
   } else {
     ctaHref = "/login";
     ctaLabel = planT.cta;
     ctaClass = plan.highlighted
       ? "bg-white text-primary hover:bg-white/90 shadow-sm"
-      : isEnterpriseCta
-        ? "bg-gray-900 text-white hover:bg-gray-800"
-        : "bg-primary text-white hover:bg-primary/85";
+      : "bg-primary text-white hover:bg-primary/85";
   }
 
   return (
@@ -108,7 +121,6 @@ function PricingPlanCard({
             : "bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 shadow-sm"
       )}
     >
-      {/* "Most popular" OR "Your plan" badge */}
       {(plan.highlighted || isCurrentPlan) && (
         <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 z-20">
           <span
@@ -232,9 +244,9 @@ export function PricingSection() {
   const { user } = useUser();
 
   const [candidatePlanId, setCandidatePlanId] = useState<string | null>(null);
-  // getUserRole() reads localStorage — start null (matches SSR) and resolve
-  // on mount, otherwise a logged-in client's first render disagrees with the
-  // server-rendered HTML and triggers a hydration mismatch.
+  const [hrPlanId, setHrPlanId] = useState<string | null>(null);
+  const [liveCandidatePlans, setLiveCandidatePlans] = useState<SubscriptionPlan[]>([]);
+  const [liveHrPlans, setLiveHrPlans] = useState<SubscriptionPlan[]>([]);
   const [role, setRole] = useState<string | null>(null);
 
   useEffect(() => {
@@ -250,19 +262,51 @@ export function PricingSection() {
   const isHr = role?.toUpperCase().includes("HR") ?? false;
 
   useEffect(() => {
+    // Giá live từ BE (admin có thể đổi) — fallback static nếu API lỗi / guest
+    void listSubscriptionPlans("Candidate")
+      .then(setLiveCandidatePlans)
+      .catch(() => setLiveCandidatePlans([]));
+    void listSubscriptionPlans("HR")
+      .then(setLiveHrPlans)
+      .catch(() => setLiveHrPlans([]));
+  }, []);
+
+  useEffect(() => {
     if (!user) {
       setCandidatePlanId(null);
+      setHrPlanId(null);
       return;
     }
-    if (!isJobSeeker) return;
+    if (isJobSeeker) {
+      getCandidateSubscription()
+        .then((sub) => setCandidatePlanId(candidatePlanIdFromType(sub.planType)))
+        .catch(() => setCandidatePlanId(null));
+    }
+    if (isHr) {
+      getMySubscription()
+        .then((sub) => setHrPlanId(hrPlanIdFromCode(sub.planCode)))
+        .catch(() => setHrPlanId(null));
+    }
+  }, [user, isJobSeeker, isHr]);
 
-    getCandidateSubscription()
-      .then((sub) => setCandidatePlanId(candidatePlanIdFromType(sub.planType)))
-      .catch(() => setCandidatePlanId(null));
-  }, [user, isJobSeeker]);
+  const jobSeekerPlans = useMemo(() => {
+    const free = liveCandidatePlans.find((x) => !isPremiumPlanCode(x.code));
+    const premium = liveCandidatePlans.find((x) => isPremiumPlanCode(x.code));
+    return pricingPlansJobSeeker.map((plan) =>
+      applyLivePrice(plan, plan.id === "premium" ? premium : free)
+    );
+  }, [liveCandidatePlans]);
 
-  const jobSeekerManageHref = "/jobseeker/settings";
-  const hrManageHref = "/hr/settings";
+  const recruiterPlans = useMemo(() => {
+    const free = liveHrPlans.find((x) => !isPremiumPlanCode(x.code));
+    const premium = liveHrPlans.find((x) => isPremiumPlanCode(x.code));
+    return pricingPlansRecruiter.map((plan) =>
+      applyLivePrice(plan, plan.id === "hr-premium" ? premium : free)
+    );
+  }, [liveHrPlans]);
+
+  const jobSeekerManageHref = "/jobseeker/settings?tab=billing";
+  const hrManageHref = "/hr/settings?tab=billing";
 
   return (
     <section id="pricing" className="relative bg-white/92 dark:bg-gray-950/85 py-16 sm:py-20 px-4 sm:px-6">
@@ -280,6 +324,7 @@ export function PricingSection() {
           </p>
         </ScrollReveal>
 
+        {/* Candidate Free / Premium */}
         <div className="mb-16 sm:mb-20">
           <ScrollReveal
             animation="fade-up"
@@ -294,14 +339,11 @@ export function PricingSection() {
           </ScrollReveal>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5 sm:gap-6 lg:gap-8 items-stretch max-w-4xl mx-auto md:items-start">
-            {pricingPlansJobSeeker.map((plan, i) => {
+            {jobSeekerPlans.map((plan, i) => {
               const planT = p.jobSeeker.plans[i];
               if (!planT) return null;
               const animation = plan.highlighted ? "scale-in" : "fade-up";
-              const orderClass = plan.highlighted
-                ? "order-1 md:order-2"
-                : "order-2 md:order-1";
-
+              const orderClass = plan.highlighted ? "order-1 md:order-2" : "order-2 md:order-1";
               const isCurrentPlan = isJobSeeker && candidatePlanId === plan.id;
 
               return (
@@ -332,6 +374,7 @@ export function PricingSection() {
           </ScrollReveal>
         </div>
 
+        {/* HR Free / Premium */}
         <div>
           <ScrollReveal
             animation="fade-up"
@@ -362,17 +405,16 @@ export function PricingSection() {
             ) : null}
           </ScrollReveal>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5 sm:gap-6 items-stretch max-w-7xl mx-auto">
-            {pricingPlansRecruiter.map((plan, i) => {
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 sm:gap-6 lg:gap-8 items-stretch max-w-4xl mx-auto md:items-start">
+            {recruiterPlans.map((plan, i) => {
               const planT = p.recruiter.plans[i];
               if (!planT) return null;
               const animation = plan.highlighted ? "scale-in" : "fade-up";
-
-              // HR users: show "current plan" on their tier (no billing service yet → mark first non-enterprise as current)
-              const isCurrentPlan = isHr && plan.id === "hr-basic";
+              const orderClass = plan.highlighted ? "order-1 md:order-2" : "order-2 md:order-1";
+              const isCurrentPlan = isHr && hrPlanId === plan.id;
 
               return (
-                <div key={plan.id} className="min-h-0 flex w-full">
+                <div key={plan.id} className={cn("min-h-0 flex w-full", orderClass)}>
                   <PricingPlanCard
                     plan={plan}
                     planT={planT}
