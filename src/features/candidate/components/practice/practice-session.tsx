@@ -2,10 +2,11 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { motion, AnimatePresence, useAnimationControls } from "framer-motion";
 import {
   Timer, ChevronLeft, ChevronRight, Send, X,
-  Loader2, Sparkles, CheckCircle2, AlertCircle, RefreshCw, Lock, Save,
+  Loader2, Sparkles, CheckCircle2, AlertCircle, RefreshCw, Lock, Save, Crown,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { useLanguage } from "@/shared/providers/language-context";
@@ -28,6 +29,8 @@ import {
   getPracticeSession,
   ForbiddenError,
 } from "@/features/candidate/services/practice-session.service";
+import { UpgradeModal } from "@/features/candidate/components/billing/upgrade-modal";
+import { useCandidateSubscription } from "@/features/candidate/context/candidate-subscription-context";
 
 const MIN_ANSWER_CHARS = 20;
 const MIN_ANSWER_WORDS = 3;
@@ -101,9 +104,10 @@ interface QuestionNavProps {
 }
 
 function QuestionNav({ questions, currentIdx, submitted, onSelect, onRequestFinish, finishing, hasTimeLimit, timeLeft, elapsedSeconds, labels }: QuestionNavProps) {
-  const answeredCount = questions.filter((q) => submitted[q.id]).length;
-  const total = questions.length;
-  const allAnswered = answeredCount === total;
+  const answerable = questions.filter((q) => !q.isLocked);
+  const answeredCount = answerable.filter((q) => submitted[q.id]).length;
+  const total = answerable.length;
+  const allAnswered = total === 0 || answeredCount === total;
 
   return (
     <aside className={cn(
@@ -146,22 +150,33 @@ function QuestionNav({ questions, currentIdx, submitted, onSelect, onRequestFini
           {questions.map((q, idx) => {
             const isActive = idx === currentIdx;
             const isDone = submitted[q.id] ?? false;
+            const isLocked = q.isLocked === true;
             return (
               <button
                 key={q.id}
                 type="button"
                 onClick={() => onSelect(idx)}
-                title={isActive ? labels.current : isDone ? labels.answered : labels.unanswered}
+                title={
+                  isLocked
+                    ? "Premium"
+                    : isActive
+                      ? labels.current
+                      : isDone
+                        ? labels.answered
+                        : labels.unanswered
+                }
                 className={cn(
                   "w-9 h-9 rounded-full text-[13px] font-bold transition-all duration-150 flex items-center justify-center",
-                  isActive
+                  isLocked
+                    ? "bg-amber-100 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 border border-amber-300/60 dark:border-amber-700"
+                    : isActive
                     ? "bg-primary text-white shadow-md shadow-primary/30 scale-110"
                     : isDone
                     ? "bg-emerald-500 dark:bg-emerald-600 text-white hover:bg-emerald-600 dark:hover:bg-emerald-500"
                     : "border-2 border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-primary/50 hover:text-primary"
                 )}
               >
-                {idx + 1}
+                {isLocked ? <Lock size={12} /> : idx + 1}
               </button>
             );
           })}
@@ -210,6 +225,7 @@ export function PracticeSession({ set }: PracticeSessionProps) {
   const { t } = useLanguage();
   const router = useRouter();
   const { addToast } = useToast();
+  const { refreshSubscription } = useCandidateSubscription();
   const p = t.jobseekerPracticePage;
 
   const [currentIdx, setCurrentIdx] = useState(0);
@@ -224,6 +240,7 @@ export function PracticeSession({ set }: PracticeSessionProps) {
   const [exitOpen, setExitOpen] = useState(false);
   const [abandoning, setAbandoning] = useState(false);
   const [reviewOpen, setReviewOpen] = useState(false);
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
 
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [startedAt, setStartedAt] = useState<string | null>(null);
@@ -259,6 +276,7 @@ export function PracticeSession({ set }: PracticeSessionProps) {
   const currentAnswer = answers[question.id] ?? "";
   const isSubmitted = submitted[question.id] ?? false;
   const isLast = currentIdx === totalQuestions - 1;
+  const isQuestionLocked = question.isLocked === true;
 
   // Start (or auto-resume, server-side) the practice session for this set. The
   // response's questions[] already carry any previously-submitted answerText.
@@ -287,7 +305,7 @@ export function PracticeSession({ set }: PracticeSessionProps) {
         setAnswers((prev) => ({ ...prev, ...answersMap }));
         setResumed(wasResumed);
         if (wasResumed) addToast("success", p.resumedToast);
-        const firstUnanswered = set.questions.findIndex((q) => !submittedMap[q.id]);
+        const firstUnanswered = set.questions.findIndex((q) => !q.isLocked && !submittedMap[q.id]);
         setCurrentIdx(firstUnanswered === -1 ? set.questions.length - 1 : firstUnanswered);
       })
       .catch((err) => {
@@ -485,8 +503,11 @@ export function PracticeSession({ set }: PracticeSessionProps) {
       });
   }
 
-  const allAnswered = set.questions.every((q) => submitted[q.id]);
-  const unansweredCount = set.questions.filter((q) => !submitted[q.id]).length;
+  const answerableQuestions = set.questions.filter((q) => !q.isLocked);
+  const allAnswered =
+    answerableQuestions.length === 0 ||
+    answerableQuestions.every((q) => submitted[q.id]);
+  const unansweredCount = answerableQuestions.filter((q) => !submitted[q.id]).length;
 
   // A prior finish attempt already failed — retry directly, don't re-open review.
   // Otherwise this is a fresh submit request, so confirm via the review dialog first.
@@ -499,7 +520,7 @@ export function PracticeSession({ set }: PracticeSessionProps) {
   }
 
   function goToFirstUnanswered() {
-    const idx = set.questions.findIndex((q) => !submitted[q.id]);
+    const idx = set.questions.findIndex((q) => !q.isLocked && !submitted[q.id]);
     if (idx === -1) return;
     setDirection(idx > currentIdx ? 1 : -1);
     setCurrentIdx(idx);
@@ -670,16 +691,58 @@ export function PracticeSession({ set }: PracticeSessionProps) {
               </div>
 
               {/* Question text */}
-              <QuestionContent
-                text={question.text}
-                className={cn("text-[17px] sm:text-[20px] font-bold leading-6.5 sm:leading-7.5", portalHeadingAlt)}
-              />
+              {isQuestionLocked ? (
+                <div className="relative rounded-xl overflow-hidden border border-amber-200/80 dark:border-amber-800/60 bg-amber-50/50 dark:bg-amber-950/20 p-6">
+                  <div className="blur-sm select-none pointer-events-none opacity-40">
+                    <p className={cn("text-[17px] sm:text-[20px] font-bold leading-7", portalHeadingAlt)}>
+                      {p.lockedQuestion.blurredPlaceholder}
+                    </p>
+                  </div>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-4 text-center">
+                    <div className="w-10 h-10 rounded-full bg-[#6c47ff]/15 flex items-center justify-center">
+                      <Lock size={18} className="text-[#6c47ff]" />
+                    </div>
+                    <p className={cn("text-sm font-semibold", portalHeadingAlt)}>
+                      {p.lockedQuestion.title}
+                    </p>
+                    <p className={cn("text-xs max-w-sm", portalSubtextAlt)}>
+                      {p.lockedQuestion.body}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setUpgradeOpen(true)}
+                      className="shimmer-button inline-flex items-center gap-2 h-9 px-4 text-[13px] font-semibold text-white hr-cta-btn rounded-lg"
+                    >
+                      <Crown size={14} />
+                      {p.lockedQuestion.upgradeBtn}
+                    </button>
+                    <Link
+                      href="/jobseeker/settings?tab=billing"
+                      className="text-[11px] font-medium text-[#6c47ff] hover:underline"
+                    >
+                      {p.lockedQuestion.viewPlansLink}
+                    </Link>
+                  </div>
+                </div>
+              ) : (
+                <QuestionContent
+                  text={question.text}
+                  className={cn("text-[17px] sm:text-[20px] font-bold leading-6.5 sm:leading-7.5", portalHeadingAlt)}
+                />
+              )}
             </motion.div>
           </AnimatePresence>
 
           {/* Answer area */}
           <div className="hr-glass-card p-4 sm:p-6">
-            {isSubmitted ? (
+            {isQuestionLocked ? (
+              <div className="flex flex-col items-center justify-center gap-2 py-8 text-center">
+                <Lock size={16} className="text-gray-400" />
+                <p className={cn("text-sm", portalSubtextAlt)}>
+                  {p.lockedQuestion.answerLocked}
+                </p>
+              </div>
+            ) : isSubmitted ? (
               /* Submitted state */
               <motion.div
                 initial={{ opacity: 0, y: 8 }}
@@ -893,6 +956,20 @@ export function PracticeSession({ set }: PracticeSessionProps) {
       </div>{/* end content row */}
       </div>{/* end body wrapper */}
     </div>
+    {upgradeOpen && (
+      <UpgradeModal
+        onClose={() => setUpgradeOpen(false)}
+        onDone={async () => {
+          setUpgradeOpen(false);
+          await refreshSubscription();
+          addToast("success", p.lockedQuestion.upgradedToast);
+          // PracticeSessionClient fetches `set` client-side in a useEffect, not via
+          // a Server Component — router.refresh() would be a no-op here, so a real
+          // reload is required to re-fetch questions with the new entitlements.
+          window.location.reload();
+        }}
+      />
+    )}
     </>
   );
 }

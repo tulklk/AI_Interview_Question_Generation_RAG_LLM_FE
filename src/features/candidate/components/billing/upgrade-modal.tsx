@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { motion } from "framer-motion";
-import { Crown, Check, X } from "lucide-react";
+import { Crown, Check, Copy, X } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { useLanguage } from "@/shared/providers/language-context";
 import { useToast } from "@/shared/providers/toast-context";
@@ -12,13 +12,19 @@ import {
   getCandidateSubscription,
   getCandidateBillingUsage,
   getCandidatePaymentHistory,
+  getUpgradeOrderStatus,
   upgradeToPremium,
 } from "@/features/candidate/services/candidate-billing.service";
+import {
+  isPremiumPlanCode,
+  listSubscriptionPlans,
+} from "@/features/subscription/services/subscription.service";
 import type {
   CandidateSubscription,
   CandidateBillingUsage,
   PaymentHistoryItem,
 } from "@/features/candidate/types/billing";
+import type { UpgradePaymentIntent } from "@/features/subscription/services/subscription.service";
 
 export interface UpgradeModalDonePayload {
   subscription: CandidateSubscription;
@@ -32,12 +38,32 @@ interface UpgradeModalProps {
 }
 
 export function UpgradeModal({ onClose, onDone }: UpgradeModalProps) {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
+  const locale = lang === "vi" ? "vi-VN" : "en-US";
   const { addToast } = useToast();
   const b = t.jobseekerSettingsPage.billing;
-  const [cycle, setCycle] = useState<"MONTHLY" | "YEARLY">("MONTHLY");
   const [loading, setLoading] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [payment, setPayment] = useState<UpgradePaymentIntent | null>(null);
+  const [polling, setPolling] = useState(false);
+  const qrImageFromContent =
+    payment?.qrContent
+      ? `https://api.qrserver.com/v1/create-qr-code/?size=320x320&data=${encodeURIComponent(payment.qrContent)}`
+      : null;
+  const [liveMonthlyPrice, setLiveMonthlyPrice] = useState<number | null>(null);
+  const [liveCurrency, setLiveCurrency] = useState<string>("VND");
+
+  function formatPlanPrice(amount: number) {
+    try {
+      return new Intl.NumberFormat("vi-VN", {
+        style: "currency",
+        currency: liveCurrency || "VND",
+        maximumFractionDigits: 0,
+      }).format(amount);
+    } catch {
+      return `${amount.toLocaleString("vi-VN")} ${liveCurrency || "VND"}`;
+    }
+  }
 
   useEffect(() => {
     setMounted(true);
@@ -46,26 +72,95 @@ export function UpgradeModal({ onClose, onDone }: UpgradeModalProps) {
     return () => document.removeEventListener("keydown", handleKey);
   }, [onClose]);
 
-  async function handleConfirm() {
+  useEffect(() => {
+    void listSubscriptionPlans("Candidate")
+      .then((plans) => {
+        const premium = plans.find((p) => isPremiumPlanCode(p.code));
+        if (!premium) return;
+        setLiveMonthlyPrice(Math.max(0, premium.priceMonthly));
+        setLiveCurrency(premium.currency || "VND");
+      })
+      .catch(() => {
+        // giữ fallback để modal vẫn dùng được khi API lỗi
+      });
+  }, []);
+
+  async function copyText(value: string, copiedMessage: string) {
+    try {
+      await navigator.clipboard.writeText(value);
+      addToast("success", copiedMessage);
+    } catch {
+      addToast("error", b.paymentPanel.copyFailedToast);
+    }
+  }
+
+  async function handleCreateOrder() {
     setLoading(true);
     try {
-      await upgradeToPremium({ billingCycle: cycle });
-      // Give the backend a moment to fully process the upgrade before re-fetching
-      await new Promise((resolve) => setTimeout(resolve, 800));
-      const [sub, use, hist] = await Promise.all([
-        getCandidateSubscription(),
-        getCandidateBillingUsage(),
-        getCandidatePaymentHistory(),
-      ]);
-      addToast("success", b.upgradeSuccess);
-      onDone?.({ subscription: sub, usage: use, history: hist });
-      onClose();
+      const order = await upgradeToPremium();
+      setPayment(order);
+      addToast("success", b.orderCreatedToast);
     } catch {
       addToast("error", b.upgradeFailed);
     } finally {
       setLoading(false);
     }
   }
+
+  useEffect(() => {
+    if (!payment?.orderCode) return;
+
+    let stop = false;
+    setPolling(true);
+    const id = window.setInterval(async () => {
+      if (stop) return;
+      try {
+        const status = await getUpgradeOrderStatus(payment.orderCode);
+        if (stop) return;
+        setPayment((prev) => {
+          if (!prev) return status;
+          return {
+            ...prev,
+            ...status,
+            // Giữ QR/transfer cũ nếu API poll chỉ trả status mà không trả lại chi tiết QR.
+            qrImageUrl: status.qrImageUrl ?? prev.qrImageUrl,
+            qrContent: status.qrContent ?? prev.qrContent,
+            paymentUrl: status.paymentUrl ?? prev.paymentUrl,
+            bankName: status.bankName ?? prev.bankName,
+            bankAccountName: status.bankAccountName ?? prev.bankAccountName,
+            bankAccountNumber: status.bankAccountNumber ?? prev.bankAccountNumber,
+            transferContent: status.transferContent ?? prev.transferContent,
+          };
+        });
+
+        const normalized = (status.status || "").toUpperCase();
+        if (normalized === "PAID") {
+          stop = true;
+          window.clearInterval(id);
+          const [sub, use, hist] = await Promise.all([
+            getCandidateSubscription(),
+            getCandidateBillingUsage(),
+            getCandidatePaymentHistory(),
+          ]);
+          addToast("success", b.upgradeSuccess);
+          onDone?.({ subscription: sub, usage: use, history: hist });
+          onClose();
+        } else if (normalized === "EXPIRED" || normalized === "FAILED") {
+          stop = true;
+          window.clearInterval(id);
+          setPolling(false);
+        }
+      } catch {
+        // ignore network hiccup and keep polling
+      }
+    }, 3000);
+
+    return () => {
+      stop = true;
+      setPolling(false);
+      window.clearInterval(id);
+    };
+  }, [payment?.orderCode, onClose, onDone, addToast, b.upgradeSuccess]);
 
   const modal = (
     <div
@@ -78,7 +173,10 @@ export function UpgradeModal({ onClose, onDone }: UpgradeModalProps) {
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95 }}
         transition={{ duration: 0.2 }}
-        className="relative z-10 w-full max-w-md bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-800 overflow-hidden"
+        className={cn(
+          "relative z-10 w-full bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-800 overflow-hidden",
+          payment ? "max-w-2xl" : "max-w-md"
+        )}
       >
         {/* Header */}
         <div className="relative px-6 pt-6 pb-5 border-b border-gray-200 dark:border-gray-800">
@@ -99,57 +197,108 @@ export function UpgradeModal({ onClose, onDone }: UpgradeModalProps) {
         </div>
 
         <div className="px-6 py-5 space-y-5">
-          {/* Billing cycle selector */}
-          <div>
-            <p className={cn("text-xs font-semibold uppercase tracking-wide mb-2.5", portalSubtext)}>
-              {b.billingCycleLabel}
-            </p>
-            <div className="grid grid-cols-2 gap-2.5">
-              {(["MONTHLY", "YEARLY"] as const).map((c) => (
-                <button
-                  key={c}
-                  type="button"
-                  onClick={() => setCycle(c)}
-                  className={cn(
-                    "relative flex flex-col items-start p-3.5 rounded-xl border-2 transition-all text-left",
-                    cycle === c
-                      ? "border-primary bg-primary/5 dark:bg-primary/10"
-                      : "border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600"
+          {!payment ? (
+            <div className="rounded-xl border-2 border-primary bg-primary/5 dark:bg-primary/10 p-4 flex items-baseline gap-2">
+              <span className={cn("text-2xl font-extrabold", portalHeading)}>
+                {liveMonthlyPrice === null ? (
+                  <span className="inline-block h-6 w-24 rounded bg-gray-200 dark:bg-gray-700 animate-pulse" />
+                ) : (
+                  formatPlanPrice(liveMonthlyPrice)
+                )}
+              </span>
+              <span className={cn("text-[13px]", portalSubtext)}>{b.perMonth}</span>
+            </div>
+          ) : (
+            <div className="rounded-xl border border-gray-200 dark:border-gray-700 p-4">
+              <div className={cn("text-sm font-semibold mb-3", portalHeading)}>{b.paymentPanel.title}</div>
+              {/* Desktop: QR trái | thông tin phải; Mobile: xếp dọc, QR to */}
+              <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,280px)_1fr] gap-4 items-start">
+                <div className="flex flex-col items-center gap-2">
+                  {payment.qrImageUrl || qrImageFromContent ? (
+                    <img
+                      src={payment.qrImageUrl || qrImageFromContent || undefined}
+                      alt="SePay QR"
+                      className="w-full max-w-[280px] aspect-square object-contain rounded-xl border border-gray-200 dark:border-gray-700 bg-white p-2"
+                    />
+                  ) : (
+                    <div className="w-full max-w-[280px] rounded-xl border border-dashed border-gray-300 dark:border-gray-700 p-3">
+                      <div className={cn("text-[11px] mb-1", portalSubtext)}>QR content</div>
+                      <div className={cn("break-all text-[11px]", portalHeading)}>
+                        {payment.qrContent || b.paymentPanel.noQrData}
+                      </div>
+                    </div>
                   )}
-                >
-                  <span className={cn("text-sm font-semibold", cycle === c ? "text-primary" : portalHeading)}>
-                    {c === "MONTHLY" ? b.monthly : b.yearly}
-                  </span>
-                  <span className={cn("text-lg font-extrabold mt-0.5", cycle === c ? "text-primary" : portalHeading)}>
-                    {c === "MONTHLY" ? "$12.99" : "$99"}
-                  </span>
-                  <span className={cn("text-[11px] mt-0.5", portalSubtext)}>
-                    {c === "MONTHLY" ? b.perMonth : b.perYear}
-                  </span>
-                  {c === "YEARLY" && (
-                    <span className="absolute top-2 right-2 text-[10px] font-bold bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400 px-1.5 py-0.5 rounded-md">
-                      {b.saveYearly}
+                  {polling && (
+                    <div className={cn("text-xs text-primary text-center", portalSubtext)}>
+                      {b.paymentPanel.waitingWebhook}
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-2.5 min-w-0">
+                  <div className={cn("text-xs", portalSubtext)}>
+                    <span className="font-medium opacity-80">{b.paymentPanel.orderCode}</span>
+                    <div className={cn("mt-0.5 break-all text-sm font-semibold", portalHeading)}>{payment.orderCode}</div>
+                  </div>
+                  <div className={cn("text-xs", portalSubtext)}>
+                    <span className="font-medium opacity-80">{b.paymentPanel.amount}</span>
+                    <div className={cn("mt-0.5 text-base font-bold text-primary", portalHeading)}>
+                      {payment.amount.toLocaleString(locale)} {payment.currency}
+                    </div>
+                  </div>
+                  <div className={cn("text-xs", portalSubtext)}>
+                    {b.paymentPanel.status}:{" "}
+                    <span className={cn("font-semibold", portalHeading)}>
+                      {(payment.status || "Pending").toUpperCase()}
                     </span>
-                  )}
-                  {cycle === c && (
-                    <span className="absolute top-2 right-2 w-4 h-4 bg-primary rounded-full flex items-center justify-center">
-                      <Check size={9} className="text-white stroke-3" />
-                    </span>
-                  )}
-                </button>
+                  </div>
+                  <div className={cn("text-xs", portalSubtext)}>
+                    {b.paymentPanel.expiresAt}:{" "}
+                    {payment.expiresAt ? new Date(payment.expiresAt).toLocaleString(locale) : "--"}
+                  </div>
+                  <div className={cn("text-xs", portalSubtext)}>
+                    {b.paymentPanel.bank}: {payment.bankName || "--"} — {payment.bankAccountNumber || "--"}
+                  </div>
+                  <div className={cn("text-xs", portalSubtext)}>
+                    {b.paymentPanel.accountHolder}: {payment.bankAccountName || "--"}
+                  </div>
+                  <div className="flex items-start justify-between gap-2 rounded-lg bg-gray-50 dark:bg-gray-800 px-3 py-2.5">
+                    <div className="min-w-0">
+                      <div className={cn("text-[11px] mb-0.5", portalSubtext)}>{b.paymentPanel.transferContent}</div>
+                      <div className={cn("text-xs font-semibold break-all", portalHeading)}>
+                        {payment.transferContent || payment.orderCode}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        void copyText(
+                          payment.transferContent || payment.orderCode,
+                          b.paymentPanel.copiedToast
+                        )
+                      }
+                      className="shrink-0 inline-flex items-center gap-1 text-primary text-xs font-medium pt-0.5"
+                    >
+                      <Copy size={12} />
+                      {b.paymentPanel.copyBtn}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Feature list — ẩn khi đang chờ thanh toán để ưu tiên QR */}
+          {!payment && (
+            <div className="space-y-2">
+              {b.premiumFeatures.map((f) => (
+                <div key={f} className="flex items-center gap-2">
+                  <Check size={13} className="text-primary shrink-0" />
+                  <span className={cn("text-sm", portalHeading)}>{f}</span>
+                </div>
               ))}
             </div>
-          </div>
-
-          {/* Feature list */}
-          <div className="space-y-2">
-            {b.premiumFeatures.map((f) => (
-              <div key={f} className="flex items-center gap-2">
-                <Check size={13} className="text-primary shrink-0" />
-                <span className={cn("text-sm", portalHeading)}>{f}</span>
-              </div>
-            ))}
-          </div>
+          )}
 
           {/* Actions */}
           <div className="flex gap-2.5 pt-1">
@@ -164,21 +313,31 @@ export function UpgradeModal({ onClose, onDone }: UpgradeModalProps) {
             >
               {b.cancelBtn.replace("Plan", "").trim() || "Cancel"}
             </button>
-            <button
-              type="button"
-              onClick={handleConfirm}
-              disabled={loading}
-              className="flex-1 h-10 shimmer-button rounded-xl text-sm font-semibold text-white hr-cta-btn flex items-center justify-center gap-2 disabled:opacity-60"
-            >
-              {loading ? (
-                <>
-                  <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  {b.upgradingLabel}
-                </>
-              ) : (
-                b.upgradeConfirmBtn
-              )}
-            </button>
+            {!payment ? (
+              <button
+                type="button"
+                onClick={handleCreateOrder}
+                disabled={loading}
+                className="flex-1 h-10 shimmer-button rounded-xl text-sm font-semibold text-white hr-cta-btn flex items-center justify-center gap-2 disabled:opacity-60"
+              >
+                {loading ? (
+                  <>
+                    <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    {b.upgradingLabel}
+                  </>
+                ) : (
+                  b.createOrderBtn
+                )}
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setPayment(null)}
+                className="flex-1 h-10 shimmer-button rounded-xl text-sm font-semibold text-white hr-cta-btn flex items-center justify-center gap-2"
+              >
+                {b.newOrderBtn}
+              </button>
+            )}
           </div>
         </div>
       </motion.div>

@@ -13,6 +13,10 @@ export interface AdminUserListItem {
   emailVerified?: boolean;
   createdAt?: string;
   avatarUrl?: string | null;
+  /** Mã gói từ BE (HR_FREE / …). */
+  planCode?: string | null;
+  /** Premium còn hạn theo BE. */
+  isPremium?: boolean;
 }
 
 export interface AdminUserDetail extends AdminUserListItem {

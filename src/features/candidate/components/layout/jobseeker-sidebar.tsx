@@ -146,7 +146,7 @@ export function JobseekerSidebar({ open, onClose, onOpenUpgrade }: JobseekerSide
             <Link
               href="/jobseeker/settings?tab=billing"
               onClick={() => onClose?.()}
-              title="Quản lý gói Premium"
+              title={s.managePremiumTitle}
               className="text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 text-violet-700 dark:text-violet-300 bg-violet-50 dark:bg-violet-950/60 hover:bg-violet-100 dark:hover:bg-violet-900/60 transition-colors"
             >
               Premium
@@ -154,8 +154,11 @@ export function JobseekerSidebar({ open, onClose, onOpenUpgrade }: JobseekerSide
           ) : (
             <button
               type="button"
-              onClick={() => onOpenUpgrade?.()}
-              title="Nâng cấp lên Premium"
+              onClick={() => {
+                onOpenUpgrade?.();
+                onClose?.();
+              }}
+              title={s.upgradePremiumTitle}
               className="group flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 text-cyan-600 dark:text-cyan-300 bg-cyan-50 dark:bg-cyan-950 hover:bg-primary hover:text-white dark:hover:bg-primary dark:hover:text-white transition-colors cursor-pointer"
             >
               <Zap size={9} className="group-hover:text-white transition-colors" />

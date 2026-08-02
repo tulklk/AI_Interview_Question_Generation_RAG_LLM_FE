@@ -24,6 +24,38 @@ function isLang(v: string | null | undefined): v is Lang {
   return v === "en" || v === "vi";
 }
 
+/**
+ * Proxy fallback: khi dictionary vi (cache HMR) thiếu key mới, đọc từ en.
+ * Cache proxy theo target để không tạo object mới mỗi lần access (tránh infinite useEffect).
+ */
+function withEnFallback(primary: Translations, fallback: Translations = en): Translations {
+  const cache = new WeakMap<object, object>();
+
+  const wrap = (target: unknown, fb: unknown): unknown => {
+    if (!target || typeof target !== "object" || Array.isArray(target)) return target ?? fb;
+    const cached = cache.get(target as object);
+    if (cached) return cached;
+
+    const proxy = new Proxy(target as object, {
+      get(obj, prop, receiver) {
+        if (typeof prop === "symbol") return Reflect.get(obj, prop, receiver);
+        const value = Reflect.get(obj, prop, receiver);
+        const fbVal =
+          fb && typeof fb === "object" ? Reflect.get(fb as object, prop) : undefined;
+        if (value === undefined) return fbVal;
+        if (value && typeof value === "object" && !Array.isArray(value)) {
+          return wrap(value, fbVal);
+        }
+        return value;
+      },
+    });
+    cache.set(target as object, proxy);
+    return proxy;
+  };
+
+  return wrap(primary, fallback) as Translations;
+}
+
 // "en" is the SSR/first-paint default and is always bundled eagerly. "vi" is
 // only fetched — as a separate code-split chunk — the first time it's
 // actually needed (saved preference or manual switch), so English-default
@@ -35,17 +67,16 @@ function loadDictionary(lang: Lang): Promise<Translations> {
 
 export function LanguageProvider({ children }: { children: ReactNode }) {
   const [lang, setLangState] = useState<Lang>("en");
-  const [t, setT] = useState<Translations>(en);
+  // Giữ riêng bản vi đã load — luôn đọc `en` trực tiếp từ module để HMR không giữ dictionary cũ
+  const [viDict, setViDict] = useState<Translations | null>(null);
 
   const setLang = useCallback((l: Lang) => {
     localStorage.setItem(STORAGE_KEY, l);
     document.body.classList.add("lang-switching");
-    // Wait for fade-out to finish, then swap all translated strings
     const timer = setTimeout(() => {
       loadDictionary(l).then((dict) => {
         setLangState(l);
-        setT(dict);
-        // Two rAF frames to let React flush the re-render before fading back in
+        if (l === "vi") setViDict(dict);
         requestAnimationFrame(() => {
           requestAnimationFrame(() => {
             document.body.classList.remove("lang-switching");
@@ -61,10 +92,16 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     if (isLang(saved) && saved !== "en") {
       loadDictionary(saved).then((dict) => {
         setLangState(saved);
-        setT(dict);
+        setViDict(dict);
       });
     }
   }, []);
+
+  // en luôn lấy từ import mới nhất; vi merge fallback en để key mới không crash khi HMR giữ cache cũ
+  const t = useMemo(() => {
+    if (lang === "vi" && viDict) return withEnFallback(viDict, en);
+    return en;
+  }, [lang, viDict]);
 
   const value = useMemo(() => ({ lang, setLang, t }), [lang, setLang, t]);
 

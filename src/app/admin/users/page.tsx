@@ -4,11 +4,12 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { AdminAppShell } from "@/features/admin/components/layout/admin-app-shell";
 import { AdminRouteGuard } from "@/features/admin/components/guards/admin-route-guard";
 import { UserStats } from "@/features/admin/components/users/user-stats";
-import { UserFilters, type RoleFilterValue, type StatusFilterValue } from "@/features/admin/components/users/user-filters";
-import { UserTable } from "@/features/admin/components/users/user-table";
+import {
+  UserTable,
+  type UserTableColumnFilters,
+} from "@/features/admin/components/users/user-table";
 import { UserDetailPanel } from "@/features/admin/components/users/user-detail-panel";
 import { UserPagination } from "@/features/admin/components/users/user-pagination";
-import { getAdminUserStatus } from "@/features/admin/utils/admin-user-display";
 import { getUserById, listUsers, updateUserStatus } from "@/features/admin/services/admin-users.service";
 import { useLanguage } from "@/shared/providers/language-context";
 import { cn } from "@/lib/cn";
@@ -19,16 +20,20 @@ import type { AdminUserDetail, AdminUserListItem } from "@/features/admin/types/
 const SEARCH_DEBOUNCE_MS = 300;
 const DEFAULT_PAGE_SIZE = 10;
 
+const EMPTY_FILTERS: UserTableColumnFilters = {
+  search: "",
+  role: "all",
+  status: "all",
+};
+
 export default function UserManagementPage() {
   const { t } = useLanguage();
   const { addToast } = useToast();
   const u = t.adminPages.users;
 
   const [page, setPage] = useState(1);
-  const [searchInput, setSearchInput] = useState("");
+  const [filters, setFilters] = useState<UserTableColumnFilters>(EMPTY_FILTERS);
   const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [roleFilter, setRoleFilter] = useState<RoleFilterValue>("all");
-  const [statusFilter, setStatusFilter] = useState<StatusFilterValue>("all");
 
   const [users, setUsers] = useState<AdminUserListItem[]>([]);
   const [totalCount, setTotalCount] = useState(0);
@@ -44,41 +49,39 @@ export default function UserManagementPage() {
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
-      setDebouncedSearch(searchInput.trim());
-      setPage(1);
+      setDebouncedSearch(filters.search.trim());
     }, SEARCH_DEBOUNCE_MS);
     return () => window.clearTimeout(timer);
-  }, [searchInput]);
+  }, [filters.search]);
 
-  const apiStatusFilter = useMemo(() => {
-    if (statusFilter === "Active") return true;
-    if (statusFilter === "Suspended") return false;
-    return undefined;
-  }, [statusFilter]);
+  // Đổi filter (trừ gõ search debounce) → về trang 1
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch, filters.role, filters.status]);
+
+  const listParams = useMemo(() => {
+    const status = filters.status;
+    let isActive: boolean | undefined;
+    if (status === "Active") isActive = true;
+    else if (status === "Suspended") isActive = false;
+
+    return {
+      page,
+      pageSize: DEFAULT_PAGE_SIZE,
+      search: debouncedSearch || undefined,
+      role: filters.role === "all" ? undefined : filters.role,
+      isActive,
+    };
+  }, [page, debouncedSearch, filters.role, filters.status]);
 
   const fetchUsers = useCallback(async () => {
     setLoading(true);
     setError(null);
 
     try {
-      const result = await listUsers({
-        page,
-        pageSize: DEFAULT_PAGE_SIZE,
-        search: debouncedSearch || undefined,
-        role: roleFilter === "all" ? undefined : roleFilter,
-        isActive: apiStatusFilter,
-      });
-
-      let items = result.items;
-
-      if (statusFilter === "Pending") {
-        items = items.filter((item) => getAdminUserStatus(item) === "Pending");
-      }
-
-      setUsers(items);
-      setTotalCount(
-        statusFilter === "Pending" ? items.length : result.totalCount
-      );
+      const result = await listUsers(listParams);
+      setUsers(result.items);
+      setTotalCount(result.totalCount);
     } catch {
       setUsers([]);
       setTotalCount(0);
@@ -86,7 +89,7 @@ export default function UserManagementPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, debouncedSearch, roleFilter, apiStatusFilter, statusFilter, u.loadError]);
+  }, [listParams, u.loadError]);
 
   useEffect(() => {
     void fetchUsers();
@@ -137,13 +140,13 @@ export default function UserManagementPage() {
     }
   }
 
-  function handleRoleChange(value: RoleFilterValue) {
-    setRoleFilter(value);
-    setPage(1);
+  function handleFiltersChange(next: Partial<UserTableColumnFilters>) {
+    setFilters((prev) => ({ ...prev, ...next }));
   }
 
-  function handleStatusChange(value: StatusFilterValue) {
-    setStatusFilter(value);
+  function handleClearFilters() {
+    setFilters(EMPTY_FILTERS);
+    setDebouncedSearch("");
     setPage(1);
   }
 
@@ -162,23 +165,15 @@ export default function UserManagementPage() {
           <UserStats users={users} totalCount={totalCount} loading={loading} />
         </div>
 
-        <div className="animate-fade-up" style={{ animationDelay: "160ms" }}>
-          <UserFilters
-            search={searchInput}
-            role={roleFilter}
-            status={statusFilter}
-            onSearchChange={setSearchInput}
-            onRoleChange={handleRoleChange}
-            onStatusChange={handleStatusChange}
-          />
-        </div>
-
-        <div className="animate-fade-up" style={{ animationDelay: "240ms" }}>
+        <div className="mt-6 animate-fade-up" style={{ animationDelay: "160ms" }}>
           <UserTable
             users={users}
             loading={loading}
             error={error}
             selectedUserId={selectedUserId}
+            filters={filters}
+            onFiltersChange={handleFiltersChange}
+            onClearFilters={handleClearFilters}
             onSelectUser={handleSelectUser}
             onRetry={() => void fetchUsers()}
           />

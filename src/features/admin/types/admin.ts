@@ -77,7 +77,7 @@ export interface ContentSession {
   roleBg: string;
 }
 
-export type AdminSettingsTab = "general" | "ai-config" | "permissions" | "notifications";
+export type AdminSettingsTab = "general" | "permissions" | "notifications";
 
 export type AuditEventType =
   | "user_created"
