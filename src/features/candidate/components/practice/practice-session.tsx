@@ -584,7 +584,10 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
     <ConfirmDialog
       open={reviewOpen}
       title={p.reviewConfirmTitle}
-      message={p.reviewConfirmMessage.replace("{{count}}", String(totalQuestions))}
+      message={p.reviewConfirmMessage
+        .replace("{{count}}", String(totalQuestions))
+        .replace(/^[^.]+\d+[^.]*câu hỏi\.\s*/i, "")
+        .replace(/^You've answered all \d+ questions\.\s*/i, "")}
       confirmLabel={p.reviewConfirmBtn}
       cancelLabel={p.reviewCancelBtn}
       variant="primary"
@@ -694,36 +697,37 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
 
               {/* Question text */}
               {isQuestionLocked ? (
-                <div className="relative rounded-xl overflow-hidden border border-amber-200/80 dark:border-amber-800/60 bg-amber-50/50 dark:bg-amber-950/20 p-6">
-                  <div className="blur-sm select-none pointer-events-none opacity-40">
+                <div className="relative rounded-xl overflow-hidden border border-[#6c47ff]/20 dark:border-[#6c47ff]/25 bg-gradient-to-br from-[#6c47ff]/[0.05] via-transparent to-transparent min-h-[180px]">
+                  {/* Blurred placeholder */}
+                  <div className="blur-xl select-none pointer-events-none opacity-10 p-6">
                     <p className={cn("text-[17px] sm:text-[20px] font-bold leading-7", portalHeadingAlt)}>
                       {p.lockedQuestion.blurredPlaceholder}
                     </p>
                   </div>
-                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-4 text-center">
-                    <div className="w-10 h-10 rounded-full bg-[#6c47ff]/15 flex items-center justify-center">
-                      <Lock size={18} className="text-[#6c47ff]" />
+                  {/* Fade-in overlay */}
+                  <div className="absolute inset-0 bg-gradient-to-b from-transparent via-white/50 to-white/95 dark:via-gray-900/50 dark:to-gray-900/95" />
+                  {/* Content */}
+                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-3.5 px-6 py-8 text-center">
+                    <div className="inline-flex items-center gap-1.5 rounded-full border border-[#6c47ff]/25 bg-[#6c47ff]/10 px-3 py-1">
+                      <Crown size={11} className="text-[#6c47ff]" />
+                      <span className="text-[10px] font-bold tracking-widest uppercase text-[#6c47ff]">Premium</span>
                     </div>
-                    <p className={cn("text-sm font-semibold", portalHeadingAlt)}>
-                      {p.lockedQuestion.title}
-                    </p>
-                    <p className={cn("text-xs max-w-sm", portalSubtextAlt)}>
-                      {p.lockedQuestion.body}
-                    </p>
+                    <div>
+                      <p className={cn("text-[15px] font-bold", portalHeadingAlt)}>
+                        {p.lockedQuestion.title}
+                      </p>
+                      <p className={cn("mt-1.5 text-[12px] max-w-xs mx-auto leading-relaxed", portalSubtextAlt)}>
+                        {p.lockedQuestion.body}
+                      </p>
+                    </div>
                     <button
                       type="button"
                       onClick={() => setUpgradeOpen(true)}
-                      className="shimmer-button inline-flex items-center gap-2 h-9 px-4 text-[13px] font-semibold text-white hr-cta-btn rounded-lg"
+                      className="shimmer-button inline-flex items-center gap-2 h-9 px-5 text-[13px] font-semibold text-white hr-cta-btn rounded-xl"
                     >
-                      <Crown size={14} />
+                      <Sparkles size={13} />
                       {p.lockedQuestion.upgradeBtn}
                     </button>
-                    <Link
-                      href="/jobseeker/settings?tab=billing"
-                      className="text-[11px] font-medium text-[#6c47ff] hover:underline"
-                    >
-                      {p.lockedQuestion.viewPlansLink}
-                    </Link>
                   </div>
                 </div>
               ) : (
@@ -738,11 +742,17 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
           {/* Answer area */}
           <div className="hr-glass-card p-4 sm:p-6">
             {isQuestionLocked ? (
-              <div className="flex flex-col items-center justify-center gap-2 py-8 text-center">
-                <Lock size={16} className="text-gray-400" />
-                <p className={cn("text-sm", portalSubtextAlt)}>
+              <div className="flex items-center justify-center gap-2 py-5 text-center">
+                <p className={cn("text-[13px]", portalSubtextAlt)}>
                   {p.lockedQuestion.answerLocked}
                 </p>
+                <button
+                  type="button"
+                  onClick={() => setUpgradeOpen(true)}
+                  className="shrink-0 text-[13px] font-semibold text-primary hover:underline"
+                >
+                  {p.lockedQuestion.upgradeBtn} →
+                </button>
               </div>
             ) : isSubmitted ? (
               /* Submitted state */

@@ -31,6 +31,11 @@ export interface AdminUsersListParams {
   search?: string;
   role?: string;
   isActive?: boolean;
+  isPremium?: boolean;
+  /** ISO date string, e.g. "2026-01-01" */
+  createdFrom?: string;
+  /** ISO date string, e.g. "2026-12-31" */
+  createdTo?: string;
 }
 
 export interface PaginatedResult<T> {

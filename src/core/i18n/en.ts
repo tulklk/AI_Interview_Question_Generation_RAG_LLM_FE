@@ -1192,6 +1192,11 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
         copyBtn: "Copy",
         copiedToast: "Transfer content copied.",
         copyFailedToast: "Could not copy.",
+        freeTitle: "Free access granted",
+        freeDesc: "Admin has set this plan to free. Activate instantly — no payment needed.",
+        activateNowBtn: "Activate Now",
+        activatingLabel: "Activating…",
+        activateFailed: "Activation failed. Please try again.",
       },
     },
   },
@@ -2042,7 +2047,7 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
     sidebarNoTimeLimit: "No limit",
     timeUsedLabel: "Time used",
     reviewConfirmTitle: "Submit this session?",
-    reviewConfirmMessage: "You've answered all {{count}} questions. Once submitted, you won't be able to change your answers, and AI evaluation may take a little while. Ready to submit?",
+    reviewConfirmMessage: "Once submitted, you won't be able to change your answers, and AI evaluation may take a little while. Ready to submit?",
     reviewConfirmBtn: "Yes, submit",
     reviewCancelBtn: "Keep reviewing",
     validationTooShort: "Answer too short — please write at least 20 characters.",
@@ -2694,6 +2699,11 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
         copyBtn: "Copy",
         copiedToast: "Transfer content copied.",
         copyFailedToast: "Could not copy.",
+        freeTitle: "Free access granted",
+        freeDesc: "Admin has set this plan to free. Activate instantly — no payment needed.",
+        activateNowBtn: "Activate Now",
+        activatingLabel: "Activating…",
+        activateFailed: "Activation failed. Please try again.",
       },
       // Cancel modal
       cancelModalTitle: "Cancel Subscription",
@@ -3282,6 +3292,14 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
       shareCreated: "Share link created and copied to clipboard.",
       newSessionCreated: "New session created. Enter a JD, select documents, then create a plan.",
     },
+  },
+
+  upgradeCongratsDialog: {
+    title: "Congratulations!",
+    subtitle: "Your account has been upgraded to",
+    body: "You now have access to all Premium features. Start exploring and get the most out of your subscription.",
+    cta: "Start Exploring",
+    featureUnlocked: "Premium features unlocked",
   },
 };
 
