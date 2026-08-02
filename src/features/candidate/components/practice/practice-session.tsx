@@ -219,9 +219,11 @@ function QuestionNav({ questions, currentIdx, submitted, onSelect, onRequestFini
 
 interface PracticeSessionProps {
   set: QuestionSet;
+  /** Re-fetches this question set's data in place (e.g. after upgrading mid-session) without a full page reload. */
+  onQuestionsUnlocked?: () => Promise<void> | void;
 }
 
-export function PracticeSession({ set }: PracticeSessionProps) {
+export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionProps) {
   const { t } = useLanguage();
   const router = useRouter();
   const { addToast } = useToast();
@@ -962,11 +964,8 @@ export function PracticeSession({ set }: PracticeSessionProps) {
         onDone={async () => {
           setUpgradeOpen(false);
           await refreshSubscription();
+          await onQuestionsUnlocked?.();
           addToast("success", p.lockedQuestion.upgradedToast);
-          // PracticeSessionClient fetches `set` client-side in a useEffect, not via
-          // a Server Component — router.refresh() would be a no-op here, so a real
-          // reload is required to re-fetch questions with the new entitlements.
-          window.location.reload();
         }}
       />
     )}
