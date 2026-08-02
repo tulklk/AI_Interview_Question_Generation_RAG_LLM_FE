@@ -112,7 +112,7 @@ export function UpgradeModal({ onClose, onDone }: UpgradeModalProps) {
         getCandidateBillingUsage(),
         getCandidatePaymentHistory(),
       ]);
-      if (isPremiumPlanCode(sub.planCode)) {
+      if (sub.planType === "PREMIUM") {
         addToast("success", b.upgradeSuccess);
         onDone?.({ subscription: sub, usage: use, history: hist });
         handleClose();
@@ -132,7 +132,7 @@ export function UpgradeModal({ onClose, onDone }: UpgradeModalProps) {
         handleClose();
       } else {
         // Backend chưa xử lý xong đơn 0đ — polling tiếp tục chạy ngầm
-        addToast("info", lang === "vi"
+        addToast("success", lang === "vi"
           ? "Đang chờ xác nhận từ hệ thống. Vui lòng thử lại sau vài giây."
           : "Awaiting system confirmation. Please try again in a moment."
         );
