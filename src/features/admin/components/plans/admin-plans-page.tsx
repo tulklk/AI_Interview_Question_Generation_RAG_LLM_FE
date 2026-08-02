@@ -203,28 +203,31 @@ export function AdminPlansPage() {
                     <span className={portalSubtext}>{ed.priceLabel}</span>
                     <input
                       type="number"
+                      min={0}
                       className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-transparent px-3 py-2 text-sm"
                       value={d.priceMonthly}
-                      onChange={(e) => patchDraft(plan.id, { priceMonthly: Number(e.target.value) || 0 })}
+                      onChange={(e) => patchDraft(plan.id, { priceMonthly: Math.max(0, Number(e.target.value) || 0) })}
                     />
                   </label>
                   <label className="text-xs space-y-1">
                     <span className={portalSubtext}>{ed.askAiLabel}</span>
                     <input
                       type="number"
+                      min={0}
                       className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-transparent px-3 py-2 text-sm"
                       value={d.askAiPerMonth}
-                      onChange={(e) => patchDraft(plan.id, { askAiPerMonth: Number(e.target.value) || 0 })}
+                      onChange={(e) => patchDraft(plan.id, { askAiPerMonth: Math.max(0, Number(e.target.value) || 0) })}
                     />
                   </label>
                   <label className="text-xs space-y-1">
                     <span className={portalSubtext}>{ed.cooldownLabel}</span>
                     <input
                       type="number"
+                      min={0}
                       className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-transparent px-3 py-2 text-sm"
                       value={d.generateCooldownHours}
                       onChange={(e) =>
-                        patchDraft(plan.id, { generateCooldownHours: Number(e.target.value) || 0 })
+                        patchDraft(plan.id, { generateCooldownHours: Math.max(0, Number(e.target.value) || 0) })
                       }
                     />
                   </label>
@@ -232,10 +235,11 @@ export function AdminPlansPage() {
                     <span className={portalSubtext}>{ed.regenerateLabel}</span>
                     <input
                       type="number"
+                      min={0}
                       className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-transparent px-3 py-2 text-sm"
                       value={d.planRegeneratePerDraft}
                       onChange={(e) =>
-                        patchDraft(plan.id, { planRegeneratePerDraft: Number(e.target.value) || 0 })
+                        patchDraft(plan.id, { planRegeneratePerDraft: Math.max(0, Number(e.target.value) || 0) })
                       }
                     />
                   </label>
@@ -243,10 +247,12 @@ export function AdminPlansPage() {
                     <span className={portalSubtext}>{ed.freeVisibleLabel}</span>
                     <input
                       type="number"
+                      min={0}
+                      max={100}
                       className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-transparent px-3 py-2 text-sm"
                       value={d.freeVisiblePercent}
                       onChange={(e) =>
-                        patchDraft(plan.id, { freeVisiblePercent: Number(e.target.value) || 0 })
+                        patchDraft(plan.id, { freeVisiblePercent: Math.min(100, Math.max(0, Number(e.target.value) || 0)) })
                       }
                     />
                   </label>
