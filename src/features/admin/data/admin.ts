@@ -9,6 +9,8 @@ import {
   Zap,
   BookOpen,
   Building2,
+  Bot,
+  CreditCard,
 } from "lucide-react";
 import type {
   AdminNavItem,
@@ -32,6 +34,8 @@ export const adminNavItems: AdminNavItem[] = [
   { label: "Knowledge Base", href: "/admin/knowledge", icon: BookOpen },
   { label: "Company Management", href: "/admin/companies", icon: Building2 },
   { label: "Audit Log", href: "/admin/audit", icon: ScrollText },
+  { label: "AI Configuration", href: "/admin/ai-config", icon: Bot },
+  { label: "Subscription Plans", href: "/admin/plans", icon: CreditCard },
   { label: "Settings", href: "/admin/settings", icon: Settings },
 ];
 
