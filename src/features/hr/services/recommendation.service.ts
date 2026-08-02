@@ -274,3 +274,12 @@ export async function inviteRecommendation(id: string, message?: string): Promis
     message: message?.trim() || null,
   });
 }
+
+/**
+ * Sends an offline interview-offer email directly to the candidate, independent
+ * of the in-app /invite flow — works for any recommendation regardless of status.
+ * BE returns 409 if the candidate already accepted the most recent offer.
+ */
+export async function sendRecommendationOffer(id: string, message: string): Promise<void> {
+  await apiClient.post(`/api/hr/recommendations/${id}/offer`, { message });
+}
