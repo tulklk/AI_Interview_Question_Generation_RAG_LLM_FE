@@ -11,55 +11,114 @@ import {
 } from "react";
 import type { HrFeatureId, HrPlanId } from "@/features/hr/types/hr-subscription";
 import {
-  DEFAULT_HR_PLAN_ID,
-  HR_PLANS,
-  getPlanLimits,
-  getUsageCaps,
-  normalizeStoredHrPlanId,
-  planMeetsFeature,
-} from "@/features/hr/data/hr-subscription";
-
-const STORAGE_KEY = "hiregen-hr-plan";
+  cancelSubscriptionSandbox,
+  getMySubscription,
+  getSubscriptionErrorCode,
+  isPremiumPlanCode,
+  purchaseAskAiPack,
+  type MySubscription,
+  type SubscriptionLimits,
+} from "@/features/subscription/services/subscription.service";
 
 interface HrSubscriptionContextValue {
   planId: HrPlanId;
-  setPlanId: (id: HrPlanId) => void;
+  /** true khi đang tải subscription từ BE */
+  loading: boolean;
+  subscription: MySubscription | null;
+  isPremium: boolean;
+  limits: SubscriptionLimits | null;
+  /** true nếu có thể generate ngay (Premium = luôn true; Free = ngoài cooldown) */
+  canGenerateNow: boolean;
+  /** Thời điểm hết cooldown (null nếu không đang cooldown / chưa từng generate) */
+  cooldownEndsAt: Date | null;
   hasFeature: (featureId: HrFeatureId) => boolean;
-  limits: (typeof HR_PLANS)[HrPlanId]["limits"];
-  usageCaps: Record<string, number>;
+  /** Hạ Free — hành động thật, đồng bộ (khác upgrade, không cần thanh toán) */
+  cancelPremium: () => Promise<void>;
+  purchaseAskAiPack: (extra?: number) => Promise<void>;
+  refresh: () => Promise<void>;
+  lastErrorCode: string | null;
 }
 
 const HrSubscriptionContext = createContext<HrSubscriptionContextValue | null>(null);
 
-export function HrSubscriptionProvider({ children }: { children: ReactNode }) {
-  const [planId, setPlanIdState] = useState<HrPlanId>(DEFAULT_HR_PLAN_ID);
+function mapPlanCodeToHrPlanId(planCode: string): HrPlanId {
+  return isPremiumPlanCode(planCode) ? "HR_PREMIUM" : "HR_FREE";
+}
 
-  useEffect(() => {
-    const raw = typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEY) : null;
-    const normalized = normalizeStoredHrPlanId(raw);
-    if (normalized) {
-      setPlanIdState(normalized);
-      if (raw && raw !== normalized) {
-        localStorage.setItem(STORAGE_KEY, normalized);
-      }
+export function HrSubscriptionProvider({ children }: { children: ReactNode }) {
+  const [planId, setPlanId] = useState<HrPlanId>("HR_FREE");
+  const [subscription, setSubscription] = useState<MySubscription | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [lastErrorCode, setLastErrorCode] = useState<string | null>(null);
+
+  const refresh = useCallback(async () => {
+    setLoading(true);
+    try {
+      const sub = await getMySubscription();
+      setSubscription(sub);
+      setPlanId(mapPlanCodeToHrPlanId(sub.planCode));
+      setLastErrorCode(null);
+    } catch (err) {
+      setLastErrorCode(getSubscriptionErrorCode(err));
+    } finally {
+      setLoading(false);
     }
   }, []);
 
-  const setPlanId = useCallback((id: HrPlanId) => {
-    setPlanIdState(id);
-    localStorage.setItem(STORAGE_KEY, id);
+  useEffect(() => {
+    void refresh();
+  }, [refresh]);
+
+  const cancelPremium = useCallback(async () => {
+    const sub = await cancelSubscriptionSandbox();
+    setSubscription(sub);
+    setPlanId(mapPlanCodeToHrPlanId(sub.planCode));
+  }, []);
+
+  const buyAskAiPack = useCallback(async (extra = 200) => {
+    const sub = await purchaseAskAiPack(extra);
+    setSubscription(sub);
   }, []);
 
   const value = useMemo<HrSubscriptionContextValue>(() => {
-    const hasFeature = (featureId: HrFeatureId) => planMeetsFeature(planId, featureId);
+    const limits = subscription?.limits ?? null;
+    const isPremium = subscription ? isPremiumPlanCode(subscription.planCode) : false;
+
+    const hasFeature = (featureId: HrFeatureId) => {
+      if (!limits) return false;
+      if (featureId === "export") return limits.canExport;
+      if (featureId === "askAi") return limits.askAiPerMonth > 0;
+      if (featureId === "publish") return limits.canPublish;
+      if (featureId === "unlimitedGenerate") return limits.generateUnlimited;
+      return false;
+    };
+
+    let canGenerateNow = true;
+    let cooldownEndsAt: Date | null = null;
+    if (limits && !limits.generateUnlimited && subscription?.lastSuccessfulGenerateAt) {
+      const last = new Date(subscription.lastSuccessfulGenerateAt);
+      const endsAt = new Date(last.getTime() + limits.generateCooldownHours * 60 * 60 * 1000);
+      if (endsAt.getTime() > Date.now()) {
+        canGenerateNow = false;
+        cooldownEndsAt = endsAt;
+      }
+    }
+
     return {
       planId,
-      setPlanId,
+      loading,
+      subscription,
+      isPremium,
+      limits,
+      canGenerateNow,
+      cooldownEndsAt,
       hasFeature,
-      limits: getPlanLimits(planId),
-      usageCaps: getUsageCaps(planId),
+      cancelPremium,
+      purchaseAskAiPack: buyAskAiPack,
+      refresh,
+      lastErrorCode,
     };
-  }, [planId, setPlanId]);
+  }, [planId, loading, subscription, cancelPremium, buyAskAiPack, refresh, lastErrorCode]);
 
   return (
     <HrSubscriptionContext.Provider value={value}>{children}</HrSubscriptionContext.Provider>

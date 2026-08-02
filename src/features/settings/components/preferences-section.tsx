@@ -38,8 +38,8 @@ const tones = [
 export function PreferencesSection() {
   const { t } = useLanguage();
   const pref = t.settingsPage.preferences;
-  const { hasFeature } = useHrSubscription();
-  const advancedOk = hasFeature("advancedModels");
+  const { isPremium } = useHrSubscription();
+  const advancedOk = isPremium;
 
   const [aiModel, setAiModel] = useState("gpt4");
   const [language, setLanguage] = useState("en-us");

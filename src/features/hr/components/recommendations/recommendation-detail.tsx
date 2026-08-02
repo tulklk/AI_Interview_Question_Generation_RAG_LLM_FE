@@ -21,6 +21,7 @@ import {
   shortlistRecommendation,
   dismissRecommendation,
   inviteRecommendation,
+  sendRecommendationOffer,
   type CandidateRecommendation,
   type CandidateRecommendationDetail,
   type RecommendationCvDownload,
@@ -273,6 +274,122 @@ function InviteModal({ rec, onClose, onSent, labels, actionLabels }: InviteModal
 }
 
 // ---------------------------------------------------------------------------
+// Offer Modal
+// ---------------------------------------------------------------------------
+
+interface OfferModalProps {
+  rec: CandidateRecommendation;
+  onClose: () => void;
+  onSent: () => void;
+  labels: ReturnType<typeof useLanguage>["t"]["hrRecommendationsPage"]["offer"];
+}
+
+const OFFER_MAX_LEN = 5000;
+
+function buildDefaultOfferMessage(template: string, rec: CandidateRecommendation): string {
+  return template
+    .replace("{{name}}", rec.candidateName || "")
+    .replace("{{title}}", rec.questionSetTitle || "")
+    .replace("{{score}}", String(rec.score));
+}
+
+function OfferModal({ rec, onClose, onSent, labels }: OfferModalProps) {
+  const [message, setMessage] = useState(() => buildDefaultOfferMessage(labels.defaultMessage, rec));
+  const [sending, setSending] = useState(false);
+  const { addToast } = useToast();
+
+  useEffect(() => {
+    document.body.style.overflow = "hidden";
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.body.style.overflow = "";
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function handleSend() {
+    setSending(true);
+    try {
+      await sendRecommendationOffer(rec.id, message.trim());
+      onSent();
+      addToast("success", labels.sendSuccess);
+      onClose();
+    } catch (err: unknown) {
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      addToast("error", status === 409 ? labels.alreadyAccepted : labels.sendFailed);
+    } finally {
+      setSending(false);
+    }
+  }
+
+  return createPortal(
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95, y: 12 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        transition={{ duration: 0.2, ease: [0.25, 0.46, 0.45, 0.94] }}
+        className="relative w-full max-w-lg flex flex-col rounded-2xl shadow-2xl bg-white dark:bg-gray-900 max-h-[85vh]"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className={cn("flex items-center justify-between px-5 py-4 border-b shrink-0", portalDivider)}>
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-9 h-9 rounded-xl bg-amber-50 dark:bg-amber-950/40 flex items-center justify-center shrink-0">
+              <Mail size={16} className="text-amber-600 dark:text-amber-400" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[15px] font-bold text-gray-900 dark:text-gray-100 truncate">{labels.modalTitle}</p>
+              <p className="text-[12px] text-gray-500 dark:text-gray-400 truncate">
+                {labels.to}: <span className="font-semibold text-gray-700 dark:text-gray-300">{rec.candidateName}</span> ({rec.candidateEmail})
+              </p>
+            </div>
+          </div>
+          <button type="button" onClick={onClose}
+            className="w-9 h-9 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors shrink-0">
+            <XIcon size={18} />
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-5 py-5">
+          <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-3 leading-relaxed">{labels.explanation}</p>
+          <textarea
+            value={message}
+            onChange={(e) => setMessage(e.target.value.slice(0, OFFER_MAX_LEN))}
+            placeholder={labels.messagePlaceholder}
+            rows={10}
+            className="w-full text-[14px] leading-relaxed bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-3.5 outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 resize-none placeholder:text-gray-400 dark:placeholder:text-gray-500 text-gray-900 dark:text-gray-100 transition-all"
+            autoFocus
+          />
+          <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-2 text-right">{message.length} / {OFFER_MAX_LEN}</p>
+        </div>
+
+        <div className={cn("flex items-center justify-end gap-2 px-5 py-4 border-t shrink-0", portalDivider)}>
+          <button type="button" onClick={onClose} disabled={sending}
+            className="h-10 px-5 text-[13px] font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg transition-colors disabled:opacity-50">
+            {labels.cancelBtn}
+          </button>
+          <button type="button" onClick={() => void handleSend()} disabled={sending || !message.trim()}
+            className="shimmer-button flex items-center gap-1.5 h-10 px-5 text-[13px] font-semibold text-white hr-cta-btn rounded-lg disabled:opacity-60">
+            {sending ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
+            {sending ? labels.sending : labels.sendBtn}
+          </button>
+        </div>
+      </motion.div>
+    </motion.div>,
+    document.body
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Main Detail Component
 // ---------------------------------------------------------------------------
 
@@ -290,6 +407,7 @@ export function RecommendationDetail({ id }: { id: string }) {
   const [cvPreviewLoading, setCvPreviewLoading] = useState(false);
   const [cvLightbox, setCvLightbox] = useState(false);
   const [showInvite, setShowInvite] = useState(false);
+  const [showOffer, setShowOffer] = useState(false);
   const { addToast } = useToast();
 
   const fetchData = useCallback(async () => {
@@ -541,6 +659,10 @@ export function RecommendationDetail({ id }: { id: string }) {
                   {p.card.invited}
                 </div>
               )}
+              <button type="button" onClick={() => setShowOffer(true)} disabled={busy !== null}
+                className="flex items-center justify-center gap-2 h-9 px-4 text-[13px] font-semibold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 hover:bg-amber-100 dark:hover:bg-amber-900/40 rounded-xl transition-colors disabled:opacity-50 border border-amber-200 dark:border-amber-800 w-full">
+                <Send size={13} /> {p.offer.btnLabel}
+              </button>
             </div>
           </motion.div>
 
@@ -571,14 +693,14 @@ export function RecommendationDetail({ id }: { id: string }) {
               </div>
 
               {cvPreviewLoading ? (
-                <div className="h-130 flex items-center justify-center bg-gray-50 dark:bg-gray-900/40">
+                <div className="h-[520px] flex items-center justify-center bg-gray-50 dark:bg-gray-900/40">
                   <Loader2 size={20} className="animate-spin text-primary" />
                 </div>
               ) : cvPreview && cvIsImage ? (
                 <button
                   type="button"
                   onClick={() => setCvLightbox(true)}
-                  className="group relative block w-full text-left max-h-160 overflow-y-auto bg-gray-50 dark:bg-gray-900/40 scrollbar-hide"
+                  className="group relative block w-full text-left max-h-[640px] overflow-y-auto bg-gray-50 dark:bg-gray-900/40 scrollbar-hide"
                   title={p.detail.cvPreviewHint}
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -613,7 +735,6 @@ export function RecommendationDetail({ id }: { id: string }) {
               )}
             </motion.div>
           )}
-
         </div>
 
         {/* ── Right: Details ── */}
@@ -848,6 +969,15 @@ export function RecommendationDetail({ id }: { id: string }) {
           actionLabels={p}
           onClose={() => setShowInvite(false)}
           onSent={() => setRec((r) => r ? { ...r, status: "INVITED" } : r)}
+        />
+      )}
+
+      {showOffer && (
+        <OfferModal
+          rec={rec}
+          labels={p.offer}
+          onClose={() => setShowOffer(false)}
+          onSent={() => undefined}
         />
       )}
 

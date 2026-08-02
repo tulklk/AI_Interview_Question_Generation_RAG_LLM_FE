@@ -89,3 +89,7 @@ storybook-static/
 /test-results/
 /playwright-report/
 /playwright/.cache/
+
+# Ad-hoc backup files (editor/agent snapshots left in the working tree)
+*.backup.*
+*.backup

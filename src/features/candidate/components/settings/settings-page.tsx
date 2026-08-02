@@ -11,6 +11,7 @@ import { SecuritySection } from "@/features/settings/components/security-section
 import { CandidateProfile } from "@/features/candidate/components/profile/candidate-profile";
 import { CandidateBillingPage } from "@/features/candidate/components/billing/candidate-billing-page";
 import { getPrivacySettings, updatePrivacySettings } from "@/features/candidate/services/privacy-settings.service";
+import { useCandidateSubscription } from "@/features/candidate/context/candidate-subscription-context";
 import { useToast } from "@/shared/providers/toast-context";
 import { portalHeading, portalSubtext } from "@/shared/utils/portal-ui";
 
@@ -43,7 +44,10 @@ export function SettingsPage() {
   const { t, lang, setLang } = useLanguage();
   const p = t.jobseekerSettingsPage;
   const { addToast } = useToast();
+  const { planType } = useCandidateSubscription();
   const searchParams = useSearchParams();
+  const isPremium = planType === "PREMIUM";
+
   const [activeTab, setActiveTab] = useState<Tab>(() => {
     const tab = searchParams.get("tab");
     return (tab === "billing" || tab === "profile" || tab === "general" || tab === "security" || tab === "privacy")
@@ -175,9 +179,11 @@ export function SettingsPage() {
                 <CreditCard size={12} className={iconColor} />
               </div>
               <div className="flex-1 min-w-0">
-                <p className={cn("text-xs font-semibold", portalHeading)}>{p.billing.freeBadge}</p>
+                <p className={cn("text-xs font-semibold", portalHeading)}>
+                  {isPremium ? p.billing.premiumBadge : p.billing.freeBadge}
+                </p>
                 <p className="text-[10px] font-semibold text-[#7C3AED] dark:text-[#a78bff]">
-                  {p.billing.upgradeBtn} →
+                  {isPremium ? p.billing.manageBtn : p.billing.upgradeBtn} →
                 </p>
               </div>
             </button>

@@ -22,8 +22,8 @@ export function ResultsHeader({
   const rp = t.resultsPage;
   const hs = t.hrSubscription;
   const { hasFeature } = useHrSubscription();
-  const pdfOk = hasFeature("pdfExport");
-  const docxOk = hasFeature("docxExport");
+  const pdfOk = hasFeature("export");
+  const docxOk = hasFeature("export");
 
   const btnClass =
     "flex items-center gap-2 text-sm font-semibold border px-4 py-2 rounded-lg transition-colors";

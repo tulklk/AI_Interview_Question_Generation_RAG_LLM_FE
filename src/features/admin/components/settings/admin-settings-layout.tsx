@@ -1,10 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { Settings, Bot, ShieldCheck, Bell } from "lucide-react";
+import { Settings, ShieldCheck, Bell } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { GeneralSettings } from "./general-settings";
-import { AiConfigSection } from "./ai-config-section";
 import { PermissionsSection } from "./permissions-section";
 import { AdminNotificationsSection } from "./admin-notifications-section";
 import type { AdminSettingsTab } from "@/features/admin/types/admin";
@@ -12,17 +11,18 @@ import { useLanguage } from "@/shared/providers/language-context";
 
 const tabIcons: Record<AdminSettingsTab, typeof Settings> = {
   general: Settings,
-  "ai-config": Bot,
   permissions: ShieldCheck,
   notifications: Bell,
 };
 
 function TabContent({ tab }: { tab: AdminSettingsTab }) {
   switch (tab) {
-    case "general": return <GeneralSettings />;
-    case "ai-config": return <AiConfigSection />;
-    case "permissions": return <PermissionsSection />;
-    case "notifications": return <AdminNotificationsSection />;
+    case "general":
+      return <GeneralSettings />;
+    case "permissions":
+      return <PermissionsSection />;
+    case "notifications":
+      return <AdminNotificationsSection />;
   }
 }
 
@@ -34,7 +34,6 @@ export function AdminSettingsLayout() {
 
   const tabList: { id: AdminSettingsTab; label: string }[] = [
     { id: "general", label: tabs.general },
-    { id: "ai-config", label: tabs.aiConfig },
     { id: "permissions", label: tabs.permissions },
     { id: "notifications", label: tabs.notifications },
   ];

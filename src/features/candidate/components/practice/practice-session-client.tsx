@@ -48,6 +48,19 @@ export function PracticeSessionClient() {
     };
   }, [id, reloadKey]);
 
+  // Silent background refetch (e.g. after upgrading mid-session) — updates
+  // question data such as isLocked without swapping the whole page back to
+  // the loading spinner, so the candidate doesn't lose their place.
+  async function refetchSet() {
+    if (!id) return;
+    try {
+      const res = await getQuestionSetById(id);
+      setSet(res);
+    } catch {
+      // keep showing the current (stale) set rather than disrupting the session
+    }
+  }
+
   if (isNotFound) notFound();
 
   if (loading) {
@@ -75,5 +88,5 @@ export function PracticeSessionClient() {
     );
   }
 
-  return <PracticeSession set={set} />;
+  return <PracticeSession set={set} onQuestionsUnlocked={refetchSet} />;
 }
