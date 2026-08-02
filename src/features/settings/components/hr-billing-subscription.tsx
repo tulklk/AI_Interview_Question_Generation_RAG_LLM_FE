@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
-import { Check, Minus, Loader2, X, Copy } from "lucide-react";
+import { Check, Minus, Loader2, X, Copy, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { useLanguage } from "@/shared/providers/language-context";
 import { useToast } from "@/shared/providers/toast-context";
@@ -71,6 +71,7 @@ export function HrBillingSubscription() {
   const [payment, setPayment] = useState<UpgradePaymentIntent | null>(null);
   const [creatingOrder, setCreatingOrder] = useState(false);
   const [polling, setPolling] = useState(false);
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const qrImageFromContent = payment?.qrContent
     ? `https://api.qrserver.com/v1/create-qr-code/?size=320x320&data=${encodeURIComponent(payment.qrContent)}`
     : null;
@@ -94,16 +95,21 @@ export function HrBillingSubscription() {
 
   const isPremium = planId === "HR_PREMIUM";
 
-  async function handlePlanClick(id: HrPlanId) {
+  function handlePlanClick(id: HrPlanId) {
     if (id === planId || busy) return;
     if (id !== "HR_FREE") {
       void handleUpgradeClick();
       return;
     }
+    setShowCancelConfirm(true);
+  }
+
+  async function handleCancelConfirm() {
     setBusy(true);
     try {
       await cancelPremium();
       addToast("success", sub.downgradeSuccess);
+      setShowCancelConfirm(false);
     } catch {
       addToast("error", sub.planChangeError);
     } finally {
@@ -334,7 +340,7 @@ export function HrBillingSubscription() {
                     <button
                       type="button"
                       disabled={active || busy || creatingOrder}
-                      onClick={() => void handlePlanClick(id)}
+                      onClick={() => handlePlanClick(id)}
                       className={cn(
                         "w-full text-sm font-semibold py-2.5 rounded-lg transition-colors inline-flex items-center justify-center gap-2",
                         active
@@ -561,6 +567,74 @@ export function HrBillingSubscription() {
                     >
                       {creatingOrder ? <Loader2 size={14} className="animate-spin" /> : null}
                       {sub.newOrderBtn}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>,
+            document.body
+          )
+        : null}
+
+      {showCancelConfirm && typeof document !== "undefined"
+        ? createPortal(
+            <div
+              className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+              onClick={(e) => { if (e.currentTarget === e.target && !busy) setShowCancelConfirm(false); }}
+            >
+              <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+              <div className="relative z-10 w-full max-w-md bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-800">
+                <div className="px-6 pt-6 pb-5 border-b border-gray-200 dark:border-gray-800">
+                  <div className="flex items-center gap-3 mb-1">
+                    <div className="w-9 h-9 rounded-xl bg-red-50 dark:bg-red-950/40 flex items-center justify-center">
+                      <AlertTriangle size={18} className="text-red-500 dark:text-red-400" />
+                    </div>
+                    <h2 className={cn("text-[17px] font-bold", portalHeading)}>{sub.cancelModalTitle}</h2>
+                  </div>
+                  <p className={cn("text-sm", portalSubtext)}>{sub.cancelModalDesc}</p>
+                  <button
+                    type="button"
+                    onClick={() => setShowCancelConfirm(false)}
+                    disabled={busy}
+                    className="absolute top-5 right-5 w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors disabled:opacity-50"
+                  >
+                    <X size={15} />
+                  </button>
+                </div>
+
+                <div className="px-6 py-5 space-y-4">
+                  <div className="rounded-xl border border-red-100 dark:border-red-900/40 bg-red-50/50 dark:bg-red-950/20 p-4 space-y-2">
+                    {sub.cancelWarnings.map((w) => (
+                      <div key={w} className="flex items-center gap-2">
+                        <X size={12} className="text-red-500 dark:text-red-400 shrink-0" />
+                        <span className="text-sm text-red-700 dark:text-red-300">{w}</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="flex gap-2.5">
+                    <button
+                      type="button"
+                      onClick={() => setShowCancelConfirm(false)}
+                      disabled={busy}
+                      className="flex-1 h-10 shimmer-button rounded-xl text-sm font-semibold text-white hr-cta-btn flex items-center justify-center disabled:opacity-60"
+                    >
+                      {sub.keepPremiumBtn}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void handleCancelConfirm()}
+                      disabled={busy}
+                      className="flex-1 h-10 rounded-xl border-2 border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 text-sm font-semibold hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                    >
+                      {busy ? (
+                        <>
+                          <span className="w-3.5 h-3.5 border-2 border-red-300 border-t-red-600 rounded-full animate-spin" />
+                          {sub.cancellingLabel}
+                        </>
+                      ) : (
+                        sub.cancelConfirmBtn
+                      )}
                     </button>
                   </div>
                 </div>
