@@ -30,7 +30,7 @@ function broadcastStudioTask(task: "streaming" | "generating" | null) {
 
 export function useStudio() {
   const { addToast } = useToast();
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const tx = t.studioPage.toasts;
   const [loading, setLoading] = useState(true);
   const [project, setProject] = useState<StudioProject | null>(null);
@@ -297,7 +297,7 @@ export function useStudio() {
       await refreshStudioState();
       addToast("success", tx.planCreated);
     } catch (error) {
-      const message = extractErrorMessage(error);
+      const message = extractErrorMessage(error, lang);
       addToast("error", message);
       setMessages((prev) => [
         ...prev.filter((m) => m.status !== "Streaming"),
@@ -351,7 +351,7 @@ export function useStudio() {
       await refreshStudioState();
       addToast("success", tx.planRefined);
     } catch (error) {
-      const text = extractErrorMessage(error);
+      const text = extractErrorMessage(error, lang);
       addToast("error", text);
       setMessages((prev) =>
         prev.map((m) => (m.id === aiMessageId ? { ...m, status: "Failed", content: text } : m))
@@ -374,7 +374,7 @@ export function useStudio() {
       if (after) setCurrentPlan(after);
       addToast("success", tx.planApprovedMsg);
     } catch (error) {
-      addToast("error", extractErrorMessage(error));
+      addToast("error", extractErrorMessage(error, lang));
     }
   }, [addToast, currentPlan, project, refreshStudioState]);
 
@@ -400,7 +400,7 @@ export function useStudio() {
       await refreshStudioState();
       addToast("success", tx.planRefined);
     } catch (error) {
-      const text = extractErrorMessage(error);
+      const text = extractErrorMessage(error, lang);
       addToast("error", text);
       setMessages((prev) => [
         ...prev,
@@ -446,7 +446,7 @@ export function useStudio() {
           includeScoringRubric: settings.includeScoringRubric,
         });
       } catch (error) {
-        const errMsg = extractErrorMessage(error);
+        const errMsg = extractErrorMessage(error, lang);
         if (errMsg.includes("QUESTIONS_ALREADY_EXIST") || errMsg.includes("questions_already_exist")) {
           run = await studioApi.generateQuestions(project.id, {
             planId: currentPlan.id,
@@ -487,7 +487,7 @@ export function useStudio() {
       setQuestions(result.items);
       addToast("success", tx.generationDone.replace("{{count}}", String(result.items.length)));
     } catch (error) {
-      const message = extractErrorMessage(error) || tx.generationFailed;
+      const message = extractErrorMessage(error, lang) || tx.generationFailed;
       addToast("error", message);
       void refreshGenerationStatus();
     } finally {
@@ -522,7 +522,7 @@ export function useStudio() {
       });
     } catch (error) {
       setSettings(prevSettings);
-      addToast("error", extractErrorMessage(error));
+      addToast("error", extractErrorMessage(error, lang));
     }
   }, [addToast, normalizeSettings, project, settings]);
 
@@ -549,7 +549,7 @@ export function useStudio() {
       await refreshStudioState();
       addToast("success", tx.settingsApplied);
     } catch (error) {
-      addToast("error", extractErrorMessage(error));
+      addToast("error", extractErrorMessage(error, lang));
     } finally {
       setIsApplyingSettings(false);
       setIsStreaming(false);
@@ -565,7 +565,7 @@ export function useStudio() {
       setProject(updated);
       addToast("success", tx.draftSaved);
     } catch (error) {
-      addToast("error", extractErrorMessage(error) || tx.draftSaveFailed);
+      addToast("error", extractErrorMessage(error, lang) || tx.draftSaveFailed);
     }
   }, [addToast, project]);
 
@@ -597,7 +597,7 @@ export function useStudio() {
         addToast("success", tx.published);
       }
     } catch (error) {
-      addToast("error", extractErrorMessage(error));
+      addToast("error", extractErrorMessage(error, lang));
     }
   }, [addToast, project]);
 
@@ -628,7 +628,7 @@ export function useStudio() {
       setIsGeneratingQuestions(false);
       addToast("success", tx.newSessionCreated);
     } catch (error) {
-      addToast("error", extractErrorMessage(error));
+      addToast("error", extractErrorMessage(error, lang));
     } finally {
       setLoading(false);
     }
