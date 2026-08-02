@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronUp, ChevronDown, ChevronRight, Loader2, Users, Search, X } from "lucide-react";
+import { ChevronRight, Loader2, Users } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { useLanguage } from "@/shared/providers/language-context";
 import { getAdminUserStatus } from "@/features/admin/utils/admin-user-display";
@@ -11,11 +11,15 @@ import { portalHeadingAlt, portalSubtextAlt } from "@/shared/utils/portal-ui";
 
 export type StatusFilterValue = "all" | "Active" | "Suspended";
 export type RoleFilterValue = "all" | AdminUserRoleKey;
+export type PlanFilterValue = "all" | "FREE" | "PREMIUM";
 
 export interface UserTableColumnFilters {
   search: string;
   role: RoleFilterValue;
   status: StatusFilterValue;
+  plan: PlanFilterValue;
+  createdFrom: string;
+  createdTo: string;
 }
 
 const roleStyles: Record<AdminUserRoleKey, string> = {
@@ -45,9 +49,6 @@ interface UserTableProps {
   loading?: boolean;
   error?: string | null;
   selectedUserId?: string | null;
-  filters: UserTableColumnFilters;
-  onFiltersChange: (next: Partial<UserTableColumnFilters>) => void;
-  onClearFilters: () => void;
   onSelectUser: (user: AdminUserListItem) => void;
   onRetry?: () => void;
 }
@@ -63,160 +64,45 @@ function formatDate(value: string | undefined, locale: string): string {
   }).format(date);
 }
 
-const chevBtn =
-  "flex flex-1 items-center justify-center text-slate-400 hover:text-slate-700 dark:hover:text-slate-200";
-
-/** Filter gọn: nhãn + stack ▲▼ — có viền ngoài, width cố định (tránh nhảy khi đổi nhãn) */
-function StepperFilter<T extends string>({
-  options,
-  value,
-  onChange,
-  className,
-}: {
-  options: { value: T; label: string }[];
-  value: T;
-  onChange: (v: T) => void;
-  className?: string;
-}) {
-  const idx = Math.max(0, options.findIndex((o) => o.value === value));
-  const label = options[idx]?.label ?? value;
-  const active = value !== options[0]?.value;
-
-  function step(delta: number) {
-    const n = options.length;
-    if (n === 0) return;
-    onChange(options[(idx + delta + n) % n]!.value);
-  }
-
-  return (
-    <div
-      className={cn(
-        "box-border inline-flex h-7 w-full items-stretch overflow-hidden rounded-md border text-[11px]",
-        active
-          ? "border-violet-300 bg-violet-50/80 dark:border-violet-700 dark:bg-violet-950/30"
-          : "border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900",
-        className
-      )}
-      onClick={(e) => e.stopPropagation()}
-    >
-      <span
-        className={cn(
-          "flex min-w-0 flex-1 items-center truncate px-1.5 font-medium tabular-nums",
-          active ? "text-violet-700 dark:text-violet-300" : "text-slate-600 dark:text-slate-300"
-        )}
-        title={label}
-      >
-        {label}
-      </span>
-      <div className="flex w-4 shrink-0 flex-col">
-        <button type="button" className={chevBtn} onClick={() => step(-1)} aria-label="Up">
-          <ChevronUp size={10} strokeWidth={2.5} />
-        </button>
-        <button type="button" className={chevBtn} onClick={() => step(1)} aria-label="Down">
-          <ChevronDown size={10} strokeWidth={2.5} />
-        </button>
-      </div>
-    </div>
-  );
-}
-
 export function UserTable({
   users,
   loading = false,
   error = null,
   selectedUserId,
-  filters,
-  onFiltersChange,
-  onClearFilters,
   onSelectUser,
   onRetry,
 }: UserTableProps) {
   const { t, lang } = useLanguage();
   const tbl = t.adminPages.users.table;
-  const f = t.adminPages.users.filters;
   const roleLabels = t.adminPages.users.roles;
   const statusLabels = t.adminPages.users.statusLabels;
   const viewLabel = t.adminPages.users.actions.view;
   const u = t.adminPages.users;
   const locale = lang === "vi" ? "vi-VN" : "en-US";
 
-  const hasActiveFilters =
-    filters.search.trim() !== "" || filters.role !== "all" || filters.status !== "all";
-
-  const roles: { value: RoleFilterValue; label: string }[] = [
-    { value: "all", label: f.allShort },
-    { value: "ADMIN", label: roleLabels.ADMIN },
-    { value: "HR_MANAGER", label: roleLabels.HR_MANAGER },
-    { value: "JOB_SEEKER", label: roleLabels.JOB_SEEKER },
-  ];
-
-  const statuses: { value: StatusFilterValue; label: string }[] = [
-    { value: "all", label: f.allShort },
-    { value: "Active", label: f.statusActive },
-    { value: "Suspended", label: f.statusInactive },
-  ];
+  const thCls =
+    "bg-slate-50/80 px-3 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:bg-slate-800/40 dark:text-slate-400";
 
   return (
     <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[820px] table-fixed text-sm">
+        <table className="w-full min-w-205 table-fixed text-sm">
           <colgroup>
             <col className="w-auto" />
-            <col className="w-[148px]" />
-            <col className="w-[112px]" />
-            <col className="w-[128px]" />
-            <col className="w-[120px]" />
+            <col className="w-37" />
+            <col className="w-28" />
+            <col className="w-32" />
+            <col className="w-30" />
             <col className="w-10" />
           </colgroup>
+
           <thead>
             <tr className="border-b border-slate-100 dark:border-slate-800">
-              <th className="bg-slate-50/80 px-3 py-2 text-left dark:bg-slate-800/40">
-                <div className="flex items-center gap-2">
-                  <div className="relative min-w-0 flex-1" onClick={(e) => e.stopPropagation()}>
-                    <Search
-                      size={12}
-                      className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-slate-400"
-                    />
-                    <input
-                      type="search"
-                      value={filters.search}
-                      onChange={(e) => onFiltersChange({ search: e.target.value })}
-                      placeholder={tbl.name}
-                      className="h-7 w-full rounded-md bg-transparent py-0 pl-7 pr-2 text-[11px] text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-0 dark:text-slate-200"
-                    />
-                  </div>
-                  {hasActiveFilters && (
-                    <button
-                      type="button"
-                      onClick={onClearFilters}
-                      className="shrink-0 rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800"
-                      title={f.clearFilters}
-                    >
-                      <X size={12} />
-                    </button>
-                  )}
-                </div>
-              </th>
-              <th className="w-[148px] max-w-[148px] bg-slate-50/80 px-2 py-2 text-left dark:bg-slate-800/40">
-                <StepperFilter
-                  options={roles}
-                  value={filters.role}
-                  onChange={(role) => onFiltersChange({ role })}
-                />
-              </th>
-              <th className="w-[112px] max-w-[112px] bg-slate-50/80 px-3 py-2 text-left text-[11px] font-semibold text-slate-500 dark:bg-slate-800/40 dark:text-slate-400">
-                {tbl.plan}
-              </th>
-              <th className="w-[128px] max-w-[128px] bg-slate-50/80 px-2 py-2 text-left dark:bg-slate-800/40">
-                <StepperFilter
-                  options={statuses}
-                  value={filters.status}
-                  onChange={(status) => onFiltersChange({ status })}
-                />
-              </th>
-              <th className="w-[120px] max-w-[120px] bg-slate-50/80 px-3 py-2 text-left text-[11px] font-semibold text-slate-500 dark:bg-slate-800/40 dark:text-slate-400">
-                {tbl.created}
-              </th>
+              <th className={cn(thCls, "px-4")}>{tbl.name}</th>
+              <th className={thCls}>{tbl.role}</th>
+              <th className={thCls}>{tbl.plan}</th>
+              <th className={thCls}>{tbl.status}</th>
+              <th className={thCls}>{tbl.created}</th>
               <th className="w-10 bg-slate-50/80 dark:bg-slate-800/40" aria-hidden />
             </tr>
           </thead>
@@ -230,7 +116,7 @@ export function UserTable({
                     <button
                       type="button"
                       onClick={onRetry}
-                      className="mt-3 text-sm font-semibold text-[#6c47ff] hover:underline"
+                      className="mt-3 text-sm font-semibold text-primary hover:underline"
                     >
                       {u.retry}
                     </button>
@@ -242,7 +128,7 @@ export function UserTable({
             {!error && loading && (
               <tr>
                 <td colSpan={6} className="py-16 text-center">
-                  <Loader2 size={26} className="mx-auto animate-spin text-[#7C3AED]" />
+                  <Loader2 size={26} className="mx-auto animate-spin text-violet-600" />
                 </td>
               </tr>
             )}
@@ -279,7 +165,7 @@ export function UserTable({
                           avatarUrl={user.avatarUrl}
                           fullName={user.fullName}
                           size="sm"
-                          className="!h-9 !w-9 !text-xs"
+                          className="h-9! w-9! text-xs!"
                         />
                         <div className="min-w-0">
                           <p className={cn("truncate font-semibold leading-tight", portalHeadingAlt)}>
@@ -348,8 +234,8 @@ export function UserTable({
                       <span
                         className={cn(
                           "inline-flex h-8 w-8 items-center justify-center rounded-full text-slate-300 transition",
-                          "group-hover:bg-white group-hover:text-[#6c47ff] group-hover:shadow-sm dark:group-hover:bg-slate-800",
-                          isSelected && "bg-white text-[#6c47ff] shadow-sm dark:bg-slate-800"
+                          "group-hover:bg-white group-hover:text-primary group-hover:shadow-sm dark:group-hover:bg-slate-800",
+                          isSelected && "bg-white text-primary shadow-sm dark:bg-slate-800"
                         )}
                         title={viewLabel}
                         aria-hidden

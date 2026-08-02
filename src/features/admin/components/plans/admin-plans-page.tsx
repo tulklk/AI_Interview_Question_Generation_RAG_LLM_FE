@@ -73,6 +73,8 @@ function toEditable(p: SubscriptionPlan): Editable {
   };
 }
 
+type NumField = "priceMonthly" | "askAiPerMonth" | "generateCooldownHours" | "planRegeneratePerDraft" | "freeVisiblePercent";
+
 export function AdminPlansPage() {
   const { t, lang } = useLanguage();
   const locale = lang === "vi" ? "vi-VN" : "en-US";
@@ -80,9 +82,36 @@ export function AdminPlansPage() {
   const { addToast } = useToast();
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
   const [drafts, setDrafts] = useState<Record<string, Editable>>({});
+  const [rawValues, setRawValues] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState<string | null>(null);
   const [statsRefreshToken, setStatsRefreshToken] = useState(0);
+
+  function numKey(planId: string, field: NumField) {
+    return `${planId}_${field}`;
+  }
+
+  function getRaw(planId: string, field: NumField, fallback: number): string {
+    return rawValues[numKey(planId, field)] ?? String(fallback);
+  }
+
+  function handleNumChange(planId: string, field: NumField, raw: string, max?: number) {
+    const cleaned = raw.replace(/[^0-9]/g, "");
+    setRawValues((prev) => ({ ...prev, [numKey(planId, field)]: cleaned }));
+    const n = parseInt(cleaned, 10);
+    if (!isNaN(n)) {
+      const clamped = max !== undefined ? Math.min(max, n) : n;
+      patchDraft(planId, { [field]: clamped } as Partial<Editable>);
+    }
+  }
+
+  function handleNumBlur(planId: string, field: NumField, max?: number) {
+    const raw = rawValues[numKey(planId, field)] ?? "0";
+    const n = Math.max(0, parseInt(raw, 10) || 0);
+    const clamped = max !== undefined ? Math.min(max, n) : n;
+    patchDraft(planId, { [field]: clamped } as Partial<Editable>);
+    setRawValues((prev) => ({ ...prev, [numKey(planId, field)]: String(clamped) }));
+  }
 
   const load = useCallback(async (opts?: { refreshStats?: boolean }) => {
     setLoading(true);
@@ -90,8 +119,18 @@ export function AdminPlansPage() {
       const list = await adminListPlans();
       setPlans(list);
       const next: Record<string, Editable> = {};
-      for (const p of list) next[p.id] = toEditable(p);
+      const nextRaw: Record<string, string> = {};
+      for (const p of list) {
+        const e = toEditable(p);
+        next[p.id] = e;
+        nextRaw[`${p.id}_priceMonthly`] = String(e.priceMonthly);
+        nextRaw[`${p.id}_askAiPerMonth`] = String(e.askAiPerMonth);
+        nextRaw[`${p.id}_generateCooldownHours`] = String(e.generateCooldownHours);
+        nextRaw[`${p.id}_planRegeneratePerDraft`] = String(e.planRegeneratePerDraft);
+        nextRaw[`${p.id}_freeVisiblePercent`] = String(e.freeVisiblePercent);
+      }
       setDrafts(next);
+      setRawValues(nextRaw);
       // Chỉ refresh stats khi user bấm Refresh — tránh double-fetch lúc mount
       if (opts?.refreshStats) setStatsRefreshToken((n) => n + 1);
     } catch {
@@ -202,58 +241,61 @@ export function AdminPlansPage() {
                   <label className="text-xs space-y-1">
                     <span className={portalSubtext}>{ed.priceLabel}</span>
                     <input
-                      type="number"
-                      min={0}
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
                       className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-transparent px-3 py-2 text-sm"
-                      value={d.priceMonthly}
-                      onChange={(e) => patchDraft(plan.id, { priceMonthly: Math.max(0, Number(e.target.value) || 0) })}
+                      value={getRaw(plan.id, "priceMonthly", d.priceMonthly)}
+                      onChange={(e) => handleNumChange(plan.id, "priceMonthly", e.target.value)}
+                      onBlur={() => handleNumBlur(plan.id, "priceMonthly")}
                     />
                   </label>
                   <label className="text-xs space-y-1">
                     <span className={portalSubtext}>{ed.askAiLabel}</span>
                     <input
-                      type="number"
-                      min={0}
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
                       className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-transparent px-3 py-2 text-sm"
-                      value={d.askAiPerMonth}
-                      onChange={(e) => patchDraft(plan.id, { askAiPerMonth: Math.max(0, Number(e.target.value) || 0) })}
+                      value={getRaw(plan.id, "askAiPerMonth", d.askAiPerMonth)}
+                      onChange={(e) => handleNumChange(plan.id, "askAiPerMonth", e.target.value)}
+                      onBlur={() => handleNumBlur(plan.id, "askAiPerMonth")}
                     />
                   </label>
                   <label className="text-xs space-y-1">
                     <span className={portalSubtext}>{ed.cooldownLabel}</span>
                     <input
-                      type="number"
-                      min={0}
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
                       className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-transparent px-3 py-2 text-sm"
-                      value={d.generateCooldownHours}
-                      onChange={(e) =>
-                        patchDraft(plan.id, { generateCooldownHours: Math.max(0, Number(e.target.value) || 0) })
-                      }
+                      value={getRaw(plan.id, "generateCooldownHours", d.generateCooldownHours)}
+                      onChange={(e) => handleNumChange(plan.id, "generateCooldownHours", e.target.value)}
+                      onBlur={() => handleNumBlur(plan.id, "generateCooldownHours")}
                     />
                   </label>
                   <label className="text-xs space-y-1">
                     <span className={portalSubtext}>{ed.regenerateLabel}</span>
                     <input
-                      type="number"
-                      min={0}
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
                       className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-transparent px-3 py-2 text-sm"
-                      value={d.planRegeneratePerDraft}
-                      onChange={(e) =>
-                        patchDraft(plan.id, { planRegeneratePerDraft: Math.max(0, Number(e.target.value) || 0) })
-                      }
+                      value={getRaw(plan.id, "planRegeneratePerDraft", d.planRegeneratePerDraft)}
+                      onChange={(e) => handleNumChange(plan.id, "planRegeneratePerDraft", e.target.value)}
+                      onBlur={() => handleNumBlur(plan.id, "planRegeneratePerDraft")}
                     />
                   </label>
                   <label className="text-xs space-y-1">
                     <span className={portalSubtext}>{ed.freeVisibleLabel}</span>
                     <input
-                      type="number"
-                      min={0}
-                      max={100}
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
                       className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-transparent px-3 py-2 text-sm"
-                      value={d.freeVisiblePercent}
-                      onChange={(e) =>
-                        patchDraft(plan.id, { freeVisiblePercent: Math.min(100, Math.max(0, Number(e.target.value) || 0)) })
-                      }
+                      value={getRaw(plan.id, "freeVisiblePercent", d.freeVisiblePercent)}
+                      onChange={(e) => handleNumChange(plan.id, "freeVisiblePercent", e.target.value, 100)}
+                      onBlur={() => handleNumBlur(plan.id, "freeVisiblePercent", 100)}
                     />
                   </label>
                   <div className="flex flex-col gap-2 justify-end text-sm">

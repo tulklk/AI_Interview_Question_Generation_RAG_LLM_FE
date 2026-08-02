@@ -61,7 +61,7 @@ export function SetDetailClient() {
       ]}
     >
       {loading && (
-        <div className="py-20 flex items-center justify-center">
+        <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center">
           <AiLoadingSpinner text={p.loading} />
         </div>
       )}

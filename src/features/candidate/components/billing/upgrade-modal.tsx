@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { Crown, Check, Copy, X } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { useLanguage } from "@/shared/providers/language-context";
@@ -44,6 +44,13 @@ export function UpgradeModal({ onClose, onDone }: UpgradeModalProps) {
   const b = t.jobseekerSettingsPage.billing;
   const [loading, setLoading] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [isVisible, setIsVisible] = useState(true);
+  const [activating, setActivating] = useState(false);
+
+  function handleClose() {
+    setIsVisible(false);
+    setTimeout(onClose, 180);
+  }
   const [payment, setPayment] = useState<UpgradePaymentIntent | null>(null);
   const [polling, setPolling] = useState(false);
   const qrImageFromContent =
@@ -67,7 +74,7 @@ export function UpgradeModal({ onClose, onDone }: UpgradeModalProps) {
 
   useEffect(() => {
     setMounted(true);
-    const handleKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    const handleKey = (e: KeyboardEvent) => { if (e.key === "Escape") handleClose(); };
     document.addEventListener("keydown", handleKey);
     return () => document.removeEventListener("keydown", handleKey);
   }, [onClose]);
@@ -91,6 +98,49 @@ export function UpgradeModal({ onClose, onDone }: UpgradeModalProps) {
       addToast("success", copiedMessage);
     } catch {
       addToast("error", b.paymentPanel.copyFailedToast);
+    }
+  }
+
+  async function handleFreeActivation() {
+    if (!payment?.orderCode) return;
+    setActivating(true);
+    try {
+      // Với 0đ order, backend có thể đã upgrade subscription ngay lúc tạo đơn
+      // dù status vẫn trả "Pending" — nên kiểm tra thẳng subscription thay vì dựa vào status
+      const [sub, use, hist] = await Promise.all([
+        getCandidateSubscription(),
+        getCandidateBillingUsage(),
+        getCandidatePaymentHistory(),
+      ]);
+      if (isPremiumPlanCode(sub.planCode)) {
+        addToast("success", b.upgradeSuccess);
+        onDone?.({ subscription: sub, usage: use, history: hist });
+        handleClose();
+        return;
+      }
+      // Subscription chưa upgrade → thử check status đơn thêm 1 lần
+      const statusRes = await getUpgradeOrderStatus(payment.orderCode);
+      const normalized = (statusRes.status || "").toUpperCase();
+      if (["PAID", "FREE", "COMPLETED", "CONFIRMED"].includes(normalized)) {
+        const [sub2, use2, hist2] = await Promise.all([
+          getCandidateSubscription(),
+          getCandidateBillingUsage(),
+          getCandidatePaymentHistory(),
+        ]);
+        addToast("success", b.upgradeSuccess);
+        onDone?.({ subscription: sub2, usage: use2, history: hist2 });
+        handleClose();
+      } else {
+        // Backend chưa xử lý xong đơn 0đ — polling tiếp tục chạy ngầm
+        addToast("info", lang === "vi"
+          ? "Đang chờ xác nhận từ hệ thống. Vui lòng thử lại sau vài giây."
+          : "Awaiting system confirmation. Please try again in a moment."
+        );
+      }
+    } catch {
+      addToast("error", b.paymentPanel.activateFailed);
+    } finally {
+      setActivating(false);
     }
   }
 
@@ -163,18 +213,23 @@ export function UpgradeModal({ onClose, onDone }: UpgradeModalProps) {
   }, [payment?.orderCode, onClose, onDone, addToast, b.upgradeSuccess]);
 
   const modal = (
-    <div
-      className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
-      onClick={(e) => { if (e.currentTarget === e.target) onClose(); }}
+    <AnimatePresence>
+      {isVisible && (
+    <motion.div
+      className="fixed inset-0 z-9999 flex items-center justify-center p-4"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.18 }}
     >
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={handleClose} />
       <motion.div
-        initial={{ opacity: 0, scale: 0.95, y: 12 }}
+        initial={{ opacity: 0, scale: 0.95, y: 14 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.95 }}
-        transition={{ duration: 0.2 }}
+        exit={{ opacity: 0, scale: 0.96, y: 8 }}
+        transition={{ duration: 0.18, ease: [0.4, 0, 0.2, 1] }}
         className={cn(
-          "relative z-10 w-full bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-800 overflow-hidden",
+          "relative z-10 w-full bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-800 overflow-hidden flex flex-col max-h-[90vh]",
           payment ? "max-w-2xl" : "max-w-md"
         )}
       >
@@ -189,14 +244,14 @@ export function UpgradeModal({ onClose, onDone }: UpgradeModalProps) {
           <p className={cn("text-sm", portalSubtext)}>{b.upgradeModalDesc}</p>
           <button
             type="button"
-            onClick={onClose}
+            onClick={handleClose}
             className="absolute top-5 right-5 w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
           >
             <X size={15} />
           </button>
         </div>
 
-        <div className="px-6 py-5 space-y-5">
+        <div className="px-6 py-5 space-y-5 overflow-y-auto flex-1">
           {!payment ? (
             <div className="rounded-xl border-2 border-primary bg-primary/5 dark:bg-primary/10 p-4 flex items-baseline gap-2">
               <span className={cn("text-2xl font-extrabold", portalHeading)}>
@@ -209,63 +264,112 @@ export function UpgradeModal({ onClose, onDone }: UpgradeModalProps) {
               <span className={cn("text-[13px]", portalSubtext)}>{b.perMonth}</span>
             </div>
           ) : (
-            <div className="rounded-xl border border-gray-200 dark:border-gray-700 p-4">
+            <div className="rounded-xl border border-gray-200 dark:border-gray-700 p-3 sm:p-4">
+              {payment.amount === 0 ? (
+                /* ── FREE ORDER: bỏ QR, kích hoạt 1 chạm ── */
+                <div className="flex flex-col items-center gap-4 py-2">
+                  <div className="w-12 h-12 rounded-full bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center">
+                    <Check size={22} className="text-emerald-600 dark:text-emerald-400" />
+                  </div>
+                  <div className="text-center space-y-1">
+                    <div className={cn("text-sm font-semibold", portalHeading)}>{b.paymentPanel.freeTitle}</div>
+                    <p className={cn("text-xs max-w-xs", portalSubtext)}>{b.paymentPanel.freeDesc}</p>
+                  </div>
+                  <div className="w-full rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 px-3 py-2 text-center">
+                    <div className={cn("text-[10px] uppercase tracking-wider opacity-55 mb-0.5", portalSubtext)}>{b.paymentPanel.orderCode}</div>
+                    <div className={cn("text-xs font-mono font-semibold break-all", portalHeading)}>{payment.orderCode}</div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => void handleFreeActivation()}
+                    disabled={activating}
+                    className="w-full h-11 shimmer-button rounded-xl text-sm font-semibold text-white hr-cta-btn flex items-center justify-center gap-2 disabled:opacity-60"
+                  >
+                    {activating ? (
+                      <>
+                        <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        {b.paymentPanel.activatingLabel}
+                      </>
+                    ) : b.paymentPanel.activateNowBtn}
+                  </button>
+                </div>
+              ) : (
+              <>
               <div className={cn("text-sm font-semibold mb-3", portalHeading)}>{b.paymentPanel.title}</div>
-              {/* Desktop: QR trái | thông tin phải; Mobile: xếp dọc, QR to */}
-              <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,280px)_1fr] gap-4 items-start">
-                <div className="flex flex-col items-center gap-2">
+
+              {/* Mobile: QR kèm amount inline → info bên dưới full width
+                  Desktop: QR trái | info phải 2 cột */}
+              <div className="flex flex-col sm:grid sm:grid-cols-[minmax(0,240px)_1fr] gap-3 sm:gap-4 sm:items-start">
+
+                {/* QR */}
+                <div className="flex justify-center sm:block">
                   {payment.qrImageUrl || qrImageFromContent ? (
                     <img
                       src={payment.qrImageUrl || qrImageFromContent || undefined}
                       alt="SePay QR"
-                      className="w-full max-w-[280px] aspect-square object-contain rounded-xl border border-gray-200 dark:border-gray-700 bg-white p-2"
+                      className="w-40 sm:w-full aspect-square object-contain rounded-xl border border-gray-200 dark:border-gray-700 bg-white p-2"
                     />
                   ) : (
-                    <div className="w-full max-w-[280px] rounded-xl border border-dashed border-gray-300 dark:border-gray-700 p-3">
+                    <div className="w-40 sm:w-full rounded-xl border border-dashed border-gray-300 dark:border-gray-700 p-3">
                       <div className={cn("text-[11px] mb-1", portalSubtext)}>QR content</div>
                       <div className={cn("break-all text-[11px]", portalHeading)}>
                         {payment.qrContent || b.paymentPanel.noQrData}
                       </div>
                     </div>
                   )}
-                  {polling && (
-                    <div className={cn("text-xs text-primary text-center", portalSubtext)}>
-                      {b.paymentPanel.waitingWebhook}
-                    </div>
-                  )}
                 </div>
 
+                {/* Info */}
                 <div className="space-y-2.5 min-w-0">
-                  <div className={cn("text-xs", portalSubtext)}>
-                    <span className="font-medium opacity-80">{b.paymentPanel.orderCode}</span>
-                    <div className={cn("mt-0.5 break-all text-sm font-semibold", portalHeading)}>{payment.orderCode}</div>
-                  </div>
-                  <div className={cn("text-xs", portalSubtext)}>
-                    <span className="font-medium opacity-80">{b.paymentPanel.amount}</span>
-                    <div className={cn("mt-0.5 text-base font-bold text-primary", portalHeading)}>
-                      {payment.amount.toLocaleString(locale)} {payment.currency}
+                  {/* Amount + Order code — 2 cột ngang trên mobile */}
+                  <div className="grid grid-cols-2 sm:grid-cols-1 gap-2 sm:gap-0 sm:space-y-2.5">
+                    <div>
+                      <div className={cn("text-[10px] uppercase tracking-wider font-medium opacity-55 mb-0.5", portalSubtext)}>
+                        {b.paymentPanel.amount}
+                      </div>
+                      <div className="text-lg sm:text-xl font-extrabold text-primary">
+                        {payment.amount.toLocaleString(locale)} {payment.currency}
+                      </div>
+                    </div>
+                    <div>
+                      <div className={cn("text-[10px] uppercase tracking-wider font-medium opacity-55 mb-0.5", portalSubtext)}>
+                        {b.paymentPanel.orderCode}
+                      </div>
+                      <div className={cn("text-[11px] sm:text-[13px] font-semibold break-all font-mono leading-snug", portalHeading)}>
+                        {payment.orderCode}
+                      </div>
                     </div>
                   </div>
-                  <div className={cn("text-xs", portalSubtext)}>
-                    {b.paymentPanel.status}:{" "}
-                    <span className={cn("font-semibold", portalHeading)}>
-                      {(payment.status || "Pending").toUpperCase()}
-                    </span>
+
+                  {/* Bank info card */}
+                  <div className="rounded-lg border border-gray-200 dark:border-gray-700 divide-y divide-gray-100 dark:divide-gray-700/60 overflow-hidden">
+                    <div className="flex items-center justify-between px-2.5 py-1.5 gap-2">
+                      <span className={cn("text-[11px] opacity-55 whitespace-nowrap shrink-0", portalSubtext)}>{b.paymentPanel.bank}</span>
+                      <span className={cn("text-[12px] font-semibold text-right", portalHeading)}>
+                        {payment.bankName || "--"}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between px-2.5 py-1.5 gap-2">
+                      <span className={cn("text-[11px] opacity-55 whitespace-nowrap shrink-0", portalSubtext)}>{b.paymentPanel.accountHolder}</span>
+                      <span className={cn("text-[12px] font-semibold text-right", portalHeading)}>
+                        {payment.bankAccountName || "--"}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between px-2.5 py-1.5 gap-2">
+                      <span className={cn("text-[11px] opacity-55 whitespace-nowrap shrink-0", portalSubtext)}>{b.paymentPanel.expiresAt}</span>
+                      <span className={cn("text-[11px] text-right tabular-nums", portalSubtext)}>
+                        {payment.expiresAt ? new Date(payment.expiresAt).toLocaleString(locale) : "--"}
+                      </span>
+                    </div>
                   </div>
-                  <div className={cn("text-xs", portalSubtext)}>
-                    {b.paymentPanel.expiresAt}:{" "}
-                    {payment.expiresAt ? new Date(payment.expiresAt).toLocaleString(locale) : "--"}
-                  </div>
-                  <div className={cn("text-xs", portalSubtext)}>
-                    {b.paymentPanel.bank}: {payment.bankName || "--"} — {payment.bankAccountNumber || "--"}
-                  </div>
-                  <div className={cn("text-xs", portalSubtext)}>
-                    {b.paymentPanel.accountHolder}: {payment.bankAccountName || "--"}
-                  </div>
-                  <div className="flex items-start justify-between gap-2 rounded-lg bg-gray-50 dark:bg-gray-800 px-3 py-2.5">
+
+                  {/* Transfer content + copy */}
+                  <div className="flex items-center justify-between gap-2 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 px-2.5 py-2">
                     <div className="min-w-0">
-                      <div className={cn("text-[11px] mb-0.5", portalSubtext)}>{b.paymentPanel.transferContent}</div>
-                      <div className={cn("text-xs font-semibold break-all", portalHeading)}>
+                      <div className={cn("text-[10px] uppercase tracking-wider font-medium opacity-55 mb-0.5", portalSubtext)}>
+                        {b.paymentPanel.transferContent}
+                      </div>
+                      <div className={cn("text-[12px] font-semibold break-all leading-snug", portalHeading)}>
                         {payment.transferContent || payment.orderCode}
                       </div>
                     </div>
@@ -277,7 +381,7 @@ export function UpgradeModal({ onClose, onDone }: UpgradeModalProps) {
                           b.paymentPanel.copiedToast
                         )
                       }
-                      className="shrink-0 inline-flex items-center gap-1 text-primary text-xs font-medium pt-0.5"
+                      className="shrink-0 inline-flex items-center gap-1 text-primary text-xs font-medium hover:opacity-80 transition-opacity"
                     >
                       <Copy size={12} />
                       {b.paymentPanel.copyBtn}
@@ -285,6 +389,8 @@ export function UpgradeModal({ onClose, onDone }: UpgradeModalProps) {
                   </div>
                 </div>
               </div>
+              </>
+              )}
             </div>
           )}
 
@@ -304,7 +410,7 @@ export function UpgradeModal({ onClose, onDone }: UpgradeModalProps) {
           <div className="flex gap-2.5 pt-1">
             <button
               type="button"
-              onClick={onClose}
+              onClick={handleClose}
               disabled={loading}
               className={cn(
                 "flex-1 h-10 rounded-xl border border-gray-200 dark:border-gray-700 text-sm font-semibold transition-colors hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50",
@@ -329,7 +435,7 @@ export function UpgradeModal({ onClose, onDone }: UpgradeModalProps) {
                   b.createOrderBtn
                 )}
               </button>
-            ) : (
+            ) : payment?.amount === 0 ? null : (
               <button
                 type="button"
                 onClick={() => setPayment(null)}
@@ -341,7 +447,9 @@ export function UpgradeModal({ onClose, onDone }: UpgradeModalProps) {
           </div>
         </div>
       </motion.div>
-    </div>
+    </motion.div>
+      )}
+    </AnimatePresence>
   );
 
   return mounted ? createPortal(modal, document.body) : null;

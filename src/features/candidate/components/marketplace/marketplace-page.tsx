@@ -2,7 +2,10 @@
 
 import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { Search, Sparkles, AlertCircle, RefreshCw, Loader2, ChevronDown, Check, X } from "lucide-react";
+import {
+  Search, Sparkles, AlertCircle, RefreshCw,
+  ChevronDown, Check, X, ChevronLeft, ChevronRight,
+} from "lucide-react";
 import { cn } from "@/lib/cn";
 import { listQuestionSets, getBookmarkedSetIds } from "@/features/candidate/services/question-set.service";
 import { listCompanies, type Company } from "@/features/admin/services/admin-company.service";
@@ -11,7 +14,6 @@ import { QuestionSetCard } from "./question-set-card";
 import { useLanguage } from "@/shared/providers/language-context";
 import type { Difficulty, QuestionSet } from "@/features/candidate/types/jobseeker";
 import { EmptyState } from "@/features/candidate/components/ui/empty-state";
-import { useToast } from "@/shared/providers/toast-context";
 import {
   portalCard,
   portalHeadingAlt,
@@ -20,7 +22,7 @@ import {
 } from "@/shared/utils/portal-ui";
 
 const DIFFICULTIES: Array<"All" | Difficulty> = ["All", "Easy", "Medium", "Hard"];
-const PAGE_SIZE = 12;
+const PAGE_SIZE = 9;
 // BE's Keyword filter only matches the question-set title, not company name or
 // skills — even though the search box explicitly promises "role, company, or
 // skill". When searching, fetch a larger batch (ignoring Keyword) and match
@@ -41,6 +43,18 @@ function difficultyColor(d: "All" | Difficulty) {
   if (d === "Medium") return "text-amber-500 dark:text-amber-400";
   if (d === "Hard")   return "text-red-500 dark:text-red-400";
   return "";
+}
+
+function getPageNums(current: number, total: number): (number | "…")[] {
+  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+  const left = Math.max(2, current - 1);
+  const right = Math.min(total - 1, current + 1);
+  const nums: (number | "…")[] = [1];
+  if (left > 2) nums.push("…");
+  for (let i = left; i <= right; i++) nums.push(i);
+  if (right < total - 1) nums.push("…");
+  nums.push(total);
+  return nums;
 }
 
 interface FilterBarLabels {
@@ -408,7 +422,6 @@ function FilterBar({
 export function MarketplacePage() {
   const { t } = useLanguage();
   const p = t.jobseekerMarketplacePage;
-  const { addToast } = useToast();
 
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -423,9 +436,19 @@ export function MarketplacePage() {
   const [totalCount, setTotalCount] = useState(0);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
+
+  // Cache search results so page flips don't re-hit the API
+  const searchCacheRef = useRef<{ key: string; results: QuestionSet[] } | null>(null);
+  // Track previous filter values to detect filter-vs-page changes inside the effect
+  const prevFiltersRef = useRef({
+    debouncedSearch: "",
+    difficulty: "All" as "All" | Difficulty,
+    skills: "",
+    companyId: null as string | null,
+    reloadKey: 0,
+  });
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   function scrollToSearch() {
@@ -460,58 +483,96 @@ export function MarketplacePage() {
 
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
-    setError(false);
-
     const term = debouncedSearch.trim();
-    const isSearching = term.length > 0;
 
-    listQuestionSets({
-      difficulty: difficulty === "All" ? undefined : difficulty,
-      skills: selectedSkills.length > 0 ? selectedSkills : undefined,
-      companyId: selectedCompanyId ?? undefined,
-      page: 1,
-      pageSize: isSearching ? SEARCH_FETCH_SIZE : PAGE_SIZE,
-    })
-      .then((res) => {
-        if (cancelled) return;
-        const items = isSearching ? res.items.filter((s) => matchesSearchTerm(s, term)) : res.items;
-        setSets(items);
-        setTotalCount(isSearching ? items.length : res.totalCount);
-        setPage(1);
-      })
-      .catch(() => {
-        if (!cancelled) setError(true);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
+    // Detect whether it's a filter change or just a page flip
+    const prev = prevFiltersRef.current;
+    const filterChanged =
+      prev.debouncedSearch !== debouncedSearch ||
+      prev.difficulty !== difficulty ||
+      prev.skills !== selectedSkills.join(",") ||
+      prev.companyId !== selectedCompanyId ||
+      prev.reloadKey !== reloadKey;
 
-    return () => {
-      cancelled = true;
-    };
-  }, [debouncedSearch, difficulty, selectedSkills, selectedCompanyId, reloadKey]);
+    if (filterChanged) {
+      prevFiltersRef.current = {
+        debouncedSearch,
+        difficulty,
+        skills: selectedSkills.join(","),
+        companyId: selectedCompanyId,
+        reloadKey,
+      };
+      setPage(1);
+      searchCacheRef.current = null;
+    }
 
-  function loadMore() {
-    const nextPage = page + 1;
-    setLoadingMore(true);
-    listQuestionSets({
-      difficulty: difficulty === "All" ? undefined : difficulty,
-      skills: selectedSkills.length > 0 ? selectedSkills : undefined,
-      companyId: selectedCompanyId ?? undefined,
-      page: nextPage,
-      pageSize: PAGE_SIZE,
-    })
-      .then((res) => {
-        setSets((prev) => [...prev, ...res.items]);
-        setTotalCount(res.totalCount);
-        setPage(nextPage);
+    // Use page 1 immediately when filter just changed (before setPage re-render)
+    const effectPage = filterChanged ? 1 : page;
+
+    if (term) {
+      const cacheKey = `${term}|${difficulty}|${selectedSkills.join(",")}|${selectedCompanyId ?? ""}|${reloadKey}`;
+      const cached = searchCacheRef.current;
+      if (cached && cached.key === cacheKey) {
+        // Cache hit — instant slice, no network call
+        const start = (effectPage - 1) * PAGE_SIZE;
+        setSets(cached.results.slice(start, start + PAGE_SIZE));
+        return;
+      }
+      setLoading(true);
+      setError(false);
+      listQuestionSets({
+        difficulty: difficulty === "All" ? undefined : difficulty,
+        skills: selectedSkills.length > 0 ? selectedSkills : undefined,
+        companyId: selectedCompanyId ?? undefined,
+        page: 1,
+        pageSize: SEARCH_FETCH_SIZE,
       })
-      .catch(() => {
-        addToast("error", p.loadFailed);
+        .then((res) => {
+          if (cancelled) return;
+          const filtered = res.items.filter((s) => matchesSearchTerm(s, term));
+          searchCacheRef.current = { key: cacheKey, results: filtered };
+          setTotalCount(filtered.length);
+          const start = (effectPage - 1) * PAGE_SIZE;
+          setSets(filtered.slice(start, start + PAGE_SIZE));
+        })
+        .catch(() => { if (!cancelled) setError(true); })
+        .finally(() => { if (!cancelled) setLoading(false); });
+    } else {
+      setLoading(true);
+      setError(false);
+      listQuestionSets({
+        difficulty: difficulty === "All" ? undefined : difficulty,
+        skills: selectedSkills.length > 0 ? selectedSkills : undefined,
+        companyId: selectedCompanyId ?? undefined,
+        page: effectPage,
+        pageSize: PAGE_SIZE,
       })
-      .finally(() => setLoadingMore(false));
+        .then((res) => {
+          if (cancelled) return;
+          setSets(res.items);
+          setTotalCount(res.totalCount);
+        })
+        .catch(() => { if (!cancelled) setError(true); })
+        .finally(() => { if (!cancelled) setLoading(false); });
+    }
+
+    return () => { cancelled = true; };
+  }, [debouncedSearch, difficulty, selectedSkills, selectedCompanyId, page, reloadKey]);
+
+  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
+
+  function goToPage(newPage: number) {
+    if (newPage < 1 || newPage > totalPages || newPage === page) return;
+    setPage(newPage);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
+
+  const navBtnCls = cn(
+    "inline-flex h-8 w-8 items-center justify-center rounded-lg text-sm transition-colors",
+    portalCard,
+    portalSubtextAlt,
+    "hover:border-primary/40 hover:text-primary disabled:opacity-40 disabled:pointer-events-none"
+  );
 
   return (
     <div>
@@ -527,7 +588,7 @@ export function MarketplacePage() {
             <Sparkles size={12} className="text-primary" />
             <span className="text-[11px] font-semibold text-primary">{p.heroBadge}</span>
           </div>
-          <h1 className={cn("text-[24px] sm:text-[32px] font-[800] leading-7.5 sm:leading-10 mb-2.5", portalHeadingAlt)}>
+          <h1 className={cn("text-[24px] sm:text-[32px] font-extrabold leading-7.5 sm:leading-10 mb-2.5", portalHeadingAlt)}>
             {p.heroTitle}{" "}
             <span className="text-primary">{p.heroTitleAccent}</span>
           </h1>
@@ -579,7 +640,7 @@ export function MarketplacePage() {
           transition={{ duration: 0.3, delay: 0.18 }}
           className={cn("text-[13px] mb-5", portalSubtextAlt)}
         >
-          <span className={cn("font-semibold", portalHeadingAlt)}>{sets.length}</span>{" "}
+          <span className={cn("font-semibold", portalHeadingAlt)}>{totalCount}</span>{" "}
           {p.setsFound}
         </motion.p>
       )}
@@ -587,7 +648,7 @@ export function MarketplacePage() {
       {/* ── Card Grid ─────────────────────────────────────────────────────── */}
       {loading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-          {Array.from({ length: 6 }).map((_, i) => (
+          {Array.from({ length: PAGE_SIZE }).map((_, i) => (
             <div key={i} className="hr-glass-card p-6 h-56 animate-pulse flex flex-col gap-4">
               <div className="h-10 w-10 rounded-lg bg-gray-200 dark:bg-gray-700" />
               <div className="h-4 w-3/4 rounded bg-gray-200 dark:bg-gray-700" />
@@ -618,7 +679,7 @@ export function MarketplacePage() {
               key={set.id}
               initial={{ opacity: 0, y: 18 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.35, delay: i * 0.07, ease: "easeOut" }}
+              transition={{ duration: 0.35, delay: i * 0.05, ease: "easeOut" }}
               className="hover:drop-shadow-md transition-[filter] duration-200"
             >
               <QuestionSetCard
@@ -637,22 +698,52 @@ export function MarketplacePage() {
         </div>
       )}
 
-      {/* Load more */}
-      {!loading && !error && !debouncedSearch.trim() && sets.length > 0 && sets.length < totalCount && (
-        <div className="flex justify-center mt-8">
+      {/* ── Pagination ────────────────────────────────────────────────────── */}
+      {!loading && !error && totalPages > 1 && (
+        <div className="flex items-center justify-center gap-1.5 mt-8">
           <button
             type="button"
-            onClick={loadMore}
-            disabled={loadingMore}
-            className={cn(
-              "flex items-center gap-2 h-10 px-5 rounded-lg text-[13px] font-semibold disabled:opacity-60 disabled:cursor-not-allowed transition-colors",
-              portalCard,
-              portalHeadingAlt,
-              "hover:border-primary/40"
-            )}
+            disabled={page <= 1}
+            onClick={() => goToPage(page - 1)}
+            className={navBtnCls}
+            aria-label="Previous page"
           >
-            {loadingMore ? <Loader2 size={14} className="animate-spin" /> : null}
-            {loadingMore ? p.loadingMore : p.loadMoreBtn}
+            <ChevronLeft size={15} />
+          </button>
+
+          {getPageNums(page, totalPages).map((num, i) =>
+            num === "…" ? (
+              <span
+                key={`ellipsis-${i}`}
+                className={cn("w-8 text-center text-sm select-none", portalSubtextAlt)}
+              >
+                …
+              </span>
+            ) : (
+              <button
+                key={num}
+                type="button"
+                onClick={() => goToPage(num as number)}
+                className={cn(
+                  "inline-flex h-8 w-8 items-center justify-center rounded-lg text-sm font-medium transition-colors",
+                  num === page
+                    ? "bg-primary text-white shadow-sm scale-105"
+                    : cn(navBtnCls)
+                )}
+              >
+                {num}
+              </button>
+            )
+          )}
+
+          <button
+            type="button"
+            disabled={page >= totalPages}
+            onClick={() => goToPage(page + 1)}
+            className={navBtnCls}
+            aria-label="Next page"
+          >
+            <ChevronRight size={15} />
           </button>
         </div>
       )}

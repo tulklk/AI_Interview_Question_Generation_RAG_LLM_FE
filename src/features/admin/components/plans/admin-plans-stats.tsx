@@ -1,8 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Banknote,
+  ChevronLeft,
+  ChevronRight,
   Clock3,
   Landmark,
   Loader2,
@@ -12,6 +14,8 @@ import {
   UserCheck,
   Wallet,
 } from "lucide-react";
+
+const PAGE_SIZE = 10;
 import { cn } from "@/lib/cn";
 import { useLanguage } from "@/shared/providers/language-context";
 import { useToast } from "@/shared/providers/toast-context";
@@ -44,6 +48,46 @@ function formatMoney(amount: number, currency: string) {
 
 function formatPct(rate: number) {
   return `${(rate * 100).toFixed(1)}%`;
+}
+
+function useCountUp(target: number, duration = 900): number {
+  const [current, setCurrent] = useState(0);
+  const rafRef = useRef<number>(0);
+  const startRef = useRef<number | null>(null);
+  const fromRef = useRef(0);
+
+  useEffect(() => {
+    const from = fromRef.current;
+    startRef.current = null;
+    cancelAnimationFrame(rafRef.current);
+
+    function step(ts: number) {
+      if (startRef.current === null) startRef.current = ts;
+      const t = Math.min((ts - startRef.current) / duration, 1);
+      const eased = 1 - Math.pow(1 - t, 3);
+      const next = from + (target - from) * eased;
+      setCurrent(next);
+      if (t < 1) {
+        rafRef.current = requestAnimationFrame(step);
+      } else {
+        fromRef.current = target;
+      }
+    }
+
+    rafRef.current = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(rafRef.current);
+  }, [target, duration]);
+
+  return current;
+}
+
+function AnimatedValue({ raw, format }: { raw: number; format: (n: number) => string }) {
+  const animated = useCountUp(raw);
+  return (
+    <p className={cn("text-xl font-extrabold tabular-nums leading-none", portalHeading)}>
+      {format(animated)}
+    </p>
+  );
 }
 
 function matchBadgeClass(status: string) {
@@ -119,6 +163,17 @@ export function AdminPlansStats({ refreshToken = 0 }: AdminPlansStatsProps) {
   const [stats, setStats] = useState<AdminSubscriptionStats | null>(null);
   const [txs, setTxs] = useState<AdminSubscriptionTransactionRow[]>([]);
   const [sepay, setSepay] = useState<AdminSePayOverview | null>(null);
+  const [txPage, setTxPage] = useState(1);
+  const [txFading, setTxFading] = useState(false);
+
+  function goToPage(next: number) {
+    if (next === txPage) return;
+    setTxFading(true);
+    setTimeout(() => {
+      setTxPage(next);
+      setTxFading(false);
+    }, 140);
+  }
 
   const load = useCallback(
     async (forceSepayRefresh = false) => {
@@ -126,12 +181,12 @@ export function AdminPlansStats({ refreshToken = 0 }: AdminPlansStatsProps) {
       // Load độc lập — 1 API lỗi không làm mất toàn bộ panel / spam toast
       const [stRes, txRes, seRes] = await Promise.allSettled([
         adminGetSubscriptionStats(),
-        adminListSubscriptionTransactions(20),
+        adminListSubscriptionTransactions(200),
         adminGetSePayOverview(forceSepayRefresh),
       ]);
 
       if (stRes.status === "fulfilled") setStats(stRes.value);
-      if (txRes.status === "fulfilled") setTxs(txRes.value);
+      if (txRes.status === "fulfilled") { setTxs(txRes.value); setTxPage(1); }
       if (seRes.status === "fulfilled") setSepay(seRes.value);
 
       const failed =
@@ -156,6 +211,9 @@ export function AdminPlansStats({ refreshToken = 0 }: AdminPlansStatsProps) {
   }, [load, refreshToken]);
 
   const currency = stats?.currency || "VND";
+
+  const totalTxPages = Math.max(1, Math.ceil(txs.length / PAGE_SIZE));
+  const pagedTxs = txs.slice((txPage - 1) * PAGE_SIZE, txPage * PAGE_SIZE);
   const maxDaily = Math.max(1, ...(sepay?.dailyInLast7Days.map((d) => d.amountIn) ?? [1]));
 
   const kpis = [
@@ -163,7 +221,8 @@ export function AdminPlansStats({ refreshToken = 0 }: AdminPlansStatsProps) {
       icon: Wallet,
       label: s.revenueThisMonth,
       desc: s.revenueThisMonthDesc,
-      value: stats ? formatMoney(stats.revenueThisMonth, currency) : "—",
+      raw: stats?.revenueThisMonth ?? null,
+      format: (n: number) => formatMoney(Math.round(n), currency),
       iconBg: "bg-emerald-50 dark:bg-emerald-950/40",
       iconColor: "text-emerald-600 dark:text-emerald-400",
     },
@@ -171,7 +230,8 @@ export function AdminPlansStats({ refreshToken = 0 }: AdminPlansStatsProps) {
       icon: Clock3,
       label: s.pendingOrders,
       desc: s.pendingOrdersDesc,
-      value: stats ? String(stats.pendingOrders) : "—",
+      raw: stats?.pendingOrders ?? null,
+      format: (n: number) => String(Math.round(n)),
       iconBg: "bg-amber-50 dark:bg-amber-950/40",
       iconColor: "text-amber-600 dark:text-amber-400",
     },
@@ -179,7 +239,8 @@ export function AdminPlansStats({ refreshToken = 0 }: AdminPlansStatsProps) {
       icon: UserCheck,
       label: s.premiumHr,
       desc: s.premiumHrDesc,
-      value: stats ? String(stats.premiumHrActive) : "—",
+      raw: stats?.premiumHrActive ?? null,
+      format: (n: number) => String(Math.round(n)),
       iconBg: "bg-violet-50 dark:bg-violet-950/40",
       iconColor: "text-violet-600 dark:text-violet-400",
     },
@@ -187,7 +248,8 @@ export function AdminPlansStats({ refreshToken = 0 }: AdminPlansStatsProps) {
       icon: Users,
       label: s.premiumCandidate,
       desc: s.premiumCandidateDesc,
-      value: stats ? String(stats.premiumCandidateActive) : "—",
+      raw: stats?.premiumCandidateActive ?? null,
+      format: (n: number) => String(Math.round(n)),
       iconBg: "bg-blue-50 dark:bg-blue-950/40",
       iconColor: "text-blue-600 dark:text-blue-400",
     },
@@ -195,7 +257,8 @@ export function AdminPlansStats({ refreshToken = 0 }: AdminPlansStatsProps) {
       icon: Banknote,
       label: s.estimatedMrr,
       desc: s.estimatedMrrDesc,
-      value: stats ? formatMoney(stats.estimatedMrr, currency) : "—",
+      raw: stats?.estimatedMrr ?? null,
+      format: (n: number) => formatMoney(Math.round(n), currency),
       iconBg: "bg-cyan-50 dark:bg-cyan-950/40",
       iconColor: "text-cyan-600 dark:text-cyan-400",
     },
@@ -203,7 +266,8 @@ export function AdminPlansStats({ refreshToken = 0 }: AdminPlansStatsProps) {
       icon: Percent,
       label: s.paidRate,
       desc: s.paidRateDesc,
-      value: stats ? formatPct(stats.paidRateLast30Days) : "—",
+      raw: stats?.paidRateLast30Days ?? null,
+      format: (n: number) => formatPct(n),
       iconBg: "bg-indigo-50 dark:bg-indigo-950/40",
       iconColor: "text-indigo-600 dark:text-indigo-400",
     },
@@ -233,10 +297,10 @@ export function AdminPlansStats({ refreshToken = 0 }: AdminPlansStatsProps) {
             <div className={cn("w-9 h-9 rounded-xl flex items-center justify-center", k.iconBg)}>
               <k.icon size={16} className={k.iconColor} />
             </div>
-            {loading ? (
+            {loading || k.raw === null ? (
               <div className="h-7 w-24 rounded-md bg-gray-100 dark:bg-gray-800 animate-pulse" />
             ) : (
-              <p className={cn("text-xl font-extrabold tabular-nums leading-none", portalHeading)}>{k.value}</p>
+              <AnimatedValue raw={k.raw} format={k.format} />
             )}
             <p className={cn("text-[11px] font-semibold uppercase tracking-wider", portalSubtext)}>{k.label}</p>
             <p className={cn("text-[10px] leading-snug", portalSubtext)}>{k.desc}</p>
@@ -328,7 +392,7 @@ export function AdminPlansStats({ refreshToken = 0 }: AdminPlansStatsProps) {
           <p className={cn("text-sm font-semibold", portalHeading)}>{s.localTxTitle}</p>
           <p className={cn("text-[11px]", portalSubtext)}>{s.localTxDesc}</p>
         </div>
-        <div className="overflow-x-auto">
+        <div className={cn("overflow-x-auto transition-opacity duration-[140ms]", txFading && "opacity-0")}>
           <table className="w-full text-xs min-w-[760px]">
             <thead>
               <tr className={cn("border-b text-left", portalDivider)}>
@@ -342,7 +406,7 @@ export function AdminPlansStats({ refreshToken = 0 }: AdminPlansStatsProps) {
               </tr>
             </thead>
             <tbody>
-              {txs.map((row) => (
+              {pagedTxs.map((row) => (
                 <tr key={row.id} className={cn("border-b last:border-0", portalDivider)}>
                   <td className={cn("px-3 py-2 font-mono", portalHeading)}>{row.orderCode || "—"}</td>
                   <td className={cn("px-3 py-2", portalSubtext)}>{row.userEmail || "—"}</td>
@@ -376,6 +440,60 @@ export function AdminPlansStats({ refreshToken = 0 }: AdminPlansStatsProps) {
             </tbody>
           </table>
         </div>
+
+        {txs.length > PAGE_SIZE && (
+          <div className={cn("flex items-center justify-between gap-3 px-4 py-3 border-t text-xs", portalDivider)}>
+            <span className={portalSubtext}>
+              {(txPage - 1) * PAGE_SIZE + 1}–{Math.min(txPage * PAGE_SIZE, txs.length)} / {txs.length}
+            </span>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                disabled={txPage === 1 || txFading}
+                onClick={() => goToPage(txPage - 1)}
+                className="inline-flex items-center justify-center w-7 h-7 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors duration-150"
+              >
+                <ChevronLeft size={13} />
+              </button>
+              {Array.from({ length: totalTxPages }, (_, i) => i + 1)
+                .filter((p) => p === 1 || p === totalTxPages || Math.abs(p - txPage) <= 1)
+                .reduce<(number | "…")[]>((acc, p, i, arr) => {
+                  if (i > 0 && p - (arr[i - 1] as number) > 1) acc.push("…");
+                  acc.push(p);
+                  return acc;
+                }, [])
+                .map((item, i) =>
+                  item === "…" ? (
+                    <span key={`ellipsis-${i}`} className={cn("w-7 text-center select-none", portalSubtext)}>…</span>
+                  ) : (
+                    <button
+                      key={item}
+                      type="button"
+                      disabled={txFading}
+                      onClick={() => goToPage(item as number)}
+                      className={cn(
+                        "w-7 h-7 rounded-lg text-xs font-semibold border transition-all duration-200",
+                        txPage === item
+                          ? "bg-primary text-white border-primary scale-105 shadow-sm"
+                          : "border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800",
+                        txPage !== item && portalSubtext
+                      )}
+                    >
+                      {item}
+                    </button>
+                  )
+                )}
+              <button
+                type="button"
+                disabled={txPage === totalTxPages || txFading}
+                onClick={() => goToPage(txPage + 1)}
+                className="inline-flex items-center justify-center w-7 h-7 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors duration-150"
+              >
+                <ChevronRight size={13} />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
