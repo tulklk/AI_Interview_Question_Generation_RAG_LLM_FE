@@ -24,6 +24,8 @@ import {
   useCandidateSubscription,
 } from "@/features/candidate/context/candidate-subscription-context";
 import { UpgradeModal } from "@/features/candidate/components/billing/upgrade-modal";
+import { useUpgradeWatcher } from "@/shared/hooks/use-upgrade-watcher";
+import { UpgradeCongratsDialog } from "@/shared/components/upgrade-congrats-dialog";
 
 const UNREAD_WINDOW_MS = 24 * 60 * 60 * 1000;
 
@@ -45,6 +47,12 @@ function JobseekerAppShellInner({
   const { addToast } = useToast();
   const { user, loading } = useUser();
   const { planType, refreshSubscription } = useCandidateSubscription();
+  const { showCongrats: showUpgradeCongrats, dismiss: dismissCongrats } = useUpgradeWatcher(
+    planType,
+    refreshSubscription
+    // Candidate context already caches plan in localStorage ("hiregena-candidate-plan"),
+    // so the FREE→PREMIUM transition is naturally detected without a separate key.
+  );
   const welcomedRef = useRef(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showUpgrade, setShowUpgrade] = useState(false);
@@ -182,6 +190,12 @@ function JobseekerAppShellInner({
         onDone={() => { void refreshSubscription(); }}
       />
     )}
+
+    <UpgradeCongratsDialog
+      open={showUpgradeCongrats}
+      onClose={dismissCongrats}
+      planName="Candidate Premium"
+    />
     </>
   );
 }

@@ -11,6 +11,7 @@ import {
 import { UserDetailPanel } from "@/features/admin/components/users/user-detail-panel";
 import { UserPagination } from "@/features/admin/components/users/user-pagination";
 import { getUserById, listUsers, updateUserStatus } from "@/features/admin/services/admin-users.service";
+import { UserFilters } from "@/features/admin/components/users/user-filters";
 import { useLanguage } from "@/shared/providers/language-context";
 import { cn } from "@/lib/cn";
 import { portalHeadingAlt, portalSubtextAlt } from "@/shared/utils/portal-ui";
@@ -24,6 +25,9 @@ const EMPTY_FILTERS: UserTableColumnFilters = {
   search: "",
   role: "all",
   status: "all",
+  plan: "all",
+  createdFrom: "",
+  createdTo: "",
 };
 
 export default function UserManagementPage() {
@@ -54,16 +58,19 @@ export default function UserManagementPage() {
     return () => window.clearTimeout(timer);
   }, [filters.search]);
 
-  // Đổi filter (trừ gõ search debounce) → về trang 1
+  // Any filter change resets to page 1
   useEffect(() => {
     setPage(1);
-  }, [debouncedSearch, filters.role, filters.status]);
+  }, [debouncedSearch, filters.role, filters.status, filters.plan, filters.createdFrom, filters.createdTo]);
 
   const listParams = useMemo(() => {
-    const status = filters.status;
     let isActive: boolean | undefined;
-    if (status === "Active") isActive = true;
-    else if (status === "Suspended") isActive = false;
+    if (filters.status === "Active") isActive = true;
+    else if (filters.status === "Suspended") isActive = false;
+
+    let isPremium: boolean | undefined;
+    if (filters.plan === "PREMIUM") isPremium = true;
+    else if (filters.plan === "FREE") isPremium = false;
 
     return {
       page,
@@ -71,16 +78,22 @@ export default function UserManagementPage() {
       search: debouncedSearch || undefined,
       role: filters.role === "all" ? undefined : filters.role,
       isActive,
+      isPremium,
+      createdFrom: filters.createdFrom || undefined,
+      createdTo: filters.createdTo || undefined,
     };
-  }, [page, debouncedSearch, filters.role, filters.status]);
+  }, [page, debouncedSearch, filters.role, filters.status, filters.plan, filters.createdFrom, filters.createdTo]);
 
   const fetchUsers = useCallback(async () => {
     setLoading(true);
     setError(null);
-
     try {
       const result = await listUsers(listParams);
-      setUsers(result.items);
+      // Client-side plan filter fallback in case backend ignores IsPremium param
+      let items = result.items;
+      if (listParams.isPremium === true) items = items.filter((u) => !!u.isPremium);
+      else if (listParams.isPremium === false) items = items.filter((u) => !u.isPremium);
+      setUsers(items);
       setTotalCount(result.totalCount);
     } catch {
       setUsers([]);
@@ -90,6 +103,20 @@ export default function UserManagementPage() {
       setLoading(false);
     }
   }, [listParams, u.loadError]);
+
+  // Silent background refresh — no loading skeleton, just swaps data when ready
+  const refreshUsersQuietly = useCallback(async () => {
+    try {
+      const result = await listUsers(listParams);
+      let items = result.items;
+      if (listParams.isPremium === true) items = items.filter((u) => !!u.isPremium);
+      else if (listParams.isPremium === false) items = items.filter((u) => !u.isPremium);
+      setUsers(items);
+      setTotalCount(result.totalCount);
+    } catch {
+      // Silently ignore — table keeps showing existing data
+    }
+  }, [listParams]);
 
   useEffect(() => {
     void fetchUsers();
@@ -166,14 +193,16 @@ export default function UserManagementPage() {
         </div>
 
         <div className="mt-6 animate-fade-up" style={{ animationDelay: "160ms" }}>
+          <UserFilters
+            filters={filters}
+            onFiltersChange={handleFiltersChange}
+            onClearFilters={handleClearFilters}
+          />
           <UserTable
             users={users}
             loading={loading}
             error={error}
             selectedUserId={selectedUserId}
-            filters={filters}
-            onFiltersChange={handleFiltersChange}
-            onClearFilters={handleClearFilters}
             onSelectUser={handleSelectUser}
             onRetry={() => void fetchUsers()}
           />
@@ -197,6 +226,18 @@ export default function UserManagementPage() {
           onClose={handleCloseDetail}
           onToggleStatus={(userRow, nextActive) => void handleToggleStatus(userRow, nextActive)}
           onRetry={() => selectedUserId && void fetchDetail(selectedUserId)}
+          onSubscriptionChange={(userId, newPlanCode) => {
+            // Optimistic: update the badge instantly in the visible list
+            setUsers((prev) =>
+              prev.map((u) =>
+                u.id === userId
+                  ? { ...u, planCode: newPlanCode ?? undefined, isPremium: newPlanCode?.toUpperCase().includes("PREMIUM") ?? false }
+                  : u
+              )
+            );
+            // Background confirm: sync with server without showing a loading skeleton
+            void refreshUsersQuietly();
+          }}
         />
       </AdminRouteGuard>
     </AdminAppShell>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import {
   X,
   Loader2,
@@ -23,7 +24,6 @@ import { useToast } from "@/shared/providers/toast-context";
 import { getAdminUserStatus } from "@/features/admin/utils/admin-user-display";
 import { AvatarCircle } from "@/shared/components/common/avatar-circle";
 import { ConfirmDialog } from "@/shared/components/ui/confirm-dialog";
-import { useOverlayTransition } from "@/shared/hooks/use-overlay-transition";
 import type { AdminUserDetail, AdminUserRoleKey, AdminUserStatusKey } from "@/features/admin/types/admin-user";
 import { portalHeadingAlt, portalSubtextAlt } from "@/shared/utils/portal-ui";
 import {
@@ -45,6 +45,11 @@ interface UserDetailPanelProps {
   onClose: () => void;
   onToggleStatus: (user: AdminUserDetail, nextActive: boolean) => void;
   onRetry?: () => void;
+  /**
+   * Called after a subscription grant/extend/revoke.
+   * Passes the new planCode so the parent list can optimistically patch the row.
+   */
+  onSubscriptionChange?: (userId: string, newPlanCode: string | null) => void;
 }
 
 type PendingStatusAction = { user: AdminUserDetail; nextActive: boolean } | null;
@@ -75,6 +80,15 @@ function formatDate(value: string | undefined | null, locale: string, withTime =
     day: "numeric",
     ...(withTime ? { hour: "2-digit", minute: "2-digit" } : {}),
   }).format(date);
+}
+
+function formatDateCompact(value: string | undefined | null): string {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const y = date.getFullYear();
+  return `${m}/${y}`;
 }
 
 function formatMoney(amount: number, currency: string, locale: string): string {
@@ -134,12 +148,12 @@ function MetaItem({
             href={href}
             target="_blank"
             rel="noreferrer"
-            className="mt-0.5 block truncate text-sm font-medium text-[#6c47ff] hover:underline dark:text-[#a78bff]"
+            className="mt-0.5 block truncate text-sm font-medium text-primary hover:underline dark:text-[#a78bff]"
           >
             {display}
           </a>
         ) : (
-          <p className={cn("mt-0.5 text-sm font-medium break-words", portalHeadingAlt)}>{display}</p>
+          <p title={display} className={cn("mt-0.5 text-sm font-medium truncate", portalHeadingAlt)}>{display}</p>
         )}
       </div>
     </div>
@@ -201,6 +215,7 @@ export function UserDetailPanel({
   onClose,
   onToggleStatus,
   onRetry,
+  onSubscriptionChange,
 }: UserDetailPanelProps) {
   const { t, lang } = useLanguage();
   const { addToast } = useToast();
@@ -211,7 +226,6 @@ export function UserDetailPanel({
   const statusLabels = u.statusLabels;
   const locale = lang === "vi" ? "vi-VN" : "en-US";
 
-  const { mounted, exiting } = useOverlayTransition(open, 300);
   const [pendingAction, setPendingAction] = useState<PendingStatusAction>(null);
   const [revokeOpen, setRevokeOpen] = useState(false);
 
@@ -264,8 +278,6 @@ export function UserDetailPanel({
     }
   }, [open, user?.id, canManageSub, loadSubscription, user]);
 
-  if (!mounted) return null;
-
   const statusKey = user ? getAdminUserStatus(user) : null;
   const confirmOpen = pendingAction !== null;
   const isDeactivate = pendingAction?.nextActive === false;
@@ -277,7 +289,7 @@ export function UserDetailPanel({
   }
 
   function handleClose() {
-    if (exiting || pendingAction || subMutating) return;
+    if (pendingAction || subMutating) return;
     onClose();
   }
 
@@ -298,6 +310,7 @@ export function UserDetailPanel({
       setGrantFormOpen(false);
       setNote("");
       addToast("success", isPremium ? subT.extendSuccess : subT.grantSuccess);
+      onSubscriptionChange?.(user.id, result.subscription.planCode);
     } catch (err) {
       addToast("error", extractErrorMessage(err, isPremium ? subT.extendError : subT.grantError));
     } finally {
@@ -313,6 +326,7 @@ export function UserDetailPanel({
       setDetail(result);
       setRevokeOpen(false);
       addToast("success", subT.revokeSuccess);
+      onSubscriptionChange?.(user.id, result.subscription.planCode);
     } catch (err) {
       addToast("error", extractErrorMessage(err, subT.revokeError));
     } finally {
@@ -338,11 +352,6 @@ export function UserDetailPanel({
       profileItems.push(
         { icon: Briefcase, label: d.targetRole, value: user.candidateProfile.targetRole },
         { icon: Sparkles, label: d.seniorityLevel, value: user.candidateProfile.seniorityLevel },
-        {
-          icon: Sparkles,
-          label: d.techStack,
-          value: user.candidateProfile.techStack?.join(", "),
-        },
         {
           icon: Link2,
           label: d.linkedInUrl,
@@ -373,6 +382,7 @@ export function UserDetailPanel({
   }
 
   const bio = user?.candidateProfile?.bio?.trim() || user?.hrProfile?.bio?.trim() || "";
+  const techStack = user?.candidateProfile?.techStack ?? [];
 
   const histLabels = {
     upgrade: subT.historyTypeUpgrade,
@@ -383,27 +393,33 @@ export function UserDetailPanel({
 
   return (
     <>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6">
-        <div
-          className={cn(
-            "absolute inset-0 bg-slate-900/45 backdrop-blur-[3px]",
-            exiting ? "animate-fade-out" : "animate-fade-in"
-          )}
-          onClick={handleClose}
-          aria-hidden
-        />
-
-        <div
-          className={cn(
-            "relative z-10 flex w-full max-w-2xl max-h-[min(92vh,900px)] flex-col overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-[0_24px_80px_-12px_rgba(15,23,42,0.35)] dark:border-slate-700 dark:bg-slate-900",
-            exiting ? "animate-fade-out" : "animate-fade-up"
-          )}
-          role="dialog"
-          aria-modal
-          aria-labelledby="user-detail-title"
-        >
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            key="udp-backdrop"
+            className="fixed inset-0 z-50 bg-slate-900/45 backdrop-blur-[3px]"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.25 }}
+            onClick={handleClose}
+            aria-hidden
+          />
+        )}
+        {open && (
+          <motion.div
+            key="udp-drawer"
+            className="fixed inset-y-0 right-0 z-50 flex w-full max-w-120 flex-col overflow-hidden border-l border-slate-200 bg-white shadow-[-8px_0_60px_-8px_rgba(15,23,42,0.2)] dark:border-slate-700 dark:bg-slate-900"
+            initial={{ x: "100%" }}
+            animate={{ x: 0 }}
+            exit={{ x: "100%" }}
+            transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+            role="dialog"
+            aria-modal
+            aria-labelledby="user-detail-title"
+          >
           <div className="relative shrink-0">
-            <div className="h-28 bg-linear-to-br from-[#6c47ff] via-[#7c5cff] to-cyan-400 sm:h-32" />
+            <div className="h-28 bg-linear-to-br from-primary via-[#7c5cff] to-cyan-400 sm:h-32" />
             <div className="absolute inset-x-0 top-0 flex items-start justify-between p-4">
               <p
                 id="user-detail-title"
@@ -427,7 +443,7 @@ export function UserDetailPanel({
                     avatarUrl={user.avatarUrl}
                     fullName={user.fullName}
                     size="lg"
-                    className="!h-20 !w-20 !text-xl"
+                    className="h-20! w-20! text-xl!"
                   />
                 </div>
               </div>
@@ -501,9 +517,9 @@ export function UserDetailPanel({
                       <p className="mt-2 text-[11px] text-slate-400">
                         {sub.planName || sub.planCode}
                         {" · "}
-                        {formatDate(sub.periodStart, locale, false)}
+                        {formatDateCompact(sub.periodStart)}
                         {" → "}
-                        {formatDate(sub.periodEnd, locale, false)}
+                        {formatDateCompact(sub.periodEnd)}
                       </p>
                     )}
                   </div>
@@ -515,7 +531,7 @@ export function UserDetailPanel({
                           type="button"
                           disabled={subMutating}
                           onClick={() => setGrantFormOpen(true)}
-                          className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-[#6c47ff] px-4 text-sm font-semibold text-white shadow-md shadow-violet-500/20 transition hover:bg-[#5a3dd9] disabled:opacity-50"
+                          className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-white shadow-md shadow-violet-500/20 transition hover:bg-primary-hover disabled:opacity-50"
                         >
                           <Crown size={15} />
                           {isPremium ? subT.extend : subT.grant}
@@ -556,7 +572,7 @@ export function UserDetailPanel({
                             className={cn(
                               "rounded-lg py-2 text-sm font-semibold transition",
                               selected
-                                ? "bg-[#6c47ff] text-white"
+                                ? "bg-primary text-white"
                                 : "bg-white text-slate-600 ring-1 ring-slate-200 dark:bg-slate-900 dark:text-slate-300 dark:ring-slate-700"
                             )}
                           >
@@ -576,7 +592,7 @@ export function UserDetailPanel({
                         rows={2}
                         maxLength={400}
                         placeholder={subT.notePlaceholder}
-                        className="mt-1.5 w-full resize-none rounded-xl border-0 bg-white px-3 py-2 text-sm ring-1 ring-slate-200 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#6c47ff]/40 dark:bg-slate-900 dark:ring-slate-700"
+                        className="mt-1.5 w-full resize-none rounded-xl border-0 bg-white px-3 py-2 text-sm ring-1 ring-slate-200 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/40 dark:bg-slate-900 dark:ring-slate-700"
                       />
                     </label>
                     <div className="flex gap-2">
@@ -595,7 +611,7 @@ export function UserDetailPanel({
                         type="button"
                         disabled={subMutating}
                         onClick={() => void handleGrantSubmit()}
-                        className="inline-flex min-h-10 flex-[1.4] items-center justify-center gap-2 rounded-xl bg-[#6c47ff] px-4 text-sm font-semibold text-white hover:bg-[#5a3dd9] disabled:opacity-50"
+                        className="inline-flex min-h-10 flex-[1.4] items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-white hover:bg-primary-hover disabled:opacity-50"
                       >
                         {subMutating ? (
                           <Loader2 size={14} className="animate-spin" />
@@ -613,7 +629,7 @@ export function UserDetailPanel({
                   <h4 className="mb-3 text-xs font-bold uppercase tracking-wider text-slate-400">
                     {lang === "vi" ? "Hồ sơ chi tiết" : "Profile details"}
                   </h4>
-                  <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+                  <div className="grid grid-cols-1 gap-2">
                     {profileItems.map((item, idx) => (
                       <MetaItem
                         key={`${item.label}-${idx}`}
@@ -624,8 +640,27 @@ export function UserDetailPanel({
                       />
                     ))}
                   </div>
+
+                  {techStack.length > 0 && (
+                    <div className="mt-2 rounded-xl bg-slate-50/80 px-3.5 py-3 dark:bg-slate-800/40">
+                      <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                        {d.techStack}
+                      </p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {techStack.map((tech) => (
+                          <span
+                            key={tech}
+                            className="inline-flex items-center rounded-full bg-slate-200/70 px-2.5 py-0.5 text-xs font-medium text-slate-700 dark:bg-slate-700/60 dark:text-slate-300"
+                          >
+                            {tech}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   {bio && (
-                    <div className="mt-2.5 rounded-xl bg-slate-50/80 px-3.5 py-3 dark:bg-slate-800/40">
+                    <div className="mt-2 rounded-xl bg-slate-50/80 px-3.5 py-3 dark:bg-slate-800/40">
                       <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
                         {d.bio}
                       </p>
@@ -716,8 +751,9 @@ export function UserDetailPanel({
               )}
             </div>
           )}
-        </div>
-      </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <ConfirmDialog
         open={confirmOpen}

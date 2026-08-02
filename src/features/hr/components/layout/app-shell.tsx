@@ -18,6 +18,8 @@ import { formatRelativeTime } from "@/shared/utils/relative-time";
 import type { HrPlanId } from "@/features/hr/types/hr-subscription";
 import type { NotificationItem } from "@/shared/components/common/notification-bell";
 import { getGenerationJobs } from "@/features/interview/services/interview.service";
+import { useUpgradeWatcher } from "@/shared/hooks/use-upgrade-watcher";
+import { UpgradeCongratsDialog } from "@/shared/components/upgrade-congrats-dialog";
 
 const UNREAD_WINDOW_MS = 24 * 60 * 60 * 1000;
 
@@ -32,7 +34,14 @@ interface AppShellProps {
 export function AppShell({ children, breadcrumb, pageTitle, fullWidth = false }: AppShellProps) {
   const { t, lang } = useLanguage();
   const pathname = usePathname();
-  const { planId } = useHrSubscription();
+  const { planId, refresh: refreshHrSubscription } = useHrSubscription();
+  const { showCongrats: showUpgradeCongrats, dismiss: dismissCongrats } = useUpgradeWatcher(
+    planId,
+    refreshHrSubscription,
+    { lastSeenKey: "hiregena-hr-plan-seen" }
+    // HR context has no built-in localStorage cache, so we persist the last-seen plan
+    // ourselves to detect upgrades that happened while the user was away (cross-session).
+  );
   const { user, loading } = useUser();
   const { addToast } = useToast();
   const welcomedRef = useRef(false);
@@ -154,6 +163,12 @@ export function AppShell({ children, breadcrumb, pageTitle, fullWidth = false }:
         <GenerationProgressBadge />
         <StudioProgressBadge />
       </div>
+
+      <UpgradeCongratsDialog
+        open={showUpgradeCongrats}
+        onClose={dismissCongrats}
+        planName="HR Premium"
+      />
     </div>
   );
 }
