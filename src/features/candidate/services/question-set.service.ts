@@ -68,6 +68,14 @@ function pickStringArray(obj: Record<string, unknown>, ...keys: string[]): strin
   return [];
 }
 
+function pickBool(obj: Record<string, unknown>, ...keys: string[]): boolean {
+  for (const k of keys) {
+    const v = obj[k];
+    if (typeof v === "boolean") return v;
+  }
+  return false;
+}
+
 function normalizeDifficulty(raw: unknown): Difficulty {
   const v = typeof raw === "string" ? raw.toLowerCase() : "";
   if (v === "easy") return "Easy";
@@ -83,15 +91,18 @@ function formatEstimatedTime(minutes: number | undefined): string {
 function normalizeQuestion(raw: unknown, index: number): PracticeQuestion | null {
   const src = asRecord(raw);
   if (!src) return null;
+  const isLocked = pickBool(src, "isLocked", "IsLocked");
   const text = pickString(src, "question", "text", "content");
-  if (!text) return null;
+  // Câu bị lock: BE trả text rỗng — vẫn giữ slot để FE hiện soft paywall
+  if (!text && !isLocked) return null;
   return {
     id: pickString(src, "id", "questionId") || `q-${index}`,
-    text,
+    text: text || "",
     category: pickString(src, "questionType", "category") || "technical",
     difficulty: normalizeDifficulty(src.difficulty),
     skill: pickOptionalString(src, "skill"),
     timeLimit: pickNumber(src, "timeLimit"),
+    isLocked,
   };
 }
 
