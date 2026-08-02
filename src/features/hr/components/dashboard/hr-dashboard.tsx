@@ -420,10 +420,8 @@ export function HrDashboard() {
   const insights = buildInsights(data, p.insights);
 
   const planLabelMap: Record<string, string> = {
-    basic: p.subscription.free,
-    professional: p.subscription.pro,
-    business: p.subscription.business,
-    enterprise: p.subscription.business,
+    HR_FREE: p.subscription.free,
+    HR_PREMIUM: p.subscription.pro,
   };
   const planLabel = planLabelMap[planId] ?? planId;
 

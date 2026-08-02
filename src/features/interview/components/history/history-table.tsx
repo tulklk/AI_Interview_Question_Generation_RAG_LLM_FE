@@ -172,7 +172,7 @@ export function HistoryTable({ search = "", role = "", level = "", experience = 
   const ht = t.historyPage.table;
   const hs = t.hrSubscription;
   const dm = t.historyPage.deleteModal;
-  const canExport = hasFeature("pdfExport");
+  const canExport = hasFeature("export");
 
   const [sessions, setSessions] = useState<GenerationSession[]>([]);
   const [publishMap, setPublishMap] = useState<Map<string, "DRAFT" | "PUBLISHED">>(new Map());
