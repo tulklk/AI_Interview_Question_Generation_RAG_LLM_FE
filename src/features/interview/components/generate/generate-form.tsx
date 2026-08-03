@@ -1066,9 +1066,15 @@ export function GenerateForm() {
               ? t.generatePage.quota.exceededBody.replace("{{time}}", cooldownEndsAt.toLocaleString())
               : t.generatePage.quota.exceededBody}
           </p>
-          <Link href="/hr/settings?tab=billing" className="inline-flex font-semibold text-primary hover:underline">
-            {t.generatePage.quota.goToBilling}
-          </Link>
+          <div className="flex items-center gap-3 flex-wrap">
+            <Link href="/hr/settings?tab=billing" className="inline-flex font-semibold text-primary hover:underline">
+              {t.generatePage.quota.goToBilling}
+            </Link>
+            <span className="text-amber-300 dark:text-amber-700 select-none">·</span>
+            <Link href="/hr/generate/manual" className="inline-flex font-medium text-amber-800 dark:text-amber-300 hover:underline">
+              {t.generatePage.quota.createManuallyBtn}
+            </Link>
+          </div>
         </div>
       )}
 

@@ -1,9 +1,17 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+
+function renderBold(text: string, boldClassName: string): ReactNode[] {
+  return text.split(/<strong>(.*?)<\/strong>/g).map((part, i) =>
+    i % 2 === 1
+      ? <strong key={i} className={boldClassName}>{part}</strong>
+      : part as unknown as ReactNode,
+  );
+}
 import { createPortal } from "react-dom";
 import Link from "next/link";
-import { Check, Minus, Loader2, X, Copy, AlertTriangle } from "lucide-react";
+import { Check, Minus, Loader2, X, Copy, AlertTriangle, Receipt, Download, ExternalLink } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { useLanguage } from "@/shared/providers/language-context";
 import { useToast } from "@/shared/providers/toast-context";
@@ -17,6 +25,8 @@ import {
   type SubscriptionPlan,
   type UpgradePaymentIntent,
 } from "@/features/subscription/services/subscription.service";
+import { getHrPaymentHistory } from "@/features/hr/services/hr-billing.service";
+import type { PaymentHistoryItem } from "@/features/candidate/types/billing";
 import {
   portalCard,
   portalDivider,
@@ -72,6 +82,8 @@ export function HrBillingSubscription() {
   const [creatingOrder, setCreatingOrder] = useState(false);
   const [polling, setPolling] = useState(false);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [history, setHistory] = useState<PaymentHistoryItem[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(true);
   const qrImageFromContent = payment?.qrContent
     ? `https://api.qrserver.com/v1/create-qr-code/?size=320x320&data=${encodeURIComponent(payment.qrContent)}`
     : null;
@@ -81,6 +93,12 @@ export function HrBillingSubscription() {
       .then(setPlans)
       .catch(() => setPlans([]))
       .finally(() => setPlansLoading(false));
+  }, []);
+
+  useEffect(() => {
+    void getHrPaymentHistory()
+      .then(setHistory)
+      .finally(() => setHistoryLoading(false));
   }, []);
 
   const planNames = sub.planNames as Record<HrPlanId, string>;
@@ -254,7 +272,7 @@ export function HrBillingSubscription() {
       {!canGenerateNow && cooldownEndsAt && (
         <div className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40 px-4 py-3 text-sm text-amber-950 dark:text-amber-200">
           <p className="font-semibold mb-1">{t.hrSubscription.quotaExceededTitle}</p>
-          <p>{t.hrSubscription.quotaExceededBody.replace("{{time}}", cooldownEndsAt.toLocaleString())}</p>
+          <p>{renderBold(t.hrSubscription.quotaExceededBody.replace("{{time}}", cooldownEndsAt.toLocaleString()), "font-bold text-amber-900 dark:text-amber-100")}</p>
         </div>
       )}
 
@@ -353,7 +371,7 @@ export function HrBillingSubscription() {
                       {busy || (creatingOrder && id !== "HR_FREE") ? (
                         <Loader2 size={14} className="animate-spin" />
                       ) : null}
-                      {active ? sub.currentPlanBtn : planCta[id]}
+                      {active ? sub.currentPlanBtn : isPremium && id === "HR_FREE" ? sub.cancelConfirmBtn : planCta[id]}
                     </button>
                   </div>
                 </div>
@@ -454,22 +472,105 @@ export function HrBillingSubscription() {
         </div>
       )}
 
-      {!canGenerateNow && (
-        <div className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40 px-4 py-3 text-sm text-amber-950 dark:text-amber-200">
-          <p className="font-semibold mb-1">{t.hrSubscription.quotaExceededTitle}</p>
-          <p>
-            {t.hrSubscription.quotaExceededBody}{" "}
-            <Link href="/hr/generate" className="font-semibold text-[#6c47ff] hover:underline">
-              {t.hrSubscription.goToSubscription}
-            </Link>
-          </p>
-        </div>
-      )}
+      {/* ── Payment History ──────────────────────────────────────────────── */}
+      {(() => {
+        const ph = sub.paymentHistory;
+        return (
+          <div className={cn("rounded-xl border overflow-hidden", portalCard)}>
+            <div className={cn("flex items-center gap-2 px-5 py-3.5 border-b", portalDivider, portalIconWell)}>
+              <Receipt size={14} className="text-gray-400 dark:text-gray-500 shrink-0" />
+              <h3 className={cn("text-sm font-bold", portalHeading)}>{ph.title}</h3>
+            </div>
+
+            {historyLoading ? (
+              <div className="flex items-center justify-center py-10">
+                <Loader2 size={20} className="animate-spin text-primary" />
+              </div>
+            ) : history.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 gap-3">
+                <div className="w-11 h-11 rounded-2xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+                  <Receipt size={20} className="text-gray-300 dark:text-gray-600" />
+                </div>
+                <div className="text-center">
+                  <p className={cn("text-sm font-semibold", portalHeading)}>{ph.empty}</p>
+                  <p className={cn("text-xs mt-0.5", portalSubtext)}>{ph.emptySubtext}</p>
+                </div>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm min-w-140">
+                  <thead>
+                    <tr className={cn("border-b", portalDivider)}>
+                      {[ph.colInvoice, ph.colPlan, ph.colAmount, ph.colStatus, ph.colDate, ph.colActions].map((col) => (
+                        <th key={col} className={cn("px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wide", portalSubtext)}>
+                          {col}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className={cn("divide-y", portalDivider)}>
+                    {history.map((item) => (
+                      <tr key={item.invoiceId} className={cn("transition-colors", portalTableRow)}>
+                        <td className={cn("px-4 py-3 font-mono text-xs", portalSubtext)}>{item.invoiceId}</td>
+                        <td className={cn("px-4 py-3 font-medium", portalHeading)}>{item.planName}</td>
+                        <td className={cn("px-4 py-3 font-semibold tabular-nums", portalHeading)}>
+                          {new Intl.NumberFormat("vi-VN", { style: "currency", currency: item.currency || "VND", maximumFractionDigits: 0 }).format(item.amount)}
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className={cn(
+                            "inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full",
+                            item.status === "PAID" && "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400",
+                            item.status === "PENDING" && "bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400",
+                            item.status === "FAILED" && "bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-400",
+                          )}>
+                            <span className={cn(
+                              "w-1.5 h-1.5 rounded-full",
+                              item.status === "PAID" && "bg-emerald-500",
+                              item.status === "PENDING" && "bg-amber-500",
+                              item.status === "FAILED" && "bg-red-500",
+                            )} />
+                            {item.status === "PAID" ? ph.statusPaid : item.status === "PENDING" ? ph.statusPending : ph.statusFailed}
+                          </span>
+                        </td>
+                        <td className={cn("px-4 py-3 tabular-nums text-xs", portalSubtext)}>
+                          {formatDate(item.paymentDate, locale)}
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-1">
+                            {item.receiptUrl && (
+                              <a
+                                href={item.receiptUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className={cn("flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors", portalSubtext)}
+                              >
+                                <ExternalLink size={11} />
+                                {ph.viewBtn}
+                              </a>
+                            )}
+                            <button
+                              type="button"
+                              className={cn("flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors", portalSubtext)}
+                            >
+                              <Download size={11} />
+                              {ph.downloadBtn}
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {payment && typeof document !== "undefined"
         ? createPortal(
             <div
-              className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+              className="fixed inset-0 z-9999 flex items-center justify-center p-4"
               onClick={(e) => { if (e.currentTarget === e.target) setPayment(null); }}
             >
               <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setPayment(null)} />
@@ -491,10 +592,10 @@ export function HrBillingSubscription() {
                         <img
                           src={payment.qrImageUrl || qrImageFromContent || undefined}
                           alt="SePay QR"
-                          className="w-full max-w-[280px] aspect-square object-contain rounded-xl border border-gray-200 dark:border-gray-700 bg-white p-2"
+                          className="w-full max-w-70 aspect-square object-contain rounded-xl border border-gray-200 dark:border-gray-700 bg-white p-2"
                         />
                       ) : (
-                        <div className="w-full max-w-[280px] rounded-xl border border-dashed border-gray-300 dark:border-gray-700 p-3">
+                        <div className="w-full max-w-70 rounded-xl border border-dashed border-gray-300 dark:border-gray-700 p-3">
                           <div className={cn("text-[11px] mb-1", portalSubtext)}>QR content</div>
                           <div className={cn("break-all text-[11px]", portalHeading)}>
                             {payment.qrContent || sub.paymentPanel.noQrData}
@@ -502,7 +603,7 @@ export function HrBillingSubscription() {
                         </div>
                       )}
                       {polling && (
-                        <div className="text-xs text-[#6c47ff] text-center">{sub.paymentPanel.waitingWebhook}</div>
+                        <div className="text-xs text-primary text-center">{sub.paymentPanel.waitingWebhook}</div>
                       )}
                     </div>
                     <div className="space-y-2.5 min-w-0">
@@ -512,7 +613,7 @@ export function HrBillingSubscription() {
                       </div>
                       <div className={cn("text-xs", portalSubtext)}>
                         <span className="font-medium opacity-80">{sub.paymentPanel.amount}</span>
-                        <div className={cn("mt-0.5 text-base font-bold text-[#6c47ff]", portalHeading)}>
+                        <div className={cn("mt-0.5 text-base font-bold text-primary", portalHeading)}>
                           {payment.amount.toLocaleString(locale)} {payment.currency}
                         </div>
                       </div>
@@ -540,7 +641,7 @@ export function HrBillingSubscription() {
                         <button
                           type="button"
                           onClick={() => void copyText(payment.transferContent || payment.orderCode, sub.paymentPanel.copiedToast)}
-                          className="shrink-0 inline-flex items-center gap-1 text-[#6c47ff] text-xs font-medium pt-0.5"
+                          className="shrink-0 inline-flex items-center gap-1 text-primary text-xs font-medium pt-0.5"
                         >
                           <Copy size={12} />
                           {sub.paymentPanel.copyBtn}
@@ -563,7 +664,7 @@ export function HrBillingSubscription() {
                       type="button"
                       onClick={() => void handleUpgradeClick()}
                       disabled={creatingOrder}
-                      className="flex-1 h-10 rounded-xl text-sm font-semibold text-white bg-[#6c47ff] hover:bg-[#5535dd] disabled:opacity-60 inline-flex items-center justify-center gap-2"
+                      className="flex-1 h-10 rounded-xl text-sm font-semibold text-white bg-primary hover:bg-primary-hover disabled:opacity-60 inline-flex items-center justify-center gap-2"
                     >
                       {creatingOrder ? <Loader2 size={14} className="animate-spin" /> : null}
                       {sub.newOrderBtn}
@@ -579,7 +680,7 @@ export function HrBillingSubscription() {
       {showCancelConfirm && typeof document !== "undefined"
         ? createPortal(
             <div
-              className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+              className="fixed inset-0 z-9999 flex items-center justify-center p-4"
               onClick={(e) => { if (e.currentTarget === e.target && !busy) setShowCancelConfirm(false); }}
             >
               <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />

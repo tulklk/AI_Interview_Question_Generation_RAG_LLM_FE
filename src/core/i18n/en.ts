@@ -439,6 +439,7 @@ export const en = {
     routes: {
       "/hr/dashboard": "Dashboard",
       "/hr/generate": "Quick question set",
+      "/hr/generate/manual": "Create manually",
       "/hr/generate-v2": "Generate question set",
       "/hr/history": "Session History",
       "/hr/knowledge": "Knowledge Documents",
@@ -458,6 +459,7 @@ export const en = {
     breadcrumb: {
       dashboard: "Dashboard",
       generate: "Generate",
+      manual: "Create manually",
       history: "History",
       results: "Results",
       settings: "Settings",
@@ -698,7 +700,8 @@ export const en = {
   },
 
   generatePage: {
-    heading: "Generate Interview Questions",
+    heading: "AI Interview Question Generator",
+    manualBtn: "Create manually",
     subtext:
       "Paste your job description or upload a file to get AI-powered, role-specific questions instantly.",
     jdInput: {
@@ -778,6 +781,7 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
       exceededBody:
         "You've hit your plan limits for JDs, questions, or exports. Open Billing to upgrade or wait until next cycle (demo).",
       goToBilling: "Open Billing",
+      createManuallyBtn: "Create manually",
     },
     aiNoteSection: {
       title: "Notes for AI",
@@ -812,6 +816,71 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
       "Categorizing & scoring difficulty...",
       "Finalizing your question set...",
     ],
+  },
+
+  manualPage: {
+    heading: "Create questions manually",
+    subtext: "Build a question set tailored to the role, level, and interview goals.",
+    backToAi: "Back to AI generator",
+    setInfoCard: {
+      title: "Question set details",
+      description: "Set the role and level to organise the question set.",
+      roleLabel: "Job title",
+      rolePlaceholder: "e.g. Frontend Developer",
+      levelLabel: "Level",
+      durationLabel: "Interview duration",
+      durationUnit: "min",
+    },
+    questionsSection: {
+      title: "Questions",
+      description: "Add, reorder, and configure each question.",
+      countSuffix: "questions",
+      addBtn: "Add question",
+      addFirstBtn: "Add first question",
+      emptyTitle: "No questions yet",
+      emptyDesc: "Start by adding the first question to your set.",
+      questionPlaceholder: "Enter interview question…",
+      deleteBtn: "Delete question",
+      cloneBtn: "Duplicate",
+    },
+    actions: {
+      exportTxt: "Export .txt",
+      save: "Save question set",
+      saving: "Saving…",
+    },
+    validation: {
+      roleRequired: "Please enter the job title.",
+      questionsRequired: "Please add at least 1 question.",
+      questionContentRequired: "Question content cannot be empty.",
+      exportMinRequired: "Enter a role and at least 1 question before exporting.",
+    },
+    excel: {
+      importBtn: "Import from Excel",
+      downloadTemplate: "Download template",
+      dropModalTitle: "Import questions from Excel",
+      dropZoneLabel: "Drag & drop file here",
+      dropZoneOr: "or",
+      dropZoneBtn: "Choose .xlsx file",
+      dropZoneHint: "Supported: .xlsx, .xls",
+      dropZoneActive: "Drop file here…",
+      step1: "Download the Excel template",
+      step2: "Fill in your questions",
+      step3: "Upload the file here",
+      confirmTitle: "Confirm import",
+      confirmDesc: "Found {{count}} questions in the file. How would you like to add them?",
+      appendBtn: "Append to list",
+      replaceBtn: "Replace all",
+      cancelBtn: "Cancel",
+      importSuccess: "Imported {{count}} questions from Excel.",
+      importEmpty: "No valid data found. Please check the file format.",
+      importError: "Could not read the file. Please use the provided Excel template.",
+      invalidType: "Only .xlsx or .xls files are supported.",
+      formatHint: "Use the .xlsx template with 3 columns: Question · Type · Difficulty",
+    },
+    toast: {
+      saved: "Saved \"{{role}}\" ({{count}} questions).",
+      cloned: "Question duplicated.",
+    },
   },
 
   knowledgePage: {
@@ -1099,7 +1168,7 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
           { text: "Generate once per 24-hour cooldown", included: true },
           { text: "Regenerate plan up to 5 times per draft", included: true },
           { text: "Publish question sets to the Marketplace", included: true },
-          { text: "Export to PDF / DOCX", included: false },
+          { text: "Export PDF / DOCX", included: false },
           { text: "Ask-AI in Studio", included: false },
           { text: "Unlimited generation", included: false },
         ],
@@ -1107,7 +1176,7 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
           { text: "Everything in Free", included: true },
           { text: "Unlimited question set generation", included: true },
           { text: "Regenerate plan up to 5 times per draft", included: true },
-          { text: "Export to PDF / DOCX", included: true },
+          { text: "Export PDF / DOCX", included: true },
           { text: "Ask-AI in Studio — 1000 requests / period", included: true },
           { text: "Buy extra Ask-AI packs when you run out", included: true },
           { text: "Unlimited Marketplace publishing", included: true },
@@ -1139,15 +1208,15 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
       premiumNote:
         "AI-powered generation is a premium capability because it uses background processing, LLM generation, and RAG-based technical validation.",
       featureLabels: {
-        unlimitedGenerate: "Unlimited generation (no cooldown)",
-        export: "Export to PDF / DOCX",
+        unlimitedGenerate: "Unlimited generation",
+        export: "Export PDF / DOCX",
         askAi: "Ask-AI in Studio",
         publish: "Publish to Marketplace",
       },
       limitRows: {
-        generateCooldownHours: "Generate cooldown",
-        planRegeneratePerDraft: "Plan regenerate / draft",
-        askAiPerMonth: "Ask-AI requests / period",
+        generateCooldownHours: "Generation cooldown",
+        planRegeneratePerDraft: "Regenerate plan / draft",
+        askAiPerMonth: "Ask-AI / period",
       },
       included: "Included",
       notIncluded: "—",
@@ -1171,7 +1240,7 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
       cancelModalDesc: "You will immediately lose access to these Premium features:",
       cancelWarnings: [
         "Unlimited question set generation (back to a 24-hour cooldown)",
-        "Export to PDF / DOCX",
+        "Export PDF / DOCX",
         "Ask-AI in Studio",
         "Unlimited Marketplace publishing",
       ],
@@ -1198,13 +1267,29 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
         activatingLabel: "Activating…",
         activateFailed: "Activation failed. Please try again.",
       },
+      paymentHistory: {
+        title: "Payment History",
+        empty: "No payment history yet.",
+        emptySubtext: "Your payment records will appear here after upgrading.",
+        colInvoice: "Invoice",
+        colPlan: "Plan",
+        colAmount: "Amount",
+        colStatus: "Status",
+        colDate: "Date",
+        colActions: "Actions",
+        statusPaid: "Paid",
+        statusPending: "Pending",
+        statusFailed: "Failed",
+        viewBtn: "View",
+        downloadBtn: "Download",
+      },
     },
   },
 
   hrSubscription: {
     quotaExceededTitle: "Daily generation limit reached",
     quotaExceededBody:
-      "Free plan allows one generation per 24 hours. You can generate again after {{time}}, or upgrade to Premium for unlimited generation.",
+      "Free plan allows <strong>one generation per 24 hours</strong>. You can generate again after <strong>{{time}}</strong>, or upgrade to Premium for unlimited generation.",
     goToSubscription: "View plans & billing",
     lockedExport: "Upgrade plan to export",
     lockedAdvancedModel:
