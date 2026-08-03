@@ -1,11 +1,14 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight, Database, SlidersHorizontal } from "lucide-react";
+import { useMemo, useState, useEffect } from "react";
+import { createPortal } from "react-dom";
+import { ChevronLeft, ChevronRight, Clock, CreditCard, Database, SlidersHorizontal } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { AiLoadingSpinner } from "@/shared/components/common/ai-loading-spinner";
 import { cn } from "@/lib/cn";
 import { useLanguage } from "@/shared/providers/language-context";
 import { useStudio } from "@/features/studio/hooks/use-studio";
+import { useHrSubscription } from "@/features/hr/context/hr-subscription-context";
 import { StudioTopBar } from "@/features/studio/components/studio-top-bar";
 import { StudioProgressBar } from "@/features/studio/components/studio-progress";
 import { SourcesPanel } from "@/features/studio/components/sources-panel";
@@ -13,12 +16,32 @@ import { ChatPanel } from "@/features/studio/components/chat-panel";
 import { StudioSettingsPanel } from "@/features/studio/components/studio-settings-panel";
 import { StudioActionBar } from "@/features/studio/components/studio-action-bar";
 
+function renderBold(text: string, boldClassName: string) {
+  return text.split(/<strong>(.*?)<\/strong>/g).map((part, i) =>
+    i % 2 === 1
+      ? <strong key={i} className={boldClassName}>{part}</strong>
+      : part,
+  );
+}
+
 export function StudioPage() {
   const studio = useStudio();
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const s = t.studioPage;
+  const hs = t.hrSubscription;
+  const router = useRouter();
+  const { canGenerateNow, cooldownEndsAt } = useHrSubscription();
+  const [mounted, setMounted] = useState(false);
   const [sourcesCollapsed, setSourcesCollapsed] = useState(false);
+
+  useEffect(() => { setMounted(true); }, []);
   const [inspectorCollapsed, setInspectorCollapsed] = useState(false);
+
+  const showQuotaDialog = !canGenerateNow;
+  const locale = lang === "vi" ? "vi-VN" : "en-US";
+  const cooldownTimeStr = cooldownEndsAt
+    ? cooldownEndsAt.toLocaleString(locale)
+    : "";
 
   const canGenerate = useMemo(
     () => studio.settings?.readiness?.canGenerateQuestions ?? false,
@@ -251,6 +274,71 @@ export function StudioPage() {
         onSaveDraft={studio.saveDraftAction}
         onTogglePublish={() => void studio.togglePublish()}
       />
+
+      {/* Quota-exceeded dialog — portal to body, flex layout masks sidebar+header */}
+      {showQuotaDialog && mounted && createPortal(
+        <div className="fixed inset-0 z-50 flex pointer-events-none">
+          {/* Transparent spacer matching sidebar width (desktop) */}
+          <div className="hidden lg:block w-62.5 shrink-0" aria-hidden />
+
+          {/* Right column — mirrors the AppShell right pane */}
+          <div className="flex flex-1 flex-col">
+            {/* Transparent spacer matching header height */}
+            <div className="h-14 shrink-0" aria-hidden />
+
+            {/* Content area overlay — only this region is blurred and interactive */}
+            <div className="pointer-events-auto flex flex-1 items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
+              <div
+                role="alertdialog"
+                aria-modal
+                aria-labelledby="quota-dialog-title"
+                aria-describedby="quota-dialog-desc"
+                className="w-full max-w-md animate-scale-in rounded-2xl border border-border dark:border-gray-700 bg-white dark:bg-gray-900 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.18)] dark:shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)]"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="px-6 pb-5 pt-6 text-center">
+                  <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100">
+                    <Clock size={26} />
+                  </div>
+                  <h3
+                    id="quota-dialog-title"
+                    className="text-lg font-bold text-charcoal dark:text-gray-100"
+                  >
+                    {hs.quotaExceededTitle}
+                  </h3>
+                  <p
+                    id="quota-dialog-desc"
+                    className="mt-3 text-sm leading-relaxed text-gray-400 dark:text-gray-500"
+                  >
+                    {renderBold(
+                      hs.quotaExceededBody.replace("{{time}}", cooldownTimeStr),
+                      "font-bold text-gray-800 dark:text-gray-100",
+                    )}
+                  </p>
+                </div>
+                <div className="border-t border-border dark:border-gray-700 px-6 py-4 space-y-2">
+                  <button
+                    type="button"
+                    onClick={() => router.push("/hr/settings?tab=billing")}
+                    className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-primary-hover"
+                  >
+                    <CreditCard size={15} />
+                    {hs.goToSubscription}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => router.push("/hr/generate/manual")}
+                    className="inline-flex min-h-9 w-full items-center justify-center gap-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 transition-colors hover:bg-gray-50 dark:hover:bg-gray-700"
+                  >
+                    {t.generatePage.quota.createManuallyBtn}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 }

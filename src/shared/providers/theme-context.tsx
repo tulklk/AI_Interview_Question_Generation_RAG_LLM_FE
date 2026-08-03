@@ -70,7 +70,7 @@ function applyTheme(theme: ThemeMode) {
 
 function parsePreference(saved: string | null): ThemePreference {
   if (saved === "light" || saved === "dark" || saved === "system") return saved;
-  return "system";
+  return "light"; // default for first-time visitors
 }
 
 function resolveTheme(preference: ThemePreference): ThemeMode {

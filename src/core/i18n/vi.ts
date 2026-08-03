@@ -441,6 +441,7 @@ export const vi: Translations = {
     routes: {
       "/hr/dashboard": "Bảng điều khiển",
       "/hr/generate": "Tạo bộ câu hỏi nhanh",
+      "/hr/generate/manual": "Tạo câu hỏi thủ công",
       "/hr/generate-v2": "Tạo bộ câu hỏi",
       "/hr/history": "Lịch sử phiên làm việc",
       "/hr/knowledge": "Tài liệu kiến thức",
@@ -460,6 +461,7 @@ export const vi: Translations = {
     breadcrumb: {
       dashboard: "Bảng điều khiển",
       generate: "Tạo câu hỏi",
+      manual: "Tạo thủ công",
       history: "Lịch sử",
       results: "Kết quả",
       settings: "Cài đặt",
@@ -700,9 +702,10 @@ export const vi: Translations = {
   },
 
   generatePage: {
-    heading: "Tạo câu hỏi phỏng vấn",
+    heading: "Tạo câu hỏi phỏng vấn nhanh bằng AI",
     subtext:
       "Dán mô tả công việc hoặc tải lên tệp để nhận ngay câu hỏi được tùy chỉnh theo vai trò bởi AI.",
+    manualBtn: "Tạo câu hỏi thủ công",
     jdInput: {
       title: "Mô tả công việc",
       placeholder: "Dán mô tả công việc của bạn vào đây...",
@@ -780,6 +783,7 @@ Yêu cầu:
       exceededBody:
         "Gói Free chỉ tạo bộ câu hỏi 1 lần / 24 giờ. Bạn có thể tạo lại sau {{time}}, hoặc nâng Premium để tạo không giới hạn.",
       goToBilling: "Mở Thanh toán",
+      createManuallyBtn: "Tạo thủ công",
     },
     aiNoteSection: {
       title: "Ghi chú cho AI",
@@ -814,6 +818,71 @@ Yêu cầu:
       "Đang phân loại & đánh giá độ khó...",
       "Đang hoàn thiện bộ câu hỏi của bạn...",
     ],
+  },
+
+  manualPage: {
+    heading: "Tạo câu hỏi thủ công",
+    subtext: "Tự xây dựng bộ câu hỏi phù hợp với vị trí, cấp độ và mục tiêu phỏng vấn của bạn.",
+    backToAi: "Quay lại tạo bằng AI",
+    setInfoCard: {
+      title: "Thông tin bộ câu hỏi",
+      description: "Thiết lập vị trí và cấp độ để tổ chức bộ câu hỏi phù hợp hơn.",
+      roleLabel: "Vị trí ứng tuyển",
+      rolePlaceholder: "Ví dụ: Frontend Developer",
+      levelLabel: "Cấp độ",
+      durationLabel: "Thời lượng phỏng vấn",
+      durationUnit: "phút",
+    },
+    questionsSection: {
+      title: "Danh sách câu hỏi",
+      description: "Thêm, sắp xếp và thiết lập thông tin cho từng câu hỏi.",
+      countSuffix: "câu hỏi",
+      addBtn: "Thêm câu hỏi",
+      addFirstBtn: "Thêm câu hỏi đầu tiên",
+      emptyTitle: "Chưa có câu hỏi nào",
+      emptyDesc: "Bắt đầu bằng cách thêm câu hỏi đầu tiên cho bộ phỏng vấn.",
+      questionPlaceholder: "Nhập câu hỏi phỏng vấn…",
+      deleteBtn: "Xóa câu hỏi",
+      cloneBtn: "Nhân bản",
+    },
+    actions: {
+      exportTxt: "Xuất .txt",
+      save: "Lưu bộ câu hỏi",
+      saving: "Đang lưu…",
+    },
+    validation: {
+      roleRequired: "Vui lòng nhập vị trí ứng tuyển.",
+      questionsRequired: "Vui lòng thêm ít nhất 1 câu hỏi.",
+      questionContentRequired: "Nội dung câu hỏi không được để trống.",
+      exportMinRequired: "Nhập vị trí và ít nhất 1 câu hỏi trước khi xuất.",
+    },
+    excel: {
+      importBtn: "Nhập từ Excel",
+      downloadTemplate: "Tải mẫu",
+      dropModalTitle: "Nhập câu hỏi từ Excel",
+      dropZoneLabel: "Kéo thả file vào đây",
+      dropZoneOr: "hoặc",
+      dropZoneBtn: "Chọn file .xlsx",
+      dropZoneHint: "Hỗ trợ: .xlsx, .xls",
+      dropZoneActive: "Thả file vào đây…",
+      step1: "Tải mẫu Excel",
+      step2: "Điền câu hỏi vào file",
+      step3: "Upload file lên đây",
+      confirmTitle: "Xác nhận nhập câu hỏi",
+      confirmDesc: "Đã đọc được {{count}} câu hỏi từ file. Chọn cách thêm vào danh sách hiện tại:",
+      appendBtn: "Thêm vào cuối",
+      replaceBtn: "Thay thế tất cả",
+      cancelBtn: "Huỷ",
+      importSuccess: "Đã nhập {{count}} câu hỏi từ Excel.",
+      importEmpty: "File không có dữ liệu hợp lệ. Vui lòng kiểm tra lại định dạng.",
+      importError: "Không đọc được file. Hãy dùng đúng mẫu Excel đã cung cấp.",
+      invalidType: "Chỉ hỗ trợ file .xlsx hoặc .xls.",
+      formatHint: "Dùng mẫu .xlsx với 3 cột: Câu hỏi · Loại · Độ khó",
+    },
+    toast: {
+      saved: "Đã lưu bộ câu hỏi \"{{role}}\" ({{count}} câu).",
+      cloned: "Đã nhân bản câu hỏi.",
+    },
   },
 
   knowledgePage: {
@@ -1141,14 +1210,14 @@ Yêu cầu:
       premiumNote:
         "Sinh câu bằng AI là tính năng cao cấp vì cần xử lý nền, LLM và kiểm chứng kỹ thuật RAG.",
       featureLabels: {
-        unlimitedGenerate: "Generate không giới hạn (không cooldown)",
+        unlimitedGenerate: "Generate không giới hạn",
         export: "Export PDF / DOCX",
         askAi: "Ask-AI trong Studio",
         publish: "Publish lên Marketplace",
       },
       limitRows: {
-        generateCooldownHours: "Cooldown generate",
-        planRegeneratePerDraft: "Regenerate plan / draft",
+        generateCooldownHours: "Cooldown tạo câu hỏi",
+        planRegeneratePerDraft: "Tạo lại plan / draft",
         askAiPerMonth: "Lượt Ask-AI / kỳ",
       },
       included: "Có",
@@ -1200,13 +1269,29 @@ Yêu cầu:
         activatingLabel: "Đang kích hoạt…",
         activateFailed: "Kích hoạt thất bại. Vui lòng thử lại.",
       },
+      paymentHistory: {
+        title: "Lịch sử thanh toán",
+        empty: "Chưa có lịch sử thanh toán.",
+        emptySubtext: "Giao dịch của bạn sẽ hiển thị tại đây sau khi nâng cấp.",
+        colInvoice: "Mã hóa đơn",
+        colPlan: "Gói",
+        colAmount: "Số tiền",
+        colStatus: "Trạng thái",
+        colDate: "Ngày",
+        colActions: "Thao tác",
+        statusPaid: "Đã thanh toán",
+        statusPending: "Đang xử lý",
+        statusFailed: "Thất bại",
+        viewBtn: "Xem",
+        downloadBtn: "Tải xuống",
+      },
     },
   },
 
   hrSubscription: {
     quotaExceededTitle: "Đã hết lượt tạo trong ngày",
     quotaExceededBody:
-      "Gói Free chỉ tạo bộ câu hỏi 1 lần / 24 giờ. Bạn có thể tạo lại sau {{time}}, hoặc nâng Premium để tạo không giới hạn.",
+      "Gói Free chỉ tạo bộ câu hỏi <strong>1 lần / 24 giờ</strong>. Bạn có thể tạo lại sau <strong>{{time}}</strong>, hoặc nâng Premium để tạo không giới hạn.",
     goToSubscription: "Xem gói & thanh toán",
     lockedExport: "Nâng cấp gói để xuất file",
     lockedAdvancedModel: "Dành cho gói Premium. Chọn mô hình tiêu chuẩn hoặc nâng cấp gói.",
