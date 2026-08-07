@@ -88,3 +88,10 @@ storybook-static/
 # Ad-hoc backup files (editor/agent snapshots left in the working tree)
 *.backup.*
 *.backup
+
+# Local-only docs, diagrams, and Playwright e2e setup (kept out of git history
+# on purpose so they never propagate to other branches via a future merge)
+/docs/
+/playwright.config.ts
+/tests/
+/test-results/
