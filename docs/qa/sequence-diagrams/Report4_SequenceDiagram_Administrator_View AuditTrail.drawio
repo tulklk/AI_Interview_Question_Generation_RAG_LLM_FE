@@ -1,0 +1,133 @@
+<mxfile host="Electron" agent="claude-code">
+  <diagram name="Administrator_View AuditTrail" id="d3">
+    <mxGraphModel dx="1729" dy="1020" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="1160" pageHeight="1020" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="c159" parent="1" style="shape=umlActor;whiteSpace=wrap;html=1;verticalLabelPosition=bottom;verticalAlign=top;outlineConnect=0;fontStyle=1;fontSize=13;" value="Administrator" vertex="1">
+          <mxGeometry height="50" width="40" x="130" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="c160" edge="1" parent="1" source="c159" style="endArrow=none;dashed=1;html=1;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="150" y="120" as="sourcePoint" />
+            <mxPoint x="150" y="980" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="c161" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fontSize=13;fontStyle=1;" value=":AuditTrailUI" vertex="1">
+          <mxGeometry height="40" width="180" x="320" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="c162" edge="1" parent="1" source="c161" style="endArrow=none;dashed=1;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="410" y="120" as="sourcePoint" />
+            <mxPoint x="410" y="980" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="c163" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fontSize=13;fontStyle=1;" value=":AuditController" vertex="1">
+          <mxGeometry height="40" width="180" x="580" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="c164" edge="1" parent="1" source="c163" style="endArrow=none;dashed=1;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="670" y="120" as="sourcePoint" />
+            <mxPoint x="670" y="980" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="c165" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fontSize=13;fontStyle=1;" value=":AuditLog" vertex="1">
+          <mxGeometry height="40" width="180" x="840" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="c166" edge="1" parent="1" source="c165" style="endArrow=none;dashed=1;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="930" y="120" as="sourcePoint" />
+            <mxPoint x="930" y="980" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="c167" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="" vertex="1">
+          <mxGeometry height="756" width="14" x="403" y="162" as="geometry" />
+        </mxCell>
+        <mxCell id="c168" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="" vertex="1">
+          <mxGeometry height="576" width="14" x="663" y="282" as="geometry" />
+        </mxCell>
+        <mxCell id="c169" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="" vertex="1">
+          <mxGeometry height="456" width="14" x="923" y="342" as="geometry" />
+        </mxCell>
+        <mxCell id="c170" edge="1" parent="1" style="endArrow=block;endFill=1;html=1;fontSize=11;align=center;verticalAlign=bottom;labelBackgroundColor=#ffffff;" value="1. open()">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="150" y="180" as="sourcePoint" />
+            <mxPoint x="403" y="180" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="c171" edge="1" parent="1" style="endArrow=block;endFill=1;html=1;fontSize=11;align=center;verticalAlign=bottom;labelBackgroundColor=#ffffff;" value="2. setFilters(actor, action, dateRange)">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="150" y="240" as="sourcePoint" />
+            <mxPoint x="403" y="240" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="c172" edge="1" parent="1" style="endArrow=block;endFill=1;html=1;fontSize=11;align=center;verticalAlign=bottom;labelBackgroundColor=#ffffff;" value="3. getAuditLogs(filters, page, pageSize) — CR-01">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="417" y="300" as="sourcePoint" />
+            <mxPoint x="663" y="300" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="c173" edge="1" parent="1" style="endArrow=block;endFill=1;html=1;fontSize=11;align=center;verticalAlign=bottom;labelBackgroundColor=#ffffff;" value="4. findByFilters(filters, page, pageSize)">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="677" y="360" as="sourcePoint" />
+            <mxPoint x="923" y="360" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="c174" edge="1" parent="1" style="endArrow=block;endFill=1;html=1;dashed=1;fontSize=11;align=center;verticalAlign=bottom;labelBackgroundColor=#ffffff;" value="5. items, totalCount">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="923" y="420" as="sourcePoint" />
+            <mxPoint x="677" y="420" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="c175" edge="1" parent="1" style="endArrow=block;endFill=1;html=1;dashed=1;fontSize=11;align=center;verticalAlign=bottom;labelBackgroundColor=#ffffff;" value="6. pagedResult">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="663" y="480" as="sourcePoint" />
+            <mxPoint x="417" y="480" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="c176" edge="1" parent="1" style="endArrow=block;endFill=1;html=1;dashed=1;fontSize=11;align=center;verticalAlign=bottom;labelBackgroundColor=#ffffff;" value="7. renderTable()">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="403" y="540" as="sourcePoint" />
+            <mxPoint x="150" y="540" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="c177" edge="1" parent="1" style="endArrow=block;endFill=1;html=1;fontSize=11;align=center;verticalAlign=bottom;labelBackgroundColor=#ffffff;" value="8. selectRow(logId)">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="150" y="600" as="sourcePoint" />
+            <mxPoint x="403" y="600" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="c178" edge="1" parent="1" style="endArrow=block;endFill=1;html=1;fontSize=11;align=center;verticalAlign=bottom;labelBackgroundColor=#ffffff;" value="9. getAuditLogDetail(logId)">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="417" y="660" as="sourcePoint" />
+            <mxPoint x="663" y="660" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="c179" edge="1" parent="1" style="endArrow=block;endFill=1;html=1;fontSize=11;align=center;verticalAlign=bottom;labelBackgroundColor=#ffffff;" value="10. findById(logId)">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="677" y="720" as="sourcePoint" />
+            <mxPoint x="923" y="720" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="c180" edge="1" parent="1" style="endArrow=block;endFill=1;html=1;dashed=1;fontSize=11;align=center;verticalAlign=bottom;labelBackgroundColor=#ffffff;" value="11. logDetail">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="923" y="780" as="sourcePoint" />
+            <mxPoint x="677" y="780" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="c181" edge="1" parent="1" style="endArrow=block;endFill=1;html=1;dashed=1;fontSize=11;align=center;verticalAlign=bottom;labelBackgroundColor=#ffffff;" value="12. logDetail">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="663" y="840" as="sourcePoint" />
+            <mxPoint x="417" y="840" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="c182" edge="1" parent="1" style="endArrow=block;endFill=1;html=1;dashed=1;fontSize=11;align=center;verticalAlign=bottom;labelBackgroundColor=#ffffff;" value="13. showDetailPanel()">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="403" y="900" as="sourcePoint" />
+            <mxPoint x="150" y="900" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

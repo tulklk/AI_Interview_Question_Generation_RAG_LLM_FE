@@ -88,3 +88,9 @@ storybook-static/
 # Ad-hoc backup files (editor/agent snapshots left in the working tree)
 *.backup.*
 *.backup
+
+# Playwright's own transient test-run metadata (regenerated every run, not useful to keep)
+/test-results/
+
+# draw.io VS Code extension autosave backups
+.$*.bkp

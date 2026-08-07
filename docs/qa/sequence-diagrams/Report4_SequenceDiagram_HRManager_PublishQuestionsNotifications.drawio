@@ -1,0 +1,180 @@
+<mxfile host="Electron" agent="claude-code">
+  <diagram name="HRManager_PublishQuestionsNotifications" id="d5">
+    <mxGraphModel dx="1729" dy="1020" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="2200" pageHeight="960" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="c210" parent="1" style="shape=umlActor;whiteSpace=wrap;html=1;verticalLabelPosition=bottom;verticalAlign=top;outlineConnect=0;fontStyle=1;fontSize=13;" value="HR Manager" vertex="1">
+          <mxGeometry height="50" width="40" x="130" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="c211" edge="1" parent="1" source="c210" style="endArrow=none;dashed=1;html=1;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="150" y="120" as="sourcePoint" />
+            <mxPoint x="150" y="920" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="c212" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fontSize=13;fontStyle=1;" value=":QuestionSetPublishUI" vertex="1">
+          <mxGeometry height="40" width="180" x="320" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="c213" edge="1" parent="1" source="c212" style="endArrow=none;dashed=1;html=1;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="410" y="120" as="sourcePoint" />
+            <mxPoint x="410" y="920" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="c214" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fontSize=13;fontStyle=1;" value=":QuestionSetController" vertex="1">
+          <mxGeometry height="40" width="180" x="580" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="c215" edge="1" parent="1" source="c214" style="endArrow=none;dashed=1;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="670" y="120" as="sourcePoint" />
+            <mxPoint x="670" y="920" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="c216" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fontSize=13;fontStyle=1;" value=":NotificationService" vertex="1">
+          <mxGeometry height="40" width="180" x="840" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="c217" edge="1" parent="1" source="c216" style="endArrow=none;dashed=1;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="930" y="120" as="sourcePoint" />
+            <mxPoint x="930" y="920" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="c218" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fontSize=13;fontStyle=1;" value=":QuestionSet" vertex="1">
+          <mxGeometry height="40" width="180" x="1100" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="c219" edge="1" parent="1" source="c218" style="endArrow=none;dashed=1;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1190" y="120" as="sourcePoint" />
+            <mxPoint x="1190" y="920" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="c220" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fontSize=13;fontStyle=1;" value=":JobSeeker" vertex="1">
+          <mxGeometry height="40" width="180" x="1360" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="c221" edge="1" parent="1" source="c220" style="endArrow=none;dashed=1;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1450" y="120" as="sourcePoint" />
+            <mxPoint x="1450" y="920" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="c222" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fontSize=13;fontStyle=1;" value=":Notification" vertex="1">
+          <mxGeometry height="40" width="180" x="1620" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="c223" edge="1" parent="1" source="c222" style="endArrow=none;dashed=1;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1710" y="120" as="sourcePoint" />
+            <mxPoint x="1710" y="920" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="c224" parent="1" style="shape=umlActor;whiteSpace=wrap;html=1;verticalLabelPosition=bottom;verticalAlign=top;outlineConnect=0;fontStyle=1;fontSize=13;" value="Job Seeker" vertex="1">
+          <mxGeometry height="50" width="40" x="1950" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="c225" edge="1" parent="1" source="c224" style="endArrow=none;dashed=1;html=1;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1970" y="120" as="sourcePoint" />
+            <mxPoint x="1970" y="920" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="c226" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="" vertex="1">
+          <mxGeometry height="576" width="14" x="403" y="162" as="geometry" />
+        </mxCell>
+        <mxCell id="c227" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="" vertex="1">
+          <mxGeometry height="456" width="14" x="663" y="222" as="geometry" />
+        </mxCell>
+        <mxCell id="c228" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="" vertex="1">
+          <mxGeometry height="456" width="14" x="923" y="402" as="geometry" />
+        </mxCell>
+        <mxCell id="c229" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="" vertex="1">
+          <mxGeometry height="96" width="14" x="1183" y="282" as="geometry" />
+        </mxCell>
+        <mxCell id="c230" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="" vertex="1">
+          <mxGeometry height="96" width="14" x="1443" y="462" as="geometry" />
+        </mxCell>
+        <mxCell id="c231" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="" vertex="1">
+          <mxGeometry height="36" width="14" x="1703" y="582" as="geometry" />
+        </mxCell>
+        <mxCell id="c232" edge="1" parent="1" style="endArrow=block;endFill=1;html=1;fontSize=11;align=center;verticalAlign=bottom;labelBackgroundColor=#ffffff;" value="1. publish(setId)">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="150" y="180" as="sourcePoint" />
+            <mxPoint x="403" y="180" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="c233" edge="1" parent="1" style="endArrow=block;endFill=1;html=1;fontSize=11;align=center;verticalAlign=bottom;labelBackgroundColor=#ffffff;" value="2. publishQuestionSet(setId)">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="417" y="240" as="sourcePoint" />
+            <mxPoint x="663" y="240" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="c234" edge="1" parent="1" style="endArrow=block;endFill=1;html=1;fontSize=11;align=center;verticalAlign=bottom;labelBackgroundColor=#ffffff;" value="3. updateStatus(setId, &#39;Published&#39;)">
+          <mxGeometry relative="1" x="-0.3579" as="geometry">
+            <mxPoint as="offset" />
+            <mxPoint x="677" y="300" as="sourcePoint" />
+            <mxPoint x="1183" y="300" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="c235" edge="1" parent="1" style="endArrow=block;endFill=1;html=1;dashed=1;fontSize=11;align=center;verticalAlign=bottom;labelBackgroundColor=#ffffff;" value="4. ok">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1183" y="360" as="sourcePoint" />
+            <mxPoint x="677" y="360" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="c236" edge="1" parent="1" style="endArrow=block;endFill=1;html=1;fontSize=11;align=center;verticalAlign=bottom;labelBackgroundColor=#ffffff;" value="5. notifyQuestionSetPublished&lt;br&gt;(setId, company, skills)">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="677" y="420" as="sourcePoint" />
+            <mxPoint x="923" y="420" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="c237" edge="1" parent="1" style="endArrow=block;endFill=1;html=1;fontSize=11;align=center;verticalAlign=bottom;labelBackgroundColor=#ffffff;" value="6. findBySkillInterest(skills)">
+          <mxGeometry relative="1" x="-0.3079" as="geometry">
+            <mxPoint as="offset" />
+            <mxPoint x="937" y="480" as="sourcePoint" />
+            <mxPoint x="1443" y="480" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="c238" edge="1" parent="1" style="endArrow=block;endFill=1;html=1;dashed=1;fontSize=11;align=center;verticalAlign=bottom;labelBackgroundColor=#ffffff;" value="7. jobSeekerIds">
+          <mxGeometry relative="1" x="0.3198" as="geometry">
+            <mxPoint as="offset" />
+            <mxPoint x="1443" y="540" as="sourcePoint" />
+            <mxPoint x="937" y="540" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="c239" edge="1" parent="1" style="endArrow=block;endFill=1;html=1;fontSize=11;align=center;verticalAlign=bottom;labelBackgroundColor=#ffffff;" value="8. createBulk(jobSeekerIds, message)">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="937" y="600" as="sourcePoint" />
+            <mxPoint x="1703" y="600" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="c240" edge="1" parent="1" style="endArrow=block;endFill=1;html=1;dashed=1;fontSize=11;align=center;verticalAlign=bottom;labelBackgroundColor=#ffffff;" value="9. success()">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="663" y="660" as="sourcePoint" />
+            <mxPoint x="417" y="660" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="c241" edge="1" parent="1" style="endArrow=block;endFill=1;html=1;dashed=1;fontSize=11;align=center;verticalAlign=bottom;labelBackgroundColor=#ffffff;" value="10. showToast()">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="403" y="720" as="sourcePoint" />
+            <mxPoint x="150" y="720" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="c242" edge="1" parent="1" style="endArrow=block;endFill=1;html=1;fontSize=11;align=left;verticalAlign=middle;labelBackgroundColor=#ffffff;rounded=0;curved=0;" value="11. (fire-and-forget, async)">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1007" y="770" />
+              <mxPoint x="1007" y="790" />
+            </Array>
+            <mxPoint x="937" y="770" as="sourcePoint" />
+            <mxPoint x="937" y="790" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="c243" edge="1" parent="1" style="endArrow=block;endFill=1;html=1;dashed=1;fontSize=11;align=center;verticalAlign=bottom;labelBackgroundColor=#ffffff;" value="12. bell badge shown on next visit">
+          <mxGeometry relative="1" x="-0.1954" as="geometry">
+            <mxPoint as="offset" />
+            <mxPoint x="937" y="840" as="sourcePoint" />
+            <mxPoint x="1970" y="840" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

@@ -1,0 +1,149 @@
+<mxfile host="Electron" agent="claude-code">
+  <diagram name="HR_AnalyticsDashboard_CacheHit" id="d1">
+    <mxGraphModel dx="1729" dy="1020" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="1420" pageHeight="1020" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="c115" parent="1" style="rounded=0;whiteSpace=wrap;html=1;verticalAlign=top;" value="" vertex="1">
+          <mxGeometry height="440" width="680" x="590" y="320" as="geometry" />
+        </mxCell>
+        <mxCell id="c101" parent="1" style="shape=umlActor;whiteSpace=wrap;html=1;verticalLabelPosition=bottom;verticalAlign=top;outlineConnect=0;fontStyle=1;fontSize=13;" value="HR Manager" vertex="1">
+          <mxGeometry height="50" width="40" x="130" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="c102" edge="1" parent="1" source="c101" style="endArrow=none;dashed=1;html=1;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="150" y="120" as="sourcePoint" />
+            <mxPoint x="150" y="980" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="c103" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fontSize=13;fontStyle=1;" value=":AnalyticsDashboardUI" vertex="1">
+          <mxGeometry height="40" width="180" x="320" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="c104" edge="1" parent="1" source="c103" style="endArrow=none;dashed=1;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="410" y="120" as="sourcePoint" />
+            <mxPoint x="410" y="980" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="c105" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fontSize=13;fontStyle=1;" value=":AnalyticsController" vertex="1">
+          <mxGeometry height="40" width="180" x="580" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="c106" edge="1" parent="1" source="c105" style="endArrow=none;dashed=1;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="670" y="120" as="sourcePoint" />
+            <mxPoint x="670" y="980" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="c107" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fontSize=13;fontStyle=1;" value=":AnalyticsCache" vertex="1">
+          <mxGeometry height="40" width="180" x="840" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="c108" edge="1" parent="1" source="c107" style="endArrow=none;dashed=1;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="930" y="120" as="sourcePoint" />
+            <mxPoint x="930" y="980" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="c109" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fontSize=13;fontStyle=1;" value=":PracticeSession" vertex="1">
+          <mxGeometry height="40" width="180" x="1100" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="c110" edge="1" parent="1" source="c109" style="endArrow=none;dashed=1;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1190" y="120" as="sourcePoint" />
+            <mxPoint x="1190" y="980" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="c111" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="" vertex="1">
+          <mxGeometry height="756" width="14" x="403" y="162" as="geometry" />
+        </mxCell>
+        <mxCell id="c112" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="" vertex="1">
+          <mxGeometry height="636" width="14" x="663" y="222" as="geometry" />
+        </mxCell>
+        <mxCell id="c113" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="" vertex="1">
+          <mxGeometry height="456" width="14" x="923" y="282" as="geometry" />
+        </mxCell>
+        <mxCell id="c114" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="" vertex="1">
+          <mxGeometry height="96" width="14" x="1183" y="522" as="geometry" />
+        </mxCell>
+        <mxCell id="c116" parent="1" style="shape=note;whiteSpace=wrap;html=1;fontStyle=1;fontSize=11;align=left;spacingLeft=4;size=8;" value="alt" vertex="1">
+          <mxGeometry height="24" width="70" x="590" y="320" as="geometry" />
+        </mxCell>
+        <mxCell id="c117" parent="1" style="text;html=1;align=left;verticalAlign=middle;fontSize=11;fontStyle=2;" value="[cache hit]" vertex="1">
+          <mxGeometry height="24" width="594" x="677" y="320" as="geometry" />
+        </mxCell>
+        <mxCell id="c118" edge="1" parent="1" style="endArrow=none;dashed=1;html=1;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="590" y="440" as="sourcePoint" />
+            <mxPoint x="1270" y="440" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="c119" parent="1" style="text;html=1;align=left;verticalAlign=middle;fontSize=11;fontStyle=2;" value="[cache miss]" vertex="1">
+          <mxGeometry height="18" width="668" x="596" y="440" as="geometry" />
+        </mxCell>
+        <mxCell id="c120" edge="1" parent="1" style="endArrow=block;endFill=1;html=1;fontSize=11;align=center;verticalAlign=bottom;labelBackgroundColor=#ffffff;" value="1. open()">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="150" y="180" as="sourcePoint" />
+            <mxPoint x="403" y="180" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="c121" edge="1" parent="1" style="endArrow=block;endFill=1;html=1;fontSize=11;align=center;verticalAlign=bottom;labelBackgroundColor=#ffffff;" value="2. getAnalytics(hrId, range)">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="417" y="240" as="sourcePoint" />
+            <mxPoint x="663" y="240" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="c122" edge="1" parent="1" style="endArrow=block;endFill=1;html=1;fontSize=11;align=center;verticalAlign=bottom;labelBackgroundColor=#ffffff;" value="3. get(cacheKey)">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="677" y="300" as="sourcePoint" />
+            <mxPoint x="923" y="300" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="c123" edge="1" parent="1" style="endArrow=block;endFill=1;html=1;dashed=1;fontSize=11;align=center;verticalAlign=bottom;labelBackgroundColor=#ffffff;" value="4. cachedPayload">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="923" y="420" as="sourcePoint" />
+            <mxPoint x="677" y="420" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="c124" edge="1" parent="1" style="endArrow=block;endFill=1;html=1;fontSize=11;align=center;verticalAlign=bottom;labelBackgroundColor=#ffffff;" value="5. findByCompanyAndRange(range)">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="677" y="540" as="sourcePoint" />
+            <mxPoint x="1183" y="540" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="c125" edge="1" parent="1" style="endArrow=block;endFill=1;html=1;dashed=1;fontSize=11;align=center;verticalAlign=bottom;labelBackgroundColor=#ffffff;" value="6. sessionList">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1183" y="600" as="sourcePoint" />
+            <mxPoint x="677" y="600" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="c126" edge="1" parent="1" style="endArrow=block;endFill=1;html=1;fontSize=11;align=left;verticalAlign=middle;labelBackgroundColor=#ffffff;rounded=0;curved=0;" value="7. computeKpis()">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="747" y="650" />
+              <mxPoint x="747" y="670" />
+            </Array>
+            <mxPoint x="677" y="650" as="sourcePoint" />
+            <mxPoint x="677" y="670" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="c127" edge="1" parent="1" style="endArrow=block;endFill=1;html=1;fontSize=11;align=center;verticalAlign=bottom;labelBackgroundColor=#ffffff;" value="8. set(cacheKey, payload, ttl=5min)">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="677" y="720" as="sourcePoint" />
+            <mxPoint x="923" y="720" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="c128" edge="1" parent="1" style="endArrow=block;endFill=1;html=1;dashed=1;fontSize=11;align=center;verticalAlign=bottom;labelBackgroundColor=#ffffff;" value="9. dashboardData">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="663" y="840" as="sourcePoint" />
+            <mxPoint x="417" y="840" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="c129" edge="1" parent="1" style="endArrow=block;endFill=1;html=1;dashed=1;fontSize=11;align=center;verticalAlign=bottom;labelBackgroundColor=#ffffff;" value="10. renderCharts()">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="403" y="900" as="sourcePoint" />
+            <mxPoint x="150" y="900" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
