@@ -443,3 +443,33 @@ test("RGA007-1: two concurrent 401s (different endpoints) share a single de-dupe
   expect(refreshCallCount).toBe(1);
   expect(page.url()).toContain("/hr/generate/manual"); // both requests recovered, no redirect
 });
+
+test("RGA012-1: the session expiring mid-poll (during plan generation) redirects to /login instead of retry-looping forever", async ({ page }) => {
+  // generate-form.tsx's pollJob() catches its own errors and just schedules
+  // another 5s poll — but getGenerationJob() internally swallows the axios
+  // error into a plain `return null`, meaning the auth interceptor's own 401
+  // handling (refresh -> retry -> or clearAuth+redirect) is what actually
+  // fires first, upstream of pollJob's try/catch. If refresh fails, the
+  // interceptor's own redirect must win over pollJob silently rescheduling.
+  await seedTokensOnce(page);
+  await page.route("**/api/**", (route) =>
+    route.fulfill({ status: 200, contentType: "application/json", body: "{}" })
+  );
+  await page.addInitScript(() => {
+    localStorage.setItem("hr_gen_job", "job-expiring");
+    localStorage.setItem("hr_gen_view", "polling");
+    localStorage.setItem("hr_gen_polling_phase", "plan");
+  });
+  await page.route("**/api/hr/question-generation-jobs/job-expiring", (route) =>
+    route.fulfill({ status: 401, contentType: "application/json", body: JSON.stringify({ message: "Unauthorized" }) })
+  );
+  await page.route("**/api/auth/refresh-token", (route) =>
+    route.fulfill({ status: 401, contentType: "application/json", body: JSON.stringify({ message: "Invalid refresh token" }) })
+  );
+
+  await page.goto("/hr/generate");
+  await page.waitForURL("**/login/**", { timeout: 10000 });
+  expect(page.url()).toContain("/login");
+  const accessToken = await page.evaluate(() => localStorage.getItem("interviewai_access_token"));
+  expect(accessToken).toBeNull();
+});

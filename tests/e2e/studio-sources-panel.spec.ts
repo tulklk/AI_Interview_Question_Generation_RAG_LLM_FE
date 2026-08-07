@@ -114,3 +114,40 @@ test("RAG004-2: before any questions exist, the Sources panel is fully editable 
   await expect(jdTextarea).toBeEditable();
   await expect(page.locator("div[title='Locked — click New Set to edit Sources']")).toHaveCount(0);
 });
+
+test("RAG034-1: uploading a brand-new document starts it at Queued/Processing — unlike attach-from-library, which starts already Completed", async ({ page }) => {
+  // Contrast: studio-kb-library.spec.ts's RAG031-3 attaches an ALREADY-ingested
+  // KB document and it shows up "Ready" immediately. A freshly uploaded file
+  // has to go through RAG ingestion first — uploadDocument() only queues it.
+  await mockHrSession(page, { subscription: freeSubscriptionReady() });
+  await mockStudioBootstrap(page, {});
+
+  let uploadCalled = false;
+  await page.route(`**/api/studio/projects/${PROJECT_ID}/knowledge-documents`, (route) => {
+    if (route.request().method() !== "POST") return route.fallback();
+    uploadCalled = true;
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        id: "d-new", fileName: "backend-handbook.pdf", fileType: "pdf", fileSize: 20480,
+        isSelected: true, status: "Pending", ragStatus: "QUEUED",
+      }),
+    });
+  });
+
+  await page.goto("/hr/generate-v2");
+  await expect(page.getByText("No documents. Upload or attach from KB for AI context.")).toBeVisible({ timeout: 10000 });
+
+  await page.locator('input[type="file"][accept=".pdf,.docx,.txt"]').setInputFiles({
+    name: "backend-handbook.pdf",
+    mimeType: "application/pdf",
+    buffer: Buffer.from("%PDF-1.4 fake content"),
+  });
+
+  await expect(page.getByText("Uploaded — RAG ingestion queued.")).toBeVisible({ timeout: 10000 });
+  expect(uploadCalled).toBe(true);
+  const uploadedRow = page.locator("label").filter({ hasText: "backend-handbook.pdf" });
+  await expect(uploadedRow.getByText("Queued")).toBeVisible();
+  await expect(uploadedRow.getByText("Ready")).toHaveCount(0);
+});

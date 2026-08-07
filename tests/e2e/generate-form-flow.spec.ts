@@ -506,6 +506,86 @@ test("RAG018-1: a Failed question-generation run shows Retry Questions, and retr
   expect(retryQuestionsCalled).toBe(true);
 });
 
+test("RAG018-2: a failed PLAN generation (before ever reaching plan review) shows Retry Plan, and retrying resumes to plan review", async ({ page }) => {
+  await mockSession(page);
+  await page.route("**/api/hr/question-generation-jobs/plan", (route) =>
+    route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ jobId: "job-321", id: "job-321" }) })
+  );
+  let retryPlanCalled = false;
+  await page.route("**/api/hr/question-generation-jobs/job-321/retry-plan", (route) => {
+    retryPlanCalled = true;
+    route.fulfill({ status: 200, contentType: "application/json", body: "{}" });
+  });
+  await page.route("**/api/hr/question-generation-jobs/job-321", (route) => {
+    if (!retryPlanCalled) {
+      return route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          jobId: "job-321", phase: "FAILED", status: "FAILED", jobTitle: "x",
+          ui: { suggestedAction: "RETRY_PLAN", isPolling: false, actions: { canRetryPlan: true } },
+          failure: { reason: "RAG service could not parse the job description." },
+        }),
+      });
+    }
+    route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ...PLAN_PROPOSED_JOB, jobId: "job-321", id: "job-321" }) });
+  });
+
+  await page.goto("/hr/generate");
+  await page.locator("textarea").first().fill(VALID_JD);
+  await page.getByRole("button", { name: "Create Plan" }).click({ force: true });
+
+  await expect(page.getByText("RAG service could not parse the job description.")).toBeVisible({ timeout: 10000 });
+  const retryPlanBtn = page.getByRole("button", { name: "Retry Plan" });
+  await expect(retryPlanBtn).toBeVisible();
+  // Only the plan failed — no "Retry Questions" affordance since questions were never reached.
+  await expect(page.getByRole("button", { name: "Retry Questions" })).toHaveCount(0);
+
+  await retryPlanBtn.click();
+  await expect(page.getByText("Interview Plan")).toBeVisible({ timeout: 10000 });
+  expect(retryPlanCalled).toBe(true);
+});
+
+test("RAG018-3: an EDIT_INPUT failure lets the HR user edit the JD in-place and resubmit", async ({ page }) => {
+  await mockSession(page);
+  await page.route("**/api/hr/question-generation-jobs/plan", (route) =>
+    route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ jobId: "job-654", id: "job-654" }) })
+  );
+  let resubmitBody: Record<string, unknown> | null = null;
+  await page.route("**/api/hr/question-generation-jobs/job-654/input", (route) => {
+    resubmitBody = route.request().postDataJSON();
+    route.fulfill({ status: 200, contentType: "application/json", body: "{}" });
+  });
+  await page.route("**/api/hr/question-generation-jobs/job-654", (route) => {
+    if (!resubmitBody) {
+      return route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          jobId: "job-654", phase: "FAILED", status: "FAILED", jobTitle: "x",
+          ui: { suggestedAction: "EDIT_INPUT", isPolling: false, actions: { canEditInput: true } },
+          failure: { reason: "The uploaded file could not be parsed as text." },
+        }),
+      });
+    }
+    route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ...PLAN_PROPOSED_JOB, jobId: "job-654", id: "job-654" }) });
+  });
+
+  await page.goto("/hr/generate");
+  await page.locator("textarea").first().fill(VALID_JD);
+  await page.getByRole("button", { name: "Create Plan" }).click({ force: true });
+
+  await expect(page.getByText("The uploaded file could not be parsed as text.")).toBeVisible({ timeout: 10000 });
+  // view === "failed" is a fully separate render branch — the form step's own
+  // textarea is unmounted, so this is the failed-state's own JD edit field.
+  const editTextarea = page.locator("textarea").first();
+  await editTextarea.fill(VALID_JD + " Updated after edit.");
+  await page.getByRole("button", { name: "Gửi lại" }).click();
+
+  await expect(page.getByText("Interview Plan")).toBeVisible({ timeout: 10000 });
+  expect((resubmitBody as unknown as { jobDescription?: string })?.jobDescription).toContain("Updated after edit.");
+});
+
 test("RAG021-1: reloading mid plan-review restores the session from localStorage without re-submitting the JD", async ({ page }) => {
   await mockSession(page);
   await page.route("**/api/hr/question-generation-jobs/plan", (route) =>
@@ -559,4 +639,81 @@ test("RAG021-2: a session created under a different account is discarded on logi
   await expect(page.getByRole("button", { name: "Create Plan" })).toBeVisible({ timeout: 10000 });
   await expect(page.getByText("Interview Plan")).not.toBeVisible();
   await expect(page.locator("textarea").first()).toHaveValue("");
+});
+
+test("RAG009-1: reloading while a plan is still generating (mid-poll) resumes polling and lands on plan review once the server catches up", async ({ page }) => {
+  // Grounded in generate-form.tsx's "Restore session on mount" effect: when
+  // hr_gen_view === "polling" is found in localStorage, it does NOT blindly
+  // restart a fresh 3s polling loop — it does one immediate GET first (the
+  // plan may already be ready if it finished while the user was away), and
+  // only falls back to pollJob()'s loop if session.isPolling is still true.
+  await mockSession(page);
+  await page.addInitScript(() => {
+    localStorage.setItem("hr_gen_job", "job-777");
+    localStorage.setItem("hr_gen_view", "polling");
+    localStorage.setItem("hr_gen_polling_phase", "plan");
+  });
+
+  let pollCount = 0;
+  await page.route("**/api/hr/question-generation-jobs/job-777", (route) => {
+    pollCount++;
+    if (pollCount === 1) {
+      // Still working when the page first re-checks after reload.
+      return route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          jobId: "job-777", phase: "QUEUED", status: "QUEUED", jobTitle: "Senior Backend Developer",
+          ui: { suggestedAction: null, isPolling: true, statusLabel: "Still generating plan…" },
+        }),
+      });
+    }
+    // The resumed pollJob() loop's next tick finds it ready.
+    route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ...PLAN_PROPOSED_JOB, jobId: "job-777", id: "job-777" }) });
+  });
+
+  await page.goto("/hr/generate");
+  await expect(page.getByText("Interview Plan")).toBeVisible({ timeout: 10000 });
+  await expect(page.locator("input").first()).toHaveValue("Senior Backend Developer");
+  expect(pollCount).toBeGreaterThanOrEqual(2); // the initial re-check + at least one resumed poll tick
+});
+
+test("RAG022-1: \"Create another question set\" while one is generating pushes it to the background job list and resets the form", async ({ page }) => {
+  // Grounded in handleStartNewJob(): pushes { id, view, phase } for the
+  // in-flight job into localStorage's hr_gen_bg_jobs array, clears the
+  // "main slot" session keys, and resets all form state — this is how a
+  // second job can be started concurrently while the first keeps polling in
+  // the background (surfaced elsewhere by generation-progress-badge.tsx).
+  await mockSession(page);
+  await page.route("**/api/hr/question-generation-jobs/plan", (route) =>
+    route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ jobId: "job-bg-1", id: "job-bg-1" }) })
+  );
+  // Keep job-bg-1 perpetually "still generating" so it stays in the polling view.
+  await page.route("**/api/hr/question-generation-jobs/job-bg-1", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ jobId: "job-bg-1", phase: "QUEUED", status: "QUEUED", jobTitle: "x", ui: { suggestedAction: null, isPolling: true } }),
+    })
+  );
+
+  await page.goto("/hr/generate");
+  await page.locator("textarea").first().fill(VALID_JD);
+  await page.getByRole("button", { name: "Create Plan" }).click({ force: true });
+  await expect(page.getByRole("button", { name: "Create another question set" })).toBeVisible({ timeout: 10000 });
+
+  await page.getByRole("button", { name: "Create another question set" }).click();
+
+  // Back to a blank form, ready to start a second job.
+  await expect(page.getByRole("button", { name: "Create Plan" })).toBeVisible({ timeout: 10000 });
+  await expect(page.locator("textarea").first()).toHaveValue("");
+
+  const bgJobs = await page.evaluate(() => JSON.parse(localStorage.getItem("hr_gen_bg_jobs") ?? "[]"));
+  expect(bgJobs).toHaveLength(1);
+  expect(bgJobs[0].id).toBe("job-bg-1");
+  expect(bgJobs[0].view).toBe("polling");
+
+  // The main session slot no longer points at the backgrounded job.
+  const mainJob = await page.evaluate(() => localStorage.getItem("hr_gen_job"));
+  expect(mainJob).toBeNull();
 });

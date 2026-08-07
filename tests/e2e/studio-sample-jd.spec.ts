@@ -90,3 +90,19 @@ test("RAG027-4 (finding): pressing Escape does NOT close the Sample JD modal —
   await page.waitForTimeout(500);
   await expect(page.getByText("Use this sample")).toBeVisible();
 });
+
+test("RAG027-5: the Copy button copies the sample JD to the clipboard and shows \"Copied\" feedback that reverts", async ({ page, context }) => {
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  const copyBtn = page.getByRole("button", { name: "Copy" });
+  await expect(copyBtn).toBeVisible();
+
+  await copyBtn.click();
+  await expect(page.getByRole("button", { name: "Copied" })).toBeVisible({ timeout: 5000 });
+  const clipboardText = await page.evaluate(() => navigator.clipboard.readText());
+  expect(clipboardText).toContain(SAMPLE_JD_SNIPPET);
+
+  // Reverts back to "Copy" after the 1.8s feedback window, and the modal is
+  // still open (Copy doesn't close it, unlike "Use this sample").
+  await expect(page.getByRole("button", { name: "Copy" })).toBeVisible({ timeout: 3000 });
+  await expect(page.getByText("Use this sample")).toBeVisible();
+});

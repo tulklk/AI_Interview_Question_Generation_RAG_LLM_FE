@@ -562,3 +562,48 @@ test("RAG030-1: toggling \"Include sample answers\" off persists via PUT setting
   await expect(sampleAnswersToggle).toHaveAttribute("aria-checked", "false", { timeout: 5000 });
   expect((putSettingsBody as unknown as { includeSampleAnswers?: boolean })?.includeSampleAnswers).toBe(false);
 });
+
+test("RAG008-1: a generation run stuck \"Generating\" for the full 5-minute deadline shows the timeout recovery message", async ({ page }) => {
+  // Grounded in use-studio.ts's generateQuestions(): polls getGenerationRun()
+  // every 2.5s against a real `Date.now() + 5*60_000` deadline, and if the run
+  // never reaches Completed/Failed/Cancelled within that window, throws
+  // `Job vẫn ${status} sau 5 phút (run ${id}…). RAG có thể chưa callback —
+  // bấm Làm mới trạng thái.` Uses Playwright's clock API to fast-forward the
+  // full 5 minutes of virtual time instead of actually waiting — the mocked
+  // network round-trips inside the loop still resolve for real, just
+  // compressed into a few seconds of wall-clock time.
+  await page.clock.install();
+  await mockHrSession(page, { subscription: freeSubscriptionReady() });
+  await mockStudioBootstrap(page);
+
+  const stuckRun = {
+    id: "run-stuck-1234", planId: "plan-1", status: "Generating",
+    requestedQuestionCount: 15, generatedQuestionCount: 0,
+    startedAt: new Date().toISOString(), completedAt: null, errorCode: null, errorMessage: null,
+  };
+  await page.route(`**/api/studio/projects/${PROJECT_ID}/questions/generate`, (route) =>
+    route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(stuckRun) })
+  );
+  let pollCount = 0;
+  await page.route(`**/api/studio/projects/${PROJECT_ID}/question-generation-runs/run-stuck-1234`, (route) => {
+    pollCount++;
+    route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(stuckRun) }); // never completes
+  });
+
+  await page.goto("/hr/generate-v2");
+  const generateBtn = page.getByRole("button", { name: "Generate Questions" });
+  await expect(generateBtn).toBeEnabled({ timeout: 10000 });
+  await generateBtn.click();
+  await expect(toast(page, "Sent to RAG — generating questions…")).toBeVisible({ timeout: 10000 });
+
+  // Fast-forward past the 5-minute deadline in one jump. Date.now() lands
+  // fully past the deadline immediately, so the while loop's very next check
+  // (after a single real poll + its mocked network round-trip) already sees
+  // "past deadline" and exits — a real, correct short-circuit of the same
+  // outcome 120 real 2.5s polls would eventually reach, just without
+  // spending 5 real minutes getting there.
+  await page.clock.fastForward("05:05");
+  await expect(page.getByText(/Job vẫn Generating sau 5 phút/)).toBeVisible({ timeout: 20000 });
+  await expect(page.getByText(/bấm Làm mới trạng thái/)).toBeVisible();
+  expect(pollCount).toBeGreaterThanOrEqual(1);
+});
