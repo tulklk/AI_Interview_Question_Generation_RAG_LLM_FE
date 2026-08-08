@@ -78,6 +78,13 @@ export function useStudio() {
   const [isApplyingSettings, setIsApplyingSettings] = useState(false);
   const [generationRun, setGenerationRun] = useState<GenerationRun | null>(null);
   const [isGeneratingQuestions, setIsGeneratingQuestions] = useState(false);
+  const [isSavingDraft, setIsSavingDraft] = useState(false);
+  const [isDraftSaved, setIsDraftSaved] = useState(false);
+
+  // Bộ câu hỏi chỉ còn "đã lưu" chừng nào danh sách chưa đổi lại (sinh mới, sửa, xoá, đổi project).
+  useEffect(() => {
+    setIsDraftSaved(false);
+  }, [questions, project?.id]);
 
   // SCRUM-402: badge theo streaming / generate loop / run Pending|Generating sau remount
   useEffect(() => {
@@ -656,7 +663,8 @@ export function useStudio() {
   }, [addToast, currentPlan, project, refreshStudioState, settings]);
 
   const saveDraftAction = useCallback(async () => {
-    if (!project) return;
+    if (!project || isSavingDraft) return;
+    setIsSavingDraft(true);
     try {
       const result = await studioApi.saveDraft(project.id);
       const updated = await studioApi.getProject(project.id);
@@ -664,11 +672,14 @@ export function useStudio() {
         ...updated,
         questionSetId: result.questionSetId ?? updated.questionSetId ?? null,
       });
+      setIsDraftSaved(true);
       addToast("success", tx.saved ?? tx.draftSaved);
     } catch (error) {
       addToast("error", extractErrorMessage(error, lang) || tx.draftSaveFailed);
+    } finally {
+      setIsSavingDraft(false);
     }
-  }, [addToast, project, lang, tx.draftSaveFailed, tx.draftSaved, tx.saved]);
+  }, [addToast, isSavingDraft, project, lang, tx.draftSaveFailed, tx.draftSaved, tx.saved]);
 
   const togglePublish = useCallback(async () => {
     if (!project) return;
@@ -747,6 +758,8 @@ export function useStudio() {
       isApplyingSettings,
       generationRun,
       isGeneratingQuestions,
+      isSavingDraft,
+      isDraftSaved,
       saveJobDescription,
       uploadJobDescription,
       uploadDocument,
@@ -780,6 +793,8 @@ export function useStudio() {
       generationRun,
       isApplyingSettings,
       isGeneratingQuestions,
+      isSavingDraft,
+      isDraftSaved,
       isStreaming,
       jdContent,
       jdFileName,

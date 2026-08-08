@@ -8,6 +8,7 @@ import { TopHeader } from "./top-header";
 import { GenerationProgressBadge } from "@/features/interview/components/generate/generation-progress-badge";
 import { StudioProgressBadge } from "@/features/studio/components/studio-progress-badge";
 import { useLanguage } from "@/shared/providers/language-context";
+import { useDocumentTitle } from "@/shared/hooks/use-document-title";
 import { useToast } from "@/shared/providers/toast-context";
 import { useHrSubscription } from "@/features/hr/context/hr-subscription-context";
 import { useUser } from "@/features/auth/context/user-context";
@@ -110,6 +111,8 @@ export function AppShell({ children, breadcrumb, pageTitle, fullWidth = false }:
   const routes = t.appShell.routes;
   const translatedTitle =
     routes[pathname as keyof typeof routes] ?? pageTitle;
+
+  useDocumentTitle(translatedTitle);
 
   const translatedBreadcrumb = breadcrumb?.map((crumb) => ({
     ...crumb,

@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { JobseekerSidebar } from "./jobseeker-sidebar";
 import { TopHeader } from "@/features/hr/components/layout/top-header";
 import { useLanguage } from "@/shared/providers/language-context";
+import { useDocumentTitle } from "@/shared/hooks/use-document-title";
 import { useToast } from "@/shared/providers/toast-context";
 import { useUser } from "@/features/auth/context/user-context";
 import { buildWelcomeMessage, getTimeOfDayGreeting } from "@/shared/utils/greeting";
@@ -132,6 +133,8 @@ function JobseekerAppShellInner({
   const routes = t.jobseekerAppShell.routes;
   const translatedTitle =
     routes[pathname as keyof typeof routes] ?? pageTitle;
+
+  useDocumentTitle(translatedTitle);
 
   const crumbMap = t.jobseekerAppShell.breadcrumb;
   const translatedBreadcrumb = breadcrumb?.map((crumb) => ({
