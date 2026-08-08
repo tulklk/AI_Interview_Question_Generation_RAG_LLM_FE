@@ -23,7 +23,7 @@ export function QuickGenerateCard() {
       </div>
 
       <Link
-        href="/hr/generate"
+        href="/hr/generate-v2"
         className="relative z-10 self-start flex items-center gap-2 bg-white dark:bg-gray-100 text-[#6c47ff] text-sm font-semibold px-4 py-2 rounded-lg hover:bg-white/90 dark:hover:bg-gray-200 transition-colors"
       >
         {qg.btn}

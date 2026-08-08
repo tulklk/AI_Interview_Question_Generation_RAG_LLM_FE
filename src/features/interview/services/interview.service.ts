@@ -777,19 +777,38 @@ export async function exportPlanQuestions(jobId: string, fileName: string): Prom
 // BE's single-question-set GET uses its own field names (questionSetId, title,
 // sourceJobId, lowercase questionType/difficulty, "order") rather than the
 // GeneratedQuestion/DraftQuestionSet shape — normalize instead of raw-casting.
+function normalizeAnswerMethod(raw: unknown): "Text" | "Code" | undefined {
+  if (typeof raw !== "string" || !raw.trim()) return undefined;
+  const key = raw.trim().toLowerCase();
+  if (key === "code" || key === "coding") return "Code";
+  if (key === "text" || key === "theory" || key === "essay") return "Text";
+  return undefined;
+}
+
 function normalizeDraftQuestion(raw: unknown, index: number): GeneratedQuestion | null {
   const src = raw as Record<string, unknown> | null;
   if (!src || typeof src !== "object") return null;
   const question = typeof src.question === "string" ? src.question : "";
   if (!question) return null;
+  const skillRaw = src.skill ?? src.Skill;
+  const focusRaw = src.focusArea ?? src.FocusArea;
   return {
     id: (typeof src.id === "string" && src.id) || `q-${index}`,
     question,
     questionType: normalizeQuestionType(typeof src.questionType === "string" ? src.questionType : undefined),
     difficulty: normalizeDifficulty(typeof src.difficulty === "string" ? src.difficulty : undefined),
+    skill: typeof skillRaw === "string" && skillRaw.trim() ? skillRaw.trim() : undefined,
+    focusArea: typeof focusRaw === "string" && focusRaw.trim() ? focusRaw.trim() : undefined,
     rationale: typeof src.rationale === "string" ? src.rationale : undefined,
     sampleAnswer: typeof src.sampleAnswer === "string" ? src.sampleAnswer : undefined,
     scoringRubric: formatScoringRubric(src.evaluationCriteria),
+    attachedImageUrl:
+      (typeof src.attachedImageUrl === "string" && src.attachedImageUrl.trim())
+        ? src.attachedImageUrl.trim()
+        : (typeof src.AttachedImageUrl === "string" && src.AttachedImageUrl.trim())
+          ? src.AttachedImageUrl.trim()
+          : null,
+    answerMethod: normalizeAnswerMethod(src.answerMethod ?? src.AnswerMethod),
     citations: [],
     orderIndex: typeof src.order === "number" ? src.order : typeof src.orderIndex === "number" ? src.orderIndex : index,
   };
@@ -861,19 +880,31 @@ export async function updateQuestionSetQuestion(
     question?: string;
     questionType?: string;
     difficulty?: string;
+    skill?: string | null;
+    focusArea?: string | null;
     rationale?: string | null;
     sampleAnswer?: string | null;
     scoringRubric?: string | null;
+    /** SCRUM-400: bắt buộc Text | Code khi update. */
+    answerMethod?: "Text" | "Code";
   }
 ): Promise<boolean> {
   try {
-    const body: Record<string, unknown> = { ...payload };
+    const body: Record<string, unknown> = {
+      question: payload.question,
+      questionType: payload.questionType,
+      difficulty: payload.difficulty,
+      skill: payload.skill,
+      focusArea: payload.focusArea,
+      rationale: payload.rationale,
+      sampleAnswer: payload.sampleAnswer,
+      answerMethod: payload.answerMethod,
+    };
     if ("scoringRubric" in payload) {
       const rubric = payload.scoringRubric?.trim();
       body.evaluationCriteria = rubric
         ? rubric.split(/\n+/).map((s) => s.trim()).filter(Boolean)
         : [];
-      delete body.scoringRubric;
     }
     await apiClient.put(`/api/hr/question-sets/${questionSetId}/questions/${questionId}`, body);
     return true;
@@ -891,22 +922,138 @@ export async function deleteQuestionSetQuestion(questionSetId: string, questionI
   }
 }
 
+/** SCRUM-396: upload ảnh đính kèm câu hỏi Question Set (History). */
+export async function uploadQuestionSetQuestionImage(
+  questionSetId: string,
+  questionId: string,
+  file: File
+): Promise<GeneratedQuestion | null> {
+  try {
+    const form = new FormData();
+    form.append("file", file);
+    const { data } = await apiClient.post<{ data?: unknown } | unknown>(
+      `/api/hr/question-sets/${questionSetId}/questions/${questionId}/image`,
+      form,
+      { headers: { "Content-Type": "multipart/form-data" } }
+    );
+    const root = (data as { data?: unknown })?.data ?? data;
+    return normalizeDraftQuestion(root, 0);
+  } catch {
+    return null;
+  }
+}
+
+/** SCRUM-396: xóa ảnh đính kèm câu hỏi Question Set. */
+export async function deleteQuestionSetQuestionImage(
+  questionSetId: string,
+  questionId: string
+): Promise<GeneratedQuestion | null> {
+  try {
+    const { data } = await apiClient.delete<{ data?: unknown } | unknown>(
+      `/api/hr/question-sets/${questionSetId}/questions/${questionId}/image`
+    );
+    const root = (data as { data?: unknown })?.data ?? data;
+    return normalizeDraftQuestion(root, 0);
+  } catch {
+    return null;
+  }
+}
+
+/** SCRUM-397: tạo DRAFT rỗng từ Question Builder (title bắt buộc). */
+export async function createManualDraftQuestionSet(payload: {
+  title: string;
+  description?: string;
+}): Promise<{ questionSetId: string; title: string; status: "DRAFT" | "PUBLISHED"; questionCount: number }> {
+  try {
+    const { data } = await apiClient.post<{ data?: unknown } | unknown>(
+      "/api/hr/question-sets",
+      {
+        title: payload.title.trim(),
+        description: payload.description?.trim() || undefined,
+      }
+    );
+    const rootRaw = (data as { data?: unknown })?.data ?? data;
+    const root =
+      rootRaw && typeof rootRaw === "object"
+        ? (rootRaw as Record<string, unknown>)
+        : null;
+    if (!root) {
+      throw new Error("Phản hồi tạo bộ câu hỏi không hợp lệ.");
+    }
+    const idRaw = root.questionSetId ?? root.QuestionSetId ?? root.id ?? root.Id;
+    const questionSetId =
+      typeof idRaw === "string"
+        ? idRaw
+        : idRaw != null
+          ? String(idRaw)
+          : "";
+    if (!questionSetId) {
+      throw new Error("BE không trả về questionSetId.");
+    }
+    const statusRaw = typeof root.status === "string" ? root.status.toUpperCase() : "DRAFT";
+    return {
+      questionSetId,
+      title: payload.title.trim(),
+      status: statusRaw === "PUBLISHED" ? "PUBLISHED" : "DRAFT",
+      questionCount: typeof root.questionCount === "number" ? root.questionCount : 0,
+    };
+  } catch (err) {
+    const status = (err as { response?: { status?: number } })?.response?.status;
+    const beMsg = extractBeErrorMessage(err);
+    if (status === 405 || status === 404) {
+      throw new Error(
+        beMsg ||
+          "API tạo bộ DRAFT chưa có trên server đang dùng (cần deploy BE có POST /api/hr/question-sets). Hoặc chạy BE local và trỏ NEXT_PUBLIC_API_BASE_URL về localhost."
+      );
+    }
+    throw new Error(beMsg || "Không tạo được bộ câu hỏi. Vui lòng thử lại.");
+  }
+}
+
+/**
+ * SCRUM-397 / v3: thêm câu hỏi vào bộ — trả về question đã tạo (có id) để upload ảnh tiếp.
+ * Payload đủ field như Studio Save (skill, focusArea, evaluationCriteria, sampleAnswer riêng).
+ */
 export async function addQuestionSetQuestion(
   questionSetId: string,
   payload: {
     question: string;
     questionType?: string;
     difficulty?: string;
+    skill?: string;
+    focusArea?: string;
     rationale?: string;
     sampleAnswer?: string;
+    /** SCRUM-400: bắt buộc Text | Code. */
+    answerMethod: "Text" | "Code";
+    /** Rubric — mỗi phần tử 1 tiêu chí (BE serialize EvaluationCriteriaJson). */
+    evaluationCriteria?: string[];
+    citations?: unknown[];
     order?: number;
   }
-): Promise<boolean> {
+): Promise<GeneratedQuestion | null> {
   try {
-    await apiClient.post(`/api/hr/question-sets/${questionSetId}/questions`, payload);
-    return true;
+    const body: Record<string, unknown> = {
+      question: payload.question,
+      questionType: payload.questionType,
+      difficulty: payload.difficulty,
+      skill: payload.skill,
+      focusArea: payload.focusArea,
+      rationale: payload.rationale,
+      sampleAnswer: payload.sampleAnswer,
+      answerMethod: payload.answerMethod,
+      order: payload.order,
+      evaluationCriteria: payload.evaluationCriteria ?? [],
+      citations: payload.citations ?? [],
+    };
+    const { data } = await apiClient.post<{ data?: unknown } | unknown>(
+      `/api/hr/question-sets/${questionSetId}/questions`,
+      body
+    );
+    const root = (data as { data?: unknown })?.data ?? data;
+    return normalizeDraftQuestion(root, 0);
   } catch {
-    return false;
+    return null;
   }
 }
 
@@ -1027,12 +1174,22 @@ export async function setQuestionSetTimeLimit(
   }
 }
 
-export async function renameQuestionSetTitle(questionSetId: string, title: string): Promise<boolean> {
+export async function renameQuestionSetTitle(questionSetId: string, title: string): Promise<string> {
+  const trimmed = title.trim();
+  if (!trimmed) throw new Error("Tiêu đề không được để trống.");
   try {
-    await apiClient.put(`/api/hr/question-sets/${questionSetId}/title`, { title });
-    return true;
+    const { data } = await apiClient.put<{ data?: { title?: string }; title?: string }>(
+      `/api/hr/question-sets/${questionSetId}/title`,
+      { title: trimmed }
+    );
+    const root = (data as { data?: { title?: string } })?.data ?? data;
+    const saved =
+      root && typeof root === "object" && typeof (root as { title?: string }).title === "string"
+        ? (root as { title: string }).title.trim()
+        : trimmed;
+    return saved || trimmed;
   } catch (err) {
-    throw new Error(extractBeErrorMessage(err));
+    throw new Error(extractBeErrorMessage(err) || "Không thể cập nhật tên.");
   }
 }
 
@@ -1137,6 +1294,7 @@ export type PractitionerSessionStatus = "IN_PROGRESS" | "COMPLETED" | "ABANDONED
 
 export interface Practitioner {
   id: string;
+  candidateUserId: string;
   candidateName: string;
   candidateEmail: string;
   score: number | null;
@@ -1161,6 +1319,7 @@ function normalizePractitioner(raw: unknown, index: number): Practitioner | null
   const scoreRaw = src.score ?? src.overallScore;
   return {
     id: `${candidateUserId}-${startedAt ?? index}`,
+    candidateUserId,
     candidateName: pickStr(src, "candidateName", "fullName", "name"),
     candidateEmail: pickStr(src, "candidateEmail", "email"),
     score: typeof scoreRaw === "number" ? scoreRaw : null,

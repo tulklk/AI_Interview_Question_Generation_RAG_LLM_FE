@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
-import { Clock, Users, Star, ChevronRight, BarChart2, Bookmark, Loader2 } from "lucide-react";
+import { Clock, Users, Star, ChevronRight, BarChart2, Bookmark, Loader2, Pin, TrendingUp } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { useLanguage } from "@/shared/providers/language-context";
 import type { QuestionSet } from "@/features/candidate/types/jobseeker";
@@ -128,6 +128,20 @@ export function QuestionSetCard({ set, initialBookmarked = false, onBookmarkChan
             </div>
           )}
           <div className="flex-1 min-w-0">
+            <div className="mb-1 flex flex-wrap items-center gap-1.5">
+              {set.isPinned ? (
+                <span className="inline-flex items-center gap-1 rounded-md bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
+                  <Pin size={10} />
+                  {p.badgePinned}
+                </span>
+              ) : null}
+              {set.isTrending ? (
+                <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+                  <TrendingUp size={10} />
+                  {p.badgeTrending}
+                </span>
+              ) : null}
+            </div>
             <h3 className={cn("text-[14px] font-[700] leading-[20px] line-clamp-2", portalHeadingAlt)}>
               {set.title}
             </h3>

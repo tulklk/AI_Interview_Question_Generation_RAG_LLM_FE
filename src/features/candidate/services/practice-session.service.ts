@@ -81,6 +81,12 @@ export interface PracticeSessionQuestion {
   difficulty: Difficulty;
   skill?: string;
   focusArea?: string;
+  /** SCRUM-399 */
+  codeTemplateType?: string | null;
+  codeSnippet?: string | null;
+  attachedImageUrl?: string | null;
+  /** SCRUM-400 */
+  answerMethod?: "Text" | "Code" | null;
   answerText: string | null;
 }
 
@@ -112,6 +118,17 @@ function normalizeSessionQuestion(raw: unknown): PracticeSessionQuestion | null 
     difficulty: normalizeDifficulty(src.difficulty),
     skill: pickOptionalString(src, "skill"),
     focusArea: pickOptionalString(src, "focusArea"),
+    codeTemplateType: pickOptionalString(src, "codeTemplateType") || null,
+    codeSnippet: pickOptionalString(src, "codeSnippet") || null,
+    attachedImageUrl: pickOptionalString(src, "attachedImageUrl") || null,
+    answerMethod: (() => {
+      const raw = pickOptionalString(src, "answerMethod");
+      if (!raw) return null;
+      const key = raw.trim().toLowerCase();
+      if (key === "code") return "Code";
+      if (key === "text") return "Text";
+      return null;
+    })(),
     answerText: typeof src.answerText === "string" ? src.answerText : null,
   };
 }
@@ -201,12 +218,7 @@ function normalizeDimensionScores(raw: unknown): Record<string, number> | null {
 }
 
 /**
- * Per-question AI evaluation. Also returned inline, once, in the POST
- * .../answers response right after submitting — captured there and carried
- * via sessionStorage (see saveAnswerEvaluation/readAnswerEvaluations below)
- * so the score can render instantly without waiting on a round trip. The
- * GET .../feedback endpoint (getSessionFeedback) is the persisted source of
- * truth used to hydrate/replace this when viewing results later.
+ * Per-question AI evaluation from GET .../feedback (SCRUM-332: không còn score lúc submit).
  */
 export interface AnswerEvaluation {
   score: number | null;
@@ -215,6 +227,8 @@ export interface AnswerEvaluation {
   suggestion: string | null;
   dimensionScores: Record<string, number> | null;
   evaluationStatus: string;
+  isLocked?: boolean;
+  isTeaser?: boolean;
 }
 
 function normalizeAnswerEvaluation(raw: unknown): AnswerEvaluation | null {
@@ -227,6 +241,8 @@ function normalizeAnswerEvaluation(raw: unknown): AnswerEvaluation | null {
     suggestion: pickOptionalString(src, "suggestion") ?? null,
     dimensionScores: normalizeDimensionScores(src.dimensionScores),
     evaluationStatus: pickString(src, "evaluationStatus") || "Unknown",
+    isLocked: Boolean(src.isLocked ?? src.IsLocked),
+    isTeaser: Boolean(src.isTeaser ?? src.IsTeaser),
   };
 }
 
@@ -244,17 +260,6 @@ export function readAnswerEvaluations(sessionId: string): Record<string, AnswerE
   }
 }
 
-function saveAnswerEvaluation(sessionId: string, questionId: string, evaluation: AnswerEvaluation): void {
-  if (typeof window === "undefined") return;
-  try {
-    const map = readAnswerEvaluations(sessionId);
-    map[questionId] = evaluation;
-    window.sessionStorage.setItem(feedbackStorageKey(sessionId), JSON.stringify(map));
-  } catch {
-    // Best-effort only — worst case that question's AI eval just doesn't render later.
-  }
-}
-
 /** Localized overall takeaway for a completed session, plus the skills it flags for improvement. */
 export interface SessionAiInsight {
   vi: string;
@@ -263,9 +268,12 @@ export interface SessionAiInsight {
   skillsToImproveEn: string[];
 }
 
-/** Persisted per-session feedback from GET .../feedback — the durable counterpart to the inline, sessionStorage-only AnswerEvaluation capture above. */
+export type PracticeFeedbackAccessLevel = "FreeTeaser" | "Full";
+
+/** Persisted per-session feedback from GET .../feedback. */
 export interface SessionFeedback {
   overallScore: number | null;
+  accessLevel: PracticeFeedbackAccessLevel;
   aiInsight: SessionAiInsight | null;
   evaluations: Record<string, AnswerEvaluation>;
 }
@@ -286,11 +294,7 @@ function normalizeAiInsight(raw: unknown): SessionAiInsight | null {
 }
 
 /**
- * Fetches the persisted feedback for a completed session — works for any
- * session regardless of which tab/device/browser it was completed in,
- * unlike readAnswerEvaluations (sessionStorage, same-tab-only). Returns null
- * on any failure (404 before scoring finishes, network error, etc.) so
- * callers can fall back to the sessionStorage capture.
+ * Fetches the persisted feedback for a completed session.
  */
 export async function getSessionFeedback(sessionId: string): Promise<SessionFeedback | null> {
   try {
@@ -306,8 +310,12 @@ export async function getSessionFeedback(sessionId: string): Promise<SessionFeed
       const evaluation = normalizeAnswerEvaluation(item);
       if (questionId && evaluation) evaluations[questionId] = evaluation;
     }
+    const accessRaw = pickString(src, "accessLevel");
+    const accessLevel: PracticeFeedbackAccessLevel =
+      accessRaw === "Full" ? "Full" : "FreeTeaser";
     return {
       overallScore: pickNullableNumber(src, "overallScore"),
+      accessLevel,
       aiInsight: normalizeAiInsight(src.aiInsight),
       evaluations,
     };
@@ -341,18 +349,17 @@ export async function findInProgressSession(questionSetId: string): Promise<{ se
 }
 
 /**
- * Submits an answer. The response carries that question's AI evaluation
- * (score/strengths/improvements/suggestion) inline — captured to sessionStorage
- * here (see readAnswerEvaluations) since there's no way to fetch it again later.
+ * Lưu câu trả lời (SCRUM-332) — không chờ AI chấm. Score có sau complete.
  */
 export async function submitAnswer(
   sessionId: string,
   payload: { questionId: string; answerText: string }
-): Promise<AnswerEvaluation | null> {
+): Promise<{ evaluationStatus: string } | null> {
   const res = await apiClient.post(`${BASE}/${sessionId}/answers`, payload);
-  const evaluation = normalizeAnswerEvaluation(res.data);
-  if (evaluation) saveAnswerEvaluation(sessionId, payload.questionId, evaluation);
-  return evaluation;
+  const src = extractData(res.data) ?? asRecord(res.data) ?? {};
+  return {
+    evaluationStatus: pickString(src, "evaluationStatus") || "Pending",
+  };
 }
 
 export interface CompleteSessionResult {
@@ -360,8 +367,13 @@ export interface CompleteSessionResult {
   durationSeconds: number;
 }
 
+/** Complete + AI evaluate sync — timeout dài hơn (batch chấm nhiều câu). */
+const COMPLETE_TIMEOUT_MS = 120_000;
+
 export async function completePracticeSession(sessionId: string): Promise<CompleteSessionResult> {
-  const res = await apiClient.post(`${BASE}/${sessionId}/complete`);
+  const res = await apiClient.post(`${BASE}/${sessionId}/complete`, null, {
+    timeout: COMPLETE_TIMEOUT_MS,
+  });
   const src = extractData(res.data) ?? {};
   return {
     overallScore: pickNullableNumber(src, "overallScore"),

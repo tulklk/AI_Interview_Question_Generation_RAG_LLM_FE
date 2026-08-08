@@ -16,6 +16,7 @@ import {
   type PracticeSessionDetail,
   type AnswerEvaluation,
   type SessionAiInsight,
+  type PracticeFeedbackAccessLevel,
 } from "@/features/candidate/services/practice-session.service";
 import { getQuestionSetById } from "@/features/candidate/services/question-set.service";
 import type { QuestionSet } from "@/features/candidate/types/jobseeker";
@@ -38,6 +39,7 @@ export function FeedbackResultClient() {
   const [session, setSession] = useState<PracticeSessionDetail | null>(null);
   const [feedback, setFeedback] = useState<Record<string, AnswerEvaluation>>({});
   const [aiInsight, setAiInsight] = useState<SessionAiInsight | null>(null);
+  const [accessLevel, setAccessLevel] = useState<PracticeFeedbackAccessLevel>("Full");
   const [set, setSet] = useState<QuestionSet | null>(null);
   const [previousScore, setPreviousScore] = useState<number | null | undefined>(undefined);
   const [loading, setLoading] = useState(true);
@@ -59,6 +61,7 @@ export function FeedbackResultClient() {
     setSet(null);
     setFeedback({});
     setAiInsight(null);
+    setAccessLevel("Full");
     setPreviousScore(undefined);
     pollAttemptsRef.current = 0;
 
@@ -104,6 +107,10 @@ export function FeedbackResultClient() {
           if (cancelled || !fb) return;
           if (Object.keys(fb.evaluations).length > 0) setFeedback(fb.evaluations);
           setAiInsight(fb.aiInsight);
+          setAccessLevel(fb.accessLevel);
+          if (fb.overallScore !== null) {
+            setSession((prev) => (prev ? { ...prev, overallScore: fb.overallScore } : prev));
+          }
         });
         if (s.overallScore === null) {
           wasScoring.current = true;
@@ -198,7 +205,17 @@ export function FeedbackResultClient() {
       )}
 
       {!loading && !error && !forbidden && session && (
-        <FeedbackPage session={session} feedback={feedback} aiInsight={aiInsight} scoring={scoring} setTitle={set?.title} companyName={set?.company} companyLogoUrl={set?.companyLogoUrl} previousScore={previousScore} />
+        <FeedbackPage
+          session={session}
+          feedback={feedback}
+          aiInsight={aiInsight}
+          accessLevel={accessLevel}
+          scoring={scoring}
+          setTitle={set?.title}
+          companyName={set?.company}
+          companyLogoUrl={set?.companyLogoUrl}
+          previousScore={previousScore}
+        />
       )}
     </JobseekerAppShell>
   );

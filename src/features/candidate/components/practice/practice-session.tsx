@@ -2,17 +2,17 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { motion, AnimatePresence, useAnimationControls } from "framer-motion";
 import {
-  Timer, ChevronLeft, ChevronRight, Send, X,
-  Loader2, Sparkles, CheckCircle2, AlertCircle, RefreshCw, Lock, Save, Crown,
+  Timer, ChevronLeft, ChevronRight, X,
+  Loader2, Sparkles, AlertCircle, RefreshCw, Lock, Save, Crown,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { useLanguage } from "@/shared/providers/language-context";
 import type { QuestionSet } from "@/features/candidate/types/jobseeker";
 import { CategoryPill, DifficultyPill, formatCategoryLabel } from "@/features/candidate/components/ui/pill";
 import { QuestionContent } from "@/shared/components/ui/question-content";
+import { CodeSnippetBlock } from "@/shared/components/ui/code-snippet-block";
 import {
   portalDivider,
   portalHeadingAlt,
@@ -35,10 +35,40 @@ import { useCandidateSubscription } from "@/features/candidate/context/candidate
 const MIN_ANSWER_CHARS = 20;
 const MIN_ANSWER_WORDS = 3;
 
-function validateAnswerText(text: string): "tooShort" | "tooFewWords" | null {
+/** Template code rõ ràng — SYSTEM_DESIGN không có snippet vẫn dùng textarea thường. */
+const CODE_ANSWER_TEMPLATE_TYPES = [
+  "CODE_COMPLETION",
+  "BUG_DETECTION",
+  "REFACTORING",
+  "TEST_CASE_DESIGN",
+  "PERFORMANCE_ANALYSIS",
+] as const;
+
+/** Câu cần ô trả lời dạng code — ưu tiên answerMethod (SCRUM-400); fallback heuristic bộ cũ. */
+function needsCodeAnswer(question: {
+  answerMethod?: string | null;
+  codeSnippet?: string | null;
+  codeTemplateType?: string | null;
+}): boolean {
+  const method = (question.answerMethod || "").trim().toLowerCase();
+  if (method === "code") return true;
+  if (method === "text") return false;
+  // Fallback bộ cũ chưa có answerMethod
+  if (question.codeSnippet?.trim()) return true;
+  const type = (question.codeTemplateType || "").trim().toUpperCase();
+  return (CODE_ANSWER_TEMPLATE_TYPES as readonly string[]).includes(type);
+}
+
+function validateAnswerText(
+  text: string,
+  opts?: { relaxWordCount?: boolean }
+): "tooShort" | "tooFewWords" | null {
   const trimmed = text.trim();
   if (trimmed.length < MIN_ANSWER_CHARS) return "tooShort";
-  if (trimmed.split(/\s+/).filter(Boolean).length < MIN_ANSWER_WORDS) return "tooFewWords";
+  // Code thường ít "từ" theo khoảng trắng — chỉ kiểm tra độ dài ký tự
+  if (!opts?.relaxWordCount) {
+    if (trimmed.split(/\s+/).filter(Boolean).length < MIN_ANSWER_WORDS) return "tooFewWords";
+  }
   return null;
 }
 
@@ -52,22 +82,26 @@ function draftKey(sessionId: string, questionId: string) {
   return `practice-draft-${sessionId}-${questionId}`;
 }
 
+function hasAnswerText(text: string | undefined | null): boolean {
+  return (text ?? "").trim().length > 0;
+}
+
 interface ProgressDotProps {
   active: boolean;
-  submitted: boolean;
+  answered: boolean;
   onClick: () => void;
 }
 
-function ProgressDot({ active, submitted, onClick }: ProgressDotProps) {
+function ProgressDot({ active, answered, onClick }: ProgressDotProps) {
   const controls = useAnimationControls();
-  const wasSubmitted = useRef(submitted);
+  const wasAnswered = useRef(answered);
 
   useEffect(() => {
-    if (submitted && !wasSubmitted.current) {
+    if (answered && !wasAnswered.current) {
       controls.start({ scale: [1, 1.7, 1], transition: { duration: 0.4, ease: "easeOut" } });
     }
-    wasSubmitted.current = submitted;
-  }, [submitted, controls]);
+    wasAnswered.current = answered;
+  }, [answered, controls]);
 
   return (
     <motion.button
@@ -78,7 +112,7 @@ function ProgressDot({ active, submitted, onClick }: ProgressDotProps) {
         "rounded-full transition-all duration-200",
         active
           ? "w-6 h-2 bg-primary"
-          : submitted
+          : answered
           ? "w-2 h-2 bg-emerald-400"
           : "w-2 h-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600"
       )}
@@ -89,7 +123,7 @@ function ProgressDot({ active, submitted, onClick }: ProgressDotProps) {
 interface QuestionNavProps {
   questions: QuestionSet["questions"];
   currentIdx: number;
-  submitted: Record<string, boolean>;
+  answered: Record<string, boolean>;
   onSelect: (idx: number) => void;
   onRequestFinish: () => void;
   finishing: boolean;
@@ -103,9 +137,9 @@ interface QuestionNavProps {
   };
 }
 
-function QuestionNav({ questions, currentIdx, submitted, onSelect, onRequestFinish, finishing, hasTimeLimit, timeLeft, elapsedSeconds, labels }: QuestionNavProps) {
+function QuestionNav({ questions, currentIdx, answered, onSelect, onRequestFinish, finishing, hasTimeLimit, timeLeft, elapsedSeconds, labels }: QuestionNavProps) {
   const answerable = questions.filter((q) => !q.isLocked);
-  const answeredCount = answerable.filter((q) => submitted[q.id]).length;
+  const answeredCount = answerable.filter((q) => answered[q.id]).length;
   const total = answerable.length;
   const allAnswered = total === 0 || answeredCount === total;
 
@@ -149,7 +183,7 @@ function QuestionNav({ questions, currentIdx, submitted, onSelect, onRequestFini
         <div className="grid grid-cols-6 gap-2">
           {questions.map((q, idx) => {
             const isActive = idx === currentIdx;
-            const isDone = submitted[q.id] ?? false;
+            const isDone = answered[q.id] ?? false;
             const isLocked = q.isLocked === true;
             return (
               <button
@@ -232,10 +266,6 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
 
   const [currentIdx, setCurrentIdx] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
-  const [submitted, setSubmitted] = useState<Record<string, boolean>>({});
-  const [evaluating, setEvaluating] = useState(false);
-  const [submitError, setSubmitError] = useState(false);
-  const [validationError, setValidationError] = useState<string | null>(null);
   const [timeLeft, setTimeLeft] = useState(0);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [direction, setDirection] = useState(1);
@@ -266,19 +296,36 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
 
   const restoredDraftIds = useRef(new Set<string>());
   const timeUpRef = useRef(false);
-  const evaluatingRef = useRef(false);
+  const finishingRef = useRef(false);
+  const answersRef = useRef(answers);
+  const currentIdxRef = useRef(currentIdx);
+  const sessionIdRef = useRef(sessionId);
 
   useEffect(() => {
-    evaluatingRef.current = evaluating;
-  }, [evaluating]);
+    answersRef.current = answers;
+  }, [answers]);
+  useEffect(() => {
+    currentIdxRef.current = currentIdx;
+  }, [currentIdx]);
+  useEffect(() => {
+    sessionIdRef.current = sessionId;
+  }, [sessionId]);
+  useEffect(() => {
+    finishingRef.current = finishing;
+  }, [finishing]);
 
   const question = set.questions[currentIdx];
   const totalQuestions = set.questions.length;
   const progress = ((currentIdx + 1) / totalQuestions) * 100;
   const currentAnswer = answers[question.id] ?? "";
-  const isSubmitted = submitted[question.id] ?? false;
-  const isLast = currentIdx === totalQuestions - 1;
+  // SCRUM-399: tách UX trả lời code vs lý thuyết
+  const isCodeAnswer = needsCodeAnswer(question);
   const isQuestionLocked = question.isLocked === true;
+
+  const answeredFlags: Record<string, boolean> = {};
+  for (const q of set.questions) {
+    answeredFlags[q.id] = hasAnswerText(answers[q.id]);
+  }
 
   // Start (or auto-resume, server-side) the practice session for this set. The
   // response's questions[] already carry any previously-submitted answerText.
@@ -291,23 +338,30 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
     startPracticeSession(set.id)
       .then((session) => {
         if (cancelled) return;
-        const submittedMap: Record<string, boolean> = {};
         const answersMap: Record<string, string> = {};
         session.questions.forEach((q) => {
           if (q.answerText) {
-            submittedMap[q.id] = true;
             answersMap[q.id] = q.answerText;
           }
         });
-        const wasResumed = Object.keys(submittedMap).length > 0;
+        // Gộp draft sessionStorage (nếu có) cho câu chưa có text từ BE
+        if (typeof window !== "undefined") {
+          set.questions.forEach((q) => {
+            if (hasAnswerText(answersMap[q.id])) return;
+            const draft = window.sessionStorage.getItem(draftKey(session.id, q.id));
+            if (draft) answersMap[q.id] = draft;
+          });
+        }
+        const wasResumed = Object.keys(answersMap).some((id) => hasAnswerText(answersMap[id]));
         setSessionId(session.id);
         setStartedAt(session.startedAt ?? new Date().toISOString());
         setExpiresAt(session.expiresAt);
-        setSubmitted(submittedMap);
         setAnswers((prev) => ({ ...prev, ...answersMap }));
         setResumed(wasResumed);
         if (wasResumed) addToast("success", p.resumedToast);
-        const firstUnanswered = set.questions.findIndex((q) => !q.isLocked && !submittedMap[q.id]);
+        const firstUnanswered = set.questions.findIndex(
+          (q) => !q.isLocked && !hasAnswerText(answersMap[q.id])
+        );
         setCurrentIdx(firstUnanswered === -1 ? set.questions.length - 1 : firstUnanswered);
       })
       .catch((err) => {
@@ -338,12 +392,11 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
       const remaining = Math.floor((deadlineMs - Date.now()) / 1000);
       setTimeLeft(Math.max(0, remaining));
 
-      // Auto-submit once time is up. If an answer submission is mid-flight, wait
-      // for it to settle (evaluatingRef) — the next tick (≤1s later) retries.
-      if (remaining <= 0 && !timeUpRef.current && !evaluatingRef.current) {
+      // Hết giờ → flush + complete (không chờ "Save từng câu")
+      if (remaining <= 0 && !timeUpRef.current && !finishingRef.current) {
         timeUpRef.current = true;
         addToast("error", p.timeUpToast);
-        handleFinish();
+        void handleFinish();
       }
     }
     tick();
@@ -356,6 +409,7 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
       clearInterval(intervalId);
       document.removeEventListener("visibilitychange", onVisibilityChange);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [expiresAt, sessionId]);
 
   // Untimed sessions have no deadline to count down to — show elapsed time
@@ -371,23 +425,21 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
     return () => clearInterval(intervalId);
   }, [hasTimeLimit, startedAt, sessionId]);
 
-  // Native "leave site?" prompt when there's typed-but-unsubmitted answer text —
-  // the in-app exit dialog only covers the custom X button, not tab close/refresh/back.
+  // Cảnh báo khi đóng tab nếu còn nội dung đã gõ (chưa nộp bài cuối)
   useEffect(() => {
     function handleBeforeUnload(e: BeforeUnloadEvent) {
-      if (currentAnswer.trim().length > 0 && !isSubmitted) {
+      const hasDraft = Object.values(answersRef.current).some((t) => hasAnswerText(t));
+      if (hasDraft && !finishingRef.current) {
         e.preventDefault();
         e.returnValue = "";
       }
     }
     window.addEventListener("beforeunload", handleBeforeUnload);
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
-  }, [currentAnswer, isSubmitted]);
+  }, []);
 
-  // Clear validation error and draft save status when the active question changes.
+  // Clear draft save status when the active question changes.
   useEffect(() => {
-    setValidationError(null);
-    setSubmitError(false);
     setDraftSaveStatus("idle");
     if (draftSaveTimer.current) {
       clearTimeout(draftSaveTimer.current);
@@ -395,26 +447,52 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
     }
   }, [question.id]);
 
-  // Restore an unsubmitted draft answer for the current question from sessionStorage (once per question).
+  // Restore draft từ sessionStorage cho câu hiện tại (một lần / câu), nếu state chưa có text.
   useEffect(() => {
     if (!sessionId || !question || typeof window === "undefined") return;
     if (restoredDraftIds.current.has(question.id)) return;
     restoredDraftIds.current.add(question.id);
-    if (submitted[question.id]) return;
+    if (hasAnswerText(answers[question.id])) return;
     const saved = window.sessionStorage.getItem(draftKey(sessionId, question.id));
     if (saved) {
-      setAnswers((prev) => (prev[question.id] !== undefined ? prev : { ...prev, [question.id]: saved }));
+      setAnswers((prev) => (hasAnswerText(prev[question.id]) ? prev : { ...prev, [question.id]: saved }));
     }
-  }, [sessionId, question, submitted]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionId, question.id]);
+
+  /** Best-effort POST lên BE khi rời câu — không chặn UI, không hiện "AI đang nghĩ". */
+  const persistAnswerBestEffort = useCallback(
+    (questionId: string, text: string) => {
+      const sid = sessionIdRef.current;
+      if (!sid || !text.trim()) return;
+      const q = set.questions.find((x) => x.id === questionId);
+      if (!q || q.isLocked) return;
+      const relax = needsCodeAnswer(q);
+      if (validateAnswerText(text, { relaxWordCount: relax })) return;
+      void submitAnswerApi(sid, { questionId, answerText: text }).catch(() => {
+        // Im lặng — draft vẫn còn ở sessionStorage; Finish sẽ flush lại
+      });
+    },
+    [set.questions]
+  );
+
+  function goToQuestion(idx: number) {
+    const clamped = Math.min(Math.max(0, idx), totalQuestions - 1);
+    if (clamped === currentIdx) return;
+    // Persist câu đang xem trước khi chuyển (không chờ / không block)
+    if (!isQuestionLocked && currentAnswer.trim()) {
+      persistAnswerBestEffort(question.id, currentAnswer);
+    }
+    setDirection(clamped > currentIdx ? 1 : -1);
+    setCurrentIdx(clamped);
+  }
 
   function navigate(delta: number) {
-    setDirection(delta);
-    setCurrentIdx((i) => Math.min(Math.max(0, i + delta), totalQuestions - 1));
+    goToQuestion(currentIdx + delta);
   }
 
   function handleAnswerChange(value: string) {
     setAnswers((prev) => ({ ...prev, [question.id]: value }));
-    if (validationError) setValidationError(null);
     if (sessionId && typeof window !== "undefined") {
       window.sessionStorage.setItem(draftKey(sessionId, question.id), value);
       // Debounced visual save status (600ms after last keystroke → show "saved" for 2s)
@@ -427,55 +505,53 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
     }
   }
 
-  const handleSubmitAnswer = useCallback(() => {
-    if (!currentAnswer.trim() || isSubmitted || !sessionId) return;
-    const vErr = validateAnswerText(currentAnswer);
-    if (vErr) {
-      setValidationError(vErr === "tooShort" ? p.validationTooShort : p.validationTooFewWords);
-      return;
-    }
-    setValidationError(null);
-    setEvaluating(true);
-    setSubmitError(false);
-    submitAnswerApi(sessionId, { questionId: question.id, answerText: currentAnswer })
-      .then(() => {
-        setSubmitted((prev) => ({ ...prev, [question.id]: true }));
-        if (typeof window !== "undefined") {
-          window.sessionStorage.removeItem(draftKey(sessionId, question.id));
-        }
-        if (!isLast) {
-          setTimeout(() => navigate(1), 600);
-        }
-      })
-      .catch(() => {
-        setSubmitError(true);
-        addToast("error", p.submitFailed);
-      })
-      .finally(() => setEvaluating(false));
-  }, [currentAnswer, isSubmitted, question.id, isLast, sessionId, addToast, p.submitFailed, p.validationTooShort, p.validationTooFewWords]);
-
-  function handleFinish() {
-    if (!sessionId) return;
+  async function handleFinish() {
+    const sid = sessionIdRef.current;
+    if (!sid || finishingRef.current) return;
     setFinishing(true);
+    finishingRef.current = true;
     setFinishError(false);
-    completePracticeSession(sessionId)
-      .then(() => {
-        router.push(`/jobseeker/practice/${sessionId}/result`);
-      })
-      .catch(async () => {
-        // BE now enforces the question set's own time limit server-side and can
-        // auto-complete a session before our client-side auto-submit reaches it —
-        // complete() then 400s even though the session is actually done. Check
-        // the real status before surfacing an error the candidate can't recover from.
-        const existing = await getPracticeSession(sessionId).catch(() => null);
-        if (existing && existing.status !== "IN_PROGRESS") {
-          router.push(`/jobseeker/practice/${sessionId}/result`);
-          return;
+    try {
+      const answersSnapshot = answersRef.current;
+      const idx = currentIdxRef.current;
+
+      // Flush mọi draft / câu hiện tại chưa POST lên BE trước khi complete
+      for (const q of set.questions) {
+        if (q.isLocked) continue;
+        let text = answersSnapshot[q.id] ?? "";
+        // Ưu tiên text đang gõ trên câu hiện tại
+        if (q.id === set.questions[idx]?.id) {
+          text = answersSnapshot[q.id] ?? "";
         }
-        setFinishError(true);
-        setFinishing(false);
-        addToast("error", p.finishFailed);
-      });
+        if (!text.trim() && typeof window !== "undefined") {
+          text = window.sessionStorage.getItem(draftKey(sid, q.id)) ?? "";
+        }
+        if (!text.trim()) continue;
+        const relax = needsCodeAnswer(q);
+        const vErr = validateAnswerText(text, { relaxWordCount: relax });
+        if (vErr) continue;
+        await submitAnswerApi(sid, { questionId: q.id, answerText: text });
+        if (typeof window !== "undefined") {
+          window.sessionStorage.removeItem(draftKey(sid, q.id));
+        }
+      }
+
+      await completePracticeSession(sid);
+      router.push(`/jobseeker/practice/${sid}/result`);
+    } catch {
+      // BE now enforces the question set's own time limit server-side and can
+      // auto-complete a session before our client-side auto-submit reaches it —
+      // complete() then 400s even though the session is actually done.
+      const existing = await getPracticeSession(sid).catch(() => null);
+      if (existing && existing.status !== "IN_PROGRESS") {
+        router.push(`/jobseeker/practice/${sid}/result`);
+        return;
+      }
+      setFinishError(true);
+      setFinishing(false);
+      finishingRef.current = false;
+      addToast("error", p.finishFailed);
+    }
   }
 
   function handleAbandon() {
@@ -506,26 +582,26 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
   }
 
   const answerableQuestions = set.questions.filter((q) => !q.isLocked);
+  // SCRUM-333: đủ điều kiện nộp khi mọi câu unlock đã có nội dung — không cần bấm Save từng câu
   const allAnswered =
     answerableQuestions.length === 0 ||
-    answerableQuestions.every((q) => submitted[q.id]);
-  const unansweredCount = answerableQuestions.filter((q) => !submitted[q.id]).length;
+    answerableQuestions.every((q) => hasAnswerText(answers[q.id]));
+  const unansweredCount = answerableQuestions.filter((q) => !hasAnswerText(answers[q.id])).length;
 
   // A prior finish attempt already failed — retry directly, don't re-open review.
   // Otherwise this is a fresh submit request, so confirm via the review dialog first.
   function requestFinish() {
     if (finishError) {
-      handleFinish();
+      void handleFinish();
       return;
     }
     setReviewOpen(true);
   }
 
   function goToFirstUnanswered() {
-    const idx = set.questions.findIndex((q) => !q.isLocked && !submitted[q.id]);
+    const idx = set.questions.findIndex((q) => !q.isLocked && !hasAnswerText(answers[q.id]));
     if (idx === -1) return;
-    setDirection(idx > currentIdx ? 1 : -1);
-    setCurrentIdx(idx);
+    goToQuestion(idx);
   }
 
   const variants = {
@@ -592,7 +668,7 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
       cancelLabel={p.reviewCancelBtn}
       variant="primary"
       loading={finishing}
-      onConfirm={() => { setReviewOpen(false); handleFinish(); }}
+      onConfirm={() => { setReviewOpen(false); void handleFinish(); }}
       onCancel={() => setReviewOpen(false)}
     />
     <div className="min-h-screen hr-main-bg flex flex-col">
@@ -731,15 +807,38 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
                   </div>
                 </div>
               ) : (
-                <QuestionContent
-                  text={question.text}
-                  className={cn("text-[17px] sm:text-[20px] font-bold leading-6.5 sm:leading-7.5", portalHeadingAlt)}
-                />
+                <div className="space-y-4">
+                  <QuestionContent
+                    text={question.text}
+                    className={cn("text-[17px] sm:text-[20px] font-bold leading-6.5 sm:leading-7.5", portalHeadingAlt)}
+                  />
+                  {/* SCRUM-399: starter code từ template HR */}
+                  {question.codeSnippet?.trim() ? (
+                    <CodeSnippetBlock
+                      code={question.codeSnippet}
+                      variant="question"
+                      className="mt-1"
+                    />
+                  ) : null}
+                  {/* SCRUM-399: ảnh đính kèm HR (SAS) */}
+                  {question.attachedImageUrl ? (
+                    <div className="overflow-hidden rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/40">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={question.attachedImageUrl}
+                        alt={question.codeTemplateType
+                          ? `Question attachment (${question.codeTemplateType})`
+                          : "Question attachment"}
+                        className="max-h-80 w-full object-contain"
+                      />
+                    </div>
+                  ) : null}
+                </div>
               )}
             </motion.div>
           </AnimatePresence>
 
-          {/* Answer area */}
+          {/* Answer area — luôn editable; chỉ nộp khi Finish (SCRUM-333) */}
           <div className="hr-glass-card p-4 sm:p-6">
             {isQuestionLocked ? (
               <div className="flex items-center justify-center gap-2 py-5 text-center">
@@ -754,45 +853,58 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
                   {p.lockedQuestion.upgradeBtn} →
                 </button>
               </div>
-            ) : isSubmitted ? (
-              /* Submitted state */
-              <motion.div
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="flex flex-col gap-3"
-              >
-                <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
-                  <CheckCircle2 size={16} />
-                  <span className="text-[13px] font-semibold">{p.answerSubmitted}</span>
-                </div>
-                {currentAnswer && (
-                  <p className={cn("text-[14px] leading-5.5 whitespace-pre-wrap", portalSubtextAlt)}>
-                    {currentAnswer}
-                  </p>
-                )}
-              </motion.div>
             ) : (
-              /* Input state */
               <>
-                <textarea
-                  value={currentAnswer}
-                  onChange={(e) => handleAnswerChange(e.target.value)}
-                  placeholder={p.answerPlaceholder}
-                  disabled={evaluating}
-                  className={cn(
-                    "w-full min-h-35 sm:min-h-45 text-[14px] font-normal bg-transparent outline-none resize-none leading-6",
-                    portalHeadingAlt,
-                    "placeholder:text-gray-400 dark:placeholder:text-gray-500"
-                  )}
-                />
+                {isCodeAnswer ? (
+                  <div className="overflow-hidden rounded-lg border border-violet-800/70 dark:border-violet-900 bg-gray-950">
+                    <div className="flex items-center justify-between gap-2 border-b border-violet-900/60 bg-violet-950 px-3 py-1.5">
+                      <span className="rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide bg-violet-800/80 text-violet-100">
+                        {p.codeAnswerLabel}
+                      </span>
+                      <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+                        code
+                      </span>
+                    </div>
+                    <textarea
+                      value={currentAnswer}
+                      onChange={(e) => handleAnswerChange(e.target.value)}
+                      onBlur={() => {
+                        if (currentAnswer.trim()) persistAnswerBestEffort(question.id, currentAnswer);
+                      }}
+                      placeholder={p.codeAnswerPlaceholder}
+                      spellCheck={false}
+                      className={cn(
+                        "w-full min-h-40 sm:min-h-52 bg-transparent px-3 py-3 outline-none resize-y",
+                        "font-mono text-[12px] leading-relaxed text-violet-100",
+                        "placeholder:text-gray-500"
+                      )}
+                    />
+                  </div>
+                ) : (
+                  <textarea
+                    value={currentAnswer}
+                    onChange={(e) => handleAnswerChange(e.target.value)}
+                    onBlur={() => {
+                      if (currentAnswer.trim()) persistAnswerBestEffort(question.id, currentAnswer);
+                    }}
+                    placeholder={p.answerPlaceholder}
+                    className={cn(
+                      "w-full min-h-35 sm:min-h-45 text-[14px] font-normal bg-transparent outline-none resize-none leading-6",
+                      portalHeadingAlt,
+                      "placeholder:text-gray-400 dark:placeholder:text-gray-500"
+                    )}
+                  />
+                )}
                 <div className={cn("flex items-center justify-between mt-3 pt-3 border-t", portalDivider)}>
                   <div className="flex items-center gap-3">
                     <span className={cn(
                       "text-[12px] font-medium",
-                      currentAnswer.length < 150 ? "text-gray-400 dark:text-gray-500" : "text-emerald-600 dark:text-emerald-400"
+                      currentAnswer.length < (isCodeAnswer ? MIN_ANSWER_CHARS : 150)
+                        ? "text-gray-400 dark:text-gray-500"
+                        : "text-emerald-600 dark:text-emerald-400"
                     )}>
                       {currentAnswer.length} {p.characters}
-                      {currentAnswer.length < 150 && (
+                      {!isCodeAnswer && currentAnswer.length < 150 && (
                         <span className="text-gray-400 dark:text-gray-500"> · {p.minRecommended}</span>
                       )}
                     </span>
@@ -809,49 +921,7 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
                       </span>
                     )}
                   </div>
-
-                  {evaluating ? (
-                    <div className="flex items-center gap-2 text-[13px] text-primary">
-                      <Loader2 size={13} className="animate-spin" />
-                      {p.aiThinking}
-                    </div>
-                  ) : (
-                    <button
-                      onClick={handleSubmitAnswer}
-                      disabled={!currentAnswer.trim()}
-                      className="shimmer-button flex items-center gap-2 h-9 px-4 text-[13px] font-semibold text-white hr-cta-btn disabled:opacity-40 disabled:cursor-not-allowed rounded-lg"
-                    >
-                      <Send size={13} />
-                      {p.submitBtn}
-                    </button>
-                  )}
                 </div>
-                {validationError && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -4 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="flex items-center gap-1.5 mt-2"
-                  >
-                    <AlertCircle size={13} className="text-amber-500 shrink-0" />
-                    <p className="text-[12px] font-medium text-amber-600 dark:text-amber-400">{validationError}</p>
-                  </motion.div>
-                )}
-                {submitError && (
-                  <div className="flex items-center gap-3 mt-2">
-                    <p className="flex items-center gap-1.5 text-[12px] font-medium text-red-500">
-                      <AlertCircle size={12} />
-                      {p.submitFailed}
-                    </p>
-                    <button
-                      type="button"
-                      onClick={handleSubmitAnswer}
-                      className="flex items-center gap-1.5 text-[12px] font-semibold text-primary hover:underline"
-                    >
-                      <RefreshCw size={11} />
-                      {p.retryBtn}
-                    </button>
-                  </div>
-                )}
               </>
             )}
           </div>
@@ -862,8 +932,8 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
               <ProgressDot
                 key={q.id}
                 active={idx === currentIdx}
-                submitted={submitted[q.id] ?? false}
-                onClick={() => { setDirection(idx > currentIdx ? 1 : -1); setCurrentIdx(idx); }}
+                answered={answeredFlags[q.id] ?? false}
+                onClick={() => goToQuestion(idx)}
               />
             ))}
           </div>
@@ -917,7 +987,7 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
                   </p>
                 )}
               </div>
-            ) : isLast ? (
+            ) : currentIdx === totalQuestions - 1 ? (
               <div className="flex flex-col items-end gap-1.5">
                 <p className="flex items-center gap-1.5 text-[12px] font-medium text-amber-600 dark:text-amber-400">
                   <AlertCircle size={12} />
@@ -946,8 +1016,8 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
       <QuestionNav
         questions={set.questions}
         currentIdx={currentIdx}
-        submitted={submitted}
-        onSelect={(idx) => { setDirection(idx > currentIdx ? 1 : -1); setCurrentIdx(idx); }}
+        answered={answeredFlags}
+        onSelect={goToQuestion}
         onRequestFinish={requestFinish}
         finishing={finishing}
         hasTimeLimit={hasTimeLimit}
