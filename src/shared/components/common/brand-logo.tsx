@@ -9,6 +9,8 @@ interface BrandLogoProps {
   titleClassName?: string;
   subtitleClassName?: string;
   variant?: "default" | "onDark";
+  /** Chỉ hiện icon logo (sidebar thu gọn) */
+  hideText?: boolean;
 }
 
 export function BrandLogo({
@@ -18,6 +20,7 @@ export function BrandLogo({
   titleClassName,
   subtitleClassName,
   variant = "default",
+  hideText = false,
 }: BrandLogoProps) {
   const titleColor = variant === "onDark" ? "text-white" : "text-gray-900 dark:text-gray-50";
   const subtitleColor = variant === "onDark" ? "text-white/60" : "text-gray-400 dark:text-gray-500";
@@ -34,14 +37,16 @@ export function BrandLogo({
           priority
         />
       </div>
-      <div className="leading-tight">
-        <p className={cn("font-extrabold text-[15px]", titleColor, titleClassName)}>
-          HireGen <span className="text-[#6c47ff]">AI</span>
-        </p>
-        <p className={cn("text-[11px]", subtitleColor, subtitleClassName)}>
-          AI-Powered Interview Question Generator
-        </p>
-      </div>
+      {!hideText && (
+        <div className="leading-tight">
+          <p className={cn("font-extrabold text-[15px]", titleColor, titleClassName)}>
+            HireGen <span className="text-[#6c47ff]">AI</span>
+          </p>
+          <p className={cn("text-[11px]", subtitleColor, subtitleClassName)}>
+            AI-Powered Interview Question Generator
+          </p>
+        </div>
+      )}
     </Link>
   );
 }

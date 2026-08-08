@@ -71,6 +71,11 @@ interface FilterBarLabels {
   companyDropdownLabel: string;
   allCompanies: string;
   companySearchPlaceholder: string;
+  sortLabel: string;
+  sortFeatured: string;
+  sortNewest: string;
+  sortMostPracticed: string;
+  sortHighestRated: string;
 }
 
 interface FilterBarProps {
@@ -87,6 +92,8 @@ interface FilterBarProps {
   companies: Company[];
   selectedCompanyId: string | null;
   onSelectCompany: (id: string | null) => void;
+  sortBy: "featured" | "newest" | "most_practiced" | "highest_rated";
+  onSortByChange: (v: "featured" | "newest" | "most_practiced" | "highest_rated") => void;
   labels: FilterBarLabels;
 }
 
@@ -95,6 +102,7 @@ function FilterBar({
   difficulty, onDifficultyChange,
   availableSkills, selectedSkills, onToggleSkill, onClearSkills,
   companies, selectedCompanyId, onSelectCompany,
+  sortBy, onSortByChange,
   labels: p,
 }: FilterBarProps) {
   const [diffOpen, setDiffOpen] = useState(false);
@@ -389,6 +397,30 @@ function FilterBar({
             )}
           </div>
         )}
+
+        {/* Sort — SCRUM-404 */}
+        <div className="relative">
+          <label className={cn("mb-1 block text-[11px] font-semibold uppercase tracking-wide", portalSubtextAlt)}>
+            {p.sortLabel}
+          </label>
+          <select
+            value={sortBy}
+            onChange={(e) =>
+              onSortByChange(
+                e.target.value as "featured" | "newest" | "most_practiced" | "highest_rated"
+              )
+            }
+            className={cn(
+              portalInput,
+              "h-9 min-w-[160px] rounded-lg px-3 text-[12px] font-semibold"
+            )}
+          >
+            <option value="featured">{p.sortFeatured}</option>
+            <option value="newest">{p.sortNewest}</option>
+            <option value="most_practiced">{p.sortMostPracticed}</option>
+            <option value="highest_rated">{p.sortHighestRated}</option>
+          </select>
+        </div>
       </div>
 
       {/* Active company + skill tags */}
@@ -430,6 +462,7 @@ export function MarketplacePage() {
   const [availableSkills, setAvailableSkills] = useState<string[]>([]);
   const [companies, setCompanies] = useState<Company[]>([]);
   const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
+  const [sortBy, setSortBy] = useState<"featured" | "newest" | "most_practiced" | "highest_rated">("featured");
 
   const [sets, setSets] = useState<QuestionSet[]>([]);
   const [bookmarkedIds, setBookmarkedIds] = useState<Set<string>>(new Set());
@@ -447,6 +480,7 @@ export function MarketplacePage() {
     difficulty: "All" as "All" | Difficulty,
     skills: "",
     companyId: null as string | null,
+    sortBy: "featured" as "featured" | "newest" | "most_practiced" | "highest_rated",
     reloadKey: 0,
   });
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -492,6 +526,7 @@ export function MarketplacePage() {
       prev.difficulty !== difficulty ||
       prev.skills !== selectedSkills.join(",") ||
       prev.companyId !== selectedCompanyId ||
+      prev.sortBy !== sortBy ||
       prev.reloadKey !== reloadKey;
 
     if (filterChanged) {
@@ -500,6 +535,7 @@ export function MarketplacePage() {
         difficulty,
         skills: selectedSkills.join(","),
         companyId: selectedCompanyId,
+        sortBy,
         reloadKey,
       };
       setPage(1);
@@ -510,7 +546,7 @@ export function MarketplacePage() {
     const effectPage = filterChanged ? 1 : page;
 
     if (term) {
-      const cacheKey = `${term}|${difficulty}|${selectedSkills.join(",")}|${selectedCompanyId ?? ""}|${reloadKey}`;
+      const cacheKey = `${term}|${difficulty}|${selectedSkills.join(",")}|${selectedCompanyId ?? ""}|${sortBy}|${reloadKey}`;
       const cached = searchCacheRef.current;
       if (cached && cached.key === cacheKey) {
         // Cache hit — instant slice, no network call
@@ -524,6 +560,7 @@ export function MarketplacePage() {
         difficulty: difficulty === "All" ? undefined : difficulty,
         skills: selectedSkills.length > 0 ? selectedSkills : undefined,
         companyId: selectedCompanyId ?? undefined,
+        sortBy,
         page: 1,
         pageSize: SEARCH_FETCH_SIZE,
       })
@@ -544,6 +581,7 @@ export function MarketplacePage() {
         difficulty: difficulty === "All" ? undefined : difficulty,
         skills: selectedSkills.length > 0 ? selectedSkills : undefined,
         companyId: selectedCompanyId ?? undefined,
+        sortBy,
         page: effectPage,
         pageSize: PAGE_SIZE,
       })
@@ -557,7 +595,7 @@ export function MarketplacePage() {
     }
 
     return () => { cancelled = true; };
-  }, [debouncedSearch, difficulty, selectedSkills, selectedCompanyId, page, reloadKey]);
+  }, [debouncedSearch, difficulty, selectedSkills, selectedCompanyId, sortBy, page, reloadKey]);
 
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
 
@@ -628,6 +666,8 @@ export function MarketplacePage() {
         companies={companies}
         selectedCompanyId={selectedCompanyId}
         onSelectCompany={setSelectedCompanyId}
+        sortBy={sortBy}
+        onSortByChange={setSortBy}
         labels={p}
       />
       </motion.div>

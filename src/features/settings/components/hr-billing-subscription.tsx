@@ -166,7 +166,23 @@ export function HrBillingSubscription() {
       try {
         const status = await getUpgradePaymentStatus(payment.orderCode);
         if (stop) return;
-        setPayment((prev) => (prev ? { ...prev, ...status } : status));
+        setPayment((prev) => {
+          if (!prev) return status;
+          return {
+            ...prev,
+            status: status.status || prev.status,
+            expiresAt: status.expiresAt || prev.expiresAt,
+            amount: status.amount || prev.amount,
+            currency: status.currency || prev.currency,
+            qrImageUrl: status.qrImageUrl ?? prev.qrImageUrl,
+            qrContent: status.qrContent ?? prev.qrContent,
+            paymentUrl: status.paymentUrl ?? prev.paymentUrl,
+            bankName: status.bankName ?? prev.bankName,
+            bankAccountName: status.bankAccountName ?? prev.bankAccountName,
+            bankAccountNumber: status.bankAccountNumber ?? prev.bankAccountNumber,
+            transferContent: status.transferContent ?? prev.transferContent,
+          };
+        });
         const normalized = (status.status || "").toUpperCase();
         if (normalized === "PAID") {
           stop = true;
@@ -175,10 +191,15 @@ export function HrBillingSubscription() {
           setPayment(null);
           setPolling(false);
           addToast("success", sub.upgradeSuccess);
-        } else if (normalized === "EXPIRED" || normalized === "FAILED") {
+        } else if (
+          normalized === "EXPIRED" ||
+          normalized === "FAILED" ||
+          normalized === "CANCELLED"
+        ) {
           stop = true;
           window.clearInterval(id);
           setPolling(false);
+          addToast("error", sub.orderExpiredToast);
         }
       } catch {
         // ignore network hiccup, keep polling
@@ -604,6 +625,11 @@ export function HrBillingSubscription() {
                       )}
                       {polling && (
                         <div className="text-xs text-primary text-center">{sub.paymentPanel.waitingWebhook}</div>
+                      )}
+                      {sub.paymentPanel.validityHint && (
+                        <div className={cn("text-[11px] text-center px-1", portalSubtext)}>
+                          {sub.paymentPanel.validityHint}
+                        </div>
                       )}
                     </div>
                     <div className="space-y-2.5 min-w-0">

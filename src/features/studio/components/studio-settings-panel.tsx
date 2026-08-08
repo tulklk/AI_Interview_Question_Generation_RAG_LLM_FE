@@ -1,13 +1,17 @@
 "use client";
 
 import { useState } from "react";
-import { Check, FileQuestion, Loader2, Sparkles } from "lucide-react";
+import { Check, CheckCircle2, FileQuestion, Loader2, Sparkles } from "lucide-react";
 import { SelectField } from "@/shared/components/ui/select-field";
 import { Toggle } from "@/shared/components/ui/toggle";
 import { cn } from "@/lib/cn";
 import { useLanguage } from "@/shared/providers/language-context";
 import { portalCard, portalHeading, portalSubtext } from "@/shared/utils/portal-ui";
 import type { PlanDetail, StudioSettings } from "@/features/studio/types/studio.types";
+import {
+  STUDIO_QUESTION_TEMPLATES,
+  DEFAULT_ENABLED_CODE_TEMPLATES,
+} from "@/features/studio/constants/question-templates";
 
 const QUESTION_TYPE_OPTIONS: { value: string; label: string; shortLabel: string }[] = [
   { value: "technical",       label: "Technical",       shortLabel: "Tech" },
@@ -132,6 +136,9 @@ export function StudioSettingsPanel({ settings, plan, isApplying, locked = false
 
   const isReady = settings?.readiness?.canGenerateQuestions;
   const sourcesCount = plan?.sourcesUsed?.length ?? 0;
+  const enabledTemplates = settings?.enabledCodeTemplates?.length
+    ? settings.enabledCodeTemplates
+    : DEFAULT_ENABLED_CODE_TEMPLATES;
 
   return (
     <div className={cn(portalCard, "relative space-y-4 p-4", locked && "opacity-60")}>
@@ -279,6 +286,51 @@ export function StudioSettingsPanel({ settings, plan, isApplying, locked = false
               { value: "TechnicalDeepDive",      label: "Technical Deep Dive" },
             ]}
           />
+          <SelectField
+            label={s.settings.contentModeLabel}
+            value={settings?.contentMode ?? "Mixed"}
+            onChange={(v) => void onChangeSetting({ contentMode: v as StudioSettings["contentMode"] })}
+            options={[
+              { value: "TheoryOnly", label: s.settings.contentModeTheory },
+              { value: "CodeOnly", label: s.settings.contentModeCode },
+              { value: "Mixed", label: s.settings.contentModeMixed },
+            ]}
+          />
+          <div className="space-y-2">
+            <p className={cn("text-xs font-medium", portalHeading)}>{s.settings.codeTemplatesLabel}</p>
+            <p className={cn("text-[10px]", portalSubtext)}>{s.settings.codeTemplatesHint}</p>
+            <div className="flex flex-wrap gap-1.5">
+              {STUDIO_QUESTION_TEMPLATES.map((tpl) => {
+                const active = enabledTemplates.includes(tpl.id);
+                return (
+                  <button
+                    key={tpl.id}
+                    type="button"
+                    disabled={!canEdit}
+                    onClick={() => {
+                      const current = new Set(enabledTemplates);
+                      if (current.has(tpl.id)) {
+                        if (current.size <= 1) return;
+                        current.delete(tpl.id);
+                      } else {
+                        current.add(tpl.id);
+                      }
+                      void onChangeSetting({ enabledCodeTemplates: Array.from(current) as StudioSettings["enabledCodeTemplates"] });
+                    }}
+                    className={cn(
+                      "flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors disabled:opacity-50",
+                      active
+                        ? "border-primary bg-primary/10 text-primary"
+                        : "border-gray-200 text-gray-600 hover:border-gray-300 dark:border-gray-700 dark:text-gray-300"
+                    )}
+                  >
+                    {active && <CheckCircle2 className="h-3 w-3" />}
+                    {tpl.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
           <SelectField
             label={s.settings.languageLabel}
             value={settings?.outputLanguage ?? "Vietnamese"}

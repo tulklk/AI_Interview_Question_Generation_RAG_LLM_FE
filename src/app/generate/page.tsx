@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 export default function LegacyGenerateRedirect() {
   const router = useRouter();
   useEffect(() => {
-    router.replace("/hr/generate");
+    router.replace("/hr/generate-v2");
   }, [router]);
   return null;
 }

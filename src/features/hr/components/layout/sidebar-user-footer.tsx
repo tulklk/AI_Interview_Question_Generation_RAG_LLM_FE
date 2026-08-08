@@ -10,11 +10,14 @@ import { useLogout } from "@/features/auth/hooks/use-logout";
 interface SidebarUserFooterProps {
   logoutTitle: string;
   badge?: ReactNode;
+  /** Sidebar thu gọn — chỉ avatar + logout */
+  collapsed?: boolean;
 }
 
 export function SidebarUserFooter({
   logoutTitle,
   badge,
+  collapsed = false,
 }: SidebarUserFooterProps) {
   const { user, loading } = useUser();
   const { logout, loggingOut } = useLogout();
@@ -22,6 +25,29 @@ export function SidebarUserFooter({
   const displayName = user?.fullName || (loading ? "..." : "User");
   const displayEmail = user?.email || (loading ? "..." : "");
   const avatarUrl = resolveAvatarUrl(user);
+
+  if (collapsed) {
+    return (
+      <div className="px-2 py-4 border-t border-[rgba(124,58,237,0.08)] dark:border-[rgba(124,58,237,0.13)] flex flex-col items-center gap-2">
+        <div className="hr-avatar-ring rounded-full shrink-0" title={displayName}>
+          <AvatarCircle avatarUrl={avatarUrl} fullName={displayName} size="sm" />
+        </div>
+        <button
+          type="button"
+          onClick={() => void logout()}
+          disabled={loggingOut}
+          title={logoutTitle}
+          className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 dark:text-gray-500 hover:text-[#7C3AED] dark:hover:text-[#a78bff] hover:bg-[rgba(124,58,237,0.06)] dark:hover:bg-[rgba(124,58,237,0.1)] transition-colors shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {loggingOut ? (
+            <span className="w-3.5 h-3.5 border-2 border-gray-300 border-t-gray-500 rounded-full animate-spin" />
+          ) : (
+            <LogOut size={14} />
+          )}
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="px-4 py-4 border-t border-[rgba(124,58,237,0.08)] dark:border-[rgba(124,58,237,0.13)]">

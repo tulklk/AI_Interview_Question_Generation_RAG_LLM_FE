@@ -30,5 +30,8 @@ export function isHrNavActive(itemHref: string, pathname: string): boolean {
   if (h === "/hr/generate-v2") {
     return p === "/hr/generate-v2";
   }
+  if (h === "/hr/question-builder") {
+    return p === "/hr/question-builder";
+  }
   return p === h;
 }

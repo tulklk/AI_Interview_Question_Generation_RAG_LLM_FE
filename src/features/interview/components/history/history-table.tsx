@@ -257,7 +257,7 @@ export function HistoryTable({ search = "", role = "", level = "", experience = 
     if (session.planDraft) {
       localStorage.setItem("hr_gen_plan", JSON.stringify(session.planDraft));
     }
-    router.push("/hr/generate");
+    router.push("/hr/generate-v2");
   }
 
   async function handleToggleBookmark(session: GenerationSession) {
@@ -482,7 +482,7 @@ export function HistoryTable({ search = "", role = "", level = "", experience = 
         <p className={cn("text-sm font-medium", portalHeading)}>Chưa có bài nào</p>
         <p className={cn("text-xs", portalSubtext)}>Generate câu hỏi đầu tiên để thấy lịch sử tại đây.</p>
         <Link
-          href="/hr/generate"
+          href="/hr/generate-v2"
           className="mt-2 text-xs font-semibold text-[#7C3AED] dark:text-[#a78bff] hover:underline"
         >
           Đến trang Generate →

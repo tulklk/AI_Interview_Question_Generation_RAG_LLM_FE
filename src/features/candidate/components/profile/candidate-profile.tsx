@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { motion } from "framer-motion";
 import {
@@ -37,6 +37,8 @@ import {
   type CompletedSessionSummary,
 } from "@/features/candidate/services/practice-session.service";
 import { computeStreakDays } from "@/features/candidate/utils/practice-streak";
+import { buildPracticeHeatmap } from "@/features/candidate/utils/dashboard-analytics";
+import { PracticeHeatmap } from "@/features/candidate/components/dashboard/practice-heatmap";
 import type { Achievement } from "@/features/candidate/types/jobseeker";
 import { SENIORITY_LEVELS } from "@/shared/constants/seniority-levels";
 import { useLanguage } from "@/shared/providers/language-context";
@@ -212,7 +214,8 @@ export function CandidateProfile() {
 
   useEffect(() => {
     let cancelled = false;
-    Promise.all([getPracticeStats(), listCompletedSessions({ pageSize: 100 })])
+    // pageSize 200: đủ cho heatmap 52 tuần mà không phụ thuộc endpoint riêng.
+    Promise.all([getPracticeStats(), listCompletedSessions({ pageSize: 200 })])
       .then(([statsRes, sessionsRes]) => {
         if (cancelled) return;
         setStats(statsRes);
@@ -296,6 +299,8 @@ export function CandidateProfile() {
   const avgScore = stats?.averageScore ?? null;
   const bestScore = stats?.bestScore ?? null;
   const streakDays = computeStreakDays(sessions.map((s) => s.completedAt));
+  // SCRUM-401: contribution heatmap 52 tuần trên profile (giống GitHub).
+  const practiceHeatmap = useMemo(() => buildPracticeHeatmap(sessions, 52), [sessions]);
   // A session finishing well under the fixed 45-min practice timer (see
   // SESSION_DURATION_SECONDS in practice-session.tsx) counts as "fast".
   const SPEED_DEMON_THRESHOLD_MINUTES = 35;
@@ -717,6 +722,28 @@ export function CandidateProfile() {
               <Edit2 size={13} />
               {p.editBtn}
             </button>
+          )}
+        </div>
+
+        {/* SCRUM-401: Contribution heatmap — cột phải đủ rộng cho 52 tuần */}
+        <div className="hr-glass-card p-5">
+          <div className="mb-3">
+            <h3 className={cn("text-[14px] font-[700]", portalHeadingAlt)}>{p.heatmap.title}</h3>
+            <p className={cn("text-[12px] mt-0.5", portalSubtextAlt)}>{p.heatmap.subtitle}</p>
+          </div>
+          {statsLoading ? (
+            <div className="space-y-3">
+              <div className="grid grid-cols-3 gap-3">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <Skeleton key={i} className="h-14 rounded-lg" />
+                ))}
+              </div>
+              <Skeleton className="h-24 w-full rounded-lg" />
+            </div>
+          ) : practiceHeatmap.activeDays === 0 ? (
+            <p className={cn("text-[13px] py-6 text-center", portalSubtextAlt)}>{p.heatmap.empty}</p>
+          ) : (
+            <PracticeHeatmap heatmap={practiceHeatmap} source="profile" />
           )}
         </div>
 

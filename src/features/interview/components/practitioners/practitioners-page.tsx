@@ -220,15 +220,19 @@ export function PractitionersPage({ questionSetId }: { questionSetId: string }) 
                       transition={{ delay: index * 0.03 }}
                       className="border-b border-gray-100 dark:border-gray-800 last:border-0 hover:bg-gray-50/60 dark:hover:bg-gray-800/40 transition-colors">
                       <td className="px-5 py-3.5">
-                        <div className="flex items-center gap-3">
+                        <Link
+                          href={`/hr/candidates/${item.candidateUserId}`}
+                          className="flex items-center gap-3 group min-w-0"
+                          title={t.hrCandidateOverviewPage.viewOverview}
+                        >
                           <div className={cn("w-9 h-9 rounded-xl text-white text-[12px] font-bold flex items-center justify-center shrink-0", avatarColor(item.candidateName || item.id))}>
                             {initials || "?"}
                           </div>
                           <div className="min-w-0">
-                            <p className={cn("text-[13px] font-semibold leading-tight truncate", portalHeadingAlt)}>{item.candidateName || "—"}</p>
+                            <p className={cn("text-[13px] font-semibold leading-tight truncate group-hover:text-primary transition-colors", portalHeadingAlt)}>{item.candidateName || "—"}</p>
                             <p className={cn("text-[11px] truncate", portalSubtextAlt)}>{item.candidateEmail}</p>
                           </div>
-                        </div>
+                        </Link>
                       </td>
                       <td className="px-4 py-3.5 text-center">
                         <ScoreCell score={item.score} />

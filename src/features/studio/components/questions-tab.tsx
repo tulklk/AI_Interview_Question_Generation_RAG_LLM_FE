@@ -7,8 +7,17 @@ import type {
   StudioQuestionDifficulty,
   StudioQuestionType,
 } from "@/features/studio/types/studio.types";
+import {
+  citationDisplayName,
+  citationsForDisplay,
+  formatCitationExcerpt,
+  isJdCitation,
+} from "@/features/studio/utils/citation-display";
+import { inferStudioTemplate } from "@/features/studio/utils/question-template-infer";
 import { cn } from "@/lib/cn";
+import { useLanguage } from "@/shared/providers/language-context";
 import { portalCard, portalHeading, portalSubtext } from "@/shared/utils/portal-ui";
+import { QuestionTemplateCard } from "@/features/interview/components/generate/question-template-card";
 
 interface Props {
   questions: StudioQuestion[];
@@ -36,6 +45,8 @@ export function QuestionsTab({
   onDeleteQuestion,
   onRegenerateQuestion,
 }: Props) {
+  const { t } = useLanguage();
+  const c = t.studioPage.chat;
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draftText, setDraftText] = useState("");
 
@@ -145,7 +156,60 @@ export function QuestionsTab({
                 </div>
               </div>
             ) : (
-              <p className="text-sm text-gray-800 dark:text-gray-100">{question.content}</p>
+              <>
+                {(() => {
+                  const templateVm = inferStudioTemplate(question);
+                  return (
+                    <QuestionTemplateCard
+                      title={`Question #${question.orderIndex + 1}`}
+                      difficulty={question.difficulty}
+                      prompt={question.content}
+                      snippet={templateVm.snippet}
+                      templateId={templateVm.templateId}
+                      diagramDescription={templateVm.diagramDescription}
+                      attachedImageUrl={templateVm.attachedImageUrl}
+                    />
+                  );
+                })()}
+                {/* SCRUM-392: JD chính + KB phụ */}
+                <div className="mt-2 space-y-1">
+                  <p className={cn("text-[10px] font-semibold uppercase tracking-widest", portalSubtext)}>
+                    Nguồn
+                  </p>
+                  {(() => {
+                    const rows = citationsForDisplay(question.citations);
+                    return rows.length > 0 ? (
+                    rows.map((cit, i) => {
+                      const primary = isJdCitation(cit.sourceFile);
+                      const excerpt = formatCitationExcerpt(cit.excerpt);
+                      const label = citationDisplayName(cit.sourceFile, {
+                        jobDescription: c.sourceJobDescription,
+                      });
+                      return (
+                        <p key={`${cit.sourceFile}-${i}`} className={cn("text-xs", portalSubtext)}>
+                          <span
+                            className={cn(
+                              "mr-1.5 inline-flex rounded px-1 py-px text-[9px] font-bold uppercase tracking-wide",
+                              primary
+                                ? "bg-sky-200/80 text-sky-900 dark:bg-sky-800 dark:text-sky-100"
+                                : "bg-gray-200/80 text-gray-600 dark:bg-gray-700 dark:text-gray-300"
+                            )}
+                          >
+                            {primary ? c.sourcePrimary : c.sourceSecondary}
+                          </span>
+                          {label}
+                          {excerpt ? ` — “${excerpt}”` : ""}
+                        </p>
+                      );
+                    })
+                    ) : (
+                    <p className={cn("text-xs italic", portalSubtext)}>
+                      {c.sourcesEmptyLegacy}
+                    </p>
+                    );
+                  })()}
+                </div>
+              </>
             )}
           </div>
         ))}
