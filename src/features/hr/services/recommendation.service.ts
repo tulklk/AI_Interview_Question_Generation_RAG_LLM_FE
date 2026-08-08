@@ -5,6 +5,7 @@ export type RecommendationStatus = "NEW" | "VIEWED" | "SHORTLISTED" | "INVITED" 
 /** List item — payload nhẹ (SCRUM-328). */
 export interface CandidateRecommendation {
   id: string;
+  candidateUserId: string;
   candidateName: string;
   candidateEmail: string;
   targetRole: string;
@@ -136,6 +137,7 @@ function normalizeRec(raw: unknown): CandidateRecommendation | null {
   if (!id) return null;
   return {
     id,
+    candidateUserId: pickStr(src, "candidateUserId", "CandidateUserId"),
     candidateName: pickStr(src, "candidateName", "fullName", "name"),
     candidateEmail: pickStr(src, "candidateEmail", "email"),
     targetRole: pickStr(src, "targetRole", "role"),

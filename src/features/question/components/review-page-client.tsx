@@ -103,7 +103,7 @@ export function ReviewPageClient({
     if (session.planDraft) {
       localStorage.setItem("hr_gen_plan", JSON.stringify(session.planDraft));
     }
-    router.push("/hr/generate");
+    router.push("/hr/generate-v2");
   }
 
   return (

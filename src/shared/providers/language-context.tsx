@@ -97,6 +97,18 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  // Dev HMR: khi vi.ts thêm key mới (vd. heatmap), reload dictionary nếu đang dùng tiếng Việt.
+  useEffect(() => {
+    if (process.env.NODE_ENV === "production" || lang !== "vi") return;
+    let cancelled = false;
+    loadDictionary("vi").then((dict) => {
+      if (!cancelled) setViDict(dict);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [lang]);
+
   // en luôn lấy từ import mới nhất; vi merge fallback en để key mới không crash khi HMR giữ cache cũ
   const t = useMemo(() => {
     if (lang === "vi" && viDict) return withEnFallback(viDict, en);

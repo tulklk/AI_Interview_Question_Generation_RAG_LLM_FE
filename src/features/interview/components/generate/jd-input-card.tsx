@@ -10,6 +10,8 @@ import { portalHeading, portalInput, portalSubtext } from "@/shared/utils/portal
 interface JdInputCardProps {
   value: string;
   onChange: (value: string) => void;
+  /** Khóa nhập JD khi Free hết lượt generate */
+  disabled?: boolean;
 }
 
 const MIN_CHARS = 400;
@@ -138,7 +140,7 @@ function SampleModal({ onRequestClose, onUse, ji }: {
   );
 }
 
-export function JdInputCard({ value, onChange }: JdInputCardProps) {
+export function JdInputCard({ value, onChange, disabled = false }: JdInputCardProps) {
   const { t } = useLanguage();
   const ji = t.generatePage.jdInput;
   const [modalMounted, setModalMounted] = useState(false);
@@ -149,7 +151,15 @@ export function JdInputCard({ value, onChange }: JdInputCardProps) {
 
   return (
     <>
-      <div className="hr-glass-card p-6">
+      <div className={cn("hr-glass-card p-6 relative", disabled && "opacity-70")}>
+        {disabled && (
+          <div
+            className="absolute inset-0 z-10 cursor-not-allowed rounded-2xl"
+            title={t.generatePage.quota.exceededTitle}
+            aria-hidden
+          />
+        )}
+        <fieldset disabled={disabled} className="min-w-0 border-0 p-0">
         <div className="flex items-center justify-between gap-2 mb-4">
           <div className="flex items-center gap-2">
             <FileText size={16} className="text-[#7C3AED] dark:text-[#a78bff]" />
@@ -175,8 +185,9 @@ export function JdInputCard({ value, onChange }: JdInputCardProps) {
             onChange={(e) => onChange(e.target.value)}
             placeholder={ji.placeholder}
             rows={8}
+            disabled={disabled}
             className={cn(
-              "w-full resize-none rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 transition-colors",
+              "w-full resize-none rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 transition-colors disabled:cursor-not-allowed disabled:opacity-60",
               portalInput,
               isTooShort
                 ? "border-orange-300 dark:border-orange-700 focus:ring-orange-200 dark:focus:ring-orange-900 focus:border-orange-400"
@@ -215,9 +226,10 @@ export function JdInputCard({ value, onChange }: JdInputCardProps) {
             </button>
           )}
         </div>
+        </fieldset>
       </div>
 
-      {modalMounted && (
+      {modalMounted && !disabled && (
         <SampleModal
           ji={ji}
           onRequestClose={() => setModalMounted(false)}

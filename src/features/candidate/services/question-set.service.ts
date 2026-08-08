@@ -16,6 +16,8 @@ export interface ListQuestionSetsParams {
   companyId?: string;
   page?: number;
   pageSize?: number;
+  /** SCRUM-404: featured | newest | most_practiced | highest_rated */
+  sortBy?: "featured" | "newest" | "most_practiced" | "highest_rated";
 }
 
 export interface PaginatedQuestionSets {
@@ -103,6 +105,17 @@ function normalizeQuestion(raw: unknown, index: number): PracticeQuestion | null
     skill: pickOptionalString(src, "skill"),
     timeLimit: pickNumber(src, "timeLimit"),
     isLocked,
+    codeTemplateType: pickOptionalString(src, "codeTemplateType") || null,
+    codeSnippet: pickOptionalString(src, "codeSnippet") || null,
+    attachedImageUrl: pickOptionalString(src, "attachedImageUrl") || null,
+    answerMethod: (() => {
+      const raw = pickOptionalString(src, "answerMethod");
+      if (!raw) return null;
+      const key = raw.trim().toLowerCase();
+      if (key === "code") return "Code";
+      if (key === "text") return "Text";
+      return null;
+    })(),
   };
 }
 
@@ -132,7 +145,9 @@ function normalizeQuestionSet(raw: unknown): QuestionSet | null {
   // UI is a 5-star widget — convert here so every consumer gets an already-correct
   // 0–5 value instead of each one re-deriving it.
   const rawRating = pickNumber(src, "rating");
-  const rating = rawRating !== undefined ? Math.round(rawRating * 5) / 10 : undefined;
+  // BE RoundRating đã trả thang 0–5 — dùng trực tiếp, chỉ clamp để an toàn.
+  const rating =
+    rawRating !== undefined ? Math.round(Math.min(5, Math.max(0, rawRating)) * 10) / 10 : undefined;
 
   // BE now populates top-level skills[] on both list and detail endpoints
   // (previously always empty, even though each question carried its own real
@@ -158,6 +173,8 @@ function normalizeQuestionSet(raw: unknown): QuestionSet | null {
     timeLimitMinutes,
     rating,
     attempts: pickNumber(src, "attempts", "attemptCount"),
+    isPinned: pickBool(src, "isPinned", "IsPinned"),
+    isTrending: pickBool(src, "isTrending", "IsTrending"),
     questions,
   };
 }
@@ -188,6 +205,7 @@ export async function listQuestionSets(params: ListQuestionSetsParams = {}): Pro
   if (params.companyId) query.CompanyId = params.companyId;
   if (params.page) query.Page = params.page;
   if (params.pageSize) query.PageSize = params.pageSize;
+  if (params.sortBy) query.SortBy = params.sortBy;
 
   // indexes: null serializes arrays as repeated `Skills=a&Skills=b` (ASP.NET Core's
   // expected format for `[FromQuery] string[]`) instead of axios's default `Skills[]=a`.

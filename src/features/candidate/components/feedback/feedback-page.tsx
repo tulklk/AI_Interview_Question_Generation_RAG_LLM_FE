@@ -6,11 +6,11 @@ import { motion, animate, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, RefreshCw, Share2, Loader2,
   Sparkles, ChevronDown, CheckCircle2, AlertTriangle, Lightbulb, Target,
-  TrendingUp, TrendingDown, Minus, BookOpen, Flame,
+  TrendingUp, TrendingDown, Minus, BookOpen, Flame, Lock, Crown,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { useLanguage, type Lang } from "@/shared/providers/language-context";
-import type { PracticeSessionDetail, AnswerEvaluation, SessionAiInsight } from "@/features/candidate/services/practice-session.service";
+import type { PracticeSessionDetail, AnswerEvaluation, SessionAiInsight, PracticeFeedbackAccessLevel } from "@/features/candidate/services/practice-session.service";
 import { CategoryPill, Pill, getScoreLevel, getScoreBadgeClass } from "@/features/candidate/components/ui/pill";
 import { translateDimensionKey, translateQuestionCategory } from "@/features/candidate/utils/skill-labels";
 import { getCompanyColor, getCompanyInitials } from "@/features/candidate/utils/company-visual";
@@ -19,6 +19,7 @@ import { QuestionContent } from "@/shared/components/ui/question-content";
 import { ConfettiBurst } from "@/shared/components/common/confetti-burst";
 import { FeedbackRadarChart } from "./feedback-radar-chart";
 import { useToast } from "@/shared/providers/toast-context";
+import { UpgradeModal } from "@/features/candidate/components/billing/upgrade-modal";
 import {
   portalHeadingAlt,
   portalSubtextAlt,
@@ -189,6 +190,8 @@ interface FeedbackPageProps {
   feedback: Record<string, AnswerEvaluation>;
   /** BE-generated overall takeaway (GET .../feedback) — null while unavailable, falls back to a canned score-bucket message. */
   aiInsight?: SessionAiInsight | null;
+  /** FreeTeaser = blur locked questions + upsell; Full = Premium. */
+  accessLevel?: PracticeFeedbackAccessLevel;
   scoring: boolean;
   setTitle?: string;
   companyName?: string;
@@ -197,23 +200,37 @@ interface FeedbackPageProps {
   previousScore?: number | null;
 }
 
-export function FeedbackPage({ session, feedback, aiInsight, scoring, setTitle, companyName, companyLogoUrl, previousScore }: FeedbackPageProps) {
+export function FeedbackPage({
+  session,
+  feedback,
+  aiInsight,
+  accessLevel = "Full",
+  scoring,
+  setTitle,
+  companyName,
+  companyLogoUrl,
+  previousScore,
+}: FeedbackPageProps) {
   const { t, lang } = useLanguage();
   const p = t.jobseekerFeedbackPage;
   const chart = useChartTheme();
   const { addToast } = useToast();
+  const isFreeTeaser = accessLevel === "FreeTeaser";
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
   const hasScore = session.overallScore !== null;
   const score = session.overallScore ?? 0;
   const { label: scoreLevelLabel, badgeClass: scoreLevelBadgeClass } = getScoreLevel(score, p.scoreLevels);
 
-  const answeredQuestions = session.questions.filter((q) => q.answerText);
+  // Hiển thị đủ mọi câu trong set, kể cả chưa trả lời (empty state).
+  const reviewQuestions = session.questions;
   const feedbackByQuestionId = new Map(Object.entries(feedback));
-  const radarData = aggregateDimensionScores(feedback, lang);
+  // Free: radar chỉ từ câu teaser (đã mở) — không fabricate
+  const radarData = isFreeTeaser ? null : aggregateDimensionScores(feedback, lang);
   const executiveSummary = buildExecutiveSummary(session, feedback, p.executiveSummary, lang);
-  const actionPlan = buildActionPlan(session, feedback, lang);
+  const actionPlan = isFreeTeaser ? null : buildActionPlan(session, feedback, lang);
 
   const [expandedIds, setExpandedIds] = useState<Set<string>>(
-    () => new Set(answeredQuestions.length > 0 ? [answeredQuestions[0].id] : [])
+    () => new Set(reviewQuestions.length > 0 ? [reviewQuestions[0].id] : [])
   );
 
   async function handleShare() {
@@ -320,9 +337,39 @@ export function FeedbackPage({ session, feedback, aiInsight, scoring, setTitle, 
             </div>
           )}
 
-          {/* AI Insight / pending state */}
+          {/* AI Insight / Free teaser upsell / pending */}
           <div className="hr-quick-generate rounded-lg p-4 flex gap-3">
-            {hasScore ? (
+            {isFreeTeaser && hasScore ? (
+              <>
+                <Crown size={15} className="text-[#7C3AED] dark:text-[#a78bff] shrink-0 mt-0.5" />
+                <div className="flex flex-col gap-2">
+                  <p className="text-[12px] font-[700] text-primary">{p.freemium.upsellHeadline}</p>
+                  <p className={cn("text-[13px] leading-[20px]", portalHeadingAlt)}>{p.freemium.upsellBody}</p>
+                  {executiveSummary?.strongPoint && (
+                    <p className={cn("text-[12px] leading-[18px] flex items-start gap-1.5", portalSubtextAlt)}>
+                      <CheckCircle2 size={12} className="text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
+                      {executiveSummary.strongPoint}
+                    </p>
+                  )}
+                  <div className="flex flex-wrap gap-2 mt-1">
+                    <button
+                      type="button"
+                      onClick={() => setUpgradeOpen(true)}
+                      className="shimmer-button inline-flex items-center gap-1.5 h-8 px-3 text-[12px] font-semibold text-white hr-cta-btn rounded-lg"
+                    >
+                      <Sparkles size={12} />
+                      {p.freemium.upsellCta}
+                    </button>
+                    <Link
+                      href="/jobseeker/practice"
+                      className={cn("inline-flex items-center h-8 px-3 text-[12px] font-semibold rounded-lg border border-gray-200 dark:border-gray-700", portalSubtextAlt)}
+                    >
+                      {p.freemium.practiceOther}
+                    </Link>
+                  </div>
+                </div>
+              </>
+            ) : hasScore ? (
               <>
                 <Sparkles size={15} className="text-[#7C3AED] dark:text-[#a78bff] shrink-0 mt-0.5" />
                 <div className="flex flex-col gap-2">
@@ -517,7 +564,7 @@ export function FeedbackPage({ session, feedback, aiInsight, scoring, setTitle, 
       )}
 
       {/* ── Question Reviews ─────────────────────────────────────── */}
-      {answeredQuestions.length > 0 && (
+      {reviewQuestions.length > 0 && (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -525,43 +572,84 @@ export function FeedbackPage({ session, feedback, aiInsight, scoring, setTitle, 
           className="flex flex-col gap-4"
         >
           <h2 className={cn("text-[20px] font-[700]", portalHeadingAlt)}>{p.questionReviews}</h2>
-          {answeredQuestions.map((q, i) => {
+          {reviewQuestions.map((q, i) => {
             const isExpanded = expandedIds.has(q.id);
             const fb = feedbackByQuestionId.get(q.id);
-            const hasEval = fb && fb.evaluationStatus === "Succeeded" && fb.score !== null;
+            const isLocked = Boolean(fb?.isLocked) || (isFreeTeaser && !fb?.isTeaser && !(fb && fb.evaluationStatus === "Succeeded" && fb.score !== null));
+            const isTeaser = Boolean(fb?.isTeaser) || (isFreeTeaser && !isLocked && fb?.evaluationStatus === "Succeeded");
+            const hasEval = !isLocked && fb && fb.evaluationStatus === "Succeeded" && fb.score !== null;
             return (
               <motion.div
                 key={q.id}
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.3 + i * 0.08 }}
-                className="hr-glass-card p-6"
+                className={cn("hr-glass-card p-6", isLocked && "relative overflow-hidden")}
               >
                 {/* Question header — always-visible summary, click to expand */}
                 <button
-                  onClick={() => toggleExpanded(q.id)}
+                  onClick={() => {
+                    if (isLocked) {
+                      setUpgradeOpen(true);
+                      return;
+                    }
+                    toggleExpanded(q.id);
+                  }}
                   className="w-full flex items-start justify-between gap-4 text-left cursor-pointer"
                 >
                   <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-2">
+                    <div className="flex items-center gap-2 mb-2 flex-wrap">
                       <CategoryPill category={q.questionType} label={translateQuestionCategory(q.questionType, lang)} />
                       <span className={cn("text-[12px]", portalSubtextAlt)}>Q{i + 1}</span>
+                      {isTeaser && (
+                        <span className="text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400">
+                          {p.freemium.teaserBadge}
+                        </span>
+                      )}
+                      {isLocked && (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full bg-[#6c47ff]/10 text-[#6c47ff]">
+                          <Lock size={10} />
+                          {p.freemium.lockedBadge}
+                        </span>
+                      )}
                       {hasEval && (
                         <Pill className={cn("text-[11px] font-[700] px-2 py-0.5 ml-auto", getScoreBadgeClass(fb.score as number))}>
                           {fb.score}%
                         </Pill>
                       )}
                     </div>
-                    <QuestionContent text={q.question} className={cn("text-[15px] font-bold leading-6", portalHeadingAlt)} />
+                    <QuestionContent
+                      text={q.question}
+                      className={cn("text-[15px] font-bold leading-6", portalHeadingAlt, isLocked && "blur-[2px] select-none")}
+                    />
                   </div>
-                  <ChevronDown
-                    size={16}
-                    className={cn("text-gray-400 dark:text-gray-500 transition-transform duration-200 shrink-0 mt-1", isExpanded && "rotate-180")}
-                  />
+                  {isLocked ? (
+                    <Lock size={16} className="text-[#6c47ff] shrink-0 mt-1" />
+                  ) : (
+                    <ChevronDown
+                      size={16}
+                      className={cn("text-gray-400 dark:text-gray-500 transition-transform duration-200 shrink-0 mt-1", isExpanded && "rotate-180")}
+                    />
+                  )}
                 </button>
 
+                {isLocked && (
+                  <div className="mt-4 flex flex-col items-start gap-2 rounded-lg border border-[#6c47ff]/20 bg-[#6c47ff]/[0.04] p-4">
+                    <p className={cn("text-[13px] font-semibold", portalHeadingAlt)}>{p.freemium.lockedPreviewTitle}</p>
+                    <p className={cn("text-[12px] leading-5", portalSubtextAlt)}>{p.freemium.lockedHint}</p>
+                    <button
+                      type="button"
+                      onClick={() => setUpgradeOpen(true)}
+                      className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-primary hover:underline"
+                    >
+                      <Sparkles size={12} />
+                      {p.freemium.upsellCta}
+                    </button>
+                  </div>
+                )}
+
                 <AnimatePresence initial={false}>
-                  {isExpanded && (
+                  {isExpanded && !isLocked && (
                     <motion.div
                       initial={{ height: 0, opacity: 0 }}
                       animate={{ height: "auto", opacity: 1 }}
@@ -570,10 +658,14 @@ export function FeedbackPage({ session, feedback, aiInsight, scoring, setTitle, 
                       className="overflow-hidden"
                     >
                       <div className="pt-5 flex flex-col gap-4">
-                        {/* Your answer */}
+                        {/* Your answer — kể cả để trống vẫn hiện card */}
                         <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4 border border-gray-100 dark:border-gray-700/50">
                           <p className={cn("text-[11px] font-[700] uppercase tracking-wide mb-2", portalSubtextAlt)}>{p.yourAnswer}</p>
-                          <QuestionContent text={q.answerText ?? ""} className={cn("text-[13px] leading-[22px]", portalHeadingAlt)} />
+                          {q.answerText?.trim() ? (
+                            <QuestionContent text={q.answerText} className={cn("text-[13px] leading-[22px]", portalHeadingAlt)} />
+                          ) : (
+                            <p className={cn("text-[13px] italic leading-[22px]", portalSubtextAlt)}>{p.noAnswer}</p>
+                          )}
                         </div>
 
                         {/* AI evaluation — only when this question's evaluation actually succeeded */}
@@ -624,6 +716,17 @@ export function FeedbackPage({ session, feedback, aiInsight, scoring, setTitle, 
             );
           })}
         </motion.div>
+      )}
+
+      {upgradeOpen && (
+        <UpgradeModal
+          onClose={() => setUpgradeOpen(false)}
+          onDone={() => {
+            setUpgradeOpen(false);
+            // Reload trang result để lấy Full feedback sau khi nâng Premium
+            if (typeof window !== "undefined") window.location.reload();
+          }}
+        />
       )}
     </div>
   );

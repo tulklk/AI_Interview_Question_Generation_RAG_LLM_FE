@@ -10,15 +10,53 @@ import { useLanguage } from "@/shared/providers/language-context";
 type StudioTask = "streaming" | "generating" | null;
 
 const STUDIO_TASK_KEY = "studio_active_task";
+const STUDIO_ACTIVE_PROJECT_KEY = "studio_active_project_id";
 
-function readTask(): StudioTask {
-  try { return localStorage.getItem(STUDIO_TASK_KEY) as StudioTask; }
-  catch { return null; }
+type StudioTaskPayload = {
+  task: StudioTask;
+  projectId: string | null;
+};
+
+/** SCRUM-402: đọc JSON { task, projectId } hoặc legacy string "generating"|"streaming" */
+function parseTaskPayload(raw: string | null): StudioTaskPayload {
+  if (!raw) return { task: null, projectId: null };
+  if (raw === "streaming" || raw === "generating") {
+    return { task: raw, projectId: null };
+  }
+  try {
+    const parsed = JSON.parse(raw) as { task?: StudioTask; projectId?: string | null };
+    if (parsed.task === "streaming" || parsed.task === "generating") {
+      return { task: parsed.task, projectId: parsed.projectId ?? null };
+    }
+  } catch {
+    /* ignore */
+  }
+  return { task: null, projectId: null };
+}
+
+function readTaskPayload(): StudioTaskPayload {
+  try {
+    return parseTaskPayload(localStorage.getItem(STUDIO_TASK_KEY));
+  } catch {
+    return { task: null, projectId: null };
+  }
+}
+
+function goToStudio(router: ReturnType<typeof useRouter>, projectId: string | null) {
+  if (projectId) {
+    try {
+      localStorage.setItem(STUDIO_ACTIVE_PROJECT_KEY, projectId);
+    } catch {
+      /* ignore */
+    }
+  }
+  router.push("/hr/generate-v2");
 }
 
 export function StudioProgressBadge() {
   const [mounted, setMounted] = useState(false);
   const [task, setTask] = useState<StudioTask>(null);
+  const [projectId, setProjectId] = useState<string | null>(null);
   const [dismissed, setDismissed] = useState(false);
   const [visible, setVisible] = useState(false);
   const pathname = usePathname();
@@ -27,20 +65,24 @@ export function StudioProgressBadge() {
 
   useEffect(() => {
     setMounted(true);
-    setTask(readTask());
+    const payload = readTaskPayload();
+    setTask(payload.task);
+    setProjectId(payload.projectId);
   }, []);
 
   useEffect(() => {
     function handleCustom(e: Event) {
-      const t = (e as CustomEvent<{ task: StudioTask }>).detail.task;
-      setTask(t);
-      if (t) setDismissed(false);
+      const detail = (e as CustomEvent<{ task: StudioTask; projectId?: string | null }>).detail;
+      setTask(detail.task);
+      setProjectId(detail.projectId ?? null);
+      if (detail.task) setDismissed(false);
     }
     function handleStorage(e: StorageEvent) {
       if (e.key !== STUDIO_TASK_KEY) return;
-      const t = (e.newValue ?? null) as StudioTask;
-      setTask(t);
-      if (t) setDismissed(false);
+      const payload = parseTaskPayload(e.newValue);
+      setTask(payload.task);
+      setProjectId(payload.projectId);
+      if (payload.task) setDismissed(false);
     }
     window.addEventListener("studio:task-changed", handleCustom);
     window.addEventListener("storage", handleStorage);
@@ -75,8 +117,12 @@ export function StudioProgressBadge() {
       <div
         role={!onStudioPage ? "button" : undefined}
         tabIndex={!onStudioPage ? 0 : undefined}
-        onClick={() => { if (!onStudioPage) router.push("/hr/generate-v2"); }}
-        onKeyDown={(e) => { if (!onStudioPage && (e.key === "Enter" || e.key === " ")) router.push("/hr/generate-v2"); }}
+        onClick={() => { if (!onStudioPage) goToStudio(router, projectId); }}
+        onKeyDown={(e) => {
+          if (!onStudioPage && (e.key === "Enter" || e.key === " ")) {
+            goToStudio(router, projectId);
+          }
+        }}
         className={cn(
           "relative flex items-center gap-2.5 pl-3 pr-3 py-2.5 rounded-2xl shadow-2xl select-none",
           "bg-white dark:bg-gray-900",
