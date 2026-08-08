@@ -1,14 +1,21 @@
-import type { Metadata } from "next";
+"use client";
+
 import { AppShell } from "@/features/hr/components/layout/app-shell";
 import { RecommendationsList } from "@/features/hr/components/recommendations/recommendations-list";
-
-export const metadata: Metadata = {
-  title: "Candidate Recommendations",
-};
+import { useLanguage } from "@/shared/providers/language-context";
 
 export default function CandidateRecommendationsPage() {
+  const { t } = useLanguage();
+  const title = t.appShell.routes["/hr/candidate-recommendations"];
+
   return (
-    <AppShell pageTitle="Candidate Recommendations" breadcrumb={[{ label: "Candidate Recommendations" }]}>
+    <AppShell
+      pageTitle={title}
+      breadcrumb={[
+        { label: t.appShell.breadcrumb.hr, href: "/hr/dashboard" },
+        { label: title },
+      ]}
+    >
       <RecommendationsList />
     </AppShell>
   );

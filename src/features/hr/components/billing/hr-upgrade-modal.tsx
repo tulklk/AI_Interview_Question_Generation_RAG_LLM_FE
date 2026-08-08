@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { X, Check, Zap, Loader2 } from "lucide-react";
+import { X, Check, Loader2 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { useLanguage } from "@/shared/providers/language-context";
 import type { HrPlanId } from "@/features/hr/types/hr-subscription";
@@ -66,25 +66,20 @@ export function HrUpgradeModal({ onClose }: Props) {
         transition={{ duration: 0.22, ease: "easeOut" }}
         className="relative z-10 w-full max-w-sm overflow-y-auto rounded-2xl bg-white dark:bg-gray-900 shadow-2xl border border-gray-200 dark:border-gray-700"
       >
-        <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-gray-100 dark:border-gray-800">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-violet-100 dark:bg-violet-950/50 flex items-center justify-center shrink-0">
-              <Zap size={16} className="text-violet-600 dark:text-violet-400" />
-            </div>
-            <div>
-              <h2 className={cn("text-[15px] font-bold leading-tight", portalHeading)}>
-                {sub.sectionTitle}
-              </h2>
-              <p className={cn("text-[11px] mt-0.5", portalSubtext)}>{sub.sectionSubtitle}</p>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors shrink-0"
-          >
-            <X size={16} />
-          </button>
+        {/* Close button — pinned to top-right corner of the panel */}
+        <button
+          type="button"
+          onClick={onClose}
+          className="absolute top-2.5 right-2.5 z-10 w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+        >
+          <X size={15} />
+        </button>
+
+        <div className="px-6 pt-6 pb-4 border-b border-gray-100 dark:border-gray-800">
+          <h2 className={cn("text-[15px] font-bold leading-tight pr-8", portalHeading)}>
+            {sub.sectionTitle}
+          </h2>
+          <p className={cn("text-[11px] mt-0.5", portalSubtext)}>{sub.sectionSubtitle}</p>
         </div>
 
         <div className="p-6">

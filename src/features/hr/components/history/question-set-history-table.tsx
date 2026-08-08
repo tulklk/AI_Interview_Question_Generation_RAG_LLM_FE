@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 import {
   Check,
   Bookmark,
+  ChevronLeft,
+  ChevronRight,
   Download,
   Eye,
   FileText,
@@ -72,6 +74,8 @@ function PublishBadge({
   );
 }
 
+const PAGE_SIZE = 10;
+
 const iconBtn =
   "inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700 disabled:opacity-40 dark:hover:bg-gray-800 dark:hover:text-gray-200";
 
@@ -101,6 +105,10 @@ export function QuestionSetHistoryTable({ filter = "all" }: QuestionSetHistoryTa
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState("");
   const [savingTitle, setSavingTitle] = useState(false);
+  const [page, setPage] = useState(1);
+  const [sourceFilter, setSourceFilter] = useState<"all" | "studio" | "legacy">("all");
+  const [questionFilter, setQuestionFilter] = useState<"all" | "1-5" | "6-10" | "11-20" | "21+">("all");
+  const [dateSort, setDateSort] = useState<"newest" | "oldest">("newest");
 
   const reload = useCallback(async () => {
     setLoading(true);
@@ -120,16 +128,43 @@ export function QuestionSetHistoryTable({ filter = "all" }: QuestionSetHistoryTa
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return items.filter((item) => {
+    const result = items.filter((item) => {
+      // Tab filter
       if (filter === "bookmarked") {
         if (!item.isBookmarked) return false;
       } else if (filter === "DRAFT" || filter === "PUBLISHED") {
         if (item.status !== filter) return false;
       }
+      // Search
       if (q && !item.title.toLowerCase().includes(q)) return false;
+      // Source filter
+      if (sourceFilter === "studio" && !item.sourceProjectId) return false;
+      if (sourceFilter === "legacy" && item.sourceProjectId) return false;
+      // Question count filter
+      const count = item.questionCount;
+      if (questionFilter === "1-5"   && (count < 1  || count > 5))  return false;
+      if (questionFilter === "6-10"  && (count < 6  || count > 10)) return false;
+      if (questionFilter === "11-20" && (count < 11 || count > 20)) return false;
+      if (questionFilter === "21+"   && count < 21)                  return false;
       return true;
     });
-  }, [items, search, filter]);
+    // Sort by date
+    return [...result].sort((a, b) => {
+      const dA = new Date(a.publishedAt ?? a.savedAt).getTime();
+      const dB = new Date(b.publishedAt ?? b.savedAt).getTime();
+      return dateSort === "newest" ? dB - dA : dA - dB;
+    });
+  }, [items, search, filter, sourceFilter, questionFilter, dateSort]);
+
+  // Reset to page 1 when any filter / search changes
+  useEffect(() => { setPage(1); }, [filter, search, sourceFilter, questionFilter, dateSort]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const paginated = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+
+  // Key changes on every tab/page switch → re-mounts content div → CSS animation replays
+  const contentKey = `${filter}-${safePage}`;
 
   function openStudio(projectId: string) {
     try {
@@ -137,7 +172,7 @@ export function QuestionSetHistoryTable({ filter = "all" }: QuestionSetHistoryTa
     } catch {
       /* ignore */
     }
-    router.push("/hr/generate-v2");
+    router.push("/hr/generate-question");
   }
 
   async function handleBookmark(item: HistoryQuestionSetItem) {
@@ -258,33 +293,121 @@ export function QuestionSetHistoryTable({ filter = "all" }: QuestionSetHistoryTa
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3" style={{ overflowY: "hidden" }}>
       <div className="flex flex-wrap items-center gap-2">
+        {/* Search */}
         <input
           type="search"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder={filters.searchPlaceholder}
-          className="min-w-[200px] flex-1 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-[13px] outline-none focus:border-primary/40 dark:border-gray-700 dark:bg-gray-900"
+          style={{ animation: "slideUpFade 0.32s cubic-bezier(0.25,0.46,0.45,0.94) both" }}
+          className="w-full sm:w-72 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-[13px] outline-none focus:border-primary/40 dark:border-gray-700 dark:bg-gray-900"
         />
+
+        {/* Nguồn */}
+        <select
+          value={sourceFilter}
+          onChange={(e) => setSourceFilter(e.target.value as typeof sourceFilter)}
+          style={{ animation: "slideUpFade 0.32s cubic-bezier(0.25,0.46,0.45,0.94) both 0.05s" }}
+          className={cn(
+            "cursor-pointer rounded-lg border px-2.5 py-1.5 text-[12px] font-medium outline-none transition-colors",
+            "bg-white dark:bg-gray-900",
+            sourceFilter !== "all"
+              ? "border-primary/50 text-primary dark:border-primary/40 dark:text-primary"
+              : "border-gray-200 text-gray-600 dark:border-gray-700 dark:text-gray-300",
+            "focus:border-primary/60"
+          )}
+        >
+          <option value="all">Nguồn: Tất cả</option>
+          <option value="studio">Studio</option>
+          <option value="legacy">Legacy</option>
+        </select>
+
+        {/* Số câu hỏi */}
+        <select
+          value={questionFilter}
+          onChange={(e) => setQuestionFilter(e.target.value as typeof questionFilter)}
+          style={{ animation: "slideUpFade 0.32s cubic-bezier(0.25,0.46,0.45,0.94) both 0.1s" }}
+          className={cn(
+            "cursor-pointer rounded-lg border px-2.5 py-1.5 text-[12px] font-medium outline-none transition-colors",
+            "bg-white dark:bg-gray-900",
+            questionFilter !== "all"
+              ? "border-primary/50 text-primary dark:border-primary/40 dark:text-primary"
+              : "border-gray-200 text-gray-600 dark:border-gray-700 dark:text-gray-300",
+            "focus:border-primary/60"
+          )}
+        >
+          <option value="all">Số câu: Tất cả</option>
+          <option value="1-5">1–5 câu</option>
+          <option value="6-10">6–10 câu</option>
+          <option value="11-20">11–20 câu</option>
+          <option value="21+">21+ câu</option>
+        </select>
+
+        {/* Ngày */}
+        <select
+          value={dateSort}
+          onChange={(e) => setDateSort(e.target.value as typeof dateSort)}
+          style={{ animation: "slideUpFade 0.32s cubic-bezier(0.25,0.46,0.45,0.94) both 0.15s" }}
+          className={cn(
+            "cursor-pointer rounded-lg border px-2.5 py-1.5 text-[12px] font-medium outline-none transition-colors",
+            "bg-white dark:bg-gray-900",
+            dateSort !== "newest"
+              ? "border-primary/50 text-primary dark:border-primary/40 dark:text-primary"
+              : "border-gray-200 text-gray-600 dark:border-gray-700 dark:text-gray-300",
+            "focus:border-primary/60"
+          )}
+        >
+          <option value="newest">Ngày: Mới nhất</option>
+          <option value="oldest">Ngày: Cũ nhất</option>
+        </select>
+
+        {/* Xóa lọc — chỉ hiện khi có filter đang active */}
+        {(sourceFilter !== "all" || questionFilter !== "all" || dateSort !== "newest" || search.trim()) && (
+          <button
+            type="button"
+            onClick={() => {
+              setSourceFilter("all");
+              setQuestionFilter("all");
+              setDateSort("newest");
+              setSearch("");
+            }}
+            style={{ animation: "scaleInFade 0.3s cubic-bezier(0.34,1.56,0.64,1) both" }}
+            className="inline-flex items-center gap-1 rounded-lg border border-gray-200 px-2 py-1.5 text-[12px] text-gray-500 transition-colors hover:border-red-300 hover:text-red-600 dark:border-gray-700 dark:text-gray-400 dark:hover:border-red-800 dark:hover:text-red-400"
+          >
+            <X size={11} />
+            Xóa lọc
+          </button>
+        )}
       </div>
 
       {items.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-gray-200 px-6 py-12 text-center dark:border-gray-700">
+        <div
+          className="rounded-xl border border-dashed border-gray-200 px-6 py-12 text-center dark:border-gray-700"
+          style={{ animation: "fadeIn 0.4s ease-out both 0.1s" }}
+        >
           <Inbox className="mx-auto mb-2 h-8 w-8 text-gray-300" />
           <p className={cn("text-sm font-medium", portalHeading)}>{t.historyPage.emptyTitle}</p>
           <p className={cn("mt-1 text-[12px]", portalSubtext)}>{t.historyPage.emptyBody}</p>
-          <Link href="/hr/generate-v2" className="mt-3 inline-block text-[13px] font-semibold text-primary">
+          <Link href="/hr/generate-question" className="mt-3 inline-block text-[13px] font-semibold text-primary">
             {t.historyPage.openStudio}
           </Link>
         </div>
       ) : filtered.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-gray-200 px-6 py-10 text-center dark:border-gray-700">
+        <div
+          className="rounded-xl border border-dashed border-gray-200 px-6 py-10 text-center dark:border-gray-700"
+          style={{ animation: "fadeIn 0.3s ease-out both" }}
+        >
           <SearchX className="mx-auto mb-2 h-7 w-7 text-gray-300" />
           <p className={cn("text-[13px]", portalSubtext)}>{t.historyPage.noFilterResults}</p>
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-950/40">
+        <div
+          key={contentKey}
+          style={{ animation: "fadeIn 0.2s ease-out both" }}
+          className="overflow-x-auto rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-950/40"
+        >
           <table className="w-full min-w-[880px] table-fixed text-[13px]">
             <colgroup>
               <col style={{ width: "36%" }} />
@@ -317,12 +440,13 @@ export function QuestionSetHistoryTable({ filter = "all" }: QuestionSetHistoryTa
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 dark:divide-gray-800/70">
-              {filtered.map((item) => {
+              {paginated.map((item, rowIdx) => {
                 const busy = busyId === item.questionSetId;
                 return (
                   <tr
                     key={item.questionSetId}
                     className="hover:bg-gray-50/70 dark:hover:bg-gray-900/40"
+                    style={{ animation: `fadeIn 0.28s ease-out both ${rowIdx * 0.04}s` }}
                   >
                     <td className={cn(tdCls, "overflow-hidden")}>
                       {editingId === item.questionSetId ? (
@@ -469,6 +593,64 @@ export function QuestionSetHistoryTable({ filter = "all" }: QuestionSetHistoryTa
               })}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* ── Pagination ─────────────────────────────────────────────────────── */}
+      {totalPages > 1 && (
+        <div
+          className="flex items-center justify-between gap-4 px-1 py-1"
+          style={{ animation: "fadeIn 0.35s ease-out both 0.15s" }}
+        >
+          <p className={cn("text-xs", portalSubtext)}>
+            {(safePage - 1) * PAGE_SIZE + 1}–{Math.min(safePage * PAGE_SIZE, filtered.length)} / {filtered.length}
+          </p>
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={safePage === 1}
+              className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              <ChevronLeft size={14} />
+            </button>
+
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => {
+              const isFirst = p === 1;
+              const isLast = p === totalPages;
+              const nearCurrent = Math.abs(p - safePage) <= 1;
+              if (!isFirst && !isLast && !nearCurrent) {
+                if (p === 2 || p === totalPages - 1) {
+                  return <span key={p} className={cn("text-xs px-0.5", portalSubtext)}>…</span>;
+                }
+                return null;
+              }
+              return (
+                <button
+                  key={p}
+                  type="button"
+                  onClick={() => setPage(p)}
+                  className={cn(
+                    "inline-flex h-7 min-w-7 px-1.5 items-center justify-center rounded-lg text-xs font-medium transition-colors",
+                    p === safePage
+                      ? "bg-primary text-white shadow-sm"
+                      : "border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
+                  )}
+                >
+                  {p}
+                </button>
+              );
+            })}
+
+            <button
+              type="button"
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={safePage === totalPages}
+              className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              <ChevronRight size={14} />
+            </button>
+          </div>
         </div>
       )}
 

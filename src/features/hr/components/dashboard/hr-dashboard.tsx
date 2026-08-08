@@ -508,7 +508,7 @@ export function HrDashboard() {
             <div className="flex flex-col items-center justify-center py-10 gap-2">
               <History size={28} className="text-gray-300 dark:text-gray-700" />
               <p className={cn("text-[12px]", portalSubtextAlt)}>{p.recentSessions.empty}</p>
-              <Link href="/hr/generate-v2" className="text-[12px] font-semibold text-primary hover:underline mt-1">
+              <Link href="/hr/generate-question" className="text-[12px] font-semibold text-primary hover:underline mt-1">
                 {p.quickActions.generate} →
               </Link>
             </div>
@@ -533,7 +533,7 @@ export function HrDashboard() {
                   return (
                     <Link
                       key={session.id}
-                      href="/hr/generate-v2"
+                      href="/hr/generate-question"
                       onClick={() => {
                         try {
                           localStorage.setItem("studio_active_project_id", session.id);
@@ -619,7 +619,7 @@ export function HrDashboard() {
           {/* Quick Actions */}
           <motion.div className="hr-glass-card p-2" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}>
             <p className={cn("text-[11px] font-semibold uppercase tracking-wider px-3 pt-3 pb-1", portalSubtextAlt)}>{p.quickActions.title}</p>
-            <QuickAction icon={Zap} iconBg="bg-violet-100 dark:bg-violet-950/50" iconColor="text-violet-600 dark:text-violet-400" label={p.quickActions.generate} desc={p.quickActions.generateDesc} href="/hr/generate-v2" />
+            <QuickAction icon={Zap} iconBg="bg-violet-100 dark:bg-violet-950/50" iconColor="text-violet-600 dark:text-violet-400" label={p.quickActions.generate} desc={p.quickActions.generateDesc} href="/hr/generate-question" />
             <QuickAction icon={History} iconBg="bg-gray-100 dark:bg-gray-800" iconColor="text-gray-600 dark:text-gray-400" label={p.quickActions.history} desc={p.quickActions.historyDesc} href="/hr/history" />
             <QuickAction icon={Users} iconBg="bg-blue-100 dark:bg-blue-950/50" iconColor="text-blue-600 dark:text-blue-400" label={p.quickActions.candidates} desc={p.quickActions.candidatesDesc} href="/hr/candidate-recommendations" />
             <QuickAction icon={Settings} iconBg="bg-emerald-100 dark:bg-emerald-950/50" iconColor="text-emerald-600 dark:text-emerald-400" label={p.quickActions.settings} desc={p.quickActions.settingsDesc} href="/hr/settings" />
