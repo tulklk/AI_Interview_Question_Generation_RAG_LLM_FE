@@ -778,6 +778,7 @@ export function UserDetailPanel({
         onConfirm={() => void handleRevokeConfirm()}
         onCancel={() => setRevokeOpen(false)}
       />
+
     </>
   );
 }

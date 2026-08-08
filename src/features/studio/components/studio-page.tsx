@@ -61,9 +61,23 @@ export function StudioPage() {
   // flag: the latter flips back to true on every refresh, which would make the dialog blink.
   const quotaBlocked = subscription !== null && !canGenerateNow;
 
+  // A generation run is "in flight" when:
+  //   (a) the while-loop inside generateQuestions() is actively polling  → isGeneratingQuestions=true
+  //   (b) the page was reloaded mid-run and the bootstrap useEffect is   → generationRun.status=Generating|Pending
+  //       polling via setInterval (isGeneratingQuestions stays false here)
+  // Both paths must suppress the quota dialog so we never block an already-started run.
+  const isRunInProgress =
+    studio.isGeneratingQuestions ||
+    studio.generationRun?.status === "Generating" ||
+    studio.generationRun?.status === "Pending";
+
   // The quota dialog is derived state, not user-dismissible: it stays up until the cooldown
   // expires or the user upgrades. The only ways out are its two navigation buttons.
-  const showQuotaDialog = quotaBlocked;
+  // Suppressed while a generation or plan stream is already in flight — the quota is consumed
+  // at the moment the request lands, so blocking mid-run would waste work already started.
+  // The dialog surfaces automatically the moment the in-flight run completes or fails.
+  const showQuotaDialog =
+    quotaBlocked && !isRunInProgress && !studio.isStreaming;
 
   // Since the dialog can't be dismissed, re-check the subscription when the cooldown expires and
   // whenever the tab regains focus (e.g. the user upgraded in another tab), so it lifts by itself.

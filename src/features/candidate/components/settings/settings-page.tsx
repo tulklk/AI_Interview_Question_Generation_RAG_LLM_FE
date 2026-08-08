@@ -179,7 +179,7 @@ export function SettingsPage() {
                 <CreditCard size={12} className={iconColor} />
               </div>
               <div className="flex-1 min-w-0">
-                <p className={cn("text-xs font-semibold", portalHeading)}>
+                <p className={cn("text-xs font-semibold truncate", portalHeading)}>
                   {isPremium ? p.billing.premiumBadge : p.billing.freeBadge}
                 </p>
                 <p className="text-[10px] font-semibold text-[#7C3AED] dark:text-[#a78bff]">
