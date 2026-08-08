@@ -10,7 +10,6 @@ import {
   Settings,
   BookOpen,
   Users,
-  Blocks,
 } from "lucide-react";
 import type {
   StatItem,
@@ -28,13 +27,8 @@ export const navItems: NavItem[] = [
   },
   {
     label: "Generate Questions",
-    href: "/hr/generate-v2",
+    href: "/hr/generate-question",
     icon: Wand2,
-  },
-  {
-    label: "Question Builder",
-    href: "/hr/question-builder",
-    icon: Blocks,
   },
   {
     label: "Question Sets",

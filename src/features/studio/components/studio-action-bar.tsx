@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { CheckCircle2, Clock, Globe, GlobeLock, Loader2, Save, Sparkles } from "lucide-react";
+import { Check, CheckCircle2, Clock, Globe, GlobeLock, Loader2, Save, Sparkles } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { useLanguage } from "@/shared/providers/language-context";
 import type { PlanDetail } from "@/features/studio/types/studio.types";
@@ -17,6 +17,8 @@ interface StudioActionBarProps {
   canGenerate: boolean;
   skillCount?: number;
   isPublished?: boolean;
+  isSavingDraft?: boolean;
+  isDraftSaved?: boolean;
   onCreatePlan: () => void;
   onApprovePlan: () => void;
   onGenerateQuestions: () => void;
@@ -34,6 +36,8 @@ export function StudioActionBar({
   canGenerate,
   skillCount = 0,
   isPublished = false,
+  isSavingDraft = false,
+  isDraftSaved = false,
   onCreatePlan,
   onApprovePlan,
   onGenerateQuestions,
@@ -127,18 +131,30 @@ export function StudioActionBar({
 
         <button
           type="button"
-          disabled={isBusy}
+          disabled={isBusy || isSavingDraft || isDraftSaved}
           onClick={onSaveDraft}
           className={cn(
             "hidden shrink-0 items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium",
-            "border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-100 hover:text-gray-900",
-            "dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:border-gray-600 dark:hover:bg-gray-800 dark:hover:text-gray-100",
-            "disabled:cursor-not-allowed disabled:opacity-50",
+            isDraftSaved
+              ? "border-emerald-200 bg-emerald-50 text-emerald-700 disabled:cursor-default dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300"
+              : [
+                  "border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-100 hover:text-gray-900",
+                  "dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:border-gray-600 dark:hover:bg-gray-800 dark:hover:text-gray-100",
+                  "disabled:cursor-not-allowed disabled:opacity-50",
+                ],
             "transition-colors sm:inline-flex"
           )}
         >
-          <Save className="h-3.5 w-3.5" />
-          <span className="hidden lg:inline">{s.save}</span>
+          {isSavingDraft ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : isDraftSaved ? (
+            <Check className="h-3.5 w-3.5" />
+          ) : (
+            <Save className="h-3.5 w-3.5" />
+          )}
+          <span className="hidden lg:inline">
+            {isSavingDraft ? s.saving : isDraftSaved ? s.saved : s.save}
+          </span>
         </button>
 
         {/* Publish toggle — only when questions are ready */}

@@ -1,19 +1,30 @@
-import type { Metadata } from "next";
+"use client";
+
+import { use } from "react";
 import { AppShell } from "@/features/hr/components/layout/app-shell";
 import { RecommendationDetail } from "@/features/hr/components/recommendations/recommendation-detail";
-
-export const metadata: Metadata = {
-  title: "Candidate Detail",
-};
+import { useLanguage } from "@/shared/providers/language-context";
 
 interface Props {
   params: Promise<{ id: string }>;
 }
 
-export default async function CandidateRecommendationDetailPage({ params }: Props) {
-  const { id } = await params;
+export default function CandidateRecommendationDetailPage({ params }: Props) {
+  const { id } = use(params);
+  const { t } = useLanguage();
+
   return (
-    <AppShell pageTitle="Candidate Detail" breadcrumb={[{ label: "Candidate Recommendations", href: "/hr/candidate-recommendations" }, { label: "Detail" }]}>
+    <AppShell
+      pageTitle={t.hrRecommendationsPage.detailHeading}
+      breadcrumb={[
+        { label: t.appShell.breadcrumb.hr, href: "/hr/dashboard" },
+        {
+          label: t.appShell.routes["/hr/candidate-recommendations"],
+          href: "/hr/candidate-recommendations",
+        },
+        { label: t.appShell.breadcrumb.detail },
+      ]}
+    >
       <RecommendationDetail id={id} />
     </AppShell>
   );

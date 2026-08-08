@@ -7,7 +7,7 @@ export default function HrGenerateManualPage() {
   const router = useRouter();
 
   useEffect(() => {
-    router.replace("/hr/question-builder");
+    router.replace("/hr/generate-question/manual");
   }, [router]);
 
   return null;

@@ -22,22 +22,38 @@ function HistoryPageBody() {
   const filter = useMemo(() => parseFilter(searchParams.get("filter")), [searchParams]);
 
   return (
-    <div className="animate-fade-up">
-      <div className="mb-4 flex items-start justify-between gap-3">
+    <div>
+      <div
+        className="mb-4 flex items-start justify-between gap-3"
+        style={{ animation: "slideUpFade 0.38s cubic-bezier(0.25,0.46,0.45,0.94) both" }}
+      >
         <div>
-          <h2 className={cn("text-xl font-bold", portalHeading)}>{t.historyPage.heading}</h2>
-          <p className={cn("mt-0.5 text-[13px]", portalSubtext)}>{t.historyPage.subtext}</p>
+          <h2
+            className={cn("text-xl font-bold", portalHeading)}
+            style={{ animation: "slideUpFade 0.38s cubic-bezier(0.25,0.46,0.45,0.94) both" }}
+          >
+            {t.historyPage.heading}
+          </h2>
+          <p
+            className={cn("mt-0.5 text-[13px]", portalSubtext)}
+            style={{ animation: "slideUpFade 0.38s cubic-bezier(0.25,0.46,0.45,0.94) both 0.06s" }}
+          >
+            {t.historyPage.subtext}
+          </p>
         </div>
         <Link
-          href="/hr/generate-v2"
+          href="/hr/generate-question"
           className="hr-cta-btn inline-flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-[13px] font-semibold text-white"
+          style={{ animation: "scaleInFade 0.4s cubic-bezier(0.34,1.56,0.64,1) both 0.1s" }}
         >
           <Plus className="h-3.5 w-3.5" />
           {t.historyPage.openStudio}
         </Link>
       </div>
 
-      <QuestionSetHistoryTable filter={filter} />
+      <div style={{ animation: "fadeIn 0.42s ease-out both 0.12s" }}>
+        <QuestionSetHistoryTable filter={filter} />
+      </div>
     </div>
   );
 }

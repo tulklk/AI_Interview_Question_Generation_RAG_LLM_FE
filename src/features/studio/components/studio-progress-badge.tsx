@@ -50,7 +50,7 @@ function goToStudio(router: ReturnType<typeof useRouter>, projectId: string | nu
       /* ignore */
     }
   }
-  router.push("/hr/generate-v2");
+  router.push("/hr/generate-question");
 }
 
 export function StudioProgressBadge() {
@@ -61,7 +61,7 @@ export function StudioProgressBadge() {
   const [visible, setVisible] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
-  const onStudioPage = pathname === "/hr/generate-v2";
+  const onStudioPage = pathname === "/hr/generate-question";
 
   useEffect(() => {
     setMounted(true);

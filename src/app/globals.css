@@ -214,9 +214,23 @@
   0%, 100% { filter: drop-shadow(0 0  0px rgba(255,255,255,0));    }
   50%       { filter: drop-shadow(0 0  5px rgba(255,255,255,0.85)); }
 }
+@keyframes slideTabFromRight {
+  from { opacity: 0; transform: translateX(20px); }
+  to   { opacity: 1; transform: translateX(0);    }
+}
+@keyframes slideTabFromLeft {
+  from { opacity: 0; transform: translateX(-20px); }
+  to   { opacity: 1; transform: translateX(0);     }
+}
+/* Mobile-only tab-switch animations (override inline style on < lg) */
+@media (max-width: 1023px) {
+  .slide-tab-right { animation: slideTabFromRight 0.22s cubic-bezier(0.25, 0.46, 0.45, 0.94) both !important; }
+  .slide-tab-left  { animation: slideTabFromLeft  0.22s cubic-bezier(0.25, 0.46, 0.45, 0.94) both !important; }
+}
 
 @theme {
   /* Design system — see .cursor/skills/design-system/DESIGN.md */
+  --breakpoint-xs: 480px;
   --color-primary: #6c47ff;
   --color-primary-hover: #5a3dd9;
   --color-primary-active: #4b2fbf;

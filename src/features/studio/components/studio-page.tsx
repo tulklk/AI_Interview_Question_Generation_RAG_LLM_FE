@@ -1,8 +1,8 @@
 "use client";
 
-import { useMemo, useState, useEffect } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { ChevronLeft, ChevronRight, Clock, CreditCard, Database, SlidersHorizontal } from "lucide-react";
+import { ChevronLeft, ChevronRight, Clock, CreditCard, Database, MessageSquare, SlidersHorizontal } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { AiLoadingSpinner } from "@/shared/components/common/ai-loading-spinner";
 import { cn } from "@/lib/cn";
@@ -30,24 +30,78 @@ export function StudioPage() {
   const s = t.studioPage;
   const hs = t.hrSubscription;
   const router = useRouter();
-  const { canGenerateNow, cooldownEndsAt } = useHrSubscription();
+  const {
+    canGenerateNow,
+    cooldownEndsAt,
+    subscription,
+    refresh: refreshSubscription,
+  } = useHrSubscription();
   const [mounted, setMounted] = useState(false);
   const [sourcesCollapsed, setSourcesCollapsed] = useState(false);
+  const [inspectorCollapsed, setInspectorCollapsed] = useState(false);
+  const TAB_ORDER = ["sources", "main", "settings"] as const;
+  type MobileTab = typeof TAB_ORDER[number];
+  const [mobileTab, setMobileTab] = useState<MobileTab>("main");
+  const [tabAnimDir, setTabAnimDir] = useState<"left" | "right">("right");
+  const mobileTabRef = useRef<MobileTab>("main");
+
+  const switchMobileTab = useCallback((newTab: MobileTab) => {
+    const curTab = mobileTabRef.current;
+    const oldIdx = ["sources", "main", "settings"].indexOf(curTab);
+    const newIdx = ["sources", "main", "settings"].indexOf(newTab);
+    setTabAnimDir(newIdx >= oldIdx ? "right" : "left");
+    setMobileTab(newTab);
+    mobileTabRef.current = newTab;
+  }, []);
 
   useEffect(() => { setMounted(true); }, []);
-  const [inspectorCollapsed, setInspectorCollapsed] = useState(false);
 
-  // Main: dialog portal; WIP: cũng chặn action + JD input khi hết quota
-  const showQuotaDialog = !canGenerateNow;
-  const quotaBlocked = !canGenerateNow;
+  // quotaBlocked gates canGenerate / canCreatePlan AND drives the dialog. canGenerateNow defaults
+  // to true before any data arrives, so key off `subscription` rather than the context's `loading`
+  // flag: the latter flips back to true on every refresh, which would make the dialog blink.
+  const quotaBlocked = subscription !== null && !canGenerateNow;
+
+  // The quota dialog is derived state, not user-dismissible: it stays up until the cooldown
+  // expires or the user upgrades. The only ways out are its two navigation buttons.
+  const showQuotaDialog = quotaBlocked;
+
+  // Since the dialog can't be dismissed, re-check the subscription when the cooldown expires and
+  // whenever the tab regains focus (e.g. the user upgraded in another tab), so it lifts by itself.
+  useEffect(() => {
+    if (!quotaBlocked) return;
+
+    const onFocus = () => void refreshSubscription();
+    window.addEventListener("focus", onFocus);
+
+    const msLeft = cooldownEndsAt ? cooldownEndsAt.getTime() - Date.now() : -1;
+    const timer = msLeft > 0
+      ? window.setTimeout(() => void refreshSubscription(), msLeft + 1_000)
+      : undefined;
+
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      if (timer !== undefined) window.clearTimeout(timer);
+    };
+  }, [quotaBlocked, cooldownEndsAt, refreshSubscription]);
+
+  // Auto-switch to main tab on mobile when plan streaming starts
+  const wasStreamingRef = useRef(false);
+  useEffect(() => {
+    if (studio.isStreaming && !wasStreamingRef.current) switchMobileTab("main");
+    wasStreamingRef.current = studio.isStreaming;
+  }, [studio.isStreaming, switchMobileTab]);
+
+  // Auto-switch to main tab on mobile when question generation starts
+  const wasGeneratingRef = useRef(false);
+  useEffect(() => {
+    if (studio.isGeneratingQuestions && !wasGeneratingRef.current) switchMobileTab("main");
+    wasGeneratingRef.current = studio.isGeneratingQuestions;
+  }, [studio.isGeneratingQuestions, switchMobileTab]);
+
   const locale = lang === "vi" ? "vi-VN" : "en-US";
   const cooldownTimeStr = cooldownEndsAt
     ? cooldownEndsAt.toLocaleString(locale)
     : "";
-  const quotaBody = cooldownEndsAt
-    ? t.hrSubscription.quotaExceededBody.replace("{{time}}", cooldownTimeStr)
-    : t.hrSubscription.quotaExceededBody;
-
   const canGenerate = useMemo(
     () =>
       !quotaBlocked &&
@@ -63,15 +117,104 @@ export function StudioPage() {
     [studio.jdSummary, studio.settings?.readiness?.hasJobDescription, quotaBlocked]
   );
 
+  // "Tạo bộ câu hỏi mới" — the dialog is already covering the page when quota is exhausted,
+  // so just refuse to start a brand new session.
+  const handleNewSession = useCallback(() => {
+    if (quotaBlocked) return;
+    void studio.createNewSession();
+  }, [quotaBlocked, studio]);
+
+  // Wrap plan creation to immediately switch to main tab on mobile
+  const handleCreatePlan = useCallback(() => {
+    switchMobileTab("main");
+    studio.generateInitialPlan();
+  }, [studio, switchMobileTab]);
+
+  const handleGenerateQuestions = useCallback(() => {
+    if (quotaBlocked) return;
+    void studio.generateQuestions();
+  }, [quotaBlocked, studio]);
+
   const hasJd = Boolean(studio.jdContent?.trim()) || Boolean(studio.settings?.readiness?.hasJobDescription);
   const skillCount = studio.jdSummary?.skills?.length ?? 0;
 
   // Sources and inspector lock when questions are generated
   const sideColumnsLocked = studio.isGeneratingQuestions || studio.questions.length > 0;
 
+  // Quota-exceeded dialog — portal to body, flex layout masks sidebar+header.
+  // Rendered outside the main tree so it also shows while the studio is still bootstrapping.
+  // Not dismissible: no close button, no backdrop click, no Escape.
+  const quotaDialog = showQuotaDialog && mounted
+    ? createPortal(
+        <div className="fixed inset-0 z-50 flex pointer-events-none">
+          {/* Transparent spacer matching sidebar width (desktop) */}
+          <div className="hidden lg:block w-62.5 shrink-0" aria-hidden />
+
+          {/* Right column — mirrors the AppShell right pane */}
+          <div className="flex flex-1 flex-col">
+            {/* Transparent spacer matching header height */}
+            <div className="h-14 shrink-0" aria-hidden />
+
+            {/* Content area overlay — blocks every interaction behind it */}
+            <div className="pointer-events-auto flex flex-1 items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
+              <div
+                role="alertdialog"
+                aria-modal
+                aria-labelledby="quota-dialog-title"
+                aria-describedby="quota-dialog-desc"
+                className="relative w-full max-w-md animate-scale-in rounded-2xl border border-border dark:border-gray-700 bg-white dark:bg-gray-900 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.18)] dark:shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)]"
+              >
+                <div className="px-6 pb-5 pt-6 text-center">
+                  <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800 text-charcoal dark:text-gray-100">
+                    <Clock size={26} />
+                  </div>
+                  <h3
+                    id="quota-dialog-title"
+                    className="text-lg font-bold text-charcoal dark:text-gray-100"
+                  >
+                    {hs.quotaExceededTitle}
+                  </h3>
+                  <p
+                    id="quota-dialog-desc"
+                    className="mt-3 text-sm leading-relaxed text-gray-500 dark:text-gray-400"
+                  >
+                    {renderBold(
+                      hs.quotaExceededBody.replace("{{time}}", cooldownTimeStr),
+                      "font-semibold text-gray-800 dark:text-gray-100",
+                    )}
+                  </p>
+                </div>
+                <div className="border-t border-border dark:border-gray-700 px-6 py-4 space-y-2">
+                  <button
+                    type="button"
+                    onClick={() => router.push("/hr/settings?tab=billing")}
+                    className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-primary-hover"
+                  >
+                    <CreditCard size={15} />
+                    {hs.goToSubscription}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => router.push("/hr/generate-question/manual")}
+                    className="inline-flex min-h-9 w-full items-center justify-center gap-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 transition-colors hover:bg-gray-50 dark:hover:bg-gray-700"
+                  >
+                    {t.generatePage.quota.createManuallyBtn}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )
+    : null;
+
+  // Both branches return a root <div> whose first child is the portal, so React reconciles the
+  // dialog in place when `loading` flips — otherwise it remounts and its enter animation replays.
   if (studio.loading) {
     return (
       <div className="flex h-[calc(100vh-80px)] items-center justify-center">
+        {quotaDialog}
         <AiLoadingSpinner text={s.loading} />
       </div>
     );
@@ -79,14 +222,19 @@ export function StudioPage() {
 
   return (
     <div className="flex flex-col gap-3 pb-16">
+      {quotaDialog}
+
       {/* Top bar */}
       <div style={{ animation: "slideUpFade 0.38s ease-out both" }}>
         <StudioTopBar
           projectName={studio.project?.name}
-          onNewSession={() => void studio.createNewSession()}
+          onNewSession={handleNewSession}
+          onCreateManually={() => router.push("/hr/generate-question/manual")}
           onSaveDraft={studio.saveDraftAction}
           onShare={studio.createShare}
           isGenerating={studio.isGeneratingQuestions}
+          isSaving={studio.isSavingDraft}
+          isSaved={studio.isDraftSaved}
           questionCount={studio.questions.length}
         />
       </div>
@@ -104,14 +252,45 @@ export function StudioPage() {
         />
       </div>
 
-      {/* 3-column workspace */}
+      {/* ── Mobile tab switcher (< lg) ─────────────────────────── */}
+      <div className="flex lg:hidden rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-1 gap-1">
+        {(
+          [
+            { id: "sources",  icon: Database,          label: s.sourcesHeader  },
+            { id: "main",     icon: MessageSquare,     label: s.steps.plan     },
+            { id: "settings", icon: SlidersHorizontal, label: s.settingsHeader },
+          ] as const
+        ).map(({ id, icon: Icon, label }) => (
+          <button
+            key={id}
+            type="button"
+            onClick={() => switchMobileTab(id)}
+            className={cn(
+              "flex flex-1 items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-medium transition-all duration-200",
+              mobileTab === id
+                ? "bg-primary text-white shadow-sm scale-[1.02]"
+                : "text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-200",
+            )}
+          >
+            <Icon className="h-3.5 w-3.5 shrink-0" />
+            <span className="hidden xs:inline truncate">{label}</span>
+          </button>
+        ))}
+      </div>
+
+      {/* ── Workspace (3-col desktop / tab mobile) ─────────────── */}
       <div className="flex min-h-105 gap-3">
-        {/* Sources panel (collapsible) */}
+
+        {/* Sources panel */}
         <div
           style={{ animation: "slideInLeft 0.42s cubic-bezier(0.25,0.46,0.45,0.94) 0.1s both" }}
           className={cn(
-            "flex flex-col transition-all duration-300",
-            sourcesCollapsed ? "w-9 shrink-0" : "w-75 shrink-0"
+            "flex-col transition-all duration-300",
+            // Mobile: show only when active tab (with slide animation)
+            mobileTab === "sources" ? cn("flex w-full lg:w-auto", tabAnimDir === "right" ? "slide-tab-right" : "slide-tab-left") : "hidden",
+            // Desktop: always visible, collapsible width
+            "lg:flex",
+            sourcesCollapsed ? "lg:w-9 lg:shrink-0" : "lg:w-75 lg:shrink-0",
           )}
         >
           {sourcesCollapsed ? (
@@ -128,7 +307,7 @@ export function StudioPage() {
             </button>
           ) : (
             <>
-              <div className="mb-2 flex items-center justify-between px-1">
+              <div className="mb-2 hidden lg:flex items-center justify-between px-1">
                 <span className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">
                   {s.sourcesHeader}
                 </span>
@@ -145,9 +324,6 @@ export function StudioPage() {
                 locked={sideColumnsLocked}
                 jdLocked={quotaBlocked}
                 jdLockedTitle={t.hrSubscription.quotaExceededTitle}
-                jdLockedBody={quotaBody}
-                billingHref="/hr/settings?tab=billing"
-                billingLabel={t.hrSubscription.goToSubscription}
                 jdContent={studio.jdContent}
                 onJdChange={studio.setJdContent}
                 onSaveJd={studio.saveJobDescription}
@@ -164,8 +340,18 @@ export function StudioPage() {
           )}
         </div>
 
-        {/* Main workspace — self-start only when plan content exists to avoid empty space below sections */}
-        <div className={cn("flex min-w-0 flex-1 flex-col", studio.currentPlan && !studio.isStreaming ? "self-start" : "")} style={{ animation: "slideUpFade 0.42s cubic-bezier(0.25,0.46,0.45,0.94) 0.14s both" }}>
+        {/* Main workspace */}
+        <div
+          className={cn(
+            "flex-col transition-all duration-300",
+            // Mobile: show only when active tab (with slide animation)
+            mobileTab === "main" ? cn("flex w-full lg:w-auto", tabAnimDir === "right" ? "slide-tab-right" : "slide-tab-left") : "hidden",
+            // Desktop: always visible, flex-1
+            "lg:flex min-w-0 flex-1",
+            studio.currentPlan && !studio.isStreaming ? "lg:self-start" : "",
+          )}
+          style={{ animation: "slideUpFade 0.42s cubic-bezier(0.25,0.46,0.45,0.94) 0.14s both" }}
+        >
           <ChatPanel
             messages={studio.messages}
             isStreaming={studio.isStreaming}
@@ -178,12 +364,12 @@ export function StudioPage() {
             hasJd={hasJd}
             skillCount={skillCount}
             onRefreshGenerationStatus={() => void studio.refreshGenerationStatus()}
-            onCreatePlan={studio.generateInitialPlan}
+            onCreatePlan={handleCreatePlan}
             onSendMessage={studio.sendMessage}
             onApprovePlan={studio.approveCurrentPlan}
             onRenamePlanTitle={studio.renameCurrentPlanTitle}
             onRefinePlan={studio.refineCurrentPlan}
-            onGenerateQuestions={() => void studio.generateQuestions()}
+            onGenerateQuestions={handleGenerateQuestions}
             onUpdateQuestion={async (q) => {
               if (!studio.project) return;
               const api = await import("@/features/studio/services/studio.service");
@@ -258,12 +444,16 @@ export function StudioPage() {
           />
         </div>
 
-        {/* Inspector (collapsible) */}
+        {/* Inspector / Settings panel */}
         <div
           style={{ animation: "slideInRight 0.42s cubic-bezier(0.25,0.46,0.45,0.94) 0.18s both" }}
           className={cn(
-            "flex flex-col transition-all duration-300",
-            inspectorCollapsed ? "w-9 shrink-0" : "w-[320px] shrink-0"
+            "flex-col transition-all duration-300",
+            // Mobile: show only when active tab (with slide animation)
+            mobileTab === "settings" ? cn("flex w-full lg:w-auto", tabAnimDir === "right" ? "slide-tab-right" : "slide-tab-left") : "hidden",
+            // Desktop: always visible, collapsible width
+            "lg:flex",
+            inspectorCollapsed ? "lg:w-9 lg:shrink-0" : "lg:w-[320px] lg:shrink-0",
           )}
         >
           {inspectorCollapsed ? (
@@ -280,7 +470,7 @@ export function StudioPage() {
             </button>
           ) : (
             <>
-              <div className="mb-2 flex items-center justify-between px-1">
+              <div className="mb-2 hidden lg:flex items-center justify-between px-1">
                 <span className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">
                   {s.settingsHeader}
                 </span>
@@ -317,77 +507,14 @@ export function StudioPage() {
         canGenerate={canGenerate}
         skillCount={skillCount}
         isPublished={studio.project?.isPublished ?? false}
-        onCreatePlan={studio.generateInitialPlan}
+        isSavingDraft={studio.isSavingDraft}
+        isDraftSaved={studio.isDraftSaved}
+        onCreatePlan={handleCreatePlan}
         onApprovePlan={studio.approveCurrentPlan}
-        onGenerateQuestions={() => void studio.generateQuestions()}
+        onGenerateQuestions={handleGenerateQuestions}
         onSaveDraft={studio.saveDraftAction}
         onTogglePublish={() => void studio.togglePublish()}
       />
-
-      {/* Quota-exceeded dialog — portal to body, flex layout masks sidebar+header */}
-      {showQuotaDialog && mounted && createPortal(
-        <div className="fixed inset-0 z-50 flex pointer-events-none">
-          {/* Transparent spacer matching sidebar width (desktop) */}
-          <div className="hidden lg:block w-62.5 shrink-0" aria-hidden />
-
-          {/* Right column — mirrors the AppShell right pane */}
-          <div className="flex flex-1 flex-col">
-            {/* Transparent spacer matching header height */}
-            <div className="h-14 shrink-0" aria-hidden />
-
-            {/* Content area overlay — only this region is blurred and interactive */}
-            <div className="pointer-events-auto flex flex-1 items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
-              <div
-                role="alertdialog"
-                aria-modal
-                aria-labelledby="quota-dialog-title"
-                aria-describedby="quota-dialog-desc"
-                className="w-full max-w-md animate-scale-in rounded-2xl border border-border dark:border-gray-700 bg-white dark:bg-gray-900 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.18)] dark:shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)]"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <div className="px-6 pb-5 pt-6 text-center">
-                  <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100">
-                    <Clock size={26} />
-                  </div>
-                  <h3
-                    id="quota-dialog-title"
-                    className="text-lg font-bold text-charcoal dark:text-gray-100"
-                  >
-                    {hs.quotaExceededTitle}
-                  </h3>
-                  <p
-                    id="quota-dialog-desc"
-                    className="mt-3 text-sm leading-relaxed text-gray-400 dark:text-gray-500"
-                  >
-                    {renderBold(
-                      hs.quotaExceededBody.replace("{{time}}", cooldownTimeStr),
-                      "font-bold text-gray-800 dark:text-gray-100",
-                    )}
-                  </p>
-                </div>
-                <div className="border-t border-border dark:border-gray-700 px-6 py-4 space-y-2">
-                  <button
-                    type="button"
-                    onClick={() => router.push("/hr/settings?tab=billing")}
-                    className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-primary-hover"
-                  >
-                    <CreditCard size={15} />
-                    {hs.goToSubscription}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => router.push("/hr/generate/manual")}
-                    className="inline-flex min-h-9 w-full items-center justify-center gap-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 transition-colors hover:bg-gray-50 dark:hover:bg-gray-700"
-                  >
-                    {t.generatePage.quota.createManuallyBtn}
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
     </div>
   );
 }

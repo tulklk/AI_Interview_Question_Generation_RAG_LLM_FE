@@ -91,7 +91,7 @@ export function StudioProgressBar({
       className="px-1 py-1.5"
       aria-label={s.aria.progress}
     >
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-2 sm:gap-4">
         {/* Stepper */}
         <ol className="flex flex-1 items-center min-w-0 select-none" aria-label={s.aria.steps}>
           {STEPS.map((step, idx) => {
@@ -174,7 +174,7 @@ export function StudioProgressBar({
           key={chipInfo.variant + chipInfo.text}
           style={{ animation: "scaleInFade 0.3s cubic-bezier(0.34,1.56,0.64,1) both" }}
           className={cn(
-            "flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-semibold whitespace-nowrap border",
+            "hidden xs:flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-semibold whitespace-nowrap border",
             chipInfo.variant === "busy"   && "bg-violet-50  text-violet-700  border-violet-100  dark:bg-violet-950/30  dark:text-violet-300  dark:border-violet-900/40",
             chipInfo.variant === "done"   && "bg-emerald-50 text-emerald-700 border-emerald-100 dark:bg-emerald-950/30 dark:text-emerald-300 dark:border-emerald-900/40",
             chipInfo.variant === "action" && "bg-amber-50   text-amber-700   border-amber-100   dark:bg-amber-950/30   dark:text-amber-300   dark:border-amber-900/40",
