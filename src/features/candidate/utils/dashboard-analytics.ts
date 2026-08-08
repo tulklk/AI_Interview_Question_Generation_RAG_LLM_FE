@@ -204,6 +204,34 @@ export function buildPracticeHeatmap(sessions: CompletedSessionSummary[], weeks 
     byDay.set(key, bucket);
   }
 
+  return fillHeatmapWindow(byDay, weeks);
+}
+
+/** SCRUM-401: fill cửa sổ N tuần từ bucket API (chỉ ngày có hoạt động) — dùng cho HR overview. */
+export function buildPracticeHeatmapFromBuckets(
+  buckets: Array<{ date: string; count: number; minutes: number }>,
+  weeks = 52,
+  overrides?: { currentStreak?: number; longestStreak?: number; activeDays?: number }
+): PracticeHeatmapResult {
+  const byDay = new Map<string, HeatmapDay>();
+  for (const b of buckets) {
+    if (!b.date) continue;
+    byDay.set(b.date, {
+      date: b.date,
+      count: Math.max(0, b.count || 0),
+      minutes: Math.max(0, b.minutes || 0),
+    });
+  }
+  const filled = fillHeatmapWindow(byDay, weeks);
+  return {
+    days: filled.days,
+    currentStreak: overrides?.currentStreak ?? filled.currentStreak,
+    longestStreak: overrides?.longestStreak ?? filled.longestStreak,
+    activeDays: overrides?.activeDays ?? filled.activeDays,
+  };
+}
+
+function fillHeatmapWindow(byDay: Map<string, HeatmapDay>, weeks: number): PracticeHeatmapResult {
   const totalDays = weeks * 7;
   const days: HeatmapDay[] = [];
   for (let i = totalDays - 1; i >= 0; i--) {
@@ -212,8 +240,11 @@ export function buildPracticeHeatmap(sessions: CompletedSessionSummary[], weeks 
     days.push(byDay.get(key) ?? { date: key, minutes: 0, count: 0 });
   }
 
+  // Streak: cho phép "hôm nay chưa luyện" thì đếm từ hôm qua (khớp BE ComputeStreakDays).
   let currentStreak = 0;
-  for (let i = days.length - 1; i >= 0; i--) {
+  let cursor = days.length - 1;
+  if (cursor >= 0 && days[cursor].count === 0) cursor -= 1;
+  for (let i = cursor; i >= 0; i--) {
     if (days[i].count > 0) currentStreak++;
     else break;
   }

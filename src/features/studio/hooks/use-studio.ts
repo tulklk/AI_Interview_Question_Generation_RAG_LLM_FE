@@ -13,19 +13,50 @@ import type {
   PlanSummary,
   StudioDocument,
   StudioProject,
+  StudioProjectDetail,
   StudioQuestion,
   StudioSettings,
 } from "@/features/studio/types/studio.types";
 import type { ApplyPlanSettingsPayload } from "@/features/studio/types/studio.types";
+import {
+  DEFAULT_ENABLED_CODE_TEMPLATES,
+  type StudioContentMode,
+  type StudioCodeTemplateId,
+} from "@/features/studio/constants/question-templates";
 
 const STUDIO_TASK_KEY = "studio_active_task";
+const STUDIO_ACTIVE_PROJECT_KEY = "studio_active_project_id";
 
-function broadcastStudioTask(task: "streaming" | "generating" | null) {
+/** SCRUM-402: ghi project đang làm để bootstrap không restore phiên cũ */
+function persistActiveProjectId(id: string) {
   try {
-    if (task) localStorage.setItem(STUDIO_TASK_KEY, task);
-    else localStorage.removeItem(STUDIO_TASK_KEY);
-    window.dispatchEvent(new CustomEvent("studio:task-changed", { detail: { task } }));
-  } catch { /* ignore */ }
+    localStorage.setItem(STUDIO_ACTIVE_PROJECT_KEY, id);
+  } catch {
+    /* ignore */
+  }
+}
+
+type StudioTaskKind = "streaming" | "generating";
+
+/** SCRUM-402: payload JSON { task, projectId }; legacy string vẫn đọc được ở badge */
+function broadcastStudioTask(task: StudioTaskKind | null, projectId?: string | null) {
+  try {
+    if (task) {
+      localStorage.setItem(
+        STUDIO_TASK_KEY,
+        JSON.stringify({ task, projectId: projectId ?? null })
+      );
+    } else {
+      localStorage.removeItem(STUDIO_TASK_KEY);
+    }
+    window.dispatchEvent(
+      new CustomEvent("studio:task-changed", {
+        detail: { task, projectId: projectId ?? null },
+      })
+    );
+  } catch {
+    /* ignore */
+  }
 }
 
 export function useStudio() {
@@ -48,16 +79,32 @@ export function useStudio() {
   const [generationRun, setGenerationRun] = useState<GenerationRun | null>(null);
   const [isGeneratingQuestions, setIsGeneratingQuestions] = useState(false);
 
+  // SCRUM-402: badge theo streaming / generate loop / run Pending|Generating sau remount
   useEffect(() => {
-    if (isStreaming) broadcastStudioTask("streaming");
-    else if (isGeneratingQuestions) broadcastStudioTask("generating");
+    const runBusy =
+      generationRun?.status === "Generating" || generationRun?.status === "Pending";
+    if (isStreaming) broadcastStudioTask("streaming", project?.id);
+    else if (isGeneratingQuestions || runBusy) broadcastStudioTask("generating", project?.id);
     else broadcastStudioTask(null);
-  }, [isStreaming, isGeneratingQuestions]);
+  }, [isStreaming, isGeneratingQuestions, generationRun?.status, project?.id]);
 
   const normalizeSettings = useCallback((s: StudioSettings | null): StudioSettings | null => {
     if (!s) return null;
     const minutes = Number(s.interviewLengthMinutes);
     const questions = Number(s.numberOfQuestions);
+    // BE trả `language`; FE dùng `outputLanguage` — map cả hai
+    const rawLang =
+      (s as StudioSettings & { language?: string }).language
+      ?? s.outputLanguage
+      ?? "Vietnamese";
+    const outputLanguage =
+      /en(glish)?/i.test(String(rawLang)) && !/viet/i.test(String(rawLang))
+        ? "English"
+        : "Vietnamese";
+    const contentMode = (s.contentMode ?? "Mixed") as StudioContentMode;
+    const enabledCodeTemplates = Array.isArray(s.enabledCodeTemplates) && s.enabledCodeTemplates.length > 0
+      ? s.enabledCodeTemplates as StudioCodeTemplateId[]
+      : DEFAULT_ENABLED_CODE_TEMPLATES;
     return {
       ...s,
       interviewLengthMinutes: Number.isFinite(minutes) && minutes >= 15 && minutes <= 180 ? minutes : 60,
@@ -67,11 +114,13 @@ export function useStudio() {
       includeSampleAnswers: s.includeSampleAnswers ?? true,
       includeScoringRubric: s.includeScoringRubric ?? true,
       outputFormat: s.outputFormat ?? "StructuredInterviewKit",
-      outputLanguage: s.outputLanguage ?? "Vietnamese",
+      outputLanguage,
       questionTypes:
         Array.isArray(s.questionTypes) && s.questionTypes.length > 0
           ? s.questionTypes
           : ["technical", "system_design", "problem_solving", "behavioral"],
+      contentMode,
+      enabledCodeTemplates,
     };
   }, []);
 
@@ -79,23 +128,51 @@ export function useStudio() {
     try {
       setLoading(true);
       let ownedProjects = await studioApi.listProjects();
+      // Normalize list items (id/name casing)
+      ownedProjects = (ownedProjects ?? []).map((p) => ({
+        ...p,
+        id: (p as { id?: string; Id?: string }).id ?? (p as { Id?: string }).Id ?? "",
+        name: (p as { name?: string; Name?: string }).name ?? (p as { Name?: string }).Name ?? "",
+        status: ((p as { status?: string; Status?: string }).status
+          ?? (p as { Status?: string }).Status
+          ?? "Draft") as StudioProject["status"],
+      }));
+
       if (ownedProjects.length === 0) {
         await studioApi.createProject("Interview Plan Studio", "Project mặc định cho Tạo câu hỏi v2");
         ownedProjects = await studioApi.listProjects();
       }
 
-      const target = ownedProjects[0] ?? null;
-      setProject(target);
-      if (!target) return;
+      let preferredId: string | null = null;
+      try {
+        preferredId = localStorage.getItem(STUDIO_ACTIVE_PROJECT_KEY);
+      } catch {
+        preferredId = null;
+      }
+
+      const target =
+        (preferredId ? ownedProjects.find((p) => p.id === preferredId) : null)
+        ?? ownedProjects[0]
+        ?? null;
+
+      // Load full detail (questionSetId / isPublished)
+      const detail = target
+        ? await studioApi.getProject(target.id).catch(() => target as StudioProjectDetail)
+        : null;
+      setProject(detail);
+      if (!detail) return;
+
+      // SCRUM-402: đồng bộ localStorage với project vừa chọn (kể cả fallback newest)
+      persistActiveProjectId(detail.id);
 
       const [summary, docs, plan, studioSettings, chatMessages, planList, runs] = await Promise.all([
-        studioApi.getJobDescription(target.id).catch(() => null),
-        studioApi.listDocuments(target.id).catch(() => []),
-        studioApi.getCurrentPlan(target.id).catch(() => null),
-        studioApi.getSettings(target.id).catch(() => null),
-        studioApi.getChatMessages(target.id).catch(() => []),
-        studioApi.listPlans(target.id).catch(() => []),
-        studioApi.listGenerationRuns(target.id).catch(() => [] as GenerationRun[]),
+        studioApi.getJobDescription(detail.id).catch(() => null),
+        studioApi.listDocuments(detail.id).catch(() => []),
+        studioApi.getCurrentPlan(detail.id).catch(() => null),
+        studioApi.getSettings(detail.id).catch(() => null),
+        studioApi.getChatMessages(detail.id).catch(() => []),
+        studioApi.listPlans(detail.id).catch(() => []),
+        studioApi.listGenerationRuns(detail.id).catch(() => [] as GenerationRun[]),
       ]);
 
       if (summary) {
@@ -121,7 +198,7 @@ export function useStudio() {
       const latestRun = runs[0] ?? null;
       setGenerationRun(latestRun);
       if (plan) {
-        const qs = await studioApi.listQuestions(target.id, { page: 1, pageSize: 100, planId: plan.id }).catch(() => null);
+        const qs = await studioApi.listQuestions(detail.id, { page: 1, pageSize: 100, planId: plan.id }).catch(() => null);
         if (qs) setQuestions(qs.items);
       }
     } catch (error) {
@@ -185,23 +262,8 @@ export function useStudio() {
       studioApi.listPlans(project.id).catch(() => []),
     ]);
     setCurrentPlan(plan);
-    setSettings((prev) => {
-      if (!studioSettings) return prev;
-      const merged = prev
-        ? ({
-            ...prev,
-            ...Object.fromEntries(Object.entries(studioSettings).filter(([, v]) => v != null)),
-            // Output preference fields are only changed by the user (updateSettingField) or initial bootstrap.
-            // Never overwrite them from a mid-session refresh — the backend may return stale/default values.
-            outputLanguage: prev.outputLanguage,
-            questionTone: prev.questionTone,
-            outputFormat: prev.outputFormat,
-            includeSampleAnswers: prev.includeSampleAnswers,
-            includeScoringRubric: prev.includeScoringRubric,
-          } as typeof studioSettings)
-        : studioSettings;
-      return normalizeSettings(merged);
-    });
+    // SCRUM-388: BE settings là source of truth (kể cả output prefs sau chat refine)
+    if (studioSettings) setSettings(normalizeSettings(studioSettings));
     setPlans(planList);
   }, [normalizeSettings, project]);
 
@@ -347,7 +409,14 @@ export function useStudio() {
     ]);
 
     try {
-      await studioApi.refinePlan(project.id, currentPlan.id, message);
+      const result = await studioApi.refinePlan(project.id, currentPlan.id, message);
+      if (result.settings) {
+        setSettings(normalizeSettings({
+          ...result.settings,
+          // BE trả `language`; normalizeSettings map sang outputLanguage
+          ...(result.settings as StudioSettings & { language?: string }),
+        }));
+      }
       await refreshStudioState();
       addToast("success", tx.planRefined);
     } catch (error) {
@@ -359,7 +428,7 @@ export function useStudio() {
     } finally {
       setIsStreaming(false);
     }
-  }, [addToast, currentPlan, project, refreshStudioState]);
+  }, [addToast, currentPlan, normalizeSettings, project, refreshStudioState]);
 
   const approveCurrentPlan = useCallback(async () => {
     if (!project || !currentPlan) return;
@@ -377,6 +446,31 @@ export function useStudio() {
       addToast("error", extractErrorMessage(error, lang));
     }
   }, [addToast, currentPlan, project, refreshStudioState]);
+
+  /** SCRUM-393: đổi tên công việc / tiêu đề plan trên PlanWorkspace. */
+  const renameCurrentPlanTitle = useCallback(
+    async (title: string) => {
+      if (!project || !currentPlan) return false;
+      const trimmed = title.trim();
+      if (!trimmed) {
+        addToast("error", tx.planTitleEmpty ?? "Tiêu đề không được để trống.");
+        return false;
+      }
+      try {
+        const summary = await studioApi.renamePlanTitle(project.id, currentPlan.id, trimmed);
+        setCurrentPlan((prev) => (prev ? { ...prev, title: summary.title || trimmed } : prev));
+        setPlans((prev) =>
+          prev.map((p) => (p.id === currentPlan.id ? { ...p, title: summary.title || trimmed } : p))
+        );
+        addToast("success", tx.planTitleRenamed ?? "Đã cập nhật tên công việc.");
+        return true;
+      } catch (error) {
+        addToast("error", extractErrorMessage(error, lang));
+        return false;
+      }
+    },
+    [addToast, currentPlan, lang, project, tx.planTitleEmpty, tx.planTitleRenamed]
+  );
 
   const refineCurrentPlan = useCallback(async (instruction: string) => {
     if (!project || !currentPlan || !instruction.trim()) return;
@@ -396,7 +490,10 @@ export function useStudio() {
     setMessages((prev) => [...prev, userMessage]);
     try {
       addToast("success", tx.planRefining);
-      await studioApi.refinePlan(project.id, currentPlan.id, instruction);
+      const result = await studioApi.refinePlan(project.id, currentPlan.id, instruction);
+      if (result.settings) {
+        setSettings(normalizeSettings(result.settings as StudioSettings & { language?: string }));
+      }
       await refreshStudioState();
       addToast("success", tx.planRefined);
     } catch (error) {
@@ -416,7 +513,7 @@ export function useStudio() {
     } finally {
       setIsStreaming(false);
     }
-  }, [addToast, currentPlan, project, refreshStudioState]);
+  }, [addToast, currentPlan, normalizeSettings, project, refreshStudioState]);
 
   const refreshGenerationStatus = useCallback(async () => {
     if (!project) return null;
@@ -509,6 +606,8 @@ export function useStudio() {
       outputFormat: patch.outputFormat ?? settings.outputFormat ?? "StructuredInterviewKit",
       outputLanguage: patch.outputLanguage ?? settings.outputLanguage ?? "Vietnamese",
       questionTypes: patch.questionTypes ?? settings.questionTypes ?? ["technical", "system_design", "problem_solving", "behavioral"],
+      contentMode: patch.contentMode ?? settings.contentMode ?? "Mixed",
+      enabledCodeTemplates: patch.enabledCodeTemplates ?? settings.enabledCodeTemplates ?? DEFAULT_ENABLED_CODE_TEMPLATES,
     };
     // Optimistic update — reflect changes immediately in UI without waiting for API
     const prevSettings = settings;
@@ -559,47 +658,37 @@ export function useStudio() {
   const saveDraftAction = useCallback(async () => {
     if (!project) return;
     try {
-      await studioApi.saveDraft(project.id);
-      // Refresh project to reliably pick up the questionSetId assigned by the backend
+      const result = await studioApi.saveDraft(project.id);
       const updated = await studioApi.getProject(project.id);
-      setProject(updated);
-      addToast("success", tx.draftSaved);
+      setProject({
+        ...updated,
+        questionSetId: result.questionSetId ?? updated.questionSetId ?? null,
+      });
+      addToast("success", tx.saved ?? tx.draftSaved);
     } catch (error) {
       addToast("error", extractErrorMessage(error, lang) || tx.draftSaveFailed);
     }
-  }, [addToast, project]);
+  }, [addToast, project, lang, tx.draftSaveFailed, tx.draftSaved, tx.saved]);
 
   const togglePublish = useCallback(async () => {
     if (!project) return;
     try {
-      let questionSetId = project.questionSetId;
-
-      // Auto-save draft if questionSetId is missing so publish can proceed
-      if (!questionSetId) {
-        await studioApi.saveDraft(project.id);
+      if (project.isPublished) {
+        await studioApi.unpublishProject(project.id);
         const updated = await studioApi.getProject(project.id);
         setProject(updated);
-        questionSetId = updated.questionSetId ?? null;
-      }
-
-      if (!questionSetId) {
-        addToast("error", tx.publishNotFound);
-        return;
-      }
-
-      if (project.isPublished) {
-        await studioApi.unpublishProject(questionSetId);
-        setProject((prev) => prev ? { ...prev, isPublished: false } : prev);
         addToast("success", tx.unpublished);
       } else {
-        await studioApi.publishProject(questionSetId);
-        setProject((prev) => prev ? { ...prev, isPublished: true } : prev);
+        // BE auto-Save nếu chưa có set, rồi Publish
+        await studioApi.publishProject(project.id);
+        const updated = await studioApi.getProject(project.id);
+        setProject(updated);
         addToast("success", tx.published);
       }
     } catch (error) {
       addToast("error", extractErrorMessage(error, lang));
     }
-  }, [addToast, project]);
+  }, [addToast, project, lang, tx.published, tx.unpublished]);
 
   const createShare = useCallback(async () => {
     if (!project) return;
@@ -614,7 +703,13 @@ export function useStudio() {
       setLoading(true);
       const stamp = new Date().toLocaleString("vi-VN");
       const created = await studioApi.createProject(`Interview Plan ${stamp}`, "Bộ mới — Tạo câu hỏi v2");
-      setProject(created);
+      // Normalize id (BE có thể trả Id) rồi persist — SCRUM-402
+      const createdId =
+        (created as { id?: string; Id?: string }).id
+        ?? (created as { Id?: string }).Id
+        ?? "";
+      if (createdId) persistActiveProjectId(createdId);
+      setProject({ ...created, id: createdId || created.id });
       setJdContent("");
       setJdFileName(null);
       setJdSummary(null);
@@ -632,7 +727,7 @@ export function useStudio() {
     } finally {
       setLoading(false);
     }
-  }, [addToast]);
+  }, [addToast, lang, tx.newSessionCreated]);
 
   const value = useMemo(
     () => ({
@@ -660,6 +755,7 @@ export function useStudio() {
       generateInitialPlan,
       sendMessage,
       approveCurrentPlan,
+      renameCurrentPlanTitle,
       refineCurrentPlan,
       applySettingsToPlan,
       generateQuestions,
@@ -674,6 +770,7 @@ export function useStudio() {
     }),
     [
       approveCurrentPlan,
+      renameCurrentPlanTitle,
       createNewSession,
       createShare,
       currentPlan,

@@ -2,13 +2,14 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import {
   ArrowLeft, Star, X as XIcon, Mail, Loader2,
   AlertCircle, RefreshCw, CheckCircle2, Clock, Send,
   User, Briefcase, Hash, Sparkles, Phone, MessageSquare,
-  MapPin, FileText, Download, Award, Maximize2,
+  MapPin, FileText, Download, Maximize2,
 } from "lucide-react";
 import { FaLinkedinIn, FaGithub } from "react-icons/fa";
 import { cn } from "@/lib/cn";
@@ -35,6 +36,7 @@ import {
   portalHeadingAlt,
   portalSubtextAlt,
 } from "@/shared/utils/portal-ui";
+import { HrCandidatePracticePanel } from "@/features/hr/components/candidates/hr-candidate-practice-panel";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -519,38 +521,6 @@ export function RecommendationDetail({ id }: { id: string }) {
   const hasSocial = !!(rec.linkedInUrl || rec.githubUrl);
   const cvIsImage = isImageCv(cvPreview?.contentType, cvPreview?.cvFileName ?? rec.cvFileName);
 
-  const achievements = [
-    {
-      id: "first-practice",
-      title: p.detail.achievementItems.firstPractice.title,
-      description: p.detail.achievementItems.firstPractice.description,
-      icon: "🎯",
-      earned: rec.totalSessions >= 1,
-    },
-    {
-      id: "high-scorer",
-      title: p.detail.achievementItems.highScorer.title,
-      description: p.detail.achievementItems.highScorer.description,
-      icon: "⭐",
-      earned: rec.bestScore !== null && rec.bestScore >= 90,
-    },
-    {
-      id: "speed-demon",
-      title: p.detail.achievementItems.speedDemon.title,
-      description: p.detail.achievementItems.speedDemon.description,
-      icon: "⚡",
-      earned: rec.hasFastSession,
-    },
-    {
-      id: "consistent-learner",
-      title: p.detail.achievementItems.consistentLearner.title,
-      description: p.detail.achievementItems.consistentLearner.description,
-      icon: "📚",
-      earned: rec.totalSessions >= 20,
-    },
-  ];
-  const earnedCount = achievements.filter((a) => a.earned).length;
-
   return (
     <>
       {/* Back */}
@@ -885,62 +855,10 @@ export function RecommendationDetail({ id }: { id: string }) {
             </motion.div>
           )}
 
-          {/* Achievements */}
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.14 }}
-            className="hr-glass-card p-5">
-            <div className="flex items-center justify-between gap-3 mb-4">
-              <div className="flex items-center gap-2">
-                <div className="w-7 h-7 rounded-lg bg-amber-100 dark:bg-amber-950/50 flex items-center justify-center shrink-0">
-                  <Award size={13} className="text-amber-600 dark:text-amber-400" />
-                </div>
-                <h2 className={cn("text-[13px] font-bold uppercase tracking-wider", portalSubtextAlt)}>
-                  {p.detail.achievementsTitle}
-                </h2>
-              </div>
-              <span className={cn("text-[11px] font-semibold", portalSubtextAlt)}>
-                {earnedCount}/{achievements.length} {p.detail.earned}
-              </span>
-            </div>
-
-            <div className="grid grid-cols-3 gap-2 mb-4">
-              <div className={cn("rounded-xl px-3 py-2 text-center", portalMutedBg)}>
-                <p className={cn("text-[15px] font-extrabold tabular-nums", portalHeadingAlt)}>{rec.totalSessions}</p>
-                <p className={cn("text-[10px]", portalSubtextAlt)}>{p.detail.totalSessions}</p>
-              </div>
-              <div className={cn("rounded-xl px-3 py-2 text-center", portalMutedBg)}>
-                <p className={cn("text-[15px] font-extrabold tabular-nums", portalHeadingAlt)}>
-                  {rec.averageScore != null ? rec.averageScore.toFixed(0) : "—"}
-                </p>
-                <p className={cn("text-[10px]", portalSubtextAlt)}>{p.detail.averageScore}</p>
-              </div>
-              <div className={cn("rounded-xl px-3 py-2 text-center", portalMutedBg)}>
-                <p className={cn("text-[15px] font-extrabold tabular-nums", portalHeadingAlt)}>
-                  {rec.bestScore != null ? rec.bestScore.toFixed(0) : "—"}
-                </p>
-                <p className={cn("text-[10px]", portalSubtextAlt)}>{p.detail.bestScore}</p>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {achievements.map((ach) => (
-                <div
-                  key={ach.id}
-                  className={cn(
-                    "flex items-start gap-2.5 rounded-xl px-3 py-2.5 border",
-                    ach.earned
-                      ? "border-amber-200 dark:border-amber-800/60 bg-amber-50/60 dark:bg-amber-950/20"
-                      : "border-gray-100 dark:border-gray-800 opacity-50"
-                  )}
-                >
-                  <span className="text-base leading-none mt-0.5">{ach.icon}</span>
-                  <div className="min-w-0">
-                    <p className={cn("text-[12px] font-semibold", portalHeadingAlt)}>{ach.title}</p>
-                    <p className={cn("text-[11px] mt-0.5", portalSubtextAlt)}>{ach.description}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </motion.div>
+          {/* SCRUM-398: hồ sơ luyện tập nhúng ngay trên trang recommendation */}
+          {rec.candidateUserId ? (
+            <HrCandidatePracticePanel candidateUserId={rec.candidateUserId} />
+          ) : null}
 
           {/* Recommendation reason */}
           {rec.recommendationReason && (

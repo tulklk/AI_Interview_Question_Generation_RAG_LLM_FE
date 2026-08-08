@@ -32,6 +32,7 @@ export function AddQuestionDialog({ totalCount, onAdd, onClose }: AddQuestionDia
   const [difficulty, setDifficulty] = useState<DifficultyLevel>("Medium");
   const [rationale, setRationale] = useState("");
   const [sampleAnswer, setSampleAnswer] = useState("");
+  const [answerMethod, setAnswerMethod] = useState<"Text" | "Code">("Text");
   const [questionError, setQuestionError] = useState(false);
 
   function handleAdd() {
@@ -45,6 +46,7 @@ export function AddQuestionDialog({ totalCount, onAdd, onClose }: AddQuestionDia
       difficulty,
       rationale: rationale.trim() || undefined,
       sampleAnswer: sampleAnswer.trim() || undefined,
+      answerMethod,
       citations: [],
     });
     onClose();
@@ -133,6 +135,24 @@ export function AddQuestionDialog({ totalCount, onAdd, onClose }: AddQuestionDia
                 ))}
               </select>
             </div>
+          </div>
+
+          {/* SCRUM-400: phương thức trả lời Candidate */}
+          <div className="space-y-1.5">
+            <label className={cn("text-sm font-medium", portalHeading)}>
+              Phương thức trả lời / Answer method
+            </label>
+            <select
+              value={answerMethod}
+              onChange={(e) => setAnswerMethod(e.target.value as "Text" | "Code")}
+              className={cn(
+                "w-full rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#6c47ff]/20 focus:border-[#6c47ff] transition-colors",
+                portalInput
+              )}
+            >
+              <option value="Text">Text — trả lời văn xuôi</option>
+              <option value="Code">Code — nhập code</option>
+            </select>
           </div>
 
           {/* Rationale */}

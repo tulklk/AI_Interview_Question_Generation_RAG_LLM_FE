@@ -64,10 +64,18 @@ export interface GeneratedQuestion {
   question: string;
   questionType: QuestionType;
   difficulty: DifficultyLevel;
+  /** Tech/skill tag (vd. React, SQL) — từ QuestionSetQuestion.Skill. */
+  skill?: string;
+  /** Focus area (vd. Frontend, Database). */
+  focusArea?: string;
   rationale?: string;
   sampleAnswer?: string;
   /** SCRUM-374: scoring rubric (từ evaluationCriteria BE / Studio). */
   scoringRubric?: string;
+  /** SCRUM-396: SAS URL ảnh đính kèm (Question Set / History). */
+  attachedImageUrl?: string | null;
+  /** SCRUM-400: Text | Code — phương thức trả lời Candidate. */
+  answerMethod?: "Text" | "Code";
   citations?: Citation[];
   orderIndex: number;
   isEdited?: boolean;

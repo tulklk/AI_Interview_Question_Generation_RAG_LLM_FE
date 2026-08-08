@@ -7,6 +7,14 @@ export type StudioProjectStatus =
   | "Archived";
 
 export type StudioQuestionDifficulty = "Easy" | "Medium" | "Hard";
+export type StudioContentMode = "TheoryOnly" | "CodeOnly" | "Mixed";
+export type StudioCodeTemplateId =
+  | "CODE_COMPLETION"
+  | "BUG_DETECTION"
+  | "REFACTORING"
+  | "TEST_CASE_DESIGN"
+  | "PERFORMANCE_ANALYSIS"
+  | "SYSTEM_DESIGN";
 export type StudioQuestionType =
   | "Technical"
   | "Behavioral"
@@ -27,6 +35,7 @@ export interface StudioProject {
 export interface StudioProjectDetail extends StudioProject {
   ownerId: string;
   latestPlanRevision: number;
+  questionSetStatus?: string | null;
 }
 
 export interface AnalyzeJobDescriptionResponse {
@@ -156,7 +165,17 @@ export interface StudioSettings {
   outputLanguage: string;
   /** SCRUM-370: technical | system_design | problem_solving | behavioral | situational */
   questionTypes: string[];
+  contentMode?: StudioContentMode;
+  enabledCodeTemplates?: StudioCodeTemplateId[];
   readiness: StudioReadiness;
+}
+
+/** SCRUM-388: refine chat trả settings đã sync + citations */
+export interface PlanRefineResult extends PlanSummary {
+  settings: StudioSettings;
+  changedFields: string[];
+  citationSourceFiles: string[];
+  assistantMessage: string;
 }
 
 export interface ApplyPlanSettingsPayload {
@@ -164,6 +183,12 @@ export interface ApplyPlanSettingsPayload {
   difficulty: StudioQuestionDifficulty;
   interviewLengthMinutes: number;
   questionTypes: string[];
+}
+
+export interface StudioQuestionCitation {
+  sourceFile: string;
+  chunkIndex?: number | null;
+  excerpt?: string | null;
 }
 
 export interface StudioQuestion {
@@ -174,6 +199,16 @@ export interface StudioQuestion {
   orderIndex: number;
   expectedAnswer?: string | null;
   scoringRubric?: string | null;
+  /** SCRUM-390: nguồn tài liệu RAG gắn câu hỏi */
+  citations?: StudioQuestionCitation[];
+  codeTemplateType?: StudioCodeTemplateId | null;
+  codeSnippet?: string | null;
+  /** SCRUM-396: gợi ý hình ảnh/diagram cho HR (text từ AI) */
+  imageHint?: string | null;
+  /** SCRUM-396: SAS URL ảnh đính kèm (Azure Blob) */
+  attachedImageUrl?: string | null;
+  /** SCRUM-400: Text | Code */
+  answerMethod?: "Text" | "Code" | null;
 }
 
 export interface StudioQuestionListResponse {

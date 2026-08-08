@@ -8,12 +8,14 @@ import type {
   JobDescriptionContent,
   PlanApprovalHistoryItem,
   PlanDetail,
+  PlanRefineResult,
   PlanSummary,
   ShareLink,
   StudioDocument,
   StudioLibraryDocument,
   StudioProject,
   StudioProjectDetail,
+  StudioQuestion,
   StudioQuestionListResponse,
   StudioSettings,
   UploadJobDescriptionResponse,
@@ -30,18 +32,52 @@ export async function listProjects(): Promise<StudioProject[]> {
 }
 
 export async function getProject(projectId: string): Promise<StudioProjectDetail> {
-  const { data } = await apiClient.get<StudioProjectDetail>(`/api/studio/projects/${projectId}`);
-  return data;
+  const { data } = await apiClient.get<Record<string, unknown>>(`/api/studio/projects/${projectId}`);
+  return mapProjectDetail(data);
 }
 
 export async function updateProject(projectId: string, name: string, description?: string): Promise<StudioProjectDetail> {
-  const { data } = await apiClient.put<StudioProjectDetail>(`/api/studio/projects/${projectId}`, { name, description: description ?? null });
-  return data;
+  const { data } = await apiClient.put<Record<string, unknown>>(`/api/studio/projects/${projectId}`, {
+    name,
+    description: description ?? null,
+  });
+  return mapProjectDetail(data);
 }
 
-export async function saveDraft(projectId: string): Promise<{ questionSetId?: string | null }> {
-  const { data } = await apiClient.post<{ questionSetId?: string }>(`/api/studio/projects/${projectId}/save-draft`);
-  return { questionSetId: data?.questionSetId ?? null };
+export async function saveDraft(projectId: string): Promise<{ questionSetId?: string | null; status?: string; questionCount?: number }> {
+  const { data } = await apiClient.post<{
+    questionSetId?: string;
+    QuestionSetId?: string;
+    status?: string;
+    Status?: string;
+    questionCount?: number;
+    QuestionCount?: number;
+  }>(`/api/studio/projects/${projectId}/save`);
+  return {
+    questionSetId: data?.questionSetId ?? data?.QuestionSetId ?? null,
+    status: data?.status ?? data?.Status,
+    questionCount: data?.questionCount ?? data?.QuestionCount,
+  };
+}
+
+function mapProjectDetail(raw: Record<string, unknown>): StudioProjectDetail {
+  const pick = (...keys: string[]): unknown => {
+    for (const k of keys) {
+      if (raw[k] !== undefined && raw[k] !== null) return raw[k];
+    }
+    return undefined;
+  };
+  return {
+    id: String(pick("id", "Id") ?? ""),
+    ownerId: String(pick("ownerId", "OwnerId") ?? ""),
+    name: String(pick("name", "Name") ?? ""),
+    description: (pick("description", "Description") as string | null | undefined) ?? null,
+    status: (pick("status", "Status") as StudioProjectDetail["status"]) ?? "Draft",
+    latestPlanRevision: Number(pick("latestPlanRevision", "LatestPlanRevision") ?? 0),
+    questionSetId: (pick("questionSetId", "QuestionSetId") as string | null | undefined) ?? null,
+    isPublished: Boolean(pick("isPublished", "IsPublished") ?? false),
+    questionSetStatus: (pick("questionSetStatus", "QuestionSetStatus") as string | null | undefined) ?? null,
+  };
 }
 
 export async function upsertJobDescription(projectId: string, content: string, sourceType: "PastedText" | "UploadedFile"): Promise<void> {
@@ -139,7 +175,13 @@ export async function getSettings(projectId: string): Promise<StudioSettings> {
 }
 
 export async function updateSettings(projectId: string, payload: Omit<StudioSettings, "projectId" | "appliedPlanId" | "readiness">): Promise<StudioSettings> {
-  const { data } = await apiClient.put<StudioSettings>(`/api/studio/projects/${projectId}/settings`, payload);
+  // BE persist field `language` (+ alias OutputLanguage); gửi cả hai cho chắc
+  const body = {
+    ...payload,
+    language: payload.outputLanguage,
+    outputLanguage: payload.outputLanguage,
+  };
+  const { data } = await apiClient.put<StudioSettings>(`/api/studio/projects/${projectId}/settings`, body);
   return data;
 }
 
@@ -191,8 +233,8 @@ export async function submitPlanForApproval(projectId: string, planId: string): 
   return data;
 }
 
-export async function refinePlan(projectId: string, planId: string, instruction: string): Promise<PlanSummary> {
-  const { data } = await apiClient.post<PlanSummary>(
+export async function refinePlan(projectId: string, planId: string, instruction: string): Promise<PlanRefineResult> {
+  const { data } = await apiClient.post<PlanRefineResult>(
     `/api/studio/projects/${projectId}/plans/${planId}/refine`,
     { instruction },
     { timeout: 180_000 }
@@ -202,6 +244,17 @@ export async function refinePlan(projectId: string, planId: string, instruction:
 
 export async function approvePlan(projectId: string, planId: string, revision: number, concurrencyVersion: string, notes?: string): Promise<void> {
   await apiClient.post(`/api/studio/projects/${projectId}/plans/${planId}/approve`, { revision, concurrencyVersion, notes: notes ?? null });
+}
+
+/** SCRUM-393: đổi tiêu đề / tên công việc trên plan — BE lưu Title (+ sync roleTitle JSON). */
+export async function renamePlanTitle(projectId: string, planId: string, title: string): Promise<PlanSummary> {
+  const trimmed = title.trim();
+  if (!trimmed) throw new Error("Tiêu đề không được để trống.");
+  const { data } = await apiClient.put<PlanSummary>(
+    `/api/studio/projects/${projectId}/plans/${planId}/title`,
+    { title: trimmed }
+  );
+  return data;
 }
 
 export async function rejectPlan(projectId: string, planId: string, notes?: string): Promise<void> {
@@ -259,7 +312,32 @@ export async function listQuestions(projectId: string, query: {
   pageSize?: number;
 }): Promise<StudioQuestionListResponse> {
   const { data } = await apiClient.get<StudioQuestionListResponse>(`/api/studio/projects/${projectId}/questions`, { params: query });
-  return data;
+  // Chuẩn hóa camelCase/PascalCase để UI luôn nhận codeTemplateType + codeSnippet
+  const items = (data.items ?? []).map((q) => {
+    const raw = q as StudioQuestion & {
+      CodeTemplateType?: string | null;
+      CodeSnippet?: string | null;
+      ImageHint?: string | null;
+      AttachedImageUrl?: string | null;
+      AnswerMethod?: string | null;
+      code_template_type?: string | null;
+      code_snippet?: string | null;
+      image_hint?: string | null;
+      attached_image_url?: string | null;
+      answer_method?: string | null;
+    };
+    const amRaw = (q.answerMethod ?? raw.AnswerMethod ?? raw.answer_method ?? "").toString().trim().toLowerCase();
+    const answerMethod = amRaw === "code" ? "Code" : amRaw === "text" ? "Text" : (q.answerMethod ?? null);
+    return {
+      ...q,
+      codeTemplateType: (q.codeTemplateType ?? raw.CodeTemplateType ?? raw.code_template_type ?? null) as StudioQuestion["codeTemplateType"],
+      codeSnippet: (q.codeSnippet ?? raw.CodeSnippet ?? raw.code_snippet ?? null) as StudioQuestion["codeSnippet"],
+      imageHint: (q.imageHint ?? raw.ImageHint ?? raw.image_hint ?? null) as StudioQuestion["imageHint"],
+      attachedImageUrl: (q.attachedImageUrl ?? raw.AttachedImageUrl ?? raw.attached_image_url ?? null) as StudioQuestion["attachedImageUrl"],
+      answerMethod: answerMethod as StudioQuestion["answerMethod"],
+    };
+  });
+  return { ...data, items };
 }
 
 export async function updateQuestion(projectId: string, questionId: string, payload: {
@@ -277,6 +355,38 @@ export async function deleteQuestion(projectId: string, questionId: string): Pro
   await apiClient.delete(`/api/studio/projects/${projectId}/questions/${questionId}`);
 }
 
+/** SCRUM-396: upload ảnh đính kèm câu hỏi lên Azure Blob qua BE. */
+export async function uploadQuestionImage(
+  projectId: string,
+  questionId: string,
+  file: File
+): Promise<StudioQuestion> {
+  const form = new FormData();
+  form.append("file", file);
+  const { data } = await apiClient.post<StudioQuestion>(
+    `/api/studio/projects/${projectId}/questions/${questionId}/image`,
+    form,
+    { headers: { "Content-Type": "multipart/form-data" } }
+  );
+  return {
+    ...data,
+    imageHint: data.imageHint ?? (data as { ImageHint?: string }).ImageHint ?? null,
+    attachedImageUrl: data.attachedImageUrl ?? (data as { AttachedImageUrl?: string }).AttachedImageUrl ?? null,
+  };
+}
+
+/** SCRUM-396: xóa ảnh đính kèm câu hỏi. */
+export async function deleteQuestionImage(projectId: string, questionId: string): Promise<StudioQuestion> {
+  const { data } = await apiClient.delete<StudioQuestion>(
+    `/api/studio/projects/${projectId}/questions/${questionId}/image`
+  );
+  return {
+    ...data,
+    imageHint: data.imageHint ?? (data as { ImageHint?: string }).ImageHint ?? null,
+    attachedImageUrl: data.attachedImageUrl ?? (data as { AttachedImageUrl?: string }).AttachedImageUrl ?? null,
+  };
+}
+
 export async function regenerateQuestion(projectId: string, questionId: string, payload: {
   includeSampleAnswers: boolean;
   includeScoringRubric: boolean;
@@ -289,12 +399,12 @@ export async function listGenerationRuns(projectId: string): Promise<GenerationR
   return data;
 }
 
-export async function publishProject(questionSetId: string): Promise<void> {
-  await apiClient.post(`/api/hr/question-sets/${questionSetId}/publish`);
+export async function publishProject(projectId: string): Promise<void> {
+  await apiClient.post(`/api/studio/projects/${projectId}/publish`);
 }
 
-export async function unpublishProject(questionSetId: string): Promise<void> {
-  await apiClient.post(`/api/hr/question-sets/${questionSetId}/unpublish`);
+export async function unpublishProject(projectId: string): Promise<void> {
+  await apiClient.post(`/api/studio/projects/${projectId}/unpublish`);
 }
 
 export async function createShareLink(projectId: string, permission: "View" | "Edit", expiresAt?: string): Promise<ShareLink> {

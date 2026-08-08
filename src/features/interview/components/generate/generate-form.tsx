@@ -25,6 +25,7 @@ import { useHrSubscription } from "@/features/hr/context/hr-subscription-context
 import { useUser } from "@/features/auth/context/user-context";
 import { useLanguage } from "@/shared/providers/language-context";
 import { cn } from "@/lib/cn";
+import { QuestionContent } from "@/shared/components/ui/question-content";
 import {
   portalCard,
   portalHeading,
@@ -1085,10 +1086,10 @@ export function GenerateForm() {
       )}
 
       <div className="animate-fade-up">
-        <JdInputCard value={jdText} onChange={setJdText} />
+        <JdInputCard value={jdText} onChange={setJdText} disabled={quotaBlocked} />
       </div>
 
-      <div className="animate-fade-up" style={{ animationDelay: "40ms" }}>
+      <div className={cn("animate-fade-up", quotaBlocked && "pointer-events-none opacity-60")} style={{ animationDelay: "40ms" }}>
         <p className={cn("text-xs font-medium mb-1.5", portalSubtext)}>{t.generatePage.jdInput.orUploadFile}</p>
         <FileUploadArea onFileChange={setJdFile} />
       </div>
@@ -1223,7 +1224,10 @@ export function GeneratedQuestionCard({
           {question.sampleAnswer && (
             <div>
               <p className={cn("text-xs font-semibold mb-0.5", portalSubtext)}>Câu trả lời mẫu</p>
-              <p className={cn("text-sm leading-relaxed", portalHeading)}>{question.sampleAnswer}</p>
+              <QuestionContent
+                text={question.sampleAnswer}
+                className={cn("text-sm leading-relaxed", portalHeading)}
+              />
             </div>
           )}
         </div>

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
+import { cookies } from "next/headers";
 import { Be_Vietnam_Pro } from "next/font/google";
-import Script from "next/script";
 import "./globals.css";
 import { Providers } from "./providers";
 
@@ -21,22 +21,25 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+/** Cookie theme đã resolve (light|dark) — set bởi ThemeProvider, đọc ở SSR để khỏi FOUC / khỏi <script>. */
+const THEME_RESOLVED_COOKIE = "hiregena-theme-resolved";
+
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const cookieStore = await cookies();
+  const resolved = cookieStore.get(THEME_RESOLVED_COOKIE)?.value;
+  const isDark = resolved === "dark";
+
   return (
-    <html lang="en" className={beVietnamPro.variable} suppressHydrationWarning>
-      <head>
-        <Script
-          id="theme-fouc-guard"
-          strategy="beforeInteractive"
-          dangerouslySetInnerHTML={{
-            __html: `(function(){try{var p=localStorage.getItem("hiregena-theme");var dark=p==="dark"||(p==="system"&&window.matchMedia("(prefers-color-scheme: dark)").matches);if(dark){document.documentElement.classList.add("dark");document.documentElement.style.colorScheme="dark";}}catch(e){}})();`,
-          }}
-        />
-      </head>
+    <html
+      lang="en"
+      className={`${beVietnamPro.variable}${isDark ? " dark" : ""}`}
+      style={{ colorScheme: isDark ? "dark" : "light" }}
+      suppressHydrationWarning
+    >
       <body>
         <Providers>{children}</Providers>
       </body>

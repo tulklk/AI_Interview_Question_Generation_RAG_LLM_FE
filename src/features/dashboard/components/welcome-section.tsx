@@ -29,7 +29,7 @@ export function WelcomeSection() {
         <p className={cn("text-sm mt-1", portalSubtext)}>{dp.welcomeSub}</p>
       </div>
       <Link
-        href="/hr/generate"
+        href="/hr/generate-v2"
         className="shimmer-button flex items-center gap-2 hr-cta-btn text-white text-sm font-semibold px-5 py-2.5 rounded-xl shrink-0"
       >
         <Sparkles size={15} />

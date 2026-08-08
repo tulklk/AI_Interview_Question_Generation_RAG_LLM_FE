@@ -35,6 +35,13 @@ interface Props {
   onToggleDocument: (documentId: string, isSelected: boolean) => Promise<void> | void;
   projectId?: string;
   locked?: boolean;
+  /** Khóa riêng phần JD khi Free hết lượt generate (cooldown) */
+  jdLocked?: boolean;
+  /** Tooltip/banner khi khóa do quota */
+  jdLockedTitle?: string;
+  jdLockedBody?: string;
+  billingHref?: string;
+  billingLabel?: string;
 }
 
 type JdMode = "paste" | "upload";
@@ -274,9 +281,15 @@ export function SourcesPanel({
   onToggleDocument,
   projectId,
   locked = false,
+  jdLocked = false,
+  jdLockedTitle,
+  jdLockedBody,
+  billingHref = "/hr/settings?tab=billing",
+  billingLabel,
 }: Props) {
   const { t } = useLanguage();
   const src = t.studioPage.sources;
+  const jdBlocked = locked || jdLocked;
   const [jdMode, setJdMode] = useState<JdMode>(jdFileName ? "upload" : "paste");
   const [sampleOpen, setSampleOpen] = useState(false);
   const [dragging, setDragging] = useState(false);
@@ -363,10 +376,35 @@ export function SourcesPanel({
           aria-hidden
         />
       )}
+
+      {/* Banner Free hết lượt — khóa chỉnh JD / generate AI */}
+      {jdLocked && !locked && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-[11px] text-amber-950 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100">
+          <p className="font-semibold mb-0.5">{jdLockedTitle ?? src.quotaLockedTitle}</p>
+          {(jdLockedBody || src.quotaLockedBody) && (
+            <p className="opacity-90 mb-1.5 leading-relaxed">{jdLockedBody ?? src.quotaLockedBody}</p>
+          )}
+          <Link
+            href={billingHref}
+            className="inline-flex font-semibold text-primary hover:underline"
+          >
+            {billingLabel ?? src.quotaGoToBilling}
+          </Link>
+        </div>
+      )}
+
       <fieldset disabled={locked} className="min-w-0 space-y-4 border-0 p-0">
 
         {/* ── JD section ── */}
-        <section className="space-y-2.5">
+        <section className={cn("relative space-y-2.5", jdBlocked && !locked && "opacity-70")}>
+          {jdLocked && !locked && (
+            <div
+              className="absolute inset-0 z-10 cursor-not-allowed rounded-xl"
+              title={jdLockedTitle ?? src.quotaLockedTitle}
+              aria-hidden
+            />
+          )}
+          <fieldset disabled={jdBlocked} className="min-w-0 space-y-2.5 border-0 p-0">
           <div className="space-y-1">
             <div className="flex items-center justify-between gap-2">
               <span className="text-xs font-semibold text-gray-700 dark:text-gray-200">{src.jdTitle}</span>
@@ -494,6 +532,7 @@ export function SourcesPanel({
             </div>
           )}
           </div>
+          </fieldset>
         </section>
 
         {/* ── Auto-detected summary ── */}

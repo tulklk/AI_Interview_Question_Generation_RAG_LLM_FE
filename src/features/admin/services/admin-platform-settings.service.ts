@@ -2,6 +2,8 @@ import { apiClient } from "@/core/api/http-client";
 
 export interface PlatformSettings {
   minQuestionsToPublish?: number;
+  maxPinnedSets?: number;
+  minAttemptsForTrending?: number;
   platformName?: string;
   defaultQuestionCount?: number;
   maxJdsPerDay?: number;
@@ -19,6 +21,9 @@ function normalize(raw: unknown): PlatformSettings {
       typeof data.minQuestionToPublish === "number" ? data.minQuestionToPublish :
       typeof data.minimumQuestionsToPublish === "number" ? data.minimumQuestionsToPublish :
       undefined,
+    maxPinnedSets: typeof data.maxPinnedSets === "number" ? data.maxPinnedSets : undefined,
+    minAttemptsForTrending:
+      typeof data.minAttemptsForTrending === "number" ? data.minAttemptsForTrending : undefined,
     platformName: typeof data.platformName === "string" ? data.platformName : undefined,
     defaultQuestionCount:
       typeof data.defaultQuestionCount === "number" ? data.defaultQuestionCount : undefined,
@@ -36,5 +41,14 @@ export async function getPlatformSettings(): Promise<PlatformSettings> {
 }
 
 export async function updatePlatformSettings(settings: PlatformSettings): Promise<void> {
-  await apiClient.put("/api/admin/platform-settings", settings);
+  await apiClient.put("/api/admin/platform-settings", {
+    minQuestionsToPublish: settings.minQuestionsToPublish,
+    maxPinnedSets: settings.maxPinnedSets,
+    minAttemptsForTrending: settings.minAttemptsForTrending,
+    // Các field UI-only vẫn gửi nếu BE bỏ qua (backward compatible)
+    platformName: settings.platformName,
+    defaultQuestionCount: settings.defaultQuestionCount,
+    maxJdsPerDay: settings.maxJdsPerDay,
+    sessionTimeout: settings.sessionTimeout,
+  });
 }

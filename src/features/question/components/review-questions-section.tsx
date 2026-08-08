@@ -63,6 +63,7 @@ interface SortableCardProps {
   q: GeneratedQuestion;
   index: number;
   sessionId: string;
+  questionSetId?: string;
   isFirst: boolean;
   isLast: boolean;
   locked?: boolean;
@@ -74,12 +75,14 @@ interface SortableCardProps {
   onMoveUp: () => void;
   onMoveDown: () => void;
   onAskAI?: (applyCallback: (s: QuestionSuggestion) => void) => void;
+  onImageUpdated?: (updated: GeneratedQuestion) => void;
 }
 
 function SortableCard({
   q,
   index,
   sessionId,
+  questionSetId,
   isFirst,
   isLast,
   locked,
@@ -91,6 +94,7 @@ function SortableCard({
   onMoveUp,
   onMoveDown,
   onAskAI,
+  onImageUpdated,
 }: SortableCardProps) {
   const {
     attributes,
@@ -116,6 +120,7 @@ function SortableCard({
         question={q}
         index={index}
         sessionId={sessionId}
+        questionSetId={questionSetId}
         isFirst={isFirst}
         isLast={isLast}
         locked={locked}
@@ -128,6 +133,7 @@ function SortableCard({
         onMoveUp={onMoveUp}
         onMoveDown={onMoveDown}
         onAskAI={onAskAI}
+        onImageUpdated={onImageUpdated}
       />
     </div>
   );
@@ -331,11 +337,12 @@ export function ReviewQuestionsSection({
       question: changes.question,
       questionType: changes.questionType,
       difficulty: changes.difficulty,
+      skill: changes.skill ?? null,
+      focusArea: changes.focusArea ?? null,
       rationale: changes.rationale ?? null,
       sampleAnswer: changes.sampleAnswer ?? null,
-      ...(changes.scoringRubric !== undefined
-        ? { scoringRubric: changes.scoringRubric ?? null }
-        : {}),
+      scoringRubric: changes.scoringRubric ?? null,
+      answerMethod: changes.answerMethod ?? "Text",
     };
 
     // Once a question set exists, edits must go straight to it — editing the
@@ -411,19 +418,20 @@ export function ReviewQuestionsSection({
     // Once a question set exists, adding must go straight to it — adding to the
     // job's own (disconnected) copy has no effect on the saved/published set.
     if (questionSetId) {
-      const ok = await addQuestionSetQuestion(questionSetId, {
+      const created = await addQuestionSetQuestion(questionSetId, {
         question: newQ.question,
         questionType: newQ.questionType,
         difficulty: newQ.difficulty,
         rationale: newQ.rationale,
         sampleAnswer: newQ.sampleAnswer,
+        answerMethod: newQ.answerMethod ?? "Text",
         order: questions.length + 1,
       });
-      if (!ok) {
+      if (!created) {
         addToast("error", "Không thể thêm câu hỏi. Vui lòng thử lại.");
         return;
       }
-      // BE doesn't return the new question's id, so refetch to pick it up.
+      // Refetch để đồng bộ order/id từ BE
       const refreshed = await getDraft(questionSetId);
       if (refreshed) {
         setQuestions(refreshed.questions);
@@ -792,6 +800,7 @@ export function ReviewQuestionsSection({
                           q={q}
                           index={globalIdx + 1}
                           sessionId={sessionId}
+                          questionSetId={questionSetId}
                           isFirst={globalIdx === 0}
                           isLast={globalIdx === questions.length - 1}
                           locked={isLocked}
@@ -803,6 +812,15 @@ export function ReviewQuestionsSection({
                           onMoveUp={() => handleMoveUp(globalIdx)}
                           onMoveDown={() => handleMoveDown(globalIdx)}
                           onAskAI={(applyFn) => handleOpenAskAI(q, applyFn)}
+                          onImageUpdated={(updated) => {
+                            setQuestions((prev) =>
+                              prev.map((item) =>
+                                item.id === updated.id
+                                  ? { ...item, attachedImageUrl: updated.attachedImageUrl ?? null }
+                                  : item
+                              )
+                            );
+                          }}
                         />
                       </div>
                     );
