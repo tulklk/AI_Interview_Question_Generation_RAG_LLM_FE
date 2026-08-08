@@ -33,6 +33,8 @@ export function GeneralSettings() {
   const [maxJdsPerDay, setMaxJdsPerDay] = useState("50");
   const [sessionTimeout, setSessionTimeout] = useState("60");
   const [minQuestionsToPublish, setMinQuestionsToPublish] = useState("10");
+  const [maxPinnedSets, setMaxPinnedSets] = useState("5");
+  const [minAttemptsForTrending, setMinAttemptsForTrending] = useState("10");
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -48,6 +50,8 @@ export function GeneralSettings() {
       if (s.maxJdsPerDay != null) setMaxJdsPerDay(String(s.maxJdsPerDay));
       if (s.sessionTimeout != null) setSessionTimeout(String(s.sessionTimeout));
       if (s.minQuestionsToPublish != null) setMinQuestionsToPublish(String(s.minQuestionsToPublish));
+      if (s.maxPinnedSets != null) setMaxPinnedSets(String(s.maxPinnedSets));
+      if (s.minAttemptsForTrending != null) setMinAttemptsForTrending(String(s.minAttemptsForTrending));
     } catch {
       setLoadError(true);
     } finally {
@@ -66,6 +70,8 @@ export function GeneralSettings() {
         maxJdsPerDay: Number(maxJdsPerDay) || undefined,
         sessionTimeout: Number(sessionTimeout) || undefined,
         minQuestionsToPublish: Number(minQuestionsToPublish) || undefined,
+        maxPinnedSets: Number(maxPinnedSets) || 0,
+        minAttemptsForTrending: Number(minAttemptsForTrending) || undefined,
       });
       addToast("success", g.saveSuccess);
     } catch (err) {
@@ -128,6 +134,42 @@ export function GeneralSettings() {
             />
             <p className={cn("mt-1 text-[11px]", portalSubtextAlt)}>
               Thay đổi ngay runtime, không cần redeploy. Ví dụ: đặt 1 để test dễ hơn.
+            </p>
+          </FormField>
+
+          <FormField
+            label="Số bộ tối đa được ghim trên Marketplace"
+            htmlFor="max-pinned-sets"
+          >
+            <input
+              id="max-pinned-sets"
+              type="number"
+              min={0}
+              max={50}
+              value={maxPinnedSets}
+              onChange={(e) => setMaxPinnedSets(e.target.value)}
+              className={inputCls}
+            />
+            <p className={cn("mt-1 text-[11px]", portalSubtextAlt)}>
+              SCRUM-404: Admin không thể ghim quá số này cùng lúc.
+            </p>
+          </FormField>
+
+          <FormField
+            label="Ngưỡng lượt practice để hiện badge Trending"
+            htmlFor="min-attempts-trending"
+          >
+            <input
+              id="min-attempts-trending"
+              type="number"
+              min={1}
+              max={10000}
+              value={minAttemptsForTrending}
+              onChange={(e) => setMinAttemptsForTrending(e.target.value)}
+              className={inputCls}
+            />
+            <p className={cn("mt-1 text-[11px]", portalSubtextAlt)}>
+              Candidate thấy badge Trending khi AttemptCount ≥ ngưỡng này.
             </p>
           </FormField>
         </div>

@@ -18,13 +18,41 @@ const DOW_EN = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
 const MONTH_VI = ["Th1", "Th2", "Th3", "Th4", "Th5", "Th6", "Th7", "Th8", "Th9", "Th10", "Th11", "Th12"];
 const MONTH_EN = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-interface PracticeHeatmapProps {
-  heatmap: PracticeHeatmapResult;
+/** Nhãn i18n dùng chung dashboard / profile / HR overview. */
+export interface PracticeHeatmapLabels {
+  title: string;
+  currentStreak: string;
+  longestStreak: string;
+  activeDays: string;
+  legendLess: string;
+  legendMore: string;
+  tooltipTemplate: string;
+  tooltipEmptyTemplate: string;
 }
 
-export function PracticeHeatmap({ heatmap }: PracticeHeatmapProps) {
+/** Namespace trong `t` — đọc live dictionary theo lang (tránh labels Proxy fallback EN khi HMR thiếu key). */
+export type PracticeHeatmapSource = "dashboard" | "profile" | "hr";
+
+interface PracticeHeatmapProps {
+  heatmap: PracticeHeatmapResult;
+  /**
+   * Đọc nhãn từ `t` theo source — đổi UI language luôn áp dụng đúng.
+   * Profile/HR nên truyền source thay vì `labels` (labels từ Proxy có thể bị khóa EN).
+   */
+  source?: PracticeHeatmapSource;
+  /** Override thủ công; bị bỏ qua khi có `source`. */
+  labels?: PracticeHeatmapLabels;
+}
+
+export function PracticeHeatmap({ heatmap, source, labels }: PracticeHeatmapProps) {
   const { t, lang } = useLanguage();
-  const p = t.jobseekerDashboardPage.heatmap;
+  // Ưu tiên source → luôn lấy chuỗi theo lang hiện tại từ dictionary.
+  const p =
+    source === "profile"
+      ? t.jobseekerProfilePage.heatmap
+      : source === "hr"
+        ? t.hrCandidateOverviewPage.heatmap
+        : (labels ?? t.jobseekerDashboardPage.heatmap);
   const isVi = lang === "vi";
 
   const DOW = isVi ? DOW_VI : DOW_EN;
@@ -84,8 +112,8 @@ export function PracticeHeatmap({ heatmap }: PracticeHeatmapProps) {
       <div className="overflow-x-auto -mx-1 px-1">
         <div className={cn("flex min-w-max", GAP)} role="img" aria-label={p.title}>
 
-          {/* Day-of-week labels column */}
-          <div className="flex flex-col shrink-0">
+          {/* Day-of-week labels — rộng hơn w-3 để nhãn VI (CN/T2) không bị cắt */}
+          <div className="flex flex-col shrink-0 w-5">
             {/* Spacer matching month label height */}
             <div className="h-3.5" />
             {/* 7 rows, one per day */}
@@ -94,7 +122,7 @@ export function PracticeHeatmap({ heatmap }: PracticeHeatmapProps) {
                 const dow = (startDow + rowIdx) % 7;
                 const showLabel = LABEL_ROWS.includes(rowIdx);
                 return (
-                  <div key={rowIdx} className="w-3 h-3 flex items-center">
+                  <div key={rowIdx} className="h-3 flex items-center">
                     {showLabel ? (
                       <span className={cn("text-[7.5px] leading-none whitespace-nowrap", portalSubtextAlt)}>
                         {DOW[dow]}

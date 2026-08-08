@@ -29,7 +29,9 @@ const CandidateSubscriptionContext =
   createContext<CandidateSubscriptionContextValue | null>(null);
 
 export function CandidateSubscriptionProvider({ children }: { children: ReactNode }) {
-  const [planType, setPlanType] = useState<CandidatePlanType>(readCachedPlan);
+  // Luôn khởi tạo FREE ở cả SSR và hydrate đầu tiên — không đọc localStorage trong
+  // useState initializer (tránh hydration mismatch: server FREE vs client PREMIUM).
+  const [planType, setPlanType] = useState<CandidatePlanType>("FREE");
 
   const refreshSubscription = useCallback(async () => {
     try {
@@ -42,6 +44,9 @@ export function CandidateSubscriptionProvider({ children }: { children: ReactNod
   }, []);
 
   useEffect(() => {
+    // Sau mount: áp cache ngay (nếu có) rồi refresh từ API.
+    const cached = readCachedPlan();
+    if (cached === "PREMIUM") setPlanType("PREMIUM");
     void refreshSubscription();
   }, [refreshSubscription]);
 

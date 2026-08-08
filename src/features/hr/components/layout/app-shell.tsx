@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { Sidebar } from "./sidebar";
 import { TopHeader } from "./top-header";
@@ -17,11 +17,7 @@ import { getInitials, resolveAvatarUrl } from "@/shared/utils/user-display";
 import { formatRelativeTime } from "@/shared/utils/relative-time";
 import type { HrPlanId } from "@/features/hr/types/hr-subscription";
 import type { NotificationItem } from "@/shared/components/common/notification-bell";
-import { getGenerationJobs } from "@/features/interview/services/interview.service";
-import { useUpgradeWatcher } from "@/shared/hooks/use-upgrade-watcher";
-import { UpgradeCongratsDialog } from "@/shared/components/upgrade-congrats-dialog";
-
-const UNREAD_WINDOW_MS = 24 * 60 * 60 * 1000;
+import { listProjects } from "@/features/studio/services/studio.service";
 
 interface AppShellProps {
   children: ReactNode;
@@ -34,14 +30,7 @@ interface AppShellProps {
 export function AppShell({ children, breadcrumb, pageTitle, fullWidth = false }: AppShellProps) {
   const { t, lang } = useLanguage();
   const pathname = usePathname();
-  const { planId, refresh: refreshHrSubscription } = useHrSubscription();
-  const { showCongrats: showUpgradeCongrats, dismiss: dismissCongrats } = useUpgradeWatcher(
-    planId,
-    refreshHrSubscription,
-    { lastSeenKey: "hiregena-hr-plan-seen" }
-    // HR context has no built-in localStorage cache, so we persist the last-seen plan
-    // ourselves to detect upgrades that happened while the user was away (cross-session).
-  );
+  const { planId } = useHrSubscription();
   const { user, loading } = useUser();
   const { addToast } = useToast();
   const welcomedRef = useRef(false);
@@ -54,21 +43,23 @@ export function AppShell({ children, breadcrumb, pageTitle, fullWidth = false }:
     setSidebarOpen(false);
   }, [pathname]);
 
-  // Derive notifications from recently completed generation jobs.
+  // Notifications từ Studio projects (Generated) — không gọi V1 jobs.
   useEffect(() => {
     let cancelled = false;
-    getGenerationJobs()
-      .then((jobs) => {
+    listProjects()
+      .then((projects) => {
         if (cancelled) return;
-        const items: NotificationItem[] = jobs
-          .filter((j) => j.status === "COMPLETED")
-          .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+        const items: NotificationItem[] = (projects ?? [])
+          .filter((p) => String(p.status).toLowerCase() === "generated")
           .slice(0, 5)
-          .map((j) => ({
-            id: j.id,
-            message: t.notificationMessages.hrQuestionsGenerated.replace("{{title}}", j.jobTitle || "—"),
-            time: formatRelativeTime(j.updatedAt, lang),
-            read: Date.now() - new Date(j.updatedAt).getTime() > UNREAD_WINDOW_MS,
+          .map((p) => ({
+            id: p.id,
+            message: t.notificationMessages.hrQuestionsGenerated.replace(
+              "{{title}}",
+              p.name || "—"
+            ),
+            time: formatRelativeTime(new Date().toISOString(), lang),
+            read: false,
           }));
         setNotifications(items);
       })
@@ -129,10 +120,11 @@ export function AppShell({ children, breadcrumb, pageTitle, fullWidth = false }:
 
   return (
     <div className="flex h-screen overflow-hidden">
-      <Sidebar
-        open={sidebarOpen}
-        onClose={() => setSidebarOpen(false)}
-      />
+      <Suspense
+        fallback={<div className="hidden lg:flex w-62.5 shrink-0 h-screen hr-sidebar" aria-hidden />}
+      >
+        <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      </Suspense>
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
         <TopHeader
           breadcrumb={translatedBreadcrumb}
@@ -163,12 +155,6 @@ export function AppShell({ children, breadcrumb, pageTitle, fullWidth = false }:
         <GenerationProgressBadge />
         <StudioProgressBadge />
       </div>
-
-      <UpgradeCongratsDialog
-        open={showUpgradeCongrats}
-        onClose={dismissCongrats}
-        planName="HR Premium"
-      />
     </div>
   );
 }

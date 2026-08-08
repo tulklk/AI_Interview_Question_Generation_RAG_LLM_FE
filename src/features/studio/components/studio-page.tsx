@@ -37,21 +37,30 @@ export function StudioPage() {
   useEffect(() => { setMounted(true); }, []);
   const [inspectorCollapsed, setInspectorCollapsed] = useState(false);
 
+  // Main: dialog portal; WIP: cũng chặn action + JD input khi hết quota
   const showQuotaDialog = !canGenerateNow;
+  const quotaBlocked = !canGenerateNow;
   const locale = lang === "vi" ? "vi-VN" : "en-US";
   const cooldownTimeStr = cooldownEndsAt
     ? cooldownEndsAt.toLocaleString(locale)
     : "";
+  const quotaBody = cooldownEndsAt
+    ? t.hrSubscription.quotaExceededBody.replace("{{time}}", cooldownTimeStr)
+    : t.hrSubscription.quotaExceededBody;
 
   const canGenerate = useMemo(
-    () => studio.settings?.readiness?.canGenerateQuestions ?? false,
-    [studio.settings?.readiness?.canGenerateQuestions]
+    () =>
+      !quotaBlocked &&
+      (studio.settings?.readiness?.canGenerateQuestions ?? false),
+    [studio.settings?.readiness?.canGenerateQuestions, quotaBlocked]
   );
 
   // Only allow creating plan after JD is saved & analyzed (jdSummary set) or backend confirms it exists
   const canCreatePlan = useMemo(
-    () => Boolean(studio.jdSummary) || Boolean(studio.settings?.readiness?.hasJobDescription),
-    [studio.jdSummary, studio.settings?.readiness?.hasJobDescription]
+    () =>
+      !quotaBlocked &&
+      (Boolean(studio.jdSummary) || Boolean(studio.settings?.readiness?.hasJobDescription)),
+    [studio.jdSummary, studio.settings?.readiness?.hasJobDescription, quotaBlocked]
   );
 
   const hasJd = Boolean(studio.jdContent?.trim()) || Boolean(studio.settings?.readiness?.hasJobDescription);
@@ -134,6 +143,11 @@ export function StudioPage() {
               </div>
               <SourcesPanel
                 locked={sideColumnsLocked}
+                jdLocked={quotaBlocked}
+                jdLockedTitle={t.hrSubscription.quotaExceededTitle}
+                jdLockedBody={quotaBody}
+                billingHref="/hr/settings?tab=billing"
+                billingLabel={t.hrSubscription.goToSubscription}
                 jdContent={studio.jdContent}
                 onJdChange={studio.setJdContent}
                 onSaveJd={studio.saveJobDescription}
@@ -167,6 +181,7 @@ export function StudioPage() {
             onCreatePlan={studio.generateInitialPlan}
             onSendMessage={studio.sendMessage}
             onApprovePlan={studio.approveCurrentPlan}
+            onRenamePlanTitle={studio.renameCurrentPlanTitle}
             onRefinePlan={studio.refineCurrentPlan}
             onGenerateQuestions={() => void studio.generateQuestions()}
             onUpdateQuestion={async (q) => {
@@ -205,6 +220,40 @@ export function StudioPage() {
                 const result = await api.listQuestions(studio.project.id, { page: 1, pageSize: 100, planId: studio.currentPlan.id });
                 studio.setQuestions(result.items);
               }
+            }}
+            onUploadQuestionImage={async (questionId, file) => {
+              if (!studio.project) return;
+              const api = await import("@/features/studio/services/studio.service");
+              const updated = await api.uploadQuestionImage(studio.project.id, questionId, file);
+              studio.setQuestions((prev) =>
+                prev.map((item) =>
+                  item.id === questionId
+                    ? {
+                        ...item,
+                        imageHint: updated.imageHint ?? item.imageHint,
+                        attachedImageUrl: updated.attachedImageUrl ?? null,
+                        codeTemplateType: updated.codeTemplateType ?? item.codeTemplateType,
+                        codeSnippet: updated.codeSnippet ?? item.codeSnippet,
+                      }
+                    : item
+                )
+              );
+            }}
+            onDeleteQuestionImage={async (questionId) => {
+              if (!studio.project) return;
+              const api = await import("@/features/studio/services/studio.service");
+              const updated = await api.deleteQuestionImage(studio.project.id, questionId);
+              studio.setQuestions((prev) =>
+                prev.map((item) =>
+                  item.id === questionId
+                    ? {
+                        ...item,
+                        imageHint: updated.imageHint ?? item.imageHint,
+                        attachedImageUrl: null,
+                      }
+                    : item
+                )
+              );
             }}
           />
         </div>

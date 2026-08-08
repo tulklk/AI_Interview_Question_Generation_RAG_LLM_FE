@@ -14,6 +14,8 @@ export type ThemeMode = "light" | "dark";
 export type ThemePreference = "light" | "dark" | "system";
 
 const STORAGE_KEY = "hiregena-theme";
+/** Đồng bộ với RootLayout — SSR đọc cookie này để set class dark, không cần <script> FOUC. */
+const RESOLVED_COOKIE = "hiregena-theme-resolved";
 
 interface ThemeContextValue {
   /** Resolved theme currently applied to the document. */
@@ -33,6 +35,15 @@ const ThemeContext = createContext<ThemeContextValue>({
   toggleTheme: () => {},
 });
 
+function writeResolvedCookie(theme: ThemeMode) {
+  try {
+    // 1 năm — Path=/ để layout SSR luôn đọc được
+    document.cookie = `${RESOLVED_COOKIE}=${theme}; Path=/; Max-Age=31536000; SameSite=Lax`;
+  } catch {
+    // ignore
+  }
+}
+
 /**
  * Applies the theme to <html>. Transitions are momentarily disabled so that
  * toggling does not animate every color on the page at once (which caused jank).
@@ -43,6 +54,9 @@ function applyTheme(theme: ThemeMode) {
   const root = document.documentElement;
   const isDark = root.classList.contains("dark");
   const shouldBeDark = theme === "dark";
+
+  writeResolvedCookie(theme);
+
   if (isDark === shouldBeDark) {
     // Keep colorScheme in sync but skip the class write / reflow.
     root.style.colorScheme = theme;
@@ -89,8 +103,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const [preference, setPreferenceState] = useState<ThemePreference>("system");
   const [theme, setThemeState] = useState<ThemeMode>("light");
   // Tracks whether the initial read from localStorage has completed, so the
-  // DOM-sync effect does not clobber the FOUC script's class before we know
-  // the user's real preference.
+  // DOM-sync effect does not clobber SSR cookie class before we know preference.
   const hydratedRef = useRef(false);
 
   // ── Single source of truth: DOM is always derived from `theme` state ───────
@@ -107,8 +120,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     setPreferenceState(pref);
     setThemeState(resolved);
     hydratedRef.current = true;
-    // Ensure DOM matches the resolved theme immediately (the [theme] effect is
-    // skipped on this first pass because hydratedRef was still false).
+    // Ensure DOM + cookie match the resolved theme immediately.
     applyTheme(resolved);
   }, []);
 

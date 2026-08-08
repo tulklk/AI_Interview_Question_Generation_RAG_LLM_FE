@@ -24,6 +24,14 @@ export interface PracticeQuestion {
   timeLimit?: number; // seconds
   /** Free plan: BE che nội dung (~80% câu) — FE hiện soft paywall */
   isLocked?: boolean;
+  /** SCRUM-399: loại code template (BUG_DETECTION, CODE_COMPLETION, …) */
+  codeTemplateType?: string | null;
+  /** SCRUM-399: starter code đề bài — không phải sample answer */
+  codeSnippet?: string | null;
+  /** SCRUM-399: SAS URL ảnh đính kèm HR */
+  attachedImageUrl?: string | null;
+  /** SCRUM-400: Text | Code — phương thức trả lời */
+  answerMethod?: "Text" | "Code" | null;
 }
 
 export interface QuestionSet {
@@ -44,6 +52,10 @@ export interface QuestionSet {
   description?: string;
   rating?: number;
   attempts?: number;
+  /** SCRUM-404: Admin pinned this set. */
+  isPinned?: boolean;
+  /** SCRUM-404: AttemptCount meets trending threshold. */
+  isTrending?: boolean;
   questions: PracticeQuestion[];
 }
 

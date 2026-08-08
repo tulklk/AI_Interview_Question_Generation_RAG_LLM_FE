@@ -473,7 +473,7 @@ export function GenerationProgressBadge() {
       const jobId = localStorage.getItem("hr_gen_job");
       if (jobId) { router.push(`/hr/history/${jobId}`); return; }
     }
-    if (!onGeneratePage) router.push("/hr/generate");
+    if (!onGeneratePage) router.push("/hr/generate-v2");
   }
 
   function handleDismiss(e: React.MouseEvent) {
@@ -497,7 +497,7 @@ export function GenerationProgressBadge() {
     if (onGeneratePage) {
       window.dispatchEvent(new CustomEvent("hr:session-swap"));
     } else {
-      router.push("/hr/generate");
+      router.push("/hr/generate-v2");
     }
   }
 
