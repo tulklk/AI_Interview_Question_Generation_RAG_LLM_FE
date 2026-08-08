@@ -484,7 +484,7 @@ export function CandidateProfile() {
             </div>
           </div>
         </div>
-        <div className="flex flex-col gap-5">
+        <div className="flex flex-col gap-5 min-w-0">
           <Skeleton className="h-8 w-40" />
           {Array.from({ length: 4 }).map((_, i) => (
             <div key={i} className="hr-glass-card p-5">
@@ -676,7 +676,7 @@ export function CandidateProfile() {
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.05 }}
-        className="flex flex-col gap-5"
+        className="flex flex-col gap-5 min-w-0"
       >
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h1 className={cn("text-[24px] font-[800]", portalHeadingAlt)}>{p.heading}</h1>
@@ -726,7 +726,7 @@ export function CandidateProfile() {
         </div>
 
         {/* SCRUM-401: Contribution heatmap — cột phải đủ rộng cho 52 tuần */}
-        <div className="hr-glass-card p-5">
+        <div className="hr-glass-card p-5 overflow-hidden">
           <div className="mb-3">
             <h3 className={cn("text-[14px] font-[700]", portalHeadingAlt)}>{p.heatmap.title}</h3>
             <p className={cn("text-[12px] mt-0.5", portalSubtextAlt)}>{p.heatmap.subtitle}</p>
@@ -743,7 +743,7 @@ export function CandidateProfile() {
           ) : practiceHeatmap.activeDays === 0 ? (
             <p className={cn("text-[13px] py-6 text-center", portalSubtextAlt)}>{p.heatmap.empty}</p>
           ) : (
-            <PracticeHeatmap heatmap={practiceHeatmap} source="profile" />
+            <PracticeHeatmap heatmap={practiceHeatmap} source="profile" compact />
           )}
         </div>
 

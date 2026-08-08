@@ -41,6 +41,7 @@ import {
   toggleHrBookmark,
   unpublishQuestionSet,
 } from "@/features/interview/services/interview.service";
+import { useHrSubscription } from "@/features/hr/context/hr-subscription-context";
 
 function formatDate(iso: string, lang: "en" | "vi"): string {
   const d = new Date(iso);
@@ -95,6 +96,8 @@ export function QuestionSetHistoryTable({ filter = "all" }: QuestionSetHistoryTa
   const dm = t.historyPage.deleteModal;
   const { addToast } = useToast();
   const router = useRouter();
+  const { planId } = useHrSubscription();
+  const isPremium = planId === "HR_PREMIUM";
 
   const [items, setItems] = useState<HistoryQuestionSetItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -568,15 +571,17 @@ export function QuestionSetHistoryTable({ filter = "all" }: QuestionSetHistoryTa
                         >
                           {item.status === "PUBLISHED" ? <GlobeOff size={14} /> : <Globe size={14} />}
                         </button>
-                        <button
-                          type="button"
-                          disabled={busy}
-                          onClick={() => void handleExport(item)}
-                          className={iconBtn}
-                          title={ht.exportTitle}
-                        >
-                          <Download size={14} />
-                        </button>
+                        {isPremium && (
+                          <button
+                            type="button"
+                            disabled={busy}
+                            onClick={() => void handleExport(item)}
+                            className={iconBtn}
+                            title={ht.exportTitle}
+                          >
+                            <Download size={14} />
+                          </button>
+                        )}
                         <button
                           type="button"
                           disabled={busy}

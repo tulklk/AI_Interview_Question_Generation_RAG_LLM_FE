@@ -25,6 +25,7 @@ import {
   useCandidateSubscription,
 } from "@/features/candidate/context/candidate-subscription-context";
 import { UpgradeModal } from "@/features/candidate/components/billing/upgrade-modal";
+import { PremiumCelebrationDialog } from "@/shared/components/ui/premium-celebration-dialog";
 
 const UNREAD_WINDOW_MS = 24 * 60 * 60 * 1000;
 
@@ -47,9 +48,43 @@ function JobseekerAppShellInner({
   const { user, loading } = useUser();
   const { planType, refreshSubscription } = useCandidateSubscription();
   const welcomedRef = useRef(false);
+  const prevPlanTypeRef = useRef<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showUpgrade, setShowUpgrade] = useState(false);
+  const [showCelebration, setShowCelebration] = useState(false);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+
+  // Show Premium celebration once per plan period (payment OR admin grant).
+  // IMPORTANT: only clear the localStorage flag on a genuine PREMIUM → FREE
+  // downgrade (prev === "PREMIUM"). Never clear it while planType is still at
+  // its initial "FREE" value on mount, because that would wipe the flag before
+  // the cached plan is read and the component re-renders with "PREMIUM".
+  useEffect(() => {
+    if (!user?.id) return;
+    const prev = prevPlanTypeRef.current;
+    prevPlanTypeRef.current = planType;
+
+    const key = `hiregen_premium_ok_${user.id}`;
+    if (planType === "PREMIUM") {
+      if (!localStorage.getItem(key)) {
+        localStorage.setItem(key, "1");
+        setShowCelebration(true);
+      }
+    } else if (prev === "PREMIUM") {
+      // Genuine downgrade confirmed from API — clear so next upgrade fires again
+      localStorage.removeItem(key);
+    }
+  }, [planType, user?.id]);
+
+  // Refresh subscription when user returns to this tab so that admin-granted
+  // upgrades or revocations are picked up without a full page reload.
+  useEffect(() => {
+    function onVisible() {
+      if (document.visibilityState === "visible") void refreshSubscription();
+    }
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [refreshSubscription]);
 
   // Body scroll lock when mobile sidebar is open
   useEffect(() => {
@@ -185,6 +220,11 @@ function JobseekerAppShellInner({
         onDone={() => { void refreshSubscription(); }}
       />
     )}
+
+    <PremiumCelebrationDialog
+      open={showCelebration}
+      onClose={() => setShowCelebration(false)}
+    />
     </>
   );
 }

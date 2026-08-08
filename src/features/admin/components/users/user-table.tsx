@@ -1,6 +1,7 @@
 "use client";
 
 import { ChevronRight, Loader2, Users } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
 import { cn } from "@/lib/cn";
 import { useLanguage } from "@/shared/providers/language-context";
 import { getAdminUserStatus } from "@/features/admin/utils/admin-user-display";
@@ -51,6 +52,8 @@ interface UserTableProps {
   selectedUserId?: string | null;
   onSelectUser: (user: AdminUserListItem) => void;
   onRetry?: () => void;
+  /** Current page index — used to key the tbody animation so rows fade in on page change. */
+  page?: number;
 }
 
 function formatDate(value: string | undefined, locale: string): string {
@@ -71,6 +74,7 @@ export function UserTable({
   selectedUserId,
   onSelectUser,
   onRetry,
+  page = 0,
 }: UserTableProps) {
   const { t, lang } = useLanguage();
   const tbl = t.adminPages.users.table;
@@ -107,7 +111,15 @@ export function UserTable({
             </tr>
           </thead>
 
-          <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80">
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.tbody
+              key={page}
+              className="divide-y divide-slate-100 dark:divide-slate-800/80"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.18 }}
+            >
             {error && (
               <tr>
                 <td colSpan={6} className="px-6 py-12 text-center">
@@ -246,7 +258,8 @@ export function UserTable({
                   </tr>
                 );
               })}
-          </tbody>
+            </motion.tbody>
+          </AnimatePresence>
         </table>
       </div>
     </div>

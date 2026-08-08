@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Crown, Check, Copy, X } from "lucide-react";
+import { Crown, Check, Copy, X, Clock } from "lucide-react";
 import type { HubConnection } from "@microsoft/signalr";
 import { cn } from "@/lib/cn";
 import { useLanguage } from "@/shared/providers/language-context";
@@ -63,6 +63,7 @@ export function UpgradeModal({ onClose, onDone }: UpgradeModalProps) {
   const [payment, setPayment] = useState<UpgradePaymentIntent | null>(null);
   const [waiting, setWaiting] = useState(false);
   const [qrImgFailed, setQrImgFailed] = useState(false);
+  const [secsLeft, setSecsLeft] = useState<number | null>(null);
   const qrImageFromContent =
     payment?.qrContent
       ? `https://api.qrserver.com/v1/create-qr-code/?size=320x320&data=${encodeURIComponent(payment.qrContent)}`
@@ -298,6 +299,30 @@ export function UpgradeModal({ onClose, onDone }: UpgradeModalProps) {
     };
   }, [payment?.orderCode, payment?.amount, finishPaid, b.orderExpiredToast]);
 
+  // ── Countdown timer — tính từ payment.expiresAt ──────────────────────────
+  function formatCountdown(secs: number): string {
+    const m = Math.floor(secs / 60);
+    const s = secs % 60;
+    return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+  }
+
+  useEffect(() => {
+    const expiresAt = payment?.expiresAt;
+    if (!expiresAt || payment?.amount === 0) {
+      setSecsLeft(null);
+      return;
+    }
+    const expiry = new Date(expiresAt).getTime();
+    const computeSecs = () => Math.max(0, Math.floor((expiry - Date.now()) / 1000));
+    setSecsLeft(computeSecs());
+    const id = setInterval(() => {
+      const s = computeSecs();
+      setSecsLeft(s);
+      if (s === 0) clearInterval(id);
+    }, 1_000);
+    return () => clearInterval(id);
+  }, [payment?.expiresAt, payment?.amount]);
+
   const preferredQrSrc =
     !qrImgFailed && payment?.qrImageUrl
       ? payment.qrImageUrl
@@ -410,14 +435,41 @@ export function UpgradeModal({ onClose, onDone }: UpgradeModalProps) {
                             </div>
                           )}
                           {waiting && (
-                            <div className={cn("text-xs text-primary text-center mt-2", portalSubtext)}>
+                            <div className={cn("text-xs text-center mt-2", portalHeading)}>
                               {b.paymentPanel.waitingWebhook}
                             </div>
                           )}
-                          {b.paymentPanel.validityHint && (
-                            <div className={cn("text-[11px] text-center px-1 mt-1", portalSubtext)}>
-                              {b.paymentPanel.validityHint}
+
+                          {/* Countdown chip */}
+                          {secsLeft !== null ? (
+                            <div
+                              className={cn(
+                                "flex items-center justify-center gap-2 mt-2 rounded-full px-4 py-2 select-none",
+                                secsLeft === 0
+                                  ? "bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500"
+                                  : secsLeft <= 30
+                                    ? "bg-red-50 dark:bg-red-900/30 text-red-500 dark:text-red-400 animate-pulse"
+                                    : secsLeft <= 120
+                                      ? "bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400"
+                                      : "bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400"
+                              )}
+                            >
+                              <Clock size={14} />
+                              {secsLeft === 0 ? (
+                                <span className="text-sm font-semibold">{lang === "vi" ? "Mã đã hết hạn" : "Code expired"}</span>
+                              ) : (
+                                <>
+                                  <span className="text-base font-bold font-mono tabular-nums tracking-wide">{formatCountdown(secsLeft)}</span>
+                                  <span className="text-xs font-medium opacity-70">{lang === "vi" ? "còn lại" : "left"}</span>
+                                </>
+                              )}
                             </div>
+                          ) : (
+                            b.paymentPanel.validityHint && (
+                              <div className={cn("text-[11px] text-center px-1 mt-1", portalSubtext)}>
+                                {b.paymentPanel.validityHint}
+                              </div>
+                            )
                           )}
                         </div>
 
@@ -477,7 +529,7 @@ export function UpgradeModal({ onClose, onDone }: UpgradeModalProps) {
                               <span className={cn("text-[11px] opacity-55 whitespace-nowrap shrink-0", portalSubtext)}>
                                 {b.paymentPanel.expiresAt}
                               </span>
-                              <span className={cn("text-[11px] text-right tabular-nums", portalSubtext)}>
+                              <span className={cn("text-[11px] tabular-nums", portalSubtext)}>
                                 {payment.expiresAt
                                   ? new Date(payment.expiresAt).toLocaleString(locale)
                                   : "--"}

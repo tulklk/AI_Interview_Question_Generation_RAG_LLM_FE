@@ -505,7 +505,7 @@ export const vi: Translations = {
     legal: "Bằng cách tiếp tục, bạn đồng ý với",
     terms: "Điều khoản",
     privacyPolicy: "Chính sách bảo mật",
-    roleHr: "HR Manager",
+    roleHr: "HR",
     roleJobSeeker: "Ứng viên",
     invalidCredentials: "Email hoặc mật khẩu không đúng. Vui lòng thử lại.",
     unverifiedEmail: "Vui lòng xác minh email trước khi đăng nhập.",
@@ -602,7 +602,7 @@ export const vi: Translations = {
     emailAlreadyUsed: "Email đã được sử dụng.",
     registrationFailed: "Đăng ký thất bại. Vui lòng thử lại.",
     jobTitleLabel: "Chức danh",
-    jobTitlePlaceholder: "vd: HR Manager",
+    jobTitlePlaceholder: "vd: HR Specialist",
     companySearchHint: "Gõ để tìm công ty của bạn",
     companyNotSelected: "Chưa chọn công ty — hệ thống sẽ tạo công ty mới.",
     step1Title: "Thông tin tài khoản",
@@ -1291,7 +1291,7 @@ Yêu cầu:
       paymentPanel: {
         title: "Thông tin chuyển khoản SePay",
         noQrData: "Không có dữ liệu QR.",
-        waitingWebhook: "Đang chờ xác nhận thanh toán (tối đa 10 phút)...",
+        waitingWebhook: "Đang chờ xác nhận thanh toán...",
         validityHint: "Mã có hiệu lực 10 phút. Chỉ chuyển khoản đúng ND của mã hiện tại.",
         orderCode: "Mã đơn",
         amount: "Số tiền",
@@ -2145,7 +2145,7 @@ Yêu cầu:
   },
 
   jobseekerSetDetailPage: {
-    backToSets: "← Quay lại bộ câu hỏi",
+    backToSets: "Quay lại bộ câu hỏi",
     by: "bởi",
     questions: "câu hỏi",
     estimatedTime: "Thời gian ước tính",
@@ -2877,7 +2877,7 @@ Yêu cầu:
       // Current plan
       currentPlanTitle: "Gói hiện tại",
       freeBadge: "Gói Miễn Phí",
-      premiumBadge: "Premium Đang Hoạt Động",
+      premiumBadge: "Premium",
       freePlan: "Gói Miễn Phí",
       premiumPlan: "Premium",
       freeDesc: "Bạn đang dùng Gói Miễn Phí với quyền truy cập luyện tập hạn chế.",
@@ -2964,7 +2964,7 @@ Yêu cầu:
       paymentPanel: {
         title: "Thông tin chuyển khoản SePay",
         noQrData: "Không có dữ liệu QR.",
-        waitingWebhook: "Đang chờ xác nhận thanh toán (tối đa 10 phút)...",
+        waitingWebhook: "Đang chờ xác nhận thanh toán...",
         validityHint: "Mã có hiệu lực 10 phút. Chỉ chuyển khoản đúng ND của mã hiện tại.",
         orderCode: "Mã đơn",
         amount: "Số tiền",

@@ -503,7 +503,7 @@ export const en = {
     legal: "By continuing, you agree to our",
     terms: "Terms",
     privacyPolicy: "Privacy Policy",
-    roleHr: "HR Manager",
+    roleHr: "HR",
     roleJobSeeker: "Job Seeker",
     invalidCredentials: "Email or password is incorrect. Please try again.",
     unverifiedEmail: "Please verify your email before logging in.",
@@ -600,7 +600,7 @@ export const en = {
     emailAlreadyUsed: "This email is already registered.",
     registrationFailed: "Registration failed. Please try again.",
     jobTitleLabel: "Job Title",
-    jobTitlePlaceholder: "e.g. HR Manager",
+    jobTitlePlaceholder: "e.g. HR Specialist",
     companySearchHint: "Type to search your company",
     companyNotSelected: "No company selected — a new company will be created.",
     step1Title: "Account Information",
@@ -1289,7 +1289,7 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
       paymentPanel: {
         title: "SePay transfer details",
         noQrData: "No QR data available.",
-        waitingWebhook: "Waiting for payment confirmation (up to 10 minutes)…",
+        waitingWebhook: "Waiting for payment confirmation…",
         validityHint: "Code is valid for 10 minutes. Transfer only with the current order content.",
         orderCode: "Order code",
         amount: "Amount",
@@ -2144,7 +2144,7 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
   },
 
   jobseekerSetDetailPage: {
-    backToSets: "← Back to Question Sets",
+    backToSets: "Back to Question Sets",
     by: "by",
     questions: "questions",
     estimatedTime: "Estimated time",
@@ -2874,7 +2874,7 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
       // Current plan
       currentPlanTitle: "Current Plan",
       freeBadge: "Free Plan",
-      premiumBadge: "Premium Active",
+      premiumBadge: "Premium",
       freePlan: "Free Plan",
       premiumPlan: "Premium",
       freeDesc: "You are currently using the Free plan with limited practice access.",
@@ -2961,7 +2961,7 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
       paymentPanel: {
         title: "SePay transfer details",
         noQrData: "No QR data available.",
-        waitingWebhook: "Waiting for payment confirmation (up to 10 minutes)…",
+        waitingWebhook: "Waiting for payment confirmation…",
         validityHint: "Code is valid for 10 minutes. Transfer only with the current order content.",
         orderCode: "Order code",
         amount: "Amount",
