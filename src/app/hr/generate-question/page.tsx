@@ -1,26 +1,28 @@
 "use client";
 
 import { AppShell } from "@/features/hr/components/layout/app-shell";
-import { QuestionBuilderPage } from "@/features/interview/components/generate/question-builder-page";
+import { StudioPage } from "@/features/studio/components/studio-page";
 import { useLanguage } from "@/shared/providers/language-context";
 
-/** SCRUM-397: Question Builder — soạn câu hỏi thủ công theo luồng HR */
-export default function HrQuestionBuilderRoute() {
+export default function HrGenerateQuestionPage() {
   const { t } = useLanguage();
   const title =
-    t.appShell.routes["/hr/question-builder"] ??
-    t.sidebar.nav["/hr/question-builder"] ??
-    "Question Builder";
+    t.appShell.routes["/hr/generate-question"] ??
+    t.sidebar.nav["/hr/generate-question"] ??
+    "Generate question set";
 
   return (
     <AppShell
       pageTitle={title}
+      fullWidth
       breadcrumb={[
         { label: t.appShell.breadcrumb.hr, href: "/hr/dashboard" },
         { label: title },
       ]}
     >
-      <QuestionBuilderPage />
+      <div className="animate-fade-up">
+        <StudioPage />
+      </div>
     </AppShell>
   );
 }

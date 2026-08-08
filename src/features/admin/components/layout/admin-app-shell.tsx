@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { AdminSidebar } from "./admin-sidebar";
 import { TopHeader } from "@/features/hr/components/layout/top-header";
 import { useLanguage } from "@/shared/providers/language-context";
+import { useDocumentTitle } from "@/shared/hooks/use-document-title";
 import { useToast } from "@/shared/providers/toast-context";
 import { useUser } from "@/features/auth/context/user-context";
 import { buildWelcomeMessage, getTimeOfDayGreeting } from "@/shared/utils/greeting";
@@ -52,6 +53,8 @@ export function AdminAppShell({ children, breadcrumb, pageTitle }: AdminAppShell
   const routes = t.appShell.routes;
   const translatedTitle =
     routes[pathname as keyof typeof routes] ?? pageTitle;
+
+  useDocumentTitle(translatedTitle);
 
   const translatedBreadcrumb = breadcrumb?.map((crumb) => ({
     ...crumb,

@@ -37,11 +37,8 @@ interface Props {
   locked?: boolean;
   /** Khóa riêng phần JD khi Free hết lượt generate (cooldown) */
   jdLocked?: boolean;
-  /** Tooltip/banner khi khóa do quota */
+  /** Tooltip khi khóa do quota */
   jdLockedTitle?: string;
-  jdLockedBody?: string;
-  billingHref?: string;
-  billingLabel?: string;
 }
 
 type JdMode = "paste" | "upload";
@@ -283,9 +280,6 @@ export function SourcesPanel({
   locked = false,
   jdLocked = false,
   jdLockedTitle,
-  jdLockedBody,
-  billingHref = "/hr/settings?tab=billing",
-  billingLabel,
 }: Props) {
   const { t } = useLanguage();
   const src = t.studioPage.sources;
@@ -375,22 +369,6 @@ export function SourcesPanel({
           title={src.lockedTitle}
           aria-hidden
         />
-      )}
-
-      {/* Banner Free hết lượt — khóa chỉnh JD / generate AI */}
-      {jdLocked && !locked && (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-[11px] text-amber-950 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100">
-          <p className="font-semibold mb-0.5">{jdLockedTitle ?? src.quotaLockedTitle}</p>
-          {(jdLockedBody || src.quotaLockedBody) && (
-            <p className="opacity-90 mb-1.5 leading-relaxed">{jdLockedBody ?? src.quotaLockedBody}</p>
-          )}
-          <Link
-            href={billingHref}
-            className="inline-flex font-semibold text-primary hover:underline"
-          >
-            {billingLabel ?? src.quotaGoToBilling}
-          </Link>
-        </div>
       )}
 
       <fieldset disabled={locked} className="min-w-0 space-y-4 border-0 p-0">

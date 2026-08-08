@@ -65,6 +65,7 @@ interface FilterBarLabels {
   hard: string;
   difficultyLabel: string;
   skillsDropdownLabel: string;
+  allSkills: string;
   skillsSelected: string;
   skillsSearchPlaceholder: string;
   clearAll: string;
@@ -148,10 +149,10 @@ function FilterBar({
 
   return (
     <div className="hr-glass-card p-3 mb-6">
-      <div className="flex flex-col sm:flex-row gap-2">
+      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
         {/* Search */}
         <div className={cn(
-          "flex items-center gap-2 rounded-lg px-3 h-10 flex-1",
+          "flex items-center gap-2 rounded-lg px-3 h-10 flex-1 sm:max-w-sm",
           "focus-within:border-primary focus-within:shadow-[0_0_0_3px_rgba(108,71,255,0.1)] transition-all",
           portalInput
         )}>
@@ -172,7 +173,7 @@ function FilterBar({
         </div>
 
         {/* Difficulty dropdown */}
-        <div ref={diffRef} className="relative shrink-0">
+        <div ref={diffRef} className="relative shrink-0 sm:ml-auto">
           <button
             type="button"
             onClick={() => { setDiffOpen((v) => !v); setSkillOpen(false); }}
@@ -331,7 +332,7 @@ function FilterBar({
                 </span>
               ) : (
                 <span className={cn("font-semibold", portalSubtextAlt)}>
-                  {p.skillsDropdownLabel}
+                  {p.allSkills}
                 </span>
               )}
               <ChevronDown size={13} className={cn("text-gray-400 transition-transform shrink-0", skillOpen && "rotate-180")} />
@@ -398,11 +399,19 @@ function FilterBar({
           </div>
         )}
 
+        <span className="hidden h-6 w-px shrink-0 bg-gray-200 dark:bg-gray-700 sm:block" />
+
         {/* Sort — SCRUM-404 */}
-        <div className="relative">
-          <label className={cn("mb-1 block text-[11px] font-semibold uppercase tracking-wide", portalSubtextAlt)}>
+        <div
+          className={cn(
+            "relative flex h-10 shrink-0 items-center gap-2 rounded-lg pl-3.5 pr-3 transition-all",
+            "focus-within:border-primary focus-within:shadow-[0_0_0_3px_rgba(108,71,255,0.1)]",
+            portalInput
+          )}
+        >
+          <span className="hidden text-[11px] font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500 sm:block">
             {p.sortLabel}
-          </label>
+          </span>
           <select
             value={sortBy}
             onChange={(e) =>
@@ -410,16 +419,14 @@ function FilterBar({
                 e.target.value as "featured" | "newest" | "most_practiced" | "highest_rated"
               )
             }
-            className={cn(
-              portalInput,
-              "h-9 min-w-[160px] rounded-lg px-3 text-[12px] font-semibold"
-            )}
+            className="cursor-pointer appearance-none bg-transparent pr-5 text-[13px] font-semibold outline-none"
           >
             <option value="featured">{p.sortFeatured}</option>
             <option value="newest">{p.sortNewest}</option>
             <option value="most_practiced">{p.sortMostPracticed}</option>
             <option value="highest_rated">{p.sortHighestRated}</option>
           </select>
+          <ChevronDown size={13} className="pointer-events-none absolute right-3 text-gray-400" />
         </div>
       </div>
 

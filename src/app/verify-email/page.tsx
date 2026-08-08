@@ -7,6 +7,7 @@ import { Mail, ArrowLeft, CheckCircle2, AlertCircle, Loader2 } from "lucide-reac
 import { verifyEmail, resendVerification } from "@/features/auth/services/auth.service";
 import { useLanguage } from "@/shared/providers/language-context";
 import { useToast } from "@/shared/providers/toast-context";
+import { useDocumentTitle } from "@/shared/hooks/use-document-title";
 import { BrandLogo } from "@/shared/components/common/brand-logo";
 import { cn } from "@/lib/cn";
 
@@ -266,6 +267,9 @@ function VerifyEmailContent() {
 // ─── Page export ──────────────────────────────────────────────────────────────
 
 export default function VerifyEmailPage() {
+  const { t } = useLanguage();
+  useDocumentTitle(t.verifyEmailPage.title);
+
   return (
     <div className="relative flex h-screen items-center justify-center bg-white dark:bg-gray-950 px-8">
       <div className="absolute top-6 right-8 z-10">

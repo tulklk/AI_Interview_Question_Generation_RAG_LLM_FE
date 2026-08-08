@@ -6,6 +6,7 @@ import { Mail, ArrowLeft, CheckCircle2 } from "lucide-react";
 import { forgotPassword } from "@/features/auth/services/auth.service";
 import { useLanguage } from "@/shared/providers/language-context";
 import { useToast } from "@/shared/providers/toast-context";
+import { useDocumentTitle } from "@/shared/hooks/use-document-title";
 import { BrandLogo } from "@/shared/components/common/brand-logo";
 
 const COOLDOWN = 60;
@@ -18,6 +19,7 @@ export default function ForgotPasswordPage() {
   const { t } = useLanguage();
   const fp = t.forgotPasswordPage;
   const { addToast } = useToast();
+  useDocumentTitle(fp.title);
 
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);

@@ -1,24 +1,30 @@
 "use client";
 
-import { FolderPlus, Loader2, Save, Share2 } from "lucide-react";
+import { Check, FolderPlus, Loader2, PencilLine, Save, Share2 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { useLanguage } from "@/shared/providers/language-context";
 
 interface Props {
   projectName?: string | null;
   onNewSession: () => void;
+  onCreateManually: () => void;
   onSaveDraft: () => void;
   onShare: () => void;
   isGenerating?: boolean;
+  isSaving?: boolean;
+  isSaved?: boolean;
   questionCount?: number;
 }
 
 export function StudioTopBar({
   projectName,
   onNewSession,
+  onCreateManually,
   onSaveDraft,
   onShare,
   isGenerating,
+  isSaving = false,
+  isSaved = false,
   questionCount = 0,
 }: Props) {
   const { t } = useLanguage();
@@ -38,12 +44,6 @@ export function StudioTopBar({
               {questionCount > 0 && (
                 <span style={{ animation: "scaleInFade 0.35s cubic-bezier(0.34,1.56,0.64,1) both" }} className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-medium text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300">
                   {s.questionsCount.replace("{{count}}", String(questionCount))}
-                </span>
-              )}
-              {isGenerating && (
-                <span style={{ animation: "scaleInFade 0.35s cubic-bezier(0.34,1.56,0.64,1) both" }} className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-900 dark:bg-amber-950/50 dark:text-amber-200">
-                  <Loader2 className="h-3 w-3 animate-spin" />
-                  {s.generatingBadge}
                 </span>
               )}
             </div>
@@ -71,17 +71,43 @@ export function StudioTopBar({
 
           <button
             type="button"
-            disabled={isGenerating}
-            onClick={onSaveDraft}
+            onClick={onCreateManually}
             className={cn(
               "inline-flex items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 transition-colors",
               "hover:border-gray-300 hover:bg-gray-100 hover:text-gray-900",
-              "dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:border-gray-600 dark:hover:bg-gray-800 dark:hover:text-gray-100",
-              "disabled:cursor-not-allowed disabled:opacity-50"
+              "dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:border-gray-600 dark:hover:bg-gray-800 dark:hover:text-gray-100"
             )}
           >
-            <Save className="h-4 w-4" />
-            <span className="hidden md:inline">{s.save}</span>
+            <PencilLine className="h-4 w-4 text-primary" />
+            <span className="hidden sm:inline">{s.createManually}</span>
+          </button>
+
+          <button
+            type="button"
+            disabled={isGenerating || isSaving || isSaved}
+            onClick={onSaveDraft}
+            className={cn(
+              "inline-flex items-center gap-1.5 rounded-xl border px-3 py-2 text-sm font-medium transition-colors",
+              isSaved
+                ? "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300"
+                : [
+                    "border-gray-200 bg-white text-gray-700",
+                    "hover:border-gray-300 hover:bg-gray-100 hover:text-gray-900",
+                    "dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:border-gray-600 dark:hover:bg-gray-800 dark:hover:text-gray-100",
+                  ],
+              isSaved ? "disabled:cursor-default" : "disabled:cursor-not-allowed disabled:opacity-50"
+            )}
+          >
+            {isSaving ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : isSaved ? (
+              <Check className="h-4 w-4" />
+            ) : (
+              <Save className="h-4 w-4" />
+            )}
+            <span className="hidden md:inline">
+              {isSaving ? s.saving : isSaved ? s.saved : s.save}
+            </span>
           </button>
 
           <button

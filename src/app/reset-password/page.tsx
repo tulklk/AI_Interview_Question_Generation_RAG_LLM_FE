@@ -3,8 +3,13 @@
 import { Suspense } from "react";
 import { AuthPageToolbar } from "@/features/auth/components/auth-page-toolbar";
 import { ResetPasswordContent } from "@/features/auth/components/reset-password-content";
+import { useLanguage } from "@/shared/providers/language-context";
+import { useDocumentTitle } from "@/shared/hooks/use-document-title";
 
 export default function ResetPasswordPage() {
+  const { t } = useLanguage();
+  useDocumentTitle(t.resetPasswordPage.title);
+
   return (
     <div className="flex h-screen items-center justify-center bg-white dark:bg-gray-950 px-8">
       <div className="absolute top-6 right-8">

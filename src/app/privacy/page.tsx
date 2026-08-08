@@ -4,10 +4,13 @@ import Link from "next/link";
 import { GuestNavbar } from "@/features/guest/components/guest-navbar";
 import { GuestFooter } from "@/features/guest/components/guest-footer";
 import { useLanguage } from "@/shared/providers/language-context";
+import { useDocumentTitle } from "@/shared/hooks/use-document-title";
 
 export default function PrivacyPage() {
   const { lang } = useLanguage();
   const isVi = lang === "vi";
+
+  useDocumentTitle(isVi ? "Chính sách Bảo mật" : "Privacy Policy");
 
   const lastUpdated = "29/06/2026";
 
