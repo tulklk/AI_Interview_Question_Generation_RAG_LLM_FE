@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import {
   Mail,
@@ -81,6 +82,54 @@ function ShimmerButton({
   );
 }
 
+// ── Company logo / initial avatar ────────────────────────────────────────────
+
+type LogoCompany = { name: string; logoUrl?: string; website?: string };
+
+function getLogoSrc(c: LogoCompany): string | null {
+  if (c.logoUrl) return c.logoUrl;
+  if (c.website) {
+    const domain = c.website
+      .replace(/^https?:\/\//i, "")
+      .replace(/\/.*$/, "")
+      .trim();
+    if (domain) return `https://logo.clearbit.com/${domain}`;
+  }
+  return null;
+}
+
+function CompanyLogo({ company, size = 16 }: { company: LogoCompany; size?: number }) {
+  const [errored, setErrored] = useState(false);
+  const src = errored ? null : getLogoSrc(company);
+
+  if (src) {
+    return (
+      <img
+        src={src}
+        alt=""
+        width={size}
+        height={size}
+        className="rounded-sm object-contain bg-white dark:bg-gray-800 shrink-0"
+        style={{ width: size, height: size }}
+        onError={() => setErrored(true)}
+      />
+    );
+  }
+
+  const initial = company.name.charAt(0).toUpperCase();
+  const hue = [...company.name].reduce((h, ch) => h + ch.charCodeAt(0), 0) % 360;
+  return (
+    <span
+      className="rounded-sm flex items-center justify-center text-white font-bold shrink-0 leading-none"
+      style={{ width: size, height: size, fontSize: Math.round(size * 0.55), background: `hsl(${hue} 60% 52%)` }}
+    >
+      {initial}
+    </span>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 interface RegisterFormProps {
   registerRole?: RegisterRoleKey;
 }
@@ -134,6 +183,19 @@ export function RegisterForm({ registerRole = "hr" }: RegisterFormProps) {
     handleSubmit,
     serverError,
   } = useRegister(registerRole);
+
+  // Track the selected company object so we can show its logo in the input field
+  const [selectedCompanyInfo, setSelectedCompanyInfo] = useState<LogoCompany | null>(null);
+
+  function handleSelectCompany(c: (typeof companyResults)[number]) {
+    selectCompany(c);
+    setSelectedCompanyInfo({ name: c.name, logoUrl: c.logoUrl, website: c.website });
+  }
+
+  function handleUseTypedName() {
+    useTypedName();
+    setSelectedCompanyInfo(null);
+  }
 
   const { theme } = useTheme();
   const isDark = theme === "dark";
@@ -466,7 +528,13 @@ export function RegisterForm({ registerRole = "hr" }: RegisterFormProps) {
                   </label>
                   <div className="relative" ref={companyRef}>
                     <div className="relative">
-                      <Building2 size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none z-10" />
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 z-10 pointer-events-none flex items-center">
+                        {companyId && selectedCompanyInfo ? (
+                          <CompanyLogo company={selectedCompanyInfo} size={18} />
+                        ) : (
+                          <Building2 size={15} className="text-gray-400" />
+                        )}
+                      </span>
                       <input
                         type="text"
                         value={companyName}
@@ -498,10 +566,10 @@ export function RegisterForm({ registerRole = "hr" }: RegisterFormProps) {
                               <button
                                 key={c.id}
                                 type="button"
-                                onMouseDown={() => selectCompany(c)}
+                                onMouseDown={() => handleSelectCompany(c)}
                                 className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-200 hover:bg-primary/5 hover:text-primary transition-colors text-left"
                               >
-                                <Building2 size={13} className="text-gray-400 shrink-0" />
+                                <CompanyLogo company={c} size={16} />
                                 <span className="truncate">{c.name}</span>
                               </button>
                             ))}
@@ -512,7 +580,7 @@ export function RegisterForm({ registerRole = "hr" }: RegisterFormProps) {
                             <p className="px-4 pt-3 pb-1 text-xs text-gray-400 dark:text-gray-500">{rp.companyNotSelected}</p>
                             <button
                               type="button"
-                              onMouseDown={useTypedName}
+                              onMouseDown={handleUseTypedName}
                               className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-200 hover:bg-primary/5 hover:text-primary transition-colors text-left border-t border-gray-100 dark:border-gray-700 mt-1"
                             >
                               <Building2 size={13} className="text-gray-400 shrink-0" />

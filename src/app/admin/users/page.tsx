@@ -205,6 +205,7 @@ export default function UserManagementPage() {
             selectedUserId={selectedUserId}
             onSelectUser={handleSelectUser}
             onRetry={() => void fetchUsers()}
+            page={page}
           />
           {!error && (
             <UserPagination
