@@ -15,9 +15,12 @@ interface KpiGridProps {
   readiness: ReadinessResult;
   scoreTrend: TrendResult;
   sessionsSparkline: number[];
+  sessionCountSparkline: number[];
+  streakSparkline: number[];
+  durationSparkline: number[];
 }
 
-export function KpiGrid({ loading, stats, streakDays, sessionsLast7Days, readiness, scoreTrend, sessionsSparkline }: KpiGridProps) {
+export function KpiGrid({ loading, stats, streakDays, sessionsLast7Days, readiness, scoreTrend, sessionsSparkline, sessionCountSparkline, streakSparkline, durationSparkline }: KpiGridProps) {
   const { t } = useLanguage();
   const k = t.jobseekerDashboardPage.kpi;
 
@@ -38,6 +41,8 @@ export function KpiGrid({ loading, stats, streakDays, sessionsLast7Days, readine
           tooltip={k.sessions.tooltip}
           value={(stats?.totalSessions ?? 0).toString()}
           countUp={{ value: stats?.totalSessions ?? 0 }}
+          sparklineData={sessionCountSparkline}
+          sparklineColor="#10B981"
           trendLabel={sessionsLast7Days > 0 ? fillTemplate(k.weeklyTrend, { count: String(sessionsLast7Days) }) : undefined}
           trendDirection={sessionsLast7Days > 0 ? "up" : "flat"}
         />
@@ -53,6 +58,7 @@ export function KpiGrid({ loading, stats, streakDays, sessionsLast7Days, readine
               : undefined
           }
           sparklineData={sessionsSparkline}
+          sparklineColor="#7C3AED"
           trendLabel={trendLabel}
           trendDirection={scoreTrend.direction}
         />
@@ -63,6 +69,8 @@ export function KpiGrid({ loading, stats, streakDays, sessionsLast7Days, readine
           tooltip={k.streak.tooltip}
           value={`${streakDays}`}
           countUp={{ value: streakDays }}
+          sparklineData={streakSparkline}
+          sparklineColor="#F59E0B"
         />
         <KpiCard
           loading={loading}
@@ -74,6 +82,8 @@ export function KpiGrid({ loading, stats, streakDays, sessionsLast7Days, readine
             value: stats?.totalDurationMinutes ?? 0,
             formatter: (v) => formatDuration(Math.round(v)),
           }}
+          sparklineData={durationSparkline}
+          sparklineColor="#3B82F6"
         />
       </div>
     </div>

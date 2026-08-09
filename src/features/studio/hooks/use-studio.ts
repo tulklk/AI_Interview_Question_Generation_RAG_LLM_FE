@@ -80,6 +80,9 @@ export function useStudio() {
   const [isGeneratingQuestions, setIsGeneratingQuestions] = useState(false);
   const [isSavingDraft, setIsSavingDraft] = useState(false);
   const [isDraftSaved, setIsDraftSaved] = useState(false);
+  /** Set to true when BE rejects generateQuestions with COOLDOWN_ACTIVE / QUOTA_EXCEEDED.
+   *  Reset to false at the start of each new generate attempt. */
+  const [quotaExceeded, setQuotaExceeded] = useState(false);
 
   // Bộ câu hỏi chỉ còn "đã lưu" chừng nào danh sách chưa đổi lại (sinh mới, sửa, xoá, đổi project).
   useEffect(() => {
@@ -540,6 +543,7 @@ export function useStudio() {
     if (!project || !currentPlan || !settings) return;
     if (isGeneratingQuestions) return;
     setIsGeneratingQuestions(true);
+    setQuotaExceeded(false); // reset on each new attempt
     try {
       let run: GenerationRun;
       try {
@@ -591,8 +595,17 @@ export function useStudio() {
       setQuestions(result.items);
       addToast("success", tx.generationDone.replace("{{count}}", String(result.items.length)));
     } catch (error) {
-      const message = extractErrorMessage(error, lang) || tx.generationFailed;
-      addToast("error", message);
+      // Detect BE quota / cooldown error codes (COOLDOWN_ACTIVE, QUOTA_EXCEEDED).
+      // When these occur we signal the page component via `quotaExceeded` state so it
+      // can show the quota dialog, and we skip the generic error toast.
+      const errCode = (error as { response?: { data?: { errorCode?: string } } })
+        ?.response?.data?.errorCode;
+      if (errCode === "COOLDOWN_ACTIVE" || errCode === "QUOTA_EXCEEDED") {
+        setQuotaExceeded(true);
+      } else {
+        const message = extractErrorMessage(error, lang) || tx.generationFailed;
+        addToast("error", message);
+      }
       void refreshGenerationStatus();
     } finally {
       setIsGeneratingQuestions(false);
@@ -758,6 +771,7 @@ export function useStudio() {
       isApplyingSettings,
       generationRun,
       isGeneratingQuestions,
+      quotaExceeded,
       isSavingDraft,
       isDraftSaved,
       saveJobDescription,
@@ -793,6 +807,7 @@ export function useStudio() {
       generationRun,
       isApplyingSettings,
       isGeneratingQuestions,
+      quotaExceeded,
       isSavingDraft,
       isDraftSaved,
       isStreaming,
