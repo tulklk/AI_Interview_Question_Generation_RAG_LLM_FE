@@ -505,7 +505,7 @@ export const vi: Translations = {
     legal: "Bằng cách tiếp tục, bạn đồng ý với",
     terms: "Điều khoản",
     privacyPolicy: "Chính sách bảo mật",
-    roleHr: "HR Manager",
+    roleHr: "HR",
     roleJobSeeker: "Ứng viên",
     invalidCredentials: "Email hoặc mật khẩu không đúng. Vui lòng thử lại.",
     unverifiedEmail: "Vui lòng xác minh email trước khi đăng nhập.",
@@ -602,7 +602,7 @@ export const vi: Translations = {
     emailAlreadyUsed: "Email đã được sử dụng.",
     registrationFailed: "Đăng ký thất bại. Vui lòng thử lại.",
     jobTitleLabel: "Chức danh",
-    jobTitlePlaceholder: "vd: HR Manager",
+    jobTitlePlaceholder: "vd: HR Specialist",
     companySearchHint: "Gõ để tìm công ty của bạn",
     companyNotSelected: "Chưa chọn công ty — hệ thống sẽ tạo công ty mới.",
     step1Title: "Thông tin tài khoản",
@@ -1291,7 +1291,7 @@ Yêu cầu:
       paymentPanel: {
         title: "Thông tin chuyển khoản SePay",
         noQrData: "Không có dữ liệu QR.",
-        waitingWebhook: "Đang chờ xác nhận thanh toán (tối đa 10 phút)...",
+        waitingWebhook: "Đang chờ xác nhận thanh toán...",
         validityHint: "Mã có hiệu lực 10 phút. Chỉ chuyển khoản đúng ND của mã hiện tại.",
         orderCode: "Mã đơn",
         amount: "Số tiền",
@@ -2145,7 +2145,7 @@ Yêu cầu:
   },
 
   jobseekerSetDetailPage: {
-    backToSets: "← Quay lại bộ câu hỏi",
+    backToSets: "Quay lại bộ câu hỏi",
     by: "bởi",
     questions: "câu hỏi",
     estimatedTime: "Thời gian ước tính",
@@ -2157,6 +2157,9 @@ Yêu cầu:
     preview: "Xem Trước Câu Hỏi",
     loading: "Đang tải bộ câu hỏi…",
     loadFailed: "Không thể tải bộ câu hỏi này.",
+    notFoundTitle: "Không tìm thấy bộ câu hỏi",
+    notFoundSubtext: "Bộ câu hỏi này có thể đã bị xóa hoặc đường dẫn không chính xác.",
+    backToSetsBtn: "Xem bộ câu hỏi khác",
     retryBtn: "Thử lại",
     ratingTooltip: "Đánh giá trên thang điểm 5",
     categories: {
@@ -2855,6 +2858,10 @@ Yêu cầu:
       practice: "Tóm tắt tiến độ hàng tuần",
       tips: "Mẹo và thông tin phỏng vấn từ AI",
     },
+    soundTitle: "Âm thanh",
+    soundXpLabel: "Âm thanh XP và thành tích",
+    soundXpHint: "Phát âm thanh khi nhận XP hoặc lên cấp",
+    cvSyncSectionTitle: "CV",
     privacyTitle: "Quyền riêng tư & Dữ liệu",
     privacyDescription: "Kiểm soát cách dữ liệu của bạn được sử dụng",
     privacyActions: {
@@ -2877,7 +2884,7 @@ Yêu cầu:
       // Current plan
       currentPlanTitle: "Gói hiện tại",
       freeBadge: "Gói Miễn Phí",
-      premiumBadge: "Premium Đang Hoạt Động",
+      premiumBadge: "Premium",
       freePlan: "Gói Miễn Phí",
       premiumPlan: "Premium",
       freeDesc: "Bạn đang dùng Gói Miễn Phí với quyền truy cập luyện tập hạn chế.",
@@ -2964,7 +2971,7 @@ Yêu cầu:
       paymentPanel: {
         title: "Thông tin chuyển khoản SePay",
         noQrData: "Không có dữ liệu QR.",
-        waitingWebhook: "Đang chờ xác nhận thanh toán (tối đa 10 phút)...",
+        waitingWebhook: "Đang chờ xác nhận thanh toán...",
         validityHint: "Mã có hiệu lực 10 phút. Chỉ chuyển khoản đúng ND của mã hiện tại.",
         orderCode: "Mã đơn",
         amount: "Số tiền",
@@ -3705,5 +3712,106 @@ Yêu cầu:
     chipSetSelected: "Đã chọn bộ — soạn câu hỏi",
     chipReadyToSave: "Sẵn sàng lưu — bấm Lưu",
     chipQuestionsAdded: "{{n}} câu đã thêm trong phiên",
+  },
+
+  gamification: {
+    // Section headings
+    progressTitle: "Tiến độ luyện tập",
+    achievementsTitle: "Thành tích",
+    dailyGoalTitle: "Mục tiêu hàng ngày",
+    activityTitle: "Hoạt động luyện tập",
+    xpHistoryTitle: "Lịch sử XP",
+
+    // Level / XP
+    levelLabel: "Cấp độ",
+    totalXp: "Tổng XP",
+    xpToNextLevel: "XP lên cấp tiếp theo",
+    xpEarned: "+{{xp}} XP nhận được",
+    levelUp: "Lên cấp! Bạn đạt Cấp độ {{level}}",
+
+    // Streak
+    streakLabel: "Chuỗi ngày",
+    longestStreak: "Tốt nhất: {{n}} ngày",
+    streakTooltip: "Luyện tập mỗi ngày để duy trì chuỗi của bạn!",
+
+    // Daily goal
+    todayXp: "Hôm nay: {{xp}} XP",
+    dailyGoalProgress: "{{current}} / {{goal}} XP",
+    dailyGoalCompleted: "Đã đạt mục tiêu hôm nay! 🎉",
+    dailyGoalNotDone: "Còn {{remaining}} XP để đạt mục tiêu",
+    goalPresetLight: "Nhẹ nhàng (20 XP / ngày)",
+    goalPresetSteady: "Vừa phải (50 XP / ngày)",
+    goalPresetActive: "Chăm chỉ (80 XP / ngày)",
+    goalPresetIntense: "Cường độ cao (120 XP / ngày)",
+    saveGoal: "Lưu mục tiêu",
+    goalSaved: "Đã cập nhật mục tiêu hàng ngày",
+
+    // Sessions
+    totalSessions: "Phiên",
+    sessionsCompleted: "{{n}} phiên",
+
+    // Achievements
+    unlocked: "Đã mở khóa",
+    locked: "Chưa mở khóa",
+    unlockedOn: "Mở khóa {{date}}",
+    achievementProgress: "{{current}} / {{target}}",
+    noAchievements: "Chưa có thành tích — hãy bắt đầu luyện tập!",
+
+    // Session XP summary (shown on feedback page)
+    sessionSummaryTitle: "XP nhận được trong phiên này",
+    sessionSummaryTotal: "+{{xp}} XP",
+    sessionLevelUp: "Bạn đã lên Cấp độ {{level}}! 🏆",
+    sessionNoXp: "Hãy tiếp tục luyện tập để nhận XP!",
+
+    // XP reward types (for breakdown list)
+    rewardQuestionCompleted: "Hoàn thành câu hỏi",
+    rewardScoreBonus: "Thưởng điểm số",
+    rewardQuestionSetCompleted: "Hoàn thành phiên",
+    rewardImprovementBonus: "Thưởng cải thiện",
+    rewardStreakMilestone: "Mốc luyện tập liên tiếp",
+    rewardAchievement: "Mở khóa thành tích",
+
+    // Activity heatmap
+    activityTooltipActive: "{{xp}} XP · {{questions}} câu",
+    activityTooltipEmpty: "Không có hoạt động",
+    activityMonths: "Th1 Th2 Th3 Th4 Th5 Th6 Th7 Th8 Th9 Th10 Th11 Th12",
+
+    // Aria / accessibility
+    ariaProgressCard: "Thẻ tiến độ luyện tập",
+    ariaXpBar: "Thanh tiến trình XP, {{percent}}% lên cấp tiếp theo",
+    ariaAchievementUnlocked: "Đã mở khóa thành tích: {{name}}",
+    ariaAchievementLocked: "Chưa mở khóa: {{name}}, {{current}} / {{target}}",
+    ariaStreak: "Chuỗi hiện tại: {{n}} ngày",
+
+    // XP Guide Panel
+    xpGuideBtn: "Cách nhận XP?",
+    xpGuidePanelTitle: "Cách nhận XP",
+    xpGuidePanelSubtext: "Hoàn thành các phiên luyện tập để nhận XP và tăng cấp độ",
+    xpGuideSourcesTitle: "Nguồn XP",
+    xpGuideLevelsTitle: "Các cấp độ",
+    xpGuideTipsTitle: "Mẹo tăng cấp nhanh hơn",
+    xpGuideClose: "Đóng",
+    xpGuideSourceQ: "Hoàn thành câu hỏi",
+    xpGuideSourceQDesc: "Mỗi câu hỏi trả lời trong phiên",
+    xpGuideSourceQXp: "+5 XP / câu",
+    xpGuideSourceScore: "Thưởng điểm số",
+    xpGuideSourceScoreDesc: "Đạt điểm ≥ 80% trong phiên",
+    xpGuideSourceScoreXp: "+10 XP / phiên",
+    xpGuideSourceSession: "Hoàn thành phiên",
+    xpGuideSourceSessionDesc: "Trả lời hết tất cả câu hỏi trong phiên",
+    xpGuideSourceSessionXp: "+20 XP / phiên",
+    xpGuideSourceImprove: "Thưởng cải thiện",
+    xpGuideSourceImproveDesc: "Điểm cao hơn lần luyện tập trước",
+    xpGuideSourceImproveXp: "+5–15 XP",
+    xpGuideSourceStreak: "Mốc luyện tập liên tiếp",
+    xpGuideSourceStreakDesc: "Đạt chuỗi luyện tập 7 ngày trở lên",
+    xpGuideSourceStreakXp: "+30 XP",
+    xpGuideSourceAchieve: "Mở khóa thành tích",
+    xpGuideSourceAchieveDesc: "Mở khóa một huy hiệu thành tích",
+    xpGuideSourceAchieveXp: "+25–100 XP",
+    xpGuideTip1: "Luyện tập mỗi ngày để nhận thưởng chuỗi liên tiếp",
+    xpGuideTip2: "Hoàn thành tất cả câu hỏi trong phiên để nhận thưởng phiên",
+    xpGuideTip3: "Phấn đấu đạt điểm ≥ 80% để kích hoạt thưởng điểm số",
+    xpGuideTip4: "Đặt mục tiêu hàng ngày vừa phải — đều đặn mỗi ngày tốt hơn làm nhiều một lúc",
   },
 };

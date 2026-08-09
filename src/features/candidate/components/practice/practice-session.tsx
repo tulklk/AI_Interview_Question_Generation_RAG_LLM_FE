@@ -127,9 +127,12 @@ interface QuestionNavProps {
   onSelect: (idx: number) => void;
   onRequestFinish: () => void;
   finishing: boolean;
-  hasTimeLimit: boolean;
-  timeLeft: number;
-  elapsedSeconds: number;
+  /** Whether the displayed timer is a countdown (strict deadline OR estimated time). */
+  isCountdown: boolean;
+  /** Seconds to display — already computed (countdown remaining or elapsed). */
+  timerSeconds: number;
+  /** True when < 5 minutes remaining on a countdown. */
+  isTimerWarning: boolean;
   labels: {
     title: string; answered: string; current: string; unanswered: string;
     answeredLabel: string; timeLabel: string; submitBtn: string; timeUsedLabel: string;
@@ -137,7 +140,7 @@ interface QuestionNavProps {
   };
 }
 
-function QuestionNav({ questions, currentIdx, answered, onSelect, onRequestFinish, finishing, hasTimeLimit, timeLeft, elapsedSeconds, labels }: QuestionNavProps) {
+function QuestionNav({ questions, currentIdx, answered, onSelect, onRequestFinish, finishing, isCountdown, timerSeconds, isTimerWarning, labels }: QuestionNavProps) {
   const answerable = questions.filter((q) => !q.isLocked);
   const answeredCount = answerable.filter((q) => answered[q.id]).length;
   const total = answerable.length;
@@ -161,20 +164,14 @@ function QuestionNav({ questions, currentIdx, answered, onSelect, onRequestFinis
         </div>
         <div className="px-4 py-3">
           <p className={cn("text-[11px] font-medium mb-0.5", portalSubtextAlt)}>
-            {hasTimeLimit ? labels.timeLabel : labels.timeUsedLabel}
+            {isCountdown ? labels.timeLabel : labels.timeUsedLabel}
           </p>
-          {hasTimeLimit ? (
-            <p className={cn(
-              "text-[22px] font-bold tabular-nums leading-none",
-              timeLeft < 300 ? "text-red-500" : "text-primary"
-            )}>
-              {formatTime(timeLeft)}
-            </p>
-          ) : (
-            <p className={cn("text-[22px] font-bold tabular-nums leading-none", portalHeadingAlt)}>
-              {formatTime(elapsedSeconds)}
-            </p>
-          )}
+          <p className={cn(
+            "text-[22px] font-bold tabular-nums leading-none",
+            isTimerWarning ? "text-red-500" : isCountdown ? "text-primary" : portalHeadingAlt
+          )}>
+            {formatTime(timerSeconds)}
+          </p>
         </div>
       </div>
 
@@ -283,6 +280,10 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
   // the display must match that rather than pretend time stops on exit.
   const [expiresAt, setExpiresAt] = useState<string | null>(null);
   const hasTimeLimit = expiresAt !== null;
+  /** Estimated duration in seconds (display guide only — not BE-enforced). */
+  const estimatedTotalSeconds = (set.estimatedTimeMinutes ?? 0) * 60;
+  /** True when no strict BE deadline but the set has an estimated time to count down from. */
+  const hasEstimatedCountdown = !hasTimeLimit && estimatedTotalSeconds > 0;
   const [resumed, setResumed] = useState(false);
   const [starting, setStarting] = useState(true);
   const [startError, setStartError] = useState(false);
@@ -297,6 +298,12 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
   const restoredDraftIds = useRef(new Set<string>());
   const timeUpRef = useRef(false);
   const finishingRef = useRef(false);
+  /** Đồng bộ với exitOpen state nhưng được set TRƯỚC khi gọi setState → không có race với setInterval. */
+  const exitOpenRef = useRef(false);
+  /** Timestamp (ms) khi dialog vừa mở — dùng để tính khoảng thời gian bị pause. */
+  const pauseStartMsRef = useRef<number | null>(null);
+  /** Tổng số ms đã bị pause — bù vào display deadline/startMs để tránh nhảy khi đóng dialog. */
+  const pausedOffsetMsRef = useRef(0);
   const answersRef = useRef(answers);
   const currentIdxRef = useRef(currentIdx);
   const sessionIdRef = useRef(sessionId);
@@ -313,6 +320,23 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
   useEffect(() => {
     finishingRef.current = finishing;
   }, [finishing]);
+
+  // Wrappers đặt exitOpenRef & pauseStartMsRef ĐỒNG BỘ trước setState.
+  // setInterval là macro-task → không thể chen vào giữa lệnh gán ref và cuối call-stack,
+  // nên tick tiếp theo luôn thấy giá trị mới của ref.
+  function openExitDialog() {
+    pauseStartMsRef.current = Date.now();
+    exitOpenRef.current = true;    // phải trước setExitOpen
+    setExitOpen(true);
+  }
+  function closeExitDialog() {
+    if (pauseStartMsRef.current !== null) {
+      pausedOffsetMsRef.current += Date.now() - pauseStartMsRef.current;
+      pauseStartMsRef.current = null;
+    }
+    exitOpenRef.current = false;   // phải trước setExitOpen
+    setExitOpen(false);
+  }
 
   const question = set.questions[currentIdx];
   const totalQuestions = set.questions.length;
@@ -358,6 +382,22 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
         setExpiresAt(session.expiresAt);
         setAnswers((prev) => ({ ...prev, ...answersMap }));
         setResumed(wasResumed);
+
+        // Khôi phục offset "đóng băng" từ lần "Lưu & Thoát" trước, chỉ cho phiên
+        // không có deadline cứng (estimated countdown / untimed) — phiên có expiresAt
+        // phải hiển thị thời gian thực còn lại của server.
+        if (!session.expiresAt && typeof window !== "undefined") {
+          const savedOffset = window.sessionStorage.getItem(`practice-exit-offset-${session.id}`);
+          const savedExitTs  = window.sessionStorage.getItem(`practice-exit-ts-${session.id}`);
+          if (savedOffset && savedExitTs) {
+            // Bù thêm thời gian điều hướng (từ lúc thoát đến lúc component này mount lại)
+            const navigationMs = Date.now() - parseInt(savedExitTs, 10);
+            pausedOffsetMsRef.current = parseInt(savedOffset, 10) + navigationMs;
+            window.sessionStorage.removeItem(`practice-exit-offset-${session.id}`);
+            window.sessionStorage.removeItem(`practice-exit-ts-${session.id}`);
+          }
+        }
+
         if (wasResumed) addToast("success", p.resumedToast);
         const firstUnanswered = set.questions.findIndex(
           (q) => !q.isLocked && !hasAnswerText(answersMap[q.id])
@@ -379,26 +419,34 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [set.id, startAttempt]);
 
-  // Countdown timer — computed from the session's absolute expiresAt (BE-enforced,
-  // untouched by leaving the page). Browsers throttle setInterval in background
-  // tabs, so the display can lag while unfocused; resync immediately on
-  // visibilitychange so it catches up right away instead of waiting for the next
-  // (possibly delayed) tick.
+  // ── Countdown timer (BE-enforced expiresAt) ─────────────────────────────────
+  // Một effect duy nhất để time-up check và display update luôn đồng bộ.
+  // exitOpen KHÔNG ở trong deps — interval chạy liên tục, exitOpenRef guard display.
+  // Browsers throttle setInterval khi tab ở background; resync qua visibilitychange.
   useEffect(() => {
     if (!expiresAt || !sessionId) return;
-    const deadlineMs = new Date(expiresAt).getTime();
+    const realDeadlineMs = new Date(expiresAt).getTime();
 
     function tick() {
-      const remaining = Math.floor((deadlineMs - Date.now()) / 1000);
-      setTimeLeft(Math.max(0, remaining));
+      if (finishingRef.current) return;
 
-      // Hết giờ → flush + complete (không chờ "Save từng câu")
-      if (remaining <= 0 && !timeUpRef.current && !finishingRef.current) {
+      // ① Time-up: dùng thời gian THỰC (không bù offset) — luôn chạy dù dialog mở.
+      const realRemaining = Math.floor((realDeadlineMs - Date.now()) / 1000);
+      if (realRemaining <= 0 && !timeUpRef.current) {
         timeUpRef.current = true;
         addToast("error", p.timeUpToast);
         void handleFinish();
+        return; // navigating away, no display update needed
       }
+
+      // ② Display: skip khi dialog mở (exitOpenRef set đồng bộ trước setExitOpen).
+      if (exitOpenRef.current) return;
+
+      // ③ Display dùng deadline đã bù pause offset → tiếp tục từ chỗ dừng, không nhảy.
+      const displayRemaining = Math.floor((realDeadlineMs + pausedOffsetMsRef.current - Date.now()) / 1000);
+      setTimeLeft(Math.max(0, displayRemaining));
     }
+
     tick();
     const intervalId = setInterval(tick, 1000);
     function onVisibilityChange() {
@@ -412,17 +460,21 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [expiresAt, sessionId]);
 
-  // Untimed sessions have no deadline to count down to — show elapsed time
-  // instead so "no limit" doesn't read as "no timer at all" (see labels.timeUsedLabel).
+  // ── Elapsed timer (phiên không giới hạn thời gian) ──────────────────────────
+  // Tương tự: interval liên tục, exitOpenRef guard display, pausedOffset bù nhảy.
   useEffect(() => {
     if (hasTimeLimit || !startedAt || !sessionId) return;
     const startMs = new Date(startedAt).getTime();
     function tick() {
-      setElapsedSeconds(Math.max(0, Math.floor((Date.now() - startMs) / 1000)));
+      if (finishingRef.current) return;
+      if (exitOpenRef.current) return; // đóng băng display khi dialog mở
+      const displayElapsedMs = Date.now() - startMs - pausedOffsetMsRef.current;
+      setElapsedSeconds(Math.max(0, Math.floor(displayElapsedMs / 1000)));
     }
     tick();
     const intervalId = setInterval(tick, 1000);
     return () => clearInterval(intervalId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasTimeLimit, startedAt, sessionId]);
 
   // Cảnh báo khi đóng tab nếu còn nội dung đã gõ (chưa nộp bài cuối)
@@ -554,6 +606,43 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
     }
   }
 
+  async function handleSaveAndExit() {
+    const sid = sessionIdRef.current;
+    if (!sid) {
+      router.push(`/jobseeker/sets/${set.id}`);
+      return;
+    }
+
+    // Lưu tổng thời gian bị "đóng băng" (bao gồm cả khoảng dialog đang mở ngay lúc này).
+    // Khi người dùng "Tiếp Tục Luyện Tập", component mount lại → offset sẽ bị mất.
+    // Lưu vào sessionStorage để khôi phục, giúp timer tiếp tục từ chỗ đã dừng.
+    if (typeof window !== "undefined") {
+      const dialogOpenMs = pauseStartMsRef.current !== null
+        ? Date.now() - pauseStartMsRef.current
+        : 0;
+      const totalOffset = pausedOffsetMsRef.current + dialogOpenMs;
+      window.sessionStorage.setItem(`practice-exit-offset-${sid}`, String(totalOffset));
+      window.sessionStorage.setItem(`practice-exit-ts-${sid}`, String(Date.now()));
+    }
+
+    // Flush câu đang trả lời (nếu hợp lệ) trước khi thoát — phiên vẫn IN_PROGRESS trên server
+    const currentQ = set.questions[currentIdxRef.current];
+    if (currentQ && !currentQ.isLocked) {
+      const text = answersRef.current[currentQ.id] ?? "";
+      if (text.trim()) {
+        const relax = needsCodeAnswer(currentQ);
+        if (!validateAnswerText(text, { relaxWordCount: relax })) {
+          try {
+            await submitAnswerApi(sid, { questionId: currentQ.id, answerText: text });
+          } catch {
+            // best-effort — phiên vẫn còn trong sessionStorage
+          }
+        }
+      }
+    }
+    router.push(`/jobseeker/sets/${set.id}`);
+  }
+
   function handleAbandon() {
     if (!sessionId || abandoning) return;
     setAbandoning(true);
@@ -582,6 +671,19 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
   }
 
   const answerableQuestions = set.questions.filter((q) => !q.isLocked);
+
+  // ── Timer display helpers ─────────────────────────────────────────────────
+  // isCountdown: true for both BE-enforced (expiresAt) and estimate-based countdowns
+  const isCountdown = hasTimeLimit || hasEstimatedCountdown;
+  // Unified seconds to show in both top-bar and sidebar
+  const timerSeconds = hasTimeLimit
+    ? timeLeft
+    : hasEstimatedCountdown
+      ? Math.max(0, estimatedTotalSeconds - elapsedSeconds)
+      : elapsedSeconds;
+  // Red warning: < 5 min remaining on any countdown
+  const isTimerWarning = isCountdown && timerSeconds < 300;
+
   // SCRUM-333: đủ điều kiện nộp khi mọi câu unlock đã có nội dung — không cần bấm Save từng câu
   const allAnswered =
     answerableQuestions.length === 0 ||
@@ -653,8 +755,8 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
       confirmLabel={p.exitConfirmBtn}
       cancelLabel={p.exitCancelBtn}
       variant="danger"
-      onConfirm={() => router.push(`/jobseeker/sets/${set.id}`)}
-      onCancel={() => setExitOpen(false)}
+      onConfirm={() => { void handleSaveAndExit(); }}
+      onCancel={() => closeExitDialog()}
       extraAction={{ label: p.abandonBtn, onClick: handleAbandon, loading: abandoning }}
     />
     <ConfirmDialog
@@ -715,31 +817,21 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
 
         {/* Right: timer + exit */}
         <div className="flex items-center gap-2 sm:gap-4 shrink-0">
-          {hasTimeLimit ? (
-            <motion.div
-              animate={timeLeft < 300 ? { scale: [1, 1.08, 1] } : { scale: 1 }}
-              transition={timeLeft < 300 ? { duration: 1, repeat: Infinity, ease: "easeInOut" } : undefined}
-              className={cn(
-                "flex items-center gap-1.5 text-[12px] sm:text-[13px] font-semibold tabular-nums",
-                timeLeft < 300 ? "text-red-500" : portalSubtextAlt
-              )}
-              title={p.sidebarTimeLabel}
-            >
-              <Timer size={13} />
-              {formatTime(timeLeft)}
-            </motion.div>
-          ) : (
-            <div
-              className={cn("flex items-center gap-1.5 text-[12px] sm:text-[13px] font-semibold tabular-nums", portalSubtextAlt)}
-              title={p.timeUsedLabel}
-            >
-              <Timer size={13} />
-              {formatTime(elapsedSeconds)}
-            </div>
-          )}
+          <motion.div
+            animate={isTimerWarning ? { scale: [1, 1.08, 1] } : { scale: 1 }}
+            transition={isTimerWarning ? { duration: 1, repeat: Infinity, ease: "easeInOut" } : undefined}
+            className={cn(
+              "flex items-center gap-1.5 text-[12px] sm:text-[13px] font-semibold tabular-nums",
+              isTimerWarning ? "text-red-500" : portalSubtextAlt
+            )}
+            title={isCountdown ? p.sidebarTimeLabel : p.timeUsedLabel}
+          >
+            <Timer size={13} />
+            {formatTime(timerSeconds)}
+          </motion.div>
           <button
             type="button"
-            onClick={() => setExitOpen(true)}
+            onClick={() => openExitDialog()}
             className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
             aria-label={p.exitConfirmBtn}
           >
@@ -1020,9 +1112,9 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
         onSelect={goToQuestion}
         onRequestFinish={requestFinish}
         finishing={finishing}
-        hasTimeLimit={hasTimeLimit}
-        timeLeft={timeLeft}
-        elapsedSeconds={elapsedSeconds}
+        isCountdown={isCountdown}
+        timerSeconds={timerSeconds}
+        isTimerWarning={isTimerWarning}
         labels={{
           title: p.questionListTitle,
           answered: p.questionAnswered,

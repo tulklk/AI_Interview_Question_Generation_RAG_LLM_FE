@@ -26,7 +26,6 @@ import {
   AlertCircle,
   Eye,
   ChevronDown,
-  RefreshCw,
   Maximize2,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
@@ -55,8 +54,6 @@ import {
   getCv,
   uploadCv,
   deleteCv,
-  getCvSyncSettings,
-  updateCvSyncSettings,
   CvValidationError,
   type CvInfo,
 } from "@/features/candidate/services/candidate-cv.service";
@@ -65,13 +62,13 @@ import { ConfirmDialog } from "@/shared/components/ui/confirm-dialog";
 import { isValidUrl } from "@/shared/utils/url-validation";
 import {
   portalCard,
-  portalDivider,
   portalHeadingAlt,
   portalIconWell,
   portalInput,
   portalMutedBg,
   portalSubtextAlt,
 } from "@/shared/utils/portal-ui";
+import { GamificationProgressCard } from "@/features/gamification/components/gamification-progress-card";
 
 const EARNED_BADGE_CLS = "bg-violet-50 dark:bg-violet-950/30 border border-violet-100 dark:border-violet-800/30";
 const TARGET_ROLE_CLS = "bg-violet-50 dark:bg-violet-950/30 border border-violet-100 dark:border-violet-800/30";
@@ -166,8 +163,6 @@ export function CandidateProfile() {
   const [cvLightbox, setCvLightbox] = useState(false);
   const cvFileInputRef = useRef<HTMLInputElement>(null);
 
-  const [cvSyncEnabled, setCvSyncEnabled] = useState<boolean | null>(null);
-  const [cvSyncSaving, setCvSyncSaving] = useState(false);
 
   const [stats, setStats] = useState<PracticeStats | null>(null);
   const [sessions, setSessions] = useState<CompletedSessionSummary[]>([]);
@@ -194,23 +189,6 @@ export function CandidateProfile() {
       .finally(() => { if (!cancelled) setCvLoading(false); });
     return () => { cancelled = true; };
   }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-    getCvSyncSettings()
-      .then((enabled) => { if (!cancelled) setCvSyncEnabled(enabled); })
-      .catch(() => {});
-    return () => { cancelled = true; };
-  }, []);
-
-  function handleToggleCvSync(next: boolean) {
-    if (cvSyncSaving) return;
-    setCvSyncSaving(true);
-    updateCvSyncSettings(next)
-      .then(() => setCvSyncEnabled(next))
-      .catch(() => addToast("error", p.cv.syncUpdateFailed))
-      .finally(() => setCvSyncSaving(false));
-  }
 
   useEffect(() => {
     let cancelled = false;
@@ -484,7 +462,7 @@ export function CandidateProfile() {
             </div>
           </div>
         </div>
-        <div className="flex flex-col gap-5">
+        <div className="flex flex-col gap-5 min-w-0">
           <Skeleton className="h-8 w-40" />
           {Array.from({ length: 4 }).map((_, i) => (
             <div key={i} className="hr-glass-card p-5">
@@ -564,6 +542,15 @@ export function CandidateProfile() {
               ))
             )}
           </div>
+        </motion.div>
+
+        {/* XP / Gamification progress */}
+        <motion.div
+          initial={{ opacity: 0, x: -16 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.08 }}
+        >
+          <GamificationProgressCard />
         </motion.div>
 
         <motion.div
@@ -676,7 +663,7 @@ export function CandidateProfile() {
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.05 }}
-        className="flex flex-col gap-5"
+        className="flex flex-col gap-5 min-w-0"
       >
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h1 className={cn("text-[24px] font-[800]", portalHeadingAlt)}>{p.heading}</h1>
@@ -726,7 +713,7 @@ export function CandidateProfile() {
         </div>
 
         {/* SCRUM-401: Contribution heatmap — cột phải đủ rộng cho 52 tuần */}
-        <div className="hr-glass-card p-5">
+        <div className="hr-glass-card p-5 overflow-hidden">
           <div className="mb-3">
             <h3 className={cn("text-[14px] font-[700]", portalHeadingAlt)}>{p.heatmap.title}</h3>
             <p className={cn("text-[12px] mt-0.5", portalSubtextAlt)}>{p.heatmap.subtitle}</p>
@@ -743,7 +730,7 @@ export function CandidateProfile() {
           ) : practiceHeatmap.activeDays === 0 ? (
             <p className={cn("text-[13px] py-6 text-center", portalSubtextAlt)}>{p.heatmap.empty}</p>
           ) : (
-            <PracticeHeatmap heatmap={practiceHeatmap} source="profile" />
+            <PracticeHeatmap heatmap={practiceHeatmap} source="profile" compact />
           )}
         </div>
 
@@ -868,69 +855,55 @@ export function CandidateProfile() {
             onChange={handleCvFileChange}
           />
 
-          <div className={cn("flex items-center gap-3 pb-4 mb-4 border-b", portalDivider)}>
-            <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center shrink-0", portalIconWell)}>
-              <RefreshCw size={14} className="text-primary" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className={cn("text-[13px] font-semibold", portalHeadingAlt)}>{p.cv.syncToggleTitle}</p>
-              <p className={cn("text-[11px] leading-4 mt-0.5", portalSubtextAlt)}>{p.cv.syncToggleDescription}</p>
-            </div>
-            <Toggle
-              checked={cvSyncEnabled ?? true}
-              onChange={handleToggleCvSync}
-              disabled={cvSyncEnabled === null || cvSyncSaving}
-            />
-          </div>
-
           {cvLoading ? (
             <div className="h-12 flex items-center justify-center">
               <Loader2 size={16} className="animate-spin text-gray-400" />
             </div>
           ) : cv ? (
-            <div className="flex flex-col gap-3">
-              {/* ── File row ──────────────────────────────────── */}
-              <div className={cn("flex items-center gap-3 px-3 py-2.5 rounded-xl", portalMutedBg)}>
-                <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center shrink-0", portalIconWell)}>
-                  <FileText size={15} className="text-primary" />
-                </div>
+            /* ── Single bordered container ── */
+            <div className="rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
+
+              {/* File row */}
+              <div className="flex items-center gap-3 px-4 py-3">
+                <FileText size={16} className={cn("shrink-0", portalSubtextAlt)} />
                 <div className="flex-1 min-w-0">
                   <p className={cn("text-[13px] font-semibold truncate", portalHeadingAlt)}>{cv.fileName}</p>
                   <p className={cn("text-[11px]", portalSubtextAlt)}>
                     {p.cv.uploadedAt} {formatRelativeTime(cv.uploadedAt, lang)}
                   </p>
                 </div>
-                {/* View */}
                 <a
                   href={cv.downloadUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-1 h-7 px-2.5 text-[12px] font-semibold text-primary hover:bg-primary/8 rounded-lg transition-colors shrink-0"
+                  className="flex items-center gap-1 h-7 px-2.5 text-[12px] font-semibold text-primary hover:bg-violet-50 dark:hover:bg-violet-950/30 rounded-lg transition-colors shrink-0"
                 >
                   <Eye size={13} />
                   {p.cv.viewBtn}
                 </a>
-                {/* Download icon-only */}
                 <a
                   href={cv.downloadUrl}
                   download
                   target="_blank"
                   rel="noopener noreferrer"
                   title={p.cv.downloadBtn}
-                  className={cn("w-7 h-7 flex items-center justify-center rounded-lg transition-colors shrink-0", portalIconWell, portalSubtextAlt, "hover:text-primary")}
+                  className={cn("w-7 h-7 flex items-center justify-center rounded-lg transition-colors shrink-0 hover:text-primary", portalSubtextAlt)}
                 >
                   <Download size={13} />
                 </a>
               </div>
 
-              {/* ── AI Insights toggle ────────────────────────── */}
+              {/* AI Insights */}
               {cv.parsedAt ? (
                 cv.summary || cv.skills.length > 0 ? (
-                  <div className={cn("rounded-xl border overflow-hidden", portalMutedBg, "border-gray-100 dark:border-gray-800")}>
+                  <>
                     <button
                       type="button"
                       onClick={() => setShowCvInsights((v) => !v)}
-                      className="w-full flex items-center justify-between px-3 py-2.5 text-left"
+                      className={cn(
+                        "w-full flex items-center justify-between px-4 py-2.5 text-left border-t border-gray-100 dark:border-gray-800",
+                        "hover:bg-gray-50 dark:hover:bg-gray-800/40 transition-colors"
+                      )}
                     >
                       <span className={cn("text-[12px] font-semibold flex items-center gap-1.5", portalHeadingAlt)}>
                         <Sparkles size={12} className="text-primary" />
@@ -943,13 +916,13 @@ export function CandidateProfile() {
                     </button>
 
                     {showCvInsights && (
-                      <div className={cn("px-3 pb-3 flex flex-col gap-3 border-t", "border-gray-100 dark:border-gray-800")}>
+                      <div className="px-4 pb-4 flex flex-col gap-3 border-t border-gray-100 dark:border-gray-800 pt-3">
                         {cv.summary && (
-                          <div className="pt-3">
+                          <div>
                             <p className={cn("text-[10px] font-bold uppercase tracking-wider mb-1.5", portalSubtextAlt)}>
                               {p.cv.aiSummary}
                             </p>
-                            <p className={cn("text-[12px] leading-4.75", portalSubtextAlt)}>{cv.summary}</p>
+                            <p className={cn("text-[12px] leading-relaxed", portalSubtextAlt)}>{cv.summary}</p>
                           </div>
                         )}
                         {cv.skills.length > 0 && (
@@ -961,26 +934,20 @@ export function CandidateProfile() {
                               {(showAllCvSkills ? cv.skills : cv.skills.slice(0, 10)).map((skill) => (
                                 <span
                                   key={skill}
-                                  className={cn("text-[11px] font-medium px-2.5 py-1 rounded-md", portalIconWell, portalHeadingAlt)}
+                                  className={cn("text-[11px] font-medium px-2.5 py-1 rounded-md border border-gray-200 dark:border-gray-700", portalHeadingAlt)}
                                 >
                                   {skill}
                                 </span>
                               ))}
                               {!showAllCvSkills && cv.skills.length > 10 && (
-                                <button
-                                  type="button"
-                                  onClick={() => setShowAllCvSkills(true)}
-                                  className="text-[11px] font-semibold text-primary hover:underline px-2 py-1"
-                                >
+                                <button type="button" onClick={() => setShowAllCvSkills(true)}
+                                  className="text-[11px] font-semibold text-primary hover:underline px-2 py-1">
                                   +{cv.skills.length - 10}
                                 </button>
                               )}
                               {showAllCvSkills && cv.skills.length > 10 && (
-                                <button
-                                  type="button"
-                                  onClick={() => setShowAllCvSkills(false)}
-                                  className={cn("text-[11px] font-semibold px-2 py-1 hover:underline", portalSubtextAlt)}
-                                >
+                                <button type="button" onClick={() => setShowAllCvSkills(false)}
+                                  className={cn("text-[11px] font-semibold px-2 py-1 hover:underline", portalSubtextAlt)}>
                                   ↑
                                 </button>
                               )}
@@ -989,30 +956,30 @@ export function CandidateProfile() {
                         )}
                       </div>
                     )}
-                  </div>
+                  </>
                 ) : (
-                  <p className={cn("flex items-center gap-1.5 text-[12px] italic", portalSubtextAlt)}>
+                  <p className={cn("flex items-center gap-1.5 text-[12px] italic px-4 py-2.5 border-t border-gray-100 dark:border-gray-800", portalSubtextAlt)}>
                     <AlertCircle size={12} className="shrink-0" />
                     {p.cv.noSkillsDetected}
                   </p>
                 )
               ) : (
-                <p className={cn("flex items-center gap-1.5 text-[12px] italic", portalSubtextAlt)}>
+                <p className={cn("flex items-center gap-1.5 text-[12px] italic px-4 py-2.5 border-t border-gray-100 dark:border-gray-800", portalSubtextAlt)}>
                   <AlertCircle size={12} className="shrink-0" />
                   {p.cv.analysisUnavailable}
                 </p>
               )}
 
-              {/* ── Actions ───────────────────────────────────── */}
-              <div className="flex items-center gap-2">
+              {/* Actions */}
+              <div className="flex items-center gap-1 px-3 py-2.5 border-t border-gray-100 dark:border-gray-800">
                 <button
                   type="button"
                   onClick={() => cvFileInputRef.current?.click()}
                   disabled={cvUploading || cvDeleting}
                   className={cn(
-                    "flex items-center gap-1.5 h-8 px-3 text-[12px] font-semibold hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg transition-colors disabled:opacity-50",
-                    portalCard,
-                    portalHeadingAlt
+                    "flex items-center gap-1.5 h-8 px-3 text-[12px] font-semibold rounded-lg transition-colors disabled:opacity-50",
+                    portalHeadingAlt,
+                    "hover:bg-gray-100 dark:hover:bg-gray-800"
                   )}
                 >
                   {cvUploading ? <Loader2 size={12} className="animate-spin" /> : <Upload size={12} />}

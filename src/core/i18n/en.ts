@@ -503,7 +503,7 @@ export const en = {
     legal: "By continuing, you agree to our",
     terms: "Terms",
     privacyPolicy: "Privacy Policy",
-    roleHr: "HR Manager",
+    roleHr: "HR",
     roleJobSeeker: "Job Seeker",
     invalidCredentials: "Email or password is incorrect. Please try again.",
     unverifiedEmail: "Please verify your email before logging in.",
@@ -600,7 +600,7 @@ export const en = {
     emailAlreadyUsed: "This email is already registered.",
     registrationFailed: "Registration failed. Please try again.",
     jobTitleLabel: "Job Title",
-    jobTitlePlaceholder: "e.g. HR Manager",
+    jobTitlePlaceholder: "e.g. HR Specialist",
     companySearchHint: "Type to search your company",
     companyNotSelected: "No company selected — a new company will be created.",
     step1Title: "Account Information",
@@ -1289,7 +1289,7 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
       paymentPanel: {
         title: "SePay transfer details",
         noQrData: "No QR data available.",
-        waitingWebhook: "Waiting for payment confirmation (up to 10 minutes)…",
+        waitingWebhook: "Waiting for payment confirmation…",
         validityHint: "Code is valid for 10 minutes. Transfer only with the current order content.",
         orderCode: "Order code",
         amount: "Amount",
@@ -2144,7 +2144,7 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
   },
 
   jobseekerSetDetailPage: {
-    backToSets: "← Back to Question Sets",
+    backToSets: "Back to Question Sets",
     by: "by",
     questions: "questions",
     estimatedTime: "Estimated time",
@@ -2156,6 +2156,9 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
     preview: "Question Preview",
     loading: "Loading question set…",
     loadFailed: "Failed to load this question set.",
+    notFoundTitle: "Question set not found",
+    notFoundSubtext: "This question set may have been removed or the link is incorrect.",
+    backToSetsBtn: "Browse Question Sets",
     retryBtn: "Retry",
     ratingTooltip: "Rating out of 5",
     categories: {
@@ -2852,6 +2855,10 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
       practice: "Weekly progress summaries",
       tips: "AI interview tips and insights",
     },
+    soundTitle: "Sound",
+    soundXpLabel: "XP & achievement sounds",
+    soundXpHint: "Play sound effects when you earn XP or level up",
+    cvSyncSectionTitle: "CV",
     privacyTitle: "Privacy & Data",
     privacyDescription: "Control how your data is used",
     privacyActions: {
@@ -2874,7 +2881,7 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
       // Current plan
       currentPlanTitle: "Current Plan",
       freeBadge: "Free Plan",
-      premiumBadge: "Premium Active",
+      premiumBadge: "Premium",
       freePlan: "Free Plan",
       premiumPlan: "Premium",
       freeDesc: "You are currently using the Free plan with limited practice access.",
@@ -2961,7 +2968,7 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
       paymentPanel: {
         title: "SePay transfer details",
         noQrData: "No QR data available.",
-        waitingWebhook: "Waiting for payment confirmation (up to 10 minutes)…",
+        waitingWebhook: "Waiting for payment confirmation…",
         validityHint: "Code is valid for 10 minutes. Transfer only with the current order content.",
         orderCode: "Order code",
         amount: "Amount",
@@ -3716,6 +3723,107 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
     chipSetSelected: "Set selected — compose a question",
     chipReadyToSave: "Question ready — click Save",
     chipQuestionsAdded: "{{n}} questions added this session",
+  },
+
+  gamification: {
+    // Section headings
+    progressTitle: "Practice Progress",
+    achievementsTitle: "Achievements",
+    dailyGoalTitle: "Daily Goal",
+    activityTitle: "Practice Activity",
+    xpHistoryTitle: "XP History",
+
+    // Level / XP
+    levelLabel: "Level",
+    totalXp: "Total XP",
+    xpToNextLevel: "XP to next level",
+    xpEarned: "+{{xp}} XP earned",
+    levelUp: "Level up! You reached Level {{level}}",
+
+    // Streak
+    streakLabel: "Day streak",
+    longestStreak: "Best: {{n}} days",
+    streakTooltip: "Practice every day to keep your streak going!",
+
+    // Daily goal
+    todayXp: "Today: {{xp}} XP",
+    dailyGoalProgress: "{{current}} / {{goal}} XP",
+    dailyGoalCompleted: "Daily goal completed! 🎉",
+    dailyGoalNotDone: "{{remaining}} XP left to reach your goal",
+    goalPresetLight: "Light (20 XP / day)",
+    goalPresetSteady: "Steady (50 XP / day)",
+    goalPresetActive: "Active (80 XP / day)",
+    goalPresetIntense: "Intense (120 XP / day)",
+    saveGoal: "Save goal",
+    goalSaved: "Daily goal updated",
+
+    // Sessions
+    totalSessions: "Sessions",
+    sessionsCompleted: "{{n}} sessions",
+
+    // Achievements
+    unlocked: "Unlocked",
+    locked: "Locked",
+    unlockedOn: "Unlocked {{date}}",
+    achievementProgress: "{{current}} / {{target}}",
+    noAchievements: "No achievements yet — start practising!",
+
+    // Session XP summary (shown on feedback page)
+    sessionSummaryTitle: "XP earned this session",
+    sessionSummaryTotal: "+{{xp}} XP",
+    sessionLevelUp: "You levelled up to Level {{level}}! 🏆",
+    sessionNoXp: "Keep practising to earn XP!",
+
+    // XP reward types (for breakdown list)
+    rewardQuestionCompleted: "Question completed",
+    rewardScoreBonus: "Performance bonus",
+    rewardQuestionSetCompleted: "Session completed",
+    rewardImprovementBonus: "Improvement bonus",
+    rewardStreakMilestone: "Streak milestone",
+    rewardAchievement: "Achievement unlocked",
+
+    // Activity heatmap
+    activityTooltipActive: "{{xp}} XP · {{questions}} questions",
+    activityTooltipEmpty: "No activity",
+    activityMonths: "Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec",
+
+    // Aria / accessibility
+    ariaProgressCard: "Practice progress card",
+    ariaXpBar: "XP progress bar, {{percent}}% to next level",
+    ariaAchievementUnlocked: "Achievement unlocked: {{name}}",
+    ariaAchievementLocked: "Achievement locked: {{name}}, {{current}} of {{target}}",
+    ariaStreak: "Current streak: {{n}} days",
+
+    // XP Guide Panel
+    xpGuideBtn: "How to earn XP?",
+    xpGuidePanelTitle: "How to earn XP",
+    xpGuidePanelSubtext: "Complete practice sessions to earn XP and level up your profile",
+    xpGuideSourcesTitle: "XP Sources",
+    xpGuideLevelsTitle: "Level Tiers",
+    xpGuideTipsTitle: "Tips to level up faster",
+    xpGuideClose: "Close",
+    xpGuideSourceQ: "Question completed",
+    xpGuideSourceQDesc: "Per question answered in a session",
+    xpGuideSourceQXp: "+5 XP / question",
+    xpGuideSourceScore: "Performance bonus",
+    xpGuideSourceScoreDesc: "Score ≥ 80% in a session",
+    xpGuideSourceScoreXp: "+10 XP / session",
+    xpGuideSourceSession: "Session completed",
+    xpGuideSourceSessionDesc: "Complete all questions in a session",
+    xpGuideSourceSessionXp: "+20 XP / session",
+    xpGuideSourceImprove: "Improvement bonus",
+    xpGuideSourceImproveDesc: "Score higher than your previous attempt",
+    xpGuideSourceImproveXp: "+5–15 XP",
+    xpGuideSourceStreak: "Streak milestone",
+    xpGuideSourceStreakDesc: "Reach a 7-day or longer practice streak",
+    xpGuideSourceStreakXp: "+30 XP",
+    xpGuideSourceAchieve: "Achievement unlocked",
+    xpGuideSourceAchieveDesc: "Unlock an achievement badge",
+    xpGuideSourceAchieveXp: "+25–100 XP",
+    xpGuideTip1: "Practice every day to maintain your streak bonus",
+    xpGuideTip2: "Complete all questions in a session to get the session bonus",
+    xpGuideTip3: "Aim for a score ≥ 80% to trigger the performance bonus",
+    xpGuideTip4: "Set a daily goal that keeps you consistent — small and daily beats big and rare",
   },
 };
 

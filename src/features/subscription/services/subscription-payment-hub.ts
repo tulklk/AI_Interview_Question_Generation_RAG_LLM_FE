@@ -66,6 +66,6 @@ export function createSubscriptionPaymentHubConnection(): signalR.HubConnection 
         signalR.HttpTransportType.LongPolling,
     })
     .withAutomaticReconnect([0, 2000, 5000, 10000, 30000])
-    .configureLogging(signalR.LogLevel.Warning)
+    .configureLogging(signalR.LogLevel.None)
     .build();
 }

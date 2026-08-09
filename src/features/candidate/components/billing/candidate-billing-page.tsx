@@ -32,9 +32,11 @@ import { UpgradeModal } from "@/features/candidate/components/billing/upgrade-mo
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-function formatDate(iso?: string) {
+function formatDate(iso: string | null | undefined, locale: string) {
   if (!iso) return "—";
-  return new Date(iso).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+  // Vietnamese full month name ("tháng 9") reads naturally; English uses short ("Sep").
+  const monthFmt: "long" | "short" = locale.startsWith("vi") ? "long" : "short";
+  return new Date(iso).toLocaleDateString(locale, { year: "numeric", month: monthFmt, day: "numeric" });
 }
 
 function formatPrice(amount: number, currency: string) {
@@ -196,7 +198,8 @@ function QuotaBar({ used, limit, color = "bg-primary" }: { used: number; limit: 
 // ── Main Component ────────────────────────────────────────────────────────────
 
 export function CandidateBillingPage() {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
+  const locale = lang === "vi" ? "vi-VN" : "en-US";
   const { user } = useUser();
   const { addToast } = useToast();
   const { planType: contextPlanType, refreshSubscription } = useCandidateSubscription();
@@ -343,7 +346,7 @@ export function CandidateBillingPage() {
                   <div className="flex items-center gap-1.5">
                     <Calendar size={13} className="text-gray-400 dark:text-gray-500 shrink-0" />
                     <span className={portalSubtext}>{b.renewalLabel}:&nbsp;</span>
-                    <span className={cn("font-semibold", portalHeading)}>{formatDate(subscription.renewalDate)}</span>
+                    <span className={cn("font-semibold", portalHeading)}>{formatDate(subscription.renewalDate, locale)}</span>
                   </div>
                 )}
                 {subscription.billingCycle && (
@@ -647,7 +650,7 @@ export function CandidateBillingPage() {
                       </span>
                     </td>
                     <td className={cn("px-4 py-3 tabular-nums", portalSubtext)}>
-                      {formatDate(item.paymentDate)}
+                      {formatDate(item.paymentDate, locale)}
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1">

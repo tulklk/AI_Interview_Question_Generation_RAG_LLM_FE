@@ -10,8 +10,9 @@ function renderBold(text: string, boldClassName: string): ReactNode[] {
   );
 }
 import { createPortal } from "react-dom";
+import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
-import { Check, Minus, Loader2, X, Copy, AlertTriangle, Receipt, Download, ExternalLink } from "lucide-react";
+import { Check, Minus, Loader2, X, Copy, AlertTriangle, Receipt, Download, ExternalLink, Clock } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { useLanguage } from "@/shared/providers/language-context";
 import { useToast } from "@/shared/providers/toast-context";
@@ -81,6 +82,7 @@ export function HrBillingSubscription() {
   const [payment, setPayment] = useState<UpgradePaymentIntent | null>(null);
   const [creatingOrder, setCreatingOrder] = useState(false);
   const [polling, setPolling] = useState(false);
+  const [secsLeft, setSecsLeft] = useState<number | null>(null);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [history, setHistory] = useState<PaymentHistoryItem[]>([]);
   const [historyLoading, setHistoryLoading] = useState(true);
@@ -211,6 +213,46 @@ export function HrBillingSubscription() {
       window.clearInterval(id);
     };
   }, [payment?.orderCode, refresh, addToast, sub.upgradeSuccess]);
+
+  // Trạng thái thanh toán — dịch sang ngôn ngữ hiện tại
+  function localizeStatus(raw: string): { label: string; color: string } {
+    const s = (raw || "").toUpperCase();
+    if (["PAID", "COMPLETED", "FREE", "CONFIRMED"].includes(s))
+      return { label: lang === "vi" ? "Đã thanh toán" : "Paid", color: "text-emerald-600 dark:text-emerald-400" };
+    if (s === "PENDING")
+      return { label: lang === "vi" ? "Chờ thanh toán" : "Pending", color: "text-amber-600 dark:text-amber-400" };
+    if (s === "FAILED")
+      return { label: lang === "vi" ? "Thất bại" : "Failed", color: "text-red-500 dark:text-red-400" };
+    if (["CANCELLED", "CANCELED"].includes(s))
+      return { label: lang === "vi" ? "Đã hủy" : "Cancelled", color: "text-red-500 dark:text-red-400" };
+    if (s === "EXPIRED")
+      return { label: lang === "vi" ? "Đã hết hạn" : "Expired", color: "text-red-500 dark:text-red-400" };
+    return { label: raw, color: portalHeading };
+  }
+
+  // Countdown timer — tính từ payment.expiresAt
+  function formatCountdown(secs: number): string {
+    const m = Math.floor(secs / 60);
+    const s = secs % 60;
+    return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+  }
+
+  useEffect(() => {
+    const expiresAt = payment?.expiresAt;
+    if (!expiresAt || payment?.amount === 0) {
+      setSecsLeft(null);
+      return;
+    }
+    const expiry = new Date(expiresAt).getTime();
+    const computeSecs = () => Math.max(0, Math.floor((expiry - Date.now()) / 1000));
+    setSecsLeft(computeSecs());
+    const id = setInterval(() => {
+      const s = computeSecs();
+      setSecsLeft(s);
+      if (s === 0) clearInterval(id);
+    }, 1_000);
+    return () => clearInterval(id);
+  }, [payment?.expiresAt, payment?.amount]);
 
   async function handleBuyAskAiPack() {
     setBusy(true);
@@ -588,14 +630,25 @@ export function HrBillingSubscription() {
         );
       })()}
 
-      {payment && typeof document !== "undefined"
-        ? createPortal(
-            <div
+      {typeof document !== "undefined" && createPortal(
+        <AnimatePresence>
+          {payment && (
+            <motion.div
               className="fixed inset-0 z-9999 flex items-center justify-center p-4"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
               onClick={(e) => { if (e.currentTarget === e.target) setPayment(null); }}
             >
               <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setPayment(null)} />
-              <div className="relative z-10 w-full max-w-2xl bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-800 overflow-hidden">
+              <motion.div
+                className="relative z-10 w-full max-w-2xl bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-800 overflow-hidden"
+                initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
+              >
                 <div className="relative px-6 pt-6 pb-5 border-b border-gray-200 dark:border-gray-800">
                   <h2 className={cn("text-[15px] font-bold", portalHeading)}>{sub.paymentPanel.title}</h2>
                   <button
@@ -624,12 +677,39 @@ export function HrBillingSubscription() {
                         </div>
                       )}
                       {polling && (
-                        <div className="text-xs text-primary text-center">{sub.paymentPanel.waitingWebhook}</div>
+                        <div className={cn("text-xs text-center", portalHeading)}>{sub.paymentPanel.waitingWebhook}</div>
                       )}
-                      {sub.paymentPanel.validityHint && (
-                        <div className={cn("text-[11px] text-center px-1", portalSubtext)}>
-                          {sub.paymentPanel.validityHint}
+
+                      {/* Countdown chip */}
+                      {secsLeft !== null ? (
+                        <div
+                          className={cn(
+                            "flex items-center justify-center gap-2 rounded-full px-4 py-2 select-none",
+                            secsLeft === 0
+                              ? "bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500"
+                              : secsLeft <= 30
+                                ? "bg-red-50 dark:bg-red-900/30 text-red-500 dark:text-red-400 animate-pulse"
+                                : secsLeft <= 120
+                                  ? "bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400"
+                                  : "bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400"
+                          )}
+                        >
+                          <Clock size={14} />
+                          {secsLeft === 0 ? (
+                            <span className="text-sm font-semibold">{lang === "vi" ? "Mã đã hết hạn" : "Code expired"}</span>
+                          ) : (
+                            <>
+                              <span className="text-base font-bold font-mono tabular-nums tracking-wide">{formatCountdown(secsLeft)}</span>
+                              <span className="text-xs font-medium opacity-70">{lang === "vi" ? "còn lại" : "left"}</span>
+                            </>
+                          )}
                         </div>
+                      ) : (
+                        sub.paymentPanel.validityHint && (
+                          <div className={cn("text-[11px] text-center px-1", portalSubtext)}>
+                            {sub.paymentPanel.validityHint}
+                          </div>
+                        )
                       )}
                     </div>
                     <div className="space-y-2.5 min-w-0">
@@ -645,7 +725,9 @@ export function HrBillingSubscription() {
                       </div>
                       <div className={cn("text-xs", portalSubtext)}>
                         {sub.paymentPanel.status}:{" "}
-                        <span className={cn("font-semibold", portalHeading)}>{(payment.status || "Pending").toUpperCase()}</span>
+                        <span className={cn("font-semibold", localizeStatus(payment.status || "Pending").color)}>
+                          {localizeStatus(payment.status || "Pending").label}
+                        </span>
                       </div>
                       <div className={cn("text-xs", portalSubtext)}>
                         {sub.paymentPanel.expiresAt}:{" "}
@@ -697,20 +779,32 @@ export function HrBillingSubscription() {
                     </button>
                   </div>
                 </div>
-              </div>
-            </div>,
-            document.body
-          )
-        : null}
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
 
-      {showCancelConfirm && typeof document !== "undefined"
-        ? createPortal(
-            <div
+      {typeof document !== "undefined" && createPortal(
+        <AnimatePresence>
+          {showCancelConfirm && (
+            <motion.div
               className="fixed inset-0 z-9999 flex items-center justify-center p-4"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.18 }}
               onClick={(e) => { if (e.currentTarget === e.target && !busy) setShowCancelConfirm(false); }}
             >
               <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
-              <div className="relative z-10 w-full max-w-md bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-800">
+              <motion.div
+                className="relative z-10 w-full max-w-md bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-800"
+                initial={{ opacity: 0, scale: 0.88, y: 24 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.94, y: 10 }}
+                transition={{ duration: 0.26, ease: [0.34, 1.56, 0.64, 1] }}
+              >
                 <div className="px-6 pt-6 pb-5 border-b border-gray-200 dark:border-gray-800">
                   <div className="flex items-center gap-3 mb-1">
                     <div className="w-9 h-9 rounded-xl bg-red-50 dark:bg-red-950/40 flex items-center justify-center">
@@ -765,11 +859,12 @@ export function HrBillingSubscription() {
                     </button>
                   </div>
                 </div>
-              </div>
-            </div>,
-            document.body
-          )
-        : null}
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
     </div>
   );
 }
