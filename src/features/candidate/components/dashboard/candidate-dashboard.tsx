@@ -102,6 +102,9 @@ export function CandidateDashboard() {
         readiness={dashboard.readiness}
         scoreTrend={dashboard.scoreTrend}
         sessionsSparkline={dashboard.sessionsSparkline}
+        sessionCountSparkline={dashboard.sessionCountSparkline}
+        streakSparkline={dashboard.streakSparkline}
+        durationSparkline={dashboard.durationSparkline}
       />
 
       <div className="mb-6">

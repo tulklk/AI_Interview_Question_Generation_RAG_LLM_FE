@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
-import { User, Settings, ShieldCheck, Shield, Check, ChevronRight, Zap, CreditCard } from "lucide-react";
+import { User, Settings, ShieldCheck, Shield, Check, ChevronRight, Zap, CreditCard, Lock, Crown } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { useLanguage } from "@/shared/providers/language-context";
 import { ThemePreferencePicker } from "@/shared/components/common/theme-preference-picker";
@@ -18,6 +18,7 @@ import { useToast } from "@/shared/providers/toast-context";
 import { portalHeading, portalSubtext } from "@/shared/utils/portal-ui";
 import { DailyGoalSettings } from "@/features/gamification/components/daily-goal-settings";
 import { useSoundPreference } from "@/features/gamification/hooks/use-sound-preference";
+import { UpgradeModal } from "@/features/candidate/components/billing/upgrade-modal";
 
 type Tab = "profile" | "general" | "security" | "privacy" | "billing";
 
@@ -66,6 +67,7 @@ export function SettingsPage() {
 
   const [allowRecommendation, setAllowRecommendation] = useState<boolean | null>(null);
   const [savingRecommendation, setSavingRecommendation] = useState(false);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -136,6 +138,7 @@ export function SettingsPage() {
   const isFullWidth = activeTab === "profile" || activeTab === "billing";
 
   return (
+    <>
     <div className="flex flex-col md:grid md:grid-cols-[220px_1fr] gap-4 md:gap-6 items-start">
 
       {/* ── Sidebar nav ───────────────────────────────────────────────────────── */}
@@ -354,19 +357,59 @@ export function SettingsPage() {
           {/* Privacy */}
           {activeTab === "privacy" && (
             <div className="space-y-3">
-              <div className="rounded-xl border border-gray-200 dark:border-gray-800 px-4 py-4 flex items-start justify-between gap-4">
-                <div className="min-w-0">
-                  <p className={cn("text-sm font-semibold", portalHeading)}>{p.privacyActions.recruiterRecommendation.title}</p>
-                  <p className="text-xs mt-1 leading-relaxed text-gray-500 dark:text-gray-400">
-                    {p.privacyActions.recruiterRecommendation.description}
+              {/* Recruiter recommendation — Premium only */}
+              <div
+                className={cn(
+                  "rounded-xl border px-4 py-4 flex items-start justify-between gap-4 transition-colors",
+                  isPremium
+                    ? "border-gray-200 dark:border-gray-800"
+                    : "border-violet-200 dark:border-violet-800/50 bg-violet-50/40 dark:bg-violet-950/20 cursor-pointer hover:bg-violet-50 dark:hover:bg-violet-950/30"
+                )}
+                onClick={!isPremium ? () => setShowUpgradeModal(true) : undefined}
+                role={!isPremium ? "button" : undefined}
+              >
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className={cn("text-sm font-semibold", portalHeading)}>
+                      {p.privacyActions.recruiterRecommendation.title}
+                    </p>
+                    {!isPremium && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-gradient-to-r from-violet-600 to-purple-500 text-white shadow-sm">
+                        <Crown size={9} />
+                        {p.privacyActions.recruiterRecommendation.premiumOnly}
+                      </span>
+                    )}
+                  </div>
+                  <p className={cn("text-xs mt-1 leading-relaxed", isPremium ? "text-gray-500 dark:text-gray-400" : "text-violet-600/70 dark:text-violet-400/70")}>
+                    {isPremium
+                      ? p.privacyActions.recruiterRecommendation.description
+                      : p.privacyActions.recruiterRecommendation.premiumHint}
                   </p>
                 </div>
-                <Toggle
-                  checked={allowRecommendation ?? true}
-                  onChange={handleToggleRecommendation}
-                  disabled={allowRecommendation === null || savingRecommendation}
-                />
+                {isPremium ? (
+                  <Toggle
+                    checked={allowRecommendation ?? true}
+                    onChange={handleToggleRecommendation}
+                    disabled={allowRecommendation === null || savingRecommendation}
+                  />
+                ) : (
+                  <div className="shrink-0 flex items-center justify-center w-9 h-9 rounded-xl bg-violet-100 dark:bg-violet-900/40 ring-1 ring-violet-200 dark:ring-violet-700/50">
+                    <Lock size={15} className="text-violet-500 dark:text-violet-400" />
+                  </div>
+                )}
               </div>
+
+              {/* Upgrade CTA for free users */}
+              {!isPremium && (
+                <button
+                  type="button"
+                  onClick={() => setShowUpgradeModal(true)}
+                  className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-violet-600 to-purple-500 hover:from-violet-700 hover:to-purple-600 shadow-sm transition-all active:scale-[0.98]"
+                >
+                  <Crown size={13} />
+                  {p.billing.upgradeBtn}
+                </button>
+              )}
 
               <div className="rounded-xl border border-gray-200 dark:border-gray-800 divide-y divide-gray-200 dark:divide-gray-800 overflow-hidden">
                 {[p.privacyActions.downloadData, p.privacyActions.deleteHistory].map((action) => (
@@ -415,5 +458,13 @@ export function SettingsPage() {
         </div>
       )}
     </div>
+
+      {showUpgradeModal && (
+        <UpgradeModal
+          onClose={() => setShowUpgradeModal(false)}
+          onDone={() => setShowUpgradeModal(false)}
+        />
+      )}
+    </>
   );
 }

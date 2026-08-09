@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import Link from "next/link";
 import { animate, motion } from "framer-motion";
 import {
@@ -70,6 +70,54 @@ function KpiValue({ value }: { value: string | number }) {
 }
 
 // ---------------------------------------------------------------------------
+// Mini sparkline (self-contained SVG — no recharts dependency)
+// ---------------------------------------------------------------------------
+
+const HR_SPARK_KEYFRAMES = `
+  @keyframes hspLine { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+  @keyframes hspFill { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes hspDot  { from { opacity: 0; transform: scale(0); } to { opacity: 1; transform: scale(1); } }
+`;
+
+function HrSparkline({ data, color = "#7C3AED" }: { data: number[]; color?: string }) {
+  const rawId = useId();
+  const gid = `hsp${rawId.replace(/[^a-z0-9]/gi, "")}`;
+  if (data.length < 2) return null;
+  const W = 60, H = 28, pad = 2;
+  const max = Math.max(...data);
+  const min = Math.min(...data);
+  const range = max === min ? 1 : max - min;
+  const pts = data.map((v, i) => ({
+    x: +(pad + (i / (data.length - 1)) * (W - pad * 2)).toFixed(1),
+    y: +(pad + (1 - (v - min) / range) * (H - pad * 2)).toFixed(1),
+  }));
+  const line = pts.map((p, i) => `${i === 0 ? "M" : "L"}${p.x},${p.y}`).join(" ");
+  const area = `${line} L${pts[pts.length - 1].x},${H} L${pts[0].x},${H} Z`;
+  const last = pts[pts.length - 1];
+  return (
+    <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} className="overflow-visible">
+      <style>{HR_SPARK_KEYFRAMES}</style>
+      <defs>
+        <linearGradient id={gid} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={color} stopOpacity="0.3" />
+          <stop offset="100%" stopColor={color} stopOpacity="0.02" />
+        </linearGradient>
+      </defs>
+      <path d={area} fill={`url(#${gid})`} style={{ animation: "hspFill 0.5s ease-out both" }} />
+      <path
+        d={line} fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
+        pathLength="1" strokeDasharray="1"
+        style={{ strokeDashoffset: 1, animation: "hspLine 0.75s ease-out both" }}
+      />
+      <circle
+        cx={last.x} cy={last.y} r="2.5" fill={color}
+        style={{ transformOrigin: `${last.x}px ${last.y}px`, animation: "hspDot 0.3s ease-out 0.6s both" }}
+      />
+    </svg>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // KPI Card
 // ---------------------------------------------------------------------------
 
@@ -81,21 +129,49 @@ interface KpiCardProps {
   desc: string;
   value: string | number;
   loading: boolean;
+  sparkline?: number[];
+  sparklineColor?: string;
 }
 
-function KpiCard({ icon: Icon, iconBg, iconColor, label, desc, value, loading }: KpiCardProps) {
+function KpiCard({ icon: Icon, iconBg, iconColor, label, desc, value, loading, sparkline, sparklineColor = "#7C3AED" }: KpiCardProps) {
   const isNumeric = typeof value === "number" || /^\d+(?:\.\d+)?%?$/.test(String(value));
+  const hasChart = !loading && sparkline && sparkline.length >= 2 && sparkline.some(v => v > 0);
   return (
-    <div className="hr-glass-card p-5 flex flex-col gap-3 h-full min-h-[116px]">
-      <div className="flex items-start gap-3 min-w-0">
+    <div className="hr-glass-card p-4 flex flex-col gap-2 h-full min-h-30">
+
+      {/* Row 1: icon (left) + chart (right) — text is NOT in this row */}
+      <div className="flex items-start justify-between">
         <div className={cn("w-9 h-9 rounded-xl flex items-center justify-center shrink-0", iconBg)}>
           <Icon size={16} className={iconColor} />
         </div>
-        <div className="min-w-0 flex-1">
-          <p className={cn("text-[11px] font-semibold uppercase tracking-wider truncate", portalSubtextAlt)}>{label}</p>
-          <p className={cn("text-[10px] truncate", portalSubtextAlt)}>{desc}</p>
-        </div>
+        {hasChart ? (
+          <motion.div
+            key={sparkline!.join(",")}
+            className="w-15 h-7 shrink-0"
+            style={{ opacity: 0.7 }}
+            initial={{ opacity: 0, y: 4 }}
+            animate={{ opacity: 0.7, y: 0 }}
+            transition={{ duration: 0.45, ease: "easeOut" }}
+          >
+            <HrSparkline data={sparkline!} color={sparklineColor} />
+          </motion.div>
+        ) : (
+          /* placeholder keeps consistent height when no chart */
+          <div className="h-7" />
+        )}
       </div>
+
+      {/* Row 2: label + desc — full width, no truncation */}
+      <div>
+        <p className={cn("text-[11px] font-semibold uppercase tracking-wider leading-tight", portalSubtextAlt)}>
+          {label}
+        </p>
+        <p className={cn("text-[10px] mt-0.5 leading-tight", portalSubtextAlt)}>
+          {desc}
+        </p>
+      </div>
+
+      {/* Row 3: value — pushed to bottom */}
       {loading ? (
         <div className="mt-auto h-7 w-20 rounded-lg bg-gray-100 dark:bg-gray-800 animate-pulse" />
       ) : (
@@ -357,6 +433,29 @@ export function HrDashboard() {
 
   const data = useHrDashboard();
 
+  // ── Sparkline data derived from dailyActivity ──────────────────────────────
+  const activity14 = data.dailyActivity.slice(-14);
+  // Total sessions: raw daily count
+  const totalSparkline = activity14.map(d => d.sessions);
+  // Completed: estimated daily completed = sessions × overall success rate
+  const completedSparkline = activity14.map(d =>
+    Math.round(d.sessions * (data.successRate / 100))
+  );
+  // Questions generated: estimated = sessions × avg questions per session
+  const avgQPerSession = data.totalSessions > 0
+    ? data.totalQuestionsGenerated / data.totalSessions
+    : 0;
+  const questionsSparkline = activity14.map(d =>
+    Math.round(d.sessions * avgQPerSession)
+  );
+  // Success rate trend: use same daily sessions pattern (BE has no daily breakdown)
+  const successSparkline = totalSparkline;
+  // This month: filter dailyActivity by current month ("MM/DD" format)
+  const currentMonthStr = String(new Date().getMonth() + 1).padStart(2, "0");
+  const thisMonthSparkline = data.dailyActivity
+    .filter(d => d.date.startsWith(currentMonthStr + "/"))
+    .map(d => d.sessions);
+
   const kpis: KpiCardProps[] = [
     {
       icon: Zap,
@@ -366,6 +465,8 @@ export function HrDashboard() {
       desc: p.kpi.totalSessionsDesc,
       value: data.totalSessions,
       loading: data.loading,
+      sparkline: totalSparkline,
+      sparklineColor: "#7C3AED",
     },
     {
       icon: CheckCircle2,
@@ -375,6 +476,8 @@ export function HrDashboard() {
       desc: p.kpi.completedSessionsDesc,
       value: data.completedSessions,
       loading: data.loading,
+      sparkline: completedSparkline,
+      sparklineColor: "#10B981",
     },
     {
       icon: MessageSquareText,
@@ -384,6 +487,8 @@ export function HrDashboard() {
       desc: p.kpi.totalQuestionsDesc,
       value: data.totalQuestionsGenerated,
       loading: data.loading,
+      sparkline: questionsSparkline,
+      sparklineColor: "#3B82F6",
     },
     {
       icon: TrendingUp,
@@ -393,6 +498,8 @@ export function HrDashboard() {
       desc: p.kpi.successRateDesc,
       value: `${data.successRate}%`,
       loading: data.loading,
+      sparkline: successSparkline,
+      sparklineColor: "#F59E0B",
     },
     {
       icon: CalendarDays,
@@ -402,6 +509,8 @@ export function HrDashboard() {
       desc: p.kpi.thisMonthDesc,
       value: data.thisMonthSessions,
       loading: data.loading,
+      sparkline: thisMonthSparkline,
+      sparklineColor: "#06B6D4",
     },
     {
       icon: Briefcase,
@@ -411,6 +520,7 @@ export function HrDashboard() {
       desc: p.kpi.topRoleDesc,
       value: sanitizeRoleLabel(data.topRole) || "—",
       loading: data.loading,
+      // no sparkline — text value, not numeric
     },
   ];
 

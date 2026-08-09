@@ -27,7 +27,9 @@ export default function Sparkline({ data, color = "#7C3AED" }: SparklineProps) {
           strokeWidth={1.75}
           fill={`url(#${gradientId})`}
           dot={false}
-          isAnimationActive={false}
+          isAnimationActive={true}
+          animationDuration={800}
+          animationEasing="ease-out"
         />
       </AreaChart>
     </ResponsiveContainer>

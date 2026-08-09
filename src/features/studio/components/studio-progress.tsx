@@ -157,8 +157,8 @@ export function StudioProgressBar({
                       done
                         ? "hr-stepper-connector-done"
                         : isActive
-                          ? "bg-gray-200 dark:bg-gray-700"
-                          : "bg-gray-150 dark:bg-gray-800"
+                          ? "bg-gray-300 dark:bg-gray-700"
+                          : "bg-gray-300 dark:bg-gray-800"
                     )}
                     style={done ? ({ "--connector-delay": connectorDelay } as React.CSSProperties) : undefined}
                     aria-hidden

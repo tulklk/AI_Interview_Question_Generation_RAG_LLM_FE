@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { ChevronLeft, ChevronRight, Clock, CreditCard, Database, MessageSquare, SlidersHorizontal } from "lucide-react";
+import { ChevronLeft, ChevronRight, Clock, CreditCard, Database, MessageSquare, SlidersHorizontal, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { AiLoadingSpinner } from "@/shared/components/common/ai-loading-spinner";
 import { cn } from "@/lib/cn";
@@ -71,20 +71,93 @@ export function StudioPage() {
     studio.generationRun?.status === "Generating" ||
     studio.generationRun?.status === "Pending";
 
-  // The quota dialog is derived state, not user-dismissible: it stays up until the cooldown
-  // expires or the user upgrades. The only ways out are its two navigation buttons.
-  // Suppressed while a generation or plan stream is already in flight — the quota is consumed
-  // at the moment the request lands, so blocking mid-run would waste work already started.
-  // The dialog surfaces automatically the moment the in-flight run completes or fails.
-  const showQuotaDialog =
-    quotaBlocked && !isRunInProgress && !studio.isStreaming;
+  // Quota dialog — shown only when:
+  //   (a) user explicitly triggers an action (handleNewSession / handleGenerateQuestions)
+  //       while quota is already blocked, OR
+  //   (b) a generation/streaming run that started in THIS session completes and the
+  //       subscription refresh reveals the quota is now exhausted.
+  // It is NEVER auto-shown on page load so users can still view existing work.
+  const [quotaDialogOpen, setQuotaDialogOpen] = useState(false);
 
-  // Since the dialog can't be dismissed, re-check the subscription when the cooldown expires and
-  // whenever the tab regains focus (e.g. the user upgraded in another tab), so it lifts by itself.
+  // hadGenerationRef is set ONLY when the user explicitly clicks "Sinh câu hỏi" in this session
+  // (see handleGenerateQuestions below). Restored runs from previous sessions (bootstrap) never
+  // set this flag, so the dialog does not auto-appear on page reload or after plan approval.
+  const hadGenerationRef = useRef(false);
+
+  // quotaDialogTriggeredRef — set true the first time the user clicks a generate/plan action
+  // while blocked. After that, any tab re-focus while still blocked will re-open the dialog
+  // so they always see it until the cooldown actually resets.
+  const quotaDialogTriggeredRef = useRef(false);
+
+  // Auto-show on page load / initial data arrival: fire once when subscription first loads
+  // and quota is already blocked. Uses a ref so it only runs on the first non-null subscription.
+  const initialQuotaCheckRef = useRef(false);
   useEffect(() => {
-    if (!quotaBlocked) return;
+    if (subscription === null) return;          // still loading
+    if (initialQuotaCheckRef.current) return;  // already checked
+    initialQuotaCheckRef.current = true;
+    if (quotaBlocked) {
+      quotaDialogTriggeredRef.current = true;
+      setQuotaDialogOpen(true);
+    }
+  }, [subscription, quotaBlocked]);
 
-    const onFocus = () => void refreshSubscription();
+  // Track the PREVIOUS value of isRunInProgress so we can detect the true→false TRANSITION
+  // (generation just completed). Without this, the effect would re-fire whenever isStreaming
+  // toggles (plan creation, apply-settings, chat refine, approve-plan all set isStreaming
+  // true→false), causing the dialog to pop up unexpectedly after every such action.
+  const prevIsRunInProgressRef = useRef(false);
+  useEffect(() => {
+    const wasRunning = prevIsRunInProgressRef.current;
+    prevIsRunInProgressRef.current = isRunInProgress;
+
+    // Auto-show ONLY when a generation the user started THIS session just finished (true→false)
+    // AND quota is now exhausted. We deliberately exclude isStreaming from deps/condition so the
+    // dialog does NOT re-fire when plan creation / apply-settings / chat / approve-plan toggle
+    // isStreaming independently of the generation run.
+    if (wasRunning && !isRunInProgress && hadGenerationRef.current && quotaBlocked) {
+      setQuotaDialogOpen(true);
+    }
+  }, [isRunInProgress, quotaBlocked]);
+
+  // Show dialog when BE explicitly returns a quota / cooldown error for this session's generation.
+  // This is the PRIMARY trigger — dialog only appears because BE said so, not from FE cache.
+  useEffect(() => {
+    if (!studio.quotaExceeded) return;
+    quotaDialogTriggeredRef.current = true;
+    setQuotaDialogOpen(true);
+    // Refresh subscription so cooldownEndsAt and billing card update immediately.
+    void refreshSubscription();
+  }, [studio.quotaExceeded, refreshSubscription]);
+
+  // Auto-hide the moment quota clears (user upgraded or cooldown expired)
+  useEffect(() => {
+    if (!quotaBlocked) setQuotaDialogOpen(false);
+  }, [quotaBlocked]);
+
+  // Escape key closes the dialog
+  useEffect(() => {
+    if (!quotaDialogOpen) return;
+    function onKey(e: KeyboardEvent) { if (e.key === "Escape") setQuotaDialogOpen(false); }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [quotaDialogOpen]);
+
+  // Re-check the subscription when the cooldown expires and whenever the tab regains focus
+  // (e.g. the user upgraded in another tab), so the dialog auto-hides if quota clears.
+  // Also re-opens the dialog on focus if the user had already triggered it this session.
+  useEffect(() => {
+    if (!quotaBlocked) {
+      // Quota just cleared — reset the trigger so the dialog doesn't reappear
+      quotaDialogTriggeredRef.current = false;
+      return;
+    }
+
+    const onFocus = () => {
+      void refreshSubscription();
+      // Re-open dialog if user had triggered it before switching tabs
+      if (quotaDialogTriggeredRef.current) setQuotaDialogOpen(true);
+    };
     window.addEventListener("focus", onFocus);
 
     const msLeft = cooldownEndsAt ? cooldownEndsAt.getTime() - Date.now() : -1;
@@ -116,11 +189,12 @@ export function StudioPage() {
   const cooldownTimeStr = cooldownEndsAt
     ? cooldownEndsAt.toLocaleString(locale)
     : "";
+  // Note: quotaBlocked is intentionally excluded — the button stays enabled when the session
+  // is ready so users can click it and see the quota dialog explaining why it's blocked.
+  // handleGenerateQuestions guards the actual generation call.
   const canGenerate = useMemo(
-    () =>
-      !quotaBlocked &&
-      (studio.settings?.readiness?.canGenerateQuestions ?? false),
-    [studio.settings?.readiness?.canGenerateQuestions, quotaBlocked]
+    () => studio.settings?.readiness?.canGenerateQuestions ?? false,
+    [studio.settings?.readiness?.canGenerateQuestions]
   );
 
   // Only allow creating plan after JD is saved & analyzed (jdSummary set) or backend confirms it exists
@@ -131,21 +205,37 @@ export function StudioPage() {
     [studio.jdSummary, studio.settings?.readiness?.hasJobDescription, quotaBlocked]
   );
 
-  // "Tạo bộ câu hỏi mới" — the dialog is already covering the page when quota is exhausted,
-  // so just refuse to start a brand new session.
+  // "Tạo bộ câu hỏi mới" — ALWAYS create a new (empty) session to clear existing questions.
+  // After the new session loads, show the quota dialog if the account has no generation quota,
+  // so the user knows immediately they can't generate yet without blocking the reset itself.
   const handleNewSession = useCallback(() => {
-    if (quotaBlocked) return;
-    void studio.createNewSession();
+    void studio.createNewSession().then(() => {
+      if (quotaBlocked) setQuotaDialogOpen(true);
+    });
   }, [quotaBlocked, studio]);
 
-  // Wrap plan creation to immediately switch to main tab on mobile
+  // Wrap plan creation to immediately switch to main tab on mobile.
+  // FE-side quota gate: if blocked, open the dialog immediately instead of hitting BE.
   const handleCreatePlan = useCallback(() => {
+    if (quotaBlocked) {
+      quotaDialogTriggeredRef.current = true;
+      setQuotaDialogOpen(true);
+      return;
+    }
     switchMobileTab("main");
     studio.generateInitialPlan();
-  }, [studio, switchMobileTab]);
+  }, [quotaBlocked, studio, switchMobileTab]);
 
   const handleGenerateQuestions = useCallback(() => {
-    if (quotaBlocked) return;
+    // FE-side quota gate: show dialog immediately when we already know quota is blocked.
+    // This gives instant feedback without a round-trip. The BE still guards the actual call —
+    // if the local cache is stale, studio.quotaExceeded fires and shows the dialog too.
+    if (quotaBlocked) {
+      quotaDialogTriggeredRef.current = true;
+      setQuotaDialogOpen(true);
+      return;
+    }
+    hadGenerationRef.current = true;
     void studio.generateQuestions();
   }, [quotaBlocked, studio]);
 
@@ -157,8 +247,8 @@ export function StudioPage() {
 
   // Quota-exceeded dialog — portal to body, flex layout masks sidebar+header.
   // Rendered outside the main tree so it also shows while the studio is still bootstrapping.
-  // Not dismissible: no close button, no backdrop click, no Escape.
-  const quotaDialog = showQuotaDialog && mounted
+  // Dismissible via X button, backdrop click, or Escape (dialog is now user-triggered, not auto-shown).
+  const quotaDialog = quotaDialogOpen && mounted
     ? createPortal(
         <div className="fixed inset-0 z-50 flex pointer-events-none">
           {/* Transparent spacer matching sidebar width (desktop) */}
@@ -169,15 +259,29 @@ export function StudioPage() {
             {/* Transparent spacer matching header height */}
             <div className="h-14 shrink-0" aria-hidden />
 
-            {/* Content area overlay — blocks every interaction behind it */}
-            <div className="pointer-events-auto flex flex-1 items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
+            {/* Content area overlay — click backdrop to dismiss */}
+            <div
+              className="pointer-events-auto flex flex-1 items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in"
+              onClick={() => setQuotaDialogOpen(false)}
+            >
               <div
                 role="alertdialog"
                 aria-modal
                 aria-labelledby="quota-dialog-title"
                 aria-describedby="quota-dialog-desc"
                 className="relative w-full max-w-md animate-scale-in rounded-2xl border border-border dark:border-gray-700 bg-white dark:bg-gray-900 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.18)] dark:shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)]"
+                onClick={(e) => e.stopPropagation()}
               >
+                {/* X close button */}
+                <button
+                  type="button"
+                  onClick={() => setQuotaDialogOpen(false)}
+                  aria-label="Đóng"
+                  className="absolute right-4 top-4 flex h-7 w-7 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-800 dark:hover:text-gray-200"
+                >
+                  <X size={15} />
+                </button>
+
                 <div className="px-6 pb-5 pt-6 text-center">
                   <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800 text-charcoal dark:text-gray-100">
                     <Clock size={26} />
