@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import type { LucideIcon } from "lucide-react";
 import { TrendingUp, TrendingDown, Minus } from "lucide-react";
-import { animate } from "framer-motion";
+import { animate, motion } from "framer-motion";
 import { cn } from "@/lib/cn";
 import { portalHeadingAlt, portalSubtextAlt } from "@/shared/utils/portal-ui";
 import { InfoTooltip } from "@/features/candidate/components/ui/info-tooltip";
@@ -30,6 +30,8 @@ export interface KpiCardProps {
   trendDirection?: "up" | "down" | "flat";
   trendPositiveIsGood?: boolean;
   sparklineData?: number[];
+  /** Hex color for the sparkline stroke/fill. Defaults to purple #7C3AED. */
+  sparklineColor?: string;
   loading?: boolean;
   /** When provided, the value animates from 0 to countUp.value on mount */
   countUp?: KpiCardCountUp;
@@ -70,6 +72,7 @@ export function KpiCard({
   trendDirection,
   trendPositiveIsGood = true,
   sparklineData,
+  sparklineColor = "#7C3AED",
   loading,
   countUp,
 }: KpiCardProps) {
@@ -109,9 +112,15 @@ export function KpiCard({
           <Icon size={16} className="text-gray-900 dark:text-gray-100" />
         </div>
         {sparklineData && sparklineData.length >= 3 && (
-          <div className="w-16 h-8">
-            <Sparkline data={sparklineData} color="#7C3AED" />
-          </div>
+          <motion.div
+            key={sparklineData.join(",")}
+            className="w-16 h-8"
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, ease: "easeOut" }}
+          >
+            <Sparkline data={sparklineData} color={sparklineColor} />
+          </motion.div>
         )}
       </div>
       <p className={cn("text-[24px] font-[700] leading-none tabular-nums", portalHeadingAlt)}>{displayValue}</p>

@@ -284,31 +284,74 @@ export function HrBillingSubscription() {
         <div className="relative z-10">
           <div className="flex flex-wrap items-start justify-between gap-3 mb-2">
             <div>
-              <p className="text-white/70 text-xs font-medium mb-0.5">{sub.currentSummary}</p>
+              <p className="text-white/90 text-xs font-medium mb-0.5">{sub.currentSummary}</p>
               <p className="text-white text-2xl font-bold leading-none">
                 {loading ? "…" : subscription?.planName || planNames[planId]}
               </p>
-              <p className="text-white/80 text-sm mt-2 max-w-md">
+              <p className="text-white/95 text-sm mt-2 max-w-md">
                 {subscription?.planCode
                   ? `${subscription.planCode} · ${subscription.status}`
                   : planSub[planId]}
               </p>
             </div>
-            <span className="text-[10px] font-bold text-white bg-white/20 px-2.5 py-1 rounded-full shrink-0">
+            <span className="text-[10px] font-bold text-white bg-white/30 px-2.5 py-1 rounded-full shrink-0">
               {t.settingsPage.billing.active}
             </span>
           </div>
-          <p className="text-white text-xl font-bold mb-1">
-            {subscription ? formatMoney(subscription.priceMonthly, subscription.currency) : "…"}
-            {subscription && (
-              <span className="text-white/70 text-sm font-normal">{t.settingsPage.billing.perMonth}</span>
-            )}
-          </p>
-          <p className="text-white/70 text-xs mb-2">
-            {sub.renews}: {formatDate(subscription?.periodEnd, locale)}
-          </p>
+          {/* Giá — chỉ hiện với Premium (Free = 0 ₫ không có nghĩa) */}
+          {isPremium && (
+            <p className="text-white text-xl font-bold mb-1">
+              {subscription ? formatMoney(subscription.priceMonthly, subscription.currency) : "…"}
+              {subscription && (
+                <span className="text-white/90 text-sm font-normal">{t.settingsPage.billing.perMonth}</span>
+              )}
+            </p>
+          )}
+
+          {/* Gia hạn (Premium) / Quota lượt tạo (Free) */}
+          {isPremium ? (
+            <p className="text-white/90 text-xs mb-2">
+              {sub.renews}: {formatDate(subscription?.periodEnd, locale)}
+            </p>
+          ) : (
+            <div className="mb-3">
+              <div className="flex items-center justify-between mb-1.5">
+                <p className="text-white/90 text-xs">
+                  {lang === "vi" ? "Lượt tạo bộ câu hỏi hôm nay" : "Question set generations today"}
+                </p>
+                <p className="text-white text-sm font-bold tabular-nums">
+                  {canGenerateNow ? "0" : "1"}
+                  <span className="text-white/75 font-normal">/1</span>
+                </p>
+              </div>
+              {/* Mini progress bar — green shimmer when exhausted (1/1), empty when quota remains */}
+              <div className="h-1.5 rounded-full bg-white/20 overflow-hidden">
+                <div
+                  className={cn(
+                    "h-full rounded-full transition-all duration-500",
+                    canGenerateNow
+                      ? "w-0"
+                      : "w-full energy-bar-fill"
+                  )}
+                />
+              </div>
+              {!canGenerateNow && cooldownEndsAt && (
+                <p className="text-white/80 text-[11px] mt-1 flex items-center gap-1">
+                  <Clock size={10} />
+                  {lang === "vi" ? "Mở lại lúc" : "Resets at"}{" "}
+                  {cooldownEndsAt.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" })}
+                </p>
+              )}
+              {canGenerateNow && (
+                <p className="text-emerald-200 text-[11px] mt-1">
+                  {lang === "vi" ? "✓ Sẵn sàng tạo bộ câu hỏi" : "✓ Ready to generate"}
+                </p>
+              )}
+            </div>
+          )}
+
           {subscription && (
-            <p className="text-white/80 text-xs mb-4">
+            <p className="text-white/90 text-xs mb-4">
               Ask-AI: {subscription.askAiUsed}/{subscription.askAiLimit}
               {isPremium && (
                 <button
@@ -375,18 +418,32 @@ export function HrBillingSubscription() {
                   )}
 
                   <div className={cn("shrink-0 space-y-1", recommended ? "pt-10" : "pt-1")}>
-                    <p className={cn("text-xs font-semibold uppercase tracking-wide", portalSubtext)}>
-                      {planNames[id]}
-                    </p>
-                    <div className="flex items-baseline gap-1 flex-wrap">
-                      <span className={cn("text-3xl font-bold", portalHeading)}>
-                        {livePlan ? formatMoney(livePlan.priceMonthly, livePlan.currency) : "…"}
-                      </span>
-                      {livePlan && livePlan.priceMonthly > 0 ? (
-                        <span className={cn("text-sm", portalSubtext)}>{t.settingsPage.billing.perMonth}</span>
-                      ) : null}
-                    </div>
-                    <p className={cn("text-xs mt-2 leading-relaxed break-words", portalSubtext)}>{planSub[id]}</p>
+                    {/* Unified header: eyebrow → name (text-3xl) → price row — same layout for all tiers */}
+                    <>
+                      <p className={cn("text-[10px] font-bold uppercase tracking-widest mb-0.5", portalSubtext)}>
+                        {planNames[id]} Plan
+                      </p>
+                      <p className={cn("text-3xl font-bold tracking-wide", portalHeading)}>
+                        {planNames[id]}
+                      </p>
+                      <div className="flex items-baseline gap-1 flex-wrap mt-0.5">
+                        {livePlan?.priceMonthly === 0 ? (
+                          <span className={cn("text-sm font-semibold", portalSubtext)}>
+                            {t.settingsPage.billing.freePrice}
+                          </span>
+                        ) : (
+                          <>
+                            <span className={cn("text-sm font-semibold", portalSubtext)}>
+                              {livePlan ? formatMoney(livePlan.priceMonthly, livePlan.currency) : "…"}
+                            </span>
+                            {livePlan && livePlan.priceMonthly > 0 && (
+                              <span className={cn("text-xs", portalSubtext)}>{t.settingsPage.billing.perMonth}</span>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    </>
+                    <p className={cn("text-xs mt-2 leading-relaxed wrap-break-word", portalSubtext)}>{planSub[id]}</p>
                   </div>
 
                   <ul
@@ -407,7 +464,7 @@ export function HrBillingSubscription() {
                         </span>
                         <span
                           className={cn(
-                            "min-w-0 break-words",
+                            "min-w-0 wrap-break-word",
                             row.included ? cn("font-medium", portalHeading) : "text-gray-400 dark:text-gray-500 line-through"
                           )}
                         >
@@ -427,7 +484,7 @@ export function HrBillingSubscription() {
                         active
                           ? cn("cursor-not-allowed", portalIconWell, portalSubtext)
                           : recommended
-                            ? "bg-[#6c47ff] text-white hover:bg-[#5535dd] shadow-sm"
+                            ? "bg-primary text-white hover:bg-[#5535dd] shadow-sm"
                             : "bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-200"
                       )}
                     >
@@ -461,7 +518,7 @@ export function HrBillingSubscription() {
         <div>
           <h3 className={cn("text-base font-semibold mb-3", portalHeading)}>{sub.compareTitle}</h3>
           <div className={cn("overflow-x-auto rounded-xl border", portalDivider)}>
-            <table className="w-full text-xs min-w-[480px]">
+            <table className="w-full text-xs min-w-120">
               <thead>
                 <tr className={cn("border-b", portalDivider, portalIconWell)}>
                   <th className={cn("text-left px-3 py-2 font-semibold w-[40%]", portalSubtext)}>
@@ -712,44 +769,55 @@ export function HrBillingSubscription() {
                         )
                       )}
                     </div>
-                    <div className="space-y-2.5 min-w-0">
-                      <div className={cn("text-xs", portalSubtext)}>
-                        <span className="font-medium opacity-80">{sub.paymentPanel.orderCode}</span>
-                        <div className={cn("mt-0.5 break-all text-sm font-semibold", portalHeading)}>{payment.orderCode}</div>
+                    {/* Right: order info — same structure as HrUpgradeModal */}
+                    <div className="space-y-2.5 min-w-0 w-full">
+                      <div>
+                        <div className={cn("text-[10px] uppercase tracking-wider opacity-55 mb-0.5", portalSubtext)}>{sub.paymentPanel.orderCode}</div>
+                        <div className={cn("text-xs font-mono font-semibold break-all leading-snug", portalHeading)}>{payment.orderCode}</div>
                       </div>
-                      <div className={cn("text-xs", portalSubtext)}>
-                        <span className="font-medium opacity-80">{sub.paymentPanel.amount}</span>
-                        <div className={cn("mt-0.5 text-base font-bold text-primary", portalHeading)}>
-                          {payment.amount.toLocaleString(locale)} {payment.currency}
+                      <div>
+                        <div className={cn("text-[10px] uppercase tracking-wider opacity-55 mb-0.5", portalSubtext)}>{sub.paymentPanel.amount}</div>
+                        <div className="text-xl font-extrabold text-primary">{payment.amount.toLocaleString(locale)} {payment.currency}</div>
+                      </div>
+
+                      {/* Status / expiry / bank / holder — grouped in bordered table */}
+                      <div className="rounded-lg border border-gray-200 dark:border-gray-700 divide-y divide-gray-100 dark:divide-gray-700/60 overflow-hidden">
+                        <div className="flex items-center justify-between px-2.5 py-1.5 gap-2">
+                          <span className={cn("text-[11px] opacity-55 whitespace-nowrap shrink-0", portalSubtext)}>{sub.paymentPanel.status}</span>
+                          <span className={cn("text-[12px] font-semibold text-right", localizeStatus(payment.status || "Pending").color)}>
+                            {localizeStatus(payment.status || "Pending").label}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between px-2.5 py-1.5 gap-2">
+                          <span className={cn("text-[11px] opacity-55 whitespace-nowrap shrink-0", portalSubtext)}>{sub.paymentPanel.expiresAt}</span>
+                          <span className={cn("text-[11px] text-right tabular-nums", portalSubtext)}>
+                            {payment.expiresAt ? new Date(payment.expiresAt).toLocaleString(locale) : "--"}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between px-2.5 py-1.5 gap-2">
+                          <span className={cn("text-[11px] opacity-55 whitespace-nowrap shrink-0", portalSubtext)}>{sub.paymentPanel.bank}</span>
+                          <span className={cn("text-[12px] font-semibold text-right", portalHeading)}>
+                            {payment.bankName || "--"}{payment.bankAccountNumber ? ` — ${payment.bankAccountNumber}` : ""}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between px-2.5 py-1.5 gap-2">
+                          <span className={cn("text-[11px] opacity-55 whitespace-nowrap shrink-0", portalSubtext)}>{sub.paymentPanel.accountHolder}</span>
+                          <span className={cn("text-[12px] font-semibold text-right", portalHeading)}>{payment.bankAccountName || "--"}</span>
                         </div>
                       </div>
-                      <div className={cn("text-xs", portalSubtext)}>
-                        {sub.paymentPanel.status}:{" "}
-                        <span className={cn("font-semibold", localizeStatus(payment.status || "Pending").color)}>
-                          {localizeStatus(payment.status || "Pending").label}
-                        </span>
-                      </div>
-                      <div className={cn("text-xs", portalSubtext)}>
-                        {sub.paymentPanel.expiresAt}:{" "}
-                        {payment.expiresAt ? new Date(payment.expiresAt).toLocaleString(locale) : "--"}
-                      </div>
-                      <div className={cn("text-xs", portalSubtext)}>
-                        {sub.paymentPanel.bank}: {payment.bankName || "--"} — {payment.bankAccountNumber || "--"}
-                      </div>
-                      <div className={cn("text-xs", portalSubtext)}>
-                        {sub.paymentPanel.accountHolder}: {payment.bankAccountName || "--"}
-                      </div>
-                      <div className="flex items-start justify-between gap-2 rounded-lg bg-gray-50 dark:bg-gray-800 px-3 py-2.5">
+
+                      {/* Transfer content */}
+                      <div className="flex items-center justify-between gap-2 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 px-2.5 py-2">
                         <div className="min-w-0">
-                          <div className={cn("text-[11px] mb-0.5", portalSubtext)}>{sub.paymentPanel.transferContent}</div>
-                          <div className={cn("text-xs font-semibold break-all", portalHeading)}>
+                          <div className={cn("text-[10px] uppercase tracking-wider opacity-55 mb-0.5", portalSubtext)}>{sub.paymentPanel.transferContent}</div>
+                          <div className={cn("text-[12px] font-semibold break-all leading-snug", portalHeading)}>
                             {payment.transferContent || payment.orderCode}
                           </div>
                         </div>
                         <button
                           type="button"
                           onClick={() => void copyText(payment.transferContent || payment.orderCode, sub.paymentPanel.copiedToast)}
-                          className="shrink-0 inline-flex items-center gap-1 text-primary text-xs font-medium pt-0.5"
+                          className="shrink-0 inline-flex items-center gap-1 text-primary text-xs font-medium hover:opacity-80 transition-opacity"
                         >
                           <Copy size={12} />
                           {sub.paymentPanel.copyBtn}

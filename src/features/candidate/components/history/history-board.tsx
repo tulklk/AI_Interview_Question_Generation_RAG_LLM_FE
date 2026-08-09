@@ -63,6 +63,13 @@ function ScorePill({ score, pendingTooltip }: { score: number | null; pendingToo
 }
 
 // ── Micro-chart components ────────────────────────────────────────────────────
+const CHART_KEYFRAMES = `
+  @keyframes slLineDraw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+  @keyframes slFillIn   { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes slDotIn    { from { opacity: 0; transform: scale(0); } to { opacity: 1; transform: scale(1); } }
+  @keyframes barGrow    { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+`;
+
 function Sparkline({ data, color = "#7C3AED", width = 60, height = 28 }: {
   data: number[]; color?: string; width?: number; height?: number;
 }) {
@@ -81,16 +88,31 @@ function Sparkline({ data, color = "#7C3AED", width = 60, height = 28 }: {
   const area = `${line} L${pts[pts.length - 1].x},${height} L${pts[0].x},${height} Z`;
   const last = pts[pts.length - 1];
   return (
-    <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} className="overflow-visible">
+    <svg
+      width={width} height={height} viewBox={`0 0 ${width} ${height}`}
+      className="overflow-visible spark-enter"
+    >
+      <style>{CHART_KEYFRAMES}</style>
       <defs>
         <linearGradient id={gid} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor={color} stopOpacity="0.35" />
           <stop offset="100%" stopColor={color} stopOpacity="0.02" />
         </linearGradient>
       </defs>
-      <path d={area} fill={`url(#${gid})`} />
-      <path d={line} fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-      <circle cx={last.x} cy={last.y} r="2.5" fill={color} />
+      {/* area fill — fade in */}
+      <path d={area} fill={`url(#${gid})`} style={{ animation: "slFillIn 0.5s ease-out both" }} />
+      {/* line — draw left-to-right using pathLength normalisation */}
+      <path
+        d={line} fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
+        pathLength="1"
+        strokeDasharray="1"
+        style={{ strokeDashoffset: 1, animation: "slLineDraw 0.75s ease-out both" }}
+      />
+      {/* endpoint dot — pop in after line finishes */}
+      <circle
+        cx={last.x} cy={last.y} r="2.5" fill={color}
+        style={{ transformOrigin: `${last.x}px ${last.y}px`, animation: "slDotIn 0.3s ease-out 0.6s both" }}
+      />
     </svg>
   );
 }
@@ -105,13 +127,26 @@ function MiniBarChart({ data, color = "#7C3AED", width = 60, height = 28 }: {
   const gap = 2;
   const barW = Math.max(2, Math.floor((width - (count - 1) * gap) / count));
   return (
-    <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} className="overflow-visible">
+    <svg
+      width={width} height={height} viewBox={`0 0 ${width} ${height}`}
+      className="overflow-visible spark-enter"
+    >
+      <style>{CHART_KEYFRAMES}</style>
       {sliced.map((v, i) => {
         const h = Math.max(3, (v / max) * (height - 2));
         const opacity = i === sliced.length - 1 ? 0.9 : 0.35 + (i / Math.max(sliced.length - 1, 1)) * 0.4;
         return (
-          <rect key={i} x={i * (barW + gap)} y={height - h}
-            width={barW} height={h} rx={1.5} fill={color} fillOpacity={opacity} />
+          <rect
+            key={i}
+            x={i * (barW + gap)} y={height - h}
+            width={barW} height={h} rx={1.5}
+            fill={color} fillOpacity={opacity}
+            style={{
+              transformOrigin: `${i * (barW + gap) + barW / 2}px ${height}px`,
+              animation: `barGrow 0.5s ease-out both`,
+              animationDelay: `${i * 35}ms`,
+            }}
+          />
         );
       })}
     </svg>
@@ -306,6 +341,8 @@ export function HistoryBoard() {
   const [sessions, setSessions] = useState<CompletedSessionSummary[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [stats, setStats] = useState<PracticeStats | null>(null);
+  // Chart sessions: fetched once (50 most recent) — independent of pagination
+  const [chartSessions, setChartSessions] = useState<CompletedSessionSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
@@ -337,9 +374,13 @@ export function HistoryBoard() {
     setPage(1);
   }
 
-  // Fetch stats once
+  // Fetch stats + chart sessions once (not affected by page/filter changes)
   useEffect(() => {
     getPracticeStats().then(setStats).catch(() => {});
+    // Fetch up to 50 recent sessions just for sparkline/bar chart data
+    listCompletedSessions({ page: 1, pageSize: 50 })
+      .then((res) => setChartSessions([...res.items].reverse()))
+      .catch(() => {});
   }, [reloadKey]);
 
   // Fetch current page of sessions
@@ -374,15 +415,16 @@ export function HistoryBoard() {
   const iconBg = "bg-gray-100 dark:bg-gray-800 shadow-sm ring-1 ring-black/5 dark:ring-white/10";
   const iconColor = "text-gray-900 dark:text-gray-100";
 
-  // Chart data — API returns newest-first, reverse to chronological for left→right trend
-  const chronoSessions = [...sessions].reverse();
-  const scoreData = chronoSessions.map(s => s.score).filter((v): v is number => v !== null);
-  const durationData = chronoSessions.map(s => s.durationMinutes ?? 0);
+  // Chart data — uses dedicated chartSessions (50 most recent, chronological order)
+  // so charts stay consistent across all pages, not just the current page's items.
+  const scoreData = chartSessions.map(s => s.score).filter((v): v is number => v !== null);
+  const durationData = chartSessions.map(s => s.durationMinutes ?? 0);
 
   const statCards = [
     {
       icon: BookOpen,  label: p.statLabels[0],
       value: (stats?.totalSessions ?? 0).toString(),
+      countUp: { value: stats?.totalSessions ?? 0 },
       bg: iconBg, color: iconColor,
       chart: durationData.length > 0
         ? <MiniBarChart data={durationData.map(() => 1)} color="#7C3AED" />
@@ -391,6 +433,9 @@ export function HistoryBoard() {
     {
       icon: BarChart2, label: p.statLabels[1],
       value: stats?.averageScore != null ? `${stats.averageScore}%` : "—",
+      countUp: stats?.averageScore != null
+        ? { value: stats.averageScore, suffix: "%", decimals: 2 }
+        : undefined,
       bg: iconBg, color: iconColor,
       chart: scoreData.length >= 2
         ? <Sparkline data={scoreData} color="#7C3AED" />
@@ -399,6 +444,9 @@ export function HistoryBoard() {
     {
       icon: Trophy,    label: p.statLabels[2],
       value: stats?.bestScore != null ? `${stats.bestScore}%` : "—",
+      countUp: stats?.bestScore != null
+        ? { value: stats.bestScore, suffix: "%", decimals: 1 }
+        : undefined,
       bg: iconBg, color: iconColor,
       chart: scoreData.length >= 2
         ? <Sparkline data={scoreData} color="#10B981" />
@@ -407,6 +455,9 @@ export function HistoryBoard() {
     {
       icon: Activity,  label: p.statLabels[4],
       value: stats?.latestScore != null ? `${stats.latestScore}%` : "—",
+      countUp: stats?.latestScore != null
+        ? { value: stats.latestScore, suffix: "%", decimals: 1 }
+        : undefined,
       bg: iconBg, color: iconColor,
       chart: scoreData.length >= 2
         ? <Sparkline data={scoreData} color="#7C3AED" />
@@ -415,6 +466,7 @@ export function HistoryBoard() {
     {
       icon: Clock,     label: p.statLabels[3],
       value: `${stats?.totalDurationMinutes ?? 0} min`,
+      countUp: { value: stats?.totalDurationMinutes ?? 0, suffix: " min" },
       bg: iconBg, color: iconColor,
       chart: durationData.some(d => d > 0)
         ? <MiniBarChart data={durationData} color="#F59E0B" />
@@ -456,7 +508,7 @@ export function HistoryBoard() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.06 }}
           >
-            <StatCard icon={s.icon} iconBg={s.bg} iconColor={s.color} value={s.value} label={s.label} chart={s.chart} />
+            <StatCard icon={s.icon} iconBg={s.bg} iconColor={s.color} value={s.value} label={s.label} chart={s.chart} countUp={s.countUp} />
           </motion.div>
         ))}
       </div>

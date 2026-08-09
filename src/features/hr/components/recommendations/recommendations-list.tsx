@@ -52,20 +52,16 @@ function avatarColor(name: string): string {
 }
 
 function ScoreBadge({ score }: { score: number }) {
-  const color =
-    score >= 85 ? "text-emerald-600 dark:text-emerald-400"
-    : score >= 70 ? "text-amber-600 dark:text-amber-400"
-    : "text-red-500 dark:text-red-400";
-  const bar =
-    score >= 85 ? "bg-emerald-500"
-    : score >= 70 ? "bg-amber-500"
-    : "bg-red-500";
+  const { ring, text, bg } =
+    score >= 85
+      ? { ring: "ring-emerald-400 dark:ring-emerald-500", text: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-50 dark:bg-emerald-950/40" }
+      : score >= 70
+        ? { ring: "ring-amber-400 dark:ring-amber-500",   text: "text-amber-600 dark:text-amber-400",   bg: "bg-amber-50 dark:bg-amber-950/40" }
+        : { ring: "ring-red-400 dark:ring-red-500",       text: "text-red-500 dark:text-red-400",       bg: "bg-red-50 dark:bg-red-950/40" };
   return (
-    <div className="flex flex-col items-center gap-1 min-w-11">
-      <span className={cn("text-[15px] font-extrabold tabular-nums leading-none", color)}>{score}</span>
-      <div className="w-8 h-1 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
-        <div className={cn("h-full rounded-full", bar)} style={{ width: `${score}%` }} />
-      </div>
+    <div className={cn("w-12 h-12 rounded-full ring-2 flex flex-col items-center justify-center shrink-0", ring, bg)}>
+      <span className={cn("text-[15px] font-extrabold tabular-nums leading-none", text)}>{score}</span>
+      <span className="text-[9px] font-medium text-gray-400 dark:text-gray-500 leading-none mt-0.5">pts</span>
     </div>
   );
 }
@@ -408,6 +404,12 @@ function CandidateRow({ rec, lang, labels, index, onStatusChange }: RowProps) {
     } finally { setBusy(null); }
   }
 
+  // Score-based left accent colour
+  const accentBar =
+    rec.score >= 85 ? "bg-emerald-400"
+    : rec.score >= 70 ? "bg-amber-400"
+    : "bg-red-400";
+
   return (
     <>
       <motion.div
@@ -415,128 +417,131 @@ function CandidateRow({ rec, lang, labels, index, onStatusChange }: RowProps) {
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: index * 0.03 }}
         className={cn(
-          "group flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 px-4 sm:px-5 py-3.5",
+          "group relative flex flex-col sm:flex-row sm:items-center gap-4 pl-5 pr-4 sm:pr-5 py-4",
           "border-b border-gray-100 dark:border-gray-800 last:border-b-0",
-          "hover:bg-gray-50/60 dark:hover:bg-gray-800/40 transition-colors",
-          rec.status === "DISMISSED" && "opacity-55"
+          "hover:bg-gray-50/70 dark:hover:bg-gray-800/30 transition-colors duration-150",
+          rec.status === "DISMISSED" && "opacity-50"
         )}
       >
-        {/* Left: avatar + identity */}
-        <div className="flex items-start gap-3 min-w-0 flex-1">
-          <div className={cn(
-            "w-10 h-10 rounded-xl text-white text-[12px] font-bold flex items-center justify-center shrink-0 mt-0.5",
-            avatarColor(rec.candidateName || rec.id)
-          )}>
-            {initials || "?"}
+        {/* Left accent bar */}
+        <div className={cn("absolute left-0 top-3 bottom-3 w-0.75 rounded-full opacity-0 group-hover:opacity-100 transition-opacity", accentBar)} />
+
+        {/* Avatar */}
+        <div className={cn(
+          "w-11 h-11 rounded-xl text-white text-[13px] font-bold flex items-center justify-center shrink-0 shadow-sm",
+          avatarColor(rec.candidateName || rec.id)
+        )}>
+          {initials || "?"}
+        </div>
+
+        {/* Identity block */}
+        <div className="min-w-0 flex-1">
+          {/* Row 1: name + badges */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <p className={cn("text-sm font-bold leading-tight", portalHeadingAlt)}>
+              {rec.candidateName || "—"}
+            </p>
+            <StatusBadge status={rec.status} labels={c} />
+            {hasContact && (
+              <span
+                title={c.contactShared}
+                className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400 whitespace-nowrap"
+              >
+                <Phone size={9} />
+                {c.contactBadge}
+              </span>
+            )}
           </div>
 
-          <div className="min-w-0 flex-1">
-            {/* Name + status */}
-            <div className="flex items-center gap-2 flex-wrap">
-              <p className={cn("text-[13px] font-semibold leading-tight truncate", portalHeadingAlt)}>
-                {rec.candidateName || "—"}
-              </p>
-              <StatusBadge status={rec.status} labels={c} />
-              {hasContact && (
-                <span
-                  title={c.contactShared}
-                  className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400 whitespace-nowrap"
-                >
-                  <Phone size={10} />
-                  {c.contactBadge}
+          {/* Row 2: email · role */}
+          <p className={cn("text-[11px] truncate mt-0.5", portalSubtextAlt)}>
+            {rec.candidateEmail}
+            {rec.targetRole && (
+              <span className="text-primary font-semibold"> · {rec.targetRole}</span>
+            )}
+          </p>
+
+          {/* Row 3: question set title · time */}
+          <p className={cn("text-[11px] truncate mt-0.5", portalSubtextAlt)}>
+            <span className="font-medium text-gray-600 dark:text-gray-300">{rec.questionSetTitle || "—"}</span>
+            {rec.completedAt && (
+              <span className="text-gray-400 dark:text-gray-500"> · {formatRelativeTime(rec.completedAt, lang)}</span>
+            )}
+          </p>
+
+          {/* Row 4: skill tags */}
+          {rec.techStack.length > 0 && (
+            <div className="flex flex-wrap gap-1 mt-1.5">
+              {visibleSkills.map((s) => (
+                <span key={s} className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700">
+                  {s}
+                </span>
+              ))}
+              {extraSkills > 0 && (
+                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-gray-100 dark:bg-gray-800 text-primary border border-primary/20">
+                  +{extraSkills}
                 </span>
               )}
             </div>
-
-            {/* Email · role */}
-            <p className={cn("text-[11px] truncate mt-0.5", portalSubtextAlt)}>
-              {rec.candidateEmail}
-              {rec.targetRole && (
-                <span className="text-primary font-medium"> · {rec.targetRole}</span>
-              )}
-            </p>
-
-            {/* Question set · time */}
-            <p className={cn("text-[11px] truncate mt-1", portalSubtextAlt)}>
-              <span className="font-medium text-gray-600 dark:text-gray-300">
-                {rec.questionSetTitle || "—"}
-              </span>
-              {rec.completedAt && (
-                <span className="text-gray-400 dark:text-gray-600">
-                  {" · "}{formatRelativeTime(rec.completedAt, lang)}
-                </span>
-              )}
-            </p>
-
-            {/* Skills — tối đa 3 tag */}
-            {rec.techStack.length > 0 && (
-              <div className="flex flex-wrap gap-1 mt-1.5">
-                {visibleSkills.map((s) => (
-                  <span
-                    key={s}
-                    className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300"
-                  >
-                    {s}
-                  </span>
-                ))}
-                {extraSkills > 0 && (
-                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-gray-100 dark:bg-gray-800 text-gray-500">
-                    +{extraSkills}
-                  </span>
-                )}
-              </div>
-            )}
-          </div>
+          )}
         </div>
 
-        {/* Right: score + actions */}
-        <div className="flex items-center gap-3 sm:gap-4 shrink-0 pl-12 sm:pl-2">
+        {/* Right: score + action strip */}
+        <div className="flex items-center gap-3 shrink-0 pl-2 sm:pl-0">
+          {/* Score badge */}
           <ScoreBadge score={rec.score} />
 
-          <div className="flex items-center gap-1">
+          {/* Divider */}
+          <div className="w-px h-8 bg-gray-200 dark:bg-gray-700 shrink-0" />
+
+          {/* Action buttons */}
+          <div className="flex items-center gap-0.5">
             {canAct ? (
               <>
                 {rec.status !== "SHORTLISTED" ? (
                   <button type="button" onClick={() => void handleShortlist()} disabled={busy !== null}
                     title={c.shortlistBtn}
                     className="h-8 w-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-violet-600 dark:hover:text-violet-400 hover:bg-violet-50 dark:hover:bg-violet-950/40 transition-colors disabled:opacity-40">
-                    {busy === "shortlist" ? <Loader2 size={13} className="animate-spin" /> : <Star size={13} />}
+                    {busy === "shortlist" ? <Loader2 size={14} className="animate-spin" /> : <Star size={14} />}
                   </button>
                 ) : (
                   <span title={c.shortlisted} className="h-8 w-8 flex items-center justify-center text-violet-500">
-                    <CheckCircle2 size={13} />
+                    <CheckCircle2 size={14} />
                   </span>
                 )}
                 <button type="button" onClick={() => setShowInvite(true)} disabled={busy !== null}
                   title={c.inviteBtn}
                   className="h-8 w-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 transition-colors disabled:opacity-40">
-                  <Mail size={13} />
+                  <Mail size={14} />
                 </button>
                 <button type="button" onClick={() => void handleDismiss()} disabled={busy !== null}
                   title={c.dismissBtn}
                   className="h-8 w-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors disabled:opacity-40">
-                  {busy === "dismiss" ? <Loader2 size={13} className="animate-spin" /> : <XIcon size={13} />}
+                  {busy === "dismiss" ? <Loader2 size={14} className="animate-spin" /> : <XIcon size={14} />}
                 </button>
               </>
             ) : canRestore ? (
               <button type="button" onClick={() => void handleShortlist()} disabled={busy !== null}
                 title={c.shortlistBtn}
                 className="h-8 w-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-violet-600 dark:hover:text-violet-400 hover:bg-violet-50 dark:hover:bg-violet-950/40 transition-colors disabled:opacity-40">
-                {busy === "shortlist" ? <Loader2 size={13} className="animate-spin" /> : <Star size={13} />}
+                {busy === "shortlist" ? <Loader2 size={14} className="animate-spin" /> : <Star size={14} />}
               </button>
             ) : null}
             <button type="button" onClick={() => setShowOffer(true)} disabled={busy !== null}
               title={labels.offer.btnLabel}
               className="h-8 w-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-amber-600 dark:hover:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/40 transition-colors disabled:opacity-40">
-              <Send size={13} />
+              <Send size={14} />
             </button>
-            <Link
-              href={`/hr/candidate-recommendations/${rec.id}`}
-              className="h-8 px-2.5 flex items-center text-[11px] font-semibold text-primary hover:bg-violet-50 dark:hover:bg-violet-950/40 rounded-lg transition-colors shrink-0"
-            >
-              {c.viewDetailBtn} →
-            </Link>
           </div>
+
+          {/* Detail CTA */}
+          <Link
+            href={`/hr/candidate-recommendations/${rec.id}`}
+            className="h-8 px-3 flex items-center gap-1 text-[12px] font-semibold text-primary border border-primary/30 rounded-lg hover:bg-primary hover:text-white hover:border-primary transition-all duration-150 shrink-0 whitespace-nowrap"
+          >
+            {c.viewDetailBtn}
+            <span className="text-[10px] opacity-70">→</span>
+          </Link>
         </div>
       </motion.div>
 

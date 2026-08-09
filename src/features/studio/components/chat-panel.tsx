@@ -534,12 +534,14 @@ function QuestionCard({
 // Estimate where simulated progress should be based on elapsed time since run started.
 // This lets the bar resume at the correct position after a page reload instead of
 // restarting from 10 — mirrors the 800ms tick formula: delta += max(0.3, (88-x)*0.015)
+// Resuming simulated % from elapsed time (after page reload).
+// Calibrated for ~65s generation: coefficient 0.040 → reaches ~85% at t=65s.
 function computeElapsedPct(startedAt: string | undefined): number {
   if (!startedAt) return 10;
   const elapsedMs = Date.now() - new Date(startedAt).getTime();
   if (elapsedMs <= 0) return 10;
   const n = elapsedMs / 800;
-  return Math.max(10, Math.min(88, 88 - 78 * Math.pow(0.985, n)));
+  return Math.max(10, Math.min(88, 88 - 78 * Math.pow(0.960, n)));
 }
 
 function GenerationBanner({
@@ -657,6 +659,141 @@ function GenerationBanner({
   );
 }
 
+// ── Question generation loading overlay ──────────────────────────────────────
+// Full-screen step-by-step loading UI shown while RAG generation is in progress.
+// Mirrors the plan-creation streaming UI in PlanEmptyState so both feel consistent.
+
+function QuestionGenerationLoading({
+  run,
+}: {
+  run?: GenerationRun | null;
+}) {
+  const { t } = useLanguage();
+  const c = t.studioPage.chat;
+
+  const QGEN_STEPS = [
+    { label: c.qGenStep1, sub: c.qGenStepSub1 },
+    { label: c.qGenStep2, sub: c.qGenStepSub2 },
+    { label: c.qGenStep3, sub: c.qGenStepSub3 },
+    { label: c.qGenStep4, sub: c.qGenStepSub4 },
+  ];
+
+  // ── Percentage calculation (mirrors GenerationBanner) ──
+  // Simulated progress — initialises from elapsed time so bar resumes after reload
+  const [simPct, setSimPct] = useState<number>(() => computeElapsedPct(run?.startedAt));
+
+  useEffect(() => {
+    // Sync to elapsed-time estimate so the bar never jumps backward on reload
+    setSimPct((prev) => Math.max(prev, computeElapsedPct(run?.startedAt)));
+    const id = setInterval(() => {
+      setSimPct((prev) => {
+        if (prev >= 88) return prev;
+        // coefficient 0.040 / 800ms → reaches ~85% at t=65s
+        return Math.min(88, prev + Math.max(0.4, (88 - prev) * 0.040));
+      });
+    }, 800);
+    return () => clearInterval(id);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [run?.startedAt]);
+
+  // Real count from backend overrides simulated progress when available
+  const realPct = run?.requestedQuestionCount
+    ? Math.round(((run.generatedQuestionCount ?? 0) / run.requestedQuestionCount) * 100)
+    : 0;
+
+  // Allow 100% when backend confirms all questions generated; otherwise cap at 95
+  const displayPct = realPct >= 100 ? 100 : Math.min(95, Math.max(simPct, realPct));
+
+  // ── Step logic derived from percentage ──
+  // 4 steps, each covers 25% of progress range so steps advance in sync with progress
+  const completedSteps =
+    displayPct >= 75 ? 3
+    : displayPct >= 50 ? 2
+    : displayPct >= 25 ? 1
+    : 0;
+
+  const activeIdx = Math.min(completedSteps, QGEN_STEPS.length - 1);
+
+  return (
+    <div
+      className="flex flex-col items-center justify-center gap-5 py-12 text-center"
+      style={{ animation: "popIn 0.4s cubic-bezier(0.34,1.56,0.64,1) both" }}
+    >
+      {/* Spinner */}
+      <div style={{ animation: "popIn 0.5s cubic-bezier(0.34,1.56,0.64,1) 0.1s both" }}>
+        <AiLoadingSpinner />
+      </div>
+
+      {/* Title + animated subtitle */}
+      <div>
+        <p className="text-base font-semibold text-gray-900 dark:text-gray-50">{c.qGenLoadingTitle}</p>
+        <div key={activeIdx} style={{ animation: "slideUpFade 0.4s ease-out both" }}>
+          <p className="mt-1 text-sm ai-status-text">{QGEN_STEPS[activeIdx].sub}</p>
+        </div>
+      </div>
+
+      {/* Progress bar + percentage */}
+      <div className="w-full max-w-xs" style={{ animation: "slideUpFade 0.35s ease-out 0.2s both" }}>
+        <div className="mb-2 flex items-center justify-between">
+          <span className="text-[11px] font-medium text-gray-500 dark:text-gray-400">
+            {c.generationProgress}
+          </span>
+          <span className="text-sm font-bold tabular-nums text-primary">
+            {Math.round(displayPct)}%
+          </span>
+        </div>
+        <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800">
+          <div
+            className="h-full rounded-full bg-linear-to-r from-primary to-primary/70 transition-all duration-700"
+            style={{ width: `${displayPct}%` }}
+          />
+        </div>
+      </div>
+
+      {/* Step list */}
+      <div className="w-full max-w-xs space-y-2">
+        {QGEN_STEPS.map((step, i) => {
+          const done   = i < completedSteps;
+          const active = i === completedSteps && completedSteps < QGEN_STEPS.length;
+          return (
+            <div
+              key={step.label}
+              style={{ animation: `slideUpFade 0.3s ease-out ${0.15 + i * 0.09}s both` }}
+              className={cn(
+                "flex items-center gap-2 rounded-lg px-3 py-2 text-xs transition-all duration-500",
+                done   ? "bg-emerald-50 dark:bg-emerald-950/25"
+                : active ? "bg-primary/8 dark:bg-primary/10"
+                :          "bg-gray-50 dark:bg-gray-800/60"
+              )}
+            >
+              {done ? (
+                <Check className="h-3 w-3 shrink-0 text-emerald-500" strokeWidth={3} />
+              ) : active ? (
+                <Loader2 className="h-3 w-3 shrink-0 animate-spin text-primary" />
+              ) : (
+                <Loader2 className="h-3 w-3 shrink-0 text-gray-300 opacity-30 dark:text-gray-600" />
+              )}
+              <span
+                className={cn(
+                  "transition-all duration-300",
+                  done   ? "text-emerald-700 line-through dark:text-emerald-400"
+                  : active ? "font-semibold text-gray-900 dark:text-gray-100"
+                  :          "text-gray-400 opacity-40 dark:text-gray-600"
+                )}
+              >
+                {step.label}
+              </span>
+              {done && (
+                <span className="ml-auto text-[10px] font-semibold text-emerald-500">{c.stepDone}</span>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 // ── Empty / Ready state ───────────────────────────────────────────────────────
 
 function PlanEmptyState({
@@ -681,21 +818,63 @@ function PlanEmptyState({
     { label: c.planStep4, sub: c.stepFinalizing },
   ];
   const [completedSteps, setCompletedSteps] = useState(0);
+  const [simPct, setSimPct] = useState(5);
+  // showLoading stays true briefly after isStreaming→false so we can animate completion
+  const [showLoading, setShowLoading] = useState(isStreaming);
+  const prevStreamingRef = useRef(false);
 
+  // Detect streaming start / end transitions
   useEffect(() => {
-    if (!isStreaming) {
-      setCompletedSteps(0);
-      return;
-    }
-    if (completedSteps >= PLAN_STEPS.length) return;
-    const t = setTimeout(() => setCompletedSteps((p) => p + 1), 14_000);
-    return () => clearTimeout(t);
-  }, [isStreaming, completedSteps]);
+    const wasStreaming = prevStreamingRef.current;
+    prevStreamingRef.current = isStreaming;
 
-  if (isStreaming) {
-    const activeIdx = Math.min(completedSteps, PLAN_STEPS.length - 1);
+    if (isStreaming && !wasStreaming) {
+      // Streaming just started — reset and show overlay
+      setShowLoading(true);
+      setSimPct(5);
+      setCompletedSteps(0);
+    } else if (!isStreaming && wasStreaming) {
+      // Plan just finished — rush all steps to ✓ and fill bar, then dismiss after 1500ms.
+      // PlanWorkspace will unmount us after 1000ms (when plan arrives), so the 1500ms timer
+      // only fires in the error case (no plan) to fall back to the empty-state buttons.
+      setSimPct(100);
+      setCompletedSteps(PLAN_STEPS.length);
+      const timer = setTimeout(() => {
+        setShowLoading(false);
+        setSimPct(5);
+        setCompletedSteps(0);
+      }, 1500);
+      return () => clearTimeout(timer);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isStreaming]);
+
+  // Smooth percentage tick — calibrated for ~18-20s plan creation.
+  // coefficient 0.065 per 600ms tick → reaches ~73% at 19s, capped at 88%.
+  useEffect(() => {
+    if (!showLoading || !isStreaming) return;
+    const id = setInterval(() => {
+      setSimPct((prev) => {
+        if (prev >= 88) return prev;
+        return Math.min(88, prev + Math.max(0.5, (88 - prev) * 0.065));
+      });
+    }, 600);
+    return () => clearInterval(id);
+  }, [showLoading, isStreaming]);
+
+  // Time-based step advancement — ~18-20s total / 4 steps → advance every 5s
+  useEffect(() => {
+    if (!showLoading || !isStreaming) return;
+    if (completedSteps >= PLAN_STEPS.length) return;
+    const timer = setTimeout(() => setCompletedSteps((p) => p + 1), 5_000);
+    return () => clearTimeout(timer);
+  }, [showLoading, isStreaming, completedSteps]);
+
+  if (showLoading) {
+    const allDone  = completedSteps >= PLAN_STEPS.length;
+    const activeIdx = allDone ? PLAN_STEPS.length - 1 : Math.min(completedSteps, PLAN_STEPS.length - 1);
     return (
-      <div className="flex flex-1 flex-col items-center justify-center gap-6 px-6 py-16 text-center">
+      <div className="flex flex-1 flex-col items-center justify-center gap-5 px-6 py-16 text-center">
         <div style={{ animation: "popIn 0.5s cubic-bezier(0.34,1.56,0.64,1) both" }}>
           <AiLoadingSpinner />
         </div>
@@ -707,10 +886,27 @@ function PlanEmptyState({
             </p>
           </div>
         </div>
+        {/* Progress bar + percentage */}
+        <div className="w-full max-w-xs" style={{ animation: "slideUpFade 0.35s ease-out 0.2s both" }}>
+          <div className="mb-2 flex items-center justify-between">
+            <span className="text-[11px] font-medium text-gray-500 dark:text-gray-400">
+              {c.generationProgress}
+            </span>
+            <span className="text-sm font-bold tabular-nums text-primary">
+              {Math.round(simPct)}%
+            </span>
+          </div>
+          <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800">
+            <div
+              className="h-full rounded-full bg-linear-to-r from-primary to-primary/70 transition-all duration-700"
+              style={{ width: `${simPct}%` }}
+            />
+          </div>
+        </div>
         <div className="w-full max-w-xs space-y-2">
           {PLAN_STEPS.map((step, i) => {
             const done   = i < completedSteps;
-            const active = i === completedSteps && completedSteps < PLAN_STEPS.length;
+            const active = !allDone && i === completedSteps;
             return (
               <div
                 key={step.label}
@@ -730,7 +926,6 @@ function PlanEmptyState({
                   <Loader2 className="h-3 w-3 shrink-0 text-gray-300 opacity-30 dark:text-gray-600" />
                 )}
                 <span
-                  key={`label-${i}-${done}`}
                   className={cn(
                     "transition-all duration-300",
                     done   ? "text-emerald-700 line-through dark:text-emerald-400"
@@ -857,6 +1052,51 @@ function PlanWorkspace({
   const [titleDraft, setTitleDraft] = useState("");
   const [savingTitle, setSavingTitle] = useState(false);
 
+  // ── Plan-creation completion gate ────────────────────────────────────────────
+  // studio calls setCurrentPlan() THEN setIsStreaming(false) in separate awaits,
+  // so plan can arrive while isStreaming is still true. The delay must start from
+  // isStreaming→false (not from plan arriving) to guarantee the rush animation
+  // in PlanEmptyState always has time to play.
+  // Only blocks for NEW plan creation; chat-refinement passes through immediately.
+  const wsPlanRef = useRef(plan);
+  useEffect(() => { wsPlanRef.current = plan; }, [plan]);
+  const wsWasNewCreation = useRef(false);
+  const wsPrevStreaming = useRef(isStreaming);
+  const [blockPlanView, setBlockPlanView] = useState(false);
+  useEffect(() => {
+    const was = wsPrevStreaming.current;
+    wsPrevStreaming.current = isStreaming;
+    if (!was && isStreaming) {
+      wsWasNewCreation.current = !wsPlanRef.current; // no plan → new creation
+    }
+    if (was && !isStreaming && wsWasNewCreation.current) {
+      setBlockPlanView(true);
+      const t = setTimeout(() => setBlockPlanView(false), 1200);
+      return () => clearTimeout(t);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isStreaming]);
+
+  // ── Question-generation completion gate ──────────────────────────────────────
+  // When generation finishes (isGeneratingQuestions + status flips to Completed),
+  // hold the QuestionGenerationLoading overlay for 1200ms so the user sees 100%.
+  const qGenPrevGenerating = useRef(
+    isGeneratingQuestions || generationRun?.status === "Generating" || generationRun?.status === "Pending"
+  );
+  const [blockQGenSwitch, setBlockQGenSwitch] = useState(false);
+  useEffect(() => {
+    const wasGenerating = qGenPrevGenerating.current;
+    const nowGenerating = isGeneratingQuestions || generationRun?.status === "Generating" || generationRun?.status === "Pending";
+    qGenPrevGenerating.current = nowGenerating;
+    if (wasGenerating && !nowGenerating && generationRun?.status === "Completed") {
+      setBlockQGenSwitch(true);
+      const t = setTimeout(() => setBlockQGenSwitch(false), 1200);
+      return () => clearTimeout(t);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isGeneratingQuestions, generationRun?.status]);
+  // ──────────────────────────────────────────────────────────────────────────────
+
   useEffect(() => {
     if (!editingTitle) setTitleDraft(displayTitle);
   }, [displayTitle, editingTitle]);
@@ -877,7 +1117,7 @@ function PlanWorkspace({
     }
   }
 
-  if (!plan) {
+  if (!plan || blockPlanView) {
     return (
       <PlanEmptyState
         hasJd={hasJd}
@@ -978,14 +1218,19 @@ function PlanWorkspace({
         )}
       </div>
 
-      {/* Generation banner */}
-      <GenerationBanner
-        run={generationRun}
-        isGenerating={isGeneratingQuestions}
-        canGenerate={canGenerateQuestions}
-        onRefresh={onRefreshGenerationStatus}
-        onRetry={onGenerateQuestions}
-      />
+      {/* Generation: full-screen step overlay while generating or in 1200ms completion grace period */}
+      {(isGeneratingQuestions || generationRun?.status === "Generating" || generationRun?.status === "Pending" || blockQGenSwitch) ? (
+        <QuestionGenerationLoading run={generationRun} />
+      ) : (
+        /* Failed / completed banner */
+        <GenerationBanner
+          run={generationRun}
+          isGenerating={false}
+          canGenerate={canGenerateQuestions}
+          onRefresh={onRefreshGenerationStatus}
+          onRetry={onGenerateQuestions}
+        />
+      )}
 
       {/* Plan sections */}
       {planSections.length > 0 && (

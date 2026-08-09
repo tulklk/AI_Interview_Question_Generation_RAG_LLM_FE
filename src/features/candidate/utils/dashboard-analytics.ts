@@ -503,6 +503,52 @@ export function buildScoreSparkline(sessions: CompletedSessionSummary[], count =
     .map((s) => s.score as number);
 }
 
+/** Last `count` session durations (minutes), oldest first — for a compact duration sparkline. */
+export function buildDurationSparkline(sessions: CompletedSessionSummary[], count = 10): number[] {
+  return [...sessions]
+    .sort((a, b) => new Date(a.completedAt ?? 0).getTime() - new Date(b.completedAt ?? 0).getTime())
+    .slice(-count)
+    .map((s) => s.durationMinutes);
+}
+
+/**
+ * Daily session count over the last `days` days, oldest first.
+ * Returns [] when sessions is empty so the chart only mounts after real data is available.
+ */
+export function buildSessionCountSparkline(sessions: CompletedSessionSummary[], days = 14): number[] {
+  if (sessions.length === 0) return [];
+  const buckets: number[] = Array(days).fill(0);
+  const now = Date.now();
+  const dayMs = 86_400_000;
+  for (const s of sessions) {
+    const daysAgo = Math.floor((now - new Date(s.completedAt ?? 0).getTime()) / dayMs);
+    if (daysAgo >= 0 && daysAgo < days) {
+      buckets[days - 1 - daysAgo]++;
+    }
+  }
+  return buckets;
+}
+
+/**
+ * Daily practice indicator (1 = practiced, 0 = not) over the last `days` days, oldest first.
+ * Returns [] when sessions is empty so the chart only mounts after real data is available.
+ */
+export function buildStreakSparkline(sessions: CompletedSessionSummary[], days = 14): number[] {
+  if (sessions.length === 0) return [];
+  const practiced = new Set<string>();
+  for (const s of sessions) {
+    if (!s.completedAt) continue;
+    const d = new Date(s.completedAt);
+    practiced.add(`${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`);
+  }
+  const now = new Date();
+  return Array.from({ length: days }, (_, i) => {
+    const d = new Date(now);
+    d.setDate(d.getDate() - (days - 1 - i));
+    return practiced.has(`${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`) ? 1 : 0;
+  });
+}
+
 export function daysSince(iso: string | undefined): number | null {
   if (!iso) return null;
   const d = new Date(iso);
