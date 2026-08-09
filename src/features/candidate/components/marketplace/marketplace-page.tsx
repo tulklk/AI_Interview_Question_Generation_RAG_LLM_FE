@@ -57,6 +57,100 @@ function getPageNums(current: number, total: number): (number | "…")[] {
   return nums;
 }
 
+// ── SortDropdown — custom dropdown replacing native <select> ─────────────────
+// Native <select> uses OS-level popup that ignores app dark/light theme.
+type SortValue = "featured" | "newest" | "most_practiced" | "highest_rated";
+
+function SortDropdown({
+  value, onChange, label, options,
+}: {
+  value: SortValue;
+  onChange: (v: SortValue) => void;
+  label: string;
+  options: { value: SortValue; label: string }[];
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setOpen(false);
+    }
+    document.addEventListener("mousedown", handleClick);
+    document.addEventListener("keydown", handleKey);
+    return () => {
+      document.removeEventListener("mousedown", handleClick);
+      document.removeEventListener("keydown", handleKey);
+    };
+  }, [open]);
+
+  const current = options.find((o) => o.value === value);
+
+  return (
+    <div ref={ref} className="relative shrink-0">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className={cn(
+          "flex h-10 items-center gap-2 rounded-lg pl-3.5 pr-3 transition-all text-left",
+          "border border-gray-200 dark:border-gray-700",
+          "bg-white dark:bg-gray-900",
+          "hover:border-primary dark:hover:border-primary",
+          open && "border-primary shadow-[0_0_0_3px_rgba(108,71,255,0.12)]"
+        )}
+      >
+        <span className="hidden text-[11px] font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500 sm:block">
+          {label}
+        </span>
+        <span className="text-[13px] font-semibold text-[#111827] dark:text-gray-100">
+          {current?.label}
+        </span>
+        <ChevronDown
+          size={13}
+          className={cn(
+            "text-gray-400 transition-transform duration-200 shrink-0",
+            open && "rotate-180"
+          )}
+        />
+      </button>
+
+      {open && (
+        <div className={cn(
+          "absolute right-0 top-full z-50 mt-1.5 min-w-[180px] rounded-xl overflow-hidden",
+          "border border-gray-200 dark:border-gray-700",
+          "bg-white dark:bg-gray-900",
+          "shadow-lg dark:shadow-black/40",
+          "py-1"
+        )}>
+          {options.map((opt) => {
+            const isActive = opt.value === value;
+            return (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => { onChange(opt.value); setOpen(false); }}
+                className={cn(
+                  "flex w-full items-center justify-between gap-3 px-3.5 py-2.5 text-left text-[13px] transition-colors",
+                  isActive
+                    ? "bg-violet-50 dark:bg-violet-950/40 text-primary font-semibold"
+                    : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 font-medium"
+                )}
+              >
+                {opt.label}
+                {isActive && <Check size={13} className="shrink-0 text-primary" />}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 interface FilterBarLabels {
   searchPlaceholder: string;
   allDifficulties: string;
@@ -401,33 +495,18 @@ function FilterBar({
 
         <span className="hidden h-6 w-px shrink-0 bg-gray-200 dark:bg-gray-700 sm:block" />
 
-        {/* Sort — SCRUM-404 */}
-        <div
-          className={cn(
-            "relative flex h-10 shrink-0 items-center gap-2 rounded-lg pl-3.5 pr-3 transition-all",
-            "focus-within:border-primary focus-within:shadow-[0_0_0_3px_rgba(108,71,255,0.1)]",
-            portalInput
-          )}
-        >
-          <span className="hidden text-[11px] font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500 sm:block">
-            {p.sortLabel}
-          </span>
-          <select
-            value={sortBy}
-            onChange={(e) =>
-              onSortByChange(
-                e.target.value as "featured" | "newest" | "most_practiced" | "highest_rated"
-              )
-            }
-            className="cursor-pointer appearance-none bg-transparent pr-5 text-[13px] font-semibold outline-none"
-          >
-            <option value="featured">{p.sortFeatured}</option>
-            <option value="newest">{p.sortNewest}</option>
-            <option value="most_practiced">{p.sortMostPracticed}</option>
-            <option value="highest_rated">{p.sortHighestRated}</option>
-          </select>
-          <ChevronDown size={13} className="pointer-events-none absolute right-3 text-gray-400" />
-        </div>
+        {/* Sort — custom dropdown (native <select> ignores dark theme) */}
+        <SortDropdown
+          value={sortBy}
+          onChange={onSortByChange}
+          label={p.sortLabel}
+          options={[
+            { value: "featured",       label: p.sortFeatured },
+            { value: "newest",         label: p.sortNewest },
+            { value: "most_practiced", label: p.sortMostPracticed },
+            { value: "highest_rated",  label: p.sortHighestRated },
+          ]}
+        />
       </div>
 
       {/* Active company + skill tags */}

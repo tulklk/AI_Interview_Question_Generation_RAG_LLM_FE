@@ -11,9 +11,13 @@ import { SecuritySection } from "@/features/settings/components/security-section
 import { CandidateProfile } from "@/features/candidate/components/profile/candidate-profile";
 import { CandidateBillingPage } from "@/features/candidate/components/billing/candidate-billing-page";
 import { getPrivacySettings, updatePrivacySettings } from "@/features/candidate/services/privacy-settings.service";
+import { getCvSyncSettings, updateCvSyncSettings } from "@/features/candidate/services/candidate-cv.service";
+import { RefreshCw } from "lucide-react";
 import { useCandidateSubscription } from "@/features/candidate/context/candidate-subscription-context";
 import { useToast } from "@/shared/providers/toast-context";
 import { portalHeading, portalSubtext } from "@/shared/utils/portal-ui";
+import { DailyGoalSettings } from "@/features/gamification/components/daily-goal-settings";
+import { useSoundPreference } from "@/features/gamification/hooks/use-sound-preference";
 
 type Tab = "profile" | "general" | "security" | "privacy" | "billing";
 
@@ -55,6 +59,10 @@ export function SettingsPage() {
       : "profile";
   });
   const [notifications, setNotifications] = useState({ email: true, practice: true, tips: false });
+  const { soundEnabled, setSoundEnabled } = useSoundPreference();
+
+  const [cvSyncEnabled, setCvSyncEnabled] = useState<boolean | null>(null);
+  const [cvSyncSaving, setCvSyncSaving] = useState(false);
 
   const [allowRecommendation, setAllowRecommendation] = useState<boolean | null>(null);
   const [savingRecommendation, setSavingRecommendation] = useState(false);
@@ -67,6 +75,23 @@ export function SettingsPage() {
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    getCvSyncSettings()
+      .then((enabled) => { if (!cancelled) setCvSyncEnabled(enabled); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
+
+  function handleToggleCvSync(next: boolean) {
+    if (cvSyncSaving) return;
+    setCvSyncSaving(true);
+    updateCvSyncSettings(next)
+      .then(() => setCvSyncEnabled(next))
+      .catch(() => addToast("error", t.jobseekerProfilePage.cv.syncUpdateFailed))
+      .finally(() => setCvSyncSaving(false));
+  }
 
   function handleToggleRecommendation(next: boolean) {
     if (savingRecommendation) return;
@@ -265,6 +290,61 @@ export function SettingsPage() {
                   ))}
                 </div>
               </div>
+
+              <div className="border-t border-gray-200 dark:border-gray-800" />
+
+              {/* CV Sync */}
+              <div>
+                <p className={cn("text-xs font-semibold uppercase tracking-wide mb-3", portalSubtext)}>
+                  {p.cvSyncSectionTitle}
+                </p>
+                <div className="rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
+                  <div className="flex items-center gap-3 px-4 py-4 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+                    <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center shrink-0">
+                      <RefreshCw size={14} className="text-gray-700 dark:text-gray-300" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className={cn("text-sm font-medium", portalHeading)}>
+                        {t.jobseekerProfilePage.cv.syncToggleTitle}
+                      </p>
+                      <p className={cn("text-xs mt-0.5 leading-relaxed", portalSubtext)}>
+                        {t.jobseekerProfilePage.cv.syncToggleDescription}
+                      </p>
+                    </div>
+                    <Toggle
+                      checked={cvSyncEnabled ?? true}
+                      onChange={handleToggleCvSync}
+                      disabled={cvSyncEnabled === null || cvSyncSaving}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="border-t border-gray-200 dark:border-gray-800" />
+
+              {/* Sound */}
+              <div>
+                <p className={cn("text-xs font-semibold uppercase tracking-wide mb-3", portalSubtext)}>
+                  {p.soundTitle}
+                </p>
+                <div className="rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
+                  <div className="flex items-center justify-between gap-4 px-4 py-4 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+                    <div className="min-w-0">
+                      <p className={cn("text-sm font-medium", portalHeading)}>{p.soundXpLabel}</p>
+                      <p className={cn("text-xs mt-0.5", portalSubtext)}>{p.soundXpHint}</p>
+                    </div>
+                    <Toggle
+                      checked={soundEnabled}
+                      onChange={setSoundEnabled}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="border-t border-gray-200 dark:border-gray-800" />
+
+              {/* Daily Practice Goal */}
+              <DailyGoalSettings />
             </div>
           )}
 
