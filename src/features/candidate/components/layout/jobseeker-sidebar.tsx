@@ -10,7 +10,6 @@ import { useLanguage } from "@/shared/providers/language-context";
 import { BrandLogo } from "@/shared/components/common/brand-logo";
 import { SidebarUserFooter } from "@/features/hr/components/layout/sidebar-user-footer";
 import { useCandidateSubscription } from "@/features/candidate/context/candidate-subscription-context";
-import { getPracticeStats } from "@/features/candidate/services/practice-session.service";
 import { listInvitations } from "@/features/candidate/services/invitation.service";
 
 interface JobseekerSidebarProps {
@@ -25,13 +24,6 @@ export function JobseekerSidebar({ open, onClose, onOpenUpgrade }: JobseekerSide
   const s = t.jobseekerSidebar;
   const { planType } = useCandidateSubscription();
   const isPremium = planType === "PREMIUM";
-
-  const [historyCount, setHistoryCount] = useState<number | null>(null);
-  useEffect(() => {
-    getPracticeStats()
-      .then((stats) => setHistoryCount(stats.totalSessions))
-      .catch(() => {});
-  }, []);
 
   const [pendingInvitations, setPendingInvitations] = useState<number | null>(null);
   useEffect(() => {
@@ -59,8 +51,7 @@ export function JobseekerSidebar({ open, onClose, onOpenUpgrade }: JobseekerSide
             const isActive = pathname.startsWith(item.href);
             const label = s.nav[item.href as keyof typeof s.nav] ?? item.label;
             const badge =
-              item.href === "/jobseeker/history" ? historyCount || undefined
-              : item.href === "/jobseeker/invitations" ? pendingInvitations || undefined
+              item.href === "/jobseeker/invitations" ? pendingInvitations || undefined
               : item.badge;
 
             return (

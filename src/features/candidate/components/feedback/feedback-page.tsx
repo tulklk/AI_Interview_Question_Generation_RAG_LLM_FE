@@ -24,6 +24,9 @@ import {
   portalHeadingAlt,
   portalSubtextAlt,
 } from "@/shared/utils/portal-ui";
+import { SessionXpSummary } from "@/features/gamification/components/session-xp-summary";
+import { XpGainNotification } from "@/features/gamification/components/xp-gain-notification";
+import type { XpReward } from "@/features/gamification/types/gamification.types";
 
 const CELEBRATION_THRESHOLD = 80;
 
@@ -264,6 +267,36 @@ export function FeedbackPage({
   const companyInitials = companyName ? getCompanyInitials(companyName) : "";
   const companyColor = companyName ? getCompanyColor(companyName) : "bg-gray-400";
 
+  // ── XP reward (dummy until backend provides real data) ────────────────────
+  // TODO: replace with real XpReward from session API response
+  const dummyXpReward: XpReward = {
+    totalEarned: 34,
+    rewards: [
+      { type: "QuestionSetCompleted", xp: 20, label: "Session completed" },
+      { type: "ScoreBonus",           xp: 6,  label: "Performance bonus" },
+      { type: "ImprovementBonus",     xp: 8,  label: "Improvement bonus" },
+    ],
+    previousLevel: 6,
+    currentLevel: 6,
+    previousTotalXp: 1_136,
+    currentTotalXp: 1_170,
+    levelUp: false,
+    progress: {
+      totalXp: 1_170,
+      level: 6,
+      currentLevelXp: 1_170,
+      xpRequiredForNextLevel: 1_350,
+      progressPercentage: 87,
+      currentStreak: 4,
+      longestStreak: 11,
+      dailyGoalXp: 50,
+      todayXp: 35,
+      dailyGoalCompleted: false,
+      totalPracticeSessions: 15,
+      nextLevel: 7,
+    },
+  };
+
   return (
     <div className="w-full">
       {/* Back */}
@@ -444,6 +477,11 @@ export function FeedbackPage({
           </button>
         </div>
       </motion.div>
+
+      {/* ── XP earned this session ─────────────────────────────────────────── */}
+      {!isFreeTeaser && (
+        <SessionXpSummary xpReward={dummyXpReward} className="mb-6" />
+      )}
 
       {/* ── Skill Breakdown (radar) — only when at least one question has dimension scores ── */}
       {radarData && (
@@ -726,6 +764,15 @@ export function FeedbackPage({
             // Reload trang result để lấy Full feedback sau khi nâng Premium
             if (typeof window !== "undefined") window.location.reload();
           }}
+        />
+      )}
+
+      {/* ── XP gain notification (floating, bottom-right) ──────────── */}
+      {!isFreeTeaser && (
+        <XpGainNotification
+          xpReward={dummyXpReward}
+          delayMs={1600}
+          dailyGoalCompleted={dummyXpReward.progress?.dailyGoalCompleted ?? false}
         />
       )}
     </div>
