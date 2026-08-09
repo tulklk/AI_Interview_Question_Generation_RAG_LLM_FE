@@ -136,6 +136,83 @@ test("AUTH008-4: reactivating a suspended user shows the reactivate confirm dial
   await expect(page.getByText("Account status updated.")).toBeVisible();
 });
 
+test("AUTH008-6: numbered pagination renders page buttons and navigates on click", async ({ page }) => {
+  // 25 items, pageSize 10 -> 3 pages: getPageRange(1, 3) returns [1,2,3], no ellipsis.
+  const items = Array.from({ length: 25 }, (_, i) => ({
+    ...USER_A,
+    id: `u${i + 1}`,
+    fullName: `User ${i + 1}`,
+    email: `user${i + 1}@example.com`,
+  }));
+  let lastRequestedPage = "1";
+  await page.route("**/api/users?**", (route) => {
+    if (route.request().method() !== "GET") return route.fallback();
+    const url = new URL(route.request().url());
+    lastRequestedPage = url.searchParams.get("Page") ?? "1";
+    const pageNum = Number(lastRequestedPage);
+    const start = (pageNum - 1) * 10;
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ items: items.slice(start, start + 10), totalCount: items.length }),
+    });
+  });
+
+  await page.goto("/admin/users");
+  await expect(page.getByText("Page 1 of 3")).toBeVisible();
+
+  await expect(page.getByRole("button", { name: "1", exact: true })).toHaveAttribute("aria-current", "page");
+  await expect(page.getByRole("button", { name: "2", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "3", exact: true })).toBeVisible();
+  // Only 3 pages total (<=7), so getPageRange short-circuits: no ellipsis rendered.
+  await expect(page.getByText("…")).toHaveCount(0);
+
+  await page.getByRole("button", { name: "3", exact: true }).click();
+  await expect(page.getByText("Page 3 of 3")).toBeVisible();
+  expect(lastRequestedPage).toBe("3");
+  await expect(page.getByRole("button", { name: "3", exact: true })).toHaveAttribute("aria-current", "page");
+});
+
+test("AUTH008-7: ellipsis separators appear once total pages exceeds 7", async ({ page }) => {
+  // 100 items, pageSize 10 -> 10 pages: getPageRange(1, 10) returns [1,2,3,4,5,"…",10].
+  const items = Array.from({ length: 100 }, (_, i) => ({
+    ...USER_A,
+    id: `u${i + 1}`,
+    fullName: `User ${i + 1}`,
+    email: `user${i + 1}@example.com`,
+  }));
+  await page.route("**/api/users?**", (route) => {
+    if (route.request().method() !== "GET") return route.fallback();
+    const url = new URL(route.request().url());
+    const pageNum = Number(url.searchParams.get("Page") ?? "1");
+    const start = (pageNum - 1) * 10;
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ items: items.slice(start, start + 10), totalCount: items.length }),
+    });
+  });
+
+  await page.goto("/admin/users");
+  await expect(page.getByText("Page 1 of 10")).toBeVisible();
+  // Near-start range: 1,2,3,4,5,…,10 — exactly one ellipsis separator.
+  await expect(page.getByText("…")).toHaveCount(1);
+  await expect(page.getByRole("button", { name: "5", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "6", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "10", exact: true })).toBeVisible();
+
+  await page.getByRole("button", { name: "10", exact: true }).click();
+  await expect(page.getByText("Page 10 of 10")).toBeVisible();
+  // Near-end range from page 10: 1,…,6,7,8,9,10.
+  await expect(page.getByText("…")).toHaveCount(1);
+  await expect(page.getByRole("button", { name: "1", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "6", exact: true })).toBeVisible();
+
+  // Next is disabled at the last page, Prev is enabled.
+  await expect(page.getByRole("button", { name: /Next/i })).toBeDisabled();
+  await expect(page.getByRole("button", { name: /Prev/i })).toBeEnabled();
+});
+
 test("AUTH008-5: list load failure shows an error with a working Retry", async ({ page }) => {
   let shouldFail = true;
   await page.route("**/api/users?**", (route) => {
