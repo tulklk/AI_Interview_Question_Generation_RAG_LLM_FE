@@ -1071,6 +1071,33 @@ body.lang-switching {
   .practice-bar-fill { animation: none; background-position: 0 center; }
 }
 
+/* ── XP progress bar — ánh sáng quét trái → phải (energy beam) ── */
+/*
+  Beam div sits inside the fill div (overflow:hidden), so it's naturally
+  clipped to the filled area regardless of bar percentage.
+  Keyframe: beam sweeps left→right in first 38% of cycle, then waits off-screen
+  right for the remaining 62% (= pause between sweeps).
+*/
+@keyframes xpBeamSweep {
+  0%   { transform: translateX(-100%) skewX(-15deg); }
+  38%  { transform: translateX(200%)  skewX(-15deg); }
+  100% { transform: translateX(200%)  skewX(-15deg); }
+}
+.xp-shimmer-beam {
+  background: linear-gradient(
+    90deg,
+    transparent            18%,
+    rgba(255,255,255,0.18) 35%,
+    rgba(255,255,255,0.60) 50%,
+    rgba(255,255,255,0.18) 65%,
+    transparent            82%
+  );
+  animation: xpBeamSweep 2.6s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .xp-shimmer-beam { display: none; }
+}
+
 /* ── Shimmer light sweep across a button on hover ── */
 .shimmer-button {
   position: relative;

@@ -77,28 +77,19 @@ export function XpProgressBar({
           HEIGHT_CLASS[height]
         )}
       >
-        {/* Fill */}
+        {/* Fill — relative + overflow-hidden so the beam is clipped to the filled area */}
         <div
           ref={barRef}
-          className="h-full rounded-full"
+          className="relative h-full rounded-full overflow-hidden"
           style={{
             width: animate ? "0%" : `${pct}%`,
             backgroundColor: color,
             transition: animate ? "width 0.8s cubic-bezier(0.4, 0, 0.2, 1)" : undefined,
           }}
-        />
-
-        {/* Shimmer */}
-        {pct > 5 && (
-          <div
-            className="absolute inset-0 rounded-full pointer-events-none"
-            style={{
-              background: "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.18) 50%, transparent 100%)",
-              animation: "shimmer 2.2s infinite linear",
-              clipPath: `inset(0 ${100 - pct}% 0 0)`,
-            }}
-          />
-        )}
+        >
+          {/* Ánh sáng quét trái → phải */}
+          <div aria-hidden className="absolute inset-0 xp-shimmer-beam pointer-events-none" />
+        </div>
       </div>
 
       {showLabels && (

@@ -497,7 +497,7 @@ export const en = {
     emailPlaceholder: "you@company.com",
     passwordLabel: "Password",
     forgotPassword: "Forgot password?",
-    rememberMe: "Remember me for 30 days",
+    rememberMe: "Remember me",
     signIn: "Sign in",
     orContinueWith: "or continue with",
     noAccount: "Don't have an account?",

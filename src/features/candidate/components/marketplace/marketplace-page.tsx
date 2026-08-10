@@ -89,12 +89,13 @@ function getPageNums(current: number, total: number): (number | "…")[] {
 type SortValue = "featured" | "newest" | "most_practiced" | "highest_rated";
 
 function SortDropdown({
-  value, onChange, label, options,
+  value, onChange, label, options, fullWidth = false,
 }: {
   value: SortValue;
   onChange: (v: SortValue) => void;
   label: string;
   options: { value: SortValue; label: string }[];
+  fullWidth?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -118,7 +119,7 @@ function SortDropdown({
   const current = options.find((o) => o.value === value);
 
   return (
-    <div ref={ref} className="relative shrink-0">
+    <div ref={ref} className={cn("relative", fullWidth ? "w-full sm:w-auto" : "shrink-0")}>
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -127,19 +128,21 @@ function SortDropdown({
           "border border-gray-200 dark:border-gray-700",
           "bg-white dark:bg-gray-900",
           "hover:border-primary dark:hover:border-primary",
-          open && "border-primary shadow-[0_0_0_3px_rgba(108,71,255,0.12)]"
+          open && "border-primary shadow-[0_0_0_3px_rgba(108,71,255,0.12)]",
+          fullWidth && "w-full sm:w-auto"
         )}
       >
         <span className="hidden text-[11px] font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500 sm:block">
           {label}
         </span>
-        <span className="text-[13px] font-semibold text-[#111827] dark:text-gray-100">
+        <span className="text-[13px] font-semibold text-charcoal dark:text-gray-100">
           {current?.label}
         </span>
         <ChevronDown
           size={13}
           className={cn(
             "text-gray-400 transition-transform duration-200 shrink-0",
+            fullWidth && "ml-auto sm:ml-0",
             open && "rotate-180"
           )}
         />
@@ -147,7 +150,7 @@ function SortDropdown({
 
       {open && (
         <div className={cn(
-          "absolute right-0 top-full z-50 mt-1.5 min-w-[180px] rounded-xl overflow-hidden",
+          "absolute right-0 top-full z-50 mt-1.5 min-w-45 rounded-xl overflow-hidden",
           "border border-gray-200 dark:border-gray-700",
           "bg-white dark:bg-gray-900",
           "shadow-lg dark:shadow-black/40",
@@ -270,10 +273,10 @@ function FilterBar({
 
   return (
     <div className="hr-glass-card p-3 mb-6">
-      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+      <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-row sm:flex-wrap sm:items-center sm:gap-2">
         {/* Search */}
         <div className={cn(
-          "flex items-center gap-2 rounded-lg px-3 h-10 flex-1 sm:max-w-sm",
+          "col-span-2 flex items-center gap-2 rounded-lg px-3 h-10 sm:flex-1 sm:max-w-sm",
           "focus-within:border-primary focus-within:shadow-[0_0_0_3px_rgba(108,71,255,0.1)] transition-all",
           portalInput
         )}>
@@ -294,12 +297,12 @@ function FilterBar({
         </div>
 
         {/* Difficulty dropdown */}
-        <div ref={diffRef} className="relative shrink-0 sm:ml-auto">
+        <div ref={diffRef} className="relative sm:shrink-0 sm:ml-auto">
           <button
             type="button"
             onClick={() => { setDiffOpen((v) => !v); setSkillOpen(false); }}
             className={cn(
-              "flex items-center gap-2 h-10 px-3.5 rounded-lg text-[13px] font-medium transition-all whitespace-nowrap",
+              "w-full sm:w-auto flex items-center gap-2 h-10 px-3.5 rounded-lg text-[13px] font-medium transition-all whitespace-nowrap",
               portalInput,
               diffOpen ? "border-primary shadow-[0_0_0_3px_rgba(108,71,255,0.1)]" : "",
             )}
@@ -307,13 +310,13 @@ function FilterBar({
             <span className="text-[11px] font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500 hidden sm:block">
               {p.difficultyLabel}
             </span>
-            <span className={cn("font-semibold", difficultyColor(difficulty), difficulty === "All" && portalSubtextAlt)}>
+            <span className={cn("font-semibold truncate", difficultyColor(difficulty), difficulty === "All" && portalSubtextAlt)}>
               {diffLabel}
             </span>
             {difficulty !== "All" && (
               <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
             )}
-            <ChevronDown size={13} className={cn("text-gray-400 transition-transform shrink-0", diffOpen && "rotate-180")} />
+            <ChevronDown size={13} className={cn("text-gray-400 transition-transform shrink-0 ml-auto sm:ml-0", diffOpen && "rotate-180")} />
           </button>
 
           {diffOpen && (
@@ -341,12 +344,12 @@ function FilterBar({
 
         {/* Company single-select dropdown */}
         {companies.length > 0 && (
-          <div ref={companyRef} className="relative shrink-0">
+          <div ref={companyRef} className="relative sm:shrink-0">
             <button
               type="button"
               onClick={() => { setCompanyOpen((v) => !v); setDiffOpen(false); setSkillOpen(false); }}
               className={cn(
-                "flex items-center gap-2 h-10 px-3.5 rounded-lg text-[13px] font-medium transition-all whitespace-nowrap max-w-44",
+                "w-full sm:w-auto flex items-center gap-2 h-10 px-3.5 rounded-lg text-[13px] font-medium transition-all whitespace-nowrap sm:max-w-44",
                 portalInput,
                 companyOpen ? "border-primary shadow-[0_0_0_3px_rgba(108,71,255,0.1)]" : "",
               )}
@@ -360,7 +363,7 @@ function FilterBar({
               {selectedCompany && (
                 <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
               )}
-              <ChevronDown size={13} className={cn("text-gray-400 transition-transform shrink-0", companyOpen && "rotate-180")} />
+              <ChevronDown size={13} className={cn("text-gray-400 transition-transform shrink-0 ml-auto sm:ml-0", companyOpen && "rotate-180")} />
             </button>
 
             {companyOpen && (
@@ -434,12 +437,12 @@ function FilterBar({
 
         {/* Skills multi-select dropdown */}
         {availableSkills.length > 0 && (
-          <div ref={skillRef} className="relative shrink-0">
+          <div ref={skillRef} className="relative sm:shrink-0">
             <button
               type="button"
               onClick={() => { setSkillOpen((v) => !v); setDiffOpen(false); }}
               className={cn(
-                "flex items-center gap-2 h-10 px-3.5 rounded-lg text-[13px] font-medium transition-all whitespace-nowrap",
+                "w-full sm:w-auto flex items-center gap-2 h-10 px-3.5 rounded-lg text-[13px] font-medium transition-all whitespace-nowrap",
                 portalInput,
                 skillOpen ? "border-primary shadow-[0_0_0_3px_rgba(108,71,255,0.1)]" : "",
               )}
@@ -456,7 +459,7 @@ function FilterBar({
                   {p.allSkills}
                 </span>
               )}
-              <ChevronDown size={13} className={cn("text-gray-400 transition-transform shrink-0", skillOpen && "rotate-180")} />
+              <ChevronDown size={13} className={cn("text-gray-400 transition-transform shrink-0 ml-auto sm:ml-0", skillOpen && "rotate-180")} />
             </button>
 
             {skillOpen && (
@@ -522,7 +525,7 @@ function FilterBar({
 
         <span className="hidden h-6 w-px shrink-0 bg-gray-200 dark:bg-gray-700 sm:block" />
 
-        {/* Sort — custom dropdown (native <select> ignores dark theme) */}
+        {/* Sort — fills grid cell on mobile, content-width on sm+ */}
         <SortDropdown
           value={sortBy}
           onChange={onSortByChange}
@@ -533,6 +536,7 @@ function FilterBar({
             { value: "most_practiced", label: p.sortMostPracticed },
             { value: "highest_rated",  label: p.sortHighestRated },
           ]}
+          fullWidth
         />
       </div>
 
@@ -734,11 +738,11 @@ export function MarketplacePage() {
             {p.heroSub}
           </p>
         </div>
-        <div className="flex items-center gap-3 shrink-0">
+        <div className="flex items-center gap-3 sm:shrink-0">
           <button
             type="button"
             onClick={scrollToSearch}
-            className="shimmer-button h-10 px-5 text-[13px] font-semibold text-white hr-cta-btn rounded-lg"
+            className="shimmer-button w-full sm:w-auto h-10 px-5 text-[13px] font-semibold text-white hr-cta-btn rounded-lg"
           >
             {p.heroCta}
           </button>
