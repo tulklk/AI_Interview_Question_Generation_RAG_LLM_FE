@@ -23,6 +23,7 @@ import {
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { portalMutedBg, portalHeadingAlt } from "@/shared/utils/portal-ui";
+import { getSkillIcon } from "@/features/candidate/utils/skill-icons";
 
 // ── Visual config ──────────────────────────────────────────────────────────────
 
@@ -199,7 +200,12 @@ interface SkillBadgeProps {
 }
 
 export function SkillBadge({ skill, editing, onRemove }: SkillBadgeProps) {
-  const visual = getSkillVisual(skill);
+  // ① Brand / concept icon from skill-icons.tsx (react-icons/si + lucide)
+  const skillIcon = getSkillIcon(skill);
+  const SIcon = skillIcon?.icon;
+
+  // ② Only compute letter/lucide fallback when no brand icon matched
+  const visual = SIcon ? null : getSkillVisual(skill);
 
   return (
     <span
@@ -209,8 +215,17 @@ export function SkillBadge({ skill, editing, onRemove }: SkillBadgeProps) {
         portalHeadingAlt
       )}
     >
-      {/* Logo badge */}
-      {visual.kind === "letter" ? (
+      {/* Brand icon (SiTypescript, SiFirebase, SiUnity, etc.) */}
+      {SIcon && (
+        <SIcon
+          aria-hidden
+          size={13}
+          className={cn("shrink-0", skillIcon!.className)}
+        />
+      )}
+
+      {/* Letter badge fallback */}
+      {!SIcon && visual && visual.kind === "letter" && (
         <span
           aria-hidden
           className="inline-flex items-center justify-center rounded-[3px] text-[8px] font-bold leading-none shrink-0"
@@ -224,7 +239,10 @@ export function SkillBadge({ skill, editing, onRemove }: SkillBadgeProps) {
         >
           {visual.abbrev}
         </span>
-      ) : (
+      )}
+
+      {/* Lucide icon fallback */}
+      {!SIcon && visual && visual.kind === "lucide" && (
         <visual.Icon
           aria-hidden
           size={13}

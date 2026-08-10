@@ -499,7 +499,7 @@ export const vi: Translations = {
     emailPlaceholder: "ban@congty.com",
     passwordLabel: "Mật khẩu",
     forgotPassword: "Quên mật khẩu?",
-    rememberMe: "Ghi nhớ đăng nhập trong 30 ngày",
+    rememberMe: "Ghi nhớ đăng nhập",
     signIn: "Đăng nhập",
     orContinueWith: "hoặc tiếp tục với",
     noAccount: "Chưa có tài khoản?",

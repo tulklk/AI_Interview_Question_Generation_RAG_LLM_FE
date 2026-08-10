@@ -8,9 +8,10 @@ import { motion } from "framer-motion";
 import {
   ArrowLeft, Star, X as XIcon, Mail, Loader2,
   AlertCircle, RefreshCw, CheckCircle2, Clock, Send,
-  User, Briefcase, Hash, Sparkles, Phone, MessageSquare,
-  MapPin, FileText, Download, Maximize2,
+  User, Sparkles, Phone, FileText, Download, Maximize2,
+  Target, Link as LinkIcon, ChevronDown,
 } from "lucide-react";
+import { getSkillIcon } from "@/features/candidate/utils/skill-icons";
 import { FaLinkedinIn, FaGithub } from "react-icons/fa";
 import { cn } from "@/lib/cn";
 import { useLanguage } from "@/shared/providers/language-context";
@@ -36,7 +37,7 @@ import {
   portalHeadingAlt,
   portalSubtextAlt,
 } from "@/shared/utils/portal-ui";
-import { HrCandidatePracticePanel } from "@/features/hr/components/candidates/hr-candidate-practice-panel";
+import { SectionCard, Field } from "@/features/candidate/components/ui/section-card";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -139,22 +140,6 @@ function StatusChip({ status, labels }: { status: RecommendationStatus; labels: 
     <span className={cn("text-[12px] font-semibold px-3 py-1 rounded-full", styles[status])}>
       {text[status]}
     </span>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Detail row
-// ---------------------------------------------------------------------------
-
-function DetailRow({ icon: Icon, label, children }: { icon: React.ElementType; label: string; children: React.ReactNode }) {
-  return (
-    <div className="flex items-start gap-3 py-2.5">
-      <div className="w-5 h-5 rounded-md bg-gray-100 dark:bg-gray-800 flex items-center justify-center shrink-0 mt-0.5">
-        <Icon size={11} className="text-gray-500 dark:text-gray-400" />
-      </div>
-      <p className={cn("text-[10px] font-semibold uppercase tracking-wider w-28 shrink-0 pt-0.5", portalSubtextAlt)}>{label}</p>
-      <div className={cn("text-[13px] font-medium flex-1 min-w-0", portalHeadingAlt)}>{children}</div>
-    </div>
   );
 }
 
@@ -410,6 +395,10 @@ export function RecommendationDetail({ id }: { id: string }) {
   const [cvLightbox, setCvLightbox] = useState(false);
   const [showInvite, setShowInvite] = useState(false);
   const [showOffer, setShowOffer] = useState(false);
+  // Collapsible sub-sections
+  const [cvSummaryOpen, setCvSummaryOpen] = useState(true);
+  const [cvSkillsOpen, setCvSkillsOpen] = useState(true);
+  const [techSkillsOpen, setTechSkillsOpen] = useState(true);
   const { addToast } = useToast();
 
   const fetchData = useCallback(async () => {
@@ -705,179 +694,258 @@ export function RecommendationDetail({ id }: { id: string }) {
               )}
             </motion.div>
           )}
+
+          {/* Lý do đề xuất — hiển thị dưới CV */}
+          {rec.recommendationReason && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+            >
+              <SectionCard title={p.detail.reason} icon={Sparkles}
+                iconBg="bg-amber-50 dark:bg-amber-950/40" iconColor="text-amber-600 dark:text-amber-400">
+                <p className={cn("text-[13px] leading-relaxed", portalHeadingAlt)}>
+                  {rec.recommendationReason}
+                </p>
+              </SectionCard>
+            </motion.div>
+          )}
         </div>
 
-        {/* ── Right: Details ── */}
-        <div className="flex flex-col gap-4">
-          {/* Overview — Info + Contact merged */}
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}
-            className="hr-glass-card p-5 flex flex-col gap-4">
-            <h2 className={cn("text-[13px] font-bold uppercase tracking-wider", portalSubtextAlt)}>{p.detail.info}</h2>
+        {/* ── Right: candidate-profile style sections ── */}
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.05 }}
+          className="flex flex-col gap-5 min-w-0"
+        >
+          {/* Heading */}
+          <h1 className={cn("text-[22px] font-[800]", portalHeadingAlt)}>{p.detail.profileTitle}</h1>
 
-            <div className="flex flex-col divide-y divide-gray-100 dark:divide-gray-800 -my-0.5">
-              {rec.targetRole && (
-                <DetailRow icon={Briefcase} label={p.card.targetRole}>{rec.targetRole}</DetailRow>
+          {/* ① Thông tin liên hệ */}
+          <SectionCard title={t.jobseekerProfilePage.sectionContact} icon={User}>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-5">
+              <Field label={t.jobseekerProfilePage.fullName}>
+                <span className={cn("text-[14px] font-semibold", portalHeadingAlt)}>{rec.candidateName || "—"}</span>
+              </Field>
+              <Field label={p.detail.phone}>
+                {rec.phoneNumber ? (
+                  <a href={`tel:${rec.phoneNumber}`} className={cn("text-[14px] hover:text-primary transition-colors", portalHeadingAlt)}>
+                    {rec.phoneNumber}
+                  </a>
+                ) : (
+                  <span className={cn("text-[14px] italic", portalSubtextAlt)}>—</span>
+                )}
+              </Field>
+              <Field label="Email" full>
+                <div className="flex items-center gap-2">
+                  <Mail size={14} className="text-gray-400 shrink-0" />
+                  <a href={`mailto:${rec.candidateEmail}`} className={cn("text-[14px] hover:text-primary transition-colors break-all", portalHeadingAlt)}>
+                    {rec.candidateEmail}
+                  </a>
+                </div>
+              </Field>
+              {rec.address && (
+                <Field label={p.detail.address} full>
+                  <span className={cn("text-[14px]", portalHeadingAlt)}>{rec.address}</span>
+                </Field>
               )}
+            </div>
+          </SectionCard>
+
+          {/* ② Định hướng nghề nghiệp */}
+          <SectionCard title={t.jobseekerProfilePage.sectionCareer} icon={Target}>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-5 mb-5">
+              <Field label={p.card.targetRole}>
+                {rec.targetRole ? (
+                  <div className="flex items-center gap-2">
+                    <Target size={14} className="text-primary shrink-0" />
+                    <span className="text-[14px] font-semibold text-primary">{rec.targetRole}</span>
+                  </div>
+                ) : (
+                  <span className={cn("text-[14px] italic", portalSubtextAlt)}>—</span>
+                )}
+              </Field>
               {rec.questionSetTitle && (
-                <DetailRow icon={Hash} label={p.card.questionSet}>{rec.questionSetTitle}</DetailRow>
+                <Field label={p.card.questionSet}>
+                  <span className={cn("text-[14px]", portalHeadingAlt)}>{rec.questionSetTitle}</span>
+                </Field>
               )}
               {rec.completedAt && (
-                <DetailRow icon={Clock} label={p.detail.completedAt}>{formatRelativeTime(rec.completedAt, lang)}</DetailRow>
-              )}
-              {rec.phoneNumber && (
-                <DetailRow icon={Phone} label={p.detail.phone}>
-                  <a href={`tel:${rec.phoneNumber}`} className="hover:text-primary transition-colors">{rec.phoneNumber}</a>
-                </DetailRow>
-              )}
-              {rec.address && (
-                <DetailRow icon={MapPin} label={p.detail.address}>{rec.address}</DetailRow>
-              )}
-              {rec.linkedInUrl && (
-                <DetailRow icon={FaLinkedinIn} label={p.detail.linkedIn}>
-                  <a href={rec.linkedInUrl} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline break-all">{rec.linkedInUrl}</a>
-                </DetailRow>
-              )}
-              {rec.githubUrl && (
-                <DetailRow icon={FaGithub} label={p.detail.github}>
-                  <a href={rec.githubUrl} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline break-all">{rec.githubUrl}</a>
-                </DetailRow>
-              )}
-              {rec.bio && (
-                <DetailRow icon={User} label={p.detail.bio}>
-                  <span className="whitespace-pre-line leading-relaxed font-normal">{rec.bio}</span>
-                </DetailRow>
+                <Field label={p.detail.completedAt}>
+                  <div className="flex items-center gap-1.5">
+                    <Clock size={13} className="text-gray-400 shrink-0" />
+                    <span className={cn("text-[14px]", portalHeadingAlt)}>{formatRelativeTime(rec.completedAt, lang)}</span>
+                  </div>
+                </Field>
               )}
             </div>
-          </motion.div>
-
-          {/* CV */}
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.09 }}
-            className="hr-glass-card p-5 flex flex-col gap-3">
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-2">
-                <div className="w-7 h-7 rounded-lg bg-blue-100 dark:bg-blue-950/50 flex items-center justify-center shrink-0">
-                  <FileText size={13} className="text-blue-600 dark:text-blue-400" />
-                </div>
-                <h2 className={cn("text-[13px] font-bold uppercase tracking-wider", portalSubtextAlt)}>
-                  {p.detail.cvTitle}
-                </h2>
-              </div>
-              {rec.hasCv && (
-                <button type="button" onClick={() => void handleDownloadCv()} disabled={cvBusy}
-                  className="flex items-center gap-1.5 h-8 px-3 text-[12px] font-semibold text-primary hover:bg-violet-50 dark:hover:bg-violet-950/40 rounded-lg transition-colors disabled:opacity-50">
-                  {cvBusy ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />}
-                  {cvBusy ? p.detail.cvDownloading : p.detail.cvDownload}
-                </button>
-              )}
-            </div>
-            {rec.hasCv ? (
-              <>
-                <p className={cn("text-[13px] font-medium", portalHeadingAlt)}>
-                  {rec.cvFileName || "CV"}
-                  {rec.cvUploadedAt && (
-                    <span className={cn("font-normal ml-2", portalSubtextAlt)}>
-                      · {formatRelativeTime(rec.cvUploadedAt, lang)}
-                    </span>
-                  )}
-                </p>
-                {rec.cvSummary && (
-                  <div>
-                    <p className={cn("text-[10px] font-semibold uppercase tracking-wider mb-1", portalSubtextAlt)}>
-                      {p.detail.cvSummary}
-                    </p>
-                    <p className={cn("text-[13px] leading-relaxed", portalHeadingAlt)}>{rec.cvSummary}</p>
-                  </div>
-                )}
-                {rec.cvSkills.length > 0 && (
-                  <div>
-                    <p className={cn("text-[10px] font-semibold uppercase tracking-wider mb-2", portalSubtextAlt)}>
-                      {p.detail.cvSkills}
-                    </p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {rec.cvSkills.map((s) => (
-                        <span key={s}
-                          className="text-[11px] font-medium px-2 py-0.5 rounded-md bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300">
-                          {s}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </>
-            ) : (
-              <p className={cn("text-[13px]", portalSubtext)}>{p.detail.cvEmpty}</p>
+            {rec.bio && (
+              <Field label={p.detail.bio}>
+                <p className={cn("text-[14px] leading-relaxed whitespace-pre-line mt-1", portalHeadingAlt)}>{rec.bio}</p>
+              </Field>
             )}
-          </motion.div>
+          </SectionCard>
 
-          {/* Candidate-shared contact info (from accepting the invite) */}
-          {(rec.invitationResponseMessage || rec.invitationSharedPhoneNumber) && (
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
-              className="hr-glass-card p-5">
-              <div className="flex items-center gap-2 mb-1">
-                <div className="w-7 h-7 rounded-lg bg-emerald-100 dark:bg-emerald-950/50 flex items-center justify-center shrink-0">
-                  <Phone size={13} className="text-emerald-600 dark:text-emerald-400" />
+          {/* ③ CV / Hồ sơ */}
+          <SectionCard title={p.detail.cvTitle} icon={FileText}
+            iconBg="bg-blue-50 dark:bg-blue-950/40" iconColor="text-blue-600 dark:text-blue-400">
+            {rec.hasCv ? (
+              <div className="flex flex-col gap-4">
+                {/* File row */}
+                <div className="flex items-center gap-3 p-3 rounded-xl border border-gray-200 dark:border-gray-800">
+                  <FileText size={15} className={cn("shrink-0", portalSubtextAlt)} />
+                  <div className="flex-1 min-w-0">
+                    <p className={cn("text-[13px] font-semibold truncate", portalHeadingAlt)}>{rec.cvFileName || "CV"}</p>
+                    {rec.cvUploadedAt && (
+                      <p className={cn("text-[11px]", portalSubtextAlt)}>{formatRelativeTime(rec.cvUploadedAt, lang)}</p>
+                    )}
+                  </div>
+                  <button type="button" onClick={() => void handleDownloadCv()} disabled={cvBusy}
+                    className="flex items-center gap-1.5 h-8 px-3 text-[12px] font-semibold text-primary hover:bg-violet-50 dark:hover:bg-violet-950/40 rounded-lg transition-colors shrink-0 disabled:opacity-50">
+                    {cvBusy ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />}
+                    {cvBusy ? p.detail.cvDownloading : p.detail.cvDownload}
+                  </button>
                 </div>
-                <h2 className={cn("text-[13px] font-bold uppercase tracking-wider", portalSubtextAlt)}>
-                  {p.detail.candidateContactTitle}
-                </h2>
+                {/* Summary — collapsible */}
+                {rec.cvSummary && (
+                  <div className="border-t border-gray-100 dark:border-gray-800 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => setCvSummaryOpen((v) => !v)}
+                      className="w-full flex items-center justify-between px-1 py-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
+                    >
+                      <p className={cn("text-[10px] font-bold uppercase tracking-wider", portalSubtextAlt)}>{p.detail.cvSummary}</p>
+                      <ChevronDown size={13} className={cn("transition-transform duration-200 shrink-0", portalSubtextAlt, !cvSummaryOpen && "-rotate-90")} />
+                    </button>
+                    {cvSummaryOpen && (
+                      <p className={cn("text-[13px] leading-relaxed px-1 pb-1", portalHeadingAlt)}>{rec.cvSummary}</p>
+                    )}
+                  </div>
+                )}
+                {/* CV Skills — collapsible + icons */}
+                {rec.cvSkills.length > 0 && (
+                  <div className="border-t border-gray-100 dark:border-gray-800 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => setCvSkillsOpen((v) => !v)}
+                      className="w-full flex items-center justify-between px-1 py-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
+                    >
+                      <div className="flex items-center gap-1.5">
+                        <p className={cn("text-[10px] font-bold uppercase tracking-wider", portalSubtextAlt)}>{p.detail.cvSkills}</p>
+                        <span className={cn("text-[10px] font-semibold tabular-nums", portalSubtextAlt)}>({rec.cvSkills.length})</span>
+                      </div>
+                      <ChevronDown size={13} className={cn("transition-transform duration-200 shrink-0", portalSubtextAlt, !cvSkillsOpen && "-rotate-90")} />
+                    </button>
+                    {cvSkillsOpen && (
+                      <div className="flex flex-wrap gap-1.5 px-1 pb-1">
+                        {rec.cvSkills.map((s) => {
+                          const si = getSkillIcon(s);
+                          const SIcon = si?.icon;
+                          return (
+                            <span key={s} className="inline-flex items-center gap-1 text-[11px] font-medium px-2.5 py-1 rounded-md bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border border-blue-100 dark:border-blue-900/40">
+                              {SIcon && <SIcon size={10} className={cn("shrink-0", si.className)} />}
+                              {s}
+                            </span>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
-              <p className={cn("text-[11px] mb-3", portalSubtextAlt)}>{p.detail.candidateContactSubtitle}</p>
-              <div className="flex flex-col divide-y divide-gray-100 dark:divide-gray-800 -my-0.5">
+            ) : (
+              <p className={cn("text-[13px] italic", portalSubtextAlt)}>{p.detail.cvEmpty}</p>
+            )}
+          </SectionCard>
+
+          {/* ④ Kỹ năng chuyên môn — collapsible + icons */}
+          {rec.techStack.length > 0 && (
+            <div className="hr-glass-card overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setTechSkillsOpen((v) => !v)}
+                className="w-full flex items-center gap-2.5 px-6 py-5 hover:bg-gray-50 dark:hover:bg-gray-800/40 transition-colors text-left"
+              >
+                <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center shrink-0">
+                  <Sparkles size={15} className="text-gray-800 dark:text-gray-200" />
+                </div>
+                <h3 className="flex-1 text-[15px] font-bold text-charcoal dark:text-gray-100">
+                  {t.jobseekerProfilePage.sectionSkills}
+                </h3>
+                <span className={cn("text-[11px] font-semibold tabular-nums", portalSubtextAlt)}>
+                  {rec.techStack.length}
+                </span>
+                <ChevronDown size={16} className={cn("transition-transform duration-200 shrink-0 ml-1", portalSubtextAlt, !techSkillsOpen && "-rotate-90")} />
+              </button>
+              {techSkillsOpen && (
+                <div className="px-6 pb-5 flex flex-wrap gap-1.5 border-t border-gray-100 dark:border-gray-800 pt-4">
+                  {rec.techStack.map((s) => {
+                    const si = getSkillIcon(s);
+                    const SIcon = si?.icon;
+                    return (
+                      <span key={s} className="inline-flex items-center gap-1.5 text-[12px] font-medium px-2.5 py-1 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700">
+                        {SIcon && <SIcon size={11} className={cn("shrink-0", si.className)} />}
+                        {s}
+                      </span>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ⑤ Liên kết mạng xã hội */}
+          {(rec.linkedInUrl || rec.githubUrl) && (
+            <SectionCard title={t.jobseekerProfilePage.sectionLinks} icon={LinkIcon}>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-5">
+                {rec.linkedInUrl && (
+                  <Field label={p.detail.linkedIn}>
+                    <a href={rec.linkedInUrl} target="_blank" rel="noopener noreferrer"
+                      className="text-[14px] text-primary hover:underline break-all">
+                      {rec.linkedInUrl}
+                    </a>
+                  </Field>
+                )}
+                {rec.githubUrl && (
+                  <Field label={p.detail.github}>
+                    <a href={rec.githubUrl} target="_blank" rel="noopener noreferrer"
+                      className="text-[14px] text-primary hover:underline break-all">
+                      {rec.githubUrl}
+                    </a>
+                  </Field>
+                )}
+              </div>
+            </SectionCard>
+          )}
+
+          {/* ⑥ Phản hồi lời mời */}
+          {(rec.invitationResponseMessage || rec.invitationSharedPhoneNumber) && (
+            <SectionCard title={p.detail.candidateContactTitle} icon={Phone}
+              iconBg="bg-emerald-50 dark:bg-emerald-950/40" iconColor="text-emerald-600 dark:text-emerald-400">
+              <p className={cn("text-[12px] mb-4 -mt-2", portalSubtextAlt)}>{p.detail.candidateContactSubtitle}</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-5">
                 {rec.invitationSharedPhoneNumber && (
-                  <DetailRow icon={Phone} label={p.detail.candidateContactPhone}>
-                    <a href={`tel:${rec.invitationSharedPhoneNumber}`} className="hover:text-primary transition-colors">{rec.invitationSharedPhoneNumber}</a>
-                  </DetailRow>
+                  <Field label={p.detail.candidateContactPhone}>
+                    <a href={`tel:${rec.invitationSharedPhoneNumber}`}
+                      className={cn("text-[14px] hover:text-primary transition-colors", portalHeadingAlt)}>
+                      {rec.invitationSharedPhoneNumber}
+                    </a>
+                  </Field>
                 )}
                 {rec.invitationResponseMessage && (
-                  <DetailRow icon={MessageSquare} label={p.detail.candidateContactMessage}>
-                    <span className="whitespace-pre-line leading-relaxed">{rec.invitationResponseMessage}</span>
-                  </DetailRow>
+                  <Field label={p.detail.candidateContactMessage}
+                    full={!rec.invitationSharedPhoneNumber}>
+                    <p className={cn("text-[14px] leading-relaxed whitespace-pre-line", portalHeadingAlt)}>
+                      {rec.invitationResponseMessage}
+                    </p>
+                  </Field>
                 )}
               </div>
-            </motion.div>
+            </SectionCard>
           )}
 
-          {/* Skills */}
-          {rec.techStack.length > 0 && (
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 }}
-              className="hr-glass-card p-5">
-              <h2 className={cn("text-[13px] font-bold uppercase tracking-wider mb-3", portalSubtextAlt)}>
-                {p.detail.skills}
-              </h2>
-              <div className="flex flex-wrap gap-1.5">
-                {rec.techStack.map((s) => (
-                  <span key={s}
-                    className="text-[12px] font-medium px-2.5 py-1 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300">
-                    {s}
-                  </span>
-                ))}
-              </div>
-            </motion.div>
-          )}
-
-          {/* SCRUM-398: hồ sơ luyện tập nhúng ngay trên trang recommendation */}
-          {rec.candidateUserId ? (
-            <HrCandidatePracticePanel candidateUserId={rec.candidateUserId} />
-          ) : null}
-
-          {/* Recommendation reason */}
-          {rec.recommendationReason && (
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.16 }}
-              className="hr-glass-card p-5">
-              <div className="flex items-center gap-2 mb-3">
-                <div className="w-7 h-7 rounded-lg bg-amber-100 dark:bg-amber-950/50 flex items-center justify-center shrink-0">
-                  <Sparkles size={13} className="text-amber-600 dark:text-amber-400" />
-                </div>
-                <h2 className={cn("text-[13px] font-bold uppercase tracking-wider", portalSubtextAlt)}>
-                  {p.detail.reason}
-                </h2>
-              </div>
-              <p className={cn("text-[13px] leading-relaxed", portalHeadingAlt)}>
-                {rec.recommendationReason}
-              </p>
-            </motion.div>
-          )}
-        </div>
+        </motion.div>
       </div>
 
       {showInvite && (
