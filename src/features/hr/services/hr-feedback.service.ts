@@ -105,7 +105,7 @@ export async function getHrQuestionSetFeedback(
     typeof payload.averageRating === "number" ? payload.averageRating
     : typeof payload.avgRating === "number" ? payload.avgRating
     : rawItems.length > 0
-      ? rawItems.reduce((sum, r) => sum + num(asRecord(r).rating), 0) / rawItems.length
+      ? rawItems.reduce<number>((sum, r) => sum + num(asRecord(r).rating), 0) / rawItems.length
       : null;
 
   return {
