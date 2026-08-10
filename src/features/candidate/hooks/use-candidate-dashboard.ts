@@ -10,11 +10,14 @@ import {
 import { computeStreakDays } from "@/features/candidate/utils/practice-streak";
 import {
   buildAiRecommendations,
+  buildDurationSparkline,
   buildPerformanceTrend,
   buildPracticeHeatmap,
   buildRoleReadiness,
   buildScoreSparkline,
+  buildSessionCountSparkline,
   buildSkillAnalytics,
+  buildStreakSparkline,
   calculateReadinessScore,
   computePeriodComparison,
   daysSince,
@@ -94,6 +97,9 @@ export function useCandidateDashboard() {
   const roleReadiness = useMemo(() => buildRoleReadiness(allSessions), [allSessions]);
   const skillAnalytics = useMemo(() => buildSkillAnalytics(allSessions, lang), [allSessions, lang]);
   const sessionsSparkline = useMemo(() => buildScoreSparkline(allSessions), [allSessions]);
+  const sessionCountSparkline = useMemo(() => buildSessionCountSparkline(allSessions), [allSessions]);
+  const streakSparkline = useMemo(() => buildStreakSparkline(allSessions), [allSessions]);
+  const durationSparkline = useMemo(() => buildDurationSparkline(allSessions), [allSessions]);
 
   const aiRecommendations = useMemo(
     () =>
@@ -137,6 +143,9 @@ export function useCandidateDashboard() {
     roleReadiness,
     skillAnalytics,
     sessionsSparkline,
+    sessionCountSparkline,
+    streakSparkline,
+    durationSparkline,
     aiRecommendations,
   };
 }

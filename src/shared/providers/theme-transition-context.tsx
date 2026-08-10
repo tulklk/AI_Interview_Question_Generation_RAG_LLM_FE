@@ -59,13 +59,28 @@ export function ThemeTransitionProvider({ children }: { children: React.ReactNod
 
   const isToLight = nextTheme === "light";
 
+  // Grid line colours per theme
+  const gridLine = isToLight
+    ? "rgba(71, 85, 105, 0.11)"
+    : "rgba(148, 163, 184, 0.11)";
+  const gridLayer = `
+    linear-gradient(${gridLine} 1px, transparent 1px),
+    linear-gradient(90deg, ${gridLine} 1px, transparent 1px)
+  `;
+  const gridSize = "48px 48px, 48px 48px";
+
   // Panel: darker at outer edge, lighter/glowing at inner (seam) edge
-  const leftPanelBg  = isToLight
+  const leftPanelGrad  = isToLight
     ? "linear-gradient(to right, #d8d8ea, #f8f8ff)"
     : "linear-gradient(to right, #04040a, #12121e)";
-  const rightPanelBg = isToLight
+  const rightPanelGrad = isToLight
     ? "linear-gradient(to left,  #d8d8ea, #f8f8ff)"
     : "linear-gradient(to left,  #04040a, #12121e)";
+
+  // Combine grid + colour gradient
+  const leftPanelBg  = `${gridLayer}, ${leftPanelGrad}`;
+  const rightPanelBg = `${gridLayer}, ${rightPanelGrad}`;
+  const panelBgSize  = `${gridSize}, 100% 100%`;
 
   // Seam glow
   const seamRgb   = isToLight ? "110, 80, 255"  : "160, 120, 255";
@@ -134,7 +149,8 @@ export function ThemeTransitionProvider({ children }: { children: React.ReactNod
             {/* Left panel */}
             <div style={{
               position: "absolute", left: 0, top: 0, width: "50%", height: "100%",
-              background: leftPanelBg,
+              backgroundImage: leftPanelBg,
+              backgroundSize: panelBgSize,
               animation: `${phase === "closing" ? "tc-close-L" : "tc-open-L"} 380ms cubic-bezier(0.16, 1, 0.3, 1) forwards`,
             }} />
 
@@ -142,7 +158,8 @@ export function ThemeTransitionProvider({ children }: { children: React.ReactNod
             <div
               style={{
                 position: "absolute", right: 0, top: 0, width: "50%", height: "100%",
-                background: rightPanelBg,
+                backgroundImage: rightPanelBg,
+                backgroundSize: panelBgSize,
                 animation: `${phase === "closing" ? "tc-close-R" : "tc-open-R"} 380ms cubic-bezier(0.16, 1, 0.3, 1) forwards`,
               }}
               onAnimationEnd={

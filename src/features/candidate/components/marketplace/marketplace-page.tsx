@@ -23,19 +23,46 @@ import {
 
 const DIFFICULTIES: Array<"All" | Difficulty> = ["All", "Easy", "Medium", "Hard"];
 const PAGE_SIZE = 9;
-// BE's Keyword filter only matches the question-set title, not company name or
-// skills — even though the search box explicitly promises "role, company, or
-// skill". When searching, fetch a larger batch (ignoring Keyword) and match
-// title/company/skills client-side instead so company search actually works.
-const SEARCH_FETCH_SIZE = 200;
+// BE only reliably filters by CompanyId. Difficulty, Skills, SortBy, and Keyword
+// are applied client-side on a large fetched batch so every filter actually works.
+const FETCH_SIZE = 200;
 
-function matchesSearchTerm(set: QuestionSet, term: string): boolean {
-  const q = term.toLowerCase();
-  return (
-    set.title.toLowerCase().includes(q) ||
-    set.company.toLowerCase().includes(q) ||
-    set.skills.some((s) => s.toLowerCase().includes(q))
-  );
+function applyClientFilters(
+  items: QuestionSet[],
+  term: string,
+  diff: "All" | Difficulty,
+  skills: string[],
+  sort: "featured" | "newest" | "most_practiced" | "highest_rated",
+): QuestionSet[] {
+  let result = items;
+  if (term) {
+    const q = term.toLowerCase();
+    result = result.filter(
+      (s) =>
+        s.title.toLowerCase().includes(q) ||
+        s.company.toLowerCase().includes(q) ||
+        s.skills.some((sk) => sk.toLowerCase().includes(q)),
+    );
+  }
+  if (diff !== "All") {
+    result = result.filter((s) => s.difficulty === diff);
+  }
+  if (skills.length > 0) {
+    result = result.filter((s) =>
+      skills.some((sk) =>
+        s.skills.some((sk2) => sk2.toLowerCase() === sk.toLowerCase()),
+      ),
+    );
+  }
+  result = [...result].sort((a, b) => {
+    if (sort === "most_practiced") return (b.attempts ?? 0) - (a.attempts ?? 0);
+    if (sort === "highest_rated") return (b.rating ?? 0) - (a.rating ?? 0);
+    // featured / newest: pinned first, then trending
+    const pinDiff = (b.isPinned ? 1 : 0) - (a.isPinned ? 1 : 0);
+    if (pinDiff !== 0) return pinDiff;
+    return (b.isTrending ? 1 : 0) - (a.isTrending ? 1 : 0);
+  });
+  return result;
 }
 
 function difficultyColor(d: "All" | Difficulty) {
@@ -236,7 +263,7 @@ function FilterBar({
     : p.hard;
 
   const dropdownBase = cn(
-    "absolute top-full mt-1.5 z-30 rounded-xl border shadow-lg overflow-hidden",
+    "absolute top-full mt-1.5 z-50 rounded-xl border shadow-lg overflow-hidden",
     "bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700"
   );
   const optionBase = "flex items-center gap-2.5 w-full px-3 py-2 text-[13px] transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/60 cursor-pointer";
@@ -558,8 +585,9 @@ export function MarketplacePage() {
   const [error, setError] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
 
-  // Cache search results so page flips don't re-hit the API
-  const searchCacheRef = useRef<{ key: string; results: QuestionSet[] } | null>(null);
+  // Raw results from BE — keyed by companyId (the only BE-side filter that works).
+  // All other filters (difficulty, skills, search, sort) run client-side on this cache.
+  const rawCacheRef = useRef<{ key: string; results: QuestionSet[] } | null>(null);
   // Track previous filter values to detect filter-vs-page changes inside the effect
   const prevFiltersRef = useRef({
     debouncedSearch: "",
@@ -582,7 +610,7 @@ export function MarketplacePage() {
   }, [search]);
 
   useEffect(() => {
-    listQuestionSets({})
+    listQuestionSets({ pageSize: FETCH_SIZE })
       .then((res) => {
         const skillSet = new Set<string>();
         res.items.forEach((s) => s.skills.forEach((sk) => skillSet.add(sk)));
@@ -605,15 +633,16 @@ export function MarketplacePage() {
     let cancelled = false;
     const term = debouncedSearch.trim();
 
-    // Detect whether it's a filter change or just a page flip
+    // Detect whether a filter changed vs just a page flip
     const prev = prevFiltersRef.current;
+    const companyOrReloadChanged =
+      prev.companyId !== selectedCompanyId || prev.reloadKey !== reloadKey;
     const filterChanged =
+      companyOrReloadChanged ||
       prev.debouncedSearch !== debouncedSearch ||
       prev.difficulty !== difficulty ||
       prev.skills !== selectedSkills.join(",") ||
-      prev.companyId !== selectedCompanyId ||
-      prev.sortBy !== sortBy ||
-      prev.reloadKey !== reloadKey;
+      prev.sortBy !== sortBy;
 
     if (filterChanged) {
       prevFiltersRef.current = {
@@ -625,60 +654,45 @@ export function MarketplacePage() {
         reloadKey,
       };
       setPage(1);
-      searchCacheRef.current = null;
+      // Only a company/reload change requires a fresh network fetch
+      if (companyOrReloadChanged) rawCacheRef.current = null;
     }
 
-    // Use page 1 immediately when filter just changed (before setPage re-render)
     const effectPage = filterChanged ? 1 : page;
 
-    if (term) {
-      const cacheKey = `${term}|${difficulty}|${selectedSkills.join(",")}|${selectedCompanyId ?? ""}|${sortBy}|${reloadKey}`;
-      const cached = searchCacheRef.current;
-      if (cached && cached.key === cacheKey) {
-        // Cache hit — instant slice, no network call
-        const start = (effectPage - 1) * PAGE_SIZE;
-        setSets(cached.results.slice(start, start + PAGE_SIZE));
-        return;
-      }
-      setLoading(true);
-      setError(false);
-      listQuestionSets({
-        difficulty: difficulty === "All" ? undefined : difficulty,
-        skills: selectedSkills.length > 0 ? selectedSkills : undefined,
-        companyId: selectedCompanyId ?? undefined,
-        sortBy,
-        page: 1,
-        pageSize: SEARCH_FETCH_SIZE,
-      })
-        .then((res) => {
-          if (cancelled) return;
-          const filtered = res.items.filter((s) => matchesSearchTerm(s, term));
-          searchCacheRef.current = { key: cacheKey, results: filtered };
-          setTotalCount(filtered.length);
-          const start = (effectPage - 1) * PAGE_SIZE;
-          setSets(filtered.slice(start, start + PAGE_SIZE));
-        })
-        .catch(() => { if (!cancelled) setError(true); })
-        .finally(() => { if (!cancelled) setLoading(false); });
-    } else {
-      setLoading(true);
-      setError(false);
-      listQuestionSets({
-        difficulty: difficulty === "All" ? undefined : difficulty,
-        skills: selectedSkills.length > 0 ? selectedSkills : undefined,
-        companyId: selectedCompanyId ?? undefined,
-        sortBy,
-        page: effectPage,
-        pageSize: PAGE_SIZE,
-      })
-        .then((res) => {
-          if (cancelled) return;
-          setSets(res.items);
-          setTotalCount(res.totalCount);
-        })
-        .catch(() => { if (!cancelled) setError(true); })
-        .finally(() => { if (!cancelled) setLoading(false); });
+    // Cache is keyed by the only BE-side filter (companyId).
+    // All other filters are applied client-side on the cached raw results.
+    const cacheKey = `${selectedCompanyId ?? ""}|${reloadKey}`;
+    const cached = rawCacheRef.current;
+
+    function applyAndSet(allItems: QuestionSet[]) {
+      const filtered = applyClientFilters(allItems, term, difficulty, selectedSkills, sortBy);
+      setTotalCount(filtered.length);
+      const start = (effectPage - 1) * PAGE_SIZE;
+      setSets(filtered.slice(start, start + PAGE_SIZE));
     }
+
+    if (cached && cached.key === cacheKey) {
+      // Cache hit — apply all filters client-side instantly, no network call
+      applyAndSet(cached.results);
+      return;
+    }
+
+    // Cache miss — fetch from BE using only companyId (the only reliable BE filter)
+    setLoading(true);
+    setError(false);
+    listQuestionSets({
+      companyId: selectedCompanyId ?? undefined,
+      page: 1,
+      pageSize: FETCH_SIZE,
+    })
+      .then((res) => {
+        if (cancelled) return;
+        rawCacheRef.current = { key: cacheKey, results: res.items };
+        applyAndSet(res.items);
+      })
+      .catch(() => { if (!cancelled) setError(true); })
+      .finally(() => { if (!cancelled) setLoading(false); });
 
     return () => { cancelled = true; };
   }, [debouncedSearch, difficulty, selectedSkills, selectedCompanyId, sortBy, page, reloadKey]);
@@ -714,7 +728,7 @@ export function MarketplacePage() {
           </div>
           <h1 className={cn("text-[24px] sm:text-[32px] font-extrabold leading-7.5 sm:leading-10 mb-2.5", portalHeadingAlt)}>
             {p.heroTitle}{" "}
-            <span className="text-primary">{p.heroTitleAccent}</span>
+            <span className="gradient-text-animate">{p.heroTitleAccent}</span>
           </h1>
           <p className={cn("text-[13px] leading-5 max-w-md", portalSubtextAlt)}>
             {p.heroSub}
@@ -737,6 +751,7 @@ export function MarketplacePage() {
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, delay: 0.1, ease: "easeOut" }}
+        className="relative z-10"
       >
       <FilterBar
         search={search}

@@ -3,7 +3,10 @@
 import { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
-import { Clock, Users, Star, ChevronRight, BarChart2, Bookmark, Loader2, Pin, TrendingUp } from "lucide-react";
+import {
+  Clock, Users, Star, ChevronRight, BarChart2,
+  Bookmark, Loader2, Pin, TrendingUp,
+} from "lucide-react";
 import { cn } from "@/lib/cn";
 import { useLanguage } from "@/shared/providers/language-context";
 import type { QuestionSet } from "@/features/candidate/types/jobseeker";
@@ -14,7 +17,9 @@ import { useToast } from "@/shared/providers/toast-context";
 
 const MAX_VISIBLE = 3;
 
-const skillTag = "min-w-0 truncate bg-violet-50 dark:bg-violet-950/30 text-violet-700 dark:text-violet-300 border border-violet-100 dark:border-violet-800/30 text-[11px] font-medium px-2.5 py-1 rounded-md";
+// ---------------------------------------------------------------------------
+// Skills popover
+// ---------------------------------------------------------------------------
 
 interface SkillsPopoverProps {
   skills: string[];
@@ -60,12 +65,21 @@ function SkillsPopover({ skills, anchorRef, onClose }: SkillsPopoverProps) {
       className="fixed z-9999 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl p-3 flex flex-wrap gap-1.5 max-w-55 animate-fade-up"
     >
       {skills.map((skill) => (
-        <span key={skill} className={skillTag}>{skill}</span>
+        <span
+          key={skill}
+          className="min-w-0 truncate bg-violet-50 dark:bg-violet-950/30 text-violet-700 dark:text-violet-300 border border-violet-100 dark:border-violet-800/30 text-[11px] font-medium px-2.5 py-1 rounded-md"
+        >
+          {skill}
+        </span>
       ))}
     </div>,
     document.body
   );
 }
+
+// ---------------------------------------------------------------------------
+// Card
+// ---------------------------------------------------------------------------
 
 interface QuestionSetCardProps {
   set: QuestionSet;
@@ -73,7 +87,11 @@ interface QuestionSetCardProps {
   onBookmarkChange?: (id: string, bookmarked: boolean) => void;
 }
 
-export function QuestionSetCard({ set, initialBookmarked = false, onBookmarkChange }: QuestionSetCardProps) {
+export function QuestionSetCard({
+  set,
+  initialBookmarked = false,
+  onBookmarkChange,
+}: QuestionSetCardProps) {
   const { t } = useLanguage();
   const p = t.jobseekerMarketplacePage;
   const { addToast } = useToast();
@@ -102,12 +120,32 @@ export function QuestionSetCard({ set, initialBookmarked = false, onBookmarkChan
   const visibleSkills = set.skills.slice(0, MAX_VISIBLE);
   const extraCount = set.skills.length - MAX_VISIBLE;
 
+  // Difficulty top-strip colour
+  const diffStrip =
+    set.difficulty === "Easy"
+      ? "bg-linear-to-r from-emerald-500 to-emerald-400"
+      : set.difficulty === "Hard"
+        ? "bg-linear-to-r from-rose-500 to-rose-400"
+        : "bg-linear-to-r from-amber-500 to-amber-400";
+
   return (
-    <div className="hr-glass-card group flex flex-col gap-0 overflow-hidden h-full">
-      {/* Card body */}
-      <div className="p-6 flex flex-col gap-4 flex-1">
-        {/* Header row */}
+    <div
+      className={cn(
+        "group relative flex flex-col rounded-2xl overflow-hidden h-full",
+        "border border-gray-200 dark:border-gray-700/70 bg-white dark:bg-gray-900",
+        "shadow-sm hover:shadow-xl hover:-translate-y-1 hover:border-primary/25",
+        "transition-all duration-200"
+      )}
+    >
+      {/* ── Difficulty colour strip ── */}
+      <div className={cn("h-0.75 shrink-0", diffStrip)} />
+
+      {/* ── Card body ── */}
+      <div className="flex flex-col gap-3.5 p-5 flex-1">
+
+        {/* Company logo + title + bookmark */}
         <div className="flex items-start gap-3">
+          {/* Company avatar */}
           {set.companyLogoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -115,114 +153,112 @@ export function QuestionSetCard({ set, initialBookmarked = false, onBookmarkChan
               alt={set.company}
               loading="lazy"
               decoding="async"
-              className="w-10 h-10 rounded-lg object-cover shrink-0 border border-gray-100 dark:border-gray-700"
+              className="w-11 h-11 rounded-xl object-cover shrink-0 border border-gray-100 dark:border-gray-700 shadow-sm"
             />
           ) : (
             <div
               className={cn(
-                "w-10 h-10 rounded-lg flex items-center justify-center text-white text-sm font-bold shrink-0",
+                "w-11 h-11 rounded-xl flex items-center justify-center text-white text-[13px] font-bold shrink-0 shadow-sm",
                 set.companyColor
               )}
             >
               {set.companyInitials}
             </div>
           )}
+
+          {/* Title + company */}
           <div className="flex-1 min-w-0">
-            <div className="mb-1 flex flex-wrap items-center gap-1.5">
-              {set.isPinned ? (
-                <span className="inline-flex items-center gap-1 rounded-md bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
-                  <Pin size={10} />
-                  {p.badgePinned}
-                </span>
-              ) : null}
-              {set.isTrending ? (
-                <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
-                  <TrendingUp size={10} />
-                  {p.badgeTrending}
-                </span>
-              ) : null}
-            </div>
-            <h3 className={cn("text-[14px] font-[700] leading-[20px] line-clamp-2", portalHeadingAlt)}>
+            {/* Pinned / Trending badges */}
+            {(set.isPinned || set.isTrending) && (
+              <div className="flex flex-wrap items-center gap-1 mb-1">
+                {set.isPinned && (
+                  <span className="inline-flex items-center gap-1 rounded-md bg-amber-50 dark:bg-amber-950/40 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 dark:text-amber-300">
+                    <Pin size={9} />
+                    {p.badgePinned}
+                  </span>
+                )}
+                {set.isTrending && (
+                  <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700 dark:text-emerald-300">
+                    <TrendingUp size={9} />
+                    {p.badgeTrending}
+                  </span>
+                )}
+              </div>
+            )}
+            <h3 className={cn("text-[14px] font-bold leading-snug line-clamp-2", portalHeadingAlt)}>
               {set.title}
             </h3>
-            <p className={cn("text-[12px] mt-0.5", portalSubtextAlt)}>{set.company}</p>
+            <p className={cn("text-[11px] mt-0.5 font-medium", portalSubtextAlt)}>{set.company}</p>
           </div>
-          <DifficultyPill difficulty={set.difficulty} label={set.difficulty} />
-          <button
-            type="button"
-            onClick={handleToggleBookmark}
-            disabled={bookmarking}
-            aria-label={bookmarked ? p.unsaveBtn : p.saveBtn}
-            title={bookmarked ? p.unsaveBtn : p.saveBtn}
-            className={cn(
-              "shrink-0 w-8 h-8 flex items-center justify-center rounded-lg border transition-colors disabled:opacity-60",
-              bookmarked
-                ? "bg-primary/10 dark:bg-primary/15 border-primary/30 text-primary hover:bg-primary/15"
-                : "bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-primary hover:border-primary/30"
-            )}
-          >
-            {bookmarking ? (
-              <Loader2 size={14} className="animate-spin" />
-            ) : (
-              <Bookmark size={14} className={bookmarked ? "fill-primary" : ""} />
-            )}
-          </button>
+
+          {/* Difficulty pill + bookmark stacked */}
+          <div className="flex flex-col items-end gap-1.5 shrink-0">
+            <DifficultyPill difficulty={set.difficulty} label={set.difficulty} size="sm" />
+            <button
+              type="button"
+              onClick={handleToggleBookmark}
+              disabled={bookmarking}
+              aria-label={bookmarked ? p.unsaveBtn : p.saveBtn}
+              title={bookmarked ? p.unsaveBtn : p.saveBtn}
+              className={cn(
+                "w-7 h-7 flex items-center justify-center rounded-lg border transition-colors disabled:opacity-60",
+                bookmarked
+                  ? "bg-primary/10 dark:bg-primary/15 border-primary/30 text-primary hover:bg-primary/15"
+                  : "bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-400 dark:text-gray-500 hover:text-primary hover:border-primary/30"
+              )}
+            >
+              {bookmarking ? (
+                <Loader2 size={12} className="animate-spin" />
+              ) : (
+                <Bookmark size={12} className={bookmarked ? "fill-primary" : ""} />
+              )}
+            </button>
+          </div>
         </div>
 
         {/* Description */}
-        <p className={cn("text-[13px] leading-[20px] line-clamp-2", portalSubtextAlt)}>
+        <p className={cn("text-[12px] leading-relaxed line-clamp-2", portalSubtextAlt)}>
           {set.description}
         </p>
 
-        {/* Skills — single row, overflow shows +N chip */}
-        <div className="flex items-center gap-1.5">
-          {visibleSkills.map((skill) => (
-            <span key={skill} className={skillTag} style={{ maxWidth: "7rem" }}>{skill}</span>
-          ))}
-          {extraCount > 0 && (
-            <button
-              ref={skillsBtnRef}
-              type="button"
-              onClick={() => setShowSkills((v) => !v)}
-              className="shrink-0 text-[11px] font-semibold text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 px-2 py-1 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors cursor-pointer"
-            >
-              +{extraCount}
-            </button>
-          )}
-          {showSkills && (
-            <SkillsPopover
-              skills={set.skills}
-              anchorRef={skillsBtnRef}
-              onClose={() => setShowSkills(false)}
-            />
-          )}
-        </div>
-
-        {/* Meta row */}
-        <div className={cn("flex items-center gap-4 text-[12px]", portalSubtextAlt)}>
-          <span className="flex items-center gap-1">
-            <BarChart2 size={12} className="shrink-0" />
-            {set.totalQuestions} {p.questions}
-          </span>
-          <span className="flex items-center gap-1">
-            <Clock size={12} className="shrink-0" />
-            {p.estimatedTime}{set.estimatedTime}
-          </span>
-          {set.attempts !== undefined && (
-            <span className="flex items-center gap-1 ml-auto" title={p.attempts}>
-              <Users size={12} className="shrink-0" />
-              {set.attempts.toLocaleString()} {p.attempts}
-            </span>
-          )}
-        </div>
+        {/* Skill tags */}
+        {set.skills.length > 0 && (
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {visibleSkills.map((skill) => (
+              <span
+                key={skill}
+                className="min-w-0 truncate max-w-28 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700 text-[10px] font-medium px-2 py-0.5 rounded-md"
+              >
+                {skill}
+              </span>
+            ))}
+            {extraCount > 0 && (
+              <button
+                ref={skillsBtnRef}
+                type="button"
+                onClick={() => setShowSkills((v) => !v)}
+                className="shrink-0 text-[10px] font-semibold text-primary bg-primary/8 border border-primary/20 px-2 py-0.5 rounded-md hover:bg-primary/15 transition-colors cursor-pointer"
+              >
+                +{extraCount}
+              </button>
+            )}
+            {showSkills && (
+              <SkillsPopover
+                skills={set.skills}
+                anchorRef={skillsBtnRef}
+                onClose={() => setShowSkills(false)}
+              />
+            )}
+          </div>
+        )}
 
         {/* Rating */}
         {set.rating !== undefined && (
-          <div className="flex items-center gap-1.5" title={p.ratingTooltip}>
+          <div className="flex items-center gap-1" title={p.ratingTooltip}>
             {[1, 2, 3, 4, 5].map((star) => (
               <Star
                 key={star}
-                size={12}
+                size={11}
                 className={
                   star <= Math.round(set.rating!)
                     ? "text-amber-400 fill-amber-400"
@@ -230,20 +266,45 @@ export function QuestionSetCard({ set, initialBookmarked = false, onBookmarkChan
                 }
               />
             ))}
-            <span className={cn("text-[12px] font-[600] ml-1", portalHeadingAlt)}>{set.rating!.toFixed(1)}</span>
-            <span className={cn("text-[11px]", portalSubtextAlt)}>/ 5</span>
+            <span className={cn("text-[12px] font-bold ml-1", portalHeadingAlt)}>
+              {set.rating!.toFixed(1)}
+            </span>
+            <span className={cn("text-[11px]", portalSubtextAlt)}>/5</span>
           </div>
         )}
       </div>
 
-      {/* CTA footer */}
-      <div className="px-6 pb-5">
+      {/* ── Stats bar ── */}
+      <div className="px-5 py-2.5 border-t border-gray-100 dark:border-gray-800 flex items-center gap-1 text-[11px] font-semibold text-gray-500 dark:text-gray-400">
+        <span className="flex items-center gap-1">
+          <BarChart2 size={11} className="shrink-0" />
+          <span className="font-medium text-gray-700 dark:text-gray-300">{set.totalQuestions}</span>
+          {" "}{p.questions}
+        </span>
+        <span className="mx-1.5 text-gray-200 dark:text-gray-700">·</span>
+        <span className="flex items-center gap-1">
+          <Clock size={11} className="shrink-0" />
+          {p.estimatedTime}{set.estimatedTime}
+        </span>
+        {set.attempts !== undefined && (
+          <>
+            <span className="mx-1.5 text-gray-200 dark:text-gray-700">·</span>
+            <span className="flex items-center gap-1 ml-auto" title={p.attempts}>
+              <Users size={11} className="shrink-0" />
+              {set.attempts.toLocaleString()}
+            </span>
+          </>
+        )}
+      </div>
+
+      {/* ── CTA footer ── */}
+      <div className="px-5 pb-5 pt-3">
         <Link
           href={`/jobseeker/sets/${set.id}`}
-          className="shimmer-button flex items-center justify-center gap-2 w-full text-[14px] font-semibold text-white hr-cta-btn rounded-lg h-9"
+          className="shimmer-button hr-cta-btn flex items-center justify-center gap-2 w-full h-10 rounded-xl text-[13px] font-semibold text-white group-hover:gap-3 transition-[gap] duration-150"
         >
           {p.startPractice}
-          <ChevronRight size={14} />
+          <ChevronRight size={15} className="transition-transform duration-150 group-hover:translate-x-0.5" />
         </Link>
       </div>
     </div>
