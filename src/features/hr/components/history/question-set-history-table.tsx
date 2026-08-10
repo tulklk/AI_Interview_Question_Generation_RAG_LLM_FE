@@ -15,6 +15,7 @@ import {
   GlobeOff,
   Inbox,
   Loader2,
+  MessageSquare,
   Pencil,
   SearchX,
   Trash2,
@@ -42,6 +43,7 @@ import {
   unpublishQuestionSet,
 } from "@/features/interview/services/interview.service";
 import { useHrSubscription } from "@/features/hr/context/hr-subscription-context";
+import { QuestionSetFeedbackPanel } from "./question-set-feedback-panel";
 
 function formatDate(iso: string, lang: "en" | "vi"): string {
   const d = new Date(iso);
@@ -109,6 +111,7 @@ export function QuestionSetHistoryTable({ filter = "all" }: QuestionSetHistoryTa
   const [editTitle, setEditTitle] = useState("");
   const [savingTitle, setSavingTitle] = useState(false);
   const [page, setPage] = useState(1);
+  const [feedbackTarget, setFeedbackTarget] = useState<{ id: string; title: string } | null>(null);
   const [sourceFilter, setSourceFilter] = useState<"all" | "studio" | "legacy">("all");
   const [questionFilter, setQuestionFilter] = useState<"all" | "1-5" | "6-10" | "11-20" | "21+">("all");
   const [dateSort, setDateSort] = useState<"newest" | "oldest">("newest");
@@ -413,12 +416,12 @@ export function QuestionSetHistoryTable({ filter = "all" }: QuestionSetHistoryTa
         >
           <table className="w-full min-w-[880px] table-fixed text-[13px]">
             <colgroup>
-              <col style={{ width: "36%" }} />
-              <col style={{ width: "14%" }} />
-              <col style={{ width: "10%" }} />
-              <col style={{ width: "12%" }} />
-              <col style={{ width: "10%" }} />
-              <col style={{ width: "18%" }} />
+              <col style={{ width: "33%" }} />
+              <col style={{ width: "13%" }} />
+              <col style={{ width: "9%" }} />
+              <col style={{ width: "11%" }} />
+              <col style={{ width: "9%" }} />
+              <col style={{ width: "25%" }} />
             </colgroup>
             <thead>
               <tr className="border-b border-gray-100 bg-gray-50/90 dark:border-gray-800 dark:bg-gray-900/60">
@@ -560,6 +563,16 @@ export function QuestionSetHistoryTable({ filter = "all" }: QuestionSetHistoryTa
                         </Link>
                         <button
                           type="button"
+                          onClick={() =>
+                            setFeedbackTarget({ id: item.questionSetId, title: item.title })
+                          }
+                          className={cn(iconBtn, "hover:text-violet-600 dark:hover:text-violet-400")}
+                          title="Xem feedback ứng viên"
+                        >
+                          <MessageSquare size={14} />
+                        </button>
+                        <button
+                          type="button"
                           disabled={busy}
                           onClick={() => void handlePublishToggle(item)}
                           className={iconBtn}
@@ -658,6 +671,14 @@ export function QuestionSetHistoryTable({ filter = "all" }: QuestionSetHistoryTa
           </div>
         </div>
       )}
+
+      {/* Feedback slide-over panel */}
+      <QuestionSetFeedbackPanel
+        open={!!feedbackTarget}
+        questionSetId={feedbackTarget?.id ?? null}
+        questionSetTitle={feedbackTarget?.title}
+        onClose={() => setFeedbackTarget(null)}
+      />
 
       {deleteTarget && (
         <div className="fixed inset-0 z-9999 flex items-center justify-center p-4">

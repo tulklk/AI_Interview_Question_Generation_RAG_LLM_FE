@@ -104,31 +104,38 @@ export function ConfirmDialog({
           <X size={15} />
         </button>
 
-        <div className="px-6 pb-5 pt-6">
-          <div
-            className={cn(
-              "mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full",
-              isDanger ? "bg-red-50 dark:bg-red-950/50 text-red-600 dark:text-red-400" : "bg-lavender dark:bg-primary/15 text-primary"
-            )}
-          >
-            <Icon size={22} />
+        <div className="px-5 pb-4 pt-5">
+          {/* Icon row — inline with title for a compact look */}
+          <div className="flex items-center justify-center gap-2 mb-2">
+            <div
+              className={cn(
+                "flex h-7 w-7 shrink-0 items-center justify-center rounded-lg",
+                isDanger ? "bg-red-50 dark:bg-red-950/50" : "bg-gray-100 dark:bg-gray-800"
+              )}
+            >
+              <Icon
+                size={15}
+                className={cn(
+                  isDanger ? "text-red-600 dark:text-red-400" : "text-charcoal dark:text-gray-100"
+                )}
+              />
+            </div>
+            <h3
+              id="confirm-dialog-title"
+              className="text-[15px] font-bold text-charcoal dark:text-gray-100 leading-snug"
+            >
+              {content.title}
+            </h3>
           </div>
-
-          <h3
-            id="confirm-dialog-title"
-            className="text-center text-base font-bold text-charcoal dark:text-gray-100"
-          >
-            {content.title}
-          </h3>
           <p
             id="confirm-dialog-desc"
-            className="mt-2 whitespace-pre-line text-center text-sm leading-relaxed text-[#6b7280] dark:text-gray-400"
+            className="mt-1.5 whitespace-pre-line text-center text-[13px] leading-relaxed text-[#6b7280] dark:text-gray-400"
           >
             {content.message}
           </p>
         </div>
 
-        <div className="flex gap-3 border-t border-border dark:border-gray-700 px-6 py-4">
+        <div className="flex gap-3 border-t border-border dark:border-gray-700 px-5 py-3">
           <button
             type="button"
             onClick={handleCancel}
@@ -154,7 +161,7 @@ export function ConfirmDialog({
         </div>
 
         {extraAction && (
-          <div className="border-t border-border dark:border-gray-700 px-6 py-3 text-center">
+          <div className="border-t border-border dark:border-gray-700 px-5 py-2.5 text-center">
             <button
               type="button"
               onClick={extraAction.onClick}

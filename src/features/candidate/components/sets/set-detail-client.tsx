@@ -54,8 +54,8 @@ export function SetDetailClient() {
     <JobseekerAppShell
       pageTitle={set?.title ?? p.loading}
       breadcrumb={[
-        { label: "Jobseeker", href: "/jobseeker" },
-        { label: "Sets", href: "/jobseeker/sets" },
+        { label: "Jobseeker", href: "/jobseeker/dashboard" },
+        { label: "Sets", href: "/jobseeker/practice" },
         { label: set?.title ?? "" },
       ]}
     >

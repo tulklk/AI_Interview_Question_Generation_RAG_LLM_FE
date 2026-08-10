@@ -423,6 +423,7 @@ export const vi: Translations = {
       "/admin/knowledge": "Kho kiến thức",
       "/admin/ai-config": "Cấu hình AI",
       "/admin/plans": "Gói subscription",
+      "/admin/feedbacks": "Quản lý feedback",
       "/admin/settings": "Cài đặt",
     },
     systemStatus: {
@@ -467,6 +468,7 @@ export const vi: Translations = {
       "/admin/knowledge": "Kho kiến thức",
       "/admin/ai-config": "Cấu hình AI",
       "/admin/plans": "Gói subscription",
+      "/admin/feedbacks": "Quản lý feedback",
       "/admin/settings": "Cài đặt Admin",
     },
     breadcrumb: {
@@ -1376,6 +1378,24 @@ Yêu cầu:
     },
   },
 
+  submitFeedbackDialog: {
+    trigger: "Gửi phản hồi",
+    title: "Gửi phản hồi cho chúng tôi",
+    subtitle: "Đánh giá và chia sẻ trải nghiệm của bạn về nền tảng HireGen AI.",
+    ratingLabel: "Đánh giá của bạn",
+    ratingLabels: ["", "Rất tệ", "Tệ", "Bình thường", "Tốt", "Tuyệt vời"],
+    contentLabel: "Nội dung phản hồi",
+    contentPlaceholder: "Chia sẻ trải nghiệm của bạn, góp ý cải thiện...",
+    contentMinLength: "Vui lòng nhập tối thiểu 10 ký tự.",
+    ratingRequired: "Vui lòng chọn số sao.",
+    cancel: "Hủy",
+    submit: "Gửi phản hồi",
+    submitting: "Đang gửi...",
+    successTitle: "Cảm ơn bạn!",
+    successMessage: "Phản hồi của bạn đã được gửi và đang chờ duyệt.",
+    errorMessage: "Không thể gửi phản hồi. Vui lòng thử lại.",
+  },
+
   chatWidget: {
     title: "HireGen AI",
     subtitle: "Trực tuyến · Phản hồi nhanh",
@@ -1802,6 +1822,56 @@ Yêu cầu:
         deleteWarning: "Hành động này không thể hoàn tác.",
         deleting: "Đang xóa...",
         delete: "Xóa",
+      },
+    },
+    feedbacks: {
+      heading: "Quản lý Feedback",
+      subtext: "Xem và phê duyệt phản hồi từ người dùng hiển thị trên trang chủ.",
+      loadError: "Không thể tải danh sách feedback. Vui lòng thử lại.",
+      approveSuccess: "Đã duyệt feedback.",
+      approveError: "Không thể duyệt feedback. Vui lòng thử lại.",
+      rejectSuccess: "Đã từ chối feedback.",
+      rejectError: "Không thể từ chối feedback. Vui lòng thử lại.",
+      deleteSuccess: "Đã xóa feedback.",
+      deleteError: "Không thể xóa feedback. Vui lòng thử lại.",
+      emptyState: "Không có feedback nào.",
+      filters: {
+        searchPlaceholder: "Tìm theo nội dung hoặc tên người dùng...",
+        allStatuses: "Tất cả trạng thái",
+        allRoles: "Tất cả vai trò",
+        statusPending: "Chờ duyệt",
+        statusApproved: "Đã duyệt",
+        statusRejected: "Đã từ chối",
+        roleHR: "HR",
+        roleCandidate: "Ứng viên",
+      },
+      table: {
+        no: "#",
+        author: "Người gửi",
+        content: "Nội dung",
+        rating: "Đánh giá",
+        status: "Trạng thái",
+        createdAt: "Ngày gửi",
+        actions: "Hành động",
+      },
+      actions: {
+        approve: "Duyệt",
+        reject: "Từ chối",
+        delete: "Xóa",
+        approving: "Đang duyệt...",
+        rejecting: "Đang từ chối...",
+        deleting: "Đang xóa...",
+      },
+      deleteConfirm: {
+        title: "Xóa feedback",
+        message: "Bạn có chắc chắn muốn xóa feedback này không? Hành động này không thể hoàn tác.",
+        cancel: "Hủy",
+        confirm: "Xóa",
+      },
+      statusBadge: {
+        Pending: "Chờ duyệt",
+        Approved: "Đã duyệt",
+        Rejected: "Đã từ chối",
       },
     },
     analytics: {
@@ -2324,6 +2394,22 @@ Yêu cầu:
     },
   },
 
+  questionSetFeedbackDialog: {
+    title: "Bạn cảm thấy bộ câu hỏi này thế nào?",
+    subtitle: "Đánh giá của bạn giúp cải thiện chất lượng nội dung cho cộng đồng.",
+    ratingLabel: "Đánh giá sao",
+    ratingRequired: "Vui lòng chọn số sao trước khi gửi.",
+    starLabels: ["Rất tệ", "Tệ", "Tạm được", "Tốt", "Xuất sắc"],
+    commentLabel: "Nhận xét (tùy chọn)",
+    commentPlaceholder: "Chia sẻ cảm nhận của bạn về bộ câu hỏi này…",
+    commentHint: "Tối đa 2000 ký tự",
+    submitBtn: "Gửi đánh giá",
+    skipBtn: "Bỏ qua",
+    submitting: "Đang gửi…",
+    submitted: "Cảm ơn bạn đã đánh giá!",
+    submitError: "Không thể gửi đánh giá. Vui lòng thử lại.",
+  },
+
   jobseekerSavedPage: {
     heading: "Bộ Câu Hỏi Đã Lưu",
     subtext: "Các bộ câu hỏi bạn đã lưu để luyện tập sau.",
@@ -2357,6 +2443,19 @@ Yêu cầu:
       cancelLabel: "Hủy",
     },
     noMessage: "Nhà tuyển dụng không để lại lời nhắn.",
+    viewDetailBtn: "Xem chi tiết",
+    table: {
+      company: "Công ty",
+      status: "Trạng thái",
+      sentAt: "Thời gian",
+      actions: "Thao tác",
+    },
+    detailDialog: {
+      sentAt: "Gửi lúc",
+      respondedAt: "Phản hồi lúc",
+      message: "Lời nhắn từ nhà tuyển dụng",
+      closeBtn: "Đóng",
+    },
     acceptModal: {
       title: "Chấp nhận lời mời",
       subtitle: "Bạn có thể để lại lời nhắn hoặc số điện thoại để nhà tuyển dụng liên hệ (không bắt buộc).",
@@ -2572,14 +2671,14 @@ Yêu cầu:
     // SCRUM-401: contribution heatmap (profile) — đủ key để lang=vi không fallback EN
     heatmap: {
       title: "Đóng góp luyện tập",
-      subtitle: "Số phút luyện tập mỗi ngày trong 52 tuần gần nhất",
+      subtitle: "XP kiếm được mỗi ngày trong 52 tuần gần nhất",
       currentStreak: "Chuỗi hiện tại",
       longestStreak: "Chuỗi dài nhất",
       activeDays: "Ngày hoạt động",
       legendLess: "Ít",
       legendMore: "Nhiều",
       empty: "Chưa có hoạt động luyện tập nào được ghi nhận.",
-      tooltipTemplate: "{{date}}: {{minutes}} phút · {{count}} phiên",
+      tooltipTemplate: "{{date}}: {{minutes}} XP · {{count}} phiên",
       tooltipEmptyTemplate: "{{date}}: Không luyện tập",
     },
     achievements: "Thành tích",
@@ -2828,6 +2927,8 @@ Yêu cầu:
     score: "Điểm",
     status: "Trạng thái",
     completedAt: "Hoàn thành",
+    actions: "Thao tác",
+    viewDetailBtn: "Xem chi tiết",
     statusLabels: {
       inProgress: "Đang làm",
       completed: "Đã hoàn thành",
@@ -3825,5 +3926,18 @@ Yêu cầu:
     xpGuideTip2: "Hoàn thành tất cả câu hỏi trong phiên để nhận thưởng phiên",
     xpGuideTip3: "Phấn đấu đạt điểm ≥ 80% để kích hoạt thưởng điểm số",
     xpGuideTip4: "Đặt mục tiêu hàng ngày vừa phải — đều đặn mỗi ngày tốt hơn làm nhiều một lúc",
+
+    // XP History section (profile sidebar)
+    xpHistoryEmpty: "Chưa có lịch sử XP — hãy hoàn thành một phiên luyện tập để kiếm XP.",
+
+    // Achievement card & section UI
+    achievementsSubtitle: "Theo dõi các cột mốc trong hành trình luyện phỏng vấn.",
+    achievementUnlockedStatus: "Đã mở khóa",
+    achievementNoProgress: "Chưa mở khóa",
+    achievementRemainingCount: "Còn {{count}} để mở khóa",
+    achievementNewlyUnlocked: "Mới",
+    achievementsProgressLabel: "{{unlocked}} thành tích đã mở khóa",
+    achievementsError: "Không thể tải thành tích.",
+    achievementsRetry: "Thử lại",
   },
 };

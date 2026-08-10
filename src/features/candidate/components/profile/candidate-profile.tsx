@@ -36,9 +36,11 @@ import {
   type CompletedSessionSummary,
 } from "@/features/candidate/services/practice-session.service";
 import { computeStreakDays } from "@/features/candidate/utils/practice-streak";
-import { buildPracticeHeatmap } from "@/features/candidate/utils/dashboard-analytics";
+import { buildGamificationHeatmap } from "@/features/candidate/utils/dashboard-analytics";
 import { PracticeHeatmap } from "@/features/candidate/components/dashboard/practice-heatmap";
-import type { Achievement } from "@/features/candidate/types/jobseeker";
+import { useDailyActivity } from "@/features/gamification/hooks/use-daily-activity";
+import { AchievementGrid } from "@/features/gamification/components/achievement-grid";
+import { SkillBadge } from "@/features/candidate/components/profile/skill-badge";
 import { SENIORITY_LEVELS } from "@/shared/constants/seniority-levels";
 import { useLanguage } from "@/shared/providers/language-context";
 import { useUser } from "@/features/auth/context/user-context";
@@ -277,60 +279,11 @@ export function CandidateProfile() {
   const avgScore = stats?.averageScore ?? null;
   const bestScore = stats?.bestScore ?? null;
   const streakDays = computeStreakDays(sessions.map((s) => s.completedAt));
-  // SCRUM-401: contribution heatmap 52 tuần trên profile (giống GitHub).
-  const practiceHeatmap = useMemo(() => buildPracticeHeatmap(sessions, 52), [sessions]);
-  // A session finishing well under the fixed 45-min practice timer (see
-  // SESSION_DURATION_SECONDS in practice-session.tsx) counts as "fast".
-  const SPEED_DEMON_THRESHOLD_MINUTES = 35;
 
-  const achievements: Achievement[] = [
-    {
-      id: "first-practice",
-      title: p.achievementItems.firstPractice.title,
-      description: p.achievementItems.firstPractice.description,
-      icon: "🎯",
-      earned: sessionCount >= 1,
-    },
-    {
-      id: "streak-7",
-      title: p.achievementItems.streak7.title,
-      description: p.achievementItems.streak7.description,
-      icon: "🔥",
-      earned: streakDays >= 7,
-    },
-    {
-      id: "high-scorer",
-      title: p.achievementItems.highScorer.title,
-      description: p.achievementItems.highScorer.description,
-      icon: "⭐",
-      earned: bestScore !== null && bestScore >= 90,
-    },
-    // Whether every question category (Technical/Behavioral/Situational/...) has
-    // been answered at least once needs the per-question type from each past
-    // session's AI feedback — fetching that for every session isn't practical
-    // client-side, so this stays un-earnable until a BE aggregate exists.
-    {
-      id: "all-categories",
-      title: p.achievementItems.allCategories.title,
-      description: p.achievementItems.allCategories.description,
-      icon: "🏆",
-      earned: false,
-    },
-    {
-      id: "speed-demon",
-      title: p.achievementItems.speedDemon.title,
-      description: p.achievementItems.speedDemon.description,
-      icon: "⚡",
-      earned: sessions.some((s) => s.durationMinutes > 0 && s.durationMinutes <= SPEED_DEMON_THRESHOLD_MINUTES),
-    },
-    {
-      id: "consistent-learner",
-      title: p.achievementItems.consistentLearner.title,
-      description: p.achievementItems.consistentLearner.description,
-      icon: "📚",
-      earned: sessionCount >= 20,
-    },
-  ];
+  // Gamification activity — drives profile heatmap (XP per day from real API).
+  const { activity, loading: activityLoading } = useDailyActivity(365);
+  // SCRUM-401: contribution heatmap 52 tuần trên profile — XP từ gamification API.
+  const practiceHeatmap = useMemo(() => buildGamificationHeatmap(activity, 52), [activity]);
 
   function addSkill() {
     const s = skillInput.trim();
@@ -557,27 +510,8 @@ export function CandidateProfile() {
           initial={{ opacity: 0, x: -16 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.1 }}
-          className="hr-glass-card p-5"
         >
-          <h3 className={cn("text-[14px] font-[700] mb-4", portalHeadingAlt)}>{p.achievements}</h3>
-          <div className="grid grid-cols-3 sm:grid-cols-3 gap-2">
-            {achievements.map((ach) => (
-              <div
-                key={ach.id}
-                title={ach.description}
-                className={cn(
-                  "flex flex-col items-center text-center p-2 rounded-lg transition-all",
-                  ach.earned ? cn(EARNED_BADGE_CLS, "cursor-default") : cn(portalIconWell, "opacity-40 grayscale")
-                )}
-              >
-                <span className="text-2xl leading-none mb-1">{ach.icon}</span>
-                <p className={cn("text-[10px] font-[600] leading-tight", portalHeadingAlt)}>{ach.title}</p>
-              </div>
-            ))}
-          </div>
-          <p className={cn("text-[11px] mt-3 text-center", portalSubtextAlt)}>
-            {achievements.filter((a) => a.earned).length}/{achievements.length} {p.earned}
-          </p>
+          <AchievementGrid variant="compact" />
         </motion.div>
 
         {/* CV preview dưới Achievements — ảnh CV gần full (giống HR recommendation detail) */}
@@ -718,7 +652,7 @@ export function CandidateProfile() {
             <h3 className={cn("text-[14px] font-[700]", portalHeadingAlt)}>{p.heatmap.title}</h3>
             <p className={cn("text-[12px] mt-0.5", portalSubtextAlt)}>{p.heatmap.subtitle}</p>
           </div>
-          {statsLoading ? (
+          {activityLoading ? (
             <div className="space-y-3">
               <div className="grid grid-cols-3 gap-3">
                 {Array.from({ length: 3 }).map((_, i) => (
@@ -1022,26 +956,17 @@ export function CandidateProfile() {
               <span className={cn("text-[14px] italic", portalSubtextAlt)}>{p.emptyField}</span>
             ) : (
               form.skills.map((skill) => (
-                <span
+                <SkillBadge
                   key={skill}
-                  className={cn("flex items-center gap-1.5 text-[12px] font-[500] px-3 py-1.5 rounded-[6px]", portalMutedBg, portalHeadingAlt)}
-                >
-                  {skill}
-                  {editing && (
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setForm((prev) => ({
-                          ...prev,
-                          skills: prev.skills.filter((s) => s !== skill),
-                        }))
-                      }
-                      className="text-gray-400 hover:text-red-500 transition-colors ml-0.5"
-                    >
-                      <X size={11} />
-                    </button>
-                  )}
-                </span>
+                  skill={skill}
+                  editing={editing}
+                  onRemove={() =>
+                    setForm((prev) => ({
+                      ...prev,
+                      skills: prev.skills.filter((s) => s !== skill),
+                    }))
+                  }
+                />
               ))
             )}
           </div>
