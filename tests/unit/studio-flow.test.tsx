@@ -130,7 +130,12 @@ describe("RAG005/006/007/SUB — Studio question generation", () => {
     expect(await findActionBarButton("Generate Questions")).toBeEnabled();
   });
 
-  test("RGA-SUB-1: a QUOTA_EXCEEDED errorCode on the generate call maps to the canned subscription message", async () => {
+  test("RGA-SUB-1: a QUOTA_EXCEEDED errorCode on the generate call opens the quota-exceeded blocking dialog (not a toast)", async () => {
+    // use-studio.ts's generateQuestions() catch block deliberately skips the
+    // generic error toast for COOLDOWN_ACTIVE/QUOTA_EXCEEDED — it sets
+    // quotaExceeded instead, which studio-page.tsx turns into the same
+    // full-page alertdialog RAG010 covers. This test used to assert the old
+    // toast-based behavior; that path no longer runs for this error code.
     await bootstrap();
     studioApi.generateQuestions.mockRejectedValue({
       response: { status: 403, data: { errorCode: "QUOTA_EXCEEDED", detail: "raw backend detail that should be ignored" } },
@@ -141,12 +146,8 @@ describe("RAG005/006/007/SUB — Studio question generation", () => {
     const generateBtn = await findActionBarButton("Generate Questions");
     await user.click(generateBtn);
 
-    expect(
-      await screen.findByText(
-        "You've used up your quota for this period. Upgrade to Premium or buy an extra Ask-AI pack.",
-        {}, { timeout: 10000 }
-      )
-    ).toBeInTheDocument();
+    const dialog = await screen.findByRole("alertdialog", {}, { timeout: 10000 });
+    expect(dialog).toHaveTextContent("Daily generation limit reached");
   });
 
   test("RGA-SUB-2: an unrecognized errorCode falls back to the raw backend detail message", async () => {
