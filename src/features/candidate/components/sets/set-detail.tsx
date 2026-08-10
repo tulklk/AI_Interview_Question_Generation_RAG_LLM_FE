@@ -17,6 +17,7 @@ import { findInProgressSession, abandonPracticeSession, getPracticeSession } fro
 import { toggleBookmark, getBookmarkedSetIds } from "@/features/candidate/services/question-set.service";
 import { useToast } from "@/shared/providers/toast-context";
 import { ConfirmDialog } from "@/shared/components/ui/confirm-dialog";
+import { getSkillIcon } from "@/features/candidate/utils/skill-icons";
 import {
   portalDivider,
   portalHeadingAlt,
@@ -153,6 +154,7 @@ export function SetDetail({ set }: SetDetailProps) {
             className="hr-glass-card p-6"
           >
             <div className="flex items-start gap-4 mb-5">
+              {/* Company logo */}
               {set.companyLogoUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
@@ -165,20 +167,30 @@ export function SetDetail({ set }: SetDetailProps) {
                   {set.companyInitials}
                 </div>
               )}
-              <div className="flex-1">
-                <h1 className={cn("text-[24px] font-extrabold leading-8", portalHeadingAlt)}>{set.title}</h1>
-                <p className={cn("text-[14px] mt-1", portalSubtextAlt)}>
-                  {p.by}{" "}
-                  <button
-                    type="button"
-                    onClick={() => setShowCompanyModal(true)}
-                    className="text-primary hover:underline font-medium"
-                  >
-                    {set.company}
-                  </button>
-                </p>
+
+              {/* Title + badge + company — takes remaining width */}
+              <div className="flex-1 min-w-0 flex flex-col gap-2">
+                <h1 className={cn("text-[20px] sm:text-[24px] font-extrabold leading-[1.3]", portalHeadingAlt)}>
+                  {set.title}
+                </h1>
+
+                {/* Badge · company link */}
+                <div className="flex items-center gap-2 flex-wrap">
+                  <DifficultyPill difficulty={set.difficulty} label={set.difficulty} className="shrink-0 text-[12px] px-3 py-1.5" />
+                  <p className={cn("text-[14px]", portalSubtextAlt)}>
+                    {p.by}{" "}
+                    <button
+                      type="button"
+                      onClick={() => setShowCompanyModal(true)}
+                      className="text-primary hover:underline font-medium"
+                    >
+                      {set.company}
+                    </button>
+                  </p>
+                </div>
               </div>
-              <DifficultyPill difficulty={set.difficulty} label={set.difficulty} className="text-[12px] px-3 py-1.5" />
+
+              {/* Bookmark — top-right corner of the card header */}
               <button
                 type="button"
                 onClick={handleToggleBookmark}
@@ -186,7 +198,7 @@ export function SetDetail({ set }: SetDetailProps) {
                 aria-label={bookmarked ? mp.unsaveBtn : mp.saveBtn}
                 title={bookmarked ? mp.unsaveBtn : mp.saveBtn}
                 className={cn(
-                  "shrink-0 w-9 h-9 flex items-center justify-center rounded-lg border transition-colors disabled:opacity-60",
+                  "shrink-0 self-start w-9 h-9 flex items-center justify-center rounded-lg border transition-colors disabled:opacity-60",
                   bookmarked
                     ? "bg-primary/10 dark:bg-primary/15 border-primary/30 text-primary hover:bg-primary/15"
                     : "bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-primary hover:border-primary/30"
@@ -304,11 +316,18 @@ export function SetDetail({ set }: SetDetailProps) {
                   )}
                 </div>
                 <div className="flex flex-col gap-1">
-                  {(showAllSkills ? set.skills : set.skills.slice(0, 3)).map((s) => (
-                    <span key={s} className={cn("text-[11px] font-medium px-2.5 py-1.5 rounded-md w-full block truncate", portalMutedBg, portalHeadingAlt)}>
-                      {s}
-                    </span>
-                  ))}
+                  {(showAllSkills ? set.skills : set.skills.slice(0, 3)).map((s) => {
+                    const skillIcon = getSkillIcon(s);
+                    const SkillIcon = skillIcon?.icon;
+                    return (
+                      <span key={s} className={cn("text-[11px] font-medium px-2.5 py-1.5 rounded-md w-full flex items-center gap-2 truncate", portalMutedBg, portalHeadingAlt)}>
+                        {SkillIcon && (
+                          <SkillIcon size={13} className={cn("shrink-0", skillIcon.className)} />
+                        )}
+                        {s}
+                      </span>
+                    );
+                  })}
                 </div>
               </div>
 

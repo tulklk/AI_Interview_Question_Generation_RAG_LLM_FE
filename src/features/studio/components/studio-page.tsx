@@ -89,18 +89,21 @@ export function StudioPage() {
   // so they always see it until the cooldown actually resets.
   const quotaDialogTriggeredRef = useRef(false);
 
-  // Auto-show on page load / initial data arrival: fire once when subscription first loads
-  // and quota is already blocked. Uses a ref so it only runs on the first non-null subscription.
+  // Auto-show on page load / initial data arrival: fire once when BOTH subscription and the studio
+  // bootstrap have finished. We must wait for studio.loading to become false because generationRun
+  // is populated just before setLoading(false) — if we check isRunInProgress before that point we
+  // see null/undefined and incorrectly treat an active run as "not in flight".
   const initialQuotaCheckRef = useRef(false);
   useEffect(() => {
-    if (subscription === null) return;          // still loading
-    if (initialQuotaCheckRef.current) return;  // already checked
+    if (subscription === null) return;          // subscription still loading
+    if (studio.loading) return;                 // studio bootstrap not done — generationRun unknown
+    if (initialQuotaCheckRef.current) return;  // already ran
     initialQuotaCheckRef.current = true;
     if (quotaBlocked && !isRunInProgress) {
       quotaDialogTriggeredRef.current = true;
       setQuotaDialogOpen(true);
     }
-  }, [subscription, quotaBlocked, isRunInProgress]);
+  }, [subscription, studio.loading, quotaBlocked, isRunInProgress]);
 
   // Track the PREVIOUS value of isRunInProgress so we can detect the true→false TRANSITION
   // (generation just completed). Without this, the effect would re-fire whenever isStreaming
