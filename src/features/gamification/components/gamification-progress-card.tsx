@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Flame, Zap, Star, HelpCircle } from "lucide-react";
+import { HelpCircle, Zap } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { useLanguage } from "@/shared/providers/language-context";
 import { useUserProgress } from "@/features/gamification/hooks/use-user-progress";
@@ -24,11 +24,12 @@ interface GamificationProgressCardProps {
   className?: string;
 }
 
-const STREAK_COLORS: Record<0 | 1 | 2 | 3, string> = {
-  0: "text-gray-400 dark:text-gray-600",
-  1: "text-amber-400 dark:text-amber-500",
-  2: "text-orange-500 dark:text-orange-400",
-  3: "text-red-500 dark:text-red-400",
+// Streak emoji scales with intensity so it still communicates momentum
+const STREAK_EMOJI: Record<0 | 1 | 2 | 3, string> = {
+  0: "🕯️",
+  1: "🔥",
+  2: "🔥",
+  3: "🔥",
 };
 
 export function GamificationProgressCard({ className }: GamificationProgressCardProps) {
@@ -83,23 +84,21 @@ export function GamificationProgressCard({ className }: GamificationProgressCard
 
   const miniStats = [
     {
-      icon: <Flame size={14} className={STREAK_COLORS[intensity]} />,
+      emoji: STREAK_EMOJI[intensity],
       value: String(progress.currentStreak),
       label: g.streakLabel,
-      bg: cn(
-        intensity >= 2
-          ? "bg-orange-50 dark:bg-orange-950/30"
-          : "bg-gray-50 dark:bg-gray-800/40"
-      ),
+      bg: intensity >= 2
+        ? "bg-orange-50 dark:bg-orange-950/30"
+        : "bg-gray-50 dark:bg-gray-800/40",
     },
     {
-      icon: <Zap size={14} className="text-violet-500 dark:text-violet-400" />,
+      emoji: "⚡",
       value: formatXp(progress.todayXp),
       label: "XP " + new Date().toLocaleDateString(undefined, { month: "short", day: "numeric" }),
       bg: "bg-violet-50 dark:bg-violet-950/30",
     },
     {
-      icon: <Star size={14} className="text-amber-500 dark:text-amber-400" />,
+      emoji: "⭐",
       value: String(progress.totalPracticeSessions),
       label: g.totalSessions,
       bg: "bg-amber-50 dark:bg-amber-950/30",
@@ -139,7 +138,7 @@ export function GamificationProgressCard({ className }: GamificationProgressCard
       {/* Level badge + XP total */}
       <div className="flex items-end justify-between mb-2">
         <div>
-          <p className={cn("text-[22px] font-[800] leading-none tabular-nums", portalHeadingAlt)}>
+          <p className={cn("text-[22px] font-extrabold leading-none tabular-nums", portalHeadingAlt)}>
             {g.levelLabel} {progress.level}
           </p>
           <p className={cn("text-[11px] mt-0.5", levelColor, "font-semibold")}>
@@ -150,7 +149,7 @@ export function GamificationProgressCard({ className }: GamificationProgressCard
         {/* Total XP pill */}
         <div className="flex flex-col items-end gap-0.5">
           <span className={cn("text-[11px]", portalSubtextAlt)}>{g.totalXp}</span>
-          <span className={cn("text-[15px] font-[700] tabular-nums", portalHeadingAlt)}>
+          <span className={cn("text-[15px] font-bold tabular-nums", portalHeadingAlt)}>
             {formatXp(progress.totalXp)} XP
           </span>
         </div>
@@ -175,8 +174,10 @@ export function GamificationProgressCard({ className }: GamificationProgressCard
             key={s.label}
             className={cn(s.bg, "rounded-lg p-2 text-center border border-transparent")}
           >
-            <div className="flex justify-center mb-1">{s.icon}</div>
-            <p className={cn("text-[14px] font-[700] leading-none tabular-nums", portalHeadingAlt)}>
+            <div className="flex justify-center mb-1">
+              <span aria-hidden className="text-[18px] leading-none select-none">{s.emoji}</span>
+            </div>
+            <p className={cn("text-[14px] font-bold leading-none tabular-nums", portalHeadingAlt)}>
               {s.value}
             </p>
             <p className={cn("text-[10px] mt-0.5 leading-tight", portalSubtextAlt)}>{s.label}</p>

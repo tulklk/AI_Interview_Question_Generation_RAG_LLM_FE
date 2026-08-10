@@ -4,7 +4,8 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import {
-  AlertCircle, ArrowLeft, Clock, Globe, GlobeOff, Loader2, RefreshCw, Users,
+  AlertCircle, ArrowLeft, ChevronLeft, ChevronRight,
+  Clock, ExternalLink, Globe, GlobeOff, Loader2, RefreshCw, Users,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { useLanguage } from "@/shared/providers/language-context";
@@ -76,6 +77,8 @@ function StatusBadge({ status, labels }: { status: PractitionerSessionStatus; la
   );
 }
 
+const PAGE_SIZE = 7;
+
 export function PractitionersPage({ questionSetId }: { questionSetId: string }) {
   const { t, lang } = useLanguage();
   const p = t.practitionersPage;
@@ -88,6 +91,7 @@ export function PractitionersPage({ questionSetId }: { questionSetId: string }) 
   const [error, setError] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [confirmingPublishToggle, setConfirmingPublishToggle] = useState(false);
+  const [page, setPage] = useState(1);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -108,6 +112,13 @@ export function PractitionersPage({ questionSetId }: { questionSetId: string }) 
   }, [questionSetId]);
 
   useEffect(() => { void fetchData(); }, [fetchData]);
+
+  // Reset to page 1 whenever the item list refreshes
+  useEffect(() => { setPage(1); }, [items]);
+
+  const totalPages = Math.max(1, Math.ceil(items.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const paginated = items.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
   async function handlePublishToggle() {
     if (!set || publishing) return;
@@ -207,10 +218,11 @@ export function PractitionersPage({ questionSetId }: { questionSetId: string }) 
                   <th className={cn("text-center px-4 py-3 text-[11px] font-semibold uppercase tracking-wider", portalSubtextAlt)}>{p.score}</th>
                   <th className={cn("text-left px-4 py-3 text-[11px] font-semibold uppercase tracking-wider", portalSubtextAlt)}>{p.status}</th>
                   <th className={cn("text-left px-4 py-3 text-[11px] font-semibold uppercase tracking-wider hidden sm:table-cell", portalSubtextAlt)}>{p.completedAt}</th>
+                  <th className={cn("text-right px-4 py-3 text-[11px] font-semibold uppercase tracking-wider", portalSubtextAlt)}>{p.actions}</th>
                 </tr>
               </thead>
               <tbody>
-                {items.map((item, index) => {
+                {paginated.map((item, index) => {
                   const initials = getInitials(item.candidateName || item.candidateEmail);
                   return (
                     <motion.tr
@@ -246,12 +258,88 @@ export function PractitionersPage({ questionSetId }: { questionSetId: string }) 
                           {item.completedAt ? formatRelativeTime(item.completedAt, lang) : item.startedAt ? formatRelativeTime(item.startedAt, lang) : "—"}
                         </span>
                       </td>
+                      <td className="px-4 py-3.5 text-right">
+                        <Link
+                          href={`/hr/candidates/${item.candidateUserId}`}
+                          className="inline-flex items-center gap-1 text-[12px] font-medium text-violet-600 dark:text-violet-400 hover:text-violet-700 dark:hover:text-violet-300 hover:underline transition-colors"
+                          title={p.viewDetailBtn}
+                        >
+                          <ExternalLink size={12} />
+                          {p.viewDetailBtn}
+                        </Link>
+                      </td>
                     </motion.tr>
                   );
                 })}
+                {/* Placeholder rows — keep height constant across pages */}
+                {paginated.length < PAGE_SIZE &&
+                  Array.from({ length: PAGE_SIZE - paginated.length }).map((_, i) => (
+                    <tr key={`ph-${i}`} aria-hidden className="border-b border-gray-100 dark:border-gray-800 last:border-0">
+                      <td className="px-5 py-3.5"><div className="h-9" /></td>
+                      <td className="px-4 py-3.5" />
+                      <td className="px-4 py-3.5" />
+                      <td className="px-4 py-3.5 hidden sm:table-cell" />
+                      <td className="px-4 py-3.5" />
+                    </tr>
+                  ))}
               </tbody>
             </table>
           </div>
+
+          {/* ── Pagination ─────────────────────────────────────────────────── */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between px-5 py-3 border-t border-gray-100 dark:border-gray-800">
+              <p className={cn("text-xs tabular-nums", portalSubtextAlt)}>
+                {(safePage - 1) * PAGE_SIZE + 1}–{Math.min(safePage * PAGE_SIZE, items.length)} / {items.length}
+              </p>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={safePage === 1}
+                  className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                >
+                  <ChevronLeft size={14} />
+                </button>
+
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((pg) => {
+                  const isFirst = pg === 1;
+                  const isLast = pg === totalPages;
+                  const nearCurrent = Math.abs(pg - safePage) <= 1;
+                  if (!isFirst && !isLast && !nearCurrent) {
+                    if (pg === 2 || pg === totalPages - 1) {
+                      return <span key={pg} className={cn("text-xs px-0.5", portalSubtextAlt)}>…</span>;
+                    }
+                    return null;
+                  }
+                  return (
+                    <button
+                      key={pg}
+                      type="button"
+                      onClick={() => setPage(pg)}
+                      className={cn(
+                        "inline-flex h-7 min-w-7 px-1.5 items-center justify-center rounded-lg text-xs font-medium transition-colors",
+                        pg === safePage
+                          ? "bg-primary text-white shadow-sm"
+                          : "border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
+                      )}
+                    >
+                      {pg}
+                    </button>
+                  );
+                })}
+
+                <button
+                  type="button"
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={safePage === totalPages}
+                  className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                >
+                  <ChevronRight size={14} />
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

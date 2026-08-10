@@ -2,6 +2,7 @@ import type { CompletedSessionSummary } from "@/features/candidate/services/prac
 import { readAnswerEvaluations } from "@/features/candidate/services/practice-session.service";
 import { translateDimensionKey } from "@/features/candidate/utils/skill-labels";
 import type { Lang } from "@/shared/providers/language-context";
+import type { DailyActivity } from "@/features/gamification/types/gamification.types";
 
 // ── Formatters ──────────────────────────────────────────────────────────────
 
@@ -204,6 +205,28 @@ export function buildPracticeHeatmap(sessions: CompletedSessionSummary[], weeks 
     byDay.set(key, bucket);
   }
 
+  return fillHeatmapWindow(byDay, weeks);
+}
+
+/**
+ * Convert gamification `DailyActivity` records into a `PracticeHeatmapResult`
+ * for use on the candidate profile heatmap. Maps XP → `minutes` (the intensity
+ * driver) and `sessionsCompleted` → `count` so the existing `PracticeHeatmap`
+ * component can render it without modification.
+ */
+export function buildGamificationHeatmap(
+  activities: DailyActivity[],
+  weeks = 52,
+): PracticeHeatmapResult {
+  const byDay = new Map<string, HeatmapDay>();
+  for (const a of activities) {
+    if (!a.date) continue;
+    byDay.set(a.date, {
+      date: a.date,
+      minutes: a.xp,              // XP drives cell intensity (colour)
+      count: a.sessionsCompleted,  // session count drives tooltip & streak
+    });
+  }
   return fillHeatmapWindow(byDay, weeks);
 }
 

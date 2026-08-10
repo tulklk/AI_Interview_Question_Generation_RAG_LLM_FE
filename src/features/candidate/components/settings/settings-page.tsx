@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
-import { User, Settings, ShieldCheck, Shield, Check, ChevronRight, Zap, CreditCard, Lock, Crown } from "lucide-react";
+import { User, Settings, ShieldCheck, Shield, Check, ChevronRight, Zap, CreditCard, Lock, Crown, MessageSquare } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { useLanguage } from "@/shared/providers/language-context";
 import { ThemePreferencePicker } from "@/shared/components/common/theme-preference-picker";
@@ -17,10 +17,12 @@ import { useCandidateSubscription } from "@/features/candidate/context/candidate
 import { useToast } from "@/shared/providers/toast-context";
 import { portalHeading, portalSubtext } from "@/shared/utils/portal-ui";
 import { DailyGoalSettings } from "@/features/gamification/components/daily-goal-settings";
+import { XpHistorySection } from "@/features/gamification/components/xp-history-section";
 import { useSoundPreference } from "@/features/gamification/hooks/use-sound-preference";
 import { UpgradeModal } from "@/features/candidate/components/billing/upgrade-modal";
+import { SubmitFeedbackDialog } from "@/features/guest/components/submit-feedback-dialog";
 
-type Tab = "profile" | "general" | "security" | "privacy" | "billing";
+type Tab = "profile" | "general" | "security" | "privacy" | "billing" | "xp-history";
 
 const LANGUAGES = [
   { label: "English", value: "en" as const },
@@ -55,7 +57,7 @@ export function SettingsPage() {
 
   const [activeTab, setActiveTab] = useState<Tab>(() => {
     const tab = searchParams.get("tab");
-    return (tab === "billing" || tab === "profile" || tab === "general" || tab === "security" || tab === "privacy")
+    return (tab === "billing" || tab === "profile" || tab === "general" || tab === "security" || tab === "privacy" || tab === "xp-history")
       ? tab
       : "profile";
   });
@@ -68,6 +70,7 @@ export function SettingsPage() {
   const [allowRecommendation, setAllowRecommendation] = useState<boolean | null>(null);
   const [savingRecommendation, setSavingRecommendation] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -109,7 +112,7 @@ export function SettingsPage() {
 
   useEffect(() => {
     const tab = searchParams.get("tab");
-    if (tab === "billing" || tab === "profile" || tab === "general" || tab === "security" || tab === "privacy") {
+    if (tab === "billing" || tab === "profile" || tab === "general" || tab === "security" || tab === "privacy" || tab === "xp-history") {
       setActiveTab(tab);
     }
   }, [searchParams]);
@@ -118,21 +121,23 @@ export function SettingsPage() {
   const iconColor = "text-gray-900 dark:text-gray-100";
 
   const tabs: { id: Tab; Icon: typeof User; iconBg: string; iconColor: string; label: string }[] = [
-    { id: "profile",  Icon: User,       iconBg, iconColor, label: p.profileTitle },
-    { id: "general",  Icon: Settings,   iconBg, iconColor, label: p.generalTitle },
-    { id: "security", Icon: ShieldCheck, iconBg, iconColor, label: p.securityTitle },
-    { id: "privacy",  Icon: Shield,     iconBg, iconColor, label: p.privacyTitle },
-    { id: "billing",  Icon: CreditCard, iconBg, iconColor, label: p.billing.title },
+    { id: "profile",    Icon: User,        iconBg, iconColor, label: p.profileTitle },
+    { id: "general",    Icon: Settings,    iconBg, iconColor, label: p.generalTitle },
+    { id: "security",   Icon: ShieldCheck, iconBg, iconColor, label: p.securityTitle },
+    { id: "privacy",    Icon: Shield,      iconBg, iconColor, label: p.privacyTitle },
+    { id: "xp-history", Icon: Zap,         iconBg, iconColor, label: t.gamification.xpHistoryTitle },
+    { id: "billing",    Icon: CreditCard,  iconBg, iconColor, label: p.billing.title },
   ];
 
   const active = tabs.find((t) => t.id === activeTab)!;
 
   const sectionSubtitle: Record<Tab, string> = {
-    profile:  p.profileDescription,
-    general:  p.generalDescription,
-    security: p.securityDescription,
-    privacy:  p.privacyDescription,
-    billing:  p.billing.subtitle,
+    profile:      p.profileDescription,
+    general:      p.generalDescription,
+    security:     p.securityDescription,
+    privacy:      p.privacyDescription,
+    "xp-history": lang === "vi" ? "Xem lại điểm XP bạn đã kiếm được từ các phiên luyện tập" : "Review the XP you have earned from your practice sessions",
+    billing:      p.billing.subtitle,
   };
 
   const isFullWidth = activeTab === "profile" || activeTab === "billing";
@@ -348,8 +353,44 @@ export function SettingsPage() {
 
               {/* Daily Practice Goal */}
               <DailyGoalSettings />
+
+              <div className="border-t border-gray-200 dark:border-gray-800" />
+
+              {/* Send feedback */}
+              <div>
+                <p className={cn("text-xs font-semibold uppercase tracking-wide mb-3", portalSubtext)}>
+                  {t.submitFeedbackDialog.trigger}
+                </p>
+                <div className="rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
+                  <button
+                    type="button"
+                    onClick={() => setFeedbackOpen(true)}
+                    className={cn(
+                      "flex items-center gap-3 w-full px-4 py-4 text-sm text-left transition-colors",
+                      "hover:bg-gray-50 dark:hover:bg-gray-800/50",
+                      portalHeading
+                    )}
+                  >
+                    <div className="w-8 h-8 rounded-lg bg-violet-50 dark:bg-violet-950/40 flex items-center justify-center shrink-0">
+                      <MessageSquare size={14} className="text-primary" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className={cn("text-sm font-medium", portalHeading)}>
+                        {t.submitFeedbackDialog.trigger}
+                      </p>
+                      <p className={cn("text-xs mt-0.5", portalSubtext)}>
+                        {t.submitFeedbackDialog.subtitle}
+                      </p>
+                    </div>
+                    <ChevronRight size={15} className="text-gray-400 dark:text-gray-500 shrink-0" />
+                  </button>
+                </div>
+              </div>
             </div>
           )}
+
+          {/* XP History */}
+          {activeTab === "xp-history" && <XpHistorySection embedded />}
 
           {/* Security */}
           {activeTab === "security" && <SecuritySection />}
@@ -374,7 +415,7 @@ export function SettingsPage() {
                       {p.privacyActions.recruiterRecommendation.title}
                     </p>
                     {!isPremium && (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-gradient-to-r from-violet-600 to-purple-500 text-white shadow-sm">
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-linear-to-r from-violet-600 to-purple-500 text-white shadow-sm">
                         <Crown size={9} />
                         {p.privacyActions.recruiterRecommendation.premiumOnly}
                       </span>
@@ -404,7 +445,7 @@ export function SettingsPage() {
                 <button
                   type="button"
                   onClick={() => setShowUpgradeModal(true)}
-                  className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-violet-600 to-purple-500 hover:from-violet-700 hover:to-purple-600 shadow-sm transition-all active:scale-[0.98]"
+                  className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-sm font-semibold text-white bg-linear-to-r from-violet-600 to-purple-500 hover:from-violet-700 hover:to-purple-600 shadow-sm transition-all active:scale-[0.98]"
                 >
                   <Crown size={13} />
                   {p.billing.upgradeBtn}
@@ -465,6 +506,8 @@ export function SettingsPage() {
           onDone={() => setShowUpgradeModal(false)}
         />
       )}
+
+      <SubmitFeedbackDialog open={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
     </>
   );
 }
