@@ -4,8 +4,8 @@
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
-        <mxCell id="c115" parent="1" style="rounded=0;whiteSpace=wrap;html=1;verticalAlign=top;" value="" vertex="1">
-          <mxGeometry height="440" width="680" x="590" y="320" as="geometry" />
+        <mxCell id="225AHGXtbBVHhtgnSOv1-1" parent="1" style="shape=umlFrame;whiteSpace=wrap;html=1;pointerEvents=0;align=left;" value="&lt;b&gt;&amp;nbsp;alt&lt;/b&gt;" vertex="1">
+          <mxGeometry height="440" width="682" x="589" y="315" as="geometry" />
         </mxCell>
         <mxCell id="c101" parent="1" style="shape=umlActor;whiteSpace=wrap;html=1;verticalLabelPosition=bottom;verticalAlign=top;outlineConnect=0;fontStyle=1;fontSize=13;" value="HR Manager" vertex="1">
           <mxGeometry height="50" width="40" x="130" y="40" as="geometry" />
@@ -63,9 +63,6 @@
         </mxCell>
         <mxCell id="c114" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="" vertex="1">
           <mxGeometry height="96" width="14" x="1183" y="522" as="geometry" />
-        </mxCell>
-        <mxCell id="c116" parent="1" style="shape=note;whiteSpace=wrap;html=1;fontStyle=1;fontSize=11;align=left;spacingLeft=4;size=8;" value="alt" vertex="1">
-          <mxGeometry height="24" width="70" x="590" y="320" as="geometry" />
         </mxCell>
         <mxCell id="c117" parent="1" style="text;html=1;align=left;verticalAlign=middle;fontSize=11;fontStyle=2;" value="[cache hit]" vertex="1">
           <mxGeometry height="24" width="594" x="677" y="320" as="geometry" />

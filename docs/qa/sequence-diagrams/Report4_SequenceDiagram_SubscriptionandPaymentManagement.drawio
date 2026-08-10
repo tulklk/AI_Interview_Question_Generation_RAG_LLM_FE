@@ -1,14 +1,14 @@
 <mxfile host="Electron" agent="claude-code">
   <diagram name="SubscriptionandPaymentManagement" id="d7">
-    <mxGraphModel dx="2034" dy="1200" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="1940" pageHeight="1860" math="0" shadow="0">
+    <mxGraphModel dx="2470" dy="1457" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="1940" pageHeight="1860" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
-        <mxCell id="c302" parent="1" style="rounded=0;whiteSpace=wrap;html=1;verticalAlign=top;" value="" vertex="1">
-          <mxGeometry height="380" width="1460" x="330" y="1280" as="geometry" />
+        <mxCell id="iW4_985hoHolfNxxxDkO-2" parent="1" style="shape=umlFrame;whiteSpace=wrap;html=1;pointerEvents=0;align=left;" value="&amp;nbsp;&lt;b&gt;alt&lt;/b&gt;" vertex="1">
+          <mxGeometry height="383" width="1460" x="330" y="1280" as="geometry" />
         </mxCell>
-        <mxCell id="c299" parent="1" style="rounded=0;whiteSpace=wrap;html=1;verticalAlign=top;" value="" vertex="1">
-          <mxGeometry height="320" width="680" x="330" y="920" as="geometry" />
+        <mxCell id="iW4_985hoHolfNxxxDkO-1" parent="1" style="shape=umlFrame;whiteSpace=wrap;html=1;pointerEvents=0;align=left;" value="&lt;b&gt;&amp;nbsp;loop&lt;/b&gt;" vertex="1">
+          <mxGeometry height="320" width="684" x="330" y="915" as="geometry" />
         </mxCell>
         <mxCell id="c279" parent="1" style="shape=umlActor;whiteSpace=wrap;html=1;verticalLabelPosition=bottom;verticalAlign=top;outlineConnect=0;fontStyle=1;fontSize=13;" value="User" vertex="1">
           <mxGeometry height="50" width="40" x="130" y="40" as="geometry" />
@@ -91,14 +91,8 @@
         <mxCell id="c298" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="" vertex="1">
           <mxGeometry height="36" width="14" x="1703" y="1422" as="geometry" />
         </mxCell>
-        <mxCell id="c300" parent="1" style="shape=note;whiteSpace=wrap;html=1;fontStyle=1;fontSize=11;align=left;spacingLeft=4;size=8;" value="loop" vertex="1">
-          <mxGeometry height="24" width="70" x="330" y="920" as="geometry" />
-        </mxCell>
         <mxCell id="c301" parent="1" style="text;html=1;align=left;verticalAlign=middle;fontSize=11;fontStyle=2;" value="[poll every N sec until terminal status]" vertex="1">
           <mxGeometry height="24" width="594" x="420" y="920" as="geometry" />
-        </mxCell>
-        <mxCell id="c303" parent="1" style="shape=note;whiteSpace=wrap;html=1;fontStyle=1;fontSize=11;align=left;spacingLeft=4;size=8;" value="alt" vertex="1">
-          <mxGeometry height="24" width="70" x="330" y="1280" as="geometry" />
         </mxCell>
         <mxCell id="c304" parent="1" style="text;html=1;align=left;verticalAlign=middle;fontSize=11;fontStyle=2;" value="[PAID]" vertex="1">
           <mxGeometry height="24" width="1374" x="420" y="1280" as="geometry" />

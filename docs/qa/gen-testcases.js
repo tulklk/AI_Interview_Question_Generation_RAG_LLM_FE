@@ -977,14 +977,16 @@ const ragTestCases = [
     id: "FE_RAG_010",
     module: RAG_MODULE,
     method: "QuotaCooldownBlockingModal",
-    description: "Studio: verify the full-page blocking quota modal (Free plan cooldown) blocks the entire page, not just Generate",
+    description: "Studio: verify the full-page blocking quota modal (Free plan cooldown), including the new suppression while a run is already in flight",
     conditionGroups: [
       {
-        title: "Subscription state",
+        title: "Subscription / run state",
         items: [
-          { label: "Free plan, within 24h cooldown of last generate", marks: [T, F, F] },
-          { label: "Free plan, cooldown period has passed", marks: [F, T, F] },
-          { label: "Premium plan (generateUnlimited = true)", marks: [F, F, T] },
+          { label: "Free plan, within 24h cooldown, no generation currently in flight", marks: [T, F, F, F, F] },
+          { label: "Free plan, cooldown period has passed", marks: [F, T, F, F, F] },
+          { label: "Premium plan (generateUnlimited = true)", marks: [F, F, T, F, F] },
+          { label: "Free plan quota exceeded, but a generation run is currently in flight (isGeneratingQuestions, or generationRun.status is Generating/Pending, or isStreaming)", marks: [F, F, F, T, F] },
+          { label: "Free plan quota exceeded; the previously in-flight run just completed or failed", marks: [F, F, F, F, T] },
         ],
       },
     ],
@@ -992,14 +994,20 @@ const ragTestCases = [
       {
         title: "Return",
         items: [
-          { label: "Full-screen alertdialog blocks the entire page (JD/plan editing also blocked)", marks: [T, F, F] },
-          { label: "Title \"Daily generation limit reached\" with cooldown end time shown", marks: [T, F, F] },
-          { label: "\"View plans & billing\" / \"Create manually\" are the only escape hatches", marks: [T, F, F] },
-          { label: "No modal shown, Studio fully usable", marks: [F, T, T] },
+          { label: "Full-screen alertdialog blocks the entire page (JD/plan editing also blocked)", marks: [T, F, F, F, T] },
+          { label: "Title \"Daily generation limit reached\" with cooldown end time shown", marks: [T, F, F, F, T] },
+          { label: "\"View plans & billing\" / \"Create manually\" are the only escape hatches", marks: [T, F, F, F, T] },
+          { label: "No modal shown, Studio fully usable", marks: [F, T, T, T, F] },
+        ],
+      },
+      {
+        title: "Exception",
+        items: [
+          { label: "Dialog is suppressed while quotaBlocked is true if a run is already in flight - avoids blocking work that already consumed the quota; it surfaces automatically the moment the run completes/fails", marks: [F, F, F, T, F] },
         ],
       },
     ],
-    types: ["N", "N", "N"],
+    types: ["N", "N", "N", "B", "N"],
   },
   {
     id: "FE_RAG_011",
@@ -1096,313 +1104,27 @@ const ragTestCases = [
   {
     id: "FE_RAG_014",
     module: RAG_MODULE,
-    method: "JdMinCharVsWordCountMismatch",
-    description: "GenerateForm: verify the two independent, inconsistent JD length rules - 400-char UI rule vs. hidden 100-word server rule",
+    method: "GenerateFormRetired",
+    description:
+      "Superseded 2026-08-10: /hr/generate (\"GenerateForm\", the old wizard-style entry point previously covered by 16 removed test cases - JD 400-char/100-word rule mismatch, file upload rules, hardcoded plan-creation payload, multi-step polling, retry-state screen, chat-based Ask-AI, quota banner, localStorage session persistence, background job list, duplicate save-draft, plan-regenerate limit, KB picker, Notes-for-AI field, question reorder, and 2 UI layout/theme cases) has been fully retired. src/app/hr/generate/page.tsx now just client-side redirects (router.replace) to /hr/generate-question (Studio) on mount - none of that GenerateForm-specific UI/behavior is reachable anymore. Studio's equivalent behavior (generate flow, quota gating, KB library, sample JD, sources panel, chat-refine, CTA states, question edit/delete/regenerate, save/publish/share) is already covered by FE_RAG_001-013 and the remaining FE_RAG_02x/03x sheets above.",
     conditionGroups: [
-      {
-        title: "JD text state",
-        items: [
-          { label: "399 characters (1 below the UI minimum)", marks: [T, F, F, F] },
-          { label: "420 characters but only 60 words", marks: [F, T, F, F] },
-          { label: "600 characters, 110 words", marks: [F, F, T, F] },
-          { label: "No text typed, JD file attached instead", marks: [F, F, F, T] },
-        ],
-      },
+      { title: "Precondition", items: [{ label: "HR navigates to /hr/generate", marks: [T] }] },
     ],
     confirmGroups: [
       {
         title: "Return",
         items: [
-          { label: "Orange border + \"Too short — please enter at least 400 characters (~80 words)\" shown", marks: [T, F, F, F] },
-          { label: "\"Create Plan\" button enabled (UI rule passes)", marks: [F, T, T, T] },
-          { label: "Server rejects: \"Mô tả công việc cần ít nhất 100 từ (hiện tại: 60 từ).\" (hard-coded Vietnamese, shown even in EN UI)", marks: [F, T, F, F] },
-          { label: "Submit succeeds", marks: [F, F, T, T] },
+          { label: "Client-side redirect fires on mount, landing on /hr/generate-question (Studio)", marks: [T] },
         ],
       },
       {
         title: "Exception",
         items: [
-          { label: "UI shows the button as ready while a hidden server rule still blocks submission (DISCREPANCY)", marks: [F, T, F, F] },
+          { label: "All GenerateForm-specific UI/copy/mechanics are dead code as of this redirect - do not write new test cases against /hr/generate itself", marks: [T] },
         ],
       },
     ],
-    types: ["N", "A", "N", "N"],
-  },
-  {
-    id: "FE_RAG_015",
-    module: RAG_MODULE,
-    method: "FileUploadTypeSizeValidation",
-    description: "GenerateForm: validate JD file upload (.pdf/.doc/.docx only, 10MB max - stricter than Studio's upload)",
-    conditionGroups: [
-      {
-        title: "File selected",
-        items: [
-          { label: ".pdf, 2MB", marks: [T, F, F, F, F] },
-          { label: ".docx, 5MB", marks: [F, T, F, F, F] },
-          { label: ".jpg image (not accepted in this flow)", marks: [F, F, T, F, F] },
-          { label: ".pdf, 15MB (over the 10MB limit)", marks: [F, F, F, T, F] },
-          { label: "invalid file type via drag-and-drop", marks: [F, F, F, F, T] },
-        ],
-      },
-    ],
-    confirmGroups: [
-      {
-        title: "Return",
-        items: [
-          { label: "File accepted", marks: [T, T, F, F, F] },
-          { label: "Inline/toast \"fe.invalidType\" error shown", marks: [F, F, T, F, T] },
-          { label: "Inline/toast \"fe.tooLarge\" error shown", marks: [F, F, F, T, F] },
-        ],
-      },
-    ],
-    types: ["N", "N", "A", "A", "A"],
-  },
-  {
-    id: "FE_RAG_016",
-    module: RAG_MODULE,
-    method: "HardcodedGenerationSettings",
-    description: "GenerateForm: verify the submit payload always sends numberOfQuestions:10 and difficulty:\"medium\" regardless of any UI control",
-    conditionGroups: [
-      {
-        title: "Submission method",
-        items: [
-          { label: "Submit with pasted JD text", marks: [T, F] },
-          { label: "Submit with uploaded file", marks: [F, T] },
-        ],
-      },
-    ],
-    confirmGroups: [
-      {
-        title: "Return",
-        items: [
-          { label: "Request payload includes numberOfQuestions:10 and difficulty:\"medium\" hard-coded", marks: [T, T] },
-        ],
-      },
-      {
-        title: "Exception",
-        items: [
-          { label: "These values can only be changed later via Plan edit, not at initial submit (LIMITATION)", marks: [T, T] },
-        ],
-      },
-    ],
-    types: ["B", "B"],
-  },
-  {
-    id: "FE_RAG_017",
-    module: RAG_MODULE,
-    method: "PlanQuestionPollingFlow",
-    description: "GenerateForm: verify the multi-step polling flow - plan generation -> plan review -> approve -> question generation",
-    conditionGroups: [
-      {
-        title: "Polling scenario",
-        items: [
-          { label: "Plan job completes on the first 3s poll", marks: [T, F, F] },
-          { label: "Plan job takes several 3s polls to complete", marks: [F, T, F] },
-          { label: "A poll request transiently fails (network blip)", marks: [F, F, T] },
-        ],
-      },
-    ],
-    confirmGroups: [
-      {
-        title: "Return",
-        items: [
-          { label: "View transitions form -> polling(plan) -> plan_review", marks: [T, T, F] },
-          { label: "Polling backs off to 5s retry after a transient error, continues indefinitely (no deadline/cap)", marks: [F, F, T] },
-        ],
-      },
-    ],
-    types: ["N", "N", "B"],
-  },
-  {
-    id: "FE_RAG_018",
-    module: RAG_MODULE,
-    method: "FailedStateRetryVariants",
-    description: "GenerateForm: verify the failed-state screen's conditional retry actions based on server-provided flags",
-    conditionGroups: [
-      {
-        title: "Server flags on failure",
-        items: [
-          { label: "canEditInput = true", marks: [T, F, F, F] },
-          { label: "canRetryPlan = true", marks: [F, T, F, F] },
-          { label: "canRetryQuestions = true", marks: [F, F, T, F] },
-          { label: "All retry flags false", marks: [F, F, F, T] },
-        ],
-      },
-    ],
-    confirmGroups: [
-      {
-        title: "Return",
-        items: [
-          { label: "JD textarea + file upload + \"Gửi lại\" resubmit button shown", marks: [T, F, F, F] },
-          { label: "\"Retry Plan\" button shown", marks: [F, T, F, F] },
-          { label: "\"Retry Questions\" button shown", marks: [F, F, T, F] },
-          { label: "Only \"Bắt đầu lại\" (Start over) button shown", marks: [F, F, F, T] },
-        ],
-      },
-      {
-        title: "Exception",
-        items: [
-          { label: "If the retry call itself fails: \"Retry failed.\" or \"Cập nhật input thất bại.\" shown", marks: [T, T, T, F] },
-        ],
-      },
-    ],
-    types: ["N", "N", "N", "N"],
-  },
-  {
-    id: "FE_RAG_019",
-    module: RAG_MODULE,
-    method: "AskAiPerQuestionChat",
-    description: "GenerateForm: verify the Ask-AI chat panel per question and applying a suggested alternate question",
-    conditionGroups: [
-      {
-        title: "AI response",
-        items: [
-          { label: "Reply text only, no .suggestion field", marks: [T, F, F] },
-          { label: "Reply + .suggestion, HR clicks Apply", marks: [F, T, F] },
-          { label: "Reply + .suggestion, HR does not apply it", marks: [F, F, T] },
-        ],
-      },
-    ],
-    confirmGroups: [
-      {
-        title: "Return",
-        items: [
-          { label: "Chat reply is shown in the panel", marks: [T, T, T] },
-          { label: "Question content is replaced with the suggestion after clicking Apply", marks: [F, T, F] },
-          { label: "Question content remains unchanged", marks: [T, F, T] },
-        ],
-      },
-    ],
-    types: ["N", "N", "N"],
-  },
-  {
-    id: "FE_RAG_020",
-    module: RAG_MODULE,
-    method: "QuotaBannerInlineCopyMismatch",
-    description: "GenerateForm: verify the inline/non-blocking quota banner (vs. Studio's blocking modal) and its copy discrepancies",
-    conditionGroups: [
-      { title: "Precondition", items: [{ label: "Free plan, within cooldown", marks: [T, T] }] },
-    ],
-    confirmGroups: [
-      {
-        title: "Return",
-        items: [
-          { label: "Inline amber banner shown at top of form; rest of form (JD input, upload) remains usable", marks: [T, T] },
-          { label: "Title reads \"Monthly limit reached\" (inconsistent with Studio's \"Daily generation limit reached\" - BUG)", marks: [T, F] },
-          { label: "Body text does not interpolate {{time}} even though code calls replace() (token missing from source string - BUG)", marks: [F, T] },
-          { label: "Submit button disabled, rest of form stays editable", marks: [T, T] },
-        ],
-      },
-    ],
-    types: ["A", "A"],
-  },
-  {
-    id: "FE_RAG_021",
-    module: RAG_MODULE,
-    method: "SessionPersistenceCrossAccountGuard",
-    description: "GenerateForm: verify localStorage session persistence across reload and the cross-account wipe guard",
-    conditionGroups: [
-      {
-        title: "Scenario",
-        items: [
-          { label: "Reload page mid-generation, same HR account", marks: [T, F, F] },
-          { label: "Saved job returns 404/error when reconciling with server", marks: [F, T, F] },
-          { label: "Different HR account logs in on the same browser afterward", marks: [F, F, T] },
-        ],
-      },
-    ],
-    confirmGroups: [
-      {
-        title: "Return",
-        items: [
-          { label: "Session (jobId/view/plan/jdText) restores from localStorage, continues seamlessly", marks: [T, F, F] },
-          { label: "localStorage session is cleared, resets silently to a blank form", marks: [F, T, F] },
-          { label: "All hr_gen_* keys wiped when logged-in user id differs from stored owner; HR-B never sees HR-A's session", marks: [F, F, T] },
-        ],
-      },
-    ],
-    types: ["N", "N", "N"],
-  },
-  {
-    id: "FE_RAG_022",
-    module: RAG_MODULE,
-    method: "ConcurrentBackgroundJobs",
-    description: "GenerateForm: verify starting a new job while a previous one is still polling in the background",
-    conditionGroups: [
-      {
-        title: "Scenario",
-        items: [
-          { label: "HR clicks \"Create another question set\" while job 1 is still polling", marks: [T, F] },
-          { label: "Job 1 (backgrounded) completes while HR is actively working on job 2", marks: [F, T] },
-        ],
-      },
-    ],
-    confirmGroups: [
-      {
-        title: "Return",
-        items: [
-          { label: "Job 1 is pushed into the hr_gen_bg_jobs localStorage list, new blank form shown for job 2", marks: [T, F] },
-          { label: "A badge/notification elsewhere in the shell reflects job 1's completion", marks: [F, T] },
-        ],
-      },
-    ],
-    types: ["N", "N"],
-  },
-  {
-    id: "FE_RAG_023",
-    module: RAG_MODULE,
-    method: "SaveDraftDuplicateSubmit409",
-    description: "GenerateForm: verify double-clicking Save Draft (409 already-saved response) is treated as silent success, not an error",
-    conditionGroups: [
-      {
-        title: "Action",
-        items: [
-          { label: "Click Save Draft once", marks: [T, F] },
-          { label: "Double-click Save Draft rapidly (2nd request gets 409)", marks: [F, T] },
-        ],
-      },
-    ],
-    confirmGroups: [
-      {
-        title: "Return",
-        items: [
-          { label: "Draft saves normally, success toast shown", marks: [T, F] },
-          { label: "2nd request's 409 treated as \"already saved\" silently (returns null), no error toast shown", marks: [F, T] },
-        ],
-      },
-    ],
-    types: ["N", "B"],
-  },
-  {
-    id: "FE_RAG_024",
-    module: RAG_MODULE,
-    method: "PlanRegenerateLimitServerEnforced",
-    description: "GenerateForm: verify the server-enforced max-5 plan-regenerate limit per draft (no FE counter shown)",
-    conditionGroups: [
-      {
-        title: "Regenerate attempt count",
-        items: [
-          { label: "1st-4th regenerate on the same draft", marks: [T, F] },
-          { label: "6th regenerate attempt (limit of 5 exceeded)", marks: [F, T] },
-        ],
-      },
-    ],
-    confirmGroups: [
-      {
-        title: "Return",
-        items: [
-          { label: "Regenerates normally, no warning", marks: [T, F] },
-          { label: "Error toast: \"You've used all plan regenerations for this draft (max 5).\" (PLAN_REGENERATE_LIMIT)", marks: [F, T] },
-        ],
-      },
-      {
-        title: "Exception",
-        items: [
-          { label: "No counter/progress indicator shown anywhere in the FE UI before the limit is hit (GAP)", marks: [F, T] },
-        ],
-      },
-    ],
-    types: ["N", "A"],
+    types: ["N"],
   },
 ];
 
@@ -1784,63 +1506,6 @@ const ragAuthTestCases = [
 
 const ragTestCasesMore = [
   {
-    id: "FE_RAG_025",
-    module: RAG_MODULE,
-    method: "KbDocPickerOptionalAttach",
-    description: "GenerateForm: verify the optional Knowledge Base document picker (KbDocPicker)",
-    conditionGroups: [
-      {
-        title: "Precondition",
-        items: [
-          { label: "No KB document selected (optional field)", marks: [T, F, F] },
-          { label: "1 existing KB document selected", marks: [F, T, F] },
-          { label: "Previously-selected document is deleted/unavailable before submit", marks: [F, F, T] },
-        ],
-      },
-    ],
-    confirmGroups: [
-      {
-        title: "Return",
-        items: [
-          { label: "Submits without a knowledgeDocumentId", marks: [T, F, F] },
-          { label: "Submits with the selected knowledgeDocumentId", marks: [F, T, F] },
-          { label: "Submit fails or proceeds without the doc (needs confirmation), no crash", marks: [F, F, T] },
-        ],
-      },
-    ],
-    types: ["N", "N", "B"],
-  },
-  {
-    id: "FE_RAG_026",
-    module: RAG_MODULE,
-    method: "NotesForAiFreeTextField",
-    description: "GenerateForm: verify the optional free-text \"Notes for AI\" field",
-    conditionGroups: [
-      {
-        title: "Notes field",
-        items: [
-          { label: "Left empty (optional)", marks: [T, F, F] },
-          { label: "Filled with short guidance text", marks: [F, T, F] },
-          { label: "Filled with a very long note (no visible max-length found)", marks: [F, F, T] },
-        ],
-      },
-    ],
-    confirmGroups: [
-      {
-        title: "Return",
-        items: [
-          { label: "Submits normally, hrNote omitted/empty", marks: [T, F, F] },
-          { label: "Submits normally with hrNote included in payload", marks: [F, T, T] },
-        ],
-      },
-      {
-        title: "Exception",
-        items: [{ label: "No client-side max-length enforced on this field (unverified boundary)", marks: [F, F, T] }],
-      },
-    ],
-    types: ["N", "N", "B"],
-  },
-  {
     id: "FE_RAG_027",
     module: RAG_MODULE,
     method: "SampleJdModalCopyUse",
@@ -1864,31 +1529,6 @@ const ragTestCasesMore = [
       },
     ],
     types: ["N", "N"],
-  },
-  {
-    id: "FE_RAG_028",
-    module: RAG_MODULE,
-    method: "ReorderQuestions409Handling",
-    description: "GenerateForm: verify reorderJobQuestions handles a 409 (job state prevents reorder) as a non-error",
-    conditionGroups: [
-      {
-        title: "Precondition",
-        items: [
-          { label: "Job is in a reorderable state", marks: [T, F] },
-          { label: "Job is in a state that prevents reorder (e.g. mid-regeneration)", marks: [F, T] },
-        ],
-      },
-    ],
-    confirmGroups: [
-      {
-        title: "Return",
-        items: [
-          { label: "Reorder succeeds, new order persists", marks: [T, F] },
-          { label: "Reorder call returns 409, treated as a non-error (no error toast), order silently unchanged", marks: [F, T] },
-        ],
-      },
-    ],
-    types: ["N", "B"],
   },
   {
     id: "FE_RAG_029",
@@ -2073,31 +1713,6 @@ const ragTestCasesMore = [
     types: ["N", "N", "N"],
   },
   {
-    id: "FE_RAG_036",
-    module: RAG_MODULE,
-    method: "GenerateFormNumberOfQuestionsEditViaPlan",
-    description: "GenerateForm: verify question count/difficulty can only be changed later via Plan review, not at initial submit",
-    conditionGroups: [
-      {
-        title: "Action in Plan review step",
-        items: [
-          { label: "HR increases the question count in Plan review", marks: [T, F] },
-          { label: "HR changes difficulty in Plan review", marks: [F, T] },
-        ],
-      },
-    ],
-    confirmGroups: [
-      {
-        title: "Return",
-        items: [
-          { label: "updateJobPlan persists the new question count before approving", marks: [T, F] },
-          { label: "updateJobPlan persists the new difficulty before approving", marks: [F, T] },
-        ],
-      },
-    ],
-    types: ["N", "N"],
-  },
-  {
     id: "FE_RAG_037",
     module: RAG_MODULE,
     method: "StudioApprovePlanButtonStates",
@@ -2123,31 +1738,6 @@ const ragTestCasesMore = [
       },
     ],
     types: ["N", "N", "A"],
-  },
-  {
-    id: "FE_RAG_038",
-    module: RAG_MODULE,
-    method: "GenerateFormKbDocPickerRAGStatusGate",
-    description: "GenerateForm: verify the KB doc picker also gates selection on RAG ingestion status (Completed only)",
-    conditionGroups: [
-      {
-        title: "Document RAG status",
-        items: [
-          { label: "Still Processing/Queued", marks: [T, F] },
-          { label: "Completed", marks: [F, T] },
-        ],
-      },
-    ],
-    confirmGroups: [
-      {
-        title: "Return",
-        items: [
-          { label: "Document is not selectable in the picker", marks: [T, F] },
-          { label: "Document is selectable and can be attached to the job", marks: [F, T] },
-        ],
-      },
-    ],
-    types: ["N", "N"],
   },
   {
     id: "FE_RAG_039",
@@ -2438,17 +2028,19 @@ const uiTestCases = [
     types: ["N", "N"],
   },
   {
-    id: "FE_UI_005",
+    id: "FE_UI_007",
     module: UI_MODULE,
-    method: "GenerateFormResponsiveLayout",
-    description: "Verify GenerateForm's multi-step wizard (form/plan review/question review) adapts across viewport sizes",
+    method: "QuotaModalResponsiveDisplay",
+    description:
+      "Verify the Studio full-page blocking quota modal renders correctly across viewport sizes (GenerateForm's separate inline banner variant no longer applies - /hr/generate now just redirects to Studio, see FE_RAG_014 GenerateFormRetired)",
     conditionGroups: [
       {
         title: "Viewport",
         items: [
-          { label: "Desktop", marks: [T, F, F] },
-          { label: "Tablet", marks: [F, T, F] },
-          { label: "Mobile", marks: [F, F, T] },
+          { label: "Desktop (1920x1080)", marks: [T, F, F, F] },
+          { label: "Laptop (1366x768)", marks: [F, T, F, F] },
+          { label: "Tablet (768x1024)", marks: [F, F, T, F] },
+          { label: "Mobile (375x667)", marks: [F, F, F, T] },
         ],
       },
     ],
@@ -2456,60 +2048,12 @@ const uiTestCases = [
       {
         title: "Return",
         items: [
-          { label: "Step indicator, JD textarea, and file upload area render correctly", marks: [T, T, T] },
-          { label: "Question review cards stack to a single column on narrow viewports", marks: [F, F, T] },
-          { label: "Ask-AI chat panel remains reachable, not clipped off-screen", marks: [T, T, T] },
+          { label: "Modal is centered, fully covers the page, text readable without zooming", marks: [T, T, T, T] },
+          { label: "Modal buttons (\"View plans & billing\" / \"Create manually\") stay tappable, not cut off at the bottom", marks: [T, T, T, T] },
         ],
       },
     ],
-    types: ["N", "N", "B"],
-  },
-  {
-    id: "FE_UI_006",
-    module: UI_MODULE,
-    method: "GenerateFormDarkLightTheme",
-    description: "Verify GenerateForm renders correctly in both light and dark theme",
-    conditionGroups: [
-      { title: "Theme", items: [{ label: "Light theme", marks: [T, F] }, { label: "Dark theme", marks: [F, T] }] },
-    ],
-    confirmGroups: [
-      {
-        title: "Return",
-        items: [
-          { label: "Progress/step indicators and quota banner remain legible in both themes", marks: [T, T] },
-          { label: "No hardcoded light-only colors leak through in dark mode", marks: [F, T] },
-        ],
-      },
-    ],
-    types: ["N", "N"],
-  },
-  {
-    id: "FE_UI_007",
-    module: UI_MODULE,
-    method: "QuotaModalResponsiveDisplay",
-    description: "Verify the Studio blocking modal and GenerateForm inline banner render correctly across viewport sizes",
-    conditionGroups: [
-      {
-        title: "Scenario",
-        items: [
-          { label: "Studio full-screen modal on Desktop", marks: [T, F, F, F] },
-          { label: "Studio full-screen modal on Mobile", marks: [F, T, F, F] },
-          { label: "GenerateForm inline banner on Desktop", marks: [F, F, T, F] },
-          { label: "GenerateForm inline banner on Mobile", marks: [F, F, F, T] },
-        ],
-      },
-    ],
-    confirmGroups: [
-      {
-        title: "Return",
-        items: [
-          { label: "Modal is centered, fully covers the page, text readable without zooming", marks: [T, T, F, F] },
-          { label: "Modal buttons (\"View plans & billing\" / \"Create manually\") stay tappable, not cut off at the bottom", marks: [F, T, F, F] },
-          { label: "Inline banner sits above the form without pushing critical content off-screen", marks: [F, F, T, T] },
-        ],
-      },
-    ],
-    types: ["N", "B", "N", "B"],
+    types: ["N", "N", "N", "B"],
   },
   {
     id: "FE_UI_008",
@@ -2544,7 +2088,7 @@ const uiTestCases = [
     id: "FE_UI_009",
     module: UI_MODULE,
     method: "FileUploadDropzoneVisualStates",
-    description: "Verify the JD/document upload dropzone's visual states (Studio and GenerateForm)",
+    description: "Verify the Studio JD/document upload dropzone's visual states",
     conditionGroups: [
       {
         title: "State",
@@ -2810,7 +2354,7 @@ const uiTestCases = [
         items: [
           { label: "Manual Question page", marks: [T, F, F, F] },
           { label: "Studio page", marks: [F, T, F, F] },
-          { label: "GenerateForm page", marks: [F, F, T, F] },
+          { label: "Admin Manage Users page", marks: [F, F, T, F] },
           { label: "Settings/Billing page", marks: [F, F, F, T] },
         ],
       },
@@ -3170,21 +2714,23 @@ const authTestCases = [
     id: "FE_AUTH_008",
     module: ADMIN_MODULE,
     method: "ManageUsers",
-    description: "Check the admin Manage Users page - search/filter/pagination, activate/deactivate, and subscription actions",
+    description: "Check the admin Manage Users page - search/filter/pagination (now numbered with ellipsis), activate/deactivate, and subscription actions",
     conditionGroups: [
       {
         title: "Action",
         items: [
-          { label: "Admin types a search term matching a user's name/email", marks: [T, F, F, F, F, F, F, F, F, F] },
-          { label: "Admin selects a Role filter", marks: [F, T, F, F, F, F, F, F, F, F] },
-          { label: "Admin selects a Status filter", marks: [F, F, T, F, F, F, F, F, F, F] },
-          { label: "Admin applies multiple filters then clicks \"Clear filters\"", marks: [F, F, F, T, F, F, F, F, F, F] },
-          { label: "Admin clicks Next/Previous at the first/last page", marks: [F, F, F, F, T, F, F, F, F, F] },
-          { label: "Admin deactivates a user account and confirms", marks: [F, F, F, F, F, T, F, F, F, F] },
-          { label: "Admin reactivates a suspended account and confirms", marks: [F, F, F, F, F, F, T, F, F, F] },
-          { label: "Admin grants a Premium subscription (e.g. 3 months)", marks: [F, F, F, F, F, F, F, T, F, F] },
-          { label: "Admin revokes a user's Premium subscription and confirms", marks: [F, F, F, F, F, F, F, F, T, F] },
-          { label: "User list fails to load (API error)", marks: [F, F, F, F, F, F, F, F, F, T] },
+          { label: "Admin types a search term matching a user's name/email", marks: [T, F, F, F, F, F, F, F, F, F, F, F] },
+          { label: "Admin selects a Role filter", marks: [F, T, F, F, F, F, F, F, F, F, F, F] },
+          { label: "Admin selects a Status filter", marks: [F, F, T, F, F, F, F, F, F, F, F, F] },
+          { label: "Admin applies multiple filters then clicks \"Clear filters\"", marks: [F, F, F, T, F, F, F, F, F, F, F, F] },
+          { label: "Admin clicks Next/Previous at the first/last page", marks: [F, F, F, F, T, F, F, F, F, F, F, F] },
+          { label: "Admin clicks a specific numbered page (e.g. page 3 of 10)", marks: [F, F, F, F, F, T, F, F, F, F, F, F] },
+          { label: "Total pages exceeds 7 (ellipsis \"…\" separators appear per getPageRange)", marks: [F, F, F, F, F, F, T, F, F, F, F, F] },
+          { label: "Admin deactivates a user account and confirms", marks: [F, F, F, F, F, F, F, T, F, F, F, F] },
+          { label: "Admin reactivates a suspended account and confirms", marks: [F, F, F, F, F, F, F, F, T, F, F, F] },
+          { label: "Admin grants a Premium subscription (e.g. 3 months)", marks: [F, F, F, F, F, F, F, F, F, T, F, F] },
+          { label: "Admin revokes a user's Premium subscription and confirms", marks: [F, F, F, F, F, F, F, F, F, F, T, F] },
+          { label: "User list fails to load (API error)", marks: [F, F, F, F, F, F, F, F, F, F, F, T] },
         ],
       },
     ],
@@ -3192,26 +2738,29 @@ const authTestCases = [
       {
         title: "Return",
         items: [
-          { label: "List filters to matching rows (debounced 300ms)", marks: [T, F, F, F, F, F, F, F, F, F] },
-          { label: "List filters to the selected role, page resets to 1", marks: [F, T, F, F, F, F, F, F, F, F] },
-          { label: "List filters to the selected status, page resets to 1", marks: [F, F, T, F, F, F, F, F, F, F] },
-          { label: "All filters reset, full list restored, page resets to 1", marks: [F, F, F, T, F, F, F, F, F, F] },
-          { label: "Next/Prev buttons disabled at the first/last page boundary", marks: [F, F, F, F, T, F, F, F, F, F] },
-          { label: "Toast \"Account status updated.\", user shows as Suspended", marks: [F, F, F, F, F, T, F, F, F, F] },
-          { label: "Toast \"Account status updated.\", user shows as Active", marks: [F, F, F, F, F, F, T, F, F, F] },
-          { label: "Toast success, user's plan updated to Premium with the chosen period", marks: [F, F, F, F, F, F, F, T, F, F] },
-          { label: "Toast success, user downgraded to Free", marks: [F, F, F, F, F, F, F, F, T, F] },
-          { label: "Toast \"Failed to load users. Please try again.\" with a Retry action", marks: [F, F, F, F, F, F, F, F, F, T] },
+          { label: "List filters to matching rows (debounced 300ms)", marks: [T, F, F, F, F, F, F, F, F, F, F, F] },
+          { label: "List filters to the selected role, page resets to 1", marks: [F, T, F, F, F, F, F, F, F, F, F, F] },
+          { label: "List filters to the selected status, page resets to 1", marks: [F, F, T, F, F, F, F, F, F, F, F, F] },
+          { label: "All filters reset, full list restored, page resets to 1", marks: [F, F, F, T, F, F, F, F, F, F, F, F] },
+          { label: "Next/Prev buttons disabled at the first/last page boundary", marks: [F, F, F, F, T, F, F, F, F, F, F, F] },
+          { label: "Clicked page number navigates directly to that page, highlighted with a violet filled style (aria-current=\"page\")", marks: [F, F, F, F, F, T, F, F, F, F, F, F] },
+          { label: "\"…\" separators render per getPageRange (near-start: 1,2,3,4,5,…,total; near-end: 1,…,total-4..total; middle: 1,…,cur-1,cur,cur+1,…,total)", marks: [F, F, F, F, F, F, T, F, F, F, F, F] },
+          { label: "Toast \"Account status updated.\", user shows as Suspended", marks: [F, F, F, F, F, F, F, T, F, F, F, F] },
+          { label: "Toast \"Account status updated.\", user shows as Active", marks: [F, F, F, F, F, F, F, F, T, F, F, F] },
+          { label: "Toast success, user's plan updated to Premium with the chosen period", marks: [F, F, F, F, F, F, F, F, F, T, F, F] },
+          { label: "Toast success, user downgraded to Free", marks: [F, F, F, F, F, F, F, F, F, F, T, F] },
+          { label: "Toast \"Failed to load users. Please try again.\" with a Retry action", marks: [F, F, F, F, F, F, F, F, F, F, F, T] },
         ],
       },
       {
         title: "Exception",
         items: [
-          { label: "Premium grant/revoke actions are hidden when the target user's role is ADMIN (by design)", marks: [F, F, F, F, F, F, F, T, T, F] },
+          { label: "Total pages <= 7: all page numbers show, no ellipsis (getPageRange short-circuit)", marks: [F, F, F, F, F, F, F, F, F, F, F, F] },
+          { label: "Premium grant/revoke actions are hidden when the target user's role is ADMIN (by design)", marks: [F, F, F, F, F, F, F, F, F, T, T, F] },
         ],
       },
     ],
-    types: ["N", "N", "N", "N", "N", "N", "N", "N", "N", "A"],
+    types: ["N", "N", "N", "N", "N", "N", "B", "N", "N", "N", "N", "A"],
   },
 ];
 
@@ -3759,15 +3308,15 @@ testCases.push(
 );
 
 // ---------------------------------------------------------------------------
-// Automation coverage summary — added after real Playwright/pytest suites
-// were written against this plan (175 FE + 20 BE tests, all passing). Maps
+// Automation coverage summary — added after real Vitest/pytest suites
+// were written against this plan (340 FE + 20 BE tests, all passing). Maps
 // each of the 114 scenarios above to its real automated-test status, since
 // the per-scenario sheets themselves only record the original manual-review
 // Passed/Failed marks, not which ones now have a running, verified test.
 // ---------------------------------------------------------------------------
 
 const AUTOMATION_STATUS = {
-  // FE_MQ — fully automated (tests/e2e/manual-question.spec.ts)
+  // FE_MQ — fully automated (tests/unit/question-builder.test.tsx)
   FE_MQ_001: "DONE", FE_MQ_002: "DONE", FE_MQ_003: "DONE", FE_MQ_004: "DONE",
   FE_MQ_005: "DONE", FE_MQ_006: "DONE", FE_MQ_007: "DONE", FE_MQ_008: "DONE",
   FE_MQ_009: "DONE", FE_MQ_010: "DONE", FE_MQ_011: "DONE",
@@ -3853,7 +3402,7 @@ const KNOWN_DEFECTS = [
       "studio.saveJobDescription, a useCallback memoized on [..., jdContent, ...] — the reference captured at render " +
       "time still closes over the OLD (empty) jdContent, so its own guard `if (!jdContent.trim()) return;` fires and no " +
       "PUT request ever goes out. No toast, no error — the user must click \"Save & Analyze\" a second time manually.",
-    reproTest: "tests/e2e/studio-sample-jd.spec.ts — \"RAG027-1 (finding)\"",
+    reproTest: "tests/unit/studio-sample-jd.test.tsx — \"RAG027-1 (finding)\"",
   },
   {
     id: "DEF-002",
@@ -3868,7 +3417,7 @@ const KNOWN_DEFECTS = [
       "failure. interview.service.ts's reorderJobQuestions() also explicitly treats a 409 as \"not an error\" and " +
       "returns false without even a console.warn. The UI has already applied the new order optimistically before the " +
       "rejected request completes, so the user sees a reordered list that was never actually persisted.",
-    reproTest: "tests/e2e/generate-form-flow.spec.ts — \"RAG-REORDER-1 (finding)\"",
+    reproTest: "Code-review finding — GenerateForm flow was retired (/hr/generate now redirects to Studio); no automated regression test currently covers this reorder path.",
   },
 ];
 
@@ -3952,7 +3501,7 @@ function addSummarySheet(wb, allTestCases, automationStatus, defects) {
   totalsRow.height = 20;
   boxRow(totalsRow);
   totalsRow.font = { bold: true };
-  const notesRow = ws.addRow(["Real automated test suites:", "", "175 Playwright (FE, tests/e2e/) + 20 pytest (BE, RAG_IQGS/tests/test_e2e_api.py) — all passing, verified stable across repeated runs."]);
+  const notesRow = ws.addRow(["Real automated test suites:", "", "340 Vitest (FE, tests/unit/) + 20 pytest (BE, RAG_IQGS/tests/test_e2e_api.py) — all passing, verified stable across repeated runs."]);
   notesRow.height = heightForWrappedText(notesRow.getCell(3).value, 95);
   boxRow(notesRow);
   notesRow.font = { italic: true };

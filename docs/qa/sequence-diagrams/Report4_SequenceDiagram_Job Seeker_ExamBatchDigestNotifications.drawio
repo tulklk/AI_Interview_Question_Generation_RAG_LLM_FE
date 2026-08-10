@@ -1,10 +1,13 @@
 <mxfile host="Electron" agent="claude-code">
   <diagram name="Job Seeker_ExamBatchDigestNotifications" id="d6">
-    <mxGraphModel dx="1729" dy="1020" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="1680" pageHeight="1140" math="0" shadow="0">
+    <mxGraphModel dx="1820" dy="1074" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="1680" pageHeight="1140" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
-        <mxCell id="c266" parent="1" style="rounded=0;whiteSpace=wrap;html=1;verticalAlign=top;" value="" vertex="1">
+        <mxCell id="e_NagbELUaDvdLmszIv6-2" parent="1" style="shape=umlFrame;whiteSpace=wrap;html=1;pointerEvents=0;align=left;" value="&lt;b&gt;&amp;nbsp;alt&lt;/b&gt;" vertex="1">
+          <mxGeometry height="320" width="940" x="330" y="560" as="geometry" />
+        </mxCell>
+        <mxCell id="e_NagbELUaDvdLmszIv6-1" parent="1" style="shape=umlFrame;whiteSpace=wrap;html=1;pointerEvents=0;align=left;" value="&lt;b&gt;&amp;nbsp;loot&lt;/b&gt;" vertex="1">
           <mxGeometry height="620" width="1200" x="330" y="320" as="geometry" />
         </mxCell>
         <mxCell id="c244" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fontSize=13;fontStyle=1;" value="Scheduler" vertex="1">
@@ -40,12 +43,6 @@
         <mxCell id="c256" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="" vertex="1">
           <mxGeometry height="36" width="14" x="143" y="162" as="geometry" />
         </mxCell>
-        <mxCell id="c261" parent="1" style="rounded=0;whiteSpace=wrap;html=1;verticalAlign=top;" value="" vertex="1">
-          <mxGeometry height="320" width="940" x="330" y="560" as="geometry" />
-        </mxCell>
-        <mxCell id="c262" parent="1" style="shape=note;whiteSpace=wrap;html=1;fontStyle=1;fontSize=11;align=left;spacingLeft=4;size=8;" value="alt" vertex="1">
-          <mxGeometry height="24" width="70" x="330" y="560" as="geometry" />
-        </mxCell>
         <mxCell id="c263" parent="1" style="text;html=1;align=left;verticalAlign=middle;fontSize=11;fontStyle=2;" value="[send fails]" vertex="1">
           <mxGeometry height="24" width="854" x="420" y="560" as="geometry" />
         </mxCell>
@@ -57,9 +54,6 @@
         </mxCell>
         <mxCell id="c265" parent="1" style="text;html=1;align=left;verticalAlign=middle;fontSize=11;fontStyle=2;" value="[send succeeds]" vertex="1">
           <mxGeometry height="18" width="928" x="420" y="746" as="geometry" />
-        </mxCell>
-        <mxCell id="c267" parent="1" style="shape=note;whiteSpace=wrap;html=1;fontStyle=1;fontSize=11;align=left;spacingLeft=4;size=8;" value="loop" vertex="1">
-          <mxGeometry height="24" width="70" x="330" y="320" as="geometry" />
         </mxCell>
         <mxCell id="c268" parent="1" style="text;html=1;align=left;verticalAlign=middle;fontSize=11;fontStyle=2;" value="[for each job seeker]" vertex="1">
           <mxGeometry height="24" width="1114" x="420" y="320" as="geometry" />
