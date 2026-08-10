@@ -362,9 +362,57 @@ export async function submitAnswer(
   };
 }
 
+/** Normalizes the xpReward object returned by the complete endpoint. */
+function normalizeXpReward(raw: unknown): import("@/features/gamification/types/gamification.types").XpReward | null {
+  const d = asRecord(raw);
+  if (!d) return null;
+  const totalEarned = pickNumber(d, "totalEarned");
+  if (totalEarned <= 0) return null; // nothing was earned — no notification
+
+  const rawRewards = Array.isArray(d.rewards) ? d.rewards : [];
+  const rewards = rawRewards.map((r: unknown) => {
+    const rd = asRecord(r) ?? {};
+    return {
+      type: (rd.type as import("@/features/gamification/types/gamification.types").XpRewardType) ?? "QuestionSetCompleted",
+      xp: pickNumber(rd, "xp"),
+      label: typeof rd.label === "string" ? rd.label : typeof rd.description === "string" ? rd.description : "",
+    };
+  });
+
+  const progressRaw = asRecord(d.progress);
+  const progress = progressRaw
+    ? {
+        totalXp: pickNumber(progressRaw, "totalXp"),
+        level: pickNumber(progressRaw, "level") || 1,
+        currentLevelXp: pickNumber(progressRaw, "currentLevelXp"),
+        xpRequiredForNextLevel: pickNumber(progressRaw, "xpRequiredForNextLevel") || 100,
+        progressPercentage: pickNumber(progressRaw, "progressPercentage"),
+        currentStreak: pickNumber(progressRaw, "currentStreak"),
+        longestStreak: pickNumber(progressRaw, "longestStreak"),
+        dailyGoalXp: pickNumber(progressRaw, "dailyGoalXp") || 50,
+        todayXp: pickNumber(progressRaw, "todayXp"),
+        dailyGoalCompleted: typeof progressRaw.dailyGoalCompleted === "boolean" ? progressRaw.dailyGoalCompleted : false,
+        totalPracticeSessions: pickNumber(progressRaw, "totalPracticeSessions"),
+        nextLevel: typeof progressRaw.nextLevel === "number" ? progressRaw.nextLevel : undefined,
+      }
+    : undefined;
+
+  return {
+    totalEarned,
+    rewards,
+    previousLevel: pickNumber(d, "previousLevel"),
+    currentLevel: pickNumber(d, "currentLevel") || 1,
+    previousTotalXp: pickNumber(d, "previousTotalXp"),
+    currentTotalXp: pickNumber(d, "currentTotalXp"),
+    levelUp: typeof d.levelUp === "boolean" ? d.levelUp : false,
+    progress,
+  };
+}
+
 export interface CompleteSessionResult {
   overallScore: number | null;
   durationSeconds: number;
+  xpReward: import("@/features/gamification/types/gamification.types").XpReward | null;
 }
 
 /** Complete + AI evaluate sync — timeout dài hơn (batch chấm nhiều câu). */
@@ -378,6 +426,7 @@ export async function completePracticeSession(sessionId: string): Promise<Comple
   return {
     overallScore: pickNullableNumber(src, "overallScore"),
     durationSeconds: pickNumber(src, "durationSeconds"),
+    xpReward: normalizeXpReward(src.xpReward),
   };
 }
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Zap, Check, Loader2 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { useLanguage } from "@/shared/providers/language-context";
@@ -24,11 +24,31 @@ export function DailyGoalSettings({ className }: DailyGoalSettingsProps) {
   const { progress, loading, refresh } = useUserProgress();
   const isVi = lang === "vi";
 
+  // What the user has clicked (pending save)
   const [selected, setSelected] = useState<DailyGoalPreset | null>(null);
+  // What we optimistically show after a successful save,
+  // until the backend refresh confirms the new value.
+  const [savedOptimistic, setSavedOptimistic] = useState<DailyGoalPreset | null>(null);
   const [saving, setSaving] = useState(false);
 
-  // Derive current value from progress (or selected if user changed)
-  const currentGoal = (selected ?? progress?.dailyGoalXp ?? 50) as DailyGoalPreset;
+  // Once the server confirms the new value, drop the optimistic override.
+  useEffect(() => {
+    if (
+      savedOptimistic !== null &&
+      progress?.dailyGoalXp === savedOptimistic
+    ) {
+      setSavedOptimistic(null);
+    }
+  }, [progress?.dailyGoalXp, savedOptimistic]);
+
+  // Priority: user is actively selecting → optimistic (just saved) → server value
+  const serverGoal = progress?.dailyGoalXp ?? 50;
+  const currentGoal = (selected ?? savedOptimistic ?? serverGoal) as DailyGoalPreset;
+
+  // Button shows only when user has picked a value that differs from what's
+  // currently shown (whether that's optimistic or server-confirmed).
+  const displayedGoal = savedOptimistic ?? serverGoal;
+  const isDirty = selected !== null && selected !== displayedGoal;
 
   async function handleSave() {
     if (selected === null) return;
@@ -36,7 +56,32 @@ export function DailyGoalSettings({ className }: DailyGoalSettingsProps) {
     try {
       await updateDailyGoal(selected);
       addToast("success", g.goalSaved);
+
+      // 1. Show the new value immediately — do NOT rely on refresh timing.
+      setSavedOptimistic(selected);
       setSelected(null);
+
+      // 2. Patch the sessionStorage snapshot so the hook's XP-preservation
+      //    logic doesn't overwrite dailyGoalXp with the stale snapshot value.
+      try {
+        const raw = window.sessionStorage.getItem("gamification-progress-snapshot");
+        if (raw) {
+          const parsed = JSON.parse(raw) as {
+            progress: Record<string, unknown>;
+            ts: number;
+          };
+          parsed.progress.dailyGoalXp = selected;
+          window.sessionStorage.setItem(
+            "gamification-progress-snapshot",
+            JSON.stringify(parsed)
+          );
+        }
+      } catch {
+        // sessionStorage is not critical — ignore
+      }
+
+      // 3. Trigger a background refresh; when it resolves the useEffect above
+      //    will clear savedOptimistic automatically.
       refresh();
     } catch {
       addToast("error", isVi ? "Không thể cập nhật mục tiêu" : "Could not update goal");
@@ -44,8 +89,6 @@ export function DailyGoalSettings({ className }: DailyGoalSettingsProps) {
       setSaving(false);
     }
   }
-
-  const isDirty = selected !== null && selected !== progress?.dailyGoalXp;
 
   return (
     <div className={cn("space-y-3", className)}>
@@ -85,8 +128,10 @@ export function DailyGoalSettings({ className }: DailyGoalSettingsProps) {
                   />
                   <span
                     className={cn(
-                      "text-[13px] font-[700] tabular-nums",
-                      isActive ? "text-violet-700 dark:text-violet-300" : "text-gray-700 dark:text-gray-200"
+                      "text-[13px] font-bold tabular-nums",
+                      isActive
+                        ? "text-violet-700 dark:text-violet-300"
+                        : "text-gray-700 dark:text-gray-200"
                     )}
                   >
                     {preset.value} XP
@@ -100,10 +145,14 @@ export function DailyGoalSettings({ className }: DailyGoalSettingsProps) {
                 <span
                   className={cn(
                     "text-[10px] leading-tight",
-                    isActive ? "text-violet-600/80 dark:text-violet-400/80" : "text-gray-500 dark:text-gray-400"
+                    isActive
+                      ? "text-violet-600/80 dark:text-violet-400/80"
+                      : "text-gray-500 dark:text-gray-400"
                   )}
                 >
-                  {isVi ? preset.labelVi.replace(/ \(.*\)/, "") : preset.labelEn.replace(/ \(.*\)/, "")}
+                  {isVi
+                    ? preset.labelVi.replace(/ \(.*\)/, "")
+                    : preset.labelEn.replace(/ \(.*\)/, "")}
                 </span>
               </button>
             );
@@ -111,7 +160,7 @@ export function DailyGoalSettings({ className }: DailyGoalSettingsProps) {
         </div>
       )}
 
-      {/* Save button — only shown when selection differs from current */}
+      {/* Save button — only shown when selection differs from currently displayed goal */}
       {isDirty && (
         <button
           type="button"

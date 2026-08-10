@@ -48,6 +48,54 @@
   100% { opacity: 1; transform: scale(1); }
 }
 
+/* Feedback dialog — SVG check draw */
+@keyframes checkDraw {
+  from { stroke-dashoffset: 40; opacity: 0; }
+  to   { stroke-dashoffset: 0;  opacity: 1; }
+}
+
+/* Feedback dialog — success icon spring */
+@keyframes successBounce {
+  0%   { opacity: 0; transform: scale(0) rotate(-20deg); }
+  50%  { transform: scale(1.22) rotate(6deg); }
+  72%  { transform: scale(0.9)  rotate(-3deg); }
+  88%  { transform: scale(1.05) rotate(1deg); }
+  100% { opacity: 1; transform: scale(1) rotate(0deg); }
+}
+
+/* Star pop on select */
+@keyframes starPop {
+  0%   { transform: scale(1); }
+  35%  { transform: scale(1.35) rotate(-8deg); }
+  65%  { transform: scale(0.9);  }
+  100% { transform: scale(1.1); }
+}
+
+/* Ripple on action buttons */
+@keyframes rippleOut {
+  0%   { transform: scale(0.8); opacity: 0.6; }
+  100% { transform: scale(2.4); opacity: 0; }
+}
+
+/* Gentle slide-up stagger for dialog body sections */
+@keyframes sectionSlideUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Table row entrance */
+@keyframes rowSlideIn {
+  from { opacity: 0; transform: translateX(-8px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* Badge pulse on status change */
+@keyframes badgePulse {
+  0%   { transform: scale(1); }
+  45%  { transform: scale(1.15); }
+  100% { transform: scale(1); }
+}
+
 @keyframes slideInLeft {
   from { opacity: 0; transform: translateX(-28px); }
   to { opacity: 1; transform: translateX(0); }
@@ -313,6 +361,11 @@
   --animate-particle-drift: particleDrift 4s ease-out infinite;
   --animate-gradient-text: gradientText 4s ease-in-out infinite;
   --animate-shimmer-sweep: shimmerSweep 2.8s ease-in-out infinite;
+  --animate-success-bounce: successBounce 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  --animate-star-pop: starPop 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  --animate-section-slide: sectionSlideUp 0.38s ease-out both;
+  --animate-row-slide: rowSlideIn 0.3s ease-out both;
+  --animate-badge-pulse: badgePulse 0.35s ease-out both;
   --animate-bot-glow:      botGlow    3s   ease-in-out   infinite;
   --animate-bot-scan:      botScan    2.2s linear         infinite;
   --animate-bot-icon-glow: botIconGlow 2.5s ease-in-out  infinite;
@@ -997,6 +1050,27 @@ body.lang-switching {
   .energy-bar-fill { animation: none; background-position: 0 center; }
 }
 
+/* ── Practice progress bar — purple shimmer sweep ── */
+@keyframes practiceBarSweep {
+  0%   { background-position: 150% center; }
+  100% { background-position: -50% center; }
+}
+.practice-bar-fill {
+  background: linear-gradient(
+    90deg,
+    #7c3aed 0%,
+    #7c3aed 28%,
+    #c4b5fd 50%,
+    #7c3aed 72%,
+    #7c3aed 100%
+  );
+  background-size: 250% 100%;
+  animation: practiceBarSweep 2s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .practice-bar-fill { animation: none; background-position: 0 center; }
+}
+
 /* ── Shimmer light sweep across a button on hover ── */
 .shimmer-button {
   position: relative;
@@ -1187,6 +1261,75 @@ body.lang-switching {
 
 .dark .checklist-icon-glow {
   filter: drop-shadow(0 0 5px rgba(45, 212, 191, 0.6));
+}
+
+/* ── Feedback UI animations ─────────────────────────────────────────── */
+
+/* Success icon spring entrance */
+.feedback-success-icon {
+  animation: successBounce 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+/* Success icon glow ring */
+.feedback-success-ring {
+  animation: rippleOut 1.2s ease-out 0.3s infinite;
+}
+
+/* Star button selected flash */
+.star-selected {
+  animation: starPop 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+/* Dialog section stagger */
+.feedback-section {
+  animation: sectionSlideUp 0.38s ease-out both;
+}
+
+/* Admin table row slide-in */
+.feedback-row {
+  animation: rowSlideIn 0.3s ease-out both;
+}
+
+/* Status badge pulse (applied via JS on change) */
+.badge-pulse {
+  animation: badgePulse 0.35s ease-out;
+}
+
+/* Feedback dialog panel — spring enter/exit via framer or CSS class toggle */
+.feedback-dialog-panel {
+  transition: opacity 0.22s ease, transform 0.28s cubic-bezier(0.34, 1.4, 0.64, 1);
+}
+
+/* Feedback row action buttons — hover lift */
+@media (hover: hover) {
+  .feedback-action-btn:hover {
+    transform: translateY(-1px);
+    transition: transform 0.15s ease, background-color 0.15s ease, color 0.15s ease;
+  }
+  .feedback-action-btn:active {
+    transform: scale(0.92);
+  }
+}
+
+/* Testimonial card — API-loaded shimmer reveal */
+.testimonial-card-enter {
+  animation: sectionSlideUp 0.45s ease-out both;
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .feedback-success-icon,
+  .star-selected,
+  .feedback-section,
+  .feedback-row,
+  .badge-pulse,
+  .testimonial-card-enter {
+    animation: none !important;
+  }
+  .feedback-success-ring {
+    animation: none !important;
+    opacity: 0;
+  }
 }
 
 /* ── Navbar links: gradient underline glow on hover ── */

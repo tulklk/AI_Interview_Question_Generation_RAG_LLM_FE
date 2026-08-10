@@ -1,6 +1,5 @@
 "use client";
 
-import dynamic from "next/dynamic";
-
-// Lazy-load recharts client-side only to keep it out of the server bundle.
-export const Sparkline = dynamic(() => import("./sparkline.impl"), { ssr: false });
+// Pure-SVG sparkline — no recharts, no lazy loading, SSR-safe.
+// All instances animate in sync via framer-motion pathLength.
+export { default as Sparkline } from "./sparkline.impl";

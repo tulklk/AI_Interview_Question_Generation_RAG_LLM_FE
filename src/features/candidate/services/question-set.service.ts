@@ -264,3 +264,52 @@ export async function listBookmarkedQuestionSets(): Promise<QuestionSet[]> {
     .map(normalizeQuestionSet)
     .filter((s): s is QuestionSet => s !== null);
 }
+
+// ---------------------------------------------------------------------------
+// Question-set feedback — POST rating+comment after completing a set;
+// GET /me returns the candidate's own prior feedback (null = not submitted yet).
+// ---------------------------------------------------------------------------
+
+export interface QuestionSetFeedback {
+  rating: number;
+  comment?: string;
+}
+
+/**
+ * Returns the candidate's own feedback for this question set, or null if they
+ * have never submitted one.  Errors are silently swallowed (non-critical).
+ */
+export async function getMyQuestionSetFeedback(
+  questionSetId: string
+): Promise<QuestionSetFeedback | null> {
+  try {
+    const res = await apiClient.get(
+      `/api/candidate/question-sets/${questionSetId}/feedback/me`
+    );
+    // Unwrap the standard { data: { rating, comment } } envelope
+    const root = asRecord(res.data);
+    const raw = root ? (root.data ?? res.data) : res.data;
+    const d = asRecord(raw);
+    if (!d || typeof d.rating !== "number") return null;
+    return {
+      rating: d.rating,
+      comment: typeof d.comment === "string" ? d.comment : undefined,
+    };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Submit (or update) the candidate's feedback for a question set.
+ * Requires an existing COMPLETED practice session on this set.
+ */
+export async function submitQuestionSetFeedback(
+  questionSetId: string,
+  data: { rating: number; comment?: string }
+): Promise<void> {
+  await apiClient.post(
+    `/api/candidate/question-sets/${questionSetId}/feedback`,
+    data
+  );
+}
