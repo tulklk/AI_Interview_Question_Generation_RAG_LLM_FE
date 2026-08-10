@@ -96,11 +96,11 @@ export function StudioPage() {
     if (subscription === null) return;          // still loading
     if (initialQuotaCheckRef.current) return;  // already checked
     initialQuotaCheckRef.current = true;
-    if (quotaBlocked) {
+    if (quotaBlocked && !isRunInProgress) {
       quotaDialogTriggeredRef.current = true;
       setQuotaDialogOpen(true);
     }
-  }, [subscription, quotaBlocked]);
+  }, [subscription, quotaBlocked, isRunInProgress]);
 
   // Track the PREVIOUS value of isRunInProgress so we can detect the true→false TRANSITION
   // (generation just completed). Without this, the effect would re-fire whenever isStreaming
