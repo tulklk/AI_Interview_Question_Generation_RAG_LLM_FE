@@ -13,5 +13,8 @@ export { FinalCtaSection } from "./components/final-cta-section";
 export { SectionCarousel } from "./components/section-carousel";
 export { FloatingWidgets } from "./components/floating-widgets";
 export { CosmicField } from "./components/cosmic-field";
+export { SubmitFeedbackDialog } from "./components/submit-feedback-dialog";
 
 export type * from "./types/guest";
+
+export * from "./services/feedback.service";

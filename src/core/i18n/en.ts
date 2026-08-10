@@ -421,6 +421,7 @@ export const en = {
       "/admin/knowledge": "Knowledge Base",
       "/admin/ai-config": "AI Configuration",
       "/admin/plans": "Subscription Plans",
+      "/admin/feedbacks": "Feedback Management",
       "/admin/settings": "Settings",
     },
     systemStatus: {
@@ -465,6 +466,7 @@ export const en = {
       "/admin/knowledge": "Knowledge Base",
       "/admin/ai-config": "AI Configuration",
       "/admin/plans": "Subscription Plans",
+      "/admin/feedbacks": "Feedback Management",
       "/admin/settings": "Admin Settings",
     },
     breadcrumb: {
@@ -1375,6 +1377,24 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
     },
   },
 
+  submitFeedbackDialog: {
+    trigger: "Send Feedback",
+    title: "Share Your Feedback",
+    subtitle: "Rate and share your experience with the HireGen AI platform.",
+    ratingLabel: "Your rating",
+    ratingLabels: ["", "Very bad", "Bad", "Okay", "Good", "Excellent"],
+    contentLabel: "Feedback content",
+    contentPlaceholder: "Share your experience, suggestions for improvement...",
+    contentMinLength: "Please enter at least 10 characters.",
+    ratingRequired: "Please select a star rating.",
+    cancel: "Cancel",
+    submit: "Send Feedback",
+    submitting: "Sending...",
+    successTitle: "Thank you!",
+    successMessage: "Your feedback has been submitted and is awaiting review.",
+    errorMessage: "Failed to send feedback. Please try again.",
+  },
+
   chatWidget: {
     title: "HireGen AI",
     subtitle: "Online · Quick response",
@@ -1801,6 +1821,56 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
         deleteWarning: "This action cannot be undone.",
         deleting: "Deleting...",
         delete: "Delete",
+      },
+    },
+    feedbacks: {
+      heading: "Feedback Management",
+      subtext: "Review and approve user feedback displayed on the landing page.",
+      loadError: "Failed to load feedbacks. Please try again.",
+      approveSuccess: "Feedback approved.",
+      approveError: "Failed to approve feedback. Please try again.",
+      rejectSuccess: "Feedback rejected.",
+      rejectError: "Failed to reject feedback. Please try again.",
+      deleteSuccess: "Feedback deleted.",
+      deleteError: "Failed to delete feedback. Please try again.",
+      emptyState: "No feedbacks found.",
+      filters: {
+        searchPlaceholder: "Search by content or user name...",
+        allStatuses: "All statuses",
+        allRoles: "All roles",
+        statusPending: "Pending",
+        statusApproved: "Approved",
+        statusRejected: "Rejected",
+        roleHR: "HR",
+        roleCandidate: "Candidate",
+      },
+      table: {
+        no: "#",
+        author: "Author",
+        content: "Content",
+        rating: "Rating",
+        status: "Status",
+        createdAt: "Submitted",
+        actions: "Actions",
+      },
+      actions: {
+        approve: "Approve",
+        reject: "Reject",
+        delete: "Delete",
+        approving: "Approving...",
+        rejecting: "Rejecting...",
+        deleting: "Deleting...",
+      },
+      deleteConfirm: {
+        title: "Delete Feedback",
+        message: "Are you sure you want to delete this feedback? This action cannot be undone.",
+        cancel: "Cancel",
+        confirm: "Delete",
+      },
+      statusBadge: {
+        Pending: "Pending",
+        Approved: "Approved",
+        Rejected: "Rejected",
       },
     },
     analytics: {
@@ -2323,6 +2393,22 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
     },
   },
 
+  questionSetFeedbackDialog: {
+    title: "How was this question set?",
+    subtitle: "Your rating helps improve content quality for the community.",
+    ratingLabel: "Star rating",
+    ratingRequired: "Please select a star rating before submitting.",
+    starLabels: ["Very poor", "Poor", "Okay", "Good", "Excellent"],
+    commentLabel: "Comment (optional)",
+    commentPlaceholder: "Share your thoughts on this question set…",
+    commentHint: "Up to 2,000 characters",
+    submitBtn: "Submit rating",
+    skipBtn: "Skip",
+    submitting: "Submitting…",
+    submitted: "Thank you for your feedback!",
+    submitError: "Could not submit your rating. Please try again.",
+  },
+
   jobseekerSavedPage: {
     heading: "Saved Sets",
     subtext: "Question sets you've bookmarked to practice later.",
@@ -2356,6 +2442,19 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
       cancelLabel: "Cancel",
     },
     noMessage: "No message from the recruiter.",
+    viewDetailBtn: "View detail",
+    table: {
+      company: "Company",
+      status: "Status",
+      sentAt: "Sent",
+      actions: "Actions",
+    },
+    detailDialog: {
+      sentAt: "Sent",
+      respondedAt: "Responded",
+      message: "Message from recruiter",
+      closeBtn: "Close",
+    },
     acceptModal: {
       title: "Accept invitation",
       subtitle: "Optionally leave a note or phone number so the recruiter can reach you.",
@@ -2570,14 +2669,14 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
     },
     heatmap: {
       title: "Practice contributions",
-      subtitle: "Minutes practiced per day over the last 52 weeks",
+      subtitle: "XP earned per day over the last 52 weeks",
       currentStreak: "Current streak",
       longestStreak: "Longest streak",
       activeDays: "Active days",
       legendLess: "Less",
       legendMore: "More",
       empty: "No practice activity recorded yet.",
-      tooltipTemplate: "{{date}}: {{minutes}} min · {{count}} sessions",
+      tooltipTemplate: "{{date}}: {{minutes}} XP · {{count}} sessions",
       tooltipEmptyTemplate: "{{date}}: No practice",
     },
     achievements: "Achievements",
@@ -2825,6 +2924,8 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
     score: "Score",
     status: "Status",
     completedAt: "Completed",
+    actions: "Actions",
+    viewDetailBtn: "View detail",
     statusLabels: {
       inProgress: "In progress",
       completed: "Completed",
@@ -3836,6 +3937,19 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
     xpGuideTip2: "Complete all questions in a session to get the session bonus",
     xpGuideTip3: "Aim for a score ≥ 80% to trigger the performance bonus",
     xpGuideTip4: "Set a daily goal that keeps you consistent — small and daily beats big and rare",
+
+    // XP History section (profile sidebar)
+    xpHistoryEmpty: "No XP history yet — complete a practice session to earn XP.",
+
+    // Achievement card & section UI
+    achievementsSubtitle: "Track your milestones on your interview journey.",
+    achievementUnlockedStatus: "Unlocked",
+    achievementNoProgress: "Not yet unlocked",
+    achievementRemainingCount: "{{count}} left to unlock",
+    achievementNewlyUnlocked: "New",
+    achievementsProgressLabel: "{{unlocked}} achievements unlocked",
+    achievementsError: "Failed to load achievements.",
+    achievementsRetry: "Try again",
   },
 };
 

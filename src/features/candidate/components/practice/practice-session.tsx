@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence, useAnimationControls } from "framer-motion";
 import {
-  Timer, ChevronLeft, ChevronRight, X,
+  ChevronLeft, ChevronRight, X,
   Loader2, Sparkles, AlertCircle, RefreshCw, Lock, Save, Crown,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
@@ -223,7 +223,7 @@ function QuestionNav({ questions, currentIdx, answered, onSelect, onRequestFinis
           title={!allAnswered ? labels.answerAllHint : undefined}
           className="w-full h-10 rounded-xl text-[14px] font-bold text-white hr-cta-btn shimmer-button disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >
-          {finishing ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
+          {finishing && <Loader2 size={14} className="animate-spin" />}
           {labels.submitBtn}
         </button>
         {!allAnswered && (
@@ -460,16 +460,27 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [expiresAt, sessionId]);
 
-  // ── Elapsed timer (phiên không giới hạn thời gian) ──────────────────────────
+  // ── Elapsed timer (phiên không giới hạn thời gian + estimated countdown) ──────
   // Tương tự: interval liên tục, exitOpenRef guard display, pausedOffset bù nhảy.
+  // Với hasEstimatedCountdown: tự động nộp bài khi elapsed >= estimatedTotalSeconds.
   useEffect(() => {
     if (hasTimeLimit || !startedAt || !sessionId) return;
     const startMs = new Date(startedAt).getTime();
     function tick() {
       if (finishingRef.current) return;
-      if (exitOpenRef.current) return; // đóng băng display khi dialog mở
       const displayElapsedMs = Date.now() - startMs - pausedOffsetMsRef.current;
-      setElapsedSeconds(Math.max(0, Math.floor(displayElapsedMs / 1000)));
+      const elapsed = Math.max(0, Math.floor(displayElapsedMs / 1000));
+
+      // Auto-submit khi hết giờ ước tính — luôn chạy dù dialog mở (giống BE-enforced timer).
+      if (hasEstimatedCountdown && elapsed >= estimatedTotalSeconds && !timeUpRef.current) {
+        timeUpRef.current = true;
+        addToast("error", p.timeUpToast);
+        void handleFinish();
+        return; // đang chuyển trang, không cần update display
+      }
+
+      if (exitOpenRef.current) return; // đóng băng display khi dialog mở
+      setElapsedSeconds(elapsed);
     }
     tick();
     const intervalId = setInterval(tick, 1000);
@@ -588,7 +599,44 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
         }
       }
 
-      await completePracticeSession(sid);
+      const result = await completePracticeSession(sid);
+      // Persist XP reward across navigation so the result page can show it.
+      if (result.xpReward && typeof window !== "undefined") {
+        window.sessionStorage.setItem(
+          `practice-xp-reward-${sid}`,
+          JSON.stringify(result.xpReward)
+        );
+        // Snapshot the updated UserProgress returned by /complete so the
+        // GamificationProgressCard shows the correct XP immediately even if
+        // GET /api/candidate/gamification/progress hasn't been updated yet.
+        const snapProgress = result.xpReward.progress;
+        if (snapProgress) {
+          window.sessionStorage.setItem(
+            "gamification-progress-snapshot",
+            JSON.stringify({ progress: snapProgress, ts: Date.now() })
+          );
+        }
+        // Snapshot individual reward breakdown for the XP History section.
+        // GET /api/candidate/gamification/xp-history may lag — snapshot gives
+        // the user immediate feedback that their XP was recorded.
+        const { rewards } = result.xpReward;
+        if (rewards && rewards.length > 0) {
+          const now = new Date().toISOString();
+          window.sessionStorage.setItem(
+            "gamification-xp-history-snapshot",
+            JSON.stringify({
+              entries: rewards.map((r, i) => ({
+                id: `snap-${sid}-${i}`,
+                type: r.type,
+                xp: r.xp,
+                label: r.label,
+                earnedAt: now,
+              })),
+              ts: Date.now(),
+            })
+          );
+        }
+      }
       router.push(`/jobseeker/practice/${sid}/result`);
     } catch {
       // BE now enforces the question set's own time limit server-side and can
@@ -804,7 +852,7 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
         <div className="flex items-center gap-2 sm:gap-3 flex-1 mx-2 sm:mx-6 md:mx-10">
           <div className="flex-1 h-1.5 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
             <motion.div
-              className="h-full bg-primary rounded-full"
+              className="h-full practice-bar-fill rounded-full"
               initial={{ width: 0 }}
               animate={{ width: `${progress}%` }}
               transition={{ duration: 0.4 }}
@@ -815,20 +863,8 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
           </span>
         </div>
 
-        {/* Right: timer + exit */}
+        {/* Right: exit */}
         <div className="flex items-center gap-2 sm:gap-4 shrink-0">
-          <motion.div
-            animate={isTimerWarning ? { scale: [1, 1.08, 1] } : { scale: 1 }}
-            transition={isTimerWarning ? { duration: 1, repeat: Infinity, ease: "easeInOut" } : undefined}
-            className={cn(
-              "flex items-center gap-1.5 text-[12px] sm:text-[13px] font-semibold tabular-nums",
-              isTimerWarning ? "text-red-500" : portalSubtextAlt
-            )}
-            title={isCountdown ? p.sidebarTimeLabel : p.timeUsedLabel}
-          >
-            <Timer size={13} />
-            {formatTime(timerSeconds)}
-          </motion.div>
           <button
             type="button"
             onClick={() => openExitDialog()}
@@ -1065,10 +1101,7 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
                         {p.finishing}
                       </>
                     ) : (
-                      <>
-                        <Sparkles size={15} />
-                        {p.finishBtn}
-                      </>
+                      p.finishBtn
                     )}
                   </button>
                 </motion.div>

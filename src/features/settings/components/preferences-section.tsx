@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Sun, Save, Sparkles } from "lucide-react";
+import { Sun, Save, Sparkles, MessageSquare } from "lucide-react";
 import { Toggle } from "@/shared/components/ui/toggle";
 import { ThemePreferencePicker } from "@/shared/components/common/theme-preference-picker";
 import { SelectField } from "@/shared/components/ui/select-field";
@@ -9,6 +9,7 @@ import { cn } from "@/lib/cn";
 import { useLanguage } from "@/shared/providers/language-context";
 import { useHrSubscription } from "@/features/hr/context/hr-subscription-context";
 import { portalDivider, portalHeading, portalSubtext } from "@/shared/utils/portal-ui";
+import { SubmitFeedbackDialog } from "@/features/guest/components/submit-feedback-dialog";
 
 const aiModels = [
   { value: "gpt4", label: "GPT-4 (Most Accurate)" },
@@ -47,6 +48,7 @@ export function PreferencesSection() {
   const [tone, setTone] = useState("professional");
   const [showDifficulty, setShowDifficulty] = useState(true);
   const [includeSuggestedAnswers, setIncludeSuggestedAnswers] = useState(true);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
 
   const modelOptions = advancedOk
     ? aiModels
@@ -142,10 +144,26 @@ export function PreferencesSection() {
         </div>
       </div>
 
-      <button className="shimmer-button mt-6 w-full flex items-center justify-center gap-2 hr-cta-btn text-white text-sm font-semibold px-5 py-2.5 rounded-lg">
-        <Save size={14} />
-        {pref.save}
-      </button>
+      <div className="flex items-center gap-3 mt-6">
+        <button className="shimmer-button flex-1 flex items-center justify-center gap-2 hr-cta-btn text-white text-sm font-semibold px-5 py-2.5 rounded-lg">
+          <Save size={14} />
+          {pref.save}
+        </button>
+        <button
+          type="button"
+          onClick={() => setFeedbackOpen(true)}
+          className={cn(
+            "flex items-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-lg border transition-colors",
+            "border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300",
+            "hover:border-primary hover:text-primary dark:hover:text-primary hover:bg-primary/5",
+          )}
+        >
+          <MessageSquare size={14} />
+          {t.submitFeedbackDialog.trigger}
+        </button>
+      </div>
+
+      <SubmitFeedbackDialog open={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
     </div>
   );
 }

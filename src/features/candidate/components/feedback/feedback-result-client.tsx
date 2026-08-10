@@ -7,6 +7,7 @@ import { cn } from "@/lib/cn";
 import { JobseekerAppShell } from "@/features/candidate/components/layout/jobseeker-app-shell";
 import { AiLoadingSpinner } from "@/shared/components/common/ai-loading-spinner";
 import { FeedbackPage } from "./feedback-page";
+import { QuestionSetFeedbackDialog } from "./question-set-feedback-dialog";
 import {
   getPracticeSession,
   readAnswerEvaluations,
@@ -18,11 +19,15 @@ import {
   type SessionAiInsight,
   type PracticeFeedbackAccessLevel,
 } from "@/features/candidate/services/practice-session.service";
-import { getQuestionSetById } from "@/features/candidate/services/question-set.service";
+import {
+  getQuestionSetById,
+  getMyQuestionSetFeedback,
+} from "@/features/candidate/services/question-set.service";
 import type { QuestionSet } from "@/features/candidate/types/jobseeker";
 import { useLanguage } from "@/shared/providers/language-context";
 import { portalSubtextAlt } from "@/shared/utils/portal-ui";
 import { registerScoringSession, markScoringDone, removeScoringEntry } from "@/features/candidate/components/ui/scoring-progress-badge";
+import type { XpReward } from "@/features/gamification/types/gamification.types";
 
 // AI scoring can still be in progress right after "complete" — the score comes
 // back as null until BE's worker finishes. Poll quietly in the background while
@@ -42,6 +47,7 @@ export function FeedbackResultClient() {
   const [accessLevel, setAccessLevel] = useState<PracticeFeedbackAccessLevel>("Full");
   const [set, setSet] = useState<QuestionSet | null>(null);
   const [previousScore, setPreviousScore] = useState<number | null | undefined>(undefined);
+  const [xpReward, setXpReward] = useState<XpReward | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [forbidden, setForbidden] = useState(false);
@@ -51,6 +57,39 @@ export function FeedbackResultClient() {
   const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Track whether scoring was ever in progress (for localStorage update on done)
   const wasScoring = useRef(false);
+
+  // ── Question-set feedback dialog ──────────────────────────────────────────
+  const [showFeedbackDialog, setShowFeedbackDialog] = useState(false);
+  // Only check once per result-page load — ref so we don't re-trigger on set state changes
+  const feedbackCheckedRef = useRef(false);
+
+  // Read XP reward stored by practice-session before navigation — one-shot, then clear.
+  useEffect(() => {
+    if (!sessionId || typeof window === "undefined") return;
+    const key = `practice-xp-reward-${sessionId}`;
+    const raw = window.sessionStorage.getItem(key);
+    if (raw) {
+      try { setXpReward(JSON.parse(raw) as XpReward); } catch { /* malformed — ignore */ }
+      window.sessionStorage.removeItem(key);
+    }
+  }, [sessionId]);
+
+  // Once we know the questionSetId (from session data), check whether the
+  // candidate has already submitted a rating.  If not, open the dialog after
+  // a short delay so they can first absorb their result.
+  useEffect(() => {
+    const qsId = session?.questionSetId;
+    if (!qsId || feedbackCheckedRef.current) return;
+    feedbackCheckedRef.current = true;
+
+    getMyQuestionSetFeedback(qsId).then((existing) => {
+      if (existing === null) {
+        // No rating yet — prompt after 1.5 s so the result page settles first
+        const t = setTimeout(() => setShowFeedbackDialog(true), 1500);
+        return () => clearTimeout(t);
+      }
+    });
+  }, [session?.questionSetId]);
 
   useEffect(() => {
     if (!sessionId) return;
@@ -205,17 +244,31 @@ export function FeedbackResultClient() {
       )}
 
       {!loading && !error && !forbidden && session && (
-        <FeedbackPage
-          session={session}
-          feedback={feedback}
-          aiInsight={aiInsight}
-          accessLevel={accessLevel}
-          scoring={scoring}
-          setTitle={set?.title}
-          companyName={set?.company}
-          companyLogoUrl={set?.companyLogoUrl}
-          previousScore={previousScore}
-        />
+        <>
+          <FeedbackPage
+            session={session}
+            feedback={feedback}
+            aiInsight={aiInsight}
+            accessLevel={accessLevel}
+            scoring={scoring}
+            setTitle={set?.title}
+            companyName={set?.company}
+            companyLogoUrl={set?.companyLogoUrl}
+            previousScore={previousScore}
+            xpReward={xpReward}
+          />
+
+          {/* Rating dialog — shows once after completion if no prior feedback */}
+          {session.questionSetId && (
+            <QuestionSetFeedbackDialog
+              open={showFeedbackDialog}
+              questionSetId={session.questionSetId}
+              questionSetTitle={set?.title}
+              onClose={() => setShowFeedbackDialog(false)}
+              onSubmitted={() => setShowFeedbackDialog(false)}
+            />
+          )}
+        </>
       )}
     </JobseekerAppShell>
   );

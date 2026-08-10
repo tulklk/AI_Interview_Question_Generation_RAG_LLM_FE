@@ -201,6 +201,8 @@ interface FeedbackPageProps {
   companyLogoUrl?: string | null;
   /** Score of the most recent other completed attempt of this same set — undefined while still loading, null when there isn't one. */
   previousScore?: number | null;
+  /** XP reward earned this session — null when not yet available or nothing was earned. */
+  xpReward?: XpReward | null;
 }
 
 export function FeedbackPage({
@@ -213,6 +215,7 @@ export function FeedbackPage({
   companyName,
   companyLogoUrl,
   previousScore,
+  xpReward = null,
 }: FeedbackPageProps) {
   const { t, lang } = useLanguage();
   const p = t.jobseekerFeedbackPage;
@@ -267,35 +270,7 @@ export function FeedbackPage({
   const companyInitials = companyName ? getCompanyInitials(companyName) : "";
   const companyColor = companyName ? getCompanyColor(companyName) : "bg-gray-400";
 
-  // ── XP reward (dummy until backend provides real data) ────────────────────
-  // TODO: replace with real XpReward from session API response
-  const dummyXpReward: XpReward = {
-    totalEarned: 34,
-    rewards: [
-      { type: "QuestionSetCompleted", xp: 20, label: "Session completed" },
-      { type: "ScoreBonus",           xp: 6,  label: "Performance bonus" },
-      { type: "ImprovementBonus",     xp: 8,  label: "Improvement bonus" },
-    ],
-    previousLevel: 6,
-    currentLevel: 6,
-    previousTotalXp: 1_136,
-    currentTotalXp: 1_170,
-    levelUp: false,
-    progress: {
-      totalXp: 1_170,
-      level: 6,
-      currentLevelXp: 1_170,
-      xpRequiredForNextLevel: 1_350,
-      progressPercentage: 87,
-      currentStreak: 4,
-      longestStreak: 11,
-      dailyGoalXp: 50,
-      todayXp: 35,
-      dailyGoalCompleted: false,
-      totalPracticeSessions: 15,
-      nextLevel: 7,
-    },
-  };
+  // ── XP reward — real data passed from the complete endpoint response ────────
 
   return (
     <div className="w-full">
@@ -478,9 +453,10 @@ export function FeedbackPage({
         </div>
       </motion.div>
 
-      {/* ── XP earned this session ─────────────────────────────────────────── */}
-      {!isFreeTeaser && (
-        <SessionXpSummary xpReward={dummyXpReward} className="mb-6" />
+      {/* ── XP earned this session — shown for all users; backend controls whether
+           XP is awarded (normalizeXpReward returns null when totalEarned ≤ 0). */}
+      {xpReward && (
+        <SessionXpSummary xpReward={xpReward} className="mb-6" />
       )}
 
       {/* ── Skill Breakdown (radar) — only when at least one question has dimension scores ── */}
@@ -767,12 +743,12 @@ export function FeedbackPage({
         />
       )}
 
-      {/* ── XP gain notification (floating, bottom-right) ──────────── */}
-      {!isFreeTeaser && (
+      {/* ── XP gain notification (floating, bottom-right) — same gate as above ── */}
+      {xpReward && (
         <XpGainNotification
-          xpReward={dummyXpReward}
+          xpReward={xpReward}
           delayMs={1600}
-          dailyGoalCompleted={dummyXpReward.progress?.dailyGoalCompleted ?? false}
+          dailyGoalCompleted={xpReward.progress?.dailyGoalCompleted ?? false}
         />
       )}
     </div>

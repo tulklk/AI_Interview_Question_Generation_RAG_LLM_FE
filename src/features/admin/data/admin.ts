@@ -12,6 +12,7 @@ import {
   Bot,
   CreditCard,
   Store,
+  MessageSquare,
 } from "lucide-react";
 import type {
   AdminNavItem,
@@ -38,6 +39,7 @@ export const adminNavItems: AdminNavItem[] = [
   { label: "Audit Log", href: "/admin/audit", icon: ScrollText },
   { label: "AI Configuration", href: "/admin/ai-config", icon: Bot },
   { label: "Subscription Plans", href: "/admin/plans", icon: CreditCard },
+  { label: "Feedback Management", href: "/admin/feedbacks", icon: MessageSquare },
   { label: "Settings", href: "/admin/settings", icon: Settings },
 ];
 
