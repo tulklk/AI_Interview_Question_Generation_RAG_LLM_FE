@@ -4,6 +4,9 @@ import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { AxiosError } from "axios";
 import { login, resendVerification } from "@/features/auth/services/auth.service";
+
+/** localStorage key for saved login credentials */
+const CREDS_KEY = "hiregen_saved_login";
 import {
   isDisabledAccountLoginError,
   isUnverifiedLoginError,
@@ -67,6 +70,29 @@ export function useLogin() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
+
+  // ── Restore saved credentials on mount ────────────────────────────────────
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(CREDS_KEY);
+      if (!raw) return;
+      const { e, p } = JSON.parse(raw) as { e?: string; p?: string };
+      if (e) setEmail(e);
+      if (p) setPassword(atob(p));
+      if (e || p) setRememberMe(true);
+    } catch {
+      localStorage.removeItem(CREDS_KEY);
+    }
+  }, []);
+
+  /** Toggle "remember me". Unchecking immediately removes saved credentials. */
+  function toggleRememberMe() {
+    setRememberMe((prev) => {
+      if (prev) localStorage.removeItem(CREDS_KEY);
+      return !prev;
+    });
+  }
+
   const [loading, setLoading] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<LoginFieldErrors>({});
 
@@ -152,6 +178,14 @@ export function useLogin() {
     try {
       const data = await login({ email: email.trim(), password });
       const role = extractRole(data);
+
+      // Save or clear credentials based on rememberMe choice
+      if (rememberMe) {
+        localStorage.setItem(CREDS_KEY, JSON.stringify({ e: email.trim(), p: btoa(password) }));
+      } else {
+        localStorage.removeItem(CREDS_KEY);
+      }
+
       await handleSuccess(data, role, {
         fullName: email.trim().split("@")[0],
         email: email.trim(),
@@ -229,7 +263,7 @@ export function useLogin() {
     setEmail,
     setPassword,
     setShowPassword,
-    setRememberMe,
+    toggleRememberMe,
     setFieldErrors,
     setUnverifiedOpen,
     handleSignIn,

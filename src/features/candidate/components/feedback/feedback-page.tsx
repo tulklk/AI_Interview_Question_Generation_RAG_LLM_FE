@@ -299,29 +299,33 @@ export function FeedbackPage({
           <PendingScoreRing scoring={scoring} trackStroke={chart.isDark ? "#374151" : "#F3F4F6"} />
         )}
 
-        <div className="flex-1">
-          <div className="flex items-center gap-3 mb-2">
-            <h1 className={cn("text-[24px] font-[800]", portalHeadingAlt)}>{p.overallScore}</h1>
-            {hasScore && (
-              <span className={cn("text-[12px] font-[700] px-3 py-1 rounded-full", scoreLevelBadgeClass)}>
-                {scoreLevelLabel}
-              </span>
-            )}
-            {hasScore && previousScore !== undefined && (
-              previousScore === null ? (
-                <span className={cn("text-[11px]", portalSubtextAlt)}>{p.comparisonUnavailable}</span>
-              ) : (() => {
-                const delta = Math.round(score - previousScore);
-                const Icon = delta > 0 ? TrendingUp : delta < 0 ? TrendingDown : Minus;
-                const color = delta > 0 ? "text-emerald-600 dark:text-emerald-400" : delta < 0 ? "text-red-500 dark:text-red-400" : "text-gray-400 dark:text-gray-500";
-                return (
-                  <span className={cn("flex items-center gap-1 text-[12px] font-[700]", color)}>
-                    <Icon size={12} />
-                    {delta > 0 ? "+" : ""}{delta}% {p.comparisonVsLast}
-                  </span>
-                );
-              })()
-            )}
+        <div className="flex-1 self-stretch min-w-0">
+          {/* Title row — h1 on its own line so it never wraps on mobile */}
+          <div className="mb-2">
+            <h1 className={cn("text-[24px] font-[800] mb-1.5", portalHeadingAlt)}>{p.overallScore}</h1>
+            {/* Badge + comparison on a sub-row */}
+            <div className="flex items-center gap-3 flex-wrap">
+              {hasScore && (
+                <span className={cn("text-[12px] font-bold px-3 py-1 rounded-full", scoreLevelBadgeClass)}>
+                  {scoreLevelLabel}
+                </span>
+              )}
+              {hasScore && previousScore !== undefined && (
+                previousScore === null ? (
+                  <span className={cn("text-[11px]", portalSubtextAlt)}>{p.comparisonUnavailable}</span>
+                ) : (() => {
+                  const delta = Math.round(score - previousScore);
+                  const Icon = delta > 0 ? TrendingUp : delta < 0 ? TrendingDown : Minus;
+                  const color = delta > 0 ? "text-emerald-600 dark:text-emerald-400" : delta < 0 ? "text-red-500 dark:text-red-400" : "text-gray-400 dark:text-gray-500";
+                  return (
+                    <span className={cn("flex items-center gap-1 text-[12px] font-bold", color)}>
+                      <Icon size={12} />
+                      {delta > 0 ? "+" : ""}{delta}% {p.comparisonVsLast}
+                    </span>
+                  );
+                })()
+              )}
+            </div>
           </div>
 
           {(setTitle || companyName) && (

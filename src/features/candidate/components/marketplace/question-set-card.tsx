@@ -14,6 +14,7 @@ import { DifficultyPill } from "@/features/candidate/components/ui/pill";
 import { portalHeadingAlt, portalSubtextAlt } from "@/shared/utils/portal-ui";
 import { toggleBookmark } from "@/features/candidate/services/question-set.service";
 import { useToast } from "@/shared/providers/toast-context";
+import { getSkillIcon } from "@/features/candidate/utils/skill-icons";
 
 const MAX_VISIBLE = 3;
 
@@ -29,12 +30,27 @@ interface SkillsPopoverProps {
 
 function SkillsPopover({ skills, anchorRef, onClose }: SkillsPopoverProps) {
   const [mounted, setMounted] = useState(false);
-  const [rect, setRect] = useState<DOMRect | null>(null);
+  const [pos, setPos] = useState<{ top: number; left: number; above: boolean } | null>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
 
+  // Position + reposition on scroll/resize — also flips upward if not enough room below
   useEffect(() => {
+    function updatePos() {
+      if (!anchorRef.current) return;
+      const r = anchorRef.current.getBoundingClientRect();
+      const POPUP_H = 300; // matches max-h-75 (75 × 4px = 300px)
+      const above = window.innerHeight - r.bottom < POPUP_H + 8 && r.top > POPUP_H;
+      const left = Math.min(r.left, window.innerWidth - 256 - 8); // keep inside viewport
+      setPos({ top: above ? r.top - 6 : r.bottom + 6, left, above });
+    }
     setMounted(true);
-    if (anchorRef.current) setRect(anchorRef.current.getBoundingClientRect());
+    updatePos();
+    window.addEventListener("scroll", updatePos, { passive: true, capture: true });
+    window.addEventListener("resize", updatePos);
+    return () => {
+      window.removeEventListener("scroll", updatePos, { capture: true });
+      window.removeEventListener("resize", updatePos);
+    };
   }, [anchorRef]);
 
   useEffect(() => {
@@ -56,22 +72,31 @@ function SkillsPopover({ skills, anchorRef, onClose }: SkillsPopoverProps) {
     };
   }, [anchorRef, onClose]);
 
-  if (!mounted || !rect) return null;
+  if (!mounted || !pos) return null;
 
   return createPortal(
     <div
       ref={popoverRef}
-      style={{ top: rect.bottom + 6, left: rect.left }}
-      className="fixed z-9999 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl p-3 flex flex-wrap gap-1.5 max-w-55 animate-fade-up"
+      style={{
+        top: pos.top,
+        left: pos.left,
+        transform: pos.above ? "translateY(-100%)" : undefined,
+      }}
+      className="fixed z-9999 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl p-3 flex flex-col gap-1.5 w-64 max-h-75 overflow-y-auto animate-fade-up"
     >
-      {skills.map((skill) => (
-        <span
-          key={skill}
-          className="min-w-0 truncate bg-violet-50 dark:bg-violet-950/30 text-violet-700 dark:text-violet-300 border border-violet-100 dark:border-violet-800/30 text-[11px] font-medium px-2.5 py-1 rounded-md"
-        >
-          {skill}
-        </span>
-      ))}
+      {skills.map((skill) => {
+        const si = getSkillIcon(skill);
+        const SIcon = si?.icon;
+        return (
+          <span
+            key={skill}
+            className="shrink-0 min-w-0 inline-flex items-center gap-1.5 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700 text-[11px] font-medium px-2.5 py-1.5 rounded-md"
+          >
+            {SIcon && <SIcon size={11} className={cn("shrink-0", si.className)} />}
+            <span className="truncate">{skill}</span>
+          </span>
+        );
+      })}
     </div>,
     document.body
   );
@@ -224,20 +249,25 @@ export function QuestionSetCard({
         {/* Skill tags */}
         {set.skills.length > 0 && (
           <div className="flex items-center gap-1.5 flex-wrap">
-            {visibleSkills.map((skill) => (
-              <span
-                key={skill}
-                className="min-w-0 truncate max-w-28 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700 text-[10px] font-medium px-2 py-0.5 rounded-md"
-              >
-                {skill}
-              </span>
-            ))}
+            {visibleSkills.map((skill) => {
+              const si = getSkillIcon(skill);
+              const SIcon = si?.icon;
+              return (
+                <span
+                  key={skill}
+                  className="min-w-0 max-w-28 inline-flex items-center gap-1 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700 text-[10px] font-medium px-2 py-0.5 rounded-md"
+                >
+                  {SIcon && <SIcon size={10} className={cn("shrink-0", si.className)} />}
+                  <span className="truncate">{skill}</span>
+                </span>
+              );
+            })}
             {extraCount > 0 && (
               <button
                 ref={skillsBtnRef}
                 type="button"
                 onClick={() => setShowSkills((v) => !v)}
-                className="shrink-0 text-[10px] font-semibold text-primary bg-primary/8 border border-primary/20 px-2 py-0.5 rounded-md hover:bg-primary/15 transition-colors cursor-pointer"
+                className="shrink-0 text-[10px] font-semibold text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 px-2 py-0.5 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors cursor-pointer"
               >
                 +{extraCount}
               </button>

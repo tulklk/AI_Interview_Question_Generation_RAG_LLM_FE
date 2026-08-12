@@ -47,7 +47,7 @@ export function LoginForm() {
     setEmail,
     setPassword,
     setShowPassword,
-    setRememberMe,
+    toggleRememberMe,
     setFieldErrors,
     setUnverifiedOpen,
     handleSignIn,
@@ -186,7 +186,7 @@ export function LoginForm() {
         <motion.div variants={formRow} className="flex items-center gap-2.5">
           <button
             type="button"
-            onClick={() => setRememberMe((v) => !v)}
+            onClick={toggleRememberMe}
             className={`auth-checkbox w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${
               rememberMe ? "border-primary bg-primary" : "border-gray-300 bg-white dark:border-gray-600 dark:bg-gray-900"
             }`}

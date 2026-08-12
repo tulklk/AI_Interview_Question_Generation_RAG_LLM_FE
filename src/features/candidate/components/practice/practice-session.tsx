@@ -984,12 +984,12 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
             ) : (
               <>
                 {isCodeAnswer ? (
-                  <div className="overflow-hidden rounded-lg border border-violet-800/70 dark:border-violet-900 bg-gray-950">
-                    <div className="flex items-center justify-between gap-2 border-b border-violet-900/60 bg-violet-950 px-3 py-1.5">
-                      <span className="rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide bg-violet-800/80 text-violet-100">
+                  <div className="overflow-hidden rounded-lg border border-violet-200 dark:border-violet-900 bg-violet-50 dark:bg-gray-950">
+                    <div className="flex items-center justify-between gap-2 border-b border-violet-200 dark:border-violet-900/60 bg-violet-100 dark:bg-violet-950 px-3 py-1.5">
+                      <span className="rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide bg-violet-600 dark:bg-violet-800/80 text-white dark:text-violet-100">
                         {p.codeAnswerLabel}
                       </span>
-                      <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+                      <span className="text-[10px] font-semibold uppercase tracking-wider text-violet-500 dark:text-gray-400">
                         code
                       </span>
                     </div>
@@ -1003,8 +1003,8 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
                       spellCheck={false}
                       className={cn(
                         "w-full min-h-40 sm:min-h-52 bg-transparent px-3 py-3 outline-none resize-y",
-                        "font-mono text-[12px] leading-relaxed text-violet-100",
-                        "placeholder:text-gray-500"
+                        "font-mono text-[12px] leading-relaxed text-gray-900 dark:text-violet-100",
+                        "placeholder:text-gray-400 dark:placeholder:text-gray-500"
                       )}
                     />
                   </div>
@@ -1066,8 +1066,8 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
             ))}
           </div>
 
-          {/* Navigation buttons */}
-          <div className="flex items-center justify-between">
+          {/* Navigation buttons — pushed below the stats panel on mobile */}
+          <div className="flex items-center justify-between order-last lg:order-0">
             <button
               onClick={() => navigate(-1)}
               disabled={currentIdx === 0}
@@ -1114,7 +1114,7 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
               </div>
             ) : currentIdx === totalQuestions - 1 ? (
               <div className="flex flex-col items-end gap-1.5">
-                <p className="flex items-center gap-1.5 text-[12px] font-medium text-amber-600 dark:text-amber-400">
+                <p className="hidden lg:flex items-center gap-1.5 text-[12px] font-medium text-amber-600 dark:text-amber-400">
                   <AlertCircle size={12} />
                   {p.answerAllToFinish.replace("{{count}}", String(unansweredCount))}
                 </p>
@@ -1136,6 +1136,91 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
               </button>
             )}
           </div>
+
+          {/* ── Mobile stats panel (hidden on lg+) ── */}
+          <div className="lg:hidden hr-glass-card p-3 flex flex-col gap-2.5">
+            {/* One compact row: stats left · question buttons right */}
+            <div className="flex items-center gap-3">
+              {/* Answered + timer */}
+              <div className="shrink-0 flex items-center gap-3">
+                <div>
+                  <p className={cn("text-[10px] font-medium leading-none mb-1", portalSubtextAlt)}>
+                    {p.sidebarAnsweredLabel}
+                  </p>
+                  <p className={cn("text-[18px] font-bold tabular-nums leading-none", portalHeadingAlt)}>
+                    {answerableQuestions.length - unansweredCount}
+                    <span className={cn("text-[12px] font-normal", portalSubtextAlt)}>
+                      /{answerableQuestions.length}
+                    </span>
+                  </p>
+                </div>
+                <div className="h-7 w-px bg-gray-200 dark:bg-gray-700 shrink-0" />
+                <div>
+                  <p className={cn("text-[10px] font-medium leading-none mb-1", portalSubtextAlt)}>
+                    {isCountdown ? p.sidebarTimeLabel : p.timeUsedLabel}
+                  </p>
+                  <p className={cn(
+                    "text-[18px] font-bold tabular-nums leading-none",
+                    isTimerWarning ? "text-red-500" : isCountdown ? "text-primary" : portalHeadingAlt
+                  )}>
+                    {formatTime(timerSeconds)}
+                  </p>
+                </div>
+              </div>
+
+              {/* Question buttons — fill right side, wrap if many */}
+              <div className="flex-1 flex flex-wrap gap-1.5 justify-end">
+                {set.questions.map((q, idx) => {
+                  const isActive = idx === currentIdx;
+                  const isDone = answeredFlags[q.id] ?? false;
+                  const isLocked = q.isLocked === true;
+                  return (
+                    <button
+                      key={q.id}
+                      type="button"
+                      onClick={() => goToQuestion(idx)}
+                      title={
+                        isLocked ? "Premium"
+                          : isActive ? p.questionCurrent
+                          : isDone ? p.questionAnswered
+                          : p.questionUnanswered
+                      }
+                      className={cn(
+                        "w-8 h-8 rounded-full text-[12px] font-bold transition-all flex items-center justify-center shrink-0",
+                        isLocked
+                          ? "bg-amber-100 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 border border-amber-300/60 dark:border-amber-700"
+                          : isActive
+                          ? "bg-primary text-white shadow-md shadow-primary/30 scale-110"
+                          : isDone
+                          ? "bg-emerald-500 dark:bg-emerald-600 text-white"
+                          : "border-2 border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400"
+                      )}
+                    >
+                      {isLocked ? <Lock size={11} /> : idx + 1}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Submit button */}
+            <button
+              type="button"
+              onClick={requestFinish}
+              disabled={finishing || !allAnswered}
+              title={!allAnswered ? p.answerAllToFinish.replace("{{count}}", String(unansweredCount)) : undefined}
+              className="w-full h-10 rounded-xl text-[14px] font-bold text-white hr-cta-btn shimmer-button disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              {finishing && <Loader2 size={14} className="animate-spin" />}
+              {p.sidebarSubmitBtn}
+            </button>
+            {!allAnswered && (
+              <p className={cn("text-[11px] text-center -mt-1", portalSubtextAlt)}>
+                {p.answerAllToFinish.replace("{{count}}", String(unansweredCount))}
+              </p>
+            )}
+          </div>
+
         </div>{/* end cards column */}
 
       <QuestionNav
