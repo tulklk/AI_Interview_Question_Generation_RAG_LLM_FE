@@ -9,6 +9,7 @@ export const vi: Translations = {
     switchToLight: "Chuyển sang chế độ sáng",
     switchToDark: "Chuyển sang chế độ tối",
     goToDashboard: "Vào Dashboard",
+    comingSoon: "Sắp ra mắt",
   },
 
   nav: {

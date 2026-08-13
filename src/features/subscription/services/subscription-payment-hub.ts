@@ -53,19 +53,29 @@ export function normalizePaymentPaidEvent(raw: unknown): PaymentPaidEvent | null
 /**
  * Tạo connection SignalR tới hub thanh toán subscription.
  * JWT qua accessTokenFactory → BE OnMessageReceived map query access_token.
+ *
+ * Returns `null` instead of throwing when the connection can't even be
+ * constructed (e.g. an unresolvable/malformed hub URL from a misconfigured
+ * API base) — every caller here has its own polling fallback, so a bare
+ * construction failure should degrade to that instead of crashing whichever
+ * component created the connection.
  */
-export function createSubscriptionPaymentHubConnection(): signalR.HubConnection {
-  const base = getApiBaseUrl();
-  return new signalR.HubConnectionBuilder()
-    .withUrl(`${base}${SUBSCRIPTION_PAYMENT_HUB_PATH}`, {
-      accessTokenFactory: () => getAccessToken() ?? "",
-      // Long polling fallback nếu WebSocket bị proxy chặn
-      transport:
-        signalR.HttpTransportType.WebSockets |
-        signalR.HttpTransportType.ServerSentEvents |
-        signalR.HttpTransportType.LongPolling,
-    })
-    .withAutomaticReconnect([0, 2000, 5000, 10000, 30000])
-    .configureLogging(signalR.LogLevel.None)
-    .build();
+export function createSubscriptionPaymentHubConnection(): signalR.HubConnection | null {
+  try {
+    const base = getApiBaseUrl();
+    return new signalR.HubConnectionBuilder()
+      .withUrl(`${base}${SUBSCRIPTION_PAYMENT_HUB_PATH}`, {
+        accessTokenFactory: () => getAccessToken() ?? "",
+        // Long polling fallback nếu WebSocket bị proxy chặn
+        transport:
+          signalR.HttpTransportType.WebSockets |
+          signalR.HttpTransportType.ServerSentEvents |
+          signalR.HttpTransportType.LongPolling,
+      })
+      .withAutomaticReconnect([0, 2000, 5000, 10000, 30000])
+      .configureLogging(signalR.LogLevel.None)
+      .build();
+  } catch {
+    return null;
+  }
 }

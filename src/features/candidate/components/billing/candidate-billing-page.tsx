@@ -406,8 +406,10 @@ export function CandidateBillingPage() {
               <>
                 <button
                   type="button"
+                  disabled
+                  title={t.common.comingSoon}
                   className={cn(
-                    "flex items-center justify-center gap-2 px-4 h-9 text-sm font-semibold rounded-xl border border-gray-200 dark:border-gray-700 transition-colors hover:bg-gray-50 dark:hover:bg-gray-800 whitespace-nowrap",
+                    "flex items-center justify-center gap-2 px-4 h-9 text-sm font-semibold rounded-xl border border-gray-200 dark:border-gray-700 transition-colors opacity-50 cursor-not-allowed whitespace-nowrap",
                     portalHeading
                   )}
                 >
@@ -665,13 +667,28 @@ export function CandidateBillingPage() {
                             {b.viewBtn}
                           </a>
                         )}
-                        <button
-                          type="button"
-                          className={cn("flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors", portalSubtext)}
-                        >
-                          <Download size={11} />
-                          {b.downloadBtn}
-                        </button>
+                        {item.receiptUrl ? (
+                          <a
+                            href={item.receiptUrl}
+                            download
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className={cn("flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors", portalSubtext)}
+                          >
+                            <Download size={11} />
+                            {b.downloadBtn}
+                          </a>
+                        ) : (
+                          <button
+                            type="button"
+                            disabled
+                            title={t.common.comingSoon}
+                            className={cn("flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-md opacity-50 cursor-not-allowed", portalSubtext)}
+                          >
+                            <Download size={11} />
+                            {b.downloadBtn}
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -712,8 +729,10 @@ export function CandidateBillingPage() {
         <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-gray-200 dark:border-gray-800">
           <button
             type="button"
+            disabled
+            title={t.common.comingSoon}
             className={cn(
-              "flex items-center gap-1.5 h-8 px-3 text-xs font-semibold rounded-lg border border-gray-200 dark:border-gray-700 transition-colors hover:bg-gray-50 dark:hover:bg-gray-800",
+              "flex items-center gap-1.5 h-8 px-3 text-xs font-semibold rounded-lg border border-gray-200 dark:border-gray-700 transition-colors opacity-50 cursor-not-allowed",
               portalHeading
             )}
           >
@@ -721,8 +740,10 @@ export function CandidateBillingPage() {
           </button>
           <button
             type="button"
+            disabled
+            title={t.common.comingSoon}
             className={cn(
-              "flex items-center gap-1.5 h-8 px-3 text-xs font-semibold rounded-lg border border-gray-200 dark:border-gray-700 transition-colors hover:bg-gray-50 dark:hover:bg-gray-800",
+              "flex items-center gap-1.5 h-8 px-3 text-xs font-semibold rounded-lg border border-gray-200 dark:border-gray-700 transition-colors opacity-50 cursor-not-allowed",
               portalHeading
             )}
           >

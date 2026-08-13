@@ -668,13 +668,28 @@ export function HrBillingSubscription() {
                                 {ph.viewBtn}
                               </a>
                             )}
-                            <button
-                              type="button"
-                              className={cn("flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors", portalSubtext)}
-                            >
-                              <Download size={11} />
-                              {ph.downloadBtn}
-                            </button>
+                            {item.receiptUrl ? (
+                              <a
+                                href={item.receiptUrl}
+                                download
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className={cn("flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors", portalSubtext)}
+                              >
+                                <Download size={11} />
+                                {ph.downloadBtn}
+                              </a>
+                            ) : (
+                              <button
+                                type="button"
+                                disabled
+                                title={t.common.comingSoon}
+                                className={cn("flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-md opacity-50 cursor-not-allowed", portalSubtext)}
+                              >
+                                <Download size={11} />
+                                {ph.downloadBtn}
+                              </button>
+                            )}
                           </div>
                         </td>
                       </tr>

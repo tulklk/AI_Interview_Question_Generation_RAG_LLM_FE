@@ -7,6 +7,7 @@ export const en = {
     switchToLight: "Switch to light mode",
     switchToDark: "Switch to dark mode",
     goToDashboard: "Go to Dashboard",
+    comingSoon: "Coming soon",
   },
 
   nav: {

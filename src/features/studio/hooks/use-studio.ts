@@ -102,6 +102,16 @@ export function useStudio() {
    *  already completed — the counter tells us which response is "latest". */
   const settingsVersionRef = useRef(0);
 
+  /** P2c fix: mirrors `settings`, but updateSettingField also writes to it
+   *  synchronously (not just via the sync effect below, which only runs after
+   *  a commit). This lets a second updateSettingField call fired before React
+   *  re-renders build on the first call's optimistic change instead of
+   *  reading a stale `settings` closure and reverting it. */
+  const settingsRef = useRef<StudioSettings | null>(null);
+  useEffect(() => {
+    settingsRef.current = settings;
+  }, [settings]);
+
   // Bộ câu hỏi chỉ còn "đã lưu" chừng nào danh sách chưa đổi lại (sinh mới, sửa, xoá, đổi project).
   useEffect(() => {
     setIsDraftSaved(false);
@@ -322,9 +332,11 @@ export function useStudio() {
     }
   }, [addToast, jdContent, lang, project, refreshPlanAndSettings, tx.jdSaved, tx.jdSaveFailed]);
 
-  const uploadJobDescription = useCallback(async (file: File) => {
-    if (!project) return;
-    // P1b fix: wrap in try/catch so upload errors produce an error toast.
+  const uploadJobDescription = useCallback(async (file: File): Promise<boolean> => {
+    if (!project) return false;
+    // P1b fix: wrap in try/catch so upload errors produce an error toast instead
+    // of throwing. Returns a boolean (rather than rethrowing) so callers like
+    // sources-panel.tsx's handleJdFile can still tell success from failure.
     try {
       const result = await studioApi.uploadJobDescriptionFile(project.id, file);
       setJdContent(result.content);
@@ -332,8 +344,10 @@ export function useStudio() {
       setJdSummary(result.summary);
       addToast("success", tx.jdUploaded.replace("{{name}}", result.originalFileName ?? file.name));
       await refreshPlanAndSettings();
+      return true;
     } catch (error) {
       addToast("error", extractErrorMessage(error, lang) || tx.jdUploadFailed);
+      return false;
     }
   }, [addToast, lang, project, refreshPlanAndSettings, tx.jdUploadFailed, tx.jdUploaded]);
 
@@ -658,45 +672,55 @@ export function useStudio() {
   }, [generateQuestions]);
 
   const updateSettingField = useCallback(async (patch: Partial<StudioSettings>) => {
-    if (!project || !settings) return;
-    const rawMinutes = Number(patch.interviewLengthMinutes ?? settings.interviewLengthMinutes ?? 60);
-    const rawQuestions = Number(patch.numberOfQuestions ?? settings.numberOfQuestions ?? 15);
+    // P2c fix: base the computation on settingsRef.current (synchronously kept
+    // up to date by this same function, see below) rather than the `settings`
+    // closure. Two rapid calls before React re-renders now compose on top of
+    // each other instead of the second one reverting the first's change —
+    // settingsRef is updated the instant we compute `next`, so a call fired
+    // milliseconds later already sees the previous call's optimistic result.
+    const base = settingsRef.current ?? settings;
+    if (!project || !base) return;
+    const rawMinutes = Number(patch.interviewLengthMinutes ?? base.interviewLengthMinutes ?? 60);
+    const rawQuestions = Number(patch.numberOfQuestions ?? base.numberOfQuestions ?? 15);
     const next = {
       interviewLengthMinutes: Number.isFinite(rawMinutes) ? Math.min(180, Math.max(15, rawMinutes)) : 60,
       numberOfQuestions: Number.isFinite(rawQuestions) ? Math.min(50, Math.max(5, rawQuestions)) : 15,
-      difficulty: patch.difficulty ?? settings.difficulty ?? "Medium",
-      questionTone: patch.questionTone ?? settings.questionTone ?? "Professional",
-      includeSampleAnswers: patch.includeSampleAnswers ?? settings.includeSampleAnswers ?? true,
-      includeScoringRubric: patch.includeScoringRubric ?? settings.includeScoringRubric ?? true,
-      outputFormat: patch.outputFormat ?? settings.outputFormat ?? "StructuredInterviewKit",
-      outputLanguage: patch.outputLanguage ?? settings.outputLanguage ?? "Vietnamese",
-      questionTypes: patch.questionTypes ?? settings.questionTypes ?? ["technical", "system_design", "problem_solving", "behavioral"],
-      contentMode: patch.contentMode ?? settings.contentMode ?? "Mixed",
-      enabledCodeTemplates: patch.enabledCodeTemplates ?? settings.enabledCodeTemplates ?? DEFAULT_ENABLED_CODE_TEMPLATES,
+      difficulty: patch.difficulty ?? base.difficulty ?? "Medium",
+      questionTone: patch.questionTone ?? base.questionTone ?? "Professional",
+      includeSampleAnswers: patch.includeSampleAnswers ?? base.includeSampleAnswers ?? true,
+      includeScoringRubric: patch.includeScoringRubric ?? base.includeScoringRubric ?? true,
+      outputFormat: patch.outputFormat ?? base.outputFormat ?? "StructuredInterviewKit",
+      outputLanguage: patch.outputLanguage ?? base.outputLanguage ?? "Vietnamese",
+      questionTypes: patch.questionTypes ?? base.questionTypes ?? ["technical", "system_design", "problem_solving", "behavioral"],
+      contentMode: patch.contentMode ?? base.contentMode ?? "Mixed",
+      enabledCodeTemplates: patch.enabledCodeTemplates ?? base.enabledCodeTemplates ?? DEFAULT_ENABLED_CODE_TEMPLATES,
     };
     // Optimistic update — reflect changes immediately in UI without waiting for API.
     // P2c fix: capture a version number so a slow first request's error rollback
     // does not overwrite the optimistic state of a second faster request that already
     // completed successfully.
-    const prevSettings = settings;
+    const prevSettings = base;
+    const optimistic = { ...base, ...next };
+    settingsRef.current = optimistic;
     const myVersion = ++settingsVersionRef.current;
-    setSettings((prev) => prev ? { ...prev, ...next } : prev);
+    setSettings(optimistic);
     try {
       const updated = await studioApi.updateSettings(project.id, next);
       // Only apply if no newer request has started since ours.
       if (settingsVersionRef.current !== myVersion) return;
       // Re-apply patch on top so explicit user changes survive if API returns null for a field
-      setSettings((prev) => {
-        const normalized = normalizeSettings(updated);
-        return normalized ? { ...normalized, ...patch } : prev;
-      });
+      const normalized = normalizeSettings(updated);
+      const finalSettings = normalized ? { ...normalized, ...patch } : optimistic;
+      settingsRef.current = finalSettings;
+      setSettings(finalSettings);
     } catch (error) {
       // Only rollback if no newer request has superseded ours.
       if (settingsVersionRef.current !== myVersion) return;
+      settingsRef.current = prevSettings;
       setSettings(prevSettings);
       addToast("error", extractErrorMessage(error, lang));
     }
-  }, [addToast, normalizeSettings, project, settings]);
+  }, [addToast, lang, normalizeSettings, project, settings]);
 
   const applySettingsToPlan = useCallback(async () => {
     if (!project || !currentPlan || !settings) return;
@@ -799,6 +823,14 @@ export function useStudio() {
       setPlans([]);
       setCurrentPlan(null);
       setSettings(null);
+      // Bug fix: reset synchronously (not just via the settings-changed sync
+      // effect, which only runs after this render commits) so an
+      // updateSettingField call already in flight for the OLD project can't
+      // resolve after this switch and write stale cross-project settings —
+      // settingsVersionRef bump invalidates its version check, settingsRef
+      // reset means any subsequent call builds from a clean base.
+      settingsRef.current = null;
+      settingsVersionRef.current += 1;
       setQuestions([]);
       setMessages([]);
       setGenerationRun(null);
