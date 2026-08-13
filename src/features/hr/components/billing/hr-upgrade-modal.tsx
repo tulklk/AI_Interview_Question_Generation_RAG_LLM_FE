@@ -22,11 +22,13 @@ interface Props {
   onClose: () => void;
 }
 
-function formatMoney(amount: number, currency: string) {
+// P2d fix: accept locale so the caller can pass the user's current language
+// instead of hardcoding "vi-VN" regardless of the UI language setting.
+function formatMoney(amount: number, currency: string, locale: string) {
   try {
-    return new Intl.NumberFormat("vi-VN", { style: "currency", currency: currency || "VND", maximumFractionDigits: 0 }).format(amount);
+    return new Intl.NumberFormat(locale, { style: "currency", currency: currency || "VND", maximumFractionDigits: 0 }).format(amount);
   } catch {
-    return `${amount.toLocaleString("vi-VN")} ${currency}`;
+    return `${amount.toLocaleString(locale)} ${currency}`;
   }
 }
 
@@ -87,9 +89,11 @@ export function HrUpgradeModal({ onClose }: Props) {
           finishingRef.current = true;
           window.clearInterval(id);
           setPolling(false);
-          await refresh();
+          // P1a fix: show success + close BEFORE refresh() so a network error on
+          // refresh doesn't swallow the success toast and leave the modal open.
           addToast("success", sub.upgradeSuccess);
           onClose();
+          try { await refresh(); } catch { /* silent — subscription updates via 30 s polling */ }
         } else if (["EXPIRED", "FAILED", "CANCELLED", "CANCELED"].includes(s)) {
           stop = true;
           window.clearInterval(id);
@@ -223,7 +227,7 @@ export function HrUpgradeModal({ onClose }: Props) {
                       <Loader2 size={20} className="animate-spin text-violet-500" />
                     ) : (
                       <span className={cn("text-2xl font-bold", portalHeading)}>
-                        {plan ? formatMoney(plan.priceMonthly, plan.currency) : sub.priceCustom}
+                        {plan ? formatMoney(plan.priceMonthly, plan.currency, locale) : sub.priceCustom}
                       </span>
                     )}
                     {plan && <span className={cn("text-xs", portalSubtext)}>{t.settingsPage.billing.perMonth}</span>}

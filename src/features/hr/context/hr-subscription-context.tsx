@@ -19,6 +19,7 @@ import {
   type MySubscription,
   type SubscriptionLimits,
 } from "@/features/subscription/services/subscription.service";
+import { useSubscriptionRealtime } from "@/features/subscription/hooks/use-subscription-realtime";
 
 interface HrSubscriptionContextValue {
   planId: HrPlanId;
@@ -68,6 +69,12 @@ export function HrSubscriptionProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     void refresh();
   }, [refresh]);
+
+  // ── Real-time subscription updates ────────────────────────────────────────
+  // Listens on the SignalR hub for PaymentPaid / admin plan-change events and
+  // immediately refreshes so planId / limits update without a page reload.
+  // A 5-minute background poll runs as fallback when SignalR is unavailable.
+  useSubscriptionRealtime({ onSubscriptionChanged: refresh });
 
   const cancelPremium = useCallback(async () => {
     const sub = await cancelSubscriptionSandbox();

@@ -196,6 +196,10 @@ interface FeedbackPageProps {
   /** FreeTeaser = blur locked questions + upsell; Full = Premium. */
   accessLevel?: PracticeFeedbackAccessLevel;
   scoring: boolean;
+  /** P4: true when the score poll timed out — shows a retry button instead of "score not available". */
+  scoringTimedOut?: boolean;
+  /** P4: callback to re-start score polling without reloading the page. */
+  onRetryScore?: () => void;
   setTitle?: string;
   companyName?: string;
   companyLogoUrl?: string | null;
@@ -211,6 +215,8 @@ export function FeedbackPage({
   aiInsight,
   accessLevel = "Full",
   scoring,
+  scoringTimedOut = false,
+  onRetryScore,
   setTitle,
   companyName,
   companyLogoUrl,
@@ -424,9 +430,23 @@ export function FeedbackPage({
                 ) : (
                   <Sparkles size={15} className="text-[#7C3AED] dark:text-[#a78bff] shrink-0 mt-0.5" />
                 )}
-                <p className={cn("text-[13px] leading-[20px]", portalHeadingAlt)}>
-                  {scoring ? p.scoringInProgress : p.scoreNotAvailable}
-                </p>
+                <div className="flex flex-col gap-2">
+                  <p className={cn("text-[13px] leading-5", portalHeadingAlt)}>
+                    {scoring ? p.scoringInProgress : p.scoreNotAvailable}
+                  </p>
+                  {/* P4: Show retry button when score poll timed out — lets user re-check
+                      without navigating away or starting a brand-new practice session. */}
+                  {scoringTimedOut && !scoring && onRetryScore && (
+                    <button
+                      type="button"
+                      onClick={onRetryScore}
+                      className="self-start inline-flex items-center gap-1.5 text-[12px] font-semibold text-primary hover:underline"
+                    >
+                      <RefreshCw size={12} />
+                      {p.retryScoreBtn}
+                    </button>
+                  )}
+                </div>
               </>
             )}
           </div>
