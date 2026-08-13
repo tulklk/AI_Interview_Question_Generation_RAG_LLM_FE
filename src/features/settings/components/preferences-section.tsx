@@ -145,7 +145,12 @@ export function PreferencesSection() {
       </div>
 
       <div className="flex items-center gap-3 mt-6">
-        <button className="shimmer-button flex-1 flex items-center justify-center gap-2 hr-cta-btn text-white text-sm font-semibold px-5 py-2.5 rounded-lg">
+        <button
+          type="button"
+          disabled
+          title={t.common.comingSoon}
+          className="shimmer-button flex-1 flex items-center justify-center gap-2 hr-cta-btn text-white text-sm font-semibold px-5 py-2.5 rounded-lg opacity-60 cursor-not-allowed"
+        >
           <Save size={14} />
           {pref.save}
         </button>
