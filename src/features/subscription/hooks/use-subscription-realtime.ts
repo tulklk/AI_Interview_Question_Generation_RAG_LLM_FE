@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import type { HubConnection } from "@microsoft/signalr";
 import {
   createSubscriptionPaymentHubConnection,
   PAYMENT_PAID_EVENT,
@@ -79,21 +80,26 @@ export function useSubscriptionRealtime({
     };
 
     // ── SignalR ────────────────────────────────────────────────────────────────
-    const conn = createSubscriptionPaymentHubConnection();
-
-    conn.on(PAYMENT_PAID_EVENT, (raw: unknown) => {
-      // Validate the payload — only act on well-formed events.
-      if (normalizePaymentPaidEvent(raw)) handleChange();
-    });
-
-    for (const event of PLAN_CHANGE_EVENTS) {
-      conn.on(event, handleChange);
+    // Bug fix: createSubscriptionPaymentHubConnection() now returns null instead
+    // of throwing when it can't even construct a connection (e.g. an
+    // unresolvable/malformed hub URL from a misconfigured API base) — that used
+    // to throw synchronously and crash this effect (and the whole component
+    // tree) instead of falling back to the background poll like every other
+    // connection failure here does.
+    const conn: HubConnection | null = createSubscriptionPaymentHubConnection();
+    if (conn) {
+      conn.on(PAYMENT_PAID_EVENT, (raw: unknown) => {
+        // Validate the payload — only act on well-formed events.
+        if (normalizePaymentPaidEvent(raw)) handleChange();
+      });
+      for (const event of PLAN_CHANGE_EVENTS) {
+        conn.on(event, handleChange);
+      }
+      void conn.start().catch(() => {
+        // Start failed → SignalR unavailable.
+        // The 30-second fallback poll below still picks up admin-granted upgrades.
+      });
     }
-
-    void conn.start().catch(() => {
-      // Start failed → SignalR unavailable.
-      // The 30-second fallback poll below still picks up admin-granted upgrades.
-    });
 
     // ── Background fallback poll ──────────────────────────────────────────────
     // Runs even when SignalR IS connected so the data stays accurate even if
@@ -103,12 +109,14 @@ export function useSubscriptionRealtime({
     return () => {
       destroyed = true;
       window.clearInterval(pollId);
-      conn.off(PAYMENT_PAID_EVENT);
-      for (const event of PLAN_CHANGE_EVENTS) {
-        conn.off(event);
+      if (conn) {
+        conn.off(PAYMENT_PAID_EVENT);
+        for (const event of PLAN_CHANGE_EVENTS) {
+          conn.off(event);
+        }
+        // Stop asynchronously — don't await here or the cleanup becomes async.
+        void conn.stop();
       }
-      // Stop asynchronously — don't await here or the cleanup becomes async.
-      void conn.stop();
     };
   }, [enabled]);
 }

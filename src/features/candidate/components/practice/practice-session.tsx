@@ -32,8 +32,8 @@ import {
 import { UpgradeModal } from "@/features/candidate/components/billing/upgrade-modal";
 import { useCandidateSubscription } from "@/features/candidate/context/candidate-subscription-context";
 
+/** Purely a UI "recommended length" hint below the answer box — not a submission gate. */
 const MIN_ANSWER_CHARS = 20;
-const MIN_ANSWER_WORDS = 3;
 
 /** Template code rõ ràng — SYSTEM_DESIGN không có snippet vẫn dùng textarea thường. */
 const CODE_ANSWER_TEMPLATE_TYPES = [
@@ -57,19 +57,6 @@ function needsCodeAnswer(question: {
   if (question.codeSnippet?.trim()) return true;
   const type = (question.codeTemplateType || "").trim().toUpperCase();
   return (CODE_ANSWER_TEMPLATE_TYPES as readonly string[]).includes(type);
-}
-
-function validateAnswerText(
-  text: string,
-  opts?: { relaxWordCount?: boolean }
-): "tooShort" | "tooFewWords" | null {
-  const trimmed = text.trim();
-  if (trimmed.length < MIN_ANSWER_CHARS) return "tooShort";
-  // Code thường ít "từ" theo khoảng trắng — chỉ kiểm tra độ dài ký tự
-  if (!opts?.relaxWordCount) {
-    if (trimmed.split(/\s+/).filter(Boolean).length < MIN_ANSWER_WORDS) return "tooFewWords";
-  }
-  return null;
 }
 
 function formatTime(seconds: number) {
@@ -528,7 +515,7 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
     (questionId: string, text: string) => {
       const sid = sessionIdRef.current;
       // P0 fix: gate on hasAnswerText (same as UI "answered" check) so any non-empty
-      // answer typed by the candidate is persisted — not silently dropped by validateAnswerText.
+      // answer typed by the candidate is persisted, matching what the UI shows as "answered".
       if (!sid || !hasAnswerText(text)) return;
       const q = set.questions.find((x) => x.id === questionId);
       if (!q || q.isLocked) return;

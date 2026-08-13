@@ -71,7 +71,12 @@ export function AdminNotificationsSection() {
         </table>
       </div>
 
-      <button className="mt-5 w-full flex items-center justify-center gap-2 bg-[#6c47ff] hover:bg-[#5535dd] text-white text-sm font-semibold px-5 py-2.5 rounded-lg transition-colors">
+      <button
+        type="button"
+        disabled
+        title={t.common.comingSoon}
+        className="mt-5 w-full flex items-center justify-center gap-2 bg-[#6c47ff] text-white text-sm font-semibold px-5 py-2.5 rounded-lg transition-colors opacity-60 cursor-not-allowed"
+      >
         <Save size={14} />
         {n.saveBtn}
       </button>

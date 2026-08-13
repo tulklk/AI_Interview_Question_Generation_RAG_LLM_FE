@@ -184,22 +184,38 @@ export function UpgradeModal({ onClose, onDone }: UpgradeModalProps) {
       setPayment((prev) =>
         prev && prev.orderCode === orderCode ? { ...prev, status: "Paid" } : prev
       );
-      try {
-        const [sub, use, hist] = await Promise.all([
-          getCandidateSubscription(),
-          getCandidateBillingUsage(),
-          getCandidatePaymentHistory(),
-        ]);
-        addToastRef.current("success", upgradeSuccessRef.current);
-        onDoneRef.current?.({ subscription: sub, usage: use, history: hist });
-        setIsVisible(false);
-        setTimeout(() => onCloseRef.current(), 180);
-      } catch {
-        finishingRef.current = false;
-        addToastRef.current("error", b.upgradeFailed);
+      // P1 fix: the payment is already confirmed at this point (SignalR/poll told
+      // us status="Paid") — show success and close BEFORE fetching fresh
+      // subscription/usage/history, so a transient network error on that refresh
+      // doesn't show a misleading "upgrade failed" toast for a payment that
+      // actually succeeded.
+      addToastRef.current("success", upgradeSuccessRef.current);
+      setIsVisible(false);
+      setTimeout(() => onCloseRef.current(), 180);
+      // onDone is the caller's only path to the fresh subscription/usage/history
+      // (e.g. it's what unlocks premium-locked questions on the practice page,
+      // and what refreshes candidate-billing-page.tsx's usage/history) — retry a
+      // few times on transient failure instead of giving up after one, since a
+      // dropped call here would otherwise leave premium features looking locked
+      // despite the payment having actually succeeded.
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          const [sub, use, hist] = await Promise.all([
+            getCandidateSubscription(),
+            getCandidateBillingUsage(),
+            getCandidatePaymentHistory(),
+          ]);
+          onDoneRef.current?.({ subscription: sub, usage: use, history: hist });
+          break;
+        } catch {
+          // All 3 attempts failing is non-critical — the payment itself already
+          // succeeded (that's why finishPaid ran); the background poll in
+          // useSubscriptionRealtime will eventually catch the caller up too.
+          if (attempt < 2) await new Promise((r) => setTimeout(r, 1500));
+        }
       }
     },
-    [b.upgradeFailed]
+    []
   );
 
   async function handleCreateOrder() {
@@ -246,20 +262,25 @@ export function UpgradeModal({ onClose, onDone }: UpgradeModalProps) {
       });
     };
 
+    // Bug fix: this can return null (construction failure, e.g. an
+    // unresolvable hub URL) instead of a connection — the poll below still
+    // covers that case, so only wire up SignalR when we actually got one.
     const connection = createSubscriptionPaymentHubConnection();
     hubRef.current = connection;
 
-    connection.on(PAYMENT_PAID_EVENT, (raw: unknown) => {
-      if (stop) return;
-      const evt = normalizePaymentPaidEvent(raw);
-      if (!evt) return;
-      if (evt.orderCode.toUpperCase() !== orderCode.toUpperCase()) return;
-      void finishPaid(orderCode);
-    });
+    if (connection) {
+      connection.on(PAYMENT_PAID_EVENT, (raw: unknown) => {
+        if (stop) return;
+        const evt = normalizePaymentPaidEvent(raw);
+        if (!evt) return;
+        if (evt.orderCode.toUpperCase() !== orderCode.toUpperCase()) return;
+        void finishPaid(orderCode);
+      });
 
-    void connection.start().catch(() => {
-      // SignalR fail → poll fallback vẫn chạy
-    });
+      void connection.start().catch(() => {
+        // SignalR fail → poll fallback vẫn chạy
+      });
+    }
 
     const pollOnce = async () => {
       if (stop || finishingRef.current) return;
@@ -293,8 +314,10 @@ export function UpgradeModal({ onClose, onDone }: UpgradeModalProps) {
       stop = true;
       setWaiting(false);
       window.clearInterval(pollId);
-      connection.off(PAYMENT_PAID_EVENT);
-      void connection.stop().catch(() => undefined);
+      if (connection) {
+        connection.off(PAYMENT_PAID_EVENT);
+        void connection.stop().catch(() => undefined);
+      }
       hubRef.current = null;
     };
   }, [payment?.orderCode, payment?.amount, finishPaid, b.orderExpiredToast]);
