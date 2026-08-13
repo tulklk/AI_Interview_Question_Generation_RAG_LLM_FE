@@ -527,11 +527,11 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
   const persistAnswerBestEffort = useCallback(
     (questionId: string, text: string) => {
       const sid = sessionIdRef.current;
-      if (!sid || !text.trim()) return;
+      // P0 fix: gate on hasAnswerText (same as UI "answered" check) so any non-empty
+      // answer typed by the candidate is persisted — not silently dropped by validateAnswerText.
+      if (!sid || !hasAnswerText(text)) return;
       const q = set.questions.find((x) => x.id === questionId);
       if (!q || q.isLocked) return;
-      const relax = needsCodeAnswer(q);
-      if (validateAnswerText(text, { relaxWordCount: relax })) return;
       void submitAnswerApi(sid, { questionId, answerText: text }).catch(() => {
         // Im lặng — draft vẫn còn ở sessionStorage; Finish sẽ flush lại
       });
@@ -579,6 +579,8 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
       const idx = currentIdxRef.current;
 
       // Flush mọi draft / câu hiện tại chưa POST lên BE trước khi complete
+      // P0 fix: gate on hasAnswerText (same as UI "answered" check) — any non-empty
+      // answer that shows a filled dot must be submitted, never silently skipped.
       for (const q of set.questions) {
         if (q.isLocked) continue;
         let text = answersSnapshot[q.id] ?? "";
@@ -586,13 +588,10 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
         if (q.id === set.questions[idx]?.id) {
           text = answersSnapshot[q.id] ?? "";
         }
-        if (!text.trim() && typeof window !== "undefined") {
+        if (!hasAnswerText(text) && typeof window !== "undefined") {
           text = window.sessionStorage.getItem(draftKey(sid, q.id)) ?? "";
         }
-        if (!text.trim()) continue;
-        const relax = needsCodeAnswer(q);
-        const vErr = validateAnswerText(text, { relaxWordCount: relax });
-        if (vErr) continue;
+        if (!hasAnswerText(text)) continue;
         await submitAnswerApi(sid, { questionId: q.id, answerText: text });
         if (typeof window !== "undefined") {
           window.sessionStorage.removeItem(draftKey(sid, q.id));
@@ -674,17 +673,15 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
     }
 
     // Flush câu đang trả lời (nếu hợp lệ) trước khi thoát — phiên vẫn IN_PROGRESS trên server
+    // P0 fix: gate on hasAnswerText so any non-empty answer is saved, matching the UI "answered" check.
     const currentQ = set.questions[currentIdxRef.current];
     if (currentQ && !currentQ.isLocked) {
       const text = answersRef.current[currentQ.id] ?? "";
-      if (text.trim()) {
-        const relax = needsCodeAnswer(currentQ);
-        if (!validateAnswerText(text, { relaxWordCount: relax })) {
-          try {
-            await submitAnswerApi(sid, { questionId: currentQ.id, answerText: text });
-          } catch {
-            // best-effort — phiên vẫn còn trong sessionStorage
-          }
+      if (hasAnswerText(text)) {
+        try {
+          await submitAnswerApi(sid, { questionId: currentQ.id, answerText: text });
+        } catch {
+          // best-effort — phiên vẫn còn trong sessionStorage
         }
       }
     }

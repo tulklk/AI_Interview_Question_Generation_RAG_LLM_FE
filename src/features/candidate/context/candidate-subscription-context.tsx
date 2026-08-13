@@ -11,6 +11,7 @@ import {
 } from "react";
 import type { CandidatePlanType } from "@/features/candidate/types/billing";
 import { getCandidateSubscription } from "@/features/candidate/services/candidate-billing.service";
+import { useSubscriptionRealtime } from "@/features/subscription/hooks/use-subscription-realtime";
 
 interface CandidateSubscriptionContextValue {
   planType: CandidatePlanType;
@@ -49,6 +50,12 @@ export function CandidateSubscriptionProvider({ children }: { children: ReactNod
     if (cached === "PREMIUM") setPlanType("PREMIUM");
     void refreshSubscription();
   }, [refreshSubscription]);
+
+  // ── Real-time subscription updates ────────────────────────────────────────
+  // Listens on the SignalR hub for PaymentPaid / admin plan-change events and
+  // immediately refreshes so planType updates without a page reload.
+  // A 5-minute background poll runs as fallback when SignalR is unavailable.
+  useSubscriptionRealtime({ onSubscriptionChanged: refreshSubscription });
 
   const value = useMemo(
     () => ({ planType, refreshSubscription }),

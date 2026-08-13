@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useSubscriptionRealtime } from "@/features/subscription/hooks/use-subscription-realtime";
 import {
   Banknote,
   ChevronLeft,
@@ -209,6 +210,33 @@ export function AdminPlansStats({ refreshToken = 0 }: AdminPlansStatsProps) {
   useEffect(() => {
     void load(refreshToken > 0);
   }, [load, refreshToken]);
+
+  // ── Silent background refresh — no loading spinner ────────────────────────
+  // Updates stats/transactions whenever a subscription event fires without
+  // interrupting the admin's view with a loading skeleton.
+  const loadBackground = useCallback(async () => {
+    const [stRes, txRes, seRes] = await Promise.allSettled([
+      adminGetSubscriptionStats(),
+      adminListSubscriptionTransactions(200),
+      adminGetSePayOverview(false),
+    ]);
+    if (stRes.status === "fulfilled") setStats(stRes.value);
+    // Don't reset txPage on background refresh — keep admin's scroll position.
+    if (txRes.status === "fulfilled") setTxs(txRes.value);
+    if (seRes.status === "fulfilled") setSepay(seRes.value);
+  }, []);
+
+  // Real-time: SignalR payment events → silent stats refresh
+  useSubscriptionRealtime({ onSubscriptionChanged: loadBackground });
+
+  // Real-time: refresh stats when admin returns to this tab
+  useEffect(() => {
+    function onVisible() {
+      if (document.visibilityState === "visible") void loadBackground();
+    }
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [loadBackground]);
 
   const currency = stats?.currency || "VND";
 
