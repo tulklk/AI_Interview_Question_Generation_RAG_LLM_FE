@@ -26,7 +26,7 @@ interface Props {
   jdContent: string;
   onJdChange: (value: string) => void;
   onSaveJd: () => Promise<void> | void;
-  onUploadJd: (file: File) => Promise<void> | void;
+  onUploadJd: (file: File) => Promise<boolean> | boolean | void;
   jdFileName?: string | null;
   summary: AnalyzeJobDescriptionResponse | null;
   documents: StudioDocument[];
@@ -329,8 +329,10 @@ export function SourcesPanel({
     if (!file) return;
     setUploading(true);
     try {
-      await onUploadJd(file);
-      setJdMode("upload");
+      // onUploadJd no longer throws on failure — it returns false instead, so
+      // check the result explicitly rather than relying on a rejected promise.
+      const success = await onUploadJd(file);
+      if (success !== false) setJdMode("upload");
     } finally {
       setUploading(false);
       if (fileRef.current) fileRef.current.value = "";

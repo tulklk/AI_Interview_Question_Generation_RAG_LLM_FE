@@ -101,7 +101,9 @@ export function ContentTable({ sessions }: ContentTableProps) {
                       </Link>
                       <button
                         type="button"
-                        className="p-1.5 text-gray-400 dark:text-gray-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg transition-colors"
+                        disabled
+                        title={t.common.comingSoon}
+                        className="p-1.5 text-gray-400 dark:text-gray-500 rounded-lg transition-colors opacity-50 cursor-not-allowed"
                       >
                         <Trash2 size={14} />
                       </button>

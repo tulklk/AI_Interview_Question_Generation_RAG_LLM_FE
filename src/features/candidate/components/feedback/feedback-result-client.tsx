@@ -136,7 +136,15 @@ export function FeedbackResultClient() {
               setScoringTimedOut(true);
             }
           })
-          .catch(() => { setScoring(false); setScoringTimedOut(true); });
+          .catch(() => {
+            // Guard against a stale rejection from a superseded poll cycle
+            // (e.g. the user navigated to a different session's feedback page
+            // while this request was still in flight) clobbering the current
+            // cycle's scoring state — same guard the .then() above already has.
+            if (cancelled) return;
+            setScoring(false);
+            setScoringTimedOut(true);
+          });
       }, SCORE_POLL_INTERVAL_MS);
     }
 
@@ -248,7 +256,13 @@ export function FeedbackResultClient() {
               setScoringTimedOut(true);
             }
           })
-          .catch(() => { setScoring(false); setScoringTimedOut(true); });
+          .catch(() => {
+            // Same guard as the .then() above — a stale rejection from a
+            // cancelled/superseded retry cycle must not touch current state.
+            if (pollCancelledRef.current) return;
+            setScoring(false);
+            setScoringTimedOut(true);
+          });
       }, SCORE_POLL_INTERVAL_MS);
     }
     doPoll(session.id);
