@@ -117,6 +117,56 @@ describe("HR Billing — payment history", () => {
     },
     15000
   );
+
+  test(
+    "BILL-4b: an invoice WITH a receiptUrl renders a real Download link instead of a disabled placeholder",
+    async () => {
+      (await getMockedGetMySubscription()).mockResolvedValue(premiumSubscription() as never);
+      hrBillingApi.getHrPaymentHistory.mockResolvedValue([
+        {
+          invoiceId: "HR-2026-01-01",
+          planName: "Premium",
+          amount: 499000,
+          currency: "VND",
+          status: "PAID",
+          paymentDate: "2026-01-01T00:00:00Z",
+          receiptUrl: "https://example.com/receipts/hr-2026-01-01.pdf",
+        },
+      ] as never);
+      renderStudio(<HrBillingSubscription />);
+      await screen.findByText("HR-2026-01-01", {}, { timeout: 10000 });
+
+      const downloadLink = screen.getByRole("link", { name: /Download/ });
+      expect(downloadLink).toHaveAttribute("href", "https://example.com/receipts/hr-2026-01-01.pdf");
+      expect(downloadLink).toHaveAttribute("download");
+    },
+    15000
+  );
+
+  test(
+    "BILL-4c: an invoice WITHOUT a receiptUrl shows a disabled Download button with a Coming soon tooltip, not a dead link",
+    async () => {
+      (await getMockedGetMySubscription()).mockResolvedValue(premiumSubscription() as never);
+      hrBillingApi.getHrPaymentHistory.mockResolvedValue([
+        {
+          invoiceId: "HR-2026-01-01",
+          planName: "Premium",
+          amount: 499000,
+          currency: "VND",
+          status: "PAID",
+          paymentDate: "2026-01-01T00:00:00Z",
+        },
+      ] as never);
+      renderStudio(<HrBillingSubscription />);
+      await screen.findByText("HR-2026-01-01", {}, { timeout: 10000 });
+
+      expect(screen.queryByRole("link", { name: /Download/ })).not.toBeInTheDocument();
+      const downloadBtn = screen.getByRole("button", { name: /Download/ });
+      expect(downloadBtn).toBeDisabled();
+      expect(downloadBtn).toHaveAttribute("title", "Coming soon");
+    },
+    15000
+  );
 });
 
 describe("HR Billing — cancel to Free", () => {

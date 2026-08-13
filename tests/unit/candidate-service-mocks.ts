@@ -30,6 +30,8 @@ export function candidateBillingServiceMockFactory() {
     getCandidateBillingUsage: vi.fn(),
     getCandidatePaymentHistory: vi.fn(),
     cancelSubscription: vi.fn(),
+    upgradeToPremium: vi.fn(),
+    getUpgradeOrderStatus: vi.fn(),
   };
 }
 

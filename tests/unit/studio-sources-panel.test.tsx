@@ -189,5 +189,38 @@ describe("RAG003/RAG004/RAG034 — Studio Sources panel", () => {
 
       await vi.waitFor(() => expect(studioApi.uploadJobDescriptionFile).toHaveBeenCalledWith(expect.any(String), disallowedFile));
     });
+
+    test(
+      "RAG002-3 (regression): when the upload fails, an error toast shows and the dropzone recovers to its empty state instead of a phantom uploaded-file card",
+      async () => {
+        // Regression test for the P1b fix: onUploadJd used to be awaited without
+        // checking its result, so handleJdFile always treated the call as a
+        // success. uploadJobDescription (use-studio.ts) now returns false on
+        // failure instead of throwing, and handleJdFile checks that result
+        // explicitly (`if (success !== false) setJdMode("upload")`) rather than
+        // assuming success from a promise that merely resolved.
+        bootstrapStudio(studioApi, { hasJd: false });
+        studioApi.uploadJobDescriptionFile.mockRejectedValue(new Error("network down"));
+        const user = userEvent.setup();
+        renderStudio(<StudioPage />);
+        await screen.findByPlaceholderText("Paste your job description here…", {}, { timeout: 10000 });
+
+        await user.click(screen.getByRole("button", { name: "Upload file" }));
+        const fileInput = document.querySelector('input[type="file"][accept=".pdf,.docx,.txt,.jpg,.jpeg,.png"]') as HTMLInputElement;
+        const file = new File(["%PDF-1.4 fake content"], "jd.pdf", { type: "application/pdf" });
+        await user.upload(fileInput, file);
+
+        // extractErrorMessage() prefers a plain Error's own .message over the
+        // tx.jdUploadFailed fallback, so the toast surfaces "network down"
+        // itself here rather than the generic fallback copy.
+        expect(await screen.findByText("network down", {}, { timeout: 10000 })).toBeInTheDocument();
+        // No uploaded-file card for the failed file, and the dropzone recovered
+        // out of its "Uploading & analyzing…" spinner state back to normal.
+        expect(screen.queryByText("jd.pdf")).not.toBeInTheDocument();
+        expect(screen.getByText("Drop or click to upload")).toBeInTheDocument();
+        expect(screen.queryByText("Uploading & analyzing…")).not.toBeInTheDocument();
+      },
+      15000
+    );
   });
 });

@@ -9,8 +9,11 @@ import AdminSettingsPage from "@/app/admin/settings/page";
 // (General/Permissions/Notifications tabs). No prior automated coverage
 // existed. Only the General tab talks to a real service
 // (admin-platform-settings.service); Permissions and Notifications are pure
-// client-side toggle grids with a Save button that has no onClick handler at
-// all (documented below as a finding, not silently treated as working).
+// client-side toggle grids. Their Save buttons — and General's "Reset
+// Platform Data" danger-zone button — have no backend to save/reset to yet,
+// so each is rendered `disabled` with a `title={t.common.comingSoon}`
+// tooltip rather than left silently non-functional (dead-button fix, see
+// APS-5/7/8 below).
 
 vi.mock("@/features/admin/components/layout/admin-app-shell", () => ({
   AdminAppShell: ({ children }: { children: React.ReactNode }) => children,
@@ -100,16 +103,16 @@ describe("Admin Platform Settings — Permissions", () => {
     expect(recruiterToggle).toHaveAttribute("aria-checked", "true");
   });
 
-  test('APS-5 (finding): the Permissions "Save Permissions" button has no click handler — clicking it does nothing, not even a toast', async () => {
+  test('APS-5: the Permissions "Save Permissions" button is disabled with a Coming soon tooltip, not a silently broken active button', async () => {
     settingsApi.getPlatformSettings.mockResolvedValue({});
     const user = userEvent.setup();
     renderWithProviders(<AdminSettingsPage />);
     await screen.findByText("General Settings", {}, { timeout: 10000 });
 
     await user.click(screen.getByRole("button", { name: "Permissions" }));
-    await user.click(screen.getByRole("button", { name: "Save Permissions" }));
-
-    expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    const saveBtn = screen.getByRole("button", { name: "Save Permissions" });
+    expect(saveBtn).toBeDisabled();
+    expect(saveBtn).toHaveAttribute("title", "Coming soon");
   });
 });
 
@@ -127,5 +130,29 @@ describe("Admin Platform Settings — Notifications", () => {
     expect(emailToggle).toHaveAttribute("aria-checked", "false");
     await user.click(emailToggle);
     expect(emailToggle).toHaveAttribute("aria-checked", "true");
+  });
+
+  test('APS-7: the "Save Notifications" button is disabled with a Coming soon tooltip', async () => {
+    settingsApi.getPlatformSettings.mockResolvedValue({});
+    const user = userEvent.setup();
+    renderWithProviders(<AdminSettingsPage />);
+    await screen.findByText("General Settings", {}, { timeout: 10000 });
+
+    await user.click(screen.getByRole("button", { name: "Notifications" }));
+    const saveBtn = screen.getByRole("button", { name: "Save Notifications" });
+    expect(saveBtn).toBeDisabled();
+    expect(saveBtn).toHaveAttribute("title", "Coming soon");
+  });
+});
+
+describe("Admin Platform Settings — General danger zone", () => {
+  test('APS-8: the "Reset Platform Data" button is disabled with a Coming soon tooltip, not a live destructive action', async () => {
+    settingsApi.getPlatformSettings.mockResolvedValue({});
+    renderWithProviders(<AdminSettingsPage />);
+    await screen.findByText("General Settings", {}, { timeout: 10000 });
+
+    const resetBtn = await screen.findByRole("button", { name: "Reset" }, { timeout: 10000 });
+    expect(resetBtn).toBeDisabled();
+    expect(resetBtn).toHaveAttribute("title", "Coming soon");
   });
 });

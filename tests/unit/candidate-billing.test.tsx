@@ -170,11 +170,98 @@ describe("Candidate Billing — payment history", () => {
     },
     15000
   );
+
+  test(
+    "CBILL-5: an invoice WITH a receiptUrl renders a real Download link instead of a disabled placeholder",
+    async () => {
+      candidateBillingApi.getCandidateSubscription.mockResolvedValue(premiumSub());
+      candidateBillingApi.getCandidateBillingUsage.mockResolvedValue(premiumUsage());
+      candidateBillingApi.getCandidatePaymentHistory.mockResolvedValue([
+        {
+          invoiceId: "CAND-2026-01-01",
+          planName: "Premium",
+          amount: 199000,
+          currency: "VND",
+          status: "PAID",
+          paymentDate: "2026-01-01T00:00:00Z",
+          receiptUrl: "https://example.com/receipts/cand-2026-01-01.pdf",
+        },
+      ]);
+      renderCandidate(<CandidateBillingPage />);
+      await screen.findByText("CAND-2026-01-01", {}, { timeout: 10000 });
+
+      const downloadLink = screen.getByRole("link", { name: /Download/ });
+      expect(downloadLink).toHaveAttribute("href", "https://example.com/receipts/cand-2026-01-01.pdf");
+      expect(downloadLink).toHaveAttribute("download");
+    },
+    15000
+  );
+
+  test(
+    "CBILL-6: an invoice WITHOUT a receiptUrl shows a disabled Download button with a Coming soon tooltip, not a dead link",
+    async () => {
+      candidateBillingApi.getCandidateSubscription.mockResolvedValue(premiumSub());
+      candidateBillingApi.getCandidateBillingUsage.mockResolvedValue(premiumUsage());
+      candidateBillingApi.getCandidatePaymentHistory.mockResolvedValue([
+        {
+          invoiceId: "CAND-2026-01-01",
+          planName: "Premium",
+          amount: 199000,
+          currency: "VND",
+          status: "PAID",
+          paymentDate: "2026-01-01T00:00:00Z",
+        },
+      ]);
+      renderCandidate(<CandidateBillingPage />);
+      await screen.findByText("CAND-2026-01-01", {}, { timeout: 10000 });
+
+      expect(screen.queryByRole("link", { name: /Download/ })).not.toBeInTheDocument();
+      const downloadBtn = screen.getByRole("button", { name: /Download/ });
+      expect(downloadBtn).toBeDisabled();
+      expect(downloadBtn).toHaveAttribute("title", "Coming soon");
+    },
+    15000
+  );
+});
+
+describe("Candidate Billing — disabled placeholder buttons (dead-button fix)", () => {
+  test(
+    "CBILL-7: a Premium subscriber's \"Manage Subscription\" button is disabled with a Coming soon tooltip",
+    async () => {
+      candidateBillingApi.getCandidateSubscription.mockResolvedValue(premiumSub());
+      candidateBillingApi.getCandidateBillingUsage.mockResolvedValue(premiumUsage());
+      renderCandidate(<CandidateBillingPage />);
+      await findFirstText("Premium");
+
+      const manageBtn = screen.getByRole("button", { name: "Manage Subscription" });
+      expect(manageBtn).toBeDisabled();
+      expect(manageBtn).toHaveAttribute("title", "Coming soon");
+    },
+    15000
+  );
+
+  test(
+    "CBILL-8: \"Update Billing Info\" and \"Change Payment Method\" are disabled with a Coming soon tooltip",
+    async () => {
+      candidateBillingApi.getCandidateSubscription.mockResolvedValue(freeSub());
+      candidateBillingApi.getCandidateBillingUsage.mockResolvedValue(freeUsage());
+      renderCandidate(<CandidateBillingPage />);
+      await findFirstText("Free Plan");
+
+      const updateBtn = await screen.findByRole("button", { name: "Update Billing Info" }, { timeout: 10000 });
+      const changeBtn = screen.getByRole("button", { name: "Change Payment Method" });
+      expect(updateBtn).toBeDisabled();
+      expect(updateBtn).toHaveAttribute("title", "Coming soon");
+      expect(changeBtn).toBeDisabled();
+      expect(changeBtn).toHaveAttribute("title", "Coming soon");
+    },
+    15000
+  );
 });
 
 describe("Candidate Billing — upgrade and cancel", () => {
   test(
-    "CBILL-5: a Free subscriber clicking Upgrade to Premium opens the upgrade modal",
+    "CBILL-9: a Free subscriber clicking Upgrade to Premium opens the upgrade modal",
     async () => {
       candidateBillingApi.getCandidateSubscription.mockResolvedValue(freeSub());
       candidateBillingApi.getCandidateBillingUsage.mockResolvedValue(freeUsage());
@@ -191,7 +278,7 @@ describe("Candidate Billing — upgrade and cancel", () => {
   );
 
   test(
-    "CBILL-6: a Premium subscriber can cancel — Cancel Plan opens the confirm dialog, confirming calls cancelSubscription and reverts the plan card to Free",
+    "CBILL-10: a Premium subscriber can cancel — Cancel Plan opens the confirm dialog, confirming calls cancelSubscription and reverts the plan card to Free",
     async () => {
       candidateBillingApi.getCandidateSubscription.mockResolvedValueOnce(premiumSub());
       candidateBillingApi.getCandidateBillingUsage.mockResolvedValue(premiumUsage());
