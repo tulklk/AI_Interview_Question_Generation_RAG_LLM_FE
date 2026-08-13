@@ -52,11 +52,15 @@ export function FeedbackResultClient() {
   const [error, setError] = useState(false);
   const [forbidden, setForbidden] = useState(false);
   const [scoring, setScoring] = useState(false);
+  /** P4: true when the score poll exhausted all attempts and still no score. */
+  const [scoringTimedOut, setScoringTimedOut] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
   const pollAttemptsRef = useRef(0);
   const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Track whether scoring was ever in progress (for localStorage update on done)
   const wasScoring = useRef(false);
+  // P4: track the cancelled state for the current effect (updated each reloadKey cycle)
+  const pollCancelledRef = useRef(false);
 
   // ── Question-set feedback dialog ──────────────────────────────────────────
   const [showFeedbackDialog, setShowFeedbackDialog] = useState(false);
@@ -94,6 +98,7 @@ export function FeedbackResultClient() {
   useEffect(() => {
     if (!sessionId) return;
     let cancelled = false;
+    pollCancelledRef.current = false;
     setLoading(true);
     setError(false);
     setForbidden(false);
@@ -102,6 +107,7 @@ export function FeedbackResultClient() {
     setAiInsight(null);
     setAccessLevel("Full");
     setPreviousScore(undefined);
+    setScoringTimedOut(false);
     pollAttemptsRef.current = 0;
 
     function pollScore(id: string) {
@@ -113,6 +119,7 @@ export function FeedbackResultClient() {
             setSession(s);
             if (s.overallScore !== null) {
               setScoring(false);
+              setScoringTimedOut(false);
               if (wasScoring.current) {
                 markScoringDone(id);
                 wasScoring.current = false;
@@ -123,10 +130,13 @@ export function FeedbackResultClient() {
             if (pollAttemptsRef.current < SCORE_POLL_MAX_ATTEMPTS) {
               pollScore(id);
             } else {
+              // P4 fix: mark timed-out so the UI can show a retry button instead
+              // of silently leaving the "score not available" text with no action.
               setScoring(false);
+              setScoringTimedOut(true);
             }
           })
-          .catch(() => setScoring(false));
+          .catch(() => { setScoring(false); setScoringTimedOut(true); });
       }, SCORE_POLL_INTERVAL_MS);
     }
 
@@ -201,9 +211,48 @@ export function FeedbackResultClient() {
 
     return () => {
       cancelled = true;
+      pollCancelledRef.current = true;
       if (pollTimerRef.current) clearTimeout(pollTimerRef.current);
     };
   }, [sessionId, reloadKey]);
+
+  /** P4: Re-start score polling without navigating or re-fetching the full page. */
+  function retryScoring() {
+    if (!session) return;
+    setScoringTimedOut(false);
+    setScoring(true);
+    pollAttemptsRef.current = 0;
+    wasScoring.current = true;
+    pollCancelledRef.current = false;
+    registerScoringSession(session.id, set?.title ?? "");
+    // Inline poll: re-uses the same sessionId from the outer effect's closure via the ref.
+    function doPoll(id: string) {
+      pollTimerRef.current = setTimeout(() => {
+        if (pollCancelledRef.current) return;
+        getPracticeSession(id)
+          .then((s) => {
+            if (pollCancelledRef.current || !s) return;
+            setSession(s);
+            if (s.overallScore !== null) {
+              setScoring(false);
+              setScoringTimedOut(false);
+              markScoringDone(id);
+              wasScoring.current = false;
+              return;
+            }
+            pollAttemptsRef.current += 1;
+            if (pollAttemptsRef.current < SCORE_POLL_MAX_ATTEMPTS) {
+              doPoll(id);
+            } else {
+              setScoring(false);
+              setScoringTimedOut(true);
+            }
+          })
+          .catch(() => { setScoring(false); setScoringTimedOut(true); });
+      }, SCORE_POLL_INTERVAL_MS);
+    }
+    doPoll(session.id);
+  }
 
   return (
     <JobseekerAppShell
@@ -251,6 +300,8 @@ export function FeedbackResultClient() {
             aiInsight={aiInsight}
             accessLevel={accessLevel}
             scoring={scoring}
+            scoringTimedOut={scoringTimedOut}
+            onRetryScore={retryScoring}
             setTitle={set?.title}
             companyName={set?.company}
             companyLogoUrl={set?.companyLogoUrl}
