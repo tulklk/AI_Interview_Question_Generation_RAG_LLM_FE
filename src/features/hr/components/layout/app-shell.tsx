@@ -20,6 +20,8 @@ import type { HrPlanId } from "@/features/hr/types/hr-subscription";
 import type { NotificationItem } from "@/shared/components/common/notification-bell";
 import { listProjects } from "@/features/studio/services/studio.service";
 import { PremiumCelebrationDialog } from "@/shared/components/ui/premium-celebration-dialog";
+import { PremiumRevokedDialog } from "@/shared/components/ui/premium-revoked-dialog";
+import { HrUpgradeModal } from "@/features/hr/components/billing/hr-upgrade-modal";
 
 interface AppShellProps {
   children: ReactNode;
@@ -41,6 +43,8 @@ export function AppShell({ children, breadcrumb, pageTitle, fullWidth = false }:
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [showCelebration, setShowCelebration] = useState(false);
+  const [showRevoked, setShowRevoked] = useState(false);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
   // Show Premium celebration once per plan period (payment OR admin grant).
   // Only clear the localStorage flag on a genuine HR_PREMIUM → HR_FREE downgrade
@@ -58,8 +62,11 @@ export function AppShell({ children, breadcrumb, pageTitle, fullWidth = false }:
         setShowCelebration(true);
       }
     } else if (prev === "HR_PREMIUM") {
-      // Genuine downgrade confirmed from API — clear so next upgrade fires again
+      // Genuine downgrade confirmed from API:
+      // 1. Clear localStorage so the next upgrade fires the celebration again.
+      // 2. Show the "Premium revoked" panel so the user knows their plan changed.
       localStorage.removeItem(key);
+      setShowRevoked(true);
     }
   }, [planId, user?.id]);
 
@@ -199,6 +206,17 @@ export function AppShell({ children, breadcrumb, pageTitle, fullWidth = false }:
         open={showCelebration}
         onClose={() => setShowCelebration(false)}
       />
+
+      <PremiumRevokedDialog
+        open={showRevoked}
+        onClose={() => setShowRevoked(false)}
+        onUpgrade={() => setShowUpgradeModal(true)}
+        audience="hr"
+      />
+
+      {showUpgradeModal && (
+        <HrUpgradeModal onClose={() => { setShowUpgradeModal(false); void refresh(); }} />
+      )}
     </>
   );
 }

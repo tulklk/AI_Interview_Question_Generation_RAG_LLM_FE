@@ -71,6 +71,13 @@ export function StudioPage() {
     studio.generationRun?.status === "Generating" ||
     studio.generationRun?.status === "Pending";
 
+  // P2b: Replace-questions confirm dialog — shown when BE rejects generateQuestions with
+  // QUESTIONS_ALREADY_EXIST so the user can decide before their edits are overwritten.
+  const [replaceDialogOpen, setReplaceDialogOpen] = useState(false);
+  useEffect(() => {
+    if (studio.questionsAlreadyExist) setReplaceDialogOpen(true);
+  }, [studio.questionsAlreadyExist]);
+
   // Quota dialog — shown only when:
   //   (a) user explicitly triggers an action (handleNewSession / handleGenerateQuestions)
   //       while quota is already blocked, OR
@@ -330,12 +337,69 @@ export function StudioPage() {
       )
     : null;
 
+  // P2b: Replace-questions confirm dialog — backdrop portal, simpler than quota dialog.
+  const replaceDialog = replaceDialogOpen && mounted
+    ? createPortal(
+        <div
+          className="fixed inset-0 z-9999 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in"
+          onClick={() => setReplaceDialogOpen(false)}
+        >
+          <div
+            role="alertdialog"
+            aria-modal
+            aria-labelledby="replace-dialog-title"
+            aria-describedby="replace-dialog-desc"
+            className="relative w-full max-w-sm animate-scale-in rounded-2xl border border-border dark:border-gray-700 bg-white dark:bg-gray-900 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => setReplaceDialogOpen(false)}
+              aria-label="Đóng"
+              className="absolute right-4 top-4 flex h-7 w-7 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-800 dark:hover:text-gray-200"
+            >
+              <X size={15} />
+            </button>
+            <div className="px-6 pb-5 pt-6 text-center">
+              <h3 id="replace-dialog-title" className="text-[15px] font-bold text-charcoal dark:text-gray-100">
+                {s.toasts.replaceQuestionsTitle}
+              </h3>
+              <p id="replace-dialog-desc" className="mt-2 text-sm leading-relaxed text-gray-500 dark:text-gray-400">
+                {s.toasts.replaceQuestionsBody}
+              </p>
+            </div>
+            <div className="border-t border-border dark:border-gray-700 px-6 py-4 flex gap-2">
+              <button
+                type="button"
+                onClick={() => setReplaceDialogOpen(false)}
+                className="flex-1 inline-flex min-h-9 items-center justify-center rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 transition-colors hover:bg-gray-50 dark:hover:bg-gray-700"
+              >
+                {s.toasts.replaceQuestionsCancel}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setReplaceDialogOpen(false);
+                  void studio.confirmReplaceQuestions();
+                }}
+                className="flex-1 inline-flex min-h-9 items-center justify-center rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-red-700"
+              >
+                {s.toasts.replaceQuestionsConfirm}
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )
+    : null;
+
   // Both branches return a root <div> whose first child is the portal, so React reconciles the
   // dialog in place when `loading` flips — otherwise it remounts and its enter animation replays.
   if (studio.loading) {
     return (
       <div className="flex h-[calc(100vh-80px)] items-center justify-center">
         {quotaDialog}
+        {replaceDialog}
         <AiLoadingSpinner text={s.loading} />
       </div>
     );
@@ -344,6 +408,7 @@ export function StudioPage() {
   return (
     <div className="flex flex-col gap-3 pb-16">
       {quotaDialog}
+      {replaceDialog}
 
       {/* Top bar */}
       <div style={{ animation: "slideUpFade 0.38s ease-out both" }}>

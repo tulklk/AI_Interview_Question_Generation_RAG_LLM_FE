@@ -26,6 +26,7 @@ import {
 } from "@/features/candidate/context/candidate-subscription-context";
 import { UpgradeModal } from "@/features/candidate/components/billing/upgrade-modal";
 import { PremiumCelebrationDialog } from "@/shared/components/ui/premium-celebration-dialog";
+import { PremiumRevokedDialog } from "@/shared/components/ui/premium-revoked-dialog";
 
 const UNREAD_WINDOW_MS = 24 * 60 * 60 * 1000;
 
@@ -52,6 +53,7 @@ function JobseekerAppShellInner({
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
+  const [showRevoked, setShowRevoked] = useState(false);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
 
   // Show Premium celebration once per plan period (payment OR admin grant).
@@ -71,8 +73,11 @@ function JobseekerAppShellInner({
         setShowCelebration(true);
       }
     } else if (prev === "PREMIUM") {
-      // Genuine downgrade confirmed from API — clear so next upgrade fires again
+      // Genuine downgrade confirmed from API:
+      // 1. Clear localStorage so the next upgrade fires the celebration again.
+      // 2. Show the "Premium revoked" panel so the user knows their plan changed.
       localStorage.removeItem(key);
+      setShowRevoked(true);
     }
   }, [planType, user?.id]);
 
@@ -224,6 +229,13 @@ function JobseekerAppShellInner({
     <PremiumCelebrationDialog
       open={showCelebration}
       onClose={() => setShowCelebration(false)}
+    />
+
+    <PremiumRevokedDialog
+      open={showRevoked}
+      onClose={() => setShowRevoked(false)}
+      onUpgrade={() => setShowUpgrade(true)}
+      audience="candidate"
     />
     </>
   );
