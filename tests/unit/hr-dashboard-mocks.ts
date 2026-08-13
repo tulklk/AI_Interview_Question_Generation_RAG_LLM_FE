@@ -38,7 +38,7 @@ export function dashboardAggregate(overrides: Partial<HrDashboardData> = {}): Hr
       { id: "sess-1", role: "Backend Developer", level: "Senior", status: "Completed", questionsCount: 15, createdAt: "2026-08-05T00:00:00Z" },
     ],
     topRecommendations: [
-      { id: "rec-1", candidateName: "Nguyen Van A", candidateEmail: "a@example.com", targetRole: "Backend Developer", score: 88, status: "PENDING" },
+      { id: "rec-1", candidateName: "Nguyen Van A", candidateEmail: "a@example.com", targetRole: "Backend Developer", score: 88, status: "NEW" },
     ],
     insights: { weekOverWeekTrend: "up", weekOverWeekDelta: 12 },
     ...overrides,

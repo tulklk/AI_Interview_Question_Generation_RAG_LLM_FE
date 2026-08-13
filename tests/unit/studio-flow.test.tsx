@@ -81,7 +81,11 @@ describe("RAG005/006/007/SUB — Studio question generation", () => {
     expect(await screen.findByText("Explain question 1.")).toBeInTheDocument();
   });
 
-  test("RAG006-ST: a QUESTIONS_ALREADY_EXIST conflict auto-retries with replaceExisting", async () => {
+  test("RAG006-ST: a QUESTIONS_ALREADY_EXIST conflict shows a confirm dialog, and confirming retries with replaceExisting", async () => {
+    // P2b: BE rejecting with QUESTIONS_ALREADY_EXIST no longer auto-retries —
+    // it surfaces a confirm dialog so the user can decide before their
+    // manually-edited questions are overwritten (see use-studio.ts's
+    // confirmReplaceQuestions and studio-page.tsx's replaceDialog).
     await bootstrap();
     const run = {
       id: "run-2", planId: "plan-1", status: "Completed", requestedQuestionCount: 3, generatedQuestionCount: 3,
@@ -105,6 +109,13 @@ describe("RAG005/006/007/SUB — Studio question generation", () => {
     renderStudio(<StudioPage />);
     const generateBtn = await findActionBarButton("Generate Questions");
     await user.click(generateBtn);
+
+    expect(
+      await screen.findByText("Replace existing questions?", {}, { timeout: 10000 })
+    ).toBeInTheDocument();
+    expect(calls).toEqual([false]);
+
+    await user.click(screen.getByRole("button", { name: "Replace" }));
 
     expect(await screen.findByText("3 questions generated.", {}, { timeout: 10000 })).toBeInTheDocument();
     expect(calls).toEqual([false, true]);
@@ -327,6 +338,63 @@ test("RAG029-1: \"New Set\" creates a fresh project and resets JD/plan/settings/
   expect(screen.queryByText("A generated question.")).not.toBeInTheDocument();
   expect(await findActionBarButton("Create Plan")).toBeInTheDocument();
   expect(screen.getByPlaceholderText("Paste your job description here…")).toHaveValue("");
+});
+
+test('RAG029-2: a settings update still in flight for the OLD session does not corrupt a new session started via "New Set"', async () => {
+  // Regression test for a real bug found in code review: updateSettingField's
+  // optimistic write used to be keyed only by settingsVersionRef, which was
+  // never bumped on a project switch — so a settings PUT request started just
+  // before "New Set" is clicked could resolve AFTER the switch and silently
+  // overwrite the brand-new session's settings with the old project's stale
+  // values. createNewSession now resets both settingsRef and
+  // settingsVersionRef synchronously, which this test verifies by holding
+  // the old project's updateSettings response open until after the switch.
+  await bootstrap();
+  studioApi.createProject.mockResolvedValue({ id: "proj-2", name: "New" } as never);
+
+  // Deferred — resolves only when we explicitly call resolveUpdate() below,
+  // simulating a slow network response landing after the user has already
+  // moved on to a new session.
+  let resolveUpdate!: (value: unknown) => void;
+  studioApi.updateSettings.mockImplementation(
+    () => new Promise((resolve) => { resolveUpdate = resolve; })
+  );
+
+  const user = userEvent.setup();
+  renderStudio(<StudioPage />);
+  await findActionBarButton("Generate Questions");
+  const toggle = screen.getAllByRole("switch")[0];
+  expect(toggle).toHaveAttribute("aria-checked", "true");
+
+  // Start a settings change for the CURRENT (soon-to-be-old) project —
+  // deliberately left unresolved.
+  await user.click(toggle);
+  expect(studioApi.updateSettings).toHaveBeenCalledWith(
+    PROJECT_ID, expect.objectContaining({ includeSampleAnswers: false })
+  );
+
+  // Switch to a brand-new session while that request is still in flight.
+  await user.click(screen.getByRole("button", { name: "New Set" }));
+  await screen.findByText(
+    "New session created. Enter a JD, select documents, then create a plan.",
+    {}, { timeout: 10000 }
+  );
+
+  // Sanity check: the reset from "New Set" already shows the new session's
+  // default (true) at this point regardless of the fix — the real assertion
+  // is that this stays true AFTER the stale response below is given a chance
+  // to (incorrectly, pre-fix) overwrite it.
+  expect(screen.getAllByRole("switch")[0]).toHaveAttribute("aria-checked", "true");
+
+  // NOW the stale response for the OLD project finally lands. Flush the
+  // microtask queue for real (a plain assertion right after, unlike waitFor,
+  // won't retry and mask a later corruption — it must observe the settled
+  // state directly).
+  resolveUpdate(readySettings({ appliedPlanId: "plan-1", includeSampleAnswers: false }) as never);
+  await new Promise((r) => setTimeout(r, 0));
+  await new Promise((r) => setTimeout(r, 0));
+
+  expect(screen.getAllByRole("switch")[0]).toHaveAttribute("aria-checked", "true");
 });
 
 test('RAG030-1: toggling "Include sample answers" off persists via PUT settings', async () => {
