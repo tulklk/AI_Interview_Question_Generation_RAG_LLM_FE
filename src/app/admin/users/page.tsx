@@ -17,6 +17,10 @@ import { cn } from "@/lib/cn";
 import { portalHeadingAlt, portalSubtextAlt } from "@/shared/utils/portal-ui";
 import { useToast } from "@/shared/providers/toast-context";
 import type { AdminUserDetail, AdminUserListItem } from "@/features/admin/types/admin-user";
+import { useSubscriptionRealtime } from "@/features/subscription/hooks/use-subscription-realtime";
+
+/** How often admin user list silently auto-refreshes to pick up new payments / admin grants. */
+const ADMIN_USER_LIST_POLL_MS = 60_000; // 60 seconds
 
 const SEARCH_DEBOUNCE_MS = 300;
 const DEFAULT_PAGE_SIZE = 10;
@@ -121,6 +125,29 @@ export default function UserManagementPage() {
   useEffect(() => {
     void fetchUsers();
   }, [fetchUsers]);
+
+  // ── Real-time: SignalR subscription events ────────────────────────────────
+  // When a user pays or admin grants/revokes premium from another session,
+  // silently refresh the user list to reflect the new plan badge.
+  useSubscriptionRealtime({ onSubscriptionChanged: refreshUsersQuietly });
+
+  // ── Real-time: 60-second background poll ──────────────────────────────────
+  // Shorter than the 5-min fallback in useSubscriptionRealtime so the admin
+  // monitoring panel stays timely even when SignalR events are not received.
+  useEffect(() => {
+    const id = window.setInterval(() => void refreshUsersQuietly(), ADMIN_USER_LIST_POLL_MS);
+    return () => window.clearInterval(id);
+  }, [refreshUsersQuietly]);
+
+  // ── Real-time: refresh on tab focus ──────────────────────────────────────
+  // Picks up changes that happened while admin was on another tab.
+  useEffect(() => {
+    function onVisible() {
+      if (document.visibilityState === "visible") void refreshUsersQuietly();
+    }
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [refreshUsersQuietly]);
 
   const fetchDetail = useCallback(
     async (userId: string) => {

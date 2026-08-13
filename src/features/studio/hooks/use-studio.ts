@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useToast } from "@/shared/providers/toast-context";
 import { useLanguage } from "@/shared/providers/language-context";
 import { extractErrorMessage } from "@/core/interceptors/error.interceptor";
@@ -83,6 +83,24 @@ export function useStudio() {
   /** Set to true when BE rejects generateQuestions with COOLDOWN_ACTIVE / QUOTA_EXCEEDED.
    *  Reset to false at the start of each new generate attempt. */
   const [quotaExceeded, setQuotaExceeded] = useState(false);
+
+  /** P2b: Set to true when BE rejects generateQuestions with QUESTIONS_ALREADY_EXIST,
+   *  meaning the user must explicitly confirm before questions are replaced. */
+  const [questionsAlreadyExist, setQuestionsAlreadyExist] = useState(false);
+
+  /** P2a: Cancelled flag set to true when the hook's host component unmounts.
+   *  Prevents the generateQuestions poll loop from calling setState after unmount
+   *  and from making unnecessary API calls for up to 5 minutes after navigation. */
+  const generateCancelledRef = useRef(false);
+  useEffect(() => {
+    generateCancelledRef.current = false;
+    return () => { generateCancelledRef.current = true; };
+  }, []);
+
+  /** P2c: Monotonic version counter for updateSettingField.
+   *  A slow first request's rollback is discarded when a second request has
+   *  already completed — the counter tells us which response is "latest". */
+  const settingsVersionRef = useRef(0);
 
   // Bộ câu hỏi chỉ còn "đã lưu" chừng nào danh sách chưa đổi lại (sinh mới, sửa, xoá, đổi project).
   useEffect(() => {
@@ -291,23 +309,33 @@ export function useStudio() {
 
   const saveJobDescription = useCallback(async () => {
     if (!project || !jdContent.trim()) return;
-    await studioApi.upsertJobDescription(project.id, jdContent, "PastedText");
-    const summary = await studioApi.analyzeJobDescription(project.id);
-    setJdFileName(null);
-    setJdSummary(summary);
-    addToast("success", tx.jdSaved);
-    await refreshPlanAndSettings();
-  }, [addToast, jdContent, project, refreshPlanAndSettings]);
+    // P1b fix: wrap in try/catch so API errors produce an error toast instead of silence.
+    try {
+      await studioApi.upsertJobDescription(project.id, jdContent, "PastedText");
+      const summary = await studioApi.analyzeJobDescription(project.id);
+      setJdFileName(null);
+      setJdSummary(summary);
+      addToast("success", tx.jdSaved);
+      await refreshPlanAndSettings();
+    } catch (error) {
+      addToast("error", extractErrorMessage(error, lang) || tx.jdSaveFailed);
+    }
+  }, [addToast, jdContent, lang, project, refreshPlanAndSettings, tx.jdSaved, tx.jdSaveFailed]);
 
   const uploadJobDescription = useCallback(async (file: File) => {
     if (!project) return;
-    const result = await studioApi.uploadJobDescriptionFile(project.id, file);
-    setJdContent(result.content);
-    setJdFileName(result.originalFileName ?? file.name);
-    setJdSummary(result.summary);
-    addToast("success", tx.jdUploaded.replace("{{name}}", result.originalFileName ?? file.name));
-    await refreshPlanAndSettings();
-  }, [addToast, project, refreshPlanAndSettings]);
+    // P1b fix: wrap in try/catch so upload errors produce an error toast.
+    try {
+      const result = await studioApi.uploadJobDescriptionFile(project.id, file);
+      setJdContent(result.content);
+      setJdFileName(result.originalFileName ?? file.name);
+      setJdSummary(result.summary);
+      addToast("success", tx.jdUploaded.replace("{{name}}", result.originalFileName ?? file.name));
+      await refreshPlanAndSettings();
+    } catch (error) {
+      addToast("error", extractErrorMessage(error, lang) || tx.jdUploadFailed);
+    }
+  }, [addToast, lang, project, refreshPlanAndSettings, tx.jdUploadFailed, tx.jdUploaded]);
 
   const uploadDocument = useCallback(async (file: File) => {
     if (!project) return;
@@ -539,29 +567,29 @@ export function useStudio() {
     return latest;
   }, [currentPlan, project]);
 
-  const generateQuestions = useCallback(async () => {
+  const generateQuestions = useCallback(async (forceReplace = false) => {
     if (!project || !currentPlan || !settings) return;
     if (isGeneratingQuestions) return;
     setIsGeneratingQuestions(true);
     setQuotaExceeded(false); // reset on each new attempt
+    setQuestionsAlreadyExist(false); // P2b: reset confirmation flag
     try {
       let run: GenerationRun;
       try {
         run = await studioApi.generateQuestions(project.id, {
           planId: currentPlan.id,
-          replaceExisting: false,
+          replaceExisting: forceReplace,
           includeSampleAnswers: settings.includeSampleAnswers,
           includeScoringRubric: settings.includeScoringRubric,
         });
       } catch (error) {
         const errMsg = extractErrorMessage(error, lang);
         if (errMsg.includes("QUESTIONS_ALREADY_EXIST") || errMsg.includes("questions_already_exist")) {
-          run = await studioApi.generateQuestions(project.id, {
-            planId: currentPlan.id,
-            replaceExisting: true,
-            includeSampleAnswers: settings.includeSampleAnswers,
-            includeScoringRubric: settings.includeScoringRubric,
-          });
+          // P2b fix: instead of silently auto-retrying with replaceExisting:true,
+          // surface the conflict to the user via questionsAlreadyExist state so
+          // they can confirm before their manually-edited questions are overwritten.
+          setQuestionsAlreadyExist(true);
+          return; // will be re-called by confirmReplaceQuestions below
         } else {
           throw error;
         }
@@ -571,14 +599,21 @@ export function useStudio() {
       setGenerationRun(run);
 
       // SCRUM-371: poll generation run tới Completed/Failed (RAG callback)
+      // P2a fix: check generateCancelledRef before each await so the loop exits
+      // immediately when the user navigates away instead of running for 5 minutes.
       const deadline = Date.now() + 5 * 60_000;
       let latest = run;
       while (Date.now() < deadline) {
         if (latest.status === "Completed" || latest.status === "Failed" || latest.status === "Cancelled") break;
+        if (generateCancelledRef.current) return; // component unmounted — stop all state updates
         await new Promise((r) => setTimeout(r, 2500));
+        if (generateCancelledRef.current) return;
         latest = await studioApi.getGenerationRun(project.id, run.id);
+        if (generateCancelledRef.current) return;
         setGenerationRun(latest);
       }
+
+      if (generateCancelledRef.current) return;
 
       if (latest.status === "Failed") {
         throw new Error(
@@ -592,9 +627,11 @@ export function useStudio() {
       }
 
       const result = await studioApi.listQuestions(project.id, { page: 1, pageSize: 100, planId: currentPlan.id });
+      if (generateCancelledRef.current) return;
       setQuestions(result.items);
       addToast("success", tx.generationDone.replace("{{count}}", String(result.items.length)));
     } catch (error) {
+      if (generateCancelledRef.current) return;
       // Detect BE quota / cooldown error codes (COOLDOWN_ACTIVE, QUOTA_EXCEEDED).
       // When these occur we signal the page component via `quotaExceeded` state so it
       // can show the quota dialog, and we skip the generic error toast.
@@ -608,9 +645,17 @@ export function useStudio() {
       }
       void refreshGenerationStatus();
     } finally {
-      setIsGeneratingQuestions(false);
+      if (!generateCancelledRef.current) setIsGeneratingQuestions(false);
     }
-  }, [addToast, currentPlan, isGeneratingQuestions, project, refreshGenerationStatus, settings]);
+  // generateCancelledRef is stable (useRef), so it's intentionally omitted from deps.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [addToast, currentPlan, isGeneratingQuestions, lang, project, refreshGenerationStatus, settings, tx.generationDone, tx.generationFailed, tx.generationStarted]);
+
+  /** P2b: Called after user confirms the replace-questions dialog. */
+  const confirmReplaceQuestions = useCallback(async () => {
+    setQuestionsAlreadyExist(false);
+    await generateQuestions(true);
+  }, [generateQuestions]);
 
   const updateSettingField = useCallback(async (patch: Partial<StudioSettings>) => {
     if (!project || !settings) return;
@@ -629,17 +674,25 @@ export function useStudio() {
       contentMode: patch.contentMode ?? settings.contentMode ?? "Mixed",
       enabledCodeTemplates: patch.enabledCodeTemplates ?? settings.enabledCodeTemplates ?? DEFAULT_ENABLED_CODE_TEMPLATES,
     };
-    // Optimistic update — reflect changes immediately in UI without waiting for API
+    // Optimistic update — reflect changes immediately in UI without waiting for API.
+    // P2c fix: capture a version number so a slow first request's error rollback
+    // does not overwrite the optimistic state of a second faster request that already
+    // completed successfully.
     const prevSettings = settings;
+    const myVersion = ++settingsVersionRef.current;
     setSettings((prev) => prev ? { ...prev, ...next } : prev);
     try {
       const updated = await studioApi.updateSettings(project.id, next);
+      // Only apply if no newer request has started since ours.
+      if (settingsVersionRef.current !== myVersion) return;
       // Re-apply patch on top so explicit user changes survive if API returns null for a field
       setSettings((prev) => {
         const normalized = normalizeSettings(updated);
         return normalized ? { ...normalized, ...patch } : prev;
       });
     } catch (error) {
+      // Only rollback if no newer request has superseded ours.
+      if (settingsVersionRef.current !== myVersion) return;
       setSettings(prevSettings);
       addToast("error", extractErrorMessage(error, lang));
     }
@@ -716,11 +769,16 @@ export function useStudio() {
 
   const createShare = useCallback(async () => {
     if (!project) return;
-    const share = await studioApi.createShareLink(project.id, "View");
-    const link = `${window.location.origin}/api/studio/shared/${share.token}`;
-    await navigator.clipboard.writeText(link);
-    addToast("success", tx.shareCreated);
-  }, [addToast, project]);
+    // P1b fix: wrap in try/catch so share/clipboard errors produce an error toast.
+    try {
+      const share = await studioApi.createShareLink(project.id, "View");
+      const link = `${window.location.origin}/api/studio/shared/${share.token}`;
+      await navigator.clipboard.writeText(link);
+      addToast("success", tx.shareCreated);
+    } catch (error) {
+      addToast("error", extractErrorMessage(error, lang) || tx.shareCreateFailed);
+    }
+  }, [addToast, lang, project, tx.shareCreateFailed, tx.shareCreated]);
 
   const createNewSession = useCallback(async () => {
     try {
@@ -772,6 +830,7 @@ export function useStudio() {
       generationRun,
       isGeneratingQuestions,
       quotaExceeded,
+      questionsAlreadyExist,
       isSavingDraft,
       isDraftSaved,
       saveJobDescription,
@@ -786,6 +845,7 @@ export function useStudio() {
       refineCurrentPlan,
       applySettingsToPlan,
       generateQuestions,
+      confirmReplaceQuestions,
       refreshGenerationStatus,
       updateSettingField,
       saveDraftAction,
@@ -798,6 +858,7 @@ export function useStudio() {
     [
       approveCurrentPlan,
       renameCurrentPlanTitle,
+      confirmReplaceQuestions,
       createNewSession,
       createShare,
       currentPlan,
@@ -808,6 +869,7 @@ export function useStudio() {
       isApplyingSettings,
       isGeneratingQuestions,
       quotaExceeded,
+      questionsAlreadyExist,
       isSavingDraft,
       isDraftSaved,
       isStreaming,
