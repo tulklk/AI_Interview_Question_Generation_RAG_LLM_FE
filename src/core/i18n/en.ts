@@ -2255,6 +2255,9 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
     startNewConfirmBtn: "Start New Attempt",
     startNewCancelBtn: "Cancel",
     startNewFailed: "Couldn't start a new attempt. Please try again.",
+    unpublishedDialogTitle: "Question set unavailable",
+    unpublishedDialogBody: "The recruiter has hidden this question set. It is no longer available for practice.",
+    unpublishedDialogBtn: "Back to Question Sets",
     companyBlock: {
       title: "About the Company",
       visitWebsite: "Visit website",

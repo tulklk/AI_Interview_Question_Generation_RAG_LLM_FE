@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import {
   ArrowLeft, Clock, BarChart2, Users, Star, X,
-  ChevronRight, Target, Zap, RotateCcw, Bookmark, Loader2, RefreshCw,
+  ChevronRight, Target, Zap, RotateCcw, Bookmark, Loader2, RefreshCw, EyeOff,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { useLanguage } from "@/shared/providers/language-context";
@@ -14,7 +14,7 @@ import type { QuestionSet, QuestionCategory } from "@/features/candidate/types/j
 import { DifficultyPill, CategoryPill, formatCategoryLabel } from "@/features/candidate/components/ui/pill";
 import { CompanyInfoCard } from "./company-info-card";
 import { findInProgressSession, abandonPracticeSession, getPracticeSession } from "@/features/candidate/services/practice-session.service";
-import { toggleBookmark, getBookmarkedSetIds } from "@/features/candidate/services/question-set.service";
+import { toggleBookmark, getBookmarkedSetIds, getQuestionSetById, NotFoundError } from "@/features/candidate/services/question-set.service";
 import { useToast } from "@/shared/providers/toast-context";
 import { ConfirmDialog } from "@/shared/components/ui/confirm-dialog";
 import { getSkillIcon } from "@/features/candidate/utils/skill-icons";
@@ -68,6 +68,8 @@ export function SetDetail({ set }: SetDetailProps) {
   const [startingNew, setStartingNew] = useState(false);
   const [showCompanyModal, setShowCompanyModal] = useState(false);
   const [showAllSkills, setShowAllSkills] = useState(false);
+  const [navigating, setNavigating] = useState(false);
+  const [unpublishedDialogOpen, setUnpublishedDialogOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -95,9 +97,41 @@ export function SetDetail({ set }: SetDetailProps) {
       .finally(() => setBookmarking(false));
   }
 
-  function handleStartNew() {
+  /** Check publish status, show loading, then navigate — or show the unpublished dialog. */
+  async function checkAndNavigate(destination: string) {
+    if (navigating) return;
+    setNavigating(true);
+    try {
+      await getQuestionSetById(set.id);
+      router.push(destination);
+    } catch (err) {
+      setNavigating(false);
+      if (err instanceof NotFoundError) {
+        setUnpublishedDialogOpen(true);
+      } else {
+        addToast("error", p.loadFailed);
+      }
+    }
+  }
+
+  async function handleStartNew() {
     if (!inProgressSessionId || startingNew) return;
     setStartingNew(true);
+
+    // Verify the set is still published before abandoning the in-progress session
+    try {
+      await getQuestionSetById(set.id);
+    } catch (err) {
+      setStartingNew(false);
+      setStartNewConfirmOpen(false);
+      if (err instanceof NotFoundError) {
+        setUnpublishedDialogOpen(true);
+      } else {
+        addToast("error", p.loadFailed);
+      }
+      return;
+    }
+
     abandonPracticeSession(inProgressSessionId)
       .then(() => {
         router.push(`/jobseeker/practice/${set.id}`);
@@ -331,12 +365,17 @@ export function SetDetail({ set }: SetDetailProps) {
                 </div>
               </div>
 
-              {/* CTA — "Continue" if an in-progress session exists, else "Start" */}
-              <Link
-                href={`/jobseeker/practice/${set.id}`}
-                className="shimmer-button flex items-center justify-center gap-2 w-full h-10 text-[14px] font-semibold text-white hr-cta-btn rounded-lg mt-2"
+              {/* CTA — "Continue" if an in-progress session exists, else "Start".
+                  Checks publish status before navigating; shows spinner while checking. */}
+              <button
+                type="button"
+                disabled={navigating}
+                onClick={() => void checkAndNavigate(`/jobseeker/practice/${set.id}`)}
+                className="shimmer-button flex items-center justify-center gap-2 w-full h-10 text-[14px] font-semibold text-white hr-cta-btn rounded-lg mt-2 disabled:opacity-70 disabled:cursor-not-allowed"
               >
-                {inProgressSessionId ? (
+                {navigating ? (
+                  <Loader2 size={14} className="animate-spin" />
+                ) : inProgressSessionId ? (
                   <>
                     <RotateCcw size={14} />
                     {p.summaryCard.continueBtn}
@@ -347,7 +386,7 @@ export function SetDetail({ set }: SetDetailProps) {
                     <ChevronRight size={14} />
                   </>
                 )}
-              </Link>
+              </button>
 
               {inProgressSessionId && (
                 <button
@@ -385,9 +424,35 @@ export function SetDetail({ set }: SetDetailProps) {
         cancelLabel={p.startNewCancelBtn}
         variant="danger"
         loading={startingNew}
-        onConfirm={handleStartNew}
+        onConfirm={() => void handleStartNew()}
         onCancel={() => setStartNewConfirmOpen(false)}
       />
+
+      {/* ── "Recruiter hid this set" dialog ──────────────────────────────── */}
+      {unpublishedDialogOpen && (
+        <div className="fixed inset-0 z-9999 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+          <div className="relative w-full max-w-sm rounded-2xl border border-gray-200 bg-white p-6 shadow-xl dark:border-gray-700 dark:bg-gray-900 text-center">
+            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-amber-50 dark:bg-amber-950/40">
+              <EyeOff size={26} className="text-amber-500 dark:text-amber-400" />
+            </div>
+            <h3 className="text-[15px] font-bold text-gray-900 dark:text-gray-100 mb-2">
+              {p.unpublishedDialogTitle}
+            </h3>
+            <p className="text-[13px] text-gray-500 dark:text-gray-400 mb-6 leading-relaxed">
+              {p.unpublishedDialogBody}
+            </p>
+            <button
+              type="button"
+              onClick={() => router.push("/jobseeker/practice")}
+              className="w-full flex items-center justify-center gap-2 h-10 rounded-xl bg-primary text-white text-[13px] font-semibold hover:bg-primary/90 transition-colors"
+            >
+              <ArrowLeft size={14} />
+              {p.unpublishedDialogBtn}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
