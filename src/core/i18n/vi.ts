@@ -2256,6 +2256,9 @@ Yêu cầu:
     startNewConfirmBtn: "Làm Lại Từ Đầu",
     startNewCancelBtn: "Hủy",
     startNewFailed: "Không thể bắt đầu lượt làm mới. Vui lòng thử lại.",
+    unpublishedDialogTitle: "Bộ câu hỏi không khả dụng",
+    unpublishedDialogBody: "Nhà tuyển dụng đã ẩn bộ câu hỏi này. Bộ câu hỏi không còn khả dụng để luyện tập.",
+    unpublishedDialogBtn: "Quay lại bộ câu hỏi",
     companyBlock: {
       title: "Về Công Ty",
       visitWebsite: "Truy cập website",
