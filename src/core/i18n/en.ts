@@ -1006,6 +1006,7 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
       exportTitle: "Download Excel",
       viewTitle: "View",
       deleteTitle: "Delete",
+      deletePublishedTitle: "Unpublish before deleting",
       deleteFailed: "Could not delete. Please try again.",
       deleteSuccess: "Question set deleted successfully.",
       bookmarkAddTitle: "Save to bookmarks",
