@@ -622,18 +622,17 @@ export function ReviewQuestionsSection({
           {!readOnly && isEditable && (
             <button
               type="button"
-              onClick={() => !isLocked && setShowTimeLimitDialog(true)}
-              disabled={isLocked}
-              title={isLocked ? rp.editLockedHint : rp.timeLimitEditHint}
+              onClick={() => setShowTimeLimitDialog(true)}
+              title={rp.timeLimitEditHint}
               className={cn(
                 "inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-md transition-colors",
                 "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400",
-                isLocked ? "opacity-60 cursor-not-allowed" : "hover:bg-gray-200 dark:hover:bg-gray-700 cursor-pointer"
+                "hover:bg-gray-200 dark:hover:bg-gray-700 cursor-pointer"
               )}
             >
               <Clock size={11} />
               {timeLimitMinutes != null ? rp.timeLimitLabel.replace("{{min}}", String(timeLimitMinutes)) : rp.noTimeLimitLabel}
-              {!isLocked && <Pencil size={9} />}
+              <Pencil size={9} />
             </button>
           )}
         </div>

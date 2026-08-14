@@ -132,4 +132,33 @@ describe("AUTH005 — Reset password", () => {
     await user.click(screen.getByRole("button", { name: "Reset password" }));
     await waitFor(() => expect(push).toHaveBeenCalledWith("/login?reset=success"));
   });
+
+  test("AUTH005-9: the confirm-password show/hide toggle reveals the value while it doesn't match yet", async () => {
+    searchParams = new URLSearchParams({ token: "valid-token-abc" });
+    const user = userEvent.setup();
+    renderWithProviders(<ResetPasswordContent />);
+    const confirmInput = screen.getByPlaceholderText("Repeat your new password") as HTMLInputElement;
+    await user.type(screen.getByPlaceholderText("Min. 8 characters"), "Password1!");
+    await user.type(confirmInput, "Different1!");
+
+    expect(confirmInput.type).toBe("password");
+    const toggleBtn = confirmInput.closest("div")!.querySelector("button")!;
+    await user.click(toggleBtn);
+    expect(confirmInput.type).toBe("text");
+  });
+
+  test("AUTH005-10: once the confirm password matches, the toggle is replaced by a match checkmark", async () => {
+    // reset-password-content.tsx:198-212 — intended behavior: confirmPassword
+    // matching newPassword is itself the confirmation the user needs, so the
+    // toggle <button> is swapped for a CheckCircle2 indicator once they match.
+    searchParams = new URLSearchParams({ token: "valid-token-abc" });
+    const user = userEvent.setup();
+    renderWithProviders(<ResetPasswordContent />);
+    const confirmInput = screen.getByPlaceholderText("Repeat your new password") as HTMLInputElement;
+    await user.type(screen.getByPlaceholderText("Min. 8 characters"), "Password1!");
+    await user.type(confirmInput, "Password1!");
+
+    expect(confirmInput.closest("div")!.querySelector("button")).not.toBeInTheDocument();
+    expect(confirmInput.type).toBe("password");
+  });
 });

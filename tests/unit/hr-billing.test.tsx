@@ -43,6 +43,11 @@ async function getMockedListSubscriptionPlans() {
   return vi.mocked(mod.listSubscriptionPlans);
 }
 
+async function getMockedCancelSubscriptionSandbox() {
+  const mod = await import("@/features/subscription/services/subscription.service");
+  return vi.mocked(mod.cancelSubscriptionSandbox);
+}
+
 // The current-plan banner ("You are on Free") and the plan-comparison card's
 // own title both render the plan name as bare text, so a singular
 // findByText/getByText throws "Found multiple elements" — same dual-render
@@ -57,6 +62,7 @@ beforeEach(async () => {
   (await getMockedGetMySubscription()).mockReset();
   (await getMockedListSubscriptionPlans()).mockReset();
   (await getMockedListSubscriptionPlans()).mockResolvedValue([]);
+  (await getMockedCancelSubscriptionSandbox()).mockReset();
 });
 
 describe("HR Billing — current plan", () => {
@@ -207,6 +213,55 @@ describe("HR Billing — cancel to Free", () => {
       await waitFor(() =>
         expect(screen.queryByRole("heading", { name: "Downgrade to Free" })).not.toBeInTheDocument()
       );
+    },
+    15000
+  );
+
+  test(
+    "BILL-7: confirming Downgrade to Free keeps Premium active until period end — must NOT drop to Free immediately",
+    async () => {
+      // Backend is being fixed (in progress as of 2026-08-14) to stop
+      // downgrading the instant /cancel resolves and instead keep the plan on
+      // Premium/PENDING_DOWNGRADE until the paid period actually ends. Once
+      // that lands, the cancel call still returns success but its response
+      // keeps planCode on PREMIUM (only `status` flips to reflect the pending
+      // cancellation) — hr-subscription-context.tsx's cancelPremium() applies
+      // whatever planCode the response carries straight to state
+      // (hr-subscription-context.tsx:79-83), so as long as the backend no
+      // longer sends planCode back as FREE, the existing FE code already
+      // keeps showing Premium with no FE change needed. This test locks in
+      // that contract so a regression (backend reverting to the old
+      // immediate-downgrade response) fails loudly here.
+      (await getMockedGetMySubscription()).mockResolvedValue(premiumSubscription() as never);
+      (await getMockedCancelSubscriptionSandbox()).mockResolvedValue({
+        ...premiumSubscription(),
+        status: "Cancelled",
+      } as never);
+      const user = userEvent.setup();
+      renderStudio(<HrBillingSubscription />);
+      await findFirstText("Premium");
+
+      const downgradeButtons = await screen.findAllByRole("button", { name: "Downgrade to Free" }, { timeout: 10000 });
+      await user.click(downgradeButtons[0]);
+      await screen.findByRole("heading", { name: "Downgrade to Free" }, { timeout: 10000 });
+
+      const confirmButtons = screen.getAllByRole("button", { name: "Downgrade to Free" });
+      await user.click(confirmButtons[confirmButtons.length - 1]);
+
+      const cancelMock = await getMockedCancelSubscriptionSandbox();
+      await waitFor(() => expect(cancelMock).toHaveBeenCalledTimes(1));
+      await waitFor(() =>
+        expect(screen.queryByRole("heading", { name: "Downgrade to Free" })).not.toBeInTheDocument()
+      );
+
+      // isPremium must still be true (periodEnd honored, not reverted to
+      // Free): the Free-tier card's CTA only reads as "Downgrade to Free"
+      // while isPremium is true (hr-billing-subscription.tsx:494) — if the
+      // old immediate-downgrade bug were still present, planId would have
+      // flipped to HR_FREE and this button would no longer exist anywhere.
+      expect(
+        await screen.findByRole("button", { name: "Downgrade to Free" }, { timeout: 10000 })
+      ).toBeInTheDocument();
     },
     15000
   );

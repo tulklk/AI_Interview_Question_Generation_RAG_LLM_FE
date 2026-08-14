@@ -163,6 +163,26 @@ describe("HR History — delete", () => {
     await waitFor(() => expect(historyApi.deleteHistoryQuestionSet).toHaveBeenCalledWith("qs-1"));
     await waitFor(() => expect(screen.queryByText("Backend Developer Set")).not.toBeInTheDocument());
   });
+
+  test("HIST-10: a PUBLISHED set's Delete button is disabled and never opens the confirm dialog", async () => {
+    // question-set-history-table.tsx:603-620 — deleting a set that's live on
+    // the marketplace is blocked at 3 layers: the button itself is
+    // `disabled`, its onClick no-ops for PUBLISHED items, and confirmDelete()
+    // re-checks status defensively too. This asserts the outermost layer —
+    // the one a real click actually hits — for qs-2 (Frontend React Set,
+    // PUBLISHED).
+    const user = userEvent.setup();
+    renderStudio(<QuestionSetHistoryTable filter="all" />);
+    await screen.findByText("Frontend React Set", {}, { timeout: 10000 });
+
+    const publishedDeleteBtn = screen.getByTitle("Unpublish before deleting");
+    expect(publishedDeleteBtn).toBeDisabled();
+
+    await user.click(publishedDeleteBtn);
+
+    expect(screen.queryByText("Confirm Delete")).not.toBeInTheDocument();
+    expect(historyApi.deleteHistoryQuestionSet).not.toHaveBeenCalled();
+  });
 });
 
 describe("HR History — export gated by plan", () => {
