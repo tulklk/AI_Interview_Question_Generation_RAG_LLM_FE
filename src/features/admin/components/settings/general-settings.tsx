@@ -230,7 +230,9 @@ export function GeneralSettings() {
             </div>
             <button
               type="button"
-              className="shrink-0 rounded-lg border border-red-200 dark:border-red-900 bg-white dark:bg-gray-900 px-3 py-1.5 text-xs font-semibold text-red-600 dark:text-red-400 transition-colors hover:bg-red-50 dark:hover:bg-red-950/50"
+              disabled
+              title={t.common.comingSoon}
+              className="shrink-0 rounded-lg border border-red-200 dark:border-red-900 bg-white dark:bg-gray-900 px-3 py-1.5 text-xs font-semibold text-red-600 dark:text-red-400 transition-colors opacity-50 cursor-not-allowed"
             >
               {g.resetBtn}
             </button>
