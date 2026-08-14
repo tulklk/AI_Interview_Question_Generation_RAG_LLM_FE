@@ -238,6 +238,11 @@ export function QuestionSetHistoryTable({ filter = "all" }: QuestionSetHistoryTa
 
   async function confirmDelete() {
     if (!deleteTarget) return;
+    if (deleteTarget.status === "PUBLISHED") {
+      setDeleteTarget(null);
+      addToast("error", ht.deletePublishedTitle);
+      return;
+    }
     const id = deleteTarget.questionSetId;
     setDeleteTarget(null);
     setBusyId(id);
@@ -597,10 +602,19 @@ export function QuestionSetHistoryTable({ filter = "all" }: QuestionSetHistoryTa
                         )}
                         <button
                           type="button"
-                          disabled={busy}
-                          onClick={() => setDeleteTarget(item)}
-                          className={cn(iconBtn, "hover:text-red-600")}
-                          title={ht.deleteTitle}
+                          disabled={busy || item.status === "PUBLISHED"}
+                          onClick={() => item.status !== "PUBLISHED" && setDeleteTarget(item)}
+                          className={cn(
+                            iconBtn,
+                            item.status === "PUBLISHED"
+                              ? "cursor-not-allowed opacity-40"
+                              : "hover:text-red-600"
+                          )}
+                          title={
+                            item.status === "PUBLISHED"
+                              ? ht.deletePublishedTitle
+                              : ht.deleteTitle
+                          }
                         >
                           <Trash2 size={14} />
                         </button>

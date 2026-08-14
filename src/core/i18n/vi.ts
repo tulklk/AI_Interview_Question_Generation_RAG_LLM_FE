@@ -1008,6 +1008,7 @@ Yêu cầu:
       exportTitle: "Tải xuống Excel",
       viewTitle: "Xem",
       deleteTitle: "Xóa",
+      deletePublishedTitle: "Hủy xuất bản trước khi xóa",
       deleteFailed: "Không thể xóa. Vui lòng thử lại.",
       deleteSuccess: "Đã xóa bộ câu hỏi thành công.",
       bookmarkAddTitle: "Lưu vào mục yêu thích",
