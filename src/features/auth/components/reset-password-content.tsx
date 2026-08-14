@@ -92,17 +92,17 @@ export function ResetPasswordContent() {
   }
 
   const inputBase =
-    "w-full pl-10 py-2.5 text-sm border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors placeholder:text-gray-400";
+    "w-full pl-10 py-2.5 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors placeholder:text-gray-400 dark:placeholder:text-gray-500";
   const inputErrorCls =
-    "border-red-300 focus:border-red-400 focus:ring-red-100";
+    "border-red-300 dark:border-red-500 focus:border-red-400 focus:ring-red-100";
 
   if (tokenError) {
     return (
-      <div className="w-full max-w-sm mx-auto animate-fade-up text-center">
-        <div className="w-16 h-16 rounded-full bg-red-50 flex items-center justify-center mx-auto mb-6">
-          <AlertCircle size={28} className="text-red-500" />
+      <div className="text-center">
+        <div className="w-16 h-16 rounded-full bg-red-50 dark:bg-red-950/40 flex items-center justify-center mx-auto mb-6">
+          <AlertCircle size={28} className="text-red-500 dark:text-red-400" />
         </div>
-        <p className="text-sm text-gray-600 mb-6">{rp.tokenError}</p>
+        <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">{rp.tokenError}</p>
         <Link
           href="/forgot-password"
           className="inline-flex items-center justify-center gap-2 bg-primary hover:bg-primary-hover text-white font-semibold text-sm py-3 px-6 rounded-lg transition-colors mb-4"
@@ -112,7 +112,7 @@ export function ResetPasswordContent() {
         <div>
           <Link
             href="/login"
-            className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 transition-colors"
+            className="inline-flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
           >
             <ArrowLeft size={14} />
             {rp.backToLogin}
@@ -123,16 +123,18 @@ export function ResetPasswordContent() {
   }
 
   return (
-    <div className="w-full max-w-sm mx-auto animate-fade-up">
-      <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center mb-6">
-        <KeyRound size={24} className="text-primary" />
+    <div className="w-full">
+      <div className="text-center mb-7">
+        <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center mb-6 mx-auto">
+          <KeyRound size={24} className="text-primary" />
+        </div>
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-1">{rp.title}</h2>
+        <p className="text-sm text-gray-500 dark:text-gray-400">{rp.subtitle}</p>
       </div>
-      <h2 className="text-2xl font-bold text-gray-900 mb-1">{rp.title}</h2>
-      <p className="text-sm text-gray-500 mb-7">{rp.subtitle}</p>
 
       <form onSubmit={handleSubmit} className="space-y-4" noValidate>
         <div>
-          <label className="text-sm font-medium text-gray-700 block mb-1.5">
+          <label className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-1.5">
             {rp.newPasswordLabel}
           </label>
           <div className="relative">
@@ -155,7 +157,7 @@ export function ResetPasswordContent() {
             <button
               type="button"
               onClick={() => setShowNew((v) => !v)}
-              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
               tabIndex={-1}
             >
               {showNew ? <EyeOff size={15} /> : <Eye size={15} />}
@@ -167,7 +169,7 @@ export function ResetPasswordContent() {
         </div>
 
         <div>
-          <label className="text-sm font-medium text-gray-700 block mb-1.5">
+          <label className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-1.5">
             {rp.confirmPasswordLabel}
           </label>
           <div className="relative">
@@ -188,7 +190,7 @@ export function ResetPasswordContent() {
                 fieldErrors.confirmPassword
                   ? inputErrorCls
                   : confirmPassword && confirmPassword === newPassword
-                  ? "border-emerald-400 focus:border-emerald-500 focus:ring-emerald-100"
+                  ? "border-emerald-400 dark:border-emerald-500 focus:border-emerald-500 focus:ring-emerald-100"
                   : ""
               }`}
               autoComplete="new-password"
@@ -202,7 +204,7 @@ export function ResetPasswordContent() {
               <button
                 type="button"
                 onClick={() => setShowConfirm((v) => !v)}
-                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
                 tabIndex={-1}
               >
                 {showConfirm ? <EyeOff size={15} /> : <Eye size={15} />}
@@ -230,7 +232,7 @@ export function ResetPasswordContent() {
       <div className="text-center mt-6">
         <Link
           href="/login"
-          className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 transition-colors"
+          className="inline-flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
         >
           <ArrowLeft size={14} />
           {rp.backToLogin}
