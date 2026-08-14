@@ -11,7 +11,6 @@ import {
 } from "react";
 import type { CandidatePlanType } from "@/features/candidate/types/billing";
 import { getCandidateSubscription } from "@/features/candidate/services/candidate-billing.service";
-import { useSubscriptionRealtime } from "@/features/subscription/hooks/use-subscription-realtime";
 import { useUser } from "@/features/auth/context/user-context";
 import { localStorageService } from "@/core/storage/local-storage.service";
 
@@ -63,17 +62,26 @@ export function CandidateSubscriptionProvider({ children }: { children: ReactNod
   }, [userId]);
 
   useEffect(() => {
+    // Don't call the API when the user is not logged in — avoids 401 spam on
+    // public pages (login, forgot-password, etc.) where the context may still
+    // be mounted but there is no authenticated session yet.
+    if (!userId) return;
     // Sau mount: áp cache ngay (nếu có, và chỉ khi thuộc đúng user hiện tại) rồi refresh từ API.
     const cached = readCachedPlan(userId);
     if (cached === "PREMIUM") setPlanType("PREMIUM");
     void refreshSubscription();
   }, [userId, refreshSubscription]);
 
-  // ── Real-time subscription updates ────────────────────────────────────────
-  // Listens on the SignalR hub for PaymentPaid / admin plan-change events and
-  // immediately refreshes so planType updates without a page reload.
-  // A 5-minute background poll runs as fallback when SignalR is unavailable.
-  useSubscriptionRealtime({ onSubscriptionChanged: refreshSubscription });
+  // ── Background subscription poll ─────────────────────────────────────────
+  // The /hubs/subscription-payments SignalR hub is HR-only on the backend.
+  // Candidates get 404 when trying to connect, so we skip SignalR entirely
+  // and rely on a plain 30-second poll instead.
+  // Only runs when the user is authenticated to avoid 401 spam on public pages.
+  useEffect(() => {
+    if (!userId) return;
+    const id = window.setInterval(() => void refreshSubscription(), 30_000);
+    return () => window.clearInterval(id);
+  }, [userId, refreshSubscription]);
 
   const value = useMemo(
     () => ({ planType, refreshSubscription }),
