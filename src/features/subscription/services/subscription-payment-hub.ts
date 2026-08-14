@@ -66,6 +66,12 @@ export function createSubscriptionPaymentHubConnection(): signalR.HubConnection 
     return new signalR.HubConnectionBuilder()
       .withUrl(`${base}${SUBSCRIPTION_PAYMENT_HUB_PATH}`, {
         accessTokenFactory: () => getAccessToken() ?? "",
+        // Auth is via Bearer token (accessTokenFactory → ?access_token=…),
+        // not cookies — setting withCredentials: false prevents the browser
+        // from sending credentials mode "include", which the backend rejects
+        // because it returns Access-Control-Allow-Origin: * (wildcard + credentials
+        // is a CORS violation).
+        withCredentials: false,
         // Long polling fallback nếu WebSocket bị proxy chặn
         transport:
           signalR.HttpTransportType.WebSockets |
