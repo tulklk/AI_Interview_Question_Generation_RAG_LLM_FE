@@ -31,7 +31,7 @@
             <mxPoint x="670" y="780" as="targetPoint" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="t1_7" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fontSize=13;fillColor=#ffffff;strokeColor=#000000;fontStyle=1;" value=":QuestionSet" vertex="1">
+        <mxCell id="t1_7" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fontSize=13;fillColor=#ffffff;strokeColor=#000000;fontStyle=1;" value=":CandidateQuestionSetService" vertex="1">
           <mxGeometry height="40" width="180" x="840" y="40" as="geometry" />
         </mxCell>
         <mxCell id="t1_8" edge="1" parent="1" style="endArrow=none;dashed=1;html=1;strokeColor=#999999;">
@@ -61,7 +61,7 @@
             <mxPoint x="663" y="240" as="targetPoint" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="t1_14" edge="1" parent="1" style="endArrow=block;endFill=1;html=1;fontSize=11;align=center;verticalAlign=bottom;labelBackgroundColor=#ffffff;strokeColor=#000000;" value="3. findPublished(filters)">
+        <mxCell id="t1_14" edge="1" parent="1" style="endArrow=block;endFill=1;html=1;fontSize=11;align=center;verticalAlign=bottom;labelBackgroundColor=#ffffff;strokeColor=#000000;" value="3. ListPublishedAsync(filters)">
           <mxGeometry relative="1" as="geometry">
             <mxPoint x="677" y="300" as="sourcePoint" />
             <mxPoint x="923" y="300" as="targetPoint" />
