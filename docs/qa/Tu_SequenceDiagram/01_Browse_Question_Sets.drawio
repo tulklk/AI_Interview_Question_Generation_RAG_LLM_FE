@@ -23,7 +23,7 @@
           </mxGeometry>
         </mxCell>
         <mxCell id="t1_5" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fontSize=13;fillColor=#ffffff;strokeColor=#000000;fontStyle=1;" value=":CandidateQuestionSetsController" vertex="1">
-          <mxGeometry height="40" width="247" x="547" y="40" as="geometry" />
+          <mxGeometry height="54" width="260" x="547" y="40" as="geometry" />
         </mxCell>
         <mxCell id="t1_6" edge="1" parent="1" style="endArrow=none;dashed=1;html=1;strokeColor=#999999;">
           <mxGeometry relative="1" as="geometry">
@@ -32,7 +32,7 @@
           </mxGeometry>
         </mxCell>
         <mxCell id="t1_7" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fontSize=13;fillColor=#ffffff;strokeColor=#000000;fontStyle=1;" value=":CandidateQuestionSetService" vertex="1">
-          <mxGeometry height="40" width="180" x="840" y="40" as="geometry" />
+          <mxGeometry height="54" width="230" x="840" y="40" as="geometry" />
         </mxCell>
         <mxCell id="t1_8" edge="1" parent="1" style="endArrow=none;dashed=1;html=1;strokeColor=#999999;">
           <mxGeometry relative="1" as="geometry">
