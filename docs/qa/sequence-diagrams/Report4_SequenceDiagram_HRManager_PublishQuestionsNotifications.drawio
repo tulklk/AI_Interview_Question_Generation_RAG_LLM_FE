@@ -4,6 +4,7 @@
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
+        <mxCell id="note_disclaimer" value="NOTE: MessageQueue -&gt; NotificationService -&gt; Email/SMS below is the ORIGINAL TEAM DESIGN (Report4 master doc). Verified against the real backend repo: no message queue, notification service, or email/SMS sending code exists anywhere in the current codebase. PublishAsync only updates status, nothing else." style="text;html=1;align=left;verticalAlign=middle;fontSize=11;fontColor=#B00020;fontStyle=3;" vertex="1" parent="1"><mxGeometry x="90" y="95" width="1400" height="36" as="geometry"/></mxCell>
         <mxCell id="d9f_30" parent="1" style="shape=umlFrame;whiteSpace=wrap;html=1;pointerEvents=0;align=left;verticalAlign=top;fontSize=11;spacingLeft=2;spacingTop=2;strokeColor=#000000;fillColor=none;" value="&lt;b&gt;&amp;nbsp;alt&amp;nbsp;&lt;/b&gt;" vertex="1">
           <mxGeometry height="260" width="1190" x="1390" y="960" as="geometry" />
         </mxCell>
@@ -37,8 +38,8 @@
             <mxPoint x="410" y="1360" as="targetPoint" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="d9f_5" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fontSize=13;fillColor=#ffffff;strokeColor=#000000;fontStyle=1;" value=":QuestionSetsController" vertex="1">
-          <mxGeometry height="40" width="180" x="580" y="40" as="geometry" />
+        <mxCell id="d9f_5" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fontSize=13;fillColor=#ffffff;strokeColor=#000000;fontStyle=1;" value=":HrQuestionSetsController" vertex="1">
+          <mxGeometry height="40" width="200" x="580" y="40" as="geometry" />
         </mxCell>
         <mxCell id="d9f_6" edge="1" parent="1" style="endArrow=none;dashed=1;html=1;strokeColor=#999999;">
           <mxGeometry relative="1" as="geometry">
@@ -46,7 +47,7 @@
             <mxPoint x="670" y="1360" as="targetPoint" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="d9f_7" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fontSize=13;fillColor=#ffffff;strokeColor=#000000;fontStyle=1;" value=":QuestionSet" vertex="1">
+        <mxCell id="d9f_7" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fontSize=13;fillColor=#ffffff;strokeColor=#000000;fontStyle=1;" value=":QuestionSetService" vertex="1">
           <mxGeometry height="40" width="180" x="840" y="40" as="geometry" />
         </mxCell>
         <mxCell id="d9f_8" edge="1" parent="1" style="endArrow=none;dashed=1;html=1;strokeColor=#999999;">
@@ -148,7 +149,7 @@
             <mxPoint x="663" y="240" as="targetPoint" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="d9f_36" edge="1" parent="1" style="endArrow=block;endFill=1;html=1;fontSize=11;align=center;verticalAlign=bottom;labelBackgroundColor=#ffffff;strokeColor=#000000;" value="3. updateStatus(id, &#39;PUBLISHED&#39;)">
+        <mxCell id="d9f_36" edge="1" parent="1" style="endArrow=block;endFill=1;html=1;fontSize=11;align=center;verticalAlign=bottom;labelBackgroundColor=#ffffff;strokeColor=#000000;" value="3. PublishAsync(id, hrId)">
           <mxGeometry relative="1" as="geometry">
             <mxPoint x="677" y="300" as="sourcePoint" />
             <mxPoint x="923" y="300" as="targetPoint" />
