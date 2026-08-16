@@ -44,6 +44,10 @@ vi.mock("@/features/candidate/services/candidate-cv.service", () => ({
   updateCvSyncSettings: vi.fn(),
 }));
 
+vi.mock("@/features/auth/services/user.service", () => ({
+  getCurrentUser: vi.fn(),
+}));
+
 vi.mock("@/features/candidate/components/profile/candidate-profile", () => ({
   CandidateProfile: () => <div>[CandidateProfile]</div>,
 }));
@@ -63,13 +67,24 @@ vi.mock("@/features/gamification/components/xp-history-section", () => ({
 import * as candidateBillingApiTyped from "@/features/candidate/services/candidate-billing.service";
 import * as privacyApiTyped from "@/features/candidate/services/privacy-settings.service";
 import * as cvApiTyped from "@/features/candidate/services/candidate-cv.service";
+import * as userApiTyped from "@/features/auth/services/user.service";
 
 const candidateBillingApi = candidateBillingApiTyped as unknown as ReturnType<typeof candidateBillingServiceMockFactory>;
 const privacyApi = privacyApiTyped as unknown as { getPrivacySettings: ReturnType<typeof vi.fn>; updatePrivacySettings: ReturnType<typeof vi.fn> };
 const cvApi = cvApiTyped as unknown as { getCvSyncSettings: ReturnType<typeof vi.fn>; updateCvSyncSettings: ReturnType<typeof vi.fn> };
+const userApi = userApiTyped as unknown as { getCurrentUser: ReturnType<typeof vi.fn> };
 
 beforeEach(() => {
   searchParams = new URLSearchParams();
+  // CandidateSubscriptionProvider only fetches (and applies mocked) subscription
+  // data once useUser() resolves an authenticated user with an id — without
+  // this, isPremium stays permanently false regardless of what
+  // getCandidateSubscription is mocked to return (finding: CSET-6 silently
+  // relied on this being seeded elsewhere and never actually exercised the
+  // Premium branch until this was added).
+  localStorage.setItem("interviewai_auth", "true");
+  userApi.getCurrentUser.mockReset();
+  userApi.getCurrentUser.mockResolvedValue({ id: "cand-1", fullName: "Test Candidate", email: "candidate@example.com" });
   candidateBillingApi.getCandidateSubscription.mockReset();
   candidateBillingApi.getCandidateSubscription.mockResolvedValue(freeCandidateSubscription());
   privacyApi.getPrivacySettings.mockReset();

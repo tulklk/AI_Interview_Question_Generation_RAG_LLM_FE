@@ -66,9 +66,27 @@ function growRowForText(ws, r, text, c1, c2) {
   row.height = Math.max(row.height || 0, needed);
 }
 
+// Em dashes read as an AI-writing tell in a document meant to look
+// hand-authored. Rewrite them to plain punctuation everywhere EXCEPT inside
+// double-quoted substrings, which are verbatim real UI copy (toast/tooltip
+// text) quoted from the actual app and must stay byte-for-byte accurate.
+function humanizeEmDash(value) {
+  if (typeof value !== "string" || !value.includes("—")) return value;
+  const quotes = [];
+  const masked = value.replace(/"[^"]*"/g, (m) => {
+    quotes.push(m);
+    return `\u0000${quotes.length - 1}\u0000`;
+  });
+  const rewritten = masked
+    .replace(/\s*—\s*/g, ", ")
+    .replace(/,\s*\./g, ".")
+    .replace(/,\s*,/g, ",");
+  return rewritten.replace(/\u0000(\d+)\u0000/g, (_m, i) => quotes[Number(i)]);
+}
+
 function setCell(ws, row, col, value, opts = {}) {
   const cell = ws.getCell(row, col);
-  cell.value = value;
+  cell.value = humanizeEmDash(value);
   const font = { name: FONT_NAME, size: FONT_SIZE };
   if (opts.bold) font.bold = true;
   if (opts.italic) font.italic = true;
@@ -87,24 +105,14 @@ function mergeRange(ws, r1, c1, r2, c2) {
 }
 
 // Excel sheet names: max 31 chars, no \ / ? * [ ] :
-const ID_PREFIX_MAP = {
-  FE_MQ_: "MQ",
-  FE_RAGAUTH_: "RGA",
-  FE_RAG_: "RAG",
-  FE_UI_: "UI",
-  FE_AUTH_: "AUTH",
-  BE_API_: "BE",
-};
+// Bare tc.method (no id prefix) — matches the naming convention the live
+// workbook's ~97 existing sheets already use (e.g. tc.method
+// "DisplayManualQuestionForm" -> sheet "DisplayManualQuestionForm"). An
+// id-prefixed variant was tried once but never actually rolled out to the
+// live file, so keeping this bare so merge-into-live.js's by-name matching
+// keeps recognizing the existing sheets instead of duplicating them.
 function sheetNameFor(tc) {
-  let shortId = tc.id;
-  for (const [prefix, code] of Object.entries(ID_PREFIX_MAP)) {
-    if (tc.id.startsWith(prefix)) {
-      shortId = code + tc.id.slice(prefix.length);
-      break;
-    }
-  }
-  const name = `${shortId}_${tc.method}`;
-  return name.slice(0, 31).replace(/[\\/?*[\]:]/g, "-");
+  return tc.method.slice(0, 31).replace(/[\\/?*[\]:]/g, "-");
 }
 
 // Bold, left-aligned group heading row (e.g. "Company Name") - label in
@@ -2764,6 +2772,1449 @@ const authTestCases = [
   },
 ];
 
+// ---- Shared Utils (pure functions) - grounded in tests/unit/shared-utils.test.ts ----
+// New coverage added to broaden the suite beyond the originally-scoped scenarios;
+// no prior Excel scenario ID existed for these pure-function modules.
+
+const SHARED_UTILS_MODULE = "SharedUtilsModule";
+
+const sharedUtilsTestCases = [
+  {
+    id: "FE_SU_001",
+    module: SHARED_UTILS_MODULE,
+    method: "GetTimeOfDayGreeting",
+    description: "getTimeOfDayGreeting maps an hour-of-day to the correct Morning/Afternoon/Evening/Night label",
+    conditionGroups: [
+      {
+        title: "Hour",
+        items: [
+          { label: "5 (early morning)", marks: [T, F, F, F, F, F, F, F, F] },
+          { label: "11 (late morning)", marks: [F, T, F, F, F, F, F, F, F] },
+          { label: "12 (noon)", marks: [F, F, T, F, F, F, F, F, F] },
+          { label: "17 (late afternoon)", marks: [F, F, F, T, F, F, F, F, F] },
+          { label: "18 (early evening)", marks: [F, F, F, F, T, F, F, F, F] },
+          { label: "21 (late evening)", marks: [F, F, F, F, F, T, F, F, F] },
+          { label: "22 (late night)", marks: [F, F, F, F, F, F, T, F, F] },
+          { label: "4 (pre-dawn)", marks: [F, F, F, F, F, F, F, T, F] },
+          { label: "0 (midnight)", marks: [F, F, F, F, F, F, F, F, T] },
+        ],
+      },
+    ],
+    confirmGroups: [
+      {
+        title: "Return",
+        items: [
+          { label: "Morning", marks: [T, T, F, F, F, F, F, F, F] },
+          { label: "Afternoon", marks: [F, F, T, T, F, F, F, F, F] },
+          { label: "Evening", marks: [F, F, F, F, T, T, F, F, F] },
+          { label: "Night", marks: [F, F, F, F, F, F, T, T, T] },
+        ],
+      },
+    ],
+    types: ["N", "N", "N", "B", "N", "N", "N", "B", "B"],
+  },
+  {
+    id: "FE_SU_002",
+    module: SHARED_UTILS_MODULE,
+    method: "BuildWelcomeMessage",
+    description: "buildWelcomeMessage substitutes {{greeting}}/{{name}} placeholders when present, leaves the string untouched when absent",
+    conditionGroups: [
+      {
+        title: "Template",
+        items: [
+          { label: '"{{greeting}}, {{name}}!"', marks: [T, F] },
+          { label: '"Hello there" (no placeholders)', marks: [F, T] },
+        ],
+      },
+    ],
+    confirmGroups: [
+      {
+        title: "Return",
+        items: [
+          { label: '"Good morning, An!"', marks: [T, F] },
+          { label: '"Hello there" (unchanged)', marks: [F, T] },
+        ],
+      },
+    ],
+    types: ["N", "A"],
+  },
+  {
+    id: "FE_SU_003",
+    module: SHARED_UTILS_MODULE,
+    method: "FormatRelativeTimeInvalidDate",
+    description: "formatRelativeTime returns an empty string for an undefined or unparseable date instead of throwing",
+    conditionGroups: [
+      {
+        title: "Date input",
+        items: [
+          { label: "undefined", marks: [T, F] },
+          { label: '"not-a-date" (unparseable string)', marks: [F, T] },
+        ],
+      },
+    ],
+    confirmGroups: [
+      { title: "Return", items: [{ label: '"" (empty string)', marks: [T, T] }] },
+    ],
+    types: ["A", "A"],
+  },
+  {
+    id: "FE_SU_004",
+    module: SHARED_UTILS_MODULE,
+    method: "FormatRelativeTimeAgeBuckets",
+    description: "formatRelativeTime buckets an elapsed duration into a localized relative-time label (en/vi)",
+    conditionGroups: [
+      {
+        title: "Elapsed age + language",
+        items: [
+          { label: "0ms, en", marks: [T, F, F, F, F, F, F, F] },
+          { label: "0ms, vi", marks: [F, T, F, F, F, F, F, F] },
+          { label: "5 min, en", marks: [F, F, T, F, F, F, F, F] },
+          { label: "5 min, vi", marks: [F, F, F, T, F, F, F, F] },
+          { label: "3h, en", marks: [F, F, F, F, T, F, F, F] },
+          { label: "3h, vi", marks: [F, F, F, F, F, T, F, F] },
+          { label: "2d, en", marks: [F, F, F, F, F, F, T, F] },
+          { label: "2d, vi", marks: [F, F, F, F, F, F, F, T] },
+        ],
+      },
+    ],
+    confirmGroups: [
+      {
+        title: "Return",
+        items: [
+          { label: '"Just now"', marks: [T, F, F, F, F, F, F, F] },
+          { label: '"Vừa xong"', marks: [F, T, F, F, F, F, F, F] },
+          { label: '"5 min ago"', marks: [F, F, T, F, F, F, F, F] },
+          { label: '"5 phút trước"', marks: [F, F, F, T, F, F, F, F] },
+          { label: '"3h ago"', marks: [F, F, F, F, T, F, F, F] },
+          { label: '"3 giờ trước"', marks: [F, F, F, F, F, T, F, F] },
+          { label: '"2d ago"', marks: [F, F, F, F, F, F, T, F] },
+          { label: '"2 ngày trước"', marks: [F, F, F, F, F, F, F, T] },
+        ],
+      },
+    ],
+    types: ["B", "B", "N", "N", "N", "N", "N", "N"],
+  },
+  {
+    id: "FE_SU_005",
+    module: SHARED_UTILS_MODULE,
+    method: "NormalizePathname",
+    description: "normalizePathname strips a trailing slash but keeps the bare root '/' as-is",
+    conditionGroups: [
+      {
+        title: "Pathname",
+        items: [
+          { label: '"/hr/dashboard/" (trailing slash)', marks: [T, F, F] },
+          { label: '"/hr/dashboard" (no trailing slash)', marks: [F, T, F] },
+          { label: '"/" (bare root)', marks: [F, F, T] },
+        ],
+      },
+    ],
+    confirmGroups: [
+      {
+        title: "Return",
+        items: [
+          { label: '"/hr/dashboard"', marks: [T, T, F] },
+          { label: '"/" (unchanged)', marks: [F, F, T] },
+        ],
+      },
+    ],
+    types: ["N", "N", "B"],
+  },
+  {
+    id: "FE_SU_006",
+    module: SHARED_UTILS_MODULE,
+    method: "IsAdminNavActive",
+    description: "isAdminNavActive treats the bare '/admin' href as equivalent to '/admin/dashboard', with trailing-slash tolerance",
+    conditionGroups: [
+      {
+        title: "href / pathname",
+        items: [
+          { label: "/admin/dashboard, /admin", marks: [T, F, F, F] },
+          { label: "/admin/dashboard, /admin/dashboard", marks: [F, T, F, F] },
+          { label: "/admin/dashboard, /admin/users", marks: [F, F, T, F] },
+          { label: "/admin/users, /admin/users/ (trailing slash)", marks: [F, F, F, T] },
+        ],
+      },
+    ],
+    confirmGroups: [
+      {
+        title: "Return",
+        items: [
+          { label: "true", marks: [T, T, F, T] },
+          { label: "false", marks: [F, F, T, F] },
+        ],
+      },
+    ],
+    types: ["N", "N", "N", "B"],
+  },
+  {
+    id: "FE_SU_007",
+    module: SHARED_UTILS_MODULE,
+    method: "IsHrNavActive",
+    description: "isHrNavActive matches an HR sidebar link's active state, including nested-route and sibling-route cases",
+    conditionGroups: [
+      {
+        title: "href / pathname",
+        items: [
+          { label: "/hr/dashboard, /hr", marks: [T, F, F, F, F, F, F, F, F] },
+          { label: "/hr/dashboard, /hr/dashboard", marks: [F, T, F, F, F, F, F, F, F] },
+          { label: "/hr/settings, /hr/settings", marks: [F, F, T, F, F, F, F, F, F] },
+          { label: "/hr/settings, /hr/settings/billing", marks: [F, F, F, T, F, F, F, F, F] },
+          { label: "/hr/history, /hr/history/qs-1", marks: [F, F, F, F, T, F, F, F, F] },
+          { label: "/hr/history, /hr/history", marks: [F, F, F, F, F, T, F, F, F] },
+          { label: "/hr/generate-question, /hr/generate-question/manual", marks: [F, F, F, F, F, F, T, F, F] },
+          { label: "/hr/generate-question, /hr/generate-question", marks: [F, F, F, F, F, F, F, T, F] },
+          { label: "/hr/generate-question, /hr/history", marks: [F, F, F, F, F, F, F, F, T] },
+        ],
+      },
+    ],
+    confirmGroups: [
+      {
+        title: "Return",
+        items: [
+          { label: "true", marks: [T, T, T, F, T, T, T, T, F] },
+          { label: "false", marks: [F, F, F, T, F, F, F, F, T] },
+        ],
+      },
+    ],
+    types: ["N", "N", "N", "B", "N", "N", "N", "N", "B"],
+  },
+  {
+    id: "FE_SU_008",
+    module: SHARED_UTILS_MODULE,
+    method: "GetInitials",
+    description: "getInitials derives 1-2 letter initials from a display name, with a '??' fallback for empty/whitespace input",
+    conditionGroups: [
+      {
+        title: "Name",
+        items: [
+          { label: '"" (empty)', marks: [T, F, F, F, F] },
+          { label: '"   " (whitespace only)', marks: [F, T, F, F, F] },
+          { label: '"Madonna" (single word)', marks: [F, F, T, F, F] },
+          { label: '"Nguyen Van A" (multi-word)', marks: [F, F, F, T, F] },
+          { label: '"  Nguyen   Van A  " (extra whitespace)', marks: [F, F, F, F, T] },
+        ],
+      },
+    ],
+    confirmGroups: [
+      {
+        title: "Return",
+        items: [
+          { label: '"??"', marks: [T, T, F, F, F] },
+          { label: '"MA"', marks: [F, F, T, F, F] },
+          { label: '"NA"', marks: [F, F, F, T, T] },
+        ],
+      },
+    ],
+    types: ["A", "A", "N", "N", "B"],
+  },
+  {
+    id: "FE_SU_009",
+    module: SHARED_UTILS_MODULE,
+    method: "ResolveAvatarUrl",
+    description: "resolveAvatarUrl returns null for a null/undefined user, then prefers user.avatarUrl over candidateProfile over hrProfile, and treats a whitespace-only avatarUrl as absent",
+    conditionGroups: [
+      {
+        title: "User",
+        items: [
+          { label: "null", marks: [T, F, F, F, F, F] },
+          { label: "undefined", marks: [F, T, F, F, F, F] },
+          { label: "avatarUrl=top.png, candidateProfile.avatarUrl=c.png", marks: [F, F, T, F, F, F] },
+          { label: "avatarUrl=null, candidateProfile.avatarUrl=c.png", marks: [F, F, F, T, F, F] },
+          { label: "avatarUrl=null, candidateProfile=null, hrProfile.avatarUrl=h.png", marks: [F, F, F, F, T, F] },
+          { label: 'avatarUrl="  " (whitespace only)', marks: [F, F, F, F, F, T] },
+        ],
+      },
+    ],
+    confirmGroups: [
+      {
+        title: "Return",
+        items: [
+          { label: "null", marks: [T, T, F, F, F, T] },
+          { label: '"top.png"', marks: [F, F, T, F, F, F] },
+          { label: '"c.png"', marks: [F, F, F, T, F, F] },
+          { label: '"h.png"', marks: [F, F, F, F, T, F] },
+        ],
+      },
+    ],
+    types: ["A", "A", "N", "N", "N", "B"],
+  },
+  {
+    id: "FE_SU_010",
+    module: SHARED_UTILS_MODULE,
+    method: "IsValidUrl",
+    description: "isValidUrl treats an empty/whitespace value as valid (optional field), accepts http(s) URLs, and rejects other schemes/malformed input",
+    conditionGroups: [
+      {
+        title: "Value",
+        items: [
+          { label: '"" (empty)', marks: [T, F, F, F, F, F, F] },
+          { label: '"   " (whitespace)', marks: [F, T, F, F, F, F, F] },
+          { label: '"https://example.com"', marks: [F, F, T, F, F, F, F] },
+          { label: '"http://example.com/path?x=1"', marks: [F, F, F, T, F, F, F] },
+          { label: '"ftp://example.com"', marks: [F, F, F, F, T, F, F] },
+          { label: '"not a url"', marks: [F, F, F, F, F, T, F] },
+          { label: '"javascript:alert(1)"', marks: [F, F, F, F, F, F, T] },
+        ],
+      },
+    ],
+    confirmGroups: [
+      {
+        title: "Return",
+        items: [
+          { label: "true", marks: [T, T, T, T, F, F, F] },
+          { label: "false", marks: [F, F, F, F, T, T, T] },
+        ],
+      },
+    ],
+    types: ["B", "B", "N", "N", "A", "A", "A"],
+  },
+  {
+    id: "FE_SU_011",
+    module: SHARED_UTILS_MODULE,
+    method: "MapAvatarUploadError",
+    description: "mapAvatarUploadError maps an avatar-upload error code to its localized message, falling back to a generic upload-failed message for unknown/blank codes",
+    conditionGroups: [
+      {
+        title: "Error code",
+        items: [
+          { label: '"invalid_type"', marks: [T, F, F, F] },
+          { label: '"too_large"', marks: [F, T, F, F] },
+          { label: '"unknown_code"', marks: [F, F, T, F] },
+          { label: '"" (blank)', marks: [F, F, F, T] },
+        ],
+      },
+    ],
+    confirmGroups: [
+      {
+        title: "Return",
+        items: [
+          { label: '"Invalid type."', marks: [T, F, F, F] },
+          { label: '"Too large."', marks: [F, T, F, F] },
+          { label: '"Upload failed." (fallback)', marks: [F, F, T, T] },
+        ],
+      },
+    ],
+    types: ["N", "N", "A", "B"],
+  },
+];
+
+// ---- Permissions & Citations - grounded in tests/unit/permissions-and-citations.test.ts ----
+// New coverage: permissions.ts (auth/role state) and citation-display.ts
+// (JD-citation formatting), previously only exercised indirectly via mocks.
+
+const PERMISSIONS_CITATIONS_MODULE = "PermissionsAndCitationsModule";
+
+const permissionsCitationsTestCases = [
+  {
+    id: "FE_PC_001",
+    module: PERMISSIONS_CITATIONS_MODULE,
+    method: "AuthRoundTripLegacyFlagAndRealToken",
+    description: "setAuth/isAuthenticated/clearAuth round-trip via the legacy flag, and isAuthenticated is also true from a real access token alone",
+    conditionGroups: [
+      {
+        title: "Scenario",
+        items: [
+          { label: "setAuth() then clearAuth() (legacy flag)", marks: [T, F] },
+          { label: "setAuthTokens() only, no legacy flag", marks: [F, T] },
+        ],
+      },
+    ],
+    confirmGroups: [
+      {
+        title: "Return",
+        items: [
+          { label: "isAuthenticated() false -> true -> false", marks: [T, F] },
+          { label: "isAuthenticated() true from token alone", marks: [F, T] },
+        ],
+      },
+    ],
+    types: ["N", "N"],
+  },
+  {
+    id: "FE_PC_002",
+    module: PERMISSIONS_CITATIONS_MODULE,
+    method: "UserRoleAndClearAuthCascade",
+    description: "setUserRole/getUserRole round-trip, and clearAuth clears role + tokens + cached user profile together",
+    conditionGroups: [
+      {
+        title: "Scenario",
+        items: [
+          { label: "setUserRole('HR_MANAGER') then getUserRole()", marks: [T, F] },
+          { label: "setAuth+setUserRole+setAuthTokens+setCachedUserProfile then clearAuth()", marks: [F, T] },
+        ],
+      },
+    ],
+    confirmGroups: [
+      {
+        title: "Return",
+        items: [
+          { label: "getUserRole() -> 'HR_MANAGER'", marks: [T, F] },
+          { label: "getUserRole()/getAccessToken()/getCachedUserProfile() all null after clearAuth", marks: [F, T] },
+        ],
+      },
+    ],
+    types: ["N", "N"],
+  },
+  {
+    id: "FE_PC_003",
+    module: PERMISSIONS_CITATIONS_MODULE,
+    method: "GetRoleRedirect",
+    description: "getRoleRedirect maps a role string (or null) to its post-login landing route",
+    conditionGroups: [
+      {
+        title: "Role",
+        items: [
+          { label: "ADMIN", marks: [T, F, F, F, F] },
+          { label: "SUPER_ADMIN", marks: [F, T, F, F, F] },
+          { label: "HR_MANAGER", marks: [F, F, T, F, F] },
+          { label: "JOB_SEEKER", marks: [F, F, F, T, F] },
+          { label: "null", marks: [F, F, F, F, T] },
+        ],
+      },
+    ],
+    confirmGroups: [
+      {
+        title: "Return",
+        items: [
+          { label: "/admin/dashboard", marks: [T, T, F, F, F] },
+          { label: "/hr/dashboard", marks: [F, F, T, F, F] },
+          { label: "/jobseeker", marks: [F, F, F, T, T] },
+        ],
+      },
+    ],
+    types: ["N", "N", "N", "N", "B"],
+  },
+  {
+    id: "FE_PC_004",
+    module: PERMISSIONS_CITATIONS_MODULE,
+    method: "ExtractRole",
+    description: "extractRole reads a direct/nested role field, decodes it from a JWT payload under several possible token field names, and fails safe (null) for malformed/role-less input",
+    conditionGroups: [
+      {
+        title: "Input",
+        items: [
+          { label: "{ role: 'HR_MANAGER' } (direct field)", marks: [T, F, F, F, F, F, F, F] },
+          { label: "{ data: { role: 'ADMIN' } } (nested)", marks: [F, T, F, F, F, F, F, F] },
+          { label: "JWT under accessToken/access_token/token, claim 'role'", marks: [F, F, T, F, F, F, F, F] },
+          { label: "JWT under accessToken, claim 'Role' (capitalized fallback)", marks: [F, F, F, T, F, F, F, F] },
+          { label: "{ accessToken: 'not-a-jwt' } (malformed)", marks: [F, F, F, F, T, F, F, F] },
+          { label: "null", marks: [F, F, F, F, F, T, F, F] },
+          { label: "'a string' (non-object)", marks: [F, F, F, F, F, F, T, F] },
+          { label: "{} (role-less object)", marks: [F, F, F, F, F, F, F, T] },
+        ],
+      },
+    ],
+    confirmGroups: [
+      {
+        title: "Return",
+        items: [
+          { label: "'HR_MANAGER'", marks: [T, F, F, T, F, F, F, F] },
+          { label: "'ADMIN'", marks: [F, T, F, F, F, F, F, F] },
+          { label: "'JOB_SEEKER'", marks: [F, F, T, F, F, F, F, F] },
+          { label: "null", marks: [F, F, F, F, T, T, T, T] },
+        ],
+      },
+    ],
+    types: ["N", "N", "N", "A", "A", "A", "A", "A"],
+  },
+  {
+    id: "FE_PC_005",
+    module: PERMISSIONS_CITATIONS_MODULE,
+    method: "IsJdCitation",
+    description: "isJdCitation recognizes the JD source-file marker across common spellings/casings, and treats a missing/blank source as not-JD",
+    conditionGroups: [
+      {
+        title: "sourceFile",
+        items: [
+          { label: "'job-description'", marks: [T, F, F, F, F, F, F, F] },
+          { label: "'jd'", marks: [F, T, F, F, F, F, F, F] },
+          { label: "'Job Description'", marks: [F, F, T, F, F, F, F, F] },
+          { label: "'job_description'", marks: [F, F, F, T, F, F, F, F] },
+          { label: "'handbook.pdf'", marks: [F, F, F, F, T, F, F, F] },
+          { label: "null", marks: [F, F, F, F, F, T, F, F] },
+          { label: "undefined", marks: [F, F, F, F, F, F, T, F] },
+          { label: "'' (empty)", marks: [F, F, F, F, F, F, F, T] },
+        ],
+      },
+    ],
+    confirmGroups: [
+      {
+        title: "Return",
+        items: [
+          { label: "true", marks: [T, T, T, T, F, F, F, F] },
+          { label: "false", marks: [F, F, F, F, T, T, T, T] },
+        ],
+      },
+    ],
+    types: ["N", "N", "N", "N", "N", "B", "B", "B"],
+  },
+  {
+    id: "FE_PC_006",
+    module: PERMISSIONS_CITATIONS_MODULE,
+    method: "SortAndInjectJdCitation",
+    description: "sortCitationsPrimaryFirst puts the JD citation first (preserving relative order otherwise, and handling null/empty input), and citationsForDisplay injects a synthetic empty-excerpt JD row only when one isn't already present",
+    conditionGroups: [
+      {
+        title: "Scenario",
+        items: [
+          { label: "sort([handbook, job-description, policy])", marks: [T, F, F, F, F] },
+          { label: "sort(null) / sort([])", marks: [F, T, F, F, F] },
+          { label: "citationsForDisplay([handbook]) — no JD present", marks: [F, F, T, F, F] },
+          { label: "citationsForDisplay([job-description w/ real excerpt]) — JD present", marks: [F, F, F, T, F] },
+        ],
+      },
+    ],
+    confirmGroups: [
+      {
+        title: "Return",
+        items: [
+          { label: "[job-description, handbook, policy]", marks: [T, F, F, F] },
+          { label: "[] (empty array, no throw)", marks: [F, T, F, F] },
+          { label: "2 rows: synthetic JD (excerpt=null) prepended + handbook", marks: [F, F, T, F] },
+          { label: "1 row: original JD row unchanged (excerpt kept, not duplicated)", marks: [F, F, F, T] },
+        ],
+      },
+    ],
+    types: ["N", "A", "N", "N"],
+  },
+  {
+    id: "FE_PC_007",
+    module: PERMISSIONS_CITATIONS_MODULE,
+    method: "FormatCitationExcerptAndDisplayName",
+    description: "formatCitationExcerpt trims/truncates-with-ellipsis/nulls-blank text, and citationDisplayName shows the localized JD label for a JD source and the raw filename otherwise",
+    conditionGroups: [
+      {
+        title: "Input",
+        items: [
+          { label: "'  short text  ' (trim only)", marks: [T, F, F, F, F, F] },
+          { label: "null", marks: [F, T, F, F, F, F] },
+          { label: "'   ' (whitespace only)", marks: [F, F, T, F, F, F] },
+          { label: "200 'x' chars, maxLength=140", marks: [F, F, F, T, F, F] },
+          { label: "citationDisplayName('job-description', labels)", marks: [F, F, F, F, T, F] },
+          { label: "citationDisplayName('handbook.pdf', labels)", marks: [F, F, F, F, F, T] },
+        ],
+      },
+    ],
+    confirmGroups: [
+      {
+        title: "Return",
+        items: [
+          { label: "'short text'", marks: [T, F, F, F, F, F] },
+          { label: "null", marks: [F, T, T, F, F, F] },
+          { label: "140 'x' chars + ellipsis '…'", marks: [F, F, F, T, F, F] },
+          { label: "'Job Description' (localized label)", marks: [F, F, F, F, T, F] },
+          { label: "'handbook.pdf' (raw filename)", marks: [F, F, F, F, F, T] },
+        ],
+      },
+    ],
+    types: ["N", "A", "B", "B", "N", "N"],
+  },
+];
+
+// ---- Gamification & History Utils - grounded in tests/unit/gamification-and-history-utils.test.ts ----
+// New coverage: gamification-formatters.ts, login-welcome.ts, local-history.ts
+// — previously no test at all for these modules.
+
+const GAMIFICATION_HISTORY_MODULE = "GamificationAndHistoryUtilsModule";
+
+const gamificationHistoryTestCases = [
+  {
+    id: "FE_GH_001",
+    module: GAMIFICATION_HISTORY_MODULE,
+    method: "FormatXp",
+    description: "formatXp adds thousands separators, including the zero case",
+    conditionGroups: [
+      { title: "Value", items: [{ label: "1200", marks: [T, F] }, { label: "0", marks: [F, T] }] },
+    ],
+    confirmGroups: [
+      { title: "Return", items: [{ label: "'1,200'", marks: [T, F] }, { label: "'0'", marks: [F, T] }] },
+    ],
+    types: ["N", "B"],
+  },
+  {
+    id: "FE_GH_002",
+    module: GAMIFICATION_HISTORY_MODULE,
+    method: "GetLevelLabel",
+    description: "getLevelLabel maps a numeric level to its named tier across all 6 tier boundaries",
+    conditionGroups: [
+      {
+        title: "Level",
+        items: [
+          { label: "1-2", marks: [T, F, F, F, F, F] },
+          { label: "3-5", marks: [F, T, F, F, F, F] },
+          { label: "6-9", marks: [F, F, T, F, F, F] },
+          { label: "10-14", marks: [F, F, F, T, F, F] },
+          { label: "15-19", marks: [F, F, F, F, T, F] },
+          { label: "20-29", marks: [F, F, F, F, F, T] },
+        ],
+      },
+    ],
+    confirmGroups: [
+      {
+        title: "Return",
+        items: [
+          { label: "Newcomer", marks: [T, F, F, F, F, F] },
+          { label: "Practitioner", marks: [F, T, F, F, F, F] },
+          { label: "Achiever", marks: [F, F, T, F, F, F] },
+          { label: "Trailblazer", marks: [F, F, F, T, F, F] },
+          { label: "Specialist", marks: [F, F, F, F, T, F] },
+          { label: "Mentor", marks: [F, F, F, F, F, T] },
+        ],
+      },
+    ],
+    types: ["N", "N", "N", "N", "N", "N"],
+  },
+  {
+    id: "FE_GH_003",
+    module: GAMIFICATION_HISTORY_MODULE,
+    method: "LevelColorAndStreakIntensity",
+    description: "getLevelColorClass/getLevelBarColor stay in sync at the tier extremes, and streakIntensity buckets a streak count into an intensity level 0-3",
+    conditionGroups: [
+      {
+        title: "Scenario",
+        items: [
+          { label: "level 1 (lowest tier)", marks: [T, F, F, F, F, F, F] },
+          { label: "level 30 (highest tier)", marks: [F, T, F, F, F, F, F] },
+          { label: "streak 0", marks: [F, F, T, F, F, F, F] },
+          { label: "streak 1-2", marks: [F, F, F, T, F, F, F] },
+          { label: "streak 3-6", marks: [F, F, F, F, T, F, F] },
+          { label: "streak 7-29", marks: [F, F, F, F, F, T, F] },
+          { label: "streak 30", marks: [F, F, F, F, F, F, T] },
+        ],
+      },
+    ],
+    confirmGroups: [
+      {
+        title: "Return",
+        items: [
+          { label: "class contains 'gray', bar '#6b7280'", marks: [T, F, F, F, F, F, F] },
+          { label: "class contains 'yellow', bar '#eab308'", marks: [F, T, F, F, F, F, F] },
+          { label: "intensity 0", marks: [F, F, T, F, F, F, F] },
+          { label: "intensity 1", marks: [F, F, F, T, F, F, F] },
+          { label: "intensity 2", marks: [F, F, F, F, T, F, F] },
+          { label: "intensity 3", marks: [F, F, F, F, F, T, T] },
+        ],
+      },
+    ],
+    types: ["N", "B", "N", "N", "N", "N", "B"],
+  },
+  {
+    id: "FE_GH_004",
+    module: GAMIFICATION_HISTORY_MODULE,
+    method: "XpRewardTypeLabel",
+    description: "xpRewardTypeLabel resolves a per-locale label and falls back to the raw type string for an unknown value",
+    conditionGroups: [
+      {
+        title: "Type + locale",
+        items: [
+          { label: "'StreakMilestone', en", marks: [T, F, F] },
+          { label: "'StreakMilestone', vi", marks: [F, T, F] },
+          { label: "'SomethingNew' (unknown), en", marks: [F, F, T] },
+        ],
+      },
+    ],
+    confirmGroups: [
+      {
+        title: "Return",
+        items: [
+          { label: "'Streak milestone'", marks: [T, F, F] },
+          { label: "'Mốc luyện tập liên tiếp'", marks: [F, T, F] },
+          { label: "'SomethingNew' (raw fallback)", marks: [F, F, T] },
+        ],
+      },
+    ],
+    types: ["N", "N", "A"],
+  },
+  {
+    id: "FE_GH_005",
+    module: GAMIFICATION_HISTORY_MODULE,
+    method: "TimeAgo",
+    description: "timeAgo formats an elapsed duration into a localized relative-time label (en/vi), across minute/hour/day/month buckets",
+    conditionGroups: [
+      {
+        title: "Elapsed age + locale",
+        items: [
+          { label: "0ms, en", marks: [T, F, F, F, F, F, F, F, F, F] },
+          { label: "0ms, vi", marks: [F, T, F, F, F, F, F, F, F, F] },
+          { label: "10 min, en", marks: [F, F, T, F, F, F, F, F, F, F] },
+          { label: "10 min, vi", marks: [F, F, F, T, F, F, F, F, F, F] },
+          { label: "5h, en", marks: [F, F, F, F, T, F, F, F, F, F] },
+          { label: "5h, vi", marks: [F, F, F, F, F, T, F, F, F, F] },
+          { label: "10d, en", marks: [F, F, F, F, F, F, T, F, F, F] },
+          { label: "10d, vi", marks: [F, F, F, F, F, F, F, T, F, F] },
+          { label: "2 months, en", marks: [F, F, F, F, F, F, F, F, T, F] },
+          { label: "2 months, vi", marks: [F, F, F, F, F, F, F, F, F, T] },
+        ],
+      },
+    ],
+    confirmGroups: [
+      {
+        title: "Return",
+        items: [
+          { label: "'just now' / 'vừa xong'", marks: [T, T, F, F, F, F, F, F, F, F] },
+          { label: "'10m ago' / '10 phút trước'", marks: [F, F, T, T, F, F, F, F, F, F] },
+          { label: "'5h ago' / '5 giờ trước'", marks: [F, F, F, F, T, T, F, F, F, F] },
+          { label: "'10d ago' / '10 ngày trước'", marks: [F, F, F, F, F, F, T, T, F, F] },
+          { label: "'2mo ago' / '2 tháng trước'", marks: [F, F, F, F, F, F, F, F, T, T] },
+        ],
+      },
+    ],
+    types: ["B", "B", "N", "N", "N", "N", "N", "N", "B", "B"],
+  },
+  {
+    id: "FE_GH_006",
+    module: GAMIFICATION_HISTORY_MODULE,
+    method: "GetLoginWelcomeRoleFromRedirect",
+    description: "getLoginWelcomeRoleFromRedirect maps a post-login redirect path to the role whose welcome banner should show, or null for non-role paths",
+    conditionGroups: [
+      {
+        title: "Path",
+        items: [
+          { label: "/jobseeker or /jobseeker/", marks: [T, F, F, F] },
+          { label: "/admin/dashboard or /admin/users", marks: [F, T, F, F] },
+          { label: "/hr/dashboard or /hr/generate-question", marks: [F, F, T, F] },
+          { label: "/login or /", marks: [F, F, F, T] },
+        ],
+      },
+    ],
+    confirmGroups: [
+      {
+        title: "Return",
+        items: [
+          { label: "'jobseeker'", marks: [T, F, F, F] },
+          { label: "'admin'", marks: [F, T, F, F] },
+          { label: "'hr'", marks: [F, F, T, F] },
+          { label: "null", marks: [F, F, F, T] },
+        ],
+      },
+    ],
+    types: ["N", "N", "N", "B"],
+  },
+  {
+    id: "FE_GH_007",
+    module: GAMIFICATION_HISTORY_MODULE,
+    method: "LoginWelcomePendingFlagRoundTrip",
+    description: "markLoginWelcomePending/hasLoginWelcomePending/clearLoginWelcomePending round-trip through sessionStorage and are role-specific",
+    conditionGroups: [
+      { title: "Precondition", items: [{ label: "sessionStorage is empty", marks: [T] }] },
+      { title: "Action", items: [{ label: "markLoginWelcomePending('hr') then clearLoginWelcomePending()", marks: [T] }] },
+    ],
+    confirmGroups: [
+      {
+        title: "Return",
+        items: [
+          { label: "hasLoginWelcomePending('hr') false -> true -> false", marks: [T] },
+          { label: "hasLoginWelcomePending('admin') stays false throughout (role-specific)", marks: [T] },
+        ],
+      },
+    ],
+    types: ["N"],
+  },
+  {
+    id: "FE_GH_008",
+    module: GAMIFICATION_HISTORY_MODULE,
+    method: "SaveAndGetLocalSession",
+    description: "saveLocalSession assigns a 'local-' id and prepends to the list (most-recent-first), and getLocalSession finds by id or returns null when missing",
+    conditionGroups: [
+      {
+        title: "Scenario",
+        items: [
+          { label: "save 2 sessions in sequence", marks: [T, F] },
+          { label: "getLocalSession(existing id) / getLocalSession('does-not-exist')", marks: [F, T] },
+        ],
+      },
+    ],
+    confirmGroups: [
+      {
+        title: "Return",
+        items: [
+          { label: "id matches /^local-/, list has 2 entries, most recent first", marks: [T, F] },
+          { label: "existing id resolves the session; missing id -> null", marks: [F, T] },
+        ],
+      },
+    ],
+    types: ["N", "N"],
+  },
+  {
+    id: "FE_GH_009",
+    module: GAMIFICATION_HISTORY_MODULE,
+    method: "PatchAndUpdateLocalSession",
+    description: "patchLocalSession merges fields for a matching id and no-ops for an unknown id; updateLocalSessionQuestions replaces the question list and bumps updatedAt",
+    conditionGroups: [
+      {
+        title: "Scenario",
+        items: [
+          { label: "patchLocalSession(existing id, {backendJobId})", marks: [T, F, F] },
+          { label: "patchLocalSession('does-not-exist', {...})", marks: [F, T, F] },
+          { label: "updateLocalSessionQuestions(existing id, newQuestions)", marks: [F, F, T] },
+        ],
+      },
+    ],
+    confirmGroups: [
+      {
+        title: "Return",
+        items: [
+          { label: "session.backendJobId updated", marks: [T, F, F] },
+          { label: "list unchanged (still 1 entry), no throw", marks: [F, T, F] },
+          { label: "generatedQuestions replaced, updatedAt >= previous", marks: [F, F, T] },
+        ],
+      },
+    ],
+    types: ["N", "A", "N"],
+  },
+  {
+    id: "FE_GH_010",
+    module: GAMIFICATION_HISTORY_MODULE,
+    method: "ToGenerationSessionAndMalformedStorage",
+    description: "toGenerationSession maps every field 1:1, and a malformed localStorage entry is treated as an empty list instead of throwing",
+    conditionGroups: [
+      {
+        title: "Scenario",
+        items: [
+          { label: "toGenerationSession(saved local session)", marks: [T, F] },
+          { label: "localStorage has '{not valid json' under the history key", marks: [F, T] },
+        ],
+      },
+    ],
+    confirmGroups: [
+      {
+        title: "Return",
+        items: [
+          { label: "id/jobTitle/status/hrOwner all match the source session", marks: [T, F] },
+          { label: "getLocalSessions() -> [] (no throw)", marks: [F, T] },
+        ],
+      },
+    ],
+    types: ["N", "A"],
+  },
+];
+
+// ---- Candidate & Admin Utils - grounded in tests/unit/candidate-and-admin-utils.test.ts ----
+// New coverage: cloudinary.ts (avatar validation), practice-streak.ts,
+// skill-labels.ts, company-visual.ts, admin-user-display.ts, pill.tsx pure
+// helpers — previously no test at all for these modules.
+
+const CANDIDATE_ADMIN_UTILS_MODULE = "CandidateAndAdminUtilsModule";
+
+const candidateAdminUtilsTestCases = [
+  {
+    id: "FE_CA_001",
+    module: CANDIDATE_ADMIN_UTILS_MODULE,
+    method: "ValidateAvatarFile",
+    description: "validateAvatarFile accepts an allowed image type under the 2MB cap, and throws AvatarUploadError with the right code for a disallowed mime type or an oversized file",
+    conditionGroups: [
+      {
+        title: "File",
+        items: [
+          { label: "a.png, image/png, 1KB", marks: [T, F, F] },
+          { label: "a.pdf, application/pdf, tiny", marks: [F, T, F] },
+          { label: "a.png, image/png, just over 2MB", marks: [F, F, T] },
+        ],
+      },
+    ],
+    confirmGroups: [
+      {
+        title: "Return",
+        items: [{ label: "does not throw", marks: [T, F, F] }],
+      },
+      {
+        title: "Exception",
+        items: [
+          { label: "AvatarUploadError('invalid_type')", marks: [F, T, F] },
+          { label: "AvatarUploadError('too_large')", marks: [F, F, T] },
+        ],
+      },
+    ],
+    types: ["N", "A", "B"],
+  },
+  {
+    id: "FE_CA_002",
+    module: CANDIDATE_ADMIN_UTILS_MODULE,
+    method: "ComputeStreakDays",
+    description: "computeStreakDays counts a consecutive-day practice streak ending today or yesterday, breaking on any gap of 2+ days, de-duping same-day timestamps, and ignoring malformed entries",
+    conditionGroups: [
+      {
+        title: "Session dates",
+        items: [
+          { label: "[] (no sessions)", marks: [T, F, F, F, F, F, F, F] },
+          { label: "[today]", marks: [F, T, F, F, F, F, F, F] },
+          { label: "[today, yesterday, 2d ago]", marks: [F, F, T, F, F, F, F, F] },
+          { label: "[today, 2d ago] (gap)", marks: [F, F, F, T, F, F, F, F] },
+          { label: "[yesterday, 2d ago] (no session today)", marks: [F, F, F, F, T, F, F, F] },
+          { label: "[3d ago] (nothing today/yesterday)", marks: [F, F, F, F, F, T, F, F] },
+          { label: "[undefined, 'not-a-date', today]", marks: [F, F, F, F, F, F, T, F] },
+          { label: "[today, today] (duplicate same-day)", marks: [F, F, F, F, F, F, F, T] },
+        ],
+      },
+    ],
+    confirmGroups: [
+      {
+        title: "Return",
+        items: [
+          { label: "0", marks: [T, F, F, F, F, T, F, F] },
+          { label: "1", marks: [F, T, F, F, F, F, T, T] },
+          { label: "3", marks: [F, F, T, F, F, F, F, F] },
+          { label: "2", marks: [F, F, F, F, T, F, F, F] },
+        ],
+      },
+    ],
+    types: ["B", "N", "N", "A", "N", "B", "A", "B"],
+  },
+  {
+    id: "FE_CA_003",
+    module: CANDIDATE_ADMIN_UTILS_MODULE,
+    method: "TranslateDimensionKeyAndCategory",
+    description: "translateDimensionKey/translateQuestionCategory return the Vietnamese label for known keys (case/separator-insensitive) and title-case the raw key as a fallback for unknown ones or the English locale",
+    conditionGroups: [
+      {
+        title: "Scenario",
+        items: [
+          { label: "translateDimensionKey('technical_accuracy'/'Technical-Accuracy', vi)", marks: [T, F, F, F] },
+          { label: "translateDimensionKey('some_new_dimension', vi) / ('clarity', en)", marks: [F, T, F, F] },
+          { label: "translateQuestionCategory('problem-solving', vi)", marks: [F, F, T, F] },
+          { label: "translateQuestionCategory('unknown-cat', vi) / ('technical', en)", marks: [F, F, F, T] },
+        ],
+      },
+    ],
+    confirmGroups: [
+      {
+        title: "Return",
+        items: [
+          { label: "'Độ chính xác kỹ thuật'", marks: [T, F, F, F] },
+          { label: "'Some New Dimension' / 'Clarity' (fallback)", marks: [F, T, F, F] },
+          { label: "'Giải quyết vấn đề'", marks: [F, F, T, F] },
+          { label: "'Unknown Cat' / 'Technical' (fallback)", marks: [F, F, F, T] },
+        ],
+      },
+    ],
+    types: ["N", "A", "N", "A"],
+  },
+  {
+    id: "FE_CA_004",
+    module: CANDIDATE_ADMIN_UTILS_MODULE,
+    method: "CompanyInitialsAndColor",
+    description: "getCompanyInitials handles empty/single/multi-word names with a '?' fallback, and getCompanyColor is deterministic per seed while generally varying across seeds",
+    conditionGroups: [
+      {
+        title: "Scenario",
+        items: [
+          { label: "getCompanyInitials('' / '   ')", marks: [T, F, F, F] },
+          { label: "getCompanyInitials('Acme')", marks: [F, T, F, F] },
+          { label: "getCompanyInitials('Acme Corp International')", marks: [F, F, T, F] },
+          { label: "getCompanyColor('Acme Corp') called twice, vs getCompanyColor('Zephyr Industries')", marks: [F, F, F, T] },
+        ],
+      },
+    ],
+    confirmGroups: [
+      {
+        title: "Return",
+        items: [
+          { label: "'?'", marks: [T, F, F, F] },
+          { label: "'AC'", marks: [F, T, T, F] },
+          { label: "same color both calls, matches /^bg-\\w+-500$/, generally differs from the other seed", marks: [F, F, F, T] },
+        ],
+      },
+    ],
+    types: ["A", "N", "N", "N"],
+  },
+  {
+    id: "FE_CA_005",
+    module: CANDIDATE_ADMIN_UTILS_MODULE,
+    method: "ToBackendRoleFilterAndNormalizeAdminRoleKey",
+    description: "toBackendRoleFilter maps a FE role key to the BE query value (undefined for unknown), and normalizeAdminRoleKey normalizes assorted BE role spellings into ADMIN/HR_MANAGER/JOB_SEEKER/UNKNOWN",
+    conditionGroups: [
+      {
+        title: "Role input",
+        items: [
+          { label: "toBackendRoleFilter: ADMIN / HR_MANAGER / JOB_SEEKER / UNKNOWN", marks: [T, F] },
+          { label: "normalizeAdminRoleKey: ADMIN, SysAdmin, HR_MANAGER, Recruiter, JOB_SEEKER, Candidate, JobSeeker, something-else, undefined", marks: [F, T] },
+        ],
+      },
+    ],
+    confirmGroups: [
+      {
+        title: "Return",
+        items: [
+          { label: "'Admin' / 'HR' / 'Candidate' / undefined", marks: [T, F] },
+          { label: "ADMIN/HR_MANAGER/JOB_SEEKER grouped correctly, unmatched -> UNKNOWN", marks: [F, T] },
+        ],
+      },
+    ],
+    types: ["N", "N"],
+  },
+  {
+    id: "FE_CA_006",
+    module: CANDIDATE_ADMIN_UTILS_MODULE,
+    method: "GetAdminUserStatusAndIsAdminRole",
+    description: "getAdminUserStatus derives Suspended/Pending/Active from isActive+emailVerified (isActive=false always wins), and isAdminRole is case-insensitive and null-safe",
+    conditionGroups: [
+      {
+        title: "User / role",
+        items: [
+          { label: "isActive=false, emailVerified=true", marks: [T, F, F, F, F, F, F] },
+          { label: "isActive=true, emailVerified=false", marks: [F, T, F, F, F, F, F] },
+          { label: "isActive=true, emailVerified=true", marks: [F, F, T, F, F, F, F] },
+          { label: "isActive=false, emailVerified=false", marks: [F, F, F, T, F, F, F] },
+          { label: "isAdminRole('ADMIN' / 'SuperAdmin')", marks: [F, F, F, F, T, F, F] },
+          { label: "isAdminRole('HR_MANAGER')", marks: [F, F, F, F, F, T, F] },
+          { label: "isAdminRole(null / undefined)", marks: [F, F, F, F, F, F, T] },
+        ],
+      },
+    ],
+    confirmGroups: [
+      {
+        title: "Return",
+        items: [
+          { label: "'Suspended'", marks: [T, F, F, T, F, F, F] },
+          { label: "'Pending'", marks: [F, T, F, F, F, F, F] },
+          { label: "'Active'", marks: [F, F, T, F, F, F, F] },
+          { label: "true", marks: [F, F, F, F, T, F, F] },
+          { label: "false", marks: [F, F, F, F, F, T, T] },
+        ],
+      },
+    ],
+    types: ["N", "N", "N", "B", "N", "N", "A"],
+  },
+  {
+    id: "FE_CA_007",
+    module: CANDIDATE_ADMIN_UTILS_MODULE,
+    method: "BadgeClassAndCategoryLabelHelpers",
+    description: "getDifficultyBadgeClass/getCategoryBadgeClass/formatCategoryLabel pick the right badge color and title-case a hyphen/underscore/space-separated category, with a gray fallback for unknown categories",
+    conditionGroups: [
+      {
+        title: "Scenario",
+        items: [
+          { label: "getDifficultyBadgeClass: Easy / Medium / Hard", marks: [T, F, F, F] },
+          { label: "getCategoryBadgeClass: Technical / system-design (case-insensitive)", marks: [F, T, F, F] },
+          { label: "getCategoryBadgeClass: some-unknown-type", marks: [F, F, T, F] },
+          { label: "formatCategoryLabel: problem-solving / system_design / technical", marks: [F, F, F, T] },
+        ],
+      },
+    ],
+    confirmGroups: [
+      {
+        title: "Return",
+        items: [
+          { label: "emerald / amber / red class", marks: [T, F, F, F] },
+          { label: "blue / cyan class", marks: [F, T, F, F] },
+          { label: "gray class (fallback)", marks: [F, F, T, F] },
+          { label: "'Problem Solving' / 'System Design' / 'Technical'", marks: [F, F, F, T] },
+        ],
+      },
+    ],
+    types: ["N", "N", "A", "N"],
+  },
+  {
+    id: "FE_CA_008",
+    module: CANDIDATE_ADMIN_UTILS_MODULE,
+    method: "ScoreBadgeClassAndScoreLevel",
+    description: "getScoreBadgeClass thresholds at 80/65, and getScoreLevel derives a label+badge color from the same 80/65/50 thresholds",
+    conditionGroups: [
+      {
+        title: "Score",
+        items: [
+          { label: "85 / 80 (>= 80)", marks: [T, F, F, F, F, F, F, F] },
+          { label: "70 / 65 (65-79)", marks: [F, T, F, F, F, F, F, F] },
+          { label: "40 (< 65)", marks: [F, F, T, F, F, F, F, F] },
+          { label: "getScoreLevel(90) — Excellent tier", marks: [F, F, F, T, F, F, F, F] },
+          { label: "getScoreLevel(70) — Good tier", marks: [F, F, F, F, T, F, F, F] },
+          { label: "getScoreLevel(55) — Fair tier", marks: [F, F, F, F, F, T, F, F] },
+          { label: "getScoreLevel(30) — Needs work tier", marks: [F, F, F, F, F, F, T, F] },
+        ],
+      },
+    ],
+    confirmGroups: [
+      {
+        title: "Return",
+        items: [
+          { label: "emerald class", marks: [T, F, F, F, F, F, F] },
+          { label: "violet class", marks: [F, T, F, F, T, F, F] },
+          { label: "amber class", marks: [F, F, T, F, F, T, F] },
+          { label: "{label:'Excellent', emerald}", marks: [F, F, F, T, F, F, F] },
+          { label: "{label:'Fair', amber}", marks: [F, F, F, F, F, T, F] },
+          { label: "{label:'Needs work', red}", marks: [F, F, F, F, F, F, T] },
+        ],
+      },
+    ],
+    types: ["N", "B", "N", "N", "N", "N", "N"],
+  },
+];
+
+// ---- Question Template Inference - grounded in tests/unit/question-template-infer.test.ts ----
+// New coverage: question-template-infer.ts — pure inference of Studio's
+// code-answer template (system design/code completion/bug detection/
+// refactoring/test design/performance analysis) from question content,
+// explicit type, code snippets, and rubric/rationale metadata.
+
+const QUESTION_TEMPLATE_INFER_MODULE = "QuestionTemplateInferModule";
+
+const questionTemplateInferTestCases = [
+  {
+    id: "FE_QTI_001",
+    module: QUESTION_TEMPLATE_INFER_MODULE,
+    method: "TemplateDetectionExplicitAndKeyword",
+    description: "inferStudioTemplate prefers an explicit codeTemplateType (normalizing loose casing, falling through to inference if unrecognized), then infers from content keywords across all 6 templates, then falls back to scoringRubric text or question type",
+    conditionGroups: [
+      {
+        title: "Input",
+        items: [
+          { label: "codeTemplateType='bug_detection' explicit", marks: [T, F, F, F, F, F, F, F, F] },
+          { label: "codeTemplateType='  refactoring  ' (loose casing)", marks: [F, T, F, F, F, F, F, F, F] },
+          { label: "codeTemplateType='NOT_A_REAL_TEMPLATE' (unrecognized, falls through)", marks: [F, F, T, F, F, F, F, F, F] },
+          { label: "content keyword: system design / code completion / bug / refactor / unit test / complexity", marks: [F, F, F, T, F, F, F, F, F] },
+          { label: "no template signal, scoringRubric='Look for bug handling'", marks: [F, F, F, F, T, F, F, F, F] },
+          { label: "type='SystemDesign', neutral content", marks: [F, F, F, F, F, T, F, F, F] },
+          { label: "codeSnippet present, no other signal", marks: [F, F, F, F, F, F, T, F, F] },
+          { label: "purely theoretical, no snippet/keywords", marks: [F, F, F, F, F, F, F, T, F] },
+        ],
+      },
+    ],
+    confirmGroups: [
+      {
+        title: "Return",
+        items: [
+          { label: "templateId = BUG_DETECTION", marks: [T, F, F, F, T, F, F, F] },
+          { label: "templateId = REFACTORING", marks: [F, T, F, F, F, F, F, F] },
+          { label: "templateId = SYSTEM_DESIGN (falls through to inference)", marks: [F, F, T, F, F, T, F, F] },
+          { label: "templateId matches the 6-way keyword table", marks: [F, F, F, T, F, F, F, F] },
+          { label: "templateId = CODE_COMPLETION", marks: [F, F, F, F, F, F, T, F] },
+          { label: "templateId = null, but imageHint is still truthy", marks: [F, F, F, F, F, F, F, T] },
+        ],
+      },
+    ],
+    types: ["N", "B", "A", "N", "N", "N", "N", "B"],
+  },
+  {
+    id: "FE_QTI_002",
+    module: QUESTION_TEMPLATE_INFER_MODULE,
+    method: "SnippetExtraction",
+    description: "inferStudioTemplate extracts a code snippet from codeSnippet directly, an expectedAnswer 'Code snippet:' marker, a fenced code block, or heuristically-detected raw code — while not mistaking plain prose for code, and normalizing literal \\n/\\t escapes",
+    conditionGroups: [
+      {
+        title: "Input",
+        items: [
+          { label: "codeSnippet='const x = 1;'", marks: [T, F, F, F, F, F] },
+          { label: "expectedAnswer with 'Code snippet:' marker", marks: [F, T, F, F, F, F] },
+          { label: "content with a fenced ```js block", marks: [F, F, T, F, F, F] },
+          { label: "expectedAnswer is raw code, no marker (heuristic detection)", marks: [F, F, F, T, F, F] },
+          { label: "expectedAnswer is plain prose, no code", marks: [F, F, F, F, T, F] },
+          { label: "codeSnippet has literal \\n/\\t escape sequences", marks: [F, F, F, F, F, T] },
+        ],
+      },
+    ],
+    confirmGroups: [
+      {
+        title: "Return",
+        items: [
+          { label: "snippet = 'const x = 1;'", marks: [T, T, T, F, F, F] },
+          { label: "snippet = the heuristically-detected code block", marks: [F, F, F, T, F, F] },
+          { label: "snippet = undefined (no false positive)", marks: [F, F, F, F, T, F] },
+          { label: "snippet has real newlines (escapes normalized)", marks: [F, F, F, F, F, T] },
+        ],
+      },
+    ],
+    types: ["N", "N", "N", "N", "A", "B"],
+  },
+  {
+    id: "FE_QTI_003",
+    module: QUESTION_TEMPLATE_INFER_MODULE,
+    method: "MetaParsingLangImageDiagramHints",
+    description: "inferStudioTemplate parses snippetLanguage/imageHint/diagramHint from scoringRubric meta and question fields, with lang=auto treated as unset, question.imageHint taking priority, and a per-template default used when no meta is present",
+    conditionGroups: [
+      {
+        title: "Input",
+        items: [
+          { label: "scoringRubric='lang=TypeScript;template=CODE_COMPLETION'", marks: [T, F, F, F, F, F, F] },
+          { label: "scoringRubric='lang=auto'", marks: [F, T, F, F, F, F, F] },
+          { label: "question.imageHint='Custom hint' + codeTemplateType=BUG_DETECTION", marks: [F, F, T, F, F, F, F] },
+          { label: "no imageHint/meta, content implies bug template", marks: [F, F, F, T, F, F, F] },
+          { label: "system design content + scoringRubric diagramHint meta", marks: [F, F, F, F, T, F, F] },
+          { label: "system design content, no diagramHint meta", marks: [F, F, F, F, F, T, F] },
+          { label: "attachedImageUrl='  https://x/img.png  ' / '   '", marks: [F, F, F, F, F, F, T] },
+        ],
+      },
+    ],
+    confirmGroups: [
+      {
+        title: "Return",
+        items: [
+          { label: "snippetLanguage = 'typescript' (lowercased)", marks: [T, F, F, F, F, F, F] },
+          { label: "snippetLanguage = undefined ('auto' means unset)", marks: [F, T, F, F, F, F, F] },
+          { label: "imageHint = 'Custom hint' (wins over template default)", marks: [F, F, T, F, F, F, F] },
+          { label: "imageHint contains 'lỗi' (per-template default)", marks: [F, F, F, T, F, F, F] },
+          { label: "diagramDescription = meta text", marks: [F, F, F, F, T, F, F] },
+          { label: "diagramDescription contains 'sơ đồ kiến trúc' (default)", marks: [F, F, F, F, F, T, F] },
+          { label: "attachedImageUrl trimmed / undefined when blank", marks: [F, F, F, F, F, F, T] },
+        ],
+      },
+    ],
+    types: ["N", "A", "N", "N", "N", "N", "B"],
+  },
+  {
+    id: "FE_QTI_004",
+    module: QUESTION_TEMPLATE_INFER_MODULE,
+    method: "InferGeneratedQuestionTemplate",
+    description: "inferGeneratedQuestionTemplate maps a History/Review-page GeneratedQuestion (questionType, rationale+scoringRubric meta, difficulty string) onto the same template/snippet/lang inference, and never throws on an unrecognized difficulty string",
+    conditionGroups: [
+      {
+        title: "Input",
+        items: [
+          { label: "questionType='System Design'", marks: [T, F, F, F, F] },
+          { label: "rationale='template=BUG_DETECTION;lang=Python', scoringRubric='snippet=...'", marks: [F, T, F, F, F] },
+          { label: "difficulty='very easy'", marks: [F, F, T, F, F] },
+          { label: "difficulty='HARD' (case-insensitive)", marks: [F, F, F, T, F] },
+          { label: "difficulty='unrecognized'", marks: [F, F, F, F, T] },
+        ],
+      },
+    ],
+    confirmGroups: [
+      {
+        title: "Return",
+        items: [
+          { label: "templateId = SYSTEM_DESIGN", marks: [T, F, F, F, F] },
+          { label: "templateId=BUG_DETECTION, snippetLanguage='python', snippet from meta", marks: [F, T, F, F, F] },
+          { label: "templateId = null", marks: [F, F, T, F, F] },
+          { label: "does not throw", marks: [F, F, F, T, T] },
+        ],
+      },
+    ],
+    types: ["N", "N", "B", "A", "A"],
+  },
+];
+
+// ---- Batch 3: Security section + Gamification components - grounded in
+// tests/unit/{security-section,xp-history-section,daily-goal-settings,
+// gamification-progress-card,achievement-grid}.test.tsx. No prior automated
+// coverage existed for any of these components.
+
+const GAMIFICATION_COMPONENTS_MODULE = "GamificationComponentsModule";
+
+const batch3TestCases = [
+  {
+    id: "FE_SEC_001",
+    module: GAMIFICATION_COMPONENTS_MODULE,
+    method: "ChangePasswordClientValidation",
+    description: "SecuritySection blocks submit client-side for empty fields, a new password under 8 chars, or a mismatched confirmation, without ever calling changePassword",
+    conditionGroups: [
+      {
+        title: "Form input",
+        items: [
+          { label: "all fields empty", marks: [T, F, F] },
+          { label: 'current="oldpass1", new="short1" (< 8 chars), confirm="short1"', marks: [F, T, F] },
+          { label: 'current="oldpass1", new="newpassword1", confirm="differentpassword1" (mismatch)', marks: [F, F, T] },
+        ],
+      },
+    ],
+    confirmGroups: [
+      {
+        title: "Return",
+        items: [
+          { label: '"Could not update password. Please try again."', marks: [T, F, F] },
+          { label: '"Password must be at least 8 characters."', marks: [F, T, F] },
+          { label: '"New passwords do not match."', marks: [F, F, T] },
+        ],
+      },
+      { title: "Exception", items: [{ label: "changePassword() is never called", marks: [T, T, T] }] },
+    ],
+    types: ["A", "B", "A"],
+  },
+  {
+    id: "FE_SEC_002",
+    module: GAMIFICATION_COMPONENTS_MODULE,
+    method: "ChangePasswordSubmitFlow",
+    description: "A valid password change calls changePassword and clears the form on success; an API failure shows the generic save-failed error",
+    conditionGroups: [
+      {
+        title: "Scenario",
+        items: [
+          { label: "valid current/new/confirm, changePassword resolves", marks: [T, F] },
+          { label: "valid current/new/confirm, changePassword rejects (network down)", marks: [F, T] },
+        ],
+      },
+    ],
+    confirmGroups: [
+      {
+        title: "Return",
+        items: [
+          { label: '"Password updated successfully.", fields cleared', marks: [T, F] },
+          { label: '"Could not update password. Please try again."', marks: [F, T] },
+        ],
+      },
+    ],
+    types: ["N", "A"],
+  },
+  {
+    id: "FE_XPH_001",
+    module: GAMIFICATION_COMPONENTS_MODULE,
+    method: "XpHistoryStandaloneList",
+    description: "Standalone XpHistorySection lists entries with label+amount, falls back to a type-based i18n label when the backend omits one, shows an empty state, and fetches exactly page 1/size 10",
+    conditionGroups: [
+      {
+        title: "Scenario",
+        items: [
+          { label: "entries with a label, e.g. 'Session completed' +20", marks: [T, F, F, F] },
+          { label: "entry with label='', type='StreakMilestone'", marks: [F, T, F, F] },
+          { label: "items: []", marks: [F, F, T, F] },
+          { label: "render standalone (no embedded prop)", marks: [F, F, F, T] },
+        ],
+      },
+    ],
+    confirmGroups: [
+      {
+        title: "Return",
+        items: [
+          { label: "shows label and '+20'", marks: [T, F, F, F] },
+          { label: "shows 'Streak milestone' (i18n fallback)", marks: [F, T, F, F] },
+          { label: '"No XP history yet — complete a practice session to earn XP."', marks: [F, F, T, F] },
+          { label: "getXpHistory called with (1, 10)", marks: [F, F, F, T] },
+        ],
+      },
+    ],
+    types: ["N", "A", "B", "N"],
+  },
+  {
+    id: "FE_XPH_002",
+    module: GAMIFICATION_COMPONENTS_MODULE,
+    method: "XpHistoryEmbeddedMode",
+    description: "Embedded XpHistorySection (used inside a settings tab) hides the outer card title and fetches a larger page (30) than standalone mode",
+    conditionGroups: [{ title: "Precondition", items: [{ label: "render with embedded prop", marks: [T] }] }],
+    confirmGroups: [
+      {
+        title: "Return",
+        items: [
+          { label: "entries render, no 'XP History' title text", marks: [T] },
+          { label: "getXpHistory called with (1, 30)", marks: [T] },
+        ],
+      },
+    ],
+    types: ["N"],
+  },
+  {
+    id: "FE_DGS_001",
+    module: GAMIFICATION_COMPONENTS_MODULE,
+    method: "DailyGoalPresetDisplay",
+    description: "DailyGoalSettings highlights the server-saved preset as active on load, and hides the Save button until a different preset is picked",
+    conditionGroups: [
+      {
+        title: "Scenario",
+        items: [
+          { label: "getMyProgress returns dailyGoalXp=50, no interaction", marks: [T, F] },
+          { label: "getMyProgress returns dailyGoalXp=50, still no preset changed", marks: [F, T] },
+        ],
+      },
+    ],
+    confirmGroups: [
+      {
+        title: "Return",
+        items: [
+          { label: "the '50 XP' button has the active border class", marks: [T, F] },
+          { label: "no 'Save goal' button in the DOM", marks: [F, T] },
+        ],
+      },
+    ],
+    types: ["N", "N"],
+  },
+  {
+    id: "FE_DGS_002",
+    module: GAMIFICATION_COMPONENTS_MODULE,
+    method: "DailyGoalSaveFlow",
+    description: "Selecting a different daily-goal preset and saving calls updateDailyGoal and optimistically marks the new preset active; a save failure shows an error toast and keeps Save visible",
+    conditionGroups: [
+      {
+        title: "Scenario",
+        items: [
+          { label: "pick '80 XP', click Save goal, updateDailyGoal resolves", marks: [T, F] },
+          { label: "pick '120 XP', click Save goal, updateDailyGoal rejects (network down)", marks: [F, T] },
+        ],
+      },
+    ],
+    confirmGroups: [
+      {
+        title: "Return",
+        items: [
+          { label: "'Daily goal updated' toast; '80 XP' now shows the active class; Save hidden", marks: [T, F] },
+          { label: "'Could not update goal' toast; Save goal button still visible", marks: [F, T] },
+        ],
+      },
+    ],
+    types: ["N", "A"],
+  },
+  {
+    id: "FE_GPC_001",
+    module: GAMIFICATION_COMPONENTS_MODULE,
+    method: "GamificationProgressCardDisplay",
+    description: "GamificationProgressCard shows level/XP/streak, a celebratory message when the daily goal is complete, remaining-XP text otherwise, opens the XP guide panel on demand, and keeps its loading-skeleton state (no crash) on a fetch failure",
+    conditionGroups: [
+      {
+        title: "Scenario",
+        items: [
+          { label: "getMyProgress resolves with level=4, totalXp=1250, streak=3", marks: [T, F, F, F, F] },
+          { label: "dailyGoalCompleted=true, todayXp=50", marks: [F, T, F, F, F] },
+          { label: "dailyGoalXp=50, todayXp=20, dailyGoalCompleted=false", marks: [F, F, T, F, F] },
+          { label: "click 'How to earn XP?'", marks: [F, F, F, T, F] },
+          { label: "getMyProgress rejects (network down)", marks: [F, F, F, F, T] },
+        ],
+      },
+    ],
+    confirmGroups: [
+      {
+        title: "Return",
+        items: [
+          { label: "'Level 4', '1,250 XP', 'Practitioner', '3' all shown", marks: [T, F, F, F, F] },
+          { label: "'Daily goal completed! 🎉'", marks: [F, T, F, F, F] },
+          { label: "'30 XP left to reach your goal'", marks: [F, F, T, F, F] },
+          { label: "'How to earn XP' guide panel opens", marks: [F, F, F, T, F] },
+          { label: "card stays aria-busy='true' (skeleton), no crash", marks: [F, F, F, F, T] },
+        ],
+      },
+    ],
+    types: ["N", "N", "N", "N", "A"],
+  },
+  {
+    id: "FE_AG_001",
+    module: GAMIFICATION_COMPONENTS_MODULE,
+    method: "AchievementGridFullVariant",
+    description: "The full-variant AchievementGrid lists achievements with an unlocked count, filters by category, shows an empty state with none, and offers a working Try-again retry after a load failure",
+    conditionGroups: [
+      {
+        title: "Scenario",
+        items: [
+          { label: "2 achievements, 1 unlocked", marks: [T, F, F, F] },
+          { label: "2 achievements, different categories, click 'Streak' filter", marks: [F, T, F, F] },
+          { label: "getAchievements resolves []", marks: [F, F, T, F] },
+          { label: "getAchievements rejects once, then resolves; click 'Try again'", marks: [F, F, F, T] },
+        ],
+      },
+    ],
+    confirmGroups: [
+      {
+        title: "Return",
+        items: [
+          { label: "both names shown, '1/2 Unlocked'", marks: [T, F, F, F] },
+          { label: "only the Streak-category achievement remains visible", marks: [F, T, F, F] },
+          { label: "'No achievements yet — start practising!'", marks: [F, F, T, F] },
+          { label: "'Try again' button shown, then re-fetch succeeds and shows the achievement", marks: [F, F, F, T] },
+        ],
+      },
+    ],
+    types: ["N", "N", "B", "A"],
+  },
+  {
+    id: "FE_AG_002",
+    module: GAMIFICATION_COMPONENTS_MODULE,
+    method: "AchievementGridCompactVariant",
+    description: "The compact-variant AchievementGrid sorts unlocked achievements ahead of locked ones",
+    conditionGroups: [
+      { title: "Precondition", items: [{ label: "1 locked + 1 unlocked achievement, compact variant", marks: [T] }] },
+    ],
+    confirmGroups: [
+      { title: "Return", items: [{ label: "the unlocked achievement's tile appears before the locked one's", marks: [T] }] },
+    ],
+    types: ["N"],
+  },
+];
+
 // ---- HR RAG Backend API Test (BE) - grounded in the FastAPI service at RAG_IQGS ----
 // Kept separate and appended last so the workbook orders FE sheets first, then BE.
 
@@ -3297,6 +4748,1608 @@ const beTestCases = [
   },
 ];
 
+// ---- Batch 4: Admin Settings/AI Config/Content/Companies/Knowledge -
+// grounded in tests/unit/{admin-platform-settings,admin-ai-config,
+// admin-content-table,admin-companies,admin-knowledge}.test.tsx. No prior
+// automated coverage existed for any of these admin pages.
+
+const ADMIN_OPERATIONS_MODULE = "AdminOperationsModule";
+
+const batch4TestCases = [
+  {
+    id: "FE_APS_001",
+    module: ADMIN_OPERATIONS_MODULE,
+    method: "PlatformSettingsGeneralLoadSave",
+    description: "AdminSettingsPage's General tab loads platform settings from getPlatformSettings, retries the fetch after a load failure, and calls updatePlatformSettings with the edited platform name on Save",
+    conditionGroups: [
+      {
+        title: "Scenario",
+        items: [
+          { label: "getPlatformSettings resolves with platformName/defaultQuestionCount/sessionTimeout", marks: [T, F, F] },
+          { label: "getPlatformSettings rejects once, then Retry re-fetches", marks: [F, T, F] },
+          { label: "edit Platform Name field, click Save Changes", marks: [F, F, T] },
+        ],
+      },
+    ],
+    confirmGroups: [
+      {
+        title: "Return",
+        items: [
+          { label: "fields populated: name/default count/session timeout shown", marks: [T, F, F] },
+          { label: "Retry button shown, then values load after retry", marks: [F, T, F] },
+          { label: "updatePlatformSettings called with edited name, 'Settings saved locally.' shown", marks: [F, F, T] },
+        ],
+      },
+    ],
+    types: ["N", "A", "N"],
+  },
+  {
+    id: "FE_APS_002",
+    module: ADMIN_OPERATIONS_MODULE,
+    method: "PlatformSettingsPermissionsNotificationsToggle",
+    description: "The Permissions tab locks Admin's own toggles while Recruiter's stay editable, and the Notifications tab's per-event Email toggle updates its own state",
+    conditionGroups: [
+      {
+        title: "Scenario",
+        items: [
+          { label: "Permissions tab, 'Manage Users' row", marks: [T, F] },
+          { label: "Notifications tab, 'JD Generation' row, click Email toggle", marks: [F, T] },
+        ],
+      },
+    ],
+    confirmGroups: [
+      {
+        title: "Return",
+        items: [
+          { label: "Admin switch disabled; Recruiter switch toggles false→true on click", marks: [T, F] },
+          { label: "Email switch toggles aria-checked false→true", marks: [F, T] },
+        ],
+      },
+    ],
+    types: ["N", "N"],
+  },
+  {
+    id: "FE_APS_003",
+    module: ADMIN_OPERATIONS_MODULE,
+    method: "PlatformSettingsComingSoonButtons",
+    description: "Save Permissions, Save Notifications, and the General tab's Reset Platform Data button are rendered disabled with a Coming soon tooltip, since none has a backend to act on yet, rather than being silently non-functional active buttons",
+    conditionGroups: [
+      {
+        title: "Button",
+        items: [
+          { label: "Permissions tab: Save Permissions", marks: [T, F, F] },
+          { label: "Notifications tab: Save Notifications", marks: [F, T, F] },
+          { label: "General tab danger zone: Reset", marks: [F, F, T] },
+        ],
+      },
+    ],
+    confirmGroups: [
+      {
+        title: "Return",
+        items: [{ label: "button is disabled with title='Coming soon'", marks: [T, T, T] }],
+      },
+    ],
+    types: ["B", "B", "B"],
+  },
+  {
+    id: "FE_AICFG_001",
+    module: ADMIN_OPERATIONS_MODULE,
+    method: "AiConfigLoadAndRetry",
+    description: "AdminAiConfigRoutePage loads the saved LLM provider/chat model/temperature from getRagSettings+listRagModels, and a load failure shows Retry which re-fetches and repopulates the form",
+    conditionGroups: [
+      {
+        title: "Scenario",
+        items: [
+          { label: "getRagSettings/listRagModels resolve with ollama provider, llama3.1:8b, temp=0.3", marks: [T, F] },
+          { label: "both calls reject once, then Retry re-fetches successfully", marks: [F, T] },
+        ],
+      },
+    ],
+    confirmGroups: [
+      {
+        title: "Return",
+        items: [
+          { label: "base URL/chat model select/'(0.3)' temperature label shown", marks: [T, F] },
+          { label: "Retry button shown, then chat model select value repopulated after retry", marks: [F, T] },
+        ],
+      },
+    ],
+    types: ["N", "A"],
+  },
+  {
+    id: "FE_AICFG_002",
+    module: ADMIN_OPERATIONS_MODULE,
+    method: "AiConfigProviderSwitchAndSave",
+    description: "Switching provider to OpenRouter fills its default base URL, saving calls updateRagSettings with the edited temperature and shows a success toast, and a save failure surfaces the API's own error message as a toast instead of a generic one",
+    conditionGroups: [
+      {
+        title: "Scenario",
+        items: [
+          { label: "click the OpenRouter provider button", marks: [T, F, F] },
+          { label: "edit temperature to 0.7, click Save AI configuration, updateRagSettings resolves", marks: [F, T, F] },
+          { label: "click Save AI configuration, updateRagSettings rejects with 'Backend does not support saving AI config yet.'", marks: [F, F, T] },
+        ],
+      },
+    ],
+    confirmGroups: [
+      {
+        title: "Return",
+        items: [
+          { label: "base URL field shows https://openrouter.ai/api/v1", marks: [T, F, F] },
+          { label: "updateRagSettings called with temperature=0.7, 'AI configuration saved' shown", marks: [F, T, F] },
+          { label: "toast shows the rejected error's own message verbatim", marks: [F, F, T] },
+        ],
+      },
+    ],
+    types: ["N", "N", "A"],
+  },
+  {
+    id: "FE_ACT_001",
+    module: ADMIN_OPERATIONS_MODULE,
+    method: "ContentTableRowAndDeadDeleteButton",
+    description: "ContentTable renders a session row's job title/recruiter/question count from props, its per-row Delete button is disabled with a Coming soon tooltip (no backend to delete against), and the View link still navigates to the session's history detail page",
+    conditionGroups: [
+      {
+        title: "Scenario",
+        items: [
+          { label: "session row with jobTitle/recruiter/recruiterEmail/questionsCount", marks: [T, F, F] },
+          { label: "per-row Delete button", marks: [F, T, F] },
+          { label: "View link, session id='sess-42'", marks: [F, F, T] },
+        ],
+      },
+    ],
+    confirmGroups: [
+      {
+        title: "Return",
+        items: [
+          { label: "job title/recruiter/email/count text rendered", marks: [T, F, F] },
+          { label: "Delete button disabled with title='Coming soon'", marks: [F, T, F] },
+          { label: "link href='/hr/history/sess-42'", marks: [F, F, T] },
+        ],
+      },
+    ],
+    types: ["N", "B", "N"],
+  },
+  {
+    id: "FE_ACOMP_001",
+    module: ADMIN_OPERATIONS_MODULE,
+    method: "CompanyManagementListingSearchRetry",
+    description: "CompanyManagementPage lists companies from listCompanies, re-fetches with a keyword on Enter in the search box, shows an empty state when there are none, and a load failure shows Retry which re-fetches",
+    conditionGroups: [
+      {
+        title: "Scenario",
+        items: [
+          { label: "listCompanies resolves with 1 company", marks: [T, F, F, F] },
+          { label: "type 'Acme{Enter}' in the search box", marks: [F, T, F, F] },
+          { label: "listCompanies resolves with an empty list", marks: [F, F, T, F] },
+          { label: "listCompanies rejects once, then Retry re-fetches", marks: [F, F, F, T] },
+        ],
+      },
+    ],
+    confirmGroups: [
+      {
+        title: "Return",
+        items: [
+          { label: "'Acme Corp' shown", marks: [T, F, F, F] },
+          { label: "listCompanies last called with keyword='Acme'", marks: [F, T, F, F] },
+          { label: "'No companies found.' shown", marks: [F, F, T, F] },
+          { label: "Retry (Thử lại) button shown, then results load after retry", marks: [F, F, F, T] },
+        ],
+      },
+    ],
+    types: ["N", "N", "N", "A"],
+  },
+  {
+    id: "FE_ACOMP_002",
+    module: ADMIN_OPERATIONS_MODULE,
+    method: "CompanyManagementCreateEditDelete",
+    description: "Creating a company trims the entered name and calls createCompany, editing a company's name calls updateCompany, and deleting a company requires a confirm step before calling deleteCompany",
+    conditionGroups: [
+      {
+        title: "Scenario",
+        items: [
+          { label: "Add Company, type '  New Co  ' in the name field, click Create Company", marks: [T, F, F] },
+          { label: "Edit Company on 'Acme Corp', rename to 'Acme Corp Renamed', Save Changes", marks: [F, T, F] },
+          { label: "Delete Company on 'Acme Corp', then confirm the delete", marks: [F, F, T] },
+        ],
+      },
+    ],
+    confirmGroups: [
+      {
+        title: "Return",
+        items: [
+          { label: "createCompany called with name='New Co' (trimmed), success toast shown", marks: [T, F, F] },
+          { label: "updateCompany called with id='co-1', name='Acme Corp Renamed', success toast shown", marks: [F, T, F] },
+          { label: "confirm text shown first, deleteCompany not called until confirm is clicked, then called with 'co-1'", marks: [F, F, T] },
+        ],
+      },
+    ],
+    types: ["N", "N", "N"],
+  },
+  {
+    id: "FE_AKB_001",
+    module: ADMIN_OPERATIONS_MODULE,
+    method: "AdminKnowledgeWrapperWiring",
+    description: "AdminKnowledgePage wires the shared KnowledgePageContent to the admin-scoped knowledge.service functions (not the HR ones) — it lists documents via getAdminKnowledgeDocs and shows an empty state when there are none",
+    conditionGroups: [
+      {
+        title: "Scenario",
+        items: [
+          { label: "getAdminKnowledgeDocs resolves with 1 doc ('company-handbook.pdf')", marks: [T, F] },
+          { label: "getAdminKnowledgeDocs resolves with an empty list", marks: [F, T] },
+        ],
+      },
+    ],
+    confirmGroups: [
+      {
+        title: "Return",
+        items: [
+          { label: "'Knowledge Documents' heading + 'company-handbook.pdf' shown, getAdminKnowledgeDocs called", marks: [T, F] },
+          { label: "'No documents yet.' shown", marks: [F, T] },
+        ],
+      },
+    ],
+    types: ["N", "N"],
+  },
+];
+
+// ---- Batch 5: Admin Dashboard/Marketplace/Plans + HR Dashboard/History -
+// grounded in tests/unit/{admin-dashboard,admin-marketplace,admin-plans,
+// hr-dashboard,hr-history}.test.tsx. No prior automated coverage existed for
+// any of these pages.
+
+const HR_OPERATIONS_MODULE = "HROperationsModule";
+
+const batch5TestCases = [
+  {
+    id: "FE_ADASH_001",
+    module: ADMIN_OPERATIONS_MODULE,
+    method: "AdminDashboardKpisAndAlerts",
+    description: "AdminDashboardPage renders KPI values and a recent-user registration from fetchAdminDashboardStats, and shows a 'No companies registered' alert when totalCompanies=0 or 'No alerts detected' when data is healthy",
+    conditionGroups: [
+      {
+        title: "Scenario",
+        items: [
+          { label: "totalUsers=120, hrManagers=15, jobSeekers=100, totalCompanies=8", marks: [T, F, F, F] },
+          { label: "recentUsers=[{fullName:'Nguyen Van A', email:'a@example.com'}]", marks: [F, T, F, F] },
+          { label: "totalCompanies=0, companies=[]", marks: [F, F, T, F] },
+          { label: "companies + HR managers present, no anomalies", marks: [F, F, F, T] },
+        ],
+      },
+    ],
+    confirmGroups: [
+      {
+        title: "Return",
+        items: [
+          { label: "120/15/100/8 KPI values shown", marks: [T, F, F, F] },
+          { label: "'Nguyen Van A' + 'a@example.com' shown in recent users", marks: [F, T, F, F] },
+          { label: "'No companies registered' alert shown", marks: [F, F, T, F] },
+          { label: "'No alerts detected' shown", marks: [F, F, F, T] },
+        ],
+      },
+    ],
+    types: ["N", "N", "A", "N"],
+  },
+  {
+    id: "FE_ADASH_002",
+    module: ADMIN_OPERATIONS_MODULE,
+    method: "AdminDashboardRetryAndRefresh",
+    description: "A load failure shows an error banner with Retry which re-fetches and clears the error, and clicking the header's Refresh button re-fetches dashboard data",
+    conditionGroups: [
+      {
+        title: "Scenario",
+        items: [
+          { label: "fetchAdminDashboardStats rejects once, then Retry re-fetches", marks: [T, F] },
+          { label: "loaded with totalUsers=120, click Refresh, next fetch returns totalUsers=200", marks: [F, T] },
+        ],
+      },
+    ],
+    confirmGroups: [
+      {
+        title: "Return",
+        items: [
+          { label: "Retry button shown, then data loads and error banner clears", marks: [T, F] },
+          { label: "KPI updates from 120 to 200", marks: [F, T] },
+        ],
+      },
+    ],
+    types: ["A", "N"],
+  },
+  {
+    id: "FE_AMKT_001",
+    module: ADMIN_OPERATIONS_MODULE,
+    method: "MarketplaceListingSearchAndErrors",
+    description: "AdminMarketplacePage lists published sets with title/company/HR owner, debounce-searches by keyword, shows an empty state with no results, and a load failure shows an error toast",
+    conditionGroups: [
+      {
+        title: "Scenario",
+        items: [
+          { label: "listMarketplaceQuestionSets resolves with 1 item", marks: [T, F, F, F] },
+          { label: "type 'Backend' into the search box", marks: [F, T, F, F] },
+          { label: "listMarketplaceQuestionSets resolves with an empty list", marks: [F, F, T, F] },
+          { label: "listMarketplaceQuestionSets rejects", marks: [F, F, F, T] },
+        ],
+      },
+    ],
+    confirmGroups: [
+      {
+        title: "Return",
+        items: [
+          { label: "title + company name shown", marks: [T, F, F, F] },
+          { label: "listMarketplaceQuestionSets last called with keyword='Backend'", marks: [F, T, F, F] },
+          { label: "'No marketplace question sets found.' shown", marks: [F, F, T, F] },
+          { label: "'Failed to load marketplace list.' shown", marks: [F, F, F, T] },
+        ],
+      },
+    ],
+    types: ["N", "N", "N", "A"],
+  },
+  {
+    id: "FE_AMKT_002",
+    module: ADMIN_OPERATIONS_MODULE,
+    method: "MarketplacePinAndDetail",
+    description: "Pinning a set calls pinMarketplaceQuestionSet and shows a success toast; clicking View opens the detail panel with data (including practitioners) from getMarketplaceQuestionSetById",
+    conditionGroups: [
+      {
+        title: "Scenario",
+        items: [
+          { label: "click Pin on an unpinned set, pinMarketplaceQuestionSet resolves", marks: [T, F] },
+          { label: "click View, getMarketplaceQuestionSetById resolves with a practitioner 'Tran Thi B'", marks: [F, T] },
+        ],
+      },
+    ],
+    confirmGroups: [
+      {
+        title: "Return",
+        items: [
+          { label: "pinMarketplaceQuestionSet called with 'set-1', 'Question set pinned.' shown", marks: [T, F] },
+          { label: "getMarketplaceQuestionSetById called with 'set-1', 'Tran Thi B' shown in the detail panel", marks: [F, T] },
+        ],
+      },
+    ],
+    types: ["N", "N"],
+  },
+  {
+    id: "FE_APLAN_001",
+    module: ADMIN_OPERATIONS_MODULE,
+    method: "PlansListingAndRefresh",
+    description: "AdminPlansRoutePage lists plans fetched via adminListPlans (name and per-limit values), and clicking Refresh re-fetches and repopulates the form",
+    conditionGroups: [
+      {
+        title: "Scenario",
+        items: [
+          { label: "adminListPlans resolves with HR Premium, askAiPerMonth=999", marks: [T, F] },
+          { label: "loaded, click Refresh, next fetch renames the plan to 'HR Premium Renamed'", marks: [F, T] },
+        ],
+      },
+    ],
+    confirmGroups: [
+      {
+        title: "Return",
+        items: [
+          { label: "name field shows 'HR Premium', Ask-AI field shows 999", marks: [T, F] },
+          { label: "name field updates to 'HR Premium Renamed'", marks: [F, T] },
+        ],
+      },
+    ],
+    types: ["N", "N"],
+  },
+  {
+    id: "FE_APLAN_002",
+    module: ADMIN_OPERATIONS_MODULE,
+    method: "PlansEditSaveAndFailure",
+    description: "Editing the Ask-AI limit and saving calls adminUpdatePlan with the new value and shows a success message; a save failure shows the generic save-error toast",
+    conditionGroups: [
+      {
+        title: "Scenario",
+        items: [
+          { label: "edit Ask-AI limit 999→500, click Save plan, adminUpdatePlan resolves", marks: [T, F] },
+          { label: "click Save plan, adminUpdatePlan rejects (network down)", marks: [F, T] },
+        ],
+      },
+    ],
+    confirmGroups: [
+      {
+        title: "Return",
+        items: [
+          { label: "adminUpdatePlan called with plan id and limits.askAiPerMonth=500, success message shown", marks: [T, F] },
+          { label: "'Failed to save the plan.' shown", marks: [F, T] },
+        ],
+      },
+    ],
+    types: ["N", "A"],
+  },
+  {
+    id: "FE_APLAN_003",
+    module: ADMIN_OPERATIONS_MODULE,
+    method: "PlansFreeVisiblePercentClamp",
+    description: "The Free visible % field clamps its value to a maximum of 100 on blur, even if the user types a larger number",
+    conditionGroups: [
+      { title: "Input", items: [{ label: "field starts at 50, user types 150, then blurs (tab away)", marks: [T] }] },
+    ],
+    confirmGroups: [{ title: "Return", items: [{ label: "field value clamps to 100", marks: [T] }] }],
+    types: ["B"],
+  },
+  {
+    id: "FE_HDASH_001",
+    module: HR_OPERATIONS_MODULE,
+    method: "HrDashboardKpisAndSections",
+    description: "HrDashboard renders KPI values and top role from the real aggregate endpoint (getHrDashboard), lists a recent session's job title/question count, lists a top candidate recommendation with name/role/score, and shows an empty state when there are no recommendations",
+    conditionGroups: [
+      {
+        title: "Scenario",
+        items: [
+          { label: "aggregate: 108 questions, 12 sessions, 9 completed, 75% success, topRole='Backend Developer'", marks: [T, F, F, F] },
+          { label: "recentSessions=[{role:'Backend Developer', questionCount:15}]", marks: [F, T, F, F] },
+          { label: "topRecommendations=[{candidateName:'Nguyen Van A', score:88}]", marks: [F, F, T, F] },
+          { label: "topRecommendations=[]", marks: [F, F, F, T] },
+        ],
+      },
+    ],
+    confirmGroups: [
+      {
+        title: "Return",
+        items: [
+          { label: "108/12/9/75%/'Backend Developer' KPI values shown", marks: [T, F, F, F] },
+          { label: "'Backend Developer' appears ≥2 times (KPI + row), question count 15 shown", marks: [F, T, F, F] },
+          { label: "'Nguyen Van A' + '88%' shown", marks: [F, F, T, F] },
+          { label: "'No candidate recommendations yet.' shown", marks: [F, F, F, T] },
+        ],
+      },
+    ],
+    types: ["N", "N", "N", "N"],
+  },
+  {
+    id: "FE_HDASH_002",
+    module: HR_OPERATIONS_MODULE,
+    method: "HrDashboardRetryAndNullFallback",
+    description: "A load failure shows the error banner with Retry which re-fetches and clears it; when getHrDashboard's soft-fallback path returns null, the dashboard falls back to recommendations-only data but still reports itself as errored (a real code finding, not a test bug)",
+    conditionGroups: [
+      {
+        title: "Scenario",
+        items: [
+          { label: "getHrDashboard rejects once, then Retry re-fetches successfully", marks: [T, F] },
+          { label: "getHrDashboard resolves null; listRecommendations resolves with 1 fallback item", marks: [F, T] },
+        ],
+      },
+    ],
+    confirmGroups: [
+      {
+        title: "Return",
+        items: [
+          { label: "Retry button shown, then data loads and error banner clears", marks: [T, F] },
+          { label: "'Failed to load dashboard data.' banner shown AND 'Fallback Candidate' still rendered", marks: [F, T] },
+        ],
+      },
+    ],
+    types: ["A", "A"],
+  },
+  {
+    id: "FE_HIST_001",
+    module: HR_OPERATIONS_MODULE,
+    method: "HistoryListingSearchAndFilter",
+    description: "QuestionSetHistoryTable lists sets with title/status badge/question count, search filters rows by title, filter='PUBLISHED'/'bookmarked' scope the visible rows, and a load failure shows the error message instead of the table",
+    conditionGroups: [
+      {
+        title: "Scenario",
+        items: [
+          { label: "listHistoryQuestionSets resolves with a Draft and a Published set", marks: [T, F, F, F] },
+          { label: "type 'react' into the search box", marks: [F, T, F, F] },
+          { label: "filter='PUBLISHED', then filter='bookmarked'", marks: [F, F, T, F] },
+          { label: "listHistoryQuestionSets rejects with 'Network error loading sets'", marks: [F, F, F, T] },
+        ],
+      },
+    ],
+    confirmGroups: [
+      {
+        title: "Return",
+        items: [
+          { label: "both titles + 'Saved'/'Published' badges + counts 8/12 shown", marks: [T, F, F, F] },
+          { label: "Draft row hidden, matching Published row still shown", marks: [F, T, F, F] },
+          { label: "each filter shows only the matching set, hides the other", marks: [F, F, T, F] },
+          { label: "'Network error loading sets' shown instead of the table", marks: [F, F, F, T] },
+        ],
+      },
+    ],
+    types: ["N", "N", "N", "A"],
+  },
+  {
+    id: "FE_HIST_002",
+    module: HR_OPERATIONS_MODULE,
+    method: "HistoryPublishUnpublishBookmark",
+    description: "Publishing a Draft set calls publishQuestionSet and flips its badge to Published, unpublishing flips it back to Saved/Draft, and toggling the bookmark icon calls toggleHrBookmark",
+    conditionGroups: [
+      {
+        title: "Scenario",
+        items: [
+          { label: "click 'Publish to marketplace' on the Draft row (qs-1)", marks: [T, F, F] },
+          { label: "click 'Unpublish' on the Published row (qs-2)", marks: [F, T, F] },
+          { label: "click 'Save to bookmarks' on the Draft row (qs-1)", marks: [F, F, T] },
+        ],
+      },
+    ],
+    confirmGroups: [
+      {
+        title: "Return",
+        items: [
+          { label: "publishQuestionSet called with 'qs-1', both rows now show 'Published'", marks: [T, F, F] },
+          { label: "unpublishQuestionSet called with 'qs-2', both rows now show 'Saved'", marks: [F, T, F] },
+          { label: "toggleHrBookmark called with 'qs-1'", marks: [F, F, T] },
+        ],
+      },
+    ],
+    types: ["N", "N", "N"],
+  },
+  {
+    id: "FE_HIST_003",
+    module: HR_OPERATIONS_MODULE,
+    method: "HistoryDeleteConfirmAndPublishedGuard",
+    description: "Deleting a set asks for confirmation before calling deleteHistoryQuestionSet and removes the row on confirm; a PUBLISHED set's Delete button is disabled and never opens the confirm dialog (must unpublish first)",
+    conditionGroups: [
+      {
+        title: "Scenario",
+        items: [
+          { label: "click Delete on the Draft row (qs-1), then confirm in the dialog", marks: [T, F] },
+          { label: "click the disabled Delete ('Unpublish before deleting') on the Published row (qs-2)", marks: [F, T] },
+        ],
+      },
+    ],
+    confirmGroups: [
+      {
+        title: "Return",
+        items: [
+          { label: "'Confirm Delete' shown first, deleteHistoryQuestionSet not called until confirmed, then called with 'qs-1', row removed", marks: [T, F] },
+          { label: "button is disabled, click no-ops: no dialog opens, deleteHistoryQuestionSet not called", marks: [F, T] },
+        ],
+      },
+    ],
+    types: ["N", "B"],
+  },
+  {
+    id: "FE_HIST_004",
+    module: HR_OPERATIONS_MODULE,
+    method: "HistoryExportGatedByPlan",
+    description: "The per-row Download Excel export button only renders for a Premium subscription; it is absent entirely for a Free plan",
+    conditionGroups: [
+      {
+        title: "Scenario",
+        items: [
+          { label: "subscription = Premium", marks: [T, F] },
+          { label: "subscription = Free (ready)", marks: [F, T] },
+        ],
+      },
+    ],
+    confirmGroups: [
+      {
+        title: "Return",
+        items: [
+          { label: "'Download Excel' button present", marks: [T, F] },
+          { label: "'Download Excel' button absent", marks: [F, T] },
+        ],
+      },
+    ],
+    types: ["N", "N"],
+  },
+];
+
+// ---- Batch 6: Candidate Billing/Dashboard/Profile/Settings/Subscription -
+// grounded in tests/unit/{candidate-billing,candidate-dashboard,
+// candidate-profile,candidate-settings,candidate-subscription-context,
+// candidate-upgrade-modal}.test.tsx. No prior automated coverage existed for
+// any of these. candidate-subscription-context and candidate-upgrade-modal
+// are regression tests for real P0/P1 fixes (shared-browser plan-cache leak;
+// silent onDone drop after a paid order).
+
+const CANDIDATE_OPERATIONS_MODULE = "CandidateOperationsModule";
+
+const batch6TestCases = [
+  {
+    id: "FE_CBILL_001",
+    module: CANDIDATE_OPERATIONS_MODULE,
+    method: "BillingCurrentPlanDisplay",
+    description: "CandidateBillingPage shows a Free subscriber's plan and practice-attempt usage (used/limit), and a Premium subscriber's plan and formatted renewal date",
+    conditionGroups: [
+      {
+        title: "Scenario",
+        items: [
+          { label: "planType=FREE, practiceUsed=3, practiceLimit=5", marks: [T, F] },
+          { label: "planType=PREMIUM, renewalDate='2026-09-15T00:00:00Z'", marks: [F, T] },
+        ],
+      },
+    ],
+    confirmGroups: [
+      {
+        title: "Return",
+        items: [
+          { label: "'Free Plan' + '3/5' shown", marks: [T, F] },
+          { label: "'Premium' + formatted renewal date shown", marks: [F, T] },
+        ],
+      },
+    ],
+    types: ["N", "N"],
+  },
+  {
+    id: "FE_CBILL_002",
+    module: CANDIDATE_OPERATIONS_MODULE,
+    method: "BillingPaymentHistoryAndReceipt",
+    description: "No payment history shows the empty state; a past payment shows its invoice row; an invoice WITH a receiptUrl renders a real Download link while one WITHOUT renders a disabled Download button with a Coming soon tooltip instead of a dead link",
+    conditionGroups: [
+      {
+        title: "Scenario",
+        items: [
+          { label: "getCandidatePaymentHistory resolves []", marks: [T, F, F, F] },
+          { label: "1 invoice 'CAND-2026-01-01'", marks: [F, T, F, F] },
+          { label: "invoice WITH receiptUrl", marks: [F, F, T, F] },
+          { label: "invoice WITHOUT receiptUrl", marks: [F, F, F, T] },
+        ],
+      },
+    ],
+    confirmGroups: [
+      {
+        title: "Return",
+        items: [
+          { label: "'No payment history yet.' shown", marks: [T, F, F, F] },
+          { label: "'CAND-2026-01-01' row shown", marks: [F, T, F, F] },
+          { label: "real link with href=receiptUrl and download attribute", marks: [F, F, T, F] },
+          { label: "no link rendered; disabled button with title='Coming soon'", marks: [F, F, F, T] },
+        ],
+      },
+    ],
+    types: ["N", "N", "N", "B"],
+  },
+  {
+    id: "FE_CBILL_003",
+    module: CANDIDATE_OPERATIONS_MODULE,
+    method: "BillingComingSoonButtons",
+    description: "A Premium subscriber's Manage Subscription button, and a Free subscriber's Update Billing Info / Change Payment Method buttons, are all disabled with a Coming soon tooltip rather than silently non-functional",
+    conditionGroups: [
+      {
+        title: "Scenario",
+        items: [
+          { label: "Premium subscriber", marks: [T, F] },
+          { label: "Free subscriber", marks: [F, T] },
+        ],
+      },
+    ],
+    confirmGroups: [
+      {
+        title: "Return",
+        items: [
+          { label: "'Manage Subscription' disabled with title='Coming soon'", marks: [T, F] },
+          { label: "'Update Billing Info' and 'Change Payment Method' both disabled with title='Coming soon'", marks: [F, T] },
+        ],
+      },
+    ],
+    types: ["B", "B"],
+  },
+  {
+    id: "FE_CBILL_004",
+    module: CANDIDATE_OPERATIONS_MODULE,
+    method: "BillingUpgradeAndCancel",
+    description: "A Free subscriber clicking Upgrade to Premium opens the upgrade modal; a Premium subscriber's Cancel Plan opens a confirm dialog and only calls cancelSubscription (reverting the card to Free) once confirmed",
+    conditionGroups: [
+      {
+        title: "Scenario",
+        items: [
+          { label: "Free subscriber, click Upgrade to Premium", marks: [T, F] },
+          { label: "Premium subscriber, click Cancel Plan, then confirm Cancel Subscription", marks: [F, T] },
+        ],
+      },
+    ],
+    confirmGroups: [
+      {
+        title: "Return",
+        items: [
+          { label: "upgrade modal dialog opens", marks: [T, F] },
+          { label: "'Cancel Subscription' heading shown first, cancelSubscription not called until confirmed, then called and plan card reverts to 'Free Plan'", marks: [F, T] },
+        ],
+      },
+    ],
+    types: ["N", "N"],
+  },
+  {
+    id: "FE_CDASH_001",
+    module: CANDIDATE_OPERATIONS_MODULE,
+    method: "CandidateDashboardKpisAndSessions",
+    description: "CandidateDashboard renders the total-sessions/average-score KPIs from real practice stats, lists a recent session by question-set title, shows an empty state with no sessions, and a load failure shows Retry which re-fetches",
+    conditionGroups: [
+      {
+        title: "Scenario",
+        items: [
+          { label: "getPracticeStats: totalSessions=6, averageScore=78", marks: [T, F, F, F] },
+          { label: "listCompletedSessions: 1 item, setTitle='Frontend React Deep Dive'", marks: [F, T, F, F] },
+          { label: "listCompletedSessions: [], totalSessions=0", marks: [F, F, T, F] },
+          { label: "both calls reject once, then Retry re-fetches", marks: [F, F, F, T] },
+        ],
+      },
+    ],
+    confirmGroups: [
+      {
+        title: "Return",
+        items: [
+          { label: "'6' + '78%' KPI values shown", marks: [T, F, F, F] },
+          { label: "'Frontend React Deep Dive' shown", marks: [F, T, F, F] },
+          { label: "'No practice sessions yet.' shown", marks: [F, F, T, F] },
+          { label: "Retry button shown, then session data loads after retry", marks: [F, F, F, T] },
+        ],
+      },
+    ],
+    types: ["N", "N", "N", "A"],
+  },
+  {
+    id: "FE_CDASH_002",
+    module: CANDIDATE_OPERATIONS_MODULE,
+    method: "CandidateDashboardRecommendedSets",
+    description: "The dashboard renders recommended question sets fetched via listQuestionSets (pageSize=3), and a recommended-sets load failure shows its own independent Retry without affecting the main dashboard data already loaded",
+    conditionGroups: [
+      {
+        title: "Scenario",
+        items: [
+          { label: "listQuestionSets resolves with 'SRE Site Reliability Track'", marks: [T, F] },
+          { label: "main dashboard data loads fine, listQuestionSets rejects once then Retry re-fetches", marks: [F, T] },
+        ],
+      },
+    ],
+    confirmGroups: [
+      {
+        title: "Return",
+        items: [
+          { label: "'SRE Site Reliability Track' shown, called with pageSize=3", marks: [T, F] },
+          { label: "main session data still shown; recommended-sets Retry re-populates independently", marks: [F, T] },
+        ],
+      },
+    ],
+    types: ["N", "A"],
+  },
+  {
+    id: "FE_PROF_001",
+    module: CANDIDATE_OPERATIONS_MODULE,
+    method: "CandidateProfileViewAndEditToggle",
+    description: "CandidateProfile shows the loaded profile info and practice stats in view mode, and clicking Edit Profile switches to edit mode with the current values pre-filled in inputs",
+    conditionGroups: [
+      {
+        title: "Scenario",
+        items: [
+          { label: "getCurrentUser: targetRole='Backend Developer'; getPracticeStats: totalSessions=4, averageScore=81", marks: [T, F] },
+          { label: "click Edit Profile", marks: [F, T] },
+        ],
+      },
+    ],
+    confirmGroups: [
+      {
+        title: "Return",
+        items: [
+          { label: "'Backend Developer' + '4' + '81%' shown", marks: [T, F] },
+          { label: "inputs pre-filled with current name/role, Save Changes button shown", marks: [F, T] },
+        ],
+      },
+    ],
+    types: ["N", "N"],
+  },
+  {
+    id: "FE_PROF_002",
+    module: CANDIDATE_OPERATIONS_MODULE,
+    method: "CandidateProfileSaveValidationSkills",
+    description: "Saving valid changes trims the form and calls updateCandidateProfile then exits edit mode; an invalid LinkedIn URL blocks saving client-side and never calls the API; adding a skill via Enter updates the skills list and is included on save",
+    conditionGroups: [
+      {
+        title: "Scenario",
+        items: [
+          { label: "edit targetRole to '  Staff Backend Engineer  ', Save Changes", marks: [T, F, F] },
+          { label: "type 'not-a-url' into the LinkedIn field, Save Changes", marks: [F, T, F] },
+          { label: "type 'Kubernetes{Enter}' into the skills input, then Save Changes", marks: [F, F, T] },
+        ],
+      },
+    ],
+    confirmGroups: [
+      {
+        title: "Return",
+        items: [
+          { label: "updateCandidateProfile called with targetRole='Staff Backend Engineer' (trimmed), 'Profile saved successfully.' shown, edit mode exits", marks: [T, F, F] },
+          { label: "'Enter a valid URL (e.g. https://…)' shown, updateCandidateProfile never called", marks: [F, T, F] },
+          { label: "'Kubernetes' chip shown; saved techStack includes it", marks: [F, F, T] },
+        ],
+      },
+    ],
+    types: ["N", "A", "N"],
+  },
+  {
+    id: "FE_PROF_003",
+    module: CANDIDATE_OPERATIONS_MODULE,
+    method: "CandidateProfileCvManagement",
+    description: "Uploading a CV from the empty state calls uploadCv and the new file name appears; deleting an existing CV asks for confirmation before calling deleteCv",
+    conditionGroups: [
+      {
+        title: "Scenario",
+        items: [
+          { label: "no CV yet, upload 'new-resume.pdf'", marks: [T, F] },
+          { label: "existing CV 'handbook-cv.pdf', click Delete, then confirm", marks: [F, T] },
+        ],
+      },
+    ],
+    confirmGroups: [
+      {
+        title: "Return",
+        items: [
+          { label: "uploadCv called with the file, 'new-resume.pdf' appears", marks: [T, F] },
+          { label: "'Delete your CV?' shown first, deleteCv not called until confirmed, then called and 'CV deleted.' shown", marks: [F, T] },
+        ],
+      },
+    ],
+    types: ["N", "N"],
+  },
+  {
+    id: "FE_CSET_001",
+    module: CANDIDATE_OPERATIONS_MODULE,
+    method: "CandidateSettingsTabRouting",
+    description: "SettingsPage defaults to the Profile tab, opens whichever tab the ?tab= query param names on load, and clicking a nav item switches tabs",
+    conditionGroups: [
+      {
+        title: "Scenario",
+        items: [
+          { label: "no ?tab= param", marks: [T, F, F] },
+          { label: "?tab=billing", marks: [F, T, F] },
+          { label: "loaded on Profile, click the General nav item", marks: [F, F, T] },
+        ],
+      },
+    ],
+    confirmGroups: [
+      {
+        title: "Return",
+        items: [
+          { label: "[CandidateProfile] placeholder shown", marks: [T, F, F] },
+          { label: "[CandidateBillingPage] placeholder shown", marks: [F, T, F] },
+          { label: "General tab content ('Language') shown", marks: [F, F, T] },
+        ],
+      },
+    ],
+    types: ["N", "N", "N"],
+  },
+  {
+    id: "FE_CSET_002",
+    module: CANDIDATE_OPERATIONS_MODULE,
+    method: "CandidateSettingsGeneral",
+    description: "On the General tab, toggling CV sync off calls updateCvSyncSettings(false), and switching the language to Tiếng Việt re-labels the tab's own content",
+    conditionGroups: [
+      {
+        title: "Scenario",
+        items: [
+          { label: "CV sync currently on, click its toggle", marks: [T, F] },
+          { label: "click 'Tiếng Việt'", marks: [F, T] },
+        ],
+      },
+    ],
+    confirmGroups: [
+      {
+        title: "Return",
+        items: [
+          { label: "updateCvSyncSettings called with false", marks: [T, F] },
+          { label: "'Ngôn ngữ' (re-labeled) shown", marks: [F, T] },
+        ],
+      },
+    ],
+    types: ["N", "N"],
+  },
+  {
+    id: "FE_CSET_003",
+    module: CANDIDATE_OPERATIONS_MODULE,
+    method: "CandidateSettingsPrivacyPlanGate",
+    description: "On the Privacy tab, a Premium candidate can toggle recruiter-recommendation visibility (calling updatePrivacySettings), while a Free candidate sees a 'Premium only' lock instead of the toggle, and clicking it opens the upgrade prompt",
+    conditionGroups: [
+      {
+        title: "Scenario",
+        items: [
+          { label: "planType=PREMIUM, toggle currently on, click it", marks: [T, F] },
+          { label: "planType=FREE (default)", marks: [F, T] },
+        ],
+      },
+    ],
+    confirmGroups: [
+      {
+        title: "Return",
+        items: [
+          { label: "updatePrivacySettings called with false, 'Preference updated' shown", marks: [T, F] },
+          { label: "'Premium only' shown, no switch rendered; clicking 'Upgrade to Premium' opens the upgrade heading", marks: [F, T] },
+        ],
+      },
+    ],
+    types: ["N", "B"],
+  },
+  {
+    id: "FE_CSUB_001",
+    module: CANDIDATE_OPERATIONS_MODULE,
+    method: "SubscriptionContextUserScopedPlanCache",
+    description: "P0 regression: CandidateSubscriptionProvider's localStorage plan cache is scoped to the exact user id it was written for — a PREMIUM plan cached for user A is NOT applied when user B logs in on the same (shared/kiosk) browser, but IS applied immediately (before the API resolves) for the same user A, and refreshSubscription always writes the cache scoped to the current user id",
+    conditionGroups: [
+      {
+        title: "Scenario",
+        items: [
+          { label: "cache={plan:PREMIUM, user:'user-A'}, current user='user-B', subscription fetch hangs", marks: [T, F, F, F] },
+          { label: "cache={plan:PREMIUM, user:'user-A'}, current user='user-A', subscription fetch hangs", marks: [F, T, F, F] },
+          { label: "no relevant cache, current user='user-C', getCandidateSubscription resolves PREMIUM", marks: [F, F, T, F] },
+          { label: "no cache at all, current user='user-D', getCandidateSubscription resolves FREE", marks: [F, F, F, T] },
+        ],
+      },
+    ],
+    confirmGroups: [
+      {
+        title: "Return",
+        items: [
+          { label: "shows plan:FREE for user-B, never plan:PREMIUM (cache NOT leaked cross-user)", marks: [T, F, F, F] },
+          { label: "shows plan:PREMIUM for user-A immediately (same-user cache applied)", marks: [F, T, F, F] },
+          { label: "shows plan:PREMIUM for user-C; cache written with user='user-C'", marks: [F, F, T, F] },
+          { label: "shows plan:FREE for user-D once the API responds", marks: [F, F, F, T] },
+        ],
+      },
+    ],
+    types: ["A", "N", "N", "N"],
+  },
+  {
+    id: "FE_UPM_001",
+    module: CANDIDATE_OPERATIONS_MODULE,
+    method: "UpgradeModalFinishPaidRetry",
+    description: "P1 fix regression: once the background poll detects a paid order, finishPaid retries the post-payment subscription/usage/history refresh on transient failure (up to 3 attempts) and still calls onDone once a retry succeeds; if all 3 attempts fail it gives up quietly — onDone simply never fires, it does not crash — since the success toast/close already happened for the confirmed payment",
+    conditionGroups: [
+      {
+        title: "Scenario",
+        items: [
+          { label: "order becomes Paid; getCandidateSubscription rejects twice then resolves PREMIUM", marks: [T, F] },
+          { label: "order becomes Paid; getCandidateSubscription rejects on all 3 attempts", marks: [F, T] },
+        ],
+      },
+    ],
+    confirmGroups: [
+      {
+        title: "Return",
+        items: [
+          { label: "getCandidateSubscription called 3 times total, onDone called once with the fresh subscription/usage/history", marks: [T, F] },
+          { label: "getCandidateSubscription called 3 times total, onDone never called, onClose already called, no crash", marks: [F, T] },
+        ],
+      },
+    ],
+    types: ["A", "A"],
+  },
+];
+
+// ---- Batch 7 (final): Feedback polling, HR Billing/Knowledge/Recommendations
+// /Settings, Invitations, Marketplace, Practice Session, Premium-Revoked
+// dialog, Subscription realtime — grounded in tests/unit/{
+// feedback-result-client,hr-billing,hr-knowledge,hr-recommendations,
+// hr-settings-preferences-notifications,invitations,marketplace,
+// practice-session,premium-revoked-dialog,subscription-realtime}.test.tsx.
+// No prior automated coverage existed for any of these. hr-billing/BILL-7,
+// candidate-subscription-context (batch 6), and subscription-realtime are all
+// regression tests locking in real P0 fixes made this session.
+
+const SHARED_PLATFORM_MODULE = "SharedPlatformModule";
+
+const batch7TestCases = [
+  {
+    id: "FE_FRC_001",
+    module: CANDIDATE_OPERATIONS_MODULE,
+    method: "FeedbackScorePollingUntilArrival",
+    description: "FeedbackResultClient shows 'scoring' while overallScore is null and polls every SCORE_POLL_INTERVAL_MS until a score arrives, flipping to 'done'; a score already present on the initial load skips polling entirely",
+    conditionGroups: [
+      {
+        title: "Scenario",
+        items: [
+          { label: "getPracticeSession: null, null, then 85 across 3 calls", marks: [T, F] },
+          { label: "getPracticeSession returns overallScore=72 on the very first call", marks: [F, T] },
+        ],
+      },
+    ],
+    confirmGroups: [
+      {
+        title: "Return",
+        items: [
+          { label: "state stays 'scoring' through 2 nulls, then flips to 'done'; called 3 times total", marks: [T, F] },
+          { label: "state is 'done' immediately; called exactly once, no further polls even after 2 intervals", marks: [F, T] },
+        ],
+      },
+    ],
+    types: ["N", "N"],
+  },
+  {
+    id: "FE_FRC_002",
+    module: CANDIDATE_OPERATIONS_MODULE,
+    method: "FeedbackScoreTimeoutAndRetry",
+    description: "After SCORE_POLL_MAX_ATTEMPTS straight nulls, scoring times out ('timed-out') instead of polling forever; clicking Retry after a timeout restarts polling from scratch and can still succeed",
+    conditionGroups: [
+      {
+        title: "Scenario",
+        items: [
+          { label: "getPracticeSession returns null on every one of SCORE_POLL_MAX_ATTEMPTS polls", marks: [T, F] },
+          { label: "timed out, then click 'Retry scoring', next poll returns overallScore=90", marks: [F, T] },
+        ],
+      },
+    ],
+    confirmGroups: [
+      {
+        title: "Return",
+        items: [
+          { label: "state flips to 'timed-out'; called 1 (initial) + SCORE_POLL_MAX_ATTEMPTS times", marks: [T, F] },
+          { label: "state goes back to 'scoring' then 'done' after the next interval", marks: [F, T] },
+        ],
+      },
+    ],
+    types: ["A", "A"],
+  },
+  {
+    id: "FE_BILL_001",
+    module: HR_OPERATIONS_MODULE,
+    method: "HrBillingCurrentPlan",
+    description: "HrBillingSubscription shows 'Free' for a Free subscriber and 'Premium' for a Premium subscriber",
+    conditionGroups: [
+      { title: "Scenario", items: [
+        { label: "subscription = Free (ready)", marks: [T, F] },
+        { label: "subscription = Premium", marks: [F, T] },
+      ] },
+    ],
+    confirmGroups: [
+      { title: "Return", items: [
+        { label: "'Free' shown", marks: [T, F] },
+        { label: "'Premium' shown", marks: [F, T] },
+      ] },
+    ],
+    types: ["N", "N"],
+  },
+  {
+    id: "FE_BILL_002",
+    module: HR_OPERATIONS_MODULE,
+    method: "HrBillingPaymentHistoryAndReceipt",
+    description: "A Free subscriber with no payment history sees no invoice rows; a Premium subscriber's payment history shows their invoice; an invoice WITH a receiptUrl renders a real Download link while one WITHOUT renders a disabled Download button with a Coming soon tooltip",
+    conditionGroups: [
+      {
+        title: "Scenario",
+        items: [
+          { label: "Free subscriber, getHrPaymentHistory=[]", marks: [T, F, F, F] },
+          { label: "Premium subscriber, 1 invoice 'HR-2026-01-01'", marks: [F, T, F, F] },
+          { label: "invoice WITH receiptUrl", marks: [F, F, T, F] },
+          { label: "invoice WITHOUT receiptUrl", marks: [F, F, F, T] },
+        ],
+      },
+    ],
+    confirmGroups: [
+      {
+        title: "Return",
+        items: [
+          { label: "no invoice row rendered", marks: [T, F, F, F] },
+          { label: "'HR-2026-01-01' row shown", marks: [F, T, F, F] },
+          { label: "real link with href=receiptUrl and download attribute", marks: [F, F, T, F] },
+          { label: "no link rendered; disabled button with title='Coming soon'", marks: [F, F, F, T] },
+        ],
+      },
+    ],
+    types: ["N", "N", "N", "B"],
+  },
+  {
+    id: "FE_BILL_003",
+    module: HR_OPERATIONS_MODULE,
+    method: "HrBillingCancelToFreeFlow",
+    description: "Downgrade to Free opens a confirm dialog without cancelling immediately; Keep Premium closes it without cancelling; confirming calls cancelSubscriptionSandbox once and — per the real backend fix locked in by this regression test — keeps Premium active (periodEnd honored) rather than dropping to Free the instant the call resolves",
+    conditionGroups: [
+      {
+        title: "Scenario",
+        items: [
+          { label: "Premium subscriber, click 'Downgrade to Free'", marks: [T, F, F] },
+          { label: "confirm dialog open, click 'Keep Premium'", marks: [F, T, F] },
+          { label: "confirm dialog open, click confirm; cancelSubscriptionSandbox resolves with planCode still PREMIUM, status='Cancelled'", marks: [F, F, T] },
+        ],
+      },
+    ],
+    confirmGroups: [
+      {
+        title: "Return",
+        items: [
+          { label: "'Downgrade to Free' heading + 'Keep Premium' shown, no cancel call yet", marks: [T, F, F] },
+          { label: "dialog closes, subscription NOT cancelled", marks: [F, T, F] },
+          { label: "cancelSubscriptionSandbox called once, dialog closes, 'Downgrade to Free' CTA still present (still Premium, not reverted to Free)", marks: [F, F, T] },
+        ],
+      },
+    ],
+    types: ["N", "N", "A"],
+  },
+  {
+    id: "FE_HKB_001",
+    module: HR_OPERATIONS_MODULE,
+    method: "KnowledgePageListingAndErrors",
+    description: "KnowledgePageContent lists documents fetched via onFetchDocs with file name and status, shows an empty state with none, and a FAILED document shows its own error message",
+    conditionGroups: [
+      {
+        title: "Scenario",
+        items: [
+          { label: "onFetchDocs resolves with 1 READY doc 'handbook.pdf'", marks: [T, F, F] },
+          { label: "onFetchDocs resolves []", marks: [F, T, F] },
+          { label: "onFetchDocs resolves with a FAILED doc, errorMessage='Unreadable PDF content'", marks: [F, F, T] },
+        ],
+      },
+    ],
+    confirmGroups: [
+      {
+        title: "Return",
+        items: [
+          { label: "'handbook.pdf' + 'Ready' status shown", marks: [T, F, F] },
+          { label: "'No documents yet.' shown", marks: [F, T, F] },
+          { label: "'Unreadable PDF content' shown", marks: [F, F, T] },
+        ],
+      },
+    ],
+    types: ["N", "N", "N"],
+  },
+  {
+    id: "FE_HKB_002",
+    module: HR_OPERATIONS_MODULE,
+    method: "KnowledgeUploadAndSizeLimit",
+    description: "Uploading a valid file calls onUpload and the new document appears in the list; a file over the 20MB limit is rejected client-side with a toast without ever calling onUpload — a finding that the .pdf/.docx/.doc/.txt 'accept' attribute is the only type gate, with no client-side MIME/extension re-check",
+    conditionGroups: [
+      {
+        title: "Scenario",
+        items: [
+          { label: "upload 'resume-guide.pdf' (valid, under limit)", marks: [T, F] },
+          { label: "upload 'huge.pdf', 21MB (over the 20MB limit)", marks: [F, T] },
+        ],
+      },
+    ],
+    confirmGroups: [
+      {
+        title: "Return",
+        items: [
+          { label: "onUpload called with the file, 'resume-guide.pdf' appears in the list", marks: [T, F] },
+          { label: "'File \"huge.pdf\" exceeds 20 MB.' toast shown, onUpload never called", marks: [F, T] },
+        ],
+      },
+    ],
+    types: ["N", "B"],
+  },
+  {
+    id: "FE_HKB_003",
+    module: HR_OPERATIONS_MODULE,
+    method: "KnowledgeDeleteConfirm",
+    description: "Deleting a document asks for confirmation ('Delete document?') before calling onDelete and removes the row on confirm",
+    conditionGroups: [
+      { title: "Scenario", items: [{ label: "open the row's '···' menu, click 'Xoá nguồn', then confirm Delete", marks: [T] }] },
+    ],
+    confirmGroups: [
+      { title: "Return", items: [{ label: "'Delete document?' shown first, onDelete not called until confirmed, then called with 'doc-1', row removed", marks: [T] }] },
+    ],
+    types: ["N"],
+  },
+  {
+    id: "FE_HREC_001",
+    module: HR_OPERATIONS_MODULE,
+    method: "RecommendationsListingFilterSearch",
+    description: "RecommendationsList lists candidates with name/role/score, switching to the Shortlisted tab re-fetches with that status filter, search filters client-side by question set title, no matches shows the empty state, and a load failure shows Retry which re-fetches",
+    conditionGroups: [
+      {
+        title: "Scenario",
+        items: [
+          { label: "listRecommendations resolves with 1 candidate, score=88", marks: [T, F, F, F, F] },
+          { label: "click the 'Shortlisted' status tab", marks: [F, T, F, F, F] },
+          { label: "type 'react' into the search box", marks: [F, F, T, F, F] },
+          { label: "listRecommendations resolves []", marks: [F, F, F, T, F] },
+          { label: "listRecommendations rejects once, then Retry re-fetches", marks: [F, F, F, F, T] },
+        ],
+      },
+    ],
+    confirmGroups: [
+      {
+        title: "Return",
+        items: [
+          { label: "name + '88' score shown", marks: [T, F, F, F, F] },
+          { label: "last called with status='SHORTLISTED'", marks: [F, T, F, F, F] },
+          { label: "matching candidate hidden, non-matching one still shown", marks: [F, F, T, F, F] },
+          { label: "'No candidates found matching your filters.' shown", marks: [F, F, F, T, F] },
+          { label: "Retry button shown, then results load after retry", marks: [F, F, F, F, T] },
+        ],
+      },
+    ],
+    types: ["N", "N", "N", "N", "A"],
+  },
+  {
+    id: "FE_HREC_002",
+    module: HR_OPERATIONS_MODULE,
+    method: "RecommendationsShortlistDismissStateGating",
+    description: "Shortlisting a NEW candidate calls shortlistRecommendation and shows a success toast; dismissing an already-acted candidate (409) shows a specific 'already invited or dismissed' message instead of the generic one; a DISMISSED candidate can still be shortlisted again (not terminal); an INVITED candidate has no shortlist/dismiss actions at all (terminal)",
+    conditionGroups: [
+      {
+        title: "Scenario",
+        items: [
+          { label: "status=NEW, click Shortlist", marks: [T, F, F, F] },
+          { label: "status=NEW, dismissRecommendation rejects with 409", marks: [F, T, F, F] },
+          { label: "status=DISMISSED, click Shortlist", marks: [F, F, T, F] },
+          { label: "status=INVITED", marks: [F, F, F, T] },
+        ],
+      },
+    ],
+    confirmGroups: [
+      {
+        title: "Return",
+        items: [
+          { label: "shortlistRecommendation called with the id, 'Added to shortlist.' shown", marks: [T, F, F, F] },
+          { label: "'This candidate has already been invited or dismissed.' shown", marks: [F, T, F, F] },
+          { label: "Shortlist button present and works, shortlistRecommendation called", marks: [F, F, T, F] },
+          { label: "no Shortlist/Dismiss buttons rendered", marks: [F, F, F, T] },
+        ],
+      },
+    ],
+    types: ["N", "A", "A", "B"],
+  },
+  {
+    id: "FE_HRSET_001",
+    module: HR_OPERATIONS_MODULE,
+    method: "HrSettingsPreferencesNotificationsComingSoon",
+    description: "The Preferences and Notifications tabs' Save Changes buttons are both disabled with a Coming soon tooltip (no backend to persist to yet), while individual notification toggles still update their own checked state live",
+    conditionGroups: [
+      {
+        title: "Scenario",
+        items: [
+          { label: "Preferences tab", marks: [T, F, F] },
+          { label: "Notifications tab", marks: [F, T, F] },
+          { label: "Notifications tab, click the first toggle", marks: [F, F, T] },
+        ],
+      },
+    ],
+    confirmGroups: [
+      {
+        title: "Return",
+        items: [
+          { label: "Save Changes disabled with title='Coming soon'", marks: [T, F, F] },
+          { label: "Save Changes disabled with title='Coming soon'", marks: [F, T, F] },
+          { label: "toggle's aria-checked flips", marks: [F, F, T] },
+        ],
+      },
+    ],
+    types: ["B", "B", "N"],
+  },
+  {
+    id: "FE_INV_001",
+    module: CANDIDATE_OPERATIONS_MODULE,
+    method: "InvitationsListingAndFilter",
+    description: "InvitationsList lists invitations with company name and a live Pending count badge on the tab, the Accepted tab filters the list to accepted-only, no invitations shows the empty state, and a load failure shows Retry which re-fetches",
+    conditionGroups: [
+      {
+        title: "Scenario",
+        items: [
+          { label: "listInvitations: 1 PENDING + 1 ACCEPTED", marks: [T, F, F, F] },
+          { label: "click the Accepted tab", marks: [F, T, F, F] },
+          { label: "listInvitations resolves []", marks: [F, F, T, F] },
+          { label: "listInvitations rejects once, then Retry re-fetches", marks: [F, F, F, T] },
+        ],
+      },
+    ],
+    confirmGroups: [
+      {
+        title: "Return",
+        items: [
+          { label: "both company names shown, Pending tab badge shows '1'", marks: [T, F, F, F] },
+          { label: "PENDING company hidden, ACCEPTED one still shown", marks: [F, T, F, F] },
+          { label: "empty-state message shown", marks: [F, F, T, F] },
+          { label: "Retry button shown, then invitation loads after retry", marks: [F, F, F, T] },
+        ],
+      },
+    ],
+    types: ["N", "N", "N", "A"],
+  },
+  {
+    id: "FE_INV_002",
+    module: CANDIDATE_OPERATIONS_MODULE,
+    method: "InvitationsAcceptFlow",
+    description: "Accept opens a modal; an invalid phone number blocks confirm with a validation message and never calls acceptInvitation; a valid (or blank) phone calls acceptInvitation and flips status to Accepted; a 409 on accept shows 'You've already responded' instead of the generic accept-failed message",
+    conditionGroups: [
+      {
+        title: "Scenario",
+        items: [
+          { label: "type '12345' (invalid, too short) into the phone field, click Accept invitation", marks: [T, F, F] },
+          { label: "type '0912345678' (valid), click Accept invitation, acceptInvitation resolves", marks: [F, T, F] },
+          { label: "click Accept invitation, acceptInvitation rejects with 409", marks: [F, F, T] },
+        ],
+      },
+    ],
+    confirmGroups: [
+      {
+        title: "Return",
+        items: [
+          { label: "'Enter a valid phone number (10 digits, starting with 0).' shown, acceptInvitation never called", marks: [T, F, F] },
+          { label: "acceptInvitation called with the phone, 'Invitation accepted' shown", marks: [F, T, F] },
+          { label: "'You've already responded to this invitation.' shown", marks: [F, F, T] },
+        ],
+      },
+    ],
+    types: ["B", "N", "A"],
+  },
+  {
+    id: "FE_INV_003",
+    module: CANDIDATE_OPERATIONS_MODULE,
+    method: "InvitationsDeclineFlow",
+    description: "Decline asks for confirmation ('Decline this invitation?') before calling rejectInvitation and flips the status to Rejected",
+    conditionGroups: [
+      { title: "Scenario", items: [{ label: "click Decline, then confirm in the alert dialog", marks: [T] }] },
+    ],
+    confirmGroups: [
+      { title: "Return", items: [{ label: "confirm text shown first, rejectInvitation not called until confirmed, then called and 'Invitation declined' shown", marks: [T] }] },
+    ],
+    types: ["N"],
+  },
+  {
+    id: "FE_MKT_001",
+    module: CANDIDATE_OPERATIONS_MODULE,
+    method: "MarketplaceBrowsingFilterSearch",
+    description: "MarketplacePage lists all backend-returned sets as cards; search filters client-side by title/company/skill and Difficulty filters to that difficulty only — proving the documented 'BE only reliably filters by CompanyId' workaround actually works; no matches shows the empty state; a load failure shows Retry which re-fetches",
+    conditionGroups: [
+      {
+        title: "Scenario",
+        items: [
+          { label: "listQuestionSets resolves with 3 sets across 2 companies", marks: [T, F, F, F, F] },
+          { label: "type 'react' into search", marks: [F, T, F, F, F] },
+          { label: "select Difficulty=Hard", marks: [F, F, T, F, F] },
+          { label: "search for text matching no set", marks: [F, F, F, T, F] },
+          { label: "the 2nd (main) listQuestionSets call rejects, then Retry re-fetches", marks: [F, F, F, F, T] },
+        ],
+      },
+    ],
+    confirmGroups: [
+      {
+        title: "Return",
+        items: [
+          { label: "all 3 titles shown, 'Acme Corp' appears twice", marks: [T, F, F, F, F] },
+          { label: "only the React set remains visible; no re-fetch with a keyword param (client-side only)", marks: [F, T, F, F, F] },
+          { label: "only the Hard-difficulty set remains visible", marks: [F, F, T, F, F] },
+          { label: "'No question sets found. Try a different search.' shown", marks: [F, F, F, T, F] },
+          { label: "Retry button shown, then all 3 sets load after retry", marks: [F, F, F, F, T] },
+        ],
+      },
+    ],
+    types: ["N", "N", "N", "N", "A"],
+  },
+  {
+    id: "FE_MKT_002",
+    module: CANDIDATE_OPERATIONS_MODULE,
+    method: "MarketplaceBookmarkAndNavigation",
+    description: "Clicking the bookmark icon on a card calls toggleBookmark and flips its label from 'Save for later' to 'Remove from saved'; each card's Start Practice link points at its own set-detail route",
+    conditionGroups: [
+      {
+        title: "Scenario",
+        items: [
+          { label: "click 'Save for later' on the first card", marks: [T, F] },
+          { label: "3 cards, default featured sort", marks: [F, T] },
+        ],
+      },
+    ],
+    confirmGroups: [
+      {
+        title: "Return",
+        items: [
+          { label: "toggleBookmark called, button now reads 'Remove from saved'", marks: [T, F] },
+          { label: "3 links, hrefs = /jobseeker/sets/{s1,s2,s3} in fetch order", marks: [F, T] },
+        ],
+      },
+    ],
+    types: ["N", "N"],
+  },
+  {
+    id: "FE_PRACSESS_001",
+    module: CANDIDATE_OPERATIONS_MODULE,
+    method: "PracticeSessionStarting",
+    description: "PracticeSession shows a loading spinner while starting, renders the first unanswered question with its category/difficulty badges once started, a generic start failure shows Retry which re-invokes startPracticeSession, and a 403 (ForbiddenError) shows a no-access message instead of the generic start-failed one",
+    conditionGroups: [
+      {
+        title: "Scenario",
+        items: [
+          { label: "startPracticeSession never resolves", marks: [T, F, F, F] },
+          { label: "startPracticeSession resolves with a 2-question session", marks: [F, T, F, F] },
+          { label: "startPracticeSession rejects with a generic Error, then Retry re-invokes and succeeds", marks: [F, F, T, F] },
+          { label: "startPracticeSession rejects with a ForbiddenError (403)", marks: [F, F, F, T] },
+        ],
+      },
+    ],
+    confirmGroups: [
+      {
+        title: "Return",
+        items: [
+          { label: "'Starting your practice session…' shown", marks: [T, F, F, F] },
+          { label: "question text + 'Question 1 of 2' shown", marks: [F, T, F, F] },
+          { label: "'Failed to start the practice session.' shown, then Retry succeeds and shows the question", marks: [F, F, T, F] },
+          { label: "\"You don't have access to practice this question set.\" shown, not the generic message", marks: [F, F, F, T] },
+        ],
+      },
+    ],
+    types: ["N", "N", "A", "A"],
+  },
+  {
+    id: "FE_PRACSESS_002",
+    module: CANDIDATE_OPERATIONS_MODULE,
+    method: "PracticeSessionResume",
+    description: "Resuming a session with previously-submitted answers lands on the first UNANSWERED question (not the first question overall), shows a Resumed badge, and shows a welcome-back toast",
+    conditionGroups: [
+      { title: "Scenario", items: [{ label: "q-1 has an answerText already, q-2 does not", marks: [T] }] },
+    ],
+    confirmGroups: [
+      { title: "Return", items: [{ label: "q-2's text shown (not q-1's), 'Resumed' badge + welcome-back toast shown", marks: [T] }] },
+    ],
+    types: ["N"],
+  },
+  {
+    id: "FE_PRACSESS_003",
+    module: CANDIDATE_OPERATIONS_MODULE,
+    method: "PracticeSessionFinishAndSubmit",
+    description: "The Finish button only appears once every answerable question has content; clicking it opens a review-confirmation dialog rather than submitting immediately; confirming submits every answer, completes the session, and navigates to the result page",
+    conditionGroups: [
+      {
+        title: "Scenario",
+        items: [
+          { label: "q1 unanswered, then answered; q2 still unanswered, then answered", marks: [T, F, F] },
+          { label: "single-question session, all answered, click Finish & Get Feedback", marks: [F, T, F] },
+          { label: "review dialog open, click Submit & grade", marks: [F, F, T] },
+        ],
+      },
+    ],
+    confirmGroups: [
+      {
+        title: "Return",
+        items: [
+          { label: "Finish button absent until both answered, then appears", marks: [T, F, F] },
+          { label: "'Submit this session?' dialog shown, completePracticeSession not yet called", marks: [F, T, F] },
+          { label: "completePracticeSession called with the session id, router pushed to the result page", marks: [F, F, T] },
+        ],
+      },
+    ],
+    types: ["N", "N", "N"],
+  },
+  {
+    id: "FE_PRACSESS_004",
+    module: CANDIDATE_OPERATIONS_MODULE,
+    method: "PracticeSessionAutoCompletedFallback",
+    description: "A real code finding: if completePracticeSession() fails but a follow-up getPracticeSession() shows the session already COMPLETED server-side (BE auto-completed it via its own time limit), the candidate is still routed to the result page instead of shown an error",
+    conditionGroups: [
+      { title: "Scenario", items: [{ label: "completePracticeSession rejects (400, 'Session already completed'); getPracticeSession reports status=COMPLETED", marks: [T] }] },
+    ],
+    confirmGroups: [
+      { title: "Return", items: [{ label: "router still pushed to the result page, no 'Failed to finish the session.' error shown", marks: [T] }] },
+    ],
+    types: ["A"],
+  },
+  {
+    id: "FE_PRACSESS_005",
+    module: CANDIDATE_OPERATIONS_MODULE,
+    method: "PracticeSessionLockedQuestion",
+    description: "A locked (Free-plan) question hides its text and answer box entirely and shows an upgrade prompt instead of the real question content",
+    conditionGroups: [
+      { title: "Scenario", items: [{ label: "single-question session, question.isLocked=true", marks: [T] }] },
+    ],
+    confirmGroups: [
+      { title: "Return", items: [{ label: "'Premium question — upgrade to unlock' + lock message shown; the real question text is NOT rendered", marks: [T] }] },
+    ],
+    types: ["B"],
+  },
+  {
+    id: "FE_PRD_001",
+    module: SHARED_PLATFORM_MODULE,
+    method: "PremiumRevokedDialogVisibilityAndAudience",
+    description: "PremiumRevokedDialog renders nothing when open=false; when open, it shows the revoked title and the HR lost-features list by default; audience='candidate' swaps in the candidate-specific lost-features list instead",
+    conditionGroups: [
+      {
+        title: "Scenario",
+        items: [
+          { label: "open=false", marks: [T, F, F] },
+          { label: "open=true, no audience prop (default HR)", marks: [F, T, F] },
+          { label: "open=true, audience='candidate'", marks: [F, F, T] },
+        ],
+      },
+    ],
+    confirmGroups: [
+      {
+        title: "Return",
+        items: [
+          { label: "'Premium Plan Revoked' NOT rendered", marks: [T, F, F] },
+          { label: "title + HR items ('Publish to Marketplace' etc.) shown", marks: [F, T, F] },
+          { label: "title + candidate items shown; 'Publish to Marketplace' absent", marks: [F, F, T] },
+        ],
+      },
+    ],
+    types: ["N", "N", "N"],
+  },
+  {
+    id: "FE_PRD_002",
+    module: SHARED_PLATFORM_MODULE,
+    method: "PremiumRevokedDialogUpgradeCta",
+    description: "No Upgrade CTA is rendered when onUpgrade isn't provided; when it is, clicking 'Upgrade Again' calls onUpgrade then onClose",
+    conditionGroups: [
+      {
+        title: "Scenario",
+        items: [
+          { label: "no onUpgrade prop", marks: [T, F] },
+          { label: "onUpgrade provided, click 'Upgrade Again →'", marks: [F, T] },
+        ],
+      },
+    ],
+    confirmGroups: [
+      {
+        title: "Return",
+        items: [
+          { label: "no 'Upgrade Again' button rendered", marks: [T, F] },
+          { label: "onUpgrade called once, then onClose called once", marks: [F, T] },
+        ],
+      },
+    ],
+    types: ["N", "N"],
+  },
+  {
+    id: "FE_PRD_003",
+    module: SHARED_PLATFORM_MODULE,
+    method: "PremiumRevokedDialogCloseVariants",
+    description: "The dialog can be dismissed 4 equivalent ways — the bottom 'Close' button, clicking the backdrop, pressing Escape, or the header X button — each calling onClose exactly once without calling onUpgrade",
+    conditionGroups: [
+      {
+        title: "Scenario",
+        items: [
+          { label: "click the bottom 'Close' button (2nd of 2 same-named buttons)", marks: [T, F, F, F] },
+          { label: "click the backdrop", marks: [F, T, F, F] },
+          { label: "press Escape", marks: [F, F, T, F] },
+          { label: "click the header X 'Close' button (1st of 2)", marks: [F, F, F, T] },
+        ],
+      },
+    ],
+    confirmGroups: [
+      { title: "Return", items: [{ label: "onClose called exactly once, onUpgrade not called", marks: [T, T, T, T] }] },
+    ],
+    types: ["N", "N", "N", "N"],
+  },
+  {
+    id: "FE_SUBRT_001",
+    module: SHARED_PLATFORM_MODULE,
+    method: "SubscriptionHubConnectionNeverThrows",
+    description: "P0 fix regression: createSubscriptionPaymentHubConnection() returns null instead of throwing when construction fails (e.g. in jsdom with no configured API base URL), and useSubscriptionRealtime's mount never crashes even though the real SignalR connection fails to construct",
+    conditionGroups: [
+      {
+        title: "Scenario",
+        items: [
+          { label: "call createSubscriptionPaymentHubConnection() directly in jsdom (construction fails)", marks: [T, F] },
+          { label: "render a component using useSubscriptionRealtime in jsdom", marks: [F, T] },
+        ],
+      },
+    ],
+    confirmGroups: [
+      {
+        title: "Return",
+        items: [
+          { label: "does not throw (returns null instead)", marks: [T, F] },
+          { label: "render does not throw", marks: [F, T] },
+        ],
+      },
+    ],
+    types: ["A", "A"],
+  },
+  {
+    id: "FE_SUBRT_002",
+    module: SHARED_PLATFORM_MODULE,
+    method: "SubscriptionRealtimeFallbackPoll",
+    description: "When SignalR is unavailable, useSubscriptionRealtime's 30s fallback poll calls onSubscriptionChanged repeatedly; enabled=false skips setup entirely so no poll ever fires; unmounting clears the poll; and the poll always calls the LATEST onSubscriptionChanged callback, not a stale closure from the first render",
+    conditionGroups: [
+      {
+        title: "Scenario",
+        items: [
+          { label: "mounted, enabled (default), advance 30s twice", marks: [T, F, F, F] },
+          { label: "enabled=false, advance 120s", marks: [F, T, F, F] },
+          { label: "advance 30s once, then unmount, then advance 60s more", marks: [F, F, T, F] },
+          { label: "rerender with a new onChange callback before the first 30s tick", marks: [F, F, F, T] },
+        ],
+      },
+    ],
+    confirmGroups: [
+      {
+        title: "Return",
+        items: [
+          { label: "onChange called twice (once per 30s interval)", marks: [T, F, F, F] },
+          { label: "onChange never called", marks: [F, T, F, F] },
+          { label: "onChange called once total, no further calls after unmount", marks: [F, F, T, F] },
+          { label: "the OLD callback is never called; the NEW one is called once", marks: [F, F, F, T] },
+        ],
+      },
+    ],
+    types: ["N", "B", "N", "A"],
+  },
+];
+
 testCases.push(
   ...ragTestCases,
   ...ragAuthTestCases,
@@ -3304,6 +6357,16 @@ testCases.push(
   ...ragAuthTestCasesMore,
   ...uiTestCases,
   ...authTestCases,
+  ...sharedUtilsTestCases,
+  ...permissionsCitationsTestCases,
+  ...gamificationHistoryTestCases,
+  ...candidateAdminUtilsTestCases,
+  ...questionTemplateInferTestCases,
+  ...batch3TestCases,
+  ...batch4TestCases,
+  ...batch5TestCases,
+  ...batch6TestCases,
+  ...batch7TestCases,
   ...beTestCases
 );
 
@@ -3316,7 +6379,7 @@ testCases.push(
 // ---------------------------------------------------------------------------
 
 const AUTOMATION_STATUS = {
-  // FE_MQ — fully automated (tests/unit/question-builder.test.tsx)
+  // FE_MQ, fully automated (tests/unit/question-builder.test.tsx)
   FE_MQ_001: "DONE", FE_MQ_002: "DONE", FE_MQ_003: "DONE", FE_MQ_004: "DONE",
   FE_MQ_005: "DONE", FE_MQ_006: "DONE", FE_MQ_007: "DONE", FE_MQ_008: "DONE",
   FE_MQ_009: "DONE", FE_MQ_010: "DONE", FE_MQ_011: "DONE",
@@ -3324,14 +6387,14 @@ const AUTOMATION_STATUS = {
   // FE_RAG
   FE_RAG_001: "DONE", FE_RAG_002: "DONE", FE_RAG_003: "DONE", FE_RAG_004: "DONE",
   FE_RAG_005: "DONE", FE_RAG_006: "DONE", FE_RAG_007: "DONE",
-  FE_RAG_008: "SKIPPED — requires waiting out a real 5-minute deadline",
-  FE_RAG_009: "SKIPPED — not automated (background-job session-swap flow)",
+  FE_RAG_008: "SKIPPED, requires waiting out a real 5-minute deadline",
+  FE_RAG_009: "SKIPPED, not automated (background-job session-swap flow)",
   FE_RAG_010: "DONE", FE_RAG_011: "DONE", FE_RAG_012: "DONE", FE_RAG_013: "DONE",
   FE_RAG_014: "DONE", FE_RAG_015: "DONE", FE_RAG_016: "DONE",
   FE_RAG_017: "DONE",
-  FE_RAG_018: "PARTIAL — only the Retry-Questions branch automated, not Retry-Plan/Edit-Input",
+  FE_RAG_018: "PARTIAL, only the Retry-Questions branch automated, not Retry-Plan/Edit-Input",
   FE_RAG_019: "DONE", FE_RAG_020: "DONE", FE_RAG_021: "DONE",
-  FE_RAG_022: "SKIPPED — not automated (multi-job concurrent background flow)",
+  FE_RAG_022: "SKIPPED, not automated (multi-job concurrent background flow)",
   FE_RAG_023: "DONE", FE_RAG_024: "DONE",
 
   // FE_RAGAUTH
@@ -3339,55 +6402,55 @@ const AUTOMATION_STATUS = {
   FE_RAGAUTH_004: "DONE", FE_RAGAUTH_005: "DONE", FE_RAGAUTH_006: "DONE",
   FE_RAGAUTH_007: "DONE", FE_RAGAUTH_008: "DONE", FE_RAGAUTH_009: "DONE",
   FE_RAGAUTH_010: "DONE", FE_RAGAUTH_011: "DONE",
-  FE_RAGAUTH_012: "SKIPPED — not automated (session expiry mid-poll)",
+  FE_RAGAUTH_012: "SKIPPED, not automated (session expiry mid-poll)",
   FE_RAGAUTH_013: "DONE",
-  FE_RAGAUTH_014: "SKIPPED — static code finding, not a UI-observable behavior",
+  FE_RAGAUTH_014: "SKIPPED, static code finding, not a UI-observable behavior",
   FE_RAGAUTH_015: "DONE",
-  FE_RAGAUTH_016: "SKIPPED — not automated (candidate-portal 403 messages)",
+  FE_RAGAUTH_016: "DONE, tests/unit/candidate-forbidden.test.tsx (RGA016-1, RGA016-2)",
   FE_RAGAUTH_017: "DONE",
-  FE_RAGAUTH_018: "SKIPPED — SSR-only behavior, not reachable from a browser E2E test",
+  FE_RAGAUTH_018: "SKIPPED, SSR-only behavior, not reachable from a browser E2E test",
   FE_RAGAUTH_019: "DONE", FE_RAGAUTH_020: "DONE",
 
   // FE_RAG_025-039
   FE_RAG_025: "DONE", FE_RAG_026: "DONE",
-  FE_RAG_027: "PARTIAL — Use/Close/Backdrop/Escape covered; Copy-to-clipboard button not tested",
+  FE_RAG_027: "PARTIAL, Use/Close/Backdrop/Escape covered; Copy-to-clipboard button not tested",
   FE_RAG_028: "DONE", FE_RAG_029: "DONE", FE_RAG_030: "DONE", FE_RAG_031: "DONE",
   FE_RAG_032: "DONE", FE_RAG_033: "DONE",
-  FE_RAG_034: "PARTIAL — attach-from-library covered; upload-new-file comparison not tested",
+  FE_RAG_034: "PARTIAL, attach-from-library covered; upload-new-file comparison not tested",
   FE_RAG_035: "DONE", FE_RAG_036: "DONE", FE_RAG_037: "DONE", FE_RAG_038: "DONE",
   FE_RAG_039: "DONE",
 
   // FE_UI
   FE_UI_001: "DONE", FE_UI_002: "DONE", FE_UI_003: "DONE", FE_UI_004: "DONE",
   FE_UI_005: "DONE", FE_UI_006: "DONE", FE_UI_007: "DONE", FE_UI_008: "DONE",
-  FE_UI_009: "DONE", FE_UI_010: "PARTIAL — only the Approve-Plan button's loading state tested",
-  FE_UI_011: "SKIPPED — not automated (form-field validation visual states)",
+  FE_UI_009: "DONE", FE_UI_010: "PARTIAL, only the Approve-Plan button's loading state tested",
+  FE_UI_011: "SKIPPED, not automated (form-field validation visual states)",
   FE_UI_012: "DONE",
-  FE_UI_013: "PARTIAL — modal open/close/scroll-lock covered; z-index stacking not asserted",
-  FE_UI_014: "SKIPPED — not automated (table/grid overflow)",
-  FE_UI_015: "SKIPPED — not automated (tooltip hover display)",
+  FE_UI_013: "PARTIAL, modal open/close/scroll-lock covered; z-index stacking not asserted",
+  FE_UI_014: "DONE, tests/unit/admin-manage-users.test.tsx (UI014-1)",
+  FE_UI_015: "DONE, tests/unit/info-tooltip.test.tsx (UI015-1)",
   FE_UI_016: "DONE",
-  FE_UI_017: "PARTIAL — Escape-key dismissal tested on 2 modals; general Tab navigation not",
+  FE_UI_017: "PARTIAL, Escape-key dismissal tested on 2 modals; general Tab navigation not",
   FE_UI_018: "DONE",
 
-  // FE_AUTH — fully automated
+  // FE_AUTH, fully automated
   FE_AUTH_001: "DONE", FE_AUTH_002: "DONE", FE_AUTH_003: "DONE", FE_AUTH_004: "DONE",
   FE_AUTH_005: "DONE", FE_AUTH_006: "DONE", FE_AUTH_007: "DONE", FE_AUTH_008: "DONE",
 
   // BE_API
   BE_API_001: "DONE", BE_API_002: "DONE", BE_API_003: "DONE", BE_API_004: "DONE",
-  BE_API_005: "PARTIAL — only the blank-owner-id case automated, not full HR ingest validation",
-  BE_API_006: "N/A — JD char/word-count validation lives in the .NET backend, not this RAG_IQGS repo",
+  BE_API_005: "PARTIAL, only the blank-owner-id case automated, not full HR ingest validation",
+  BE_API_006: "N/A, JD char/word-count validation lives in the .NET backend, not this RAG_IQGS repo",
   BE_API_007: "DONE",
-  BE_API_008: "SKIPPED — requires a live Ollama connection",
-  BE_API_009: "SKIPPED — requires a live Ollama connection",
+  BE_API_008: "SKIPPED, requires a live Ollama connection",
+  BE_API_009: "SKIPPED, requires a live Ollama connection",
   BE_API_010: "DONE",
   BE_API_011: "DONE",
-  BE_API_012: "SKIPPED — requires a live Ollama connection",
+  BE_API_012: "SKIPPED, requires a live Ollama connection",
   BE_API_013: "DONE",
-  BE_API_014: "SKIPPED — by design; would hang the test run (no request timeout configured anywhere)",
+  BE_API_014: "SKIPPED, by design; would hang the test run (no request timeout configured anywhere)",
   BE_API_015: "DONE", BE_API_016: "DONE", BE_API_017: "DONE",
-  BE_API_018: "PARTIAL — rejection path automated; 7 accepted-extension cases skipped (need Ollama)",
+  BE_API_018: "PARTIAL, rejection path automated; 7 accepted-extension cases skipped (need Ollama)",
 };
 
 const KNOWN_DEFECTS = [
@@ -3442,121 +6505,6 @@ function frameBlock(ws, r1, c1, r2, c2) {
     }
   }
 }
-
-function addSummarySheet(wb, allTestCases, automationStatus, defects) {
-  const ws = wb.addWorksheet("00_Automation Summary", { views: [{ state: "frozen", ySplit: 1 }] });
-  ws.columns = [
-    { header: "Scenario ID", key: "id", width: 18 },
-    { header: "Method", key: "method", width: 48 },
-    { header: "Automation status", key: "status", width: 95 },
-  ];
-  ws.getRow(1).font = whiteBold;
-  ws.getRow(1).fill = navyFill;
-  ws.getRow(1).height = 22;
-  ws.getRow(1).eachCell((cell) => { cell.alignment = { vertical: "middle" }; });
-
-  let done = 0, partial = 0, skipped = 0, na = 0;
-  for (const tc of allTestCases) {
-    const status = automationStatus[tc.id] ?? "SKIPPED — not automated";
-    if (status.startsWith("DONE")) done++;
-    else if (status.startsWith("PARTIAL")) partial++;
-    else if (status.startsWith("N/A")) na++;
-    else skipped++;
-
-    const row = ws.addRow({ id: tc.id, method: tc.method, status });
-    row.height = heightForWrappedText(status, 95);
-    row.eachCell((cell) => { cell.alignment = { vertical: "middle", wrapText: true }; });
-    if (status.startsWith("DONE")) {
-      row.getCell(3).font = { color: { argb: "FF1B7A3D" } };
-    } else if (status.startsWith("PARTIAL")) {
-      row.getCell(3).font = { color: { argb: "FF9C6500" } };
-    } else if (status.startsWith("N/A")) {
-      row.getCell(3).font = { color: { argb: "FF808080" }, italic: true };
-    } else {
-      row.getCell(3).font = { color: { argb: "FFB00020" } };
-    }
-  }
-  // Thick outer frame around the whole scenario-status table (header + all rows).
-  frameBlock(ws, 1, 1, ws.rowCount, 3);
-
-  // Boxed cell like the rest of the workbook — thin grey border on every
-  // side, middle-aligned, wrapping text so merged/long cells stay readable.
-  function boxRow(row, opts = {}) {
-    row.eachCell({ includeEmpty: true }, (cell) => {
-      cell.border = borderAll;
-      cell.alignment = { vertical: "middle", wrapText: true, ...(opts.align || {}) };
-    });
-    return row;
-  }
-  function boxEmptyRow(rowNumber) {
-    for (let c = 1; c <= 3; c++) {
-      const cell = ws.getCell(rowNumber, c);
-      cell.border = borderAll;
-    }
-  }
-
-  ws.addRow([]);
-  const totalsStart = ws.rowCount + 1;
-  const totalsRow = ws.addRow(["Totals", `${allTestCases.length} scenarios`, `${done} done · ${partial} partial · ${skipped} skipped · ${na} n/a`]);
-  totalsRow.height = 20;
-  boxRow(totalsRow);
-  totalsRow.font = { bold: true };
-  const notesRow = ws.addRow(["Real automated test suites:", "", "340 Vitest (FE, tests/unit/) + 20 pytest (BE, RAG_IQGS/tests/test_e2e_api.py) — all passing, verified stable across repeated runs."]);
-  notesRow.height = heightForWrappedText(notesRow.getCell(3).value, 95);
-  boxRow(notesRow);
-  notesRow.font = { italic: true };
-  // Thick outer frame around the totals block.
-  frameBlock(ws, totalsStart, 1, ws.rowCount, 3);
-
-  ws.addRow([]);
-  ws.addRow([]);
-  const defectHeader = ws.addRow(["Defects found while automating", "", ""]);
-  ws.mergeCells(defectHeader.number, 1, defectHeader.number, 3);
-  defectHeader.height = 24;
-  boxRow(defectHeader, { align: { horizontal: "left" } });
-  defectHeader.font = { ...whiteBold, size: 13 };
-  defectHeader.fill = navyFill;
-  frameBlock(ws, defectHeader.number, 1, defectHeader.number, 3);
-
-  for (const d of defects) {
-    ws.addRow([]);
-    const blockStart = ws.rowCount + 1;
-
-    const idRow = ws.addRow([d.id, d.scenario, ""]);
-    ws.mergeCells(idRow.number, 2, idRow.number, 3);
-    idRow.height = 20;
-    boxRow(idRow);
-    idRow.font = { bold: true };
-    idRow.getCell(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFFE0E0" } };
-
-    const summaryRow = ws.addRow(["Summary", d.summary, ""]);
-    ws.mergeCells(summaryRow.number, 2, summaryRow.number, 3);
-    summaryRow.height = heightForWrappedText(d.summary, 48 + 95);
-    boxRow(summaryRow);
-    summaryRow.getCell(2).font = { bold: true };
-
-    const fileRow = ws.addRow(["File", d.file, ""]);
-    ws.mergeCells(fileRow.number, 2, fileRow.number, 3);
-    fileRow.height = 20;
-    boxRow(fileRow);
-
-    const detailRow = ws.addRow(["Detail", d.detail, ""]);
-    ws.mergeCells(detailRow.number, 2, detailRow.number, 3);
-    detailRow.height = heightForWrappedText(d.detail, 48 + 95);
-    boxRow(detailRow);
-
-    const reproRow = ws.addRow(["Repro test", d.reproTest, ""]);
-    ws.mergeCells(reproRow.number, 2, reproRow.number, 3);
-    reproRow.height = 20;
-    boxRow(reproRow);
-    reproRow.getCell(2).font = { italic: true };
-
-    // Thick outer frame around this single defect's block.
-    frameBlock(ws, blockStart, 1, ws.rowCount, 3);
-  }
-}
-
-addSummarySheet(wb, testCases, AUTOMATION_STATUS, KNOWN_DEFECTS);
 
 const usedNames = new Set();
 for (const tc of testCases) {

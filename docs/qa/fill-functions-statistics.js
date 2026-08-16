@@ -16,6 +16,16 @@ const REQUIREMENT_NAME_BY_MODULE = {
   AuthAdminModule: "Admin Access Control",
   ProfileModule: "HR Profile Management",
   AdminModule: "Admin User Management",
+  SharedUtilsModule: "Shared Utilities (pure functions)",
+  PermissionsAndCitationsModule: "Permissions & Citation Formatting (pure functions)",
+  GamificationAndHistoryUtilsModule: "Gamification & Local History (pure functions)",
+  CandidateAndAdminUtilsModule: "Candidate & Admin Utilities (pure functions)",
+  QuestionTemplateInferModule: "Studio Question Template Inference (pure functions)",
+  GamificationComponentsModule: "Gamification Components (Candidate)",
+  AdminOperationsModule: "Admin Operations (Settings / AI Config / Content / Companies / Knowledge / Dashboard / Marketplace / Plans)",
+  HROperationsModule: "HR Operations (Dashboard / History / Knowledge / Billing / Settings)",
+  CandidateOperationsModule: "Candidate Operations (Billing / Dashboard / Profile / Settings / Subscription / Invitations / Marketplace / Practice)",
+  SharedPlatformModule: "Shared Platform Infrastructure (Realtime / Premium-Revoked UX)",
   HRRAGBackendAPITest: "Backend API (RAG_IQGS)",
 };
 
@@ -48,9 +58,27 @@ const THIN = { style: "thin", color: { argb: "FF000000" } };
 const CELL_BORDER = { top: THIN, left: THIN, bottom: THIN, right: THIN };
 const FONT = { name: "Tahoma", size: 8 };
 
+// Same em-dash-to-plain-punctuation rewrite as gen-testcases.js's setCell,
+// duplicated here since this script writes tc.description directly rather
+// than through gen-testcases.js's own sheet-building code path. Quoted
+// substrings (real UI copy) are left untouched.
+function humanizeEmDash(value) {
+  if (typeof value !== "string" || !value.includes("—")) return value;
+  const quotes = [];
+  const masked = value.replace(/"[^"]*"/g, (m) => {
+    quotes.push(m);
+    return `\u0000${quotes.length - 1}\u0000`;
+  });
+  const rewritten = masked
+    .replace(/\s*—\s*/g, ", ")
+    .replace(/,\s*\./g, ".")
+    .replace(/,\s*,/g, ",");
+  return rewritten.replace(/\u0000(\d+)\u0000/g, (_m, i) => quotes[Number(i)]);
+}
+
 function setDataCell(ws, r, c, value) {
   const cell = ws.getCell(r, c);
-  cell.value = value;
+  cell.value = humanizeEmDash(value);
   cell.font = FONT;
   cell.border = CELL_BORDER;
   cell.alignment = { vertical: "middle", wrapText: true };
@@ -88,7 +116,16 @@ async function main() {
     setDataCell(funcWs, r, 8, firstPrecondition(tc)); // Pre-Condition
     funcWs.getRow(r).height = Math.max(18, Math.ceil(tc.description.length / 60) * 13 + 6);
   });
-  console.log(`Functions: filled ${testCases.length} rows starting at row ${FUNC_DATA_START}`);
+  // Defensive: clear any stale rows left over past the current data range
+  // (e.g. from a prior run against a longer/different testCases array) so
+  // leftover duplicate entries can't silently persist across regenerations.
+  const funcDataEnd = FUNC_DATA_START + testCases.length - 1;
+  for (let r = funcDataEnd + 1; r <= funcWs.rowCount; r++) {
+    const row = funcWs.getRow(r);
+    if (row.values.length === 0) break;
+    row.eachCell({ includeEmpty: true }, (cell) => { cell.value = null; cell.border = undefined; });
+  }
+  console.log(`Functions: filled ${testCases.length} rows starting at row ${FUNC_DATA_START}, cleared stale rows after ${funcDataEnd}`);
 
   // ---- Statistics sheet ----
   const statWs = wb.getWorksheet("Statistics");
@@ -140,7 +177,18 @@ async function main() {
     setDataCell(statWs, r, 5, "%");
   });
 
-  console.log(`Statistics: filled ${testCases.length} rows starting at row ${STAT_DATA_START}, sub-total at row ${subtotalRow}, percentages at ${subtotalRow + 2}-${subtotalRow + 6}`);
+  // Defensive: clear any stale rows left over past the current data range
+  // (same class of bug as Functions above — a prior run against a longer
+  // testCases array can leave duplicate BE_API_*/Sub total/percentage rows
+  // sitting right after the real ones).
+  const statContentEnd = subtotalRow + 2 + pctRows.length - 1;
+  for (let r = statContentEnd + 1; r <= statWs.rowCount; r++) {
+    const row = statWs.getRow(r);
+    if (row.values.length === 0) break;
+    row.eachCell({ includeEmpty: true }, (cell) => { cell.value = null; cell.border = undefined; });
+  }
+
+  console.log(`Statistics: filled ${testCases.length} rows starting at row ${STAT_DATA_START}, sub-total at row ${subtotalRow}, percentages at ${subtotalRow + 2}-${statContentEnd}, cleared stale rows after ${statContentEnd}`);
 
   await wb.xlsx.writeFile(livePath);
   console.log("Saved:", livePath);
