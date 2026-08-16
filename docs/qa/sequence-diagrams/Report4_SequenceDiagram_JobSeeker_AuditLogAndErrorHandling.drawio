@@ -1,1 +1,167 @@
-<mxfile host="app.diagrams.net" agent="claude-code" version="24.0.0"><diagram name="JobSeeker_AuditLogAndErrorHandling" id="d11f_"><mxGraphModel dx="900" dy="700" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="1200" pageHeight="1120" math="0" shadow="0"><root><mxCell id="0"/><mxCell id="1" parent="0"/><mxCell id="d11f_12" value="&lt;b&gt;&amp;nbsp;alt&amp;nbsp;&lt;/b&gt;" style="shape=umlFrame;whiteSpace=wrap;html=1;pointerEvents=0;align=left;verticalAlign=top;fontSize=11;spacingLeft=2;spacingTop=2;strokeColor=#000000;fillColor=none;" vertex="1" parent="1"><mxGeometry x="90" y="200" width="930" height="800" as="geometry"/></mxCell><mxCell id="d11f_13" value="[auto-save on question navigation]" style="text;html=1;align=left;verticalAlign=middle;fontSize=11;fontColor=#333333;fontStyle=2;" vertex="1" parent="1"><mxGeometry x="144" y="202" width="870" height="20" as="geometry"/></mxCell><mxCell id="d11f_14" style="endArrow=none;dashed=1;html=1;strokeColor=#000000;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="90" y="440" as="sourcePoint"/><mxPoint x="1020" y="440" as="targetPoint"/></mxGeometry></mxCell><mxCell id="d11f_15" value="[click Finish]" style="text;html=1;align=left;verticalAlign=middle;fontSize=11;fontColor=#333333;fontStyle=2;" vertex="1" parent="1"><mxGeometry x="96" y="442" width="918" height="18" as="geometry"/></mxCell><mxCell id="d11f_16" style="endArrow=none;dashed=1;html=1;strokeColor=#000000;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="90" y="740" as="sourcePoint"/><mxPoint x="1020" y="740" as="targetPoint"/></mxGeometry></mxCell><mxCell id="d11f_17" value="[click Save &amp; Exit]" style="text;html=1;align=left;verticalAlign=middle;fontSize=11;fontColor=#333333;fontStyle=2;" vertex="1" parent="1"><mxGeometry x="96" y="742" width="918" height="18" as="geometry"/></mxCell><mxCell id="d11f_1" value="Job Seeker" style="shape=umlActor;whiteSpace=wrap;html=1;verticalLabelPosition=bottom;verticalAlign=top;outlineConnect=0;fillColor=#ffffff;strokeColor=#000000;fontStyle=1;fontSize=13;" vertex="1" parent="1"><mxGeometry x="130" y="40" width="40" height="50" as="geometry"/></mxCell><mxCell id="d11f_2" style="endArrow=none;dashed=1;html=1;strokeColor=#999999;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="150" y="90" as="sourcePoint"/><mxPoint x="150" y="1080" as="targetPoint"/></mxGeometry></mxCell><mxCell id="d11f_3" value=":PracticeSessionUI" style="rounded=0;whiteSpace=wrap;html=1;fontSize=13;fillColor=#ffffff;strokeColor=#000000;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="320" y="40" width="180" height="40" as="geometry"/></mxCell><mxCell id="d11f_4" style="endArrow=none;dashed=1;html=1;strokeColor=#999999;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="410" y="80" as="sourcePoint"/><mxPoint x="410" y="1080" as="targetPoint"/></mxGeometry></mxCell><mxCell id="d11f_5" value=":CandidatePracticeSessionsController" style="rounded=0;whiteSpace=wrap;html=1;fontSize=13;fillColor=#ffffff;strokeColor=#000000;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="550" y="40" width="240" height="54" as="geometry"/></mxCell><mxCell id="d11f_6" style="endArrow=none;dashed=1;html=1;strokeColor=#999999;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="670" y="94" as="sourcePoint"/><mxPoint x="670" y="1080" as="targetPoint"/></mxGeometry></mxCell><mxCell id="d11f_7" value=":CandidatePracticeSessionService" style="rounded=0;whiteSpace=wrap;html=1;fontSize=13;fillColor=#ffffff;strokeColor=#000000;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="800" y="40" width="260" height="54" as="geometry"/></mxCell><mxCell id="d11f_8" style="endArrow=none;dashed=1;html=1;strokeColor=#999999;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="930" y="94" as="sourcePoint"/><mxPoint x="930" y="1080" as="targetPoint"/></mxGeometry></mxCell><mxCell id="d11f_9" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#555555;" vertex="1" parent="1"><mxGeometry x="403" y="162" width="14" height="834" as="geometry"/></mxCell><mxCell id="d11f_10" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#555555;" vertex="1" parent="1"><mxGeometry x="663" y="222" width="14" height="714" as="geometry"/></mxCell><mxCell id="d11f_11" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#555555;" vertex="1" parent="1"><mxGeometry x="923" y="282" width="14" height="114" as="geometry"/></mxCell><mxCell id="d11f_18" value="1. type/edit answer text" style="endArrow=block;endFill=1;html=1;fontSize=11;align=center;verticalAlign=bottom;labelBackgroundColor=#ffffff;strokeColor=#000000;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="150" y="180" as="sourcePoint"/><mxPoint x="403" y="180" as="targetPoint"/></mxGeometry></mxCell><mxCell id="d11f_19" value="2. POST /api/candidate/practice-sessions/{sessionId}/answers (best-effort, errors swallowed)" style="endArrow=block;endFill=1;html=1;whiteSpace=wrap;fontSize=11;align=center;verticalAlign=bottom;labelBackgroundColor=#ffffff;strokeColor=#000000;" edge="1" parent="1"><mxGeometry width="266" height="54" relative="1" as="geometry"><mxPoint x="417" y="240" as="sourcePoint"/><mxPoint x="663" y="240" as="targetPoint"/></mxGeometry></mxCell><mxCell id="d11f_20" value="3. SubmitAnswerAsync(request)" style="endArrow=block;endFill=1;html=1;fontSize=11;align=center;verticalAlign=bottom;labelBackgroundColor=#ffffff;strokeColor=#000000;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="677" y="300" as="sourcePoint"/><mxPoint x="923" y="300" as="targetPoint"/></mxGeometry></mxCell><mxCell id="d11f_21" value="4. ok" style="endArrow=block;endFill=1;html=1;dashed=1;fontSize=11;align=center;verticalAlign=bottom;labelBackgroundColor=#ffffff;strokeColor=#000000;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="923" y="360" as="sourcePoint"/><mxPoint x="677" y="360" as="targetPoint"/></mxGeometry></mxCell><mxCell id="d11f_22" value="5. 200 OK {evaluationStatus}" style="endArrow=block;endFill=1;html=1;dashed=1;fontSize=11;align=center;verticalAlign=bottom;labelBackgroundColor=#ffffff;strokeColor=#000000;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="663" y="420" as="sourcePoint"/><mxPoint x="417" y="420" as="targetPoint"/></mxGeometry></mxCell><mxCell id="d11f_23" value="6. click Finish" style="endArrow=block;endFill=1;html=1;fontSize=11;align=center;verticalAlign=bottom;labelBackgroundColor=#ffffff;strokeColor=#000000;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="150" y="480" as="sourcePoint"/><mxPoint x="403" y="480" as="targetPoint"/></mxGeometry></mxCell><mxCell id="d11f_24" value="7. loop: submit each unlocked answered question sequentially" style="endArrow=block;endFill=1;html=1;fontSize=11;align=left;verticalAlign=middle;labelBackgroundColor=#ffffff;rounded=0;strokeColor=#000000;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="417" y="530" as="sourcePoint"/><mxPoint x="417" y="550" as="targetPoint"/><Array as="points"><mxPoint x="480" y="530"/><mxPoint x="480" y="550"/></Array></mxGeometry></mxCell><mxCell id="d11f_25" value="8. POST .../answers (sequential, one try/catch for whole batch)" style="endArrow=block;endFill=1;html=1;whiteSpace=wrap;fontSize=11;align=center;verticalAlign=bottom;labelBackgroundColor=#ffffff;strokeColor=#000000;" edge="1" parent="1"><mxGeometry width="266" height="38" relative="1" as="geometry"><mxPoint x="417" y="600" as="sourcePoint"/><mxPoint x="663" y="600" as="targetPoint"/></mxGeometry></mxCell><mxCell id="d11f_26" value="9. 200 OK {evaluationStatus}" style="endArrow=block;endFill=1;html=1;dashed=1;fontSize=11;align=center;verticalAlign=bottom;labelBackgroundColor=#ffffff;strokeColor=#000000;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="663" y="660" as="sourcePoint"/><mxPoint x="417" y="660" as="targetPoint"/></mxGeometry></mxCell><mxCell id="d11f_27" value="10. navigate to result, or generic toast if any submit failed" style="endArrow=block;endFill=1;html=1;whiteSpace=wrap;dashed=1;fontSize=11;align=center;verticalAlign=bottom;labelBackgroundColor=#ffffff;strokeColor=#000000;" edge="1" parent="1"><mxGeometry width="273" height="38" relative="1" as="geometry"><mxPoint x="403" y="720" as="sourcePoint"/><mxPoint x="150" y="720" as="targetPoint"/></mxGeometry></mxCell><mxCell id="d11f_28" value="11. click Save &amp; Exit" style="endArrow=block;endFill=1;html=1;fontSize=11;align=center;verticalAlign=bottom;labelBackgroundColor=#ffffff;strokeColor=#000000;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="150" y="780" as="sourcePoint"/><mxPoint x="403" y="780" as="targetPoint"/></mxGeometry></mxCell><mxCell id="d11f_29" value="12. POST .../answers (best-effort, errors swallowed)" style="endArrow=block;endFill=1;html=1;whiteSpace=wrap;fontSize=11;align=center;verticalAlign=bottom;labelBackgroundColor=#ffffff;strokeColor=#000000;" edge="1" parent="1"><mxGeometry width="266" height="38" relative="1" as="geometry"><mxPoint x="417" y="840" as="sourcePoint"/><mxPoint x="663" y="840" as="targetPoint"/></mxGeometry></mxCell><mxCell id="d11f_30" value="13. 200 OK" style="endArrow=block;endFill=1;html=1;dashed=1;fontSize=11;align=center;verticalAlign=bottom;labelBackgroundColor=#ffffff;strokeColor=#000000;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="663" y="900" as="sourcePoint"/><mxPoint x="417" y="900" as="targetPoint"/></mxGeometry></mxCell><mxCell id="d11f_31" value="14. exit practice session" style="endArrow=block;endFill=1;html=1;dashed=1;fontSize=11;align=center;verticalAlign=bottom;labelBackgroundColor=#ffffff;strokeColor=#000000;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="403" y="960" as="sourcePoint"/><mxPoint x="150" y="960" as="targetPoint"/></mxGeometry></mxCell></root></mxGraphModel></diagram></mxfile>
+<mxfile host="Electron" agent="claude-code">
+  <diagram name="JobSeeker_AuditLogAndErrorHandling" id="d11f_">
+    <mxGraphModel dx="1820" dy="1074" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="1374" pageHeight="1120" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="d11f_12" parent="1" style="shape=umlFrame;whiteSpace=wrap;html=1;pointerEvents=0;align=left;verticalAlign=top;fontSize=11;spacingLeft=2;spacingTop=2;strokeColor=#000000;fillColor=none;" value="&lt;b&gt;&amp;nbsp;alt&amp;nbsp;&lt;/b&gt;" vertex="1">
+          <mxGeometry height="800" width="1104" x="90" y="200" as="geometry" />
+        </mxCell>
+        <mxCell id="d11f_13" parent="1" style="text;html=1;align=left;verticalAlign=middle;fontSize=11;fontColor=#333333;fontStyle=2;" value="[auto-save on question navigation]" vertex="1">
+          <mxGeometry height="20" width="1044" x="144" y="202" as="geometry" />
+        </mxCell>
+        <mxCell id="d11f_14" edge="1" parent="1" style="endArrow=none;dashed=1;html=1;strokeColor=#000000;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="90" y="440" as="sourcePoint" />
+            <mxPoint x="1194" y="440" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="d11f_15" parent="1" style="text;html=1;align=left;verticalAlign=middle;fontSize=11;fontColor=#333333;fontStyle=2;" value="[click Finish]" vertex="1">
+          <mxGeometry height="18" width="1092" x="96" y="442" as="geometry" />
+        </mxCell>
+        <mxCell id="d11f_16" edge="1" parent="1" style="endArrow=none;dashed=1;html=1;strokeColor=#000000;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="90" y="740" as="sourcePoint" />
+            <mxPoint x="1194" y="740" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="d11f_17" parent="1" style="text;html=1;align=left;verticalAlign=middle;fontSize=11;fontColor=#333333;fontStyle=2;" value="[click Save &amp; Exit]" vertex="1">
+          <mxGeometry height="18" width="1092" x="96" y="742" as="geometry" />
+        </mxCell>
+        <mxCell id="d11f_1" parent="1" style="shape=umlActor;whiteSpace=wrap;html=1;verticalLabelPosition=bottom;verticalAlign=top;outlineConnect=0;fillColor=#ffffff;strokeColor=#000000;fontStyle=1;fontSize=13;" value="Job Seeker" vertex="1">
+          <mxGeometry height="50" width="40" x="130" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="d11f_2" edge="1" parent="1" style="endArrow=none;dashed=1;html=1;strokeColor=#999999;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="150" y="90" as="sourcePoint" />
+            <mxPoint x="150" y="1080" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="d11f_3" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fontSize=13;fillColor=#ffffff;strokeColor=#000000;fontStyle=1;" value=":PracticeSessionUI" vertex="1">
+          <mxGeometry height="40" width="180" x="320" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="d11f_4" edge="1" parent="1" style="endArrow=none;dashed=1;html=1;strokeColor=#999999;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="410" y="80" as="sourcePoint" />
+            <mxPoint x="410" y="1080" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="d11f_5" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fontSize=13;fillColor=#ffffff;strokeColor=#000000;fontStyle=1;" value=":CandidatePracticeSessionsController" vertex="1">
+          <mxGeometry height="54" width="240" x="724" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="d11f_6" edge="1" parent="1" style="endArrow=none;dashed=1;html=1;strokeColor=#999999;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="844" y="94" as="sourcePoint" />
+            <mxPoint x="844" y="1080" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="d11f_7" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fontSize=13;fillColor=#ffffff;strokeColor=#000000;fontStyle=1;" value=":CandidatePracticeSessionService" vertex="1">
+          <mxGeometry height="54" width="260" x="974" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="d11f_8" edge="1" parent="1" style="endArrow=none;dashed=1;html=1;strokeColor=#999999;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1104" y="94" as="sourcePoint" />
+            <mxPoint x="1104" y="1080" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="d11f_9" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#555555;" value="" vertex="1">
+          <mxGeometry height="834" width="14" x="403" y="162" as="geometry" />
+        </mxCell>
+        <mxCell id="d11f_10" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#555555;" value="" vertex="1">
+          <mxGeometry height="714" width="14" x="837" y="222" as="geometry" />
+        </mxCell>
+        <mxCell id="d11f_11" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#555555;" value="" vertex="1">
+          <mxGeometry height="114" width="14" x="1097" y="282" as="geometry" />
+        </mxCell>
+        <mxCell id="d11f_18" edge="1" parent="1" style="endArrow=block;endFill=1;html=1;fontSize=11;align=center;verticalAlign=bottom;labelBackgroundColor=#ffffff;strokeColor=#000000;" value="1. type/edit answer text">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="150" y="180" as="sourcePoint" />
+            <mxPoint x="403" y="180" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="d11f_19" edge="1" parent="1" style="endArrow=block;endFill=1;html=1;whiteSpace=wrap;fontSize=11;align=center;verticalAlign=bottom;labelBackgroundColor=#ffffff;strokeColor=#000000;" value="2. POST /api/candidate/practice-sessions/{sessionId}/answers (best-effort, errors swallowed)">
+          <mxGeometry height="54" relative="1" width="266" as="geometry">
+            <mxPoint x="417" y="258" as="sourcePoint" />
+            <mxPoint x="837" y="258" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="d11f_20" edge="1" parent="1" style="endArrow=block;endFill=1;html=1;fontSize=11;align=center;verticalAlign=bottom;labelBackgroundColor=#ffffff;strokeColor=#000000;" value="3. SubmitAnswerAsync(request)">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="851" y="300" as="sourcePoint" />
+            <mxPoint x="1097" y="300" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="d11f_21" edge="1" parent="1" style="endArrow=block;endFill=1;html=1;dashed=1;fontSize=11;align=center;verticalAlign=bottom;labelBackgroundColor=#ffffff;strokeColor=#000000;" value="4. ok">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1097" y="360" as="sourcePoint" />
+            <mxPoint x="851" y="360" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="d11f_22" edge="1" parent="1" style="endArrow=block;endFill=1;html=1;dashed=1;fontSize=11;align=center;verticalAlign=bottom;labelBackgroundColor=#ffffff;strokeColor=#000000;" value="5. 200 OK {evaluationStatus}">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="837" y="420" as="sourcePoint" />
+            <mxPoint x="417" y="420" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="d11f_23" edge="1" parent="1" style="endArrow=block;endFill=1;html=1;fontSize=11;align=center;verticalAlign=bottom;labelBackgroundColor=#ffffff;strokeColor=#000000;" value="6. click Finish">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="150" y="480" as="sourcePoint" />
+            <mxPoint x="403" y="480" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="d11f_24" edge="1" parent="1" style="endArrow=block;endFill=1;html=1;whiteSpace=wrap;fontSize=11;align=left;verticalAlign=middle;labelBackgroundColor=#ffffff;rounded=0;strokeColor=#000000;" value="7. loop: submit each unlocked answered question sequentially">
+          <mxGeometry height="74" relative="1" width="163" as="geometry">
+            <Array as="points">
+              <mxPoint x="654" y="530" />
+              <mxPoint x="654" y="550" />
+            </Array>
+            <mxPoint x="417" y="530" as="sourcePoint" />
+            <mxPoint x="417" y="550" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="d11f_25" edge="1" parent="1" style="endArrow=block;endFill=1;html=1;whiteSpace=wrap;fontSize=11;align=center;verticalAlign=bottom;labelBackgroundColor=#ffffff;strokeColor=#000000;" value="8. POST .../answers (sequential, one try/catch for whole batch)">
+          <mxGeometry height="38" relative="1" width="266" as="geometry">
+            <mxPoint x="417" y="600" as="sourcePoint" />
+            <mxPoint x="837" y="600" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="d11f_26" edge="1" parent="1" style="endArrow=block;endFill=1;html=1;dashed=1;fontSize=11;align=center;verticalAlign=bottom;labelBackgroundColor=#ffffff;strokeColor=#000000;" value="9. 200 OK {evaluationStatus}">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="837" y="660" as="sourcePoint" />
+            <mxPoint x="417" y="660" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="d11f_27" edge="1" parent="1" style="endArrow=block;endFill=1;html=1;whiteSpace=wrap;dashed=1;fontSize=11;align=center;verticalAlign=bottom;labelBackgroundColor=#ffffff;strokeColor=#000000;" value="10. navigate to result, or generic toast if any submit failed">
+          <mxGeometry height="38" relative="1" width="273" as="geometry">
+            <mxPoint x="403" y="720" as="sourcePoint" />
+            <mxPoint x="150" y="720" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="d11f_28" edge="1" parent="1" style="endArrow=block;endFill=1;html=1;fontSize=11;align=center;verticalAlign=bottom;labelBackgroundColor=#ffffff;strokeColor=#000000;" value="11. click Save &amp; Exit">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="150" y="780" as="sourcePoint" />
+            <mxPoint x="403" y="780" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="d11f_29" edge="1" parent="1" style="endArrow=block;endFill=1;html=1;whiteSpace=wrap;fontSize=11;align=center;verticalAlign=bottom;labelBackgroundColor=#ffffff;strokeColor=#000000;" value="12. POST .../answers (best-effort, errors swallowed)">
+          <mxGeometry height="38" relative="1" width="266" as="geometry">
+            <mxPoint x="417" y="840" as="sourcePoint" />
+            <mxPoint x="837" y="840" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="d11f_30" edge="1" parent="1" style="endArrow=block;endFill=1;html=1;dashed=1;fontSize=11;align=center;verticalAlign=bottom;labelBackgroundColor=#ffffff;strokeColor=#000000;" value="13. 200 OK">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="837" y="900" as="sourcePoint" />
+            <mxPoint x="417" y="900" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="d11f_31" edge="1" parent="1" style="endArrow=block;endFill=1;html=1;dashed=1;fontSize=11;align=center;verticalAlign=bottom;labelBackgroundColor=#ffffff;strokeColor=#000000;" value="14. exit practice session">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="403" y="960" as="sourcePoint" />
+            <mxPoint x="150" y="960" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
