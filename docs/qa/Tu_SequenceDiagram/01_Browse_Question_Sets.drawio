@@ -23,21 +23,21 @@
           </mxGeometry>
         </mxCell>
         <mxCell id="t1_5" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fontSize=13;fillColor=#ffffff;strokeColor=#000000;fontStyle=1;" value=":CandidateQuestionSetsController" vertex="1">
-          <mxGeometry height="54" width="260" x="547" y="40" as="geometry" />
+          <mxGeometry height="54" width="260" x="540" y="40" as="geometry" />
         </mxCell>
         <mxCell id="t1_6" edge="1" parent="1" style="endArrow=none;dashed=1;html=1;strokeColor=#999999;">
           <mxGeometry relative="1" as="geometry">
-            <mxPoint x="677" y="94" as="sourcePoint" />
-            <mxPoint x="677" y="780" as="targetPoint" />
+            <mxPoint x="670" y="94" as="sourcePoint"/>
+            <mxPoint x="670" y="780" as="targetPoint"/>
           </mxGeometry>
         </mxCell>
         <mxCell id="t1_7" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fontSize=13;fillColor=#ffffff;strokeColor=#000000;fontStyle=1;" value=":CandidateQuestionSetService" vertex="1">
-          <mxGeometry height="54" width="230" x="840" y="40" as="geometry" />
+          <mxGeometry height="54" width="230" x="815" y="40" as="geometry" />
         </mxCell>
         <mxCell id="t1_8" edge="1" parent="1" style="endArrow=none;dashed=1;html=1;strokeColor=#999999;">
           <mxGeometry relative="1" as="geometry">
-            <mxPoint x="955" y="94" as="sourcePoint" />
-            <mxPoint x="955" y="780" as="targetPoint" />
+            <mxPoint x="930" y="94" as="sourcePoint"/>
+            <mxPoint x="930" y="780" as="targetPoint"/>
           </mxGeometry>
         </mxCell>
         <mxCell id="t1_9" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#555555;" value="" vertex="1">
