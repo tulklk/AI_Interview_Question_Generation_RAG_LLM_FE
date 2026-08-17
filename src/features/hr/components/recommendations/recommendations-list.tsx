@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -27,6 +27,7 @@ import {
   type RecommendationSortDir,
 } from "@/features/hr/services/recommendation.service";
 import { getCurrentUser } from "@/features/auth/services/user.service";
+import { getSkillIcon } from "@/features/candidate/utils/skill-icons";
 import { InviteScheduleFields, defaultInviteSchedule, toInvitePayload } from "./invite-schedule-fields";
 import {
   portalHeading,
@@ -42,6 +43,11 @@ import {
 
 function getInitials(name: string): string {
   return name.trim().split(/\s+/).map((w) => w[0]?.toUpperCase() ?? "").slice(0, 2).join("");
+}
+
+function titleCase(s: string): string {
+  if (!s) return s;
+  return s.split(" ").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
 }
 
 const AVATAR_COLORS = [
@@ -380,6 +386,10 @@ function CandidateRow({ rec, lang, labels, index, selected, onToggleSelect, onSt
   const [busy, setBusy] = useState<"shortlist" | "dismiss" | "restore" | null>(null);
   const [showInvite, setShowInvite] = useState(false);
   const [showOffer, setShowOffer] = useState(false);
+  const [showAllSkills, setShowAllSkills] = useState(false);
+  const [popoverPos, setPopoverPos] = useState<{ top: number; left: number } | null>(null);
+  const skillBtnRef = useRef<HTMLButtonElement>(null);
+  const skillPopoverRef = useRef<HTMLDivElement>(null);
   const { addToast } = useToast();
   const c = labels.card;
   const canAct = rec.status !== "INVITED" && rec.status !== "DISMISSED";
@@ -393,6 +403,19 @@ function CandidateRow({ rec, lang, labels, index, selected, onToggleSelect, onSt
   const visibleSkills = rec.techStack.slice(0, 3);
   const extraSkills = rec.techStack.length - 3;
   const hasContact = !!(rec.invitationResponseMessage || rec.invitationSharedPhoneNumber);
+
+  // Close skill popover when clicking outside (both the popover and the trigger button)
+  useEffect(() => {
+    if (!showAllSkills) return;
+    function handleClickOutside(e: MouseEvent) {
+      const target = e.target as Node;
+      const inPopover = skillPopoverRef.current?.contains(target);
+      const onBtn = skillBtnRef.current?.contains(target);
+      if (!inPopover && !onBtn) setShowAllSkills(false);
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [showAllSkills]);
 
   async function handleRestore() {
     setBusy("restore");
@@ -510,16 +533,60 @@ function CandidateRow({ rec, lang, labels, index, selected, onToggleSelect, onSt
 
           {/* Row 4: skill tags */}
           {rec.techStack.length > 0 && (
-            <div className="flex flex-wrap gap-1 mt-1.5">
-              {visibleSkills.map((s) => (
-                <span key={s} className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700">
-                  {s}
-                </span>
-              ))}
+            <div className="flex flex-wrap gap-1 mt-1.5 items-center">
+              {visibleSkills.map((s) => {
+                const si = getSkillIcon(s);
+                const SIcon = si?.icon;
+                return (
+                  <span key={s} className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-md bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700">
+                    {SIcon && <SIcon size={9} className={cn("shrink-0", si.className)} />}
+                    {titleCase(s)}
+                  </span>
+                );
+              })}
               {extraSkills > 0 && (
-                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-gray-100 dark:bg-gray-800 text-primary border border-primary/20">
-                  +{extraSkills}
-                </span>
+                <>
+                  <button
+                    ref={skillBtnRef}
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (!showAllSkills && skillBtnRef.current) {
+                        const r = skillBtnRef.current.getBoundingClientRect();
+                        setPopoverPos({ top: r.bottom + 6, left: r.left });
+                      }
+                      setShowAllSkills((v) => !v);
+                    }}
+                    className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-primary/10 dark:bg-primary/20 text-primary border border-primary/20 hover:bg-primary/20 dark:hover:bg-primary/30 transition-colors"
+                  >
+                    +{extraSkills}
+                  </button>
+                  {showAllSkills && popoverPos && typeof document !== "undefined" && createPortal(
+                    <div
+                      ref={skillPopoverRef}
+                      style={{ position: "fixed", top: popoverPos.top, left: popoverPos.left, zIndex: 9999 }}
+                      className="w-72 max-h-56 overflow-y-auto p-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-2xl"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-2">
+                        Tất cả kỹ năng ({rec.techStack.length})
+                      </p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {rec.techStack.map((s) => {
+                          const si = getSkillIcon(s);
+                          const SIcon = si?.icon;
+                          return (
+                            <span key={s} className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-md bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 border border-gray-200 dark:border-gray-700">
+                              {SIcon && <SIcon size={10} className={cn("shrink-0", si.className)} />}
+                              {titleCase(s)}
+                            </span>
+                          );
+                        })}
+                      </div>
+                    </div>,
+                    document.body
+                  )}
+                </>
               )}
             </div>
           )}

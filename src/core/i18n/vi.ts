@@ -389,7 +389,7 @@ export const vi: Translations = {
       "/hr/generate-question": "Tạo bộ câu hỏi",
       "/hr/history": "Bộ câu hỏi",
       "/hr/knowledge": "Tài liệu kiến thức",
-      "/hr/candidate-recommendations": "Ứng viên",
+      "/hr/candidate-recommendations": "Ứng viên tiềm năng",
       "/hr/talent": "Kho ứng viên",
       "/hr/settings": "Cài đặt",
     },
@@ -398,6 +398,7 @@ export const vi: Translations = {
       draft: "Đã lưu",
       published: "Đã publish",
       bookmarked: "Đã bookmark",
+      talentPool: "Kho ứng viên",
     },
     quickGenerate: {
       title: "Tạo nhanh",
@@ -522,7 +523,7 @@ export const vi: Translations = {
     accountDisabled: "Tài khoản của bạn đã bị vô hiệu hóa. Vui lòng liên hệ quản trị viên.",
     loginFailed: "Đăng nhập thất bại. Vui lòng thử lại.",
     selectRoleTitle: "Đăng nhập với vai trò",
-    continueWithGoogle: "Tiếp tục với Google",
+    continueWithGoogle: "Đăng nhập với Google",
     emailRequired: "Email là bắt buộc",
     passwordRequired: "Mật khẩu là bắt buộc",
     passwordResetSuccess: "Đặt lại mật khẩu thành công. Bạn có thể đăng nhập ngay.",
@@ -616,6 +617,7 @@ export const vi: Translations = {
     step2Subtitle: "Bước 2 / 2",
     continueButton: "Tiếp tục",
     backButton: "Quay lại",
+    signUpWithGoogle: "Đăng ký với Google",
     googleSignupSuccess: "Đăng nhập Google thành công với {{email}}. Vui lòng hoàn tất hồ sơ.",
     googleStep2Hint: "Hoàn tất thông tin công ty để bắt đầu sử dụng HireGen AI.",
     profileCompleteSuccess: "Đã lưu hồ sơ. Chào mừng bạn!",
@@ -3043,6 +3045,7 @@ Yêu cầu:
     loadFailed: "Không thể tải thông tin ứng viên.",
     retryBtn: "Thử lại",
     back: "Quay lại",
+    statsTitle: "Thống kê luyện tập",
     statsHint: "Thống kê luyện tập trên toàn hệ thống (phiên đã hoàn thành).",
     stats: {
       sessions: "Phiên",
@@ -3089,6 +3092,9 @@ Yêu cầu:
     viewOverview: "Xem hồ sơ luyện tập",
     viewAnswersBtn: "Xem bài làm",
     colActions: "Thao tác",
+    scoreExcellent: "Xuất sắc",
+    scoreGood: "Tốt",
+    scoreFair: "Cần cải thiện",
   },
 
   practitionersPage: {

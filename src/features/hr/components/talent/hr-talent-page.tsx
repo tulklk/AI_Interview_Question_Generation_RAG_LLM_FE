@@ -3,35 +3,32 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import {
+  AlertCircle,
   ChevronLeft,
   ChevronRight,
   ExternalLink,
   FileText,
   Inbox,
   Loader2,
-  Mail,
-  RefreshCw,
+  SearchX,
+  User,
+  X,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { useLanguage } from "@/shared/providers/language-context";
 import { formatRelativeTime } from "@/shared/utils/relative-time";
 import { portalHeading, portalSubtext } from "@/shared/utils/portal-ui";
 import { AppShell } from "@/features/hr/components/layout/app-shell";
-import { InviteCandidateModal } from "@/features/hr/components/recommendations/invite-candidate-modal";
 import {
-  invitePractitioner,
   listHrTalent,
   type HrTalentItem,
 } from "@/features/hr/services/hr-talent.service";
 
-const PAGE_SIZE = 10;
+// ---------------------------------------------------------------------------
+// Constants — same class tokens as question-set-history-table
+// ---------------------------------------------------------------------------
 
-const STATUS_TABS: Array<{ key: "all" | "completed" | "inProgress" | "abandoned"; value: string }> = [
-  { key: "all", value: "" },
-  { key: "completed", value: "COMPLETED" },
-  { key: "inProgress", value: "IN_PROGRESS" },
-  { key: "abandoned", value: "ABANDONED" },
-];
+const PAGE_SIZE = 20;
 
 const iconBtn =
   "inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700 disabled:opacity-40 dark:hover:bg-gray-800 dark:hover:text-gray-200";
@@ -41,235 +38,333 @@ const thCls =
 
 const tdCls = "h-12 px-3 align-middle";
 
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
 function getInitials(name: string): string {
-  return name.trim().split(/\s+/).map((w) => w[0]?.toUpperCase() ?? "").slice(0, 2).join("");
+  return name
+    .trim()
+    .split(/\s+/)
+    .map((w) => w[0]?.toUpperCase() ?? "")
+    .slice(0, 2)
+    .join("");
 }
 
 const AVATAR_COLORS = [
-  "bg-violet-500", "bg-blue-500", "bg-emerald-500", "bg-amber-500",
-  "bg-pink-500", "bg-cyan-500", "bg-indigo-500", "bg-rose-500",
+  "bg-amber-500",
+  "bg-violet-500",
+  "bg-blue-500",
+  "bg-emerald-500",
+  "bg-pink-500",
+  "bg-cyan-500",
+  "bg-indigo-500",
+  "bg-rose-500",
 ];
 
-function avatarColor(name: string): string {
+function avatarColor(seed: string): string {
   let h = 0;
-  for (const c of name) h = (h * 31 + c.charCodeAt(0)) & 0xffffffff;
+  for (const c of seed) h = (h * 31 + c.charCodeAt(0)) & 0xffffffff;
   return AVATAR_COLORS[Math.abs(h) % AVATAR_COLORS.length];
 }
 
-function scoreTextClass(score: number | null): string {
-  if (score == null) return "text-gray-400 dark:text-gray-500";
-  if (score >= 85) return "text-emerald-600 dark:text-emerald-400";
-  if (score >= 70) return "text-amber-600 dark:text-amber-400";
-  return "text-red-500 dark:text-red-400";
-}
+// ---------------------------------------------------------------------------
+// Sub-components
+// ---------------------------------------------------------------------------
 
-function StatusBadge({
+function SessionStatusChip({
   status,
   labels,
 }: {
   status: string;
   labels: { inProgress: string; completed: string; abandoned: string };
 }) {
-  const u = status.toUpperCase();
-  const styles =
-    u === "COMPLETED"
+  const s = status.toUpperCase();
+  const cls =
+    s === "COMPLETED"
       ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400"
-      : u === "ABANDONED"
-        ? "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400"
-        : "bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400";
-  const text =
-    u === "COMPLETED" ? labels.completed : u === "ABANDONED" ? labels.abandoned : labels.inProgress;
+      : s === "IN_PROGRESS"
+        ? "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400"
+        : "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400";
+  const label =
+    s === "COMPLETED"
+      ? labels.completed
+      : s === "IN_PROGRESS"
+        ? labels.inProgress
+        : labels.abandoned;
   return (
-    <span className={cn("inline-flex max-w-full items-center truncate rounded-md px-1.5 py-0.5 text-[11px] font-semibold whitespace-nowrap", styles)}>
-      {text}
+    <span
+      className={cn(
+        "inline-flex items-center rounded-md px-1.5 py-0.5 text-[11px] font-semibold whitespace-nowrap",
+        cls,
+      )}
+    >
+      {label}
     </span>
   );
 }
 
+function InvitedBadge({ label }: { label: string }) {
+  return (
+    <span className="inline-flex items-center rounded-md px-1.5 py-0.5 text-[11px] font-semibold whitespace-nowrap bg-teal-50 text-teal-700 dark:bg-teal-950/40 dark:text-teal-400">
+      {label}
+    </span>
+  );
+}
+
+function ScoreCell({ score }: { score: number | null }) {
+  if (score === null)
+    return <span className={cn("tabular-nums", portalSubtext)}>—</span>;
+  const color =
+    score >= 85
+      ? "text-emerald-600 dark:text-emerald-400"
+      : score >= 70
+        ? "text-amber-600 dark:text-amber-400"
+        : "text-red-600 dark:text-red-400";
+  return (
+    <span className={cn("text-[14px] font-bold tabular-nums", color)}>
+      {Math.round(score)}
+    </span>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Main page
+// ---------------------------------------------------------------------------
+
+type StatusFilter = "" | "COMPLETED" | "IN_PROGRESS" | "ABANDONED";
+type ScoreFilter = "" | "50" | "70" | "85";
+type DateSort = "newest" | "oldest";
+
 export function HrTalentPage() {
   const { t, lang } = useLanguage();
   const p = t.hrTalentPage;
-  const title = t.sidebar.nav["/hr/talent"] ?? p.heading;
 
   const [items, setItems] = useState<HrTalentItem[]>([]);
-  const [total, setTotal] = useState(0);
+  const [totalCount, setTotalCount] = useState(0);
   const [page, setPage] = useState(1);
-  const [keyword, setKeyword] = useState("");
-  const [keywordApplied, setKeywordApplied] = useState("");
-  const [status, setStatus] = useState("");
-  const [minScore, setMinScore] = useState("");
-  const [minScoreApplied, setMinScoreApplied] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
-  const [inviteTarget, setInviteTarget] = useState<HrTalentItem | null>(null);
 
-  const fetchData = useCallback(async () => {
-    setLoading(true);
-    setError(false);
-    try {
-      const min = minScoreApplied.trim() ? Number(minScoreApplied) : null;
-      const res = await listHrTalent({
-        page,
-        pageSize: PAGE_SIZE,
-        keyword: keywordApplied || undefined,
-        status: status || undefined,
-        minScore: min != null && !Number.isNaN(min) ? min : null,
-      });
-      setItems(res.items);
-      setTotal(res.totalCount);
-    } catch {
-      setError(true);
-    } finally {
-      setLoading(false);
-    }
-  }, [page, keywordApplied, status, minScoreApplied]);
+  // Filters
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("");
+  const [scoreFilter, setScoreFilter] = useState<ScoreFilter>("");
+  const [dateSort, setDateSort] = useState<DateSort>("newest");
 
-  useEffect(() => { void fetchData(); }, [fetchData]);
+  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
 
-  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
-  const safePage = Math.min(page, totalPages);
-  const contentKey = `${status}-${keywordApplied}-${minScoreApplied}-${safePage}`;
+  const fetchData = useCallback(
+    async (
+      pg: number,
+      kw: string,
+      status: StatusFilter,
+      minScore: number | null,
+    ) => {
+      setLoading(true);
+      setError(false);
+      try {
+        const result = await listHrTalent({
+          page: pg,
+          pageSize: PAGE_SIZE,
+          keyword: kw.trim() || undefined,
+          status: status || undefined,
+          minScore,
+        });
+        setItems(result.items);
+        setTotalCount(result.totalCount);
+      } catch {
+        setError(true);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [],
+  );
 
-  function applySearch() {
+  const minScoreNum =
+    scoreFilter ? Number(scoreFilter) : null;
+
+  useEffect(() => {
+    void fetchData(page, search, statusFilter, minScoreNum);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fetchData, page, search, statusFilter, scoreFilter]);
+
+  // Reset page when filters change
+  useEffect(() => {
     setPage(1);
-    setKeywordApplied(keyword.trim());
-    setMinScoreApplied(minScore.trim());
+  }, [search, statusFilter, scoreFilter, dateSort]);
+
+  // Client-side date sort (server returns most-recent by default; we flip for oldest)
+  const sorted =
+    dateSort === "oldest"
+      ? [...items].sort(
+          (a, b) =>
+            new Date(a.completedAt ?? a.startedAt ?? 0).getTime() -
+            new Date(b.completedAt ?? b.startedAt ?? 0).getTime(),
+        )
+      : items;
+
+  const hasFilters =
+    search.trim() !== "" ||
+    statusFilter !== "" ||
+    scoreFilter !== "" ||
+    dateSort !== "newest";
+
+  const filterDropdownCls = (active: boolean) =>
+    cn(
+      "cursor-pointer rounded-lg border px-2.5 py-1.5 text-[12px] font-medium outline-none transition-colors bg-white dark:bg-gray-900 focus:border-primary/60",
+      active
+        ? "border-primary/50 text-primary dark:border-primary/40 dark:text-primary"
+        : "border-gray-200 text-gray-600 dark:border-gray-700 dark:text-gray-300",
+    );
+
+  function handlePageChange(next: number) {
+    setPage(next);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
-  function clearFilters() {
-    setKeyword("");
-    setKeywordApplied("");
-    setMinScore("");
-    setMinScoreApplied("");
-    setStatus("");
-    setPage(1);
+  function handleClearFilters() {
+    setSearch("");
+    setStatusFilter("");
+    setScoreFilter("");
+    setDateSort("newest");
   }
-
-  const hasFilters = Boolean(keywordApplied || minScoreApplied || status);
 
   return (
     <AppShell
-      pageTitle={title}
+      pageTitle={p.heading}
+      breadcrumb={[{ label: "HR", href: "/hr/dashboard" }, { label: p.heading }]}
       fullWidth
-      breadcrumb={[
-        { label: t.appShell.breadcrumb.hr, href: "/hr/dashboard" },
-        { label: title },
-      ]}
     >
       <div>
+        {/* ── Page header ── */}
         <div
           className="mb-4 flex items-start justify-between gap-3"
           style={{ animation: "slideUpFade 0.38s cubic-bezier(0.25,0.46,0.45,0.94) both" }}
         >
           <div>
-            <h2 className={cn("text-xl font-bold", portalHeading)}>{p.heading}</h2>
-            <p className={cn("mt-0.5 text-[13px]", portalSubtext)}>{p.subtext}</p>
-            <p className={cn("mt-1 max-w-3xl text-[12px]", portalSubtext)}>{p.candidatesNote}</p>
+            <h2 className={cn("text-xl font-bold", portalHeading)}>
+              {p.heading}
+            </h2>
+            <p
+              className={cn("mt-0.5 text-[13px]", portalSubtext)}
+              style={{ animation: "slideUpFade 0.38s cubic-bezier(0.25,0.46,0.45,0.94) both 0.06s" }}
+            >
+              {p.subtext}
+            </p>
           </div>
         </div>
 
-        <div className="space-y-3" style={{ overflowY: "hidden" }}>
-          <form
-            className="flex flex-wrap items-center gap-2"
-            onSubmit={(e) => {
-              e.preventDefault();
-              applySearch();
-            }}
+        {/* ── Filter bar ── */}
+        <div
+          className="mb-3 flex flex-wrap items-center gap-2"
+          style={{ animation: "slideUpFade 0.32s cubic-bezier(0.25,0.46,0.45,0.94) both 0.08s" }}
+        >
+          {/* Search */}
+          <input
+            type="search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder={p.searchPlaceholder}
+            className="w-full sm:w-72 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-[13px] outline-none focus:border-primary/40 dark:border-gray-700 dark:bg-gray-900"
+          />
+
+          {/* Trạng thái */}
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
+            className={filterDropdownCls(statusFilter !== "")}
           >
-            <input
-              type="search"
-              value={keyword}
-              onChange={(e) => setKeyword(e.target.value)}
-              placeholder={p.searchPlaceholder}
-              style={{ animation: "slideUpFade 0.32s cubic-bezier(0.25,0.46,0.45,0.94) both" }}
-              className="w-full sm:w-72 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-[13px] outline-none focus:border-primary/40 dark:border-gray-700 dark:bg-gray-900"
-            />
+            <option value="">Trạng thái: {p.allStatuses}</option>
+            <option value="COMPLETED">{p.statusLabels.completed}</option>
+            <option value="IN_PROGRESS">{p.statusLabels.inProgress}</option>
+            <option value="ABANDONED">{p.statusLabels.abandoned}</option>
+          </select>
 
-            <select
-              value={status}
-              onChange={(e) => { setPage(1); setStatus(e.target.value); }}
-              style={{ animation: "slideUpFade 0.32s cubic-bezier(0.25,0.46,0.45,0.94) both 0.05s" }}
-              className={cn(
-                "cursor-pointer rounded-lg border px-2.5 py-1.5 text-[12px] font-medium outline-none transition-colors",
-                "bg-white dark:bg-gray-900",
-                status
-                  ? "border-primary/50 text-primary dark:border-primary/40 dark:text-primary"
-                  : "border-gray-200 text-gray-600 dark:border-gray-700 dark:text-gray-300",
-                "focus:border-primary/60"
-              )}
-            >
-              {STATUS_TABS.map((tab) => (
-                <option key={tab.key} value={tab.value}>
-                  {tab.key === "all" ? p.allStatuses : p.statusLabels[tab.key]}
-                </option>
-              ))}
-            </select>
+          {/* Điểm */}
+          <select
+            value={scoreFilter}
+            onChange={(e) => setScoreFilter(e.target.value as ScoreFilter)}
+            className={filterDropdownCls(scoreFilter !== "")}
+          >
+            <option value="">Điểm: Tất cả</option>
+            <option value="50">≥ 50</option>
+            <option value="70">≥ 70</option>
+            <option value="85">≥ 85</option>
+          </select>
 
-            <input
-              type="number"
-              min={0}
-              max={100}
-              value={minScore}
-              onChange={(e) => setMinScore(e.target.value)}
-              placeholder={p.minScore}
-              style={{ animation: "slideUpFade 0.32s cubic-bezier(0.25,0.46,0.45,0.94) both 0.1s" }}
-              className="w-28 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-[12px] font-medium outline-none focus:border-primary/40 dark:border-gray-700 dark:bg-gray-900"
-            />
+          {/* Ngày */}
+          <select
+            value={dateSort}
+            onChange={(e) => setDateSort(e.target.value as DateSort)}
+            className={filterDropdownCls(dateSort !== "newest")}
+          >
+            <option value="newest">Ngày: Mới nhất</option>
+            <option value="oldest">Ngày: Cũ nhất</option>
+          </select>
 
-            <button
-              type="submit"
-              className="h-[30px] rounded-lg bg-primary px-3 text-[12px] font-semibold text-white"
-            >
-              {p.searchBtn}
-            </button>
-
+          {/* Clear */}
+          {hasFilters && (
             <button
               type="button"
-              onClick={() => void fetchData()}
-              disabled={loading}
-              className={iconBtn}
-              aria-label={p.retryBtn}
+              onClick={handleClearFilters}
+              style={{ animation: "scaleInFade 0.3s cubic-bezier(0.34,1.56,0.64,1) both" }}
+              className="inline-flex items-center gap-1 rounded-lg border border-gray-200 px-2 py-1.5 text-[12px] text-gray-500 transition-colors hover:border-red-300 hover:text-red-600 dark:border-gray-700 dark:text-gray-400 dark:hover:border-red-800 dark:hover:text-red-400"
             >
-              <RefreshCw size={13} className={loading ? "animate-spin" : ""} />
+              <X size={11} />
+              Xóa lọc
             </button>
+          )}
+        </div>
 
-            {hasFilters && (
-              <button
-                type="button"
-                onClick={clearFilters}
-                className="inline-flex items-center gap-1 rounded-lg border border-gray-200 px-2 py-1.5 text-[12px] text-gray-500 transition-colors hover:border-red-300 hover:text-red-600 dark:border-gray-700 dark:text-gray-400 dark:hover:border-red-800 dark:hover:text-red-400"
-              >
-                {lang === "vi" ? "Xóa lọc" : "Clear"}
-              </button>
-            )}
-          </form>
-
+        {/* ── Content ── */}
+        <div style={{ animation: "fadeIn 0.42s ease-out both 0.12s" }}>
           {loading ? (
             <div className="flex justify-center py-14">
               <Loader2 className="h-5 w-5 animate-spin text-primary" />
             </div>
           ) : error ? (
-            <p className="text-sm text-red-600 dark:text-red-400">{p.loadFailed}</p>
-          ) : items.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-gray-200 px-6 py-12 text-center dark:border-gray-700">
+            <div className="flex flex-col items-center gap-3 py-14 text-center">
+              <AlertCircle size={26} className="text-red-500" />
+              <p className={cn("text-[13px]", portalSubtext)}>{p.loadFailed}</p>
+              <button
+                type="button"
+                onClick={() => void fetchData(page, search, statusFilter, minScoreNum)}
+                className="text-[13px] font-semibold text-primary hover:underline"
+              >
+                {p.retryBtn}
+              </button>
+            </div>
+          ) : items.length === 0 && !hasFilters ? (
+            /* Completely empty — no data at all */
+            <div
+              className="rounded-xl border border-dashed border-gray-200 px-6 py-12 text-center dark:border-gray-700"
+              style={{ animation: "fadeIn 0.4s ease-out both 0.1s" }}
+            >
               <Inbox className="mx-auto mb-2 h-8 w-8 text-gray-300" />
               <p className={cn("text-sm font-medium", portalHeading)}>{p.emptyTitle}</p>
               <p className={cn("mt-1 text-[12px]", portalSubtext)}>{p.emptySubtext}</p>
             </div>
-          ) : (
+          ) : sorted.length === 0 ? (
+            /* Filters returned no results */
             <div
-              key={contentKey}
-              style={{ animation: "fadeIn 0.2s ease-out both" }}
-              className="overflow-x-auto rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-950/40"
+              className="rounded-xl border border-dashed border-gray-200 px-6 py-10 text-center dark:border-gray-700"
+              style={{ animation: "fadeIn 0.3s ease-out both" }}
             >
-              <table className="w-full min-w-[880px] table-fixed text-[13px]">
+              <SearchX className="mx-auto mb-2 h-7 w-7 text-gray-300" />
+              <p className={cn("text-[13px]", portalSubtext)}>Không tìm thấy ứng viên phù hợp với bộ lọc hiện tại.</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-950/40">
+              <table className="w-full min-w-190 table-fixed text-[13px]">
                 <colgroup>
-                  <col style={{ width: "28%" }} />
                   <col style={{ width: "24%" }} />
-                  <col style={{ width: "9%" }} />
-                  <col style={{ width: "14%" }} />
-                  <col style={{ width: "13%" }} />
-                  <col style={{ width: "12%" }} />
+                  <col style={{ width: "28%" }} />
+                  <col style={{ width: "8%" }} />
+                  <col style={{ width: "20%" }} />
+                  <col style={{ width: "10%" }} />
+                  <col style={{ width: "10%" }} />
                 </colgroup>
                 <thead>
                   <tr className="border-b border-gray-100 bg-gray-50/90 dark:border-gray-800 dark:bg-gray-900/60">
@@ -282,171 +377,176 @@ export function HrTalentPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100 dark:divide-gray-800/70">
-                  {items.map((item, rowIdx) => {
-                    const completed = item.sessionStatus.toUpperCase() === "COMPLETED";
-                    const invited = (item.recommendationStatus ?? "").toUpperCase() === "INVITED" || Boolean(item.invitationStatus);
-                    const initials = getInitials(item.candidateName || item.candidateEmail);
-                    const score = item.overallScore != null ? Math.round(item.overallScore) : null;
-                    const when = item.completedAt || item.startedAt;
+                  {sorted.map((item, rowIdx) => {
+                    const seed = item.candidateName || item.candidateEmail;
+                    const initials = getInitials(seed);
+                    // Always link to the candidate overview page (not recommendation-detail),
+                    // so the breadcrumb correctly reads "Kho ứng viên > ..."
+                    const profileHref = `/hr/candidates/${item.candidateUserId}`;
+                    const sessionHref = `/hr/candidates/${item.candidateUserId}/sessions/${item.sessionId}`;
+                    const isInvited =
+                      item.invitationStatus?.toUpperCase() === "INVITED";
+
                     return (
                       <tr
                         key={item.sessionId}
                         className="hover:bg-gray-50/70 dark:hover:bg-gray-900/40"
-                        style={{ animation: `fadeIn 0.28s ease-out both ${rowIdx * 0.04}s` }}
+                        style={{
+                          animation: `fadeIn 0.28s ease-out both ${rowIdx * 0.04}s`,
+                        }}
                       >
+                        {/* Ứng viên */}
                         <td className={cn(tdCls, "overflow-hidden")}>
-                          <Link href={`/hr/candidates/${item.candidateUserId}`} className="flex min-w-0 items-center gap-2.5 group">
-                            <div className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[11px] font-bold text-white", avatarColor(item.candidateName || item.sessionId))}>
-                              {initials || "?"}
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <div
+                              className={cn(
+                                "w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-white text-[11px] font-bold",
+                                avatarColor(seed),
+                              )}
+                            >
+                              {initials || <User size={13} />}
                             </div>
                             <div className="min-w-0">
-                              <p className={cn("truncate font-medium group-hover:text-primary", portalHeading)} title={item.candidateName}>
-                                {item.candidateName || "—"}
+                              <p
+                                className={cn("truncate font-medium leading-tight", portalHeading)}
+                                title={item.candidateName || item.candidateEmail}
+                              >
+                                {item.candidateName || item.candidateEmail}
                               </p>
-                              <p className={cn("truncate text-[11px]", portalSubtext)} title={item.candidateEmail}>
-                                {item.candidateEmail}
-                              </p>
+                              {item.candidateName && (
+                                <p className={cn("truncate text-[11px] leading-tight mt-0.5", portalSubtext)}>
+                                  {item.candidateEmail}
+                                </p>
+                              )}
                             </div>
-                          </Link>
+                          </div>
                         </td>
+
+                        {/* Bộ câu hỏi */}
                         <td className={cn(tdCls, "overflow-hidden")}>
-                          <span className={cn("block truncate", portalSubtext)} title={item.questionSetTitle}>
+                          <span
+                            className={cn("block truncate", portalSubtext)}
+                            title={item.questionSetTitle}
+                          >
                             {item.questionSetTitle || "—"}
                           </span>
                         </td>
-                        <td className={cn(tdCls, "text-center tabular-nums font-semibold", scoreTextClass(score))}>
-                          {score ?? "—"}
+
+                        {/* Điểm */}
+                        <td className={cn(tdCls, "text-center")}>
+                          <ScoreCell score={item.overallScore} />
                         </td>
+
+                        {/* Trạng thái */}
                         <td className={cn(tdCls, "overflow-hidden")}>
-                          <div className="flex items-center gap-1 overflow-hidden">
-                            <StatusBadge status={item.sessionStatus} labels={p.statusLabels} />
-                            {invited && (
-                              <span className="inline-flex shrink-0 rounded-md bg-emerald-50 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400">
-                                {p.invitedBadge}
-                              </span>
+                          <div className="flex flex-wrap gap-1">
+                            <SessionStatusChip
+                              status={item.sessionStatus}
+                              labels={p.statusLabels}
+                            />
+                            {isInvited && (
+                              <InvitedBadge label={p.invitedBadge} />
                             )}
                           </div>
                         </td>
+
+                        {/* Ngày */}
                         <td className={cn(tdCls, "overflow-hidden whitespace-nowrap", portalSubtext)}>
-                          {when ? formatRelativeTime(when, lang) : "—"}
+                          {item.completedAt
+                            ? formatRelativeTime(item.completedAt, lang)
+                            : "—"}
                         </td>
+
+                        {/* Thao tác */}
                         <td className={tdCls}>
                           <div className="flex flex-nowrap items-center justify-center gap-0.5">
                             <Link
-                              href={`/hr/candidates/${item.candidateUserId}`}
+                              href={sessionHref}
                               className={iconBtn}
-                              title={p.overviewBtn}
+                              title={p.viewAnswersBtn}
                             >
                               <ExternalLink size={14} />
                             </Link>
-                            {completed ? (
-                              <Link
-                                href={`/hr/candidates/${item.candidateUserId}/sessions/${item.sessionId}`}
-                                className={iconBtn}
-                                title={p.viewAnswersBtn}
-                              >
-                                <FileText size={14} />
-                              </Link>
-                            ) : (
-                              <span aria-hidden className="inline-flex h-7 w-7 shrink-0" />
-                            )}
-                            {completed && !invited ? (
-                              <button
-                                type="button"
-                                onClick={() => setInviteTarget(item)}
-                                className={cn(iconBtn, "hover:text-emerald-600")}
-                                title={p.inviteBtn}
-                              >
-                                <Mail size={14} />
-                              </button>
-                            ) : (
-                              <span aria-hidden className="inline-flex h-7 w-7 shrink-0" />
-                            )}
+                            <Link
+                              href={profileHref}
+                              className={iconBtn}
+                              title={p.overviewBtn}
+                            >
+                              <FileText size={14} />
+                            </Link>
                           </div>
                         </td>
                       </tr>
                     );
                   })}
-                  {items.length < PAGE_SIZE &&
-                    Array.from({ length: PAGE_SIZE - items.length }).map((_, i) => (
-                      <tr key={`ph-${i}`} aria-hidden>
-                        <td className={tdCls} colSpan={6} />
-                      </tr>
-                    ))}
                 </tbody>
               </table>
             </div>
           )}
-
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between gap-4 px-1 py-1">
-              <p className={cn("text-xs", portalSubtext)}>
-                {(safePage - 1) * PAGE_SIZE + 1}–{Math.min(safePage * PAGE_SIZE, total)} / {total}
-              </p>
-              <div className="flex items-center gap-1">
-                <button
-                  type="button"
-                  onClick={() => setPage((x) => Math.max(1, x - 1))}
-                  disabled={safePage === 1}
-                  className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                >
-                  <ChevronLeft size={14} />
-                </button>
-                {Array.from({ length: totalPages }, (_, i) => i + 1).map((n) => {
-                  const isFirst = n === 1;
-                  const isLast = n === totalPages;
-                  const nearCurrent = Math.abs(n - safePage) <= 1;
-                  if (!isFirst && !isLast && !nearCurrent) {
-                    if (n === 2 || n === totalPages - 1) {
-                      return <span key={n} className={cn("text-xs px-0.5", portalSubtext)}>…</span>;
-                    }
-                    return null;
-                  }
-                  return (
-                    <button
-                      key={n}
-                      type="button"
-                      onClick={() => setPage(n)}
-                      className={cn(
-                        "inline-flex h-7 min-w-7 px-1.5 items-center justify-center rounded-lg text-xs font-medium transition-colors",
-                        n === safePage
-                          ? "bg-primary text-white shadow-sm"
-                          : "border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
-                      )}
-                    >
-                      {n}
-                    </button>
-                  );
-                })}
-                <button
-                  type="button"
-                  onClick={() => setPage((x) => Math.min(totalPages, x + 1))}
-                  disabled={safePage === totalPages}
-                  className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                >
-                  <ChevronRight size={14} />
-                </button>
-              </div>
-            </div>
-          )}
         </div>
-      </div>
 
-      {inviteTarget && (
-        <InviteCandidateModal
-          target={{
-            candidateName: inviteTarget.candidateName,
-            candidateEmail: inviteTarget.candidateEmail,
-            questionSetTitle: inviteTarget.questionSetTitle,
-            score: inviteTarget.overallScore,
-          }}
-          onClose={() => setInviteTarget(null)}
-          onSend={async (message) => {
-            await invitePractitioner(inviteTarget.questionSetId, inviteTarget.candidateUserId, message);
-            await fetchData();
-          }}
-        />
-      )}
+        {/* ── Pagination ── */}
+        {!loading && !error && totalPages > 1 && (
+          <div
+            className="flex items-center justify-between gap-4 px-1 py-3"
+            style={{ animation: "fadeIn 0.35s ease-out both 0.15s" }}
+          >
+            <p className={cn("text-xs", portalSubtext)}>
+              {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, totalCount)} / {totalCount}
+            </p>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => handlePageChange(page - 1)}
+                disabled={page === 1}
+                className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                <ChevronLeft size={14} />
+              </button>
+
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((pg) => {
+                const isFirst = pg === 1;
+                const isLast = pg === totalPages;
+                const nearCurrent = Math.abs(pg - page) <= 1;
+                if (!isFirst && !isLast && !nearCurrent) {
+                  if (pg === 2 || pg === totalPages - 1) {
+                    return (
+                      <span key={pg} className={cn("text-xs px-0.5", portalSubtext)}>
+                        …
+                      </span>
+                    );
+                  }
+                  return null;
+                }
+                return (
+                  <button
+                    key={pg}
+                    type="button"
+                    onClick={() => handlePageChange(pg)}
+                    className={cn(
+                      "inline-flex h-7 min-w-7 px-1.5 items-center justify-center rounded-lg text-xs font-medium transition-colors",
+                      pg === page
+                        ? "bg-primary text-white shadow-sm"
+                        : "border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800",
+                    )}
+                  >
+                    {pg}
+                  </button>
+                );
+              })}
+
+              <button
+                type="button"
+                onClick={() => handlePageChange(page + 1)}
+                disabled={page === totalPages}
+                className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                <ChevronRight size={14} />
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
     </AppShell>
   );
 }
