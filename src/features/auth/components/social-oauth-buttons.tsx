@@ -98,13 +98,31 @@ export function GoogleOAuthButton({
   );
 }
 
-/** UI-only GitHub OAuth button (not wired yet). */
-export function GithubOAuthButton() {
+interface GithubOAuthButtonProps {
+  loading?: boolean;
+  onClick: () => void;
+}
+
+export function GithubOAuthButton({ loading = false, onClick }: GithubOAuthButtonProps) {
+  const clientId = process.env.NEXT_PUBLIC_GITHUB_CLIENT_ID ?? "";
+  const noClientId = !clientId;
+
   return (
     <div className="auth-social-button relative h-10 min-w-0">
-      <button type="button" className={oauthBtnClass}>
-        <GithubIcon />
-        Github
+      <button
+        type="button"
+        onClick={onClick}
+        disabled={loading || noClientId}
+        className={`${oauthBtnClass} ${loading || noClientId ? "opacity-60" : ""}`}
+      >
+        {loading ? (
+          <span className="h-4 w-4 animate-spin rounded-full border-2 border-primary/30 border-t-primary" />
+        ) : (
+          <>
+            <GithubIcon />
+            Github
+          </>
+        )}
       </button>
     </div>
   );
@@ -115,6 +133,8 @@ interface SocialOAuthRowProps {
   googleMode: "signin" | "signup";
   onGoogleSuccess: (credential: string | undefined) => void;
   onGoogleError: () => void;
+  githubLoading?: boolean;
+  onGithubClick: () => void;
 }
 
 export function SocialOAuthRow({
@@ -122,6 +142,8 @@ export function SocialOAuthRow({
   googleMode,
   onGoogleSuccess,
   onGoogleError,
+  githubLoading = false,
+  onGithubClick,
 }: SocialOAuthRowProps) {
   const { t } = useLanguage();
   const googleLabel =
@@ -138,7 +160,7 @@ export function SocialOAuthRow({
         onSuccess={onGoogleSuccess}
         onError={onGoogleError}
       />
-      {/* <GithubOAuthButton /> */}
+      <GithubOAuthButton loading={githubLoading} onClick={onGithubClick} />
     </div>
   );
 }

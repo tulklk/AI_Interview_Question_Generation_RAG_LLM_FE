@@ -25,7 +25,16 @@ import {
   completeGoogleLogin,
   finishGoogleAuth,
   parseGoogleClaims,
+  type GoogleClaims,
 } from "@/features/auth/utils/google-oauth-flow";
+import {
+  verifyGithubCode,
+  completeGithubLogin,
+  finishGithubAuth,
+  claimsFromGithubVerify,
+} from "@/features/auth/utils/github-oauth-flow";
+import { openGithubOAuthPopup } from "@/features/auth/utils/github-oauth-popup";
+import type { OAuthOnboardingProvider } from "@/features/auth/components/oauth-login-onboarding";
 import { toBackendIntendedRole, type RegisterRoleKey } from "@/features/auth/utils/google-onboarding";
 import type { ApiErrorResponse } from "@/features/auth/types/auth";
 import { useLanguage } from "@/shared/providers/language-context";
@@ -133,8 +142,12 @@ export function RegisterJobSeekerForm({ registerRole = "jobseeker" }: RegisterJo
 
   const stepDir = useRef<1 | -1>(1);
   const [step, setStep] = useState<1 | 2>(1);
-  const [isGoogleSignup, setIsGoogleSignup] = useState(false);
-  const [googleCredential, setGoogleCredential] = useState("");
+  const [oauthSignup, setOauthSignup] = useState<{
+    provider: OAuthOnboardingProvider;
+    identifier: string;
+    claims: GoogleClaims;
+  } | null>(null);
+  const isGoogleSignup = oauthSignup !== null;
 
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
@@ -151,6 +164,7 @@ export function RegisterJobSeekerForm({ registerRole = "jobseeker" }: RegisterJo
 
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [githubLoading, setGithubLoading] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
 
   const techDropdownRef = useRef<HTMLDivElement>(null);
@@ -229,16 +243,23 @@ export function RegisterJobSeekerForm({ registerRole = "jobseeker" }: RegisterJo
 
     setLoading(true);
     try {
-      if (isGoogleSignup) {
-        const claims = parseGoogleClaims(googleCredential);
-        const { role } = await completeGoogleLogin(googleCredential, {
+      if (oauthSignup) {
+        const extra = {
           intendedRole,
           targetRole: targetRole.trim(),
           seniorityLevel,
           techStack,
-        });
+        };
+        const { role } =
+          oauthSignup.provider === "google"
+            ? await completeGoogleLogin(oauthSignup.identifier, extra)
+            : await completeGithubLogin(oauthSignup.identifier, extra);
         addToast("success", rp.profileCompleteSuccess);
-        await finishGoogleAuth(router, refreshUser, claims, googleCredential, role);
+        if (oauthSignup.provider === "google") {
+          await finishGoogleAuth(router, refreshUser, oauthSignup.claims, oauthSignup.identifier, role);
+        } else {
+          await finishGithubAuth(router, refreshUser, oauthSignup.claims, role);
+        }
         return;
       }
 
@@ -297,13 +318,12 @@ export function RegisterJobSeekerForm({ registerRole = "jobseeker" }: RegisterJo
         return;
       }
 
-      setGoogleCredential(credential);
+      setOauthSignup({ provider: "google", identifier: credential, claims });
       setFullName(claims.name);
       setEmail(claims.email);
       setPassword("");
       setConfirmPassword("");
       setFieldErrors({});
-      setIsGoogleSignup(true);
       stepDir.current = 1;
       setStep(2);
       addToast("success", rp.googleSignupSuccess.replace("{{email}}", claims.email || claims.name));
@@ -314,11 +334,42 @@ export function RegisterJobSeekerForm({ registerRole = "jobseeker" }: RegisterJo
     }
   }
 
+  async function handleGithub() {
+    setGithubLoading(true);
+    try {
+      const code = await openGithubOAuthPopup();
+      const verify = await verifyGithubCode(code, { intendedRole });
+      const claims = claimsFromGithubVerify(verify);
+
+      if (!verify.isNewUser || verify.linkedToLocalAccount) {
+        const { role } = await completeGithubLogin(code, { intendedRole });
+        addToast("success", verify.linkedToLocalAccount ? lp.githubLinked : lp.githubAccountExists);
+        await finishGithubAuth(router, refreshUser, claims, role);
+        return;
+      }
+
+      setOauthSignup({ provider: "github", identifier: code, claims });
+      setFullName(claims.name);
+      setEmail(claims.email);
+      setPassword("");
+      setConfirmPassword("");
+      setFieldErrors({});
+      stepDir.current = 1;
+      setStep(2);
+      addToast("success", rp.githubSignupSuccess.replace("{{email}}", claims.email || claims.name));
+    } catch (err) {
+      if (!(err instanceof Error && (err.message === "popup_closed" || err.message === "popup_blocked"))) {
+        addToast("error", rp.registrationFailed);
+      }
+    } finally {
+      setGithubLoading(false);
+    }
+  }
+
   function handleBackFromStep2() {
     stepDir.current = -1;
     if (isGoogleSignup) {
-      setIsGoogleSignup(false);
-      setGoogleCredential("");
+      setOauthSignup(null);
     }
     setStep(1);
     setFieldErrors({});
@@ -584,6 +635,8 @@ export function RegisterJobSeekerForm({ registerRole = "jobseeker" }: RegisterJo
                   googleMode="signup"
                   onGoogleSuccess={handleGoogle}
                   onGoogleError={() => addToast("error", rp.registrationFailed)}
+                  githubLoading={githubLoading}
+                  onGithubClick={handleGithub}
                 />
               </motion.div>
               <motion.p variants={fieldRow} className="text-center text-sm text-gray-500 dark:text-gray-400 mt-5">

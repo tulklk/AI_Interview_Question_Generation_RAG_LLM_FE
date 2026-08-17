@@ -1,15 +1,10 @@
 import type { AppRouterInstance } from "next/dist/shared/lib/app-router-context.shared-runtime";
 import { loginWithGoogle, verifyGoogleOAuth } from "@/features/auth/services/auth.service";
 import type { GoogleLoginRequest, GoogleVerifyResponse, LoginResponse } from "@/features/auth/types/auth";
-import {
-  setAuth,
-  setAuthTokens,
-  setUserRole,
-  extractRole,
-  getRoleRedirect,
-} from "@/core/auth/permissions";
+import { getRoleRedirect } from "@/core/auth/permissions";
 import { parseGoogleIdToken } from "@/features/auth/utils/google-id-token";
 import { syncGoogleAvatarIfNeeded } from "@/features/auth/utils/sync-google-avatar";
+import { persistOAuthSession } from "@/features/auth/utils/oauth-session";
 import { resolveAvatarUrl } from "@/shared/utils/user-display";
 import { setCachedUserProfile } from "@/core/storage/user-profile-cache";
 import type { CurrentUser } from "@/shared/types/user";
@@ -37,24 +32,12 @@ export async function verifyGoogleToken(
   return verifyGoogleOAuth({ idToken, ...options });
 }
 
-export function persistGoogleSession(data: unknown): string | null {
-  const d = data as Record<string, unknown>;
-  const src = (typeof d.data === "object" && d.data ? d.data : d) as Record<string, unknown>;
-  const accessToken = (src.accessToken ?? src.access_token ?? src.token) as string | undefined;
-  const refreshToken = (src.refreshToken ?? src.refresh_token) as string | undefined;
-  if (accessToken) setAuthTokens(accessToken, refreshToken);
-  setAuth();
-  const role = extractRole(data);
-  if (role) setUserRole(role);
-  return role;
-}
-
 export async function completeGoogleLogin(
   idToken: string,
   payload?: Omit<GoogleLoginRequest, "idToken">
 ): Promise<{ data: LoginResponse; role: string | null }> {
   const data = await loginWithGoogle({ idToken, ...payload });
-  const role = persistGoogleSession(data);
+  const role = persistOAuthSession(data);
   return { data, role };
 }
 
