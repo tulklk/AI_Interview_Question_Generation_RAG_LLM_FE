@@ -25,8 +25,10 @@ export function openGithubOAuthPopup(): Promise<string> {
   const clientId = process.env.NEXT_PUBLIC_GITHUB_CLIENT_ID ?? "";
   if (!clientId) return Promise.reject(new Error("missing_github_client_id"));
 
+  const appBaseUrl = (process.env.NEXT_PUBLIC_APP_URL ?? window.location.origin ?? "")
+    .replace(/\/$/, "");
   const state = randomState();
-  const redirectUri = `${window.location.origin}${getGithubCallbackPath()}`;
+  const redirectUri = `${appBaseUrl}${getGithubCallbackPath()}`;
   const params = new URLSearchParams({
     client_id: clientId,
     redirect_uri: redirectUri,
