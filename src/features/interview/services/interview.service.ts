@@ -1148,13 +1148,25 @@ export async function publishQuestionSet(questionSetId: string): Promise<boolean
   }
 }
 
-export async function unpublishQuestionSet(questionSetId: string): Promise<boolean> {
+export async function unpublishQuestionSet(questionSetId: string): Promise<number> {
   try {
-    await apiClient.post(`/api/hr/question-sets/${questionSetId}/unpublish`);
-    return true;
+    const { data } = await apiClient.post<unknown>(`/api/hr/question-sets/${questionSetId}/unpublish`);
+    return parseAbandonedSessionCount(data);
   } catch (err) {
     throw new Error(extractBeErrorMessage(err));
   }
+}
+
+export function parseAbandonedSessionCount(raw: unknown): number {
+  const rec = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
+  const inner = rec.data && typeof rec.data === "object" ? (rec.data as Record<string, unknown>) : rec;
+  const n = Number(inner.abandonedSessionCount ?? inner.AbandonedSessionCount ?? 0);
+  return Number.isFinite(n) ? Math.max(0, n) : 0;
+}
+
+export function withAbandonedToast(base: string, count: number): string {
+  if (count <= 0) return base;
+  return `${base} Đã hủy ${count} phiên đang làm.`;
 }
 
 /**
@@ -1294,6 +1306,7 @@ export type PractitionerSessionStatus = "IN_PROGRESS" | "COMPLETED" | "ABANDONED
 
 export interface Practitioner {
   id: string;
+  sessionId: string;
   candidateUserId: string;
   candidateName: string;
   candidateEmail: string;
@@ -1311,20 +1324,20 @@ function normalizePractitionerStatus(raw: string): PractitionerSessionStatus {
 function normalizePractitioner(raw: unknown, index: number): Practitioner | null {
   const src = asRecord(raw);
   if (!src) return null;
-  // BE doesn't return a session/attempt id at all — synthesize one from the
-  // candidate + attempt start time (unique per row) so React keys stay stable.
-  const candidateUserId = pickStr(src, "candidateUserId", "id", "sessionId", "practiceSessionId");
+  const candidateUserId = pickStr(src, "candidateUserId", "CandidateUserId");
   if (!candidateUserId) return null;
-  const startedAt = typeof src.startedAt === "string" ? src.startedAt : null;
-  const scoreRaw = src.score ?? src.overallScore;
+  const sessionId = pickStr(src, "sessionId", "SessionId");
+  const startedAt = typeof src.startedAt === "string" ? src.startedAt : pickStr(src, "startedAt", "StartedAt") || null;
+  const scoreRaw = src.score ?? src.overallScore ?? src.OverallScore;
   return {
-    id: `${candidateUserId}-${startedAt ?? index}`,
+    id: sessionId || `${candidateUserId}-${startedAt || index}`,
+    sessionId,
     candidateUserId,
-    candidateName: pickStr(src, "candidateName", "fullName", "name"),
-    candidateEmail: pickStr(src, "candidateEmail", "email"),
+    candidateName: pickStr(src, "candidateName", "CandidateName", "fullName", "name"),
+    candidateEmail: pickStr(src, "candidateEmail", "CandidateEmail", "email"),
     score: typeof scoreRaw === "number" ? scoreRaw : null,
-    status: normalizePractitionerStatus(pickStr(src, "status") || "IN_PROGRESS"),
-    completedAt: typeof src.completedAt === "string" ? src.completedAt : null,
+    status: normalizePractitionerStatus(pickStr(src, "status", "Status") || "IN_PROGRESS"),
+    completedAt: typeof src.completedAt === "string" ? src.completedAt : pickStr(src, "completedAt", "CompletedAt") || null,
     startedAt,
   };
 }

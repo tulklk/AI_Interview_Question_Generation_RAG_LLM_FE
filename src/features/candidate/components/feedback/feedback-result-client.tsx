@@ -83,17 +83,22 @@ export function FeedbackResultClient() {
   // a short delay so they can first absorb their result.
   useEffect(() => {
     const qsId = session?.questionSetId;
-    if (!qsId || feedbackCheckedRef.current) return;
-    feedbackCheckedRef.current = true;
+    if (!qsId || !set || feedbackCheckedRef.current) return;
 
+    // Drill / bộ luyện skill cá nhân: không hỏi đánh giá sao (không phải marketplace).
+    if (/^drill\b/i.test(set.title.trim())) {
+      feedbackCheckedRef.current = true;
+      return;
+    }
+
+    feedbackCheckedRef.current = true;
     getMyQuestionSetFeedback(qsId).then((existing) => {
       if (existing === null) {
-        // No rating yet — prompt after 1.5 s so the result page settles first
         const t = setTimeout(() => setShowFeedbackDialog(true), 1500);
         return () => clearTimeout(t);
       }
     });
-  }, [session?.questionSetId]);
+  }, [session?.questionSetId, set]);
 
   useEffect(() => {
     if (!sessionId) return;
@@ -324,7 +329,7 @@ export function FeedbackResultClient() {
           />
 
           {/* Rating dialog — shows once after completion if no prior feedback */}
-          {session.questionSetId && (
+          {session.questionSetId && !/^drill\b/i.test(set?.title?.trim() ?? "") && (
             <QuestionSetFeedbackDialog
               open={showFeedbackDialog}
               questionSetId={session.questionSetId}

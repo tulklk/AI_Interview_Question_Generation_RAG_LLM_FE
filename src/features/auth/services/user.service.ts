@@ -24,6 +24,14 @@ function pickOptionalString(obj: Record<string, unknown>, ...keys: string[]): st
   return "";
 }
 
+function pickBoolean(obj: Record<string, unknown>, ...keys: string[]): boolean | undefined {
+  for (const key of keys) {
+    const val = obj[key];
+    if (typeof val === "boolean") return val;
+  }
+  return undefined;
+}
+
 function pickStringArray(obj: Record<string, unknown>, ...keys: string[]): string[] {
   for (const key of keys) {
     const val = obj[key];
@@ -68,6 +76,7 @@ function normalizeCandidateProfile(
     seniorityLevel:
       pickOptionalString(profile, "seniorityLevel", "SeniorityLevel") || undefined,
     techStack: pickStringArray(profile, "techStack", "TechStack"),
+    cvFileName: pickOptionalString(profile, "cvFileName", "CvFileName") || undefined,
     phoneNumber: pickOptionalString(profile, "phoneNumber", "PhoneNumber") || undefined,
     avatarUrl:
       typeof avatarRaw === "string" ? avatarRaw : avatarRaw === null ? null : undefined,
@@ -110,6 +119,8 @@ function normalizeHrProfile(
     linkedInUrl: pickOptionalString(profile, "linkedInUrl", "LinkedInUrl") || undefined,
     githubUrl: pickOptionalString(profile, "githubUrl", "GithubUrl") || undefined,
     bio: pickOptionalString(profile, "bio", "Bio") || undefined,
+    inviteMessageTemplate:
+      pickOptionalString(profile, "inviteMessageTemplate", "InviteMessageTemplate") || undefined,
   };
 }
 
@@ -135,6 +146,9 @@ function normalizeCurrentUser(raw: unknown): CurrentUser | null {
 
   const candidateProfile = normalizeCandidateProfile(src, resolvedFullName);
   const hrProfile = normalizeHrProfile(src, resolvedFullName);
+  const provider = pickString(src, "provider", "Provider").toLowerCase() || undefined;
+  const isGoogleLinked =
+    pickBoolean(src, "isGoogleLinked", "IsGoogleLinked") ?? provider === "google";
 
   return {
     id,
@@ -142,6 +156,8 @@ function normalizeCurrentUser(raw: unknown): CurrentUser | null {
     email,
     role,
     avatarUrl,
+    provider,
+    isGoogleLinked,
     candidateProfile,
     hrProfile,
   };

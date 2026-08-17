@@ -76,6 +76,7 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     const timer = setTimeout(() => {
       loadDictionary(l).then((dict) => {
         setLangState(l);
+        document.documentElement.lang = l === "vi" ? "vi-VN" : "en";
         if (l === "vi") setViDict(dict);
         requestAnimationFrame(() => {
           requestAnimationFrame(() => {
@@ -92,6 +93,7 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     if (isLang(saved) && saved !== "en") {
       loadDictionary(saved).then((dict) => {
         setLangState(saved);
+        document.documentElement.lang = saved === "vi" ? "vi-VN" : "en";
         setViDict(dict);
       });
     }

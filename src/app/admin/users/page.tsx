@@ -156,6 +156,14 @@ export default function UserManagementPage() {
       try {
         const data = await getUserById(userId);
         setDetail(data);
+        // Đồng bộ ảnh từ API chi tiết vào hàng bảng (list đôi khi thiếu avatarUrl).
+        if (data.avatarUrl) {
+          setUsers((prev) =>
+            prev.map((row) =>
+              row.id === data.id ? { ...row, avatarUrl: data.avatarUrl } : row
+            )
+          );
+        }
       } catch {
         setDetail(null);
         setDetailError(u.detailLoadError);

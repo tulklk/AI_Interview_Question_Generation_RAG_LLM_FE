@@ -30,6 +30,7 @@ export interface MySubscription {
   currency: string;
   periodStart: string;
   periodEnd: string;
+  cancelAtPeriodEnd?: boolean;
   lastSuccessfulGenerateAt?: string | null;
   limits: SubscriptionLimits;
   askAiUsed: number;
@@ -152,6 +153,7 @@ export function normalizeMySubscription(raw: unknown): MySubscription {
     currency: pickString(src, "currency", "Currency") || "VND",
     periodStart: pickString(src, "periodStart", "PeriodStart"),
     periodEnd: pickString(src, "periodEnd", "PeriodEnd"),
+    cancelAtPeriodEnd: pickBool(src, "cancelAtPeriodEnd", "CancelAtPeriodEnd"),
     lastSuccessfulGenerateAt:
       pickString(src, "lastSuccessfulGenerateAt", "LastSuccessfulGenerateAt") || null,
     limits,

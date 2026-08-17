@@ -213,13 +213,9 @@ export function useLogin() {
     try {
       const verify = await verifyGoogleToken(credential);
 
-      if (verify.linkedToLocalAccount) {
-        addToast("error", lp.useEmailPassword);
-        return;
-      }
-
-      if (!verify.isNewUser) {
+      if (!verify.isNewUser || verify.linkedToLocalAccount) {
         const { role } = await completeGoogleLogin(credential);
+        if (verify.linkedToLocalAccount) addToast("success", lp.googleLinked);
         markLoginWelcomeForRedirect(getRoleRedirect(role));
         await finishGoogleAuth(router, refreshUser, claims, credential, role);
         return;

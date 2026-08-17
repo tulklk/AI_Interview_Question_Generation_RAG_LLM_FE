@@ -12,6 +12,11 @@ export interface CandidateInvitation {
   status: InvitationStatus;
   createdAt: string | null;
   respondedAt: string | null;
+  scheduledAtUtc: string | null;
+  timeZoneId: string | null;
+  meetingMode: string | null;
+  meetingLink: string | null;
+  location: string | null;
 }
 
 function asRecord(v: unknown): Record<string, unknown> | null {
@@ -55,6 +60,11 @@ function normalizeInvitation(raw: unknown): CandidateInvitation | null {
     status: normalizeStatus(pickStr(src, "status") || "PENDING"),
     createdAt: pickNullableStr(src, "createdAt", "sentAt", "invitedAt"),
     respondedAt: pickNullableStr(src, "respondedAt"),
+    scheduledAtUtc: pickNullableStr(src, "scheduledAtUtc", "ScheduledAtUtc"),
+    timeZoneId: pickNullableStr(src, "timeZoneId", "TimeZoneId"),
+    meetingMode: pickNullableStr(src, "meetingMode", "MeetingMode"),
+    meetingLink: pickNullableStr(src, "meetingLink", "MeetingLink"),
+    location: pickNullableStr(src, "location", "Location"),
   };
 }
 

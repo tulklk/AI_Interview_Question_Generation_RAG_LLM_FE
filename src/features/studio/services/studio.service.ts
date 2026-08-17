@@ -403,8 +403,12 @@ export async function publishProject(projectId: string): Promise<void> {
   await apiClient.post(`/api/studio/projects/${projectId}/publish`);
 }
 
-export async function unpublishProject(projectId: string): Promise<void> {
-  await apiClient.post(`/api/studio/projects/${projectId}/unpublish`);
+export async function unpublishProject(projectId: string): Promise<number> {
+  const { data } = await apiClient.post<unknown>(`/api/studio/projects/${projectId}/unpublish`);
+  const rec = data && typeof data === "object" ? (data as Record<string, unknown>) : {};
+  const inner = rec.data && typeof rec.data === "object" ? (rec.data as Record<string, unknown>) : rec;
+  const n = Number(inner.abandonedSessionCount ?? inner.AbandonedSessionCount ?? 0);
+  return Number.isFinite(n) ? Math.max(0, n) : 0;
 }
 
 export async function createShareLink(projectId: string, permission: "View" | "Edit", expiresAt?: string): Promise<ShareLink> {

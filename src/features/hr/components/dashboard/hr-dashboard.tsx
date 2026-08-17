@@ -229,7 +229,6 @@ function sessionStatusBadge(status: GenerationSession["status"], labels: Record<
 
 const CANDIDATE_STATUS_STYLES: Record<RecommendationStatus, string> = {
   NEW: "bg-violet-100 text-violet-700 dark:bg-violet-950/60 dark:text-violet-400",
-  VIEWED: "bg-blue-100 text-blue-600 dark:bg-blue-950/60 dark:text-blue-400",
   SHORTLISTED: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400",
   INVITED: "bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-400",
   DISMISSED: "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-500",
@@ -567,6 +566,35 @@ export function HrDashboard() {
           </motion.div>
         ))}
       </div>
+
+      {data.hiringFunnel && (
+        <div className="hr-glass-card p-5">
+          <div className="mb-4">
+            <h2 className={cn("text-[14px] font-bold", portalHeadingAlt)}>{p.funnel.title}</h2>
+            <p className={cn("text-[11px] mt-0.5", portalSubtextAlt)}>{p.funnel.subtitle}</p>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+            {(
+              [
+                { key: "practicedLast7Days", href: "/hr/candidate-recommendations", value: data.hiringFunnel.practicedLast7Days },
+                { key: "newUnviewed", href: "/hr/candidate-recommendations?unviewed=true", value: data.hiringFunnel.newUnviewed },
+                { key: "shortlisted", href: "/hr/candidate-recommendations?status=SHORTLISTED", value: data.hiringFunnel.shortlisted },
+                { key: "invitedPending", href: "/hr/candidate-recommendations?status=INVITED", value: data.hiringFunnel.invitedPending },
+                { key: "invitedAccepted", href: "/hr/candidate-recommendations?status=INVITED", value: data.hiringFunnel.invitedAccepted },
+              ] as const
+            ).map((col) => (
+              <Link
+                key={col.key}
+                href={col.href}
+                className="rounded-xl border border-gray-100 dark:border-gray-800 px-3 py-3 hover:border-primary/40 transition-colors"
+              >
+                <p className={cn("text-[11px]", portalSubtextAlt)}>{p.funnel[col.key]}</p>
+                <p className={cn("text-xl font-bold tabular-nums mt-1", portalHeadingAlt)}>{col.value}</p>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Charts row */}
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_400px] gap-5">

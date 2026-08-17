@@ -44,8 +44,57 @@ function pickStringArray(obj: Record<string, unknown>, ...keys: string[]): strin
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {
-  if (value && typeof value === "object") return value as Record<string, unknown>;
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    return value as Record<string, unknown>;
+  }
   return null;
+}
+
+const AVATAR_KEYS = [
+  "avatarUrl",
+  "AvatarUrl",
+  "avatarURL",
+  "picture",
+  "Picture",
+  "photoUrl",
+  "PhotoUrl",
+  "profilePictureUrl",
+  "ProfilePictureUrl",
+  "imageUrl",
+  "ImageUrl",
+  "avatar",
+  "Avatar",
+] as const;
+
+function asUrl(val: unknown): string | undefined {
+  if (typeof val === "string" && val.trim()) return val.trim();
+  const rec = asRecord(val);
+  if (!rec) return undefined;
+  return asUrl(rec.url ?? rec.Url ?? rec.secureUrl ?? rec.secure_url);
+}
+
+/** Lấy URL ảnh từ user root hoặc profile lồng nhau (camelCase / PascalCase). */
+function pickAvatarUrl(
+  ...objs: Array<Record<string, unknown> | null | undefined>
+): string | null {
+  for (const obj of objs) {
+    if (!obj) continue;
+    for (const key of AVATAR_KEYS) {
+      const url = asUrl(obj[key]);
+      if (url) return url;
+    }
+  }
+  return null;
+}
+
+/**
+ * Envelope { data: user } thì merge. Không unwrap object phân trang { items }.
+ */
+function unwrapUserRecord(root: Record<string, unknown>): Record<string, unknown> {
+  const nested = asRecord(root.data) ?? asRecord(root.Data);
+  if (!nested) return root;
+  if (Array.isArray(nested.items) || Array.isArray(nested.Items)) return root;
+  return { ...root, ...nested };
 }
 
 function normalizeCandidateProfile(
@@ -66,7 +115,6 @@ function normalizeCandidateProfile(
 
   if (!hasFields && !nested) return undefined;
 
-  const avatarRaw = profile.avatarUrl ?? profile.AvatarUrl;
   return {
     fullName,
     targetRole: pickOptionalString(profile, "targetRole", "TargetRole") || undefined,
@@ -74,8 +122,7 @@ function normalizeCandidateProfile(
       pickOptionalString(profile, "seniorityLevel", "SeniorityLevel") || undefined,
     techStack: pickStringArray(profile, "techStack", "TechStack"),
     phoneNumber: pickOptionalString(profile, "phoneNumber", "PhoneNumber") || undefined,
-    avatarUrl:
-      typeof avatarRaw === "string" ? avatarRaw : avatarRaw === null ? null : undefined,
+    avatarUrl: pickAvatarUrl(profile),
     linkedInUrl: pickOptionalString(profile, "linkedInUrl", "LinkedInUrl") || undefined,
     githubUrl: pickOptionalString(profile, "githubUrl", "GithubUrl") || undefined,
     bio: pickOptionalString(profile, "bio", "Bio") || undefined,
@@ -100,7 +147,6 @@ function normalizeHrProfile(
 
   if (!hasFields && !nested) return undefined;
 
-  const avatarRaw = profile.avatarUrl ?? profile.AvatarUrl;
   const companyId = pickOptionalString(profile, "companyId", "CompanyId");
 
   return {
@@ -109,8 +155,7 @@ function normalizeHrProfile(
     companyName: pickOptionalString(profile, "companyName", "CompanyName") || undefined,
     jobTitle: pickOptionalString(profile, "jobTitle", "JobTitle") || undefined,
     phoneNumber: pickOptionalString(profile, "phoneNumber", "PhoneNumber") || undefined,
-    avatarUrl:
-      typeof avatarRaw === "string" ? avatarRaw : avatarRaw === null ? null : undefined,
+    avatarUrl: pickAvatarUrl(profile),
     linkedInUrl: pickOptionalString(profile, "linkedInUrl", "LinkedInUrl") || undefined,
     bio: pickOptionalString(profile, "bio", "Bio") || undefined,
   };
@@ -120,10 +165,7 @@ function normalizeListItem(raw: unknown): AdminUserListItem | null {
   if (!raw || typeof raw !== "object") return null;
 
   const root = raw as Record<string, unknown>;
-  const src =
-    typeof root.data === "object" && root.data
-      ? (root.data as Record<string, unknown>)
-      : root;
+  const src = unwrapUserRecord(root);
 
   const id = pickString(src, "id", "Id");
   const email = pickString(src, "email", "Email");
@@ -136,9 +178,9 @@ function normalizeListItem(raw: unknown): AdminUserListItem | null {
   const emailVerified = pickBoolean(src, "emailVerified", "EmailVerified", "isEmailVerified", "IsEmailVerified");
   const createdAt =
     pickOptionalString(src, "createdAt", "CreatedAt", "createdDate", "CreatedDate") || undefined;
-  const avatarRaw = src.avatarUrl ?? src.AvatarUrl;
-  const avatarUrl =
-    typeof avatarRaw === "string" ? avatarRaw : avatarRaw === null ? null : undefined;
+  const candidateNested = asRecord(src.candidateProfile) ?? asRecord(src.CandidateProfile);
+  const hrNested = asRecord(src.hrProfile) ?? asRecord(src.HrProfile);
+  const avatarUrl = pickAvatarUrl(src, root, candidateNested, hrNested);
 
   const planCode =
     pickOptionalString(src, "planCode", "PlanCode") || null;
@@ -164,10 +206,7 @@ function normalizeUserDetail(raw: unknown): AdminUserDetail | null {
   if (!base) return null;
 
   const root = raw as Record<string, unknown>;
-  const src =
-    typeof root.data === "object" && root.data
-      ? (root.data as Record<string, unknown>)
-      : root;
+  const src = unwrapUserRecord(root);
 
   const candidateProfile = normalizeCandidateProfile(src, base.fullName);
   const hrProfile = normalizeHrProfile(src, base.fullName);
@@ -180,7 +219,12 @@ function normalizeUserDetail(raw: unknown): AdminUserDetail | null {
   return {
     ...base,
     phoneNumber: phoneNumber || undefined,
-    avatarUrl: base.avatarUrl ?? candidateProfile?.avatarUrl ?? hrProfile?.avatarUrl ?? null,
+    avatarUrl:
+      pickAvatarUrl(src, root) ??
+      base.avatarUrl ??
+      candidateProfile?.avatarUrl ??
+      hrProfile?.avatarUrl ??
+      null,
     candidateProfile,
     hrProfile,
   };
@@ -191,13 +235,13 @@ function extractItemsArray(raw: unknown): unknown[] {
   if (!raw || typeof raw !== "object") return [];
 
   const root = raw as Record<string, unknown>;
-  const nested = root.data;
+  const nested = asRecord(root.data) ?? asRecord(root.Data);
 
-  if (Array.isArray(nested)) return nested;
-  if (nested && typeof nested === "object") {
-    const obj = nested as Record<string, unknown>;
+  if (Array.isArray(root.data)) return root.data as unknown[];
+  if (Array.isArray(root.Data)) return root.Data as unknown[];
+  if (nested) {
     for (const key of ["items", "Items", "users", "Users", "results", "Results"]) {
-      if (Array.isArray(obj[key])) return obj[key] as unknown[];
+      if (Array.isArray(nested[key])) return nested[key] as unknown[];
     }
   }
 
@@ -212,11 +256,10 @@ function extractTotalCount(raw: unknown, fallback: number): number {
   if (!raw || typeof raw !== "object") return fallback;
 
   const root = raw as Record<string, unknown>;
-  const nested = root.data;
-
   const sources = [
     root,
-    nested && typeof nested === "object" ? (nested as Record<string, unknown>) : null,
+    asRecord(root.data),
+    asRecord(root.Data),
   ].filter(Boolean) as Record<string, unknown>[];
 
   for (const src of sources) {

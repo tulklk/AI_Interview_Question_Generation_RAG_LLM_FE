@@ -173,11 +173,14 @@ export function UserTable({
                   >
                     <td className="px-4 py-3">
                       <div className="flex min-w-0 items-center gap-3">
+                        {/* Ảnh tròn 36px nếu có URL; không URL mới hiện chữ viết tắt */}
                         <AvatarCircle
+                          key={user.avatarUrl || user.id}
                           avatarUrl={user.avatarUrl}
                           fullName={user.fullName}
                           size="sm"
-                          className="h-9! w-9! text-xs!"
+                          pixelSize={36}
+                          className="text-xs"
                         />
                         <div className="min-w-0">
                           <p className={cn("truncate font-semibold leading-tight", portalHeadingAlt)}>

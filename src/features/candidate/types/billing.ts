@@ -11,6 +11,7 @@ export interface CandidateSubscription {
   renewalDate?: string;
   startedAt?: string;
   cancelledAt?: string | null;
+  cancelAtPeriodEnd?: boolean;
 }
 
 export interface CandidateBillingUsage {

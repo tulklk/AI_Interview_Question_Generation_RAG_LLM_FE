@@ -146,7 +146,9 @@ export function useStudio() {
     return {
       ...s,
       interviewLengthMinutes: Number.isFinite(minutes) && minutes >= 15 && minutes <= 180 ? minutes : 60,
-      numberOfQuestions: Number.isFinite(questions) && questions >= 5 && questions <= 50 ? questions : 15,
+      numberOfQuestions: Number.isFinite(questions)
+        ? Math.min(50, Math.max(5, questions))
+        : 15,
       difficulty: s.difficulty ?? "Medium",
       questionTone: s.questionTone ?? "Professional",
       includeSampleAnswers: s.includeSampleAnswers ?? true,
@@ -775,10 +777,13 @@ export function useStudio() {
     if (!project) return;
     try {
       if (project.isPublished) {
-        await studioApi.unpublishProject(project.id);
+        const abandoned = await studioApi.unpublishProject(project.id);
         const updated = await studioApi.getProject(project.id);
         setProject(updated);
-        addToast("success", tx.unpublished);
+        addToast(
+          "success",
+          abandoned > 0 ? `${tx.unpublished} Đã hủy ${abandoned} phiên đang làm.` : tx.unpublished
+        );
       } else {
         // BE auto-Save nếu chưa có set, rồi Publish
         await studioApi.publishProject(project.id);
