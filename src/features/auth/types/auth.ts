@@ -57,6 +57,31 @@ export interface GoogleLoginRequest {
   techStack?: string[];
 }
 
+export interface GithubVerifyRequest {
+  code: string;
+  intendedRole?: string;
+}
+
+export interface GithubVerifyResponse {
+  isNewUser: boolean;
+  email: string;
+  name: string;
+  picture?: string;
+  emailVerified: boolean;
+  linkedToLocalAccount: boolean;
+}
+
+export interface GithubLoginRequest {
+  code: string;
+  intendedRole?: string;
+  companyId?: string;
+  companyName?: string;
+  jobTitle?: string;
+  targetRole?: string;
+  seniorityLevel?: string;
+  techStack?: string[];
+}
+
 export interface ResetPasswordRequest {
   token: string;
   newPassword: string;

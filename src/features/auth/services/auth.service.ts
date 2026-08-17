@@ -7,6 +7,9 @@ import type {
   GoogleVerifyRequest,
   GoogleVerifyResponse,
   GoogleLoginRequest,
+  GithubVerifyRequest,
+  GithubVerifyResponse,
+  GithubLoginRequest,
   ResetPasswordRequest,
 } from "@/features/auth/types/auth";
 
@@ -54,6 +57,41 @@ export async function loginWithGoogle(
 ): Promise<LoginResponse> {
   const res = await apiClient.post<LoginResponse>(
     "/api/auth/oauth/google",
+    data
+  );
+  return res.data;
+}
+
+export function normalizeGithubVerifyResponse(raw: unknown): GithubVerifyResponse {
+  const root = asRecord(raw) ?? {};
+  const src = asRecord(root.data) ?? root;
+  return {
+    isNewUser: Boolean(src.isNewUser ?? src.IsNewUser),
+    email: String(src.email ?? src.Email ?? ""),
+    name: String(src.name ?? src.Name ?? ""),
+    picture: (src.picture ?? src.Picture) as string | undefined,
+    emailVerified: Boolean(src.emailVerified ?? src.EmailVerified),
+    linkedToLocalAccount: Boolean(
+      src.linkedToLocalAccount ?? src.LinkedToLocalAccount
+    ),
+  };
+}
+
+export async function verifyGithubOAuth(
+  data: GithubVerifyRequest
+): Promise<GithubVerifyResponse> {
+  const res = await apiClient.post(
+    "/api/auth/oauth/github/verify",
+    data
+  );
+  return normalizeGithubVerifyResponse(res.data);
+}
+
+export async function loginWithGithub(
+  data: GithubLoginRequest
+): Promise<LoginResponse> {
+  const res = await apiClient.post<LoginResponse>(
+    "/api/auth/oauth/github",
     data
   );
   return res.data;

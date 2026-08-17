@@ -25,7 +25,7 @@ const headingWord: Variants = {
 };
 import { ConfirmDialog } from "@/shared/components/ui/confirm-dialog";
 import { SocialOAuthRow } from "@/features/auth/components/social-oauth-buttons";
-import { GoogleLoginOnboarding } from "@/features/auth/components/google-login-onboarding";
+import { OAuthLoginOnboarding } from "@/features/auth/components/oauth-login-onboarding";
 import { useLogin } from "@/features/auth/hooks/use-login";
 
 export function LoginForm() {
@@ -40,6 +40,7 @@ export function LoginForm() {
     rememberMe,
     loading,
     googleLoading,
+    githubLoading,
     fieldErrors,
     unverifiedOpen,
     unverifiedEmail,
@@ -52,6 +53,7 @@ export function LoginForm() {
     setUnverifiedOpen,
     handleSignIn,
     handleGoogleSuccess,
+    handleGithubSuccess,
     handleOnboardingCancel,
     handleResendVerification,
   } = useLogin();
@@ -63,8 +65,9 @@ export function LoginForm() {
 
   if (view === "onboarding" && onboarding) {
     return (
-      <GoogleLoginOnboarding
-        credential={onboarding.credential}
+      <OAuthLoginOnboarding
+        provider={onboarding.provider}
+        identifier={onboarding.identifier}
         claims={onboarding.claims}
         onCancel={handleOnboardingCancel}
       />
@@ -247,6 +250,8 @@ export function LoginForm() {
           googleMode="signin"
           onGoogleSuccess={handleGoogleSuccess}
           onGoogleError={() => addToast("error", lp.loginFailed)}
+          githubLoading={githubLoading}
+          onGithubClick={handleGithubSuccess}
         />
       </motion.div>
 

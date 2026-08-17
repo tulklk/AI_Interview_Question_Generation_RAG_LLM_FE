@@ -1,4 +1,4 @@
-import { clearTokenStorage, getAccessToken } from "@/core/auth/token.service";
+﻿import { clearTokenStorage, getAccessToken } from "@/core/auth/token.service";
 import { clearCachedUserProfile } from "@/core/storage/user-profile-cache";
 
 export { getAccessToken, getRefreshToken, setAuthTokens } from "@/core/auth/token.service";
@@ -39,7 +39,7 @@ export function getRoleRedirect(role: string | null): string {
   const r = (role ?? "").toUpperCase();
   if (r.includes("ADMIN")) return "/admin/dashboard";
   if (r.includes("HR")) return "/hr/dashboard";
-  return "/jobseeker";
+  return "/candidate";
 }
 
 export function extractRole(data: unknown): string | null {

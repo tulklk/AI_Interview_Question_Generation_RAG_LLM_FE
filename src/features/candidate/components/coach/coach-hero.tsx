@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { Bot, Crown, Loader2, Sparkles, Store } from "lucide-react";
@@ -43,18 +43,13 @@ export function CoachHero({
           </div>
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              <h1 className={cn("text-[26px] font-[800] leading-[32px]", portalHeadingAlt)}>{p.title}</h1>
-              <span
-                className={cn(
-                  "inline-flex items-center gap-1 text-[10px] font-[700] uppercase tracking-wide px-2 py-0.5 rounded-full",
-                  isPremium
-                    ? "bg-violet-100 dark:bg-violet-950 text-violet-700 dark:text-violet-300"
-                    : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300"
-                )}
-              >
-                <Crown size={10} />
-                {isPremium ? p.planBadgePremium : p.planBadgeFree}
-              </span>
+              <h1 className="text-[26px] font-[800] leading-[32px] gradient-text-animate">{p.title}</h1>
+              {isPremium && (
+                <span className="inline-flex items-center gap-1 text-[10px] font-[700] uppercase tracking-wide px-2 py-0.5 rounded-full bg-violet-100 dark:bg-violet-950 text-violet-700 dark:text-violet-300">
+                  <Crown size={10} />
+                  {p.planBadgePremium}
+                </span>
+              )}
             </div>
             <p className={cn("text-[13px] leading-[19px] mt-1.5 max-w-xl", portalSubtextAlt)}>{p.subtitle}</p>
           </div>
@@ -71,7 +66,7 @@ export function CoachHero({
             {ctaLabel}
           </button>
           <Link
-            href="/jobseeker/practice"
+            href="/candidate/practice"
             className={cn(
               "inline-flex items-center gap-1.5 h-10 px-4 rounded-lg text-[13px] font-semibold border border-gray-200 dark:border-gray-700 hover:border-primary/40 transition-colors",
               portalHeadingAlt

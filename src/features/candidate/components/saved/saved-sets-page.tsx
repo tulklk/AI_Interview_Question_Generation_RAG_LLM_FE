@@ -1,11 +1,11 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import {
   Bookmark, AlertCircle, RefreshCw,
-  BarChart2, Clock, Users, Star, ChevronRight, Loader2, X,
+  BarChart2, Clock, Users, Star, ChevronRight, ChevronLeft, Loader2, X,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { listBookmarkedQuestionSets, toggleBookmark } from "@/features/candidate/services/question-set.service";
@@ -15,27 +15,36 @@ import type { QuestionSet } from "@/features/candidate/types/jobseeker";
 import { EmptyState } from "@/features/candidate/components/ui/empty-state";
 import { DifficultyPill } from "@/features/candidate/components/ui/pill";
 import { portalHeadingAlt, portalSubtextAlt } from "@/shared/utils/portal-ui";
+import { cleanTitle } from "@/features/candidate/utils/clean-title";
 
 const MAX_SKILLS = 3;
+const PAGE_SIZE = 7;
+
+function getPageNums(current: number, total: number): (number | "…")[] {
+  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+  const left = Math.max(2, current - 1);
+  const right = Math.min(total - 1, current + 1);
+  const nums: (number | "…")[] = [1];
+  if (left > 2) nums.push("…");
+  for (let i = left; i <= right; i++) nums.push(i);
+  if (right < total - 1) nums.push("…");
+  nums.push(total);
+  return nums;
+}
 
 function CompanyLogo({ set }: { set: QuestionSet }) {
-  if (set.companyLogoUrl) {
-    return (
-      // eslint-disable-next-line @next/next/no-img-element
-      <img
-        src={set.companyLogoUrl}
-        alt={set.company}
-        referrerPolicy="no-referrer"
-        loading="lazy"
-        decoding="async"
-        className="w-9 h-9 rounded-lg object-cover border border-gray-100 dark:border-gray-700 shrink-0"
-      />
-    );
-  }
+  const [logoError, setLogoError] = useState(false);
   return (
-    <div className={cn("w-9 h-9 rounded-lg flex items-center justify-center text-white text-xs font-bold shrink-0", set.companyColor)}>
-      {set.companyInitials}
-    </div>
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={(!logoError && set.companyLogoUrl?.trim()) ? set.companyLogoUrl! : "/images/logo.png"}
+      alt={set.company}
+      referrerPolicy="no-referrer"
+      loading="lazy"
+      decoding="async"
+      onError={() => setLogoError(true)}
+      className="w-9 h-9 rounded-lg object-contain border border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-900 p-0.5 shrink-0"
+    />
   );
 }
 
@@ -97,7 +106,7 @@ function SavedRow({
 
       {/* Title + company */}
       <div className="flex-1 min-w-0">
-        <p className={cn("text-[13px] font-semibold leading-tight truncate", portalHeadingAlt)}>{set.title}</p>
+        <p className={cn("text-[13px] font-semibold leading-tight truncate", portalHeadingAlt)}>{cleanTitle(set.title)}</p>
         <p className={cn("text-[11px] mt-0.5 truncate", portalSubtextAlt)}>{set.company}</p>
       </div>
 
@@ -150,7 +159,7 @@ function SavedRow({
       {/* Actions */}
       <div className="flex items-center gap-2 shrink-0">
         <Link
-          href={`/jobseeker/sets/${set.id}`}
+          href={`/candidate/sets/${set.id}`}
           className="flex items-center gap-1 px-3 py-1.5 text-[12px] font-semibold text-white bg-primary hover:bg-primary-hover rounded-lg transition-colors"
         >
           {t.jobseekerMarketplacePage.startPractice}
@@ -178,6 +187,7 @@ export function SavedSetsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
+  const [page, setPage] = useState(1);
 
   useEffect(() => {
     let cancelled = false;
@@ -191,8 +201,30 @@ export function SavedSetsPage() {
   }, [reloadKey]);
 
   function handleRemove(id: string) {
-    setSets((prev) => prev.filter((s) => s.id !== id));
+    setSets((prev) => {
+      const next = prev.filter((s) => s.id !== id);
+      // If removing the last item on the current page, go back one page
+      const newTotalPages = Math.max(1, Math.ceil(next.length / PAGE_SIZE));
+      setPage((p) => Math.min(p, newTotalPages));
+      return next;
+    });
   }
+
+  const totalPages = Math.max(1, Math.ceil(sets.length / PAGE_SIZE));
+  const pageItems = sets.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+  function goToPage(next: number) {
+    if (next < 1 || next > totalPages || next === page) return;
+    setPage(next);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  const navBtnCls = cn(
+    "inline-flex h-8 w-8 items-center justify-center rounded-lg text-[13px] font-medium transition-colors",
+    "border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900",
+    portalSubtextAlt,
+    "hover:border-primary/40 hover:text-primary disabled:opacity-40 disabled:pointer-events-none"
+  );
 
   return (
     <div>
@@ -216,7 +248,7 @@ export function SavedSetsPage() {
 
       {loading ? (
         <div className="hr-glass-card overflow-hidden">
-          {Array.from({ length: 4 }).map((_, i) => (
+          {Array.from({ length: PAGE_SIZE }).map((_, i) => (
             <div key={i} className="flex items-center gap-4 px-5 py-4 border-b border-gray-100 dark:border-gray-800 last:border-0 animate-pulse">
               <div className="w-9 h-9 rounded-lg bg-gray-200 dark:bg-gray-700 shrink-0" />
               <div className="flex-1 space-y-1.5">
@@ -248,27 +280,79 @@ export function SavedSetsPage() {
       ) : sets.length === 0 ? (
         <EmptyState icon={Bookmark} title={p.emptyState} />
       ) : (
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.08, ease: "easeOut" }}
-          className="hr-glass-card overflow-hidden"
-        >
-          {/* Table header */}
-          <div className="flex items-center gap-4 px-5 py-2.5 bg-gray-50 dark:bg-gray-800/60 border-b border-gray-100 dark:border-gray-800">
-            <div className="w-9 shrink-0" />
-            <p className={cn("flex-1 text-[10px] font-semibold uppercase tracking-wider", portalSubtextAlt)}>Question Set</p>
-            <p className={cn("hidden md:block w-56 shrink-0 text-[10px] font-semibold uppercase tracking-wider", portalSubtextAlt)}>Skills</p>
-            <p className={cn("hidden sm:block shrink-0 w-16 text-[10px] font-semibold uppercase tracking-wider", portalSubtextAlt)}>Level</p>
-            <p className={cn("hidden lg:block shrink-0 w-40 text-[10px] font-semibold uppercase tracking-wider", portalSubtextAlt)}>Stats</p>
-            <p className={cn("hidden xl:block shrink-0 w-20 text-[10px] font-semibold uppercase tracking-wider", portalSubtextAlt)}>Rating</p>
-            <div className="shrink-0 w-28" />
-          </div>
+        <>
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.08, ease: "easeOut" }}
+            className="hr-glass-card overflow-hidden"
+          >
+            {/* Table header */}
+            <div className="flex items-center gap-4 px-5 py-2.5 bg-gray-50 dark:bg-gray-800/60 border-b border-gray-100 dark:border-gray-800">
+              <div className="w-9 shrink-0" />
+              <p className={cn("flex-1 text-[10px] font-semibold uppercase tracking-wider", portalSubtextAlt)}>Question Set</p>
+              <p className={cn("hidden md:block w-56 shrink-0 text-[10px] font-semibold uppercase tracking-wider", portalSubtextAlt)}>Skills</p>
+              <p className={cn("hidden sm:block shrink-0 w-16 text-[10px] font-semibold uppercase tracking-wider", portalSubtextAlt)}>Level</p>
+              <p className={cn("hidden lg:block shrink-0 w-40 text-[10px] font-semibold uppercase tracking-wider", portalSubtextAlt)}>Stats</p>
+              <p className={cn("hidden xl:block shrink-0 w-20 text-[10px] font-semibold uppercase tracking-wider", portalSubtextAlt)}>Rating</p>
+              <div className="shrink-0 w-28" />
+            </div>
 
-          {sets.map((set, i) => (
-            <SavedRow key={set.id} set={set} onRemove={handleRemove} index={i} />
-          ))}
-        </motion.div>
+            {pageItems.map((set, i) => (
+              <SavedRow key={set.id} set={set} onRemove={handleRemove} index={i} />
+            ))}
+          </motion.div>
+
+          {/* ── Pagination ── */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-center gap-1.5 mt-6">
+              <button
+                type="button"
+                disabled={page <= 1}
+                onClick={() => goToPage(page - 1)}
+                className={navBtnCls}
+                aria-label="Trang trước"
+              >
+                <ChevronLeft size={15} />
+              </button>
+
+              {getPageNums(page, totalPages).map((num, i) =>
+                num === "…" ? (
+                  <span
+                    key={`ellipsis-${i}`}
+                    className={cn("w-8 text-center text-[13px] select-none", portalSubtextAlt)}
+                  >
+                    …
+                  </span>
+                ) : (
+                  <button
+                    key={num}
+                    type="button"
+                    onClick={() => goToPage(num as number)}
+                    className={cn(
+                      "inline-flex h-8 w-8 items-center justify-center rounded-lg text-[13px] font-medium transition-colors",
+                      num === page
+                        ? "bg-primary text-white shadow-sm scale-105"
+                        : navBtnCls
+                    )}
+                  >
+                    {num}
+                  </button>
+                )
+              )}
+
+              <button
+                type="button"
+                disabled={page >= totalPages}
+                onClick={() => goToPage(page + 1)}
+                className={navBtnCls}
+                aria-label="Trang sau"
+              >
+                <ChevronRight size={15} />
+              </button>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

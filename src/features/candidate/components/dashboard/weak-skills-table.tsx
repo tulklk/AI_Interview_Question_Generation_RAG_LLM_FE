@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
@@ -117,7 +117,7 @@ export function WeakSkillsTable({ skills }: WeakSkillsTableProps) {
                 </td>
                 <td className="py-3">
                   <Link
-                    href={`/jobseeker/practice?skills=${encodeURIComponent(s.skill)}&chip=weak`}
+                    href={`/candidate/practice?skills=${encodeURIComponent(s.skill)}&chip=weak`}
                     className="inline-flex items-center gap-1 text-[12px] font-[600] text-primary hover:text-primary-hover transition-colors"
                   >
                     {p.practiceNow}

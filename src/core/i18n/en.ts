@@ -1,4 +1,4 @@
-export const en = {
+﻿export const en = {
   common: {
     login: "Log in",
     getStarted: "Get Started",
@@ -534,6 +534,8 @@ export const en = {
       "This email is registered with a password. Please sign in with email and password.",
     googleAccountExists: "Welcome back! Redirecting to your dashboard.",
     googleLinked: "Google has been linked to your existing account.",
+    githubAccountExists: "Welcome back! Redirecting to your dashboard.",
+    githubLinked: "GitHub has been linked to your existing account.",
   },
 
   forgotPasswordPage: {
@@ -615,6 +617,7 @@ export const en = {
     continueButton: "Continue",
     backButton: "Back",
     googleSignupSuccess: "Signed in with Google as {{email}}. Please complete your profile.",
+    githubSignupSuccess: "Signed in with GitHub as {{email}}. Please complete your profile.",
     googleStep2Hint: "Complete your company details to start using HireGen AI.",
     profileCompleteSuccess: "Profile saved. Welcome!",
     profileCompleteFailed: "Could not save profile. Please try again.",
@@ -657,6 +660,7 @@ export const en = {
     googleStep2Hint: "Complete your profile to start practicing interviews.",
     googleLinkedAs: "Signed up with Google: {{email}}",
     googleSignupSuccess: "Signed in with Google as {{email}}. Please complete your profile.",
+    githubSignupSuccess: "Signed in with GitHub as {{email}}. Please complete your profile.",
     profileCompleteSuccess: "Profile saved. Welcome aboard!",
     profileCompleteFailed: "Could not save your profile. Please try again.",
   },
@@ -2135,14 +2139,14 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
   jobseekerSidebar: {
     sectionLabel: "Candidate",
     nav: {
-      "/jobseeker/dashboard": "Dashboard",
-      "/jobseeker/practice": "Practice Now",
-      "/jobseeker/coach": "AI Coach",
-      "/jobseeker/saved": "Saved",
-      "/jobseeker/invitations": "Invitations",
-      "/jobseeker/history": "History",
-      "/jobseeker/profile": "Profile",
-      "/jobseeker/settings": "Settings",
+      "/candidate/dashboard": "Dashboard",
+      "/candidate/practice": "Practice Now",
+      "/candidate/coach": "AI Coach",
+      "/candidate/saved": "Saved",
+      "/candidate/invitations": "Invitations",
+      "/candidate/history": "History",
+      "/candidate/profile": "Profile",
+      "/candidate/settings": "Settings",
     },
     practiceNow: {
       title: "Ready to Practice?",
@@ -2156,13 +2160,13 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
 
   jobseekerAppShell: {
     routes: {
-      "/jobseeker/dashboard": "Dashboard",
-      "/jobseeker/practice": "Practice Now",
-      "/jobseeker/coach": "AI Coach",
-      "/jobseeker/saved": "Saved Sets",
-      "/jobseeker/history": "Practice History",
-      "/jobseeker/profile": "My Profile",
-      "/jobseeker/settings": "Settings",
+      "/candidate/dashboard": "Dashboard",
+      "/candidate/practice": "Practice Now",
+      "/candidate/coach": "AI Coach",
+      "/candidate/saved": "Saved Sets",
+      "/candidate/history": "Practice History",
+      "/candidate/profile": "My Profile",
+      "/candidate/settings": "Settings",
     },
     breadcrumb: {
       jobseeker: "Candidate",
@@ -2253,6 +2257,10 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
     remainingToTarget: "{{points}} points left to target.",
     reachedTarget: "Target reached.",
     baselineMark: "Baseline",
+    easy: "Easy",
+    medium: "Medium",
+    hard: "Hard",
+    questionsUnit: "questions",
   },
 
   jobseekerMarketplacePage: {
@@ -2320,6 +2328,7 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
     notAttempted: "Not attempted",
     avgMinutesPrefix: "Avg ",
     avgMinutesSuffix: " min",
+    hoursUnit: "h",
     badgePinned: "Pinned",
     badgeTrending: "Trending",
     loadMoreBtn: "Load more",
@@ -2616,6 +2625,7 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
     },
     retryBtn: "Retry",
     viewBtn: "View",
+    durationUnit: "min",
     noHistory: "No practice sessions yet. Start practicing now!",
     loading: "Loading your practice history…",
     loadFailed: "Failed to load your practice history.",
@@ -2623,6 +2633,11 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
     loadMoreBtn: "Load more",
     loadingMore: "Loading more…",
     pendingScoreTooltip: "AI is still catching up on scoring this session — check back in a bit.",
+    retryUnavailableDialog: {
+      title: "Question Set Unavailable",
+      body: "This question set has been unpublished or removed by HR. You can still view your past results, but you can no longer practice it.",
+      closeBtn: "Got it",
+    },
   },
 
   jobseekerDashboardPage: {

@@ -125,11 +125,18 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // ── Follow OS changes only while preference is "system" ────────────────────
+  // NOTE: Do NOT call onChange() on mount here. The initial theme is already
+  // resolved by the read effect above via resolveTheme(), which checks the OS
+  // media query. Calling onChange() here introduces a stale-closure race:
+  // this effect runs with the initial `preference = "system"` in its closure
+  // even when the read effect has already updated preference to "dark"/"light",
+  // causing the OS-light condition to briefly override a manually-set dark
+  // theme and produce a white flash. This effect only wires up the listener
+  // for *future* OS preference changes.
   useEffect(() => {
     if (preference !== "system") return;
     const mq = window.matchMedia("(prefers-color-scheme: dark)");
     const onChange = () => setThemeState(mq.matches ? "dark" : "light");
-    onChange();
     mq.addEventListener("change", onChange);
     return () => mq.removeEventListener("change", onChange);
   }, [preference]);

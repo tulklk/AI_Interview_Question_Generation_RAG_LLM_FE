@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
@@ -20,6 +20,7 @@ import {
 } from "@/shared/utils/portal-ui";
 import { ConfirmDialog } from "@/shared/components/ui/confirm-dialog";
 import { AiLoadingSpinner } from "@/shared/components/common/ai-loading-spinner";
+import { cleanTitle } from "@/features/candidate/utils/clean-title";
 import { useToast } from "@/shared/providers/toast-context";
 import {
   startPracticeSession,
@@ -44,16 +45,22 @@ const CODE_ANSWER_TEMPLATE_TYPES = [
   "PERFORMANCE_ANALYSIS",
 ] as const;
 
-/** Câu cần ô trả lời dạng code — ưu tiên answerMethod (SCRUM-400); fallback heuristic bộ cũ. */
+/**
+ * Câu cần ô trả lời dạng code.
+ * Điều kiện: phải có nội dung code thực sự (codeSnippet starter hoặc codeTemplateType
+ * thuộc danh sách code), KHÔNG chỉ dựa vào answerMethod="code" vì backend có thể
+ * tag sai cho câu hỏi khái niệm (conceptual).
+ * answerMethod="text" vẫn được dùng để LOẠI TRỪ.
+ */
 function needsCodeAnswer(question: {
   answerMethod?: string | null;
   codeSnippet?: string | null;
   codeTemplateType?: string | null;
 }): boolean {
+  // Nếu backend đánh dấu rõ là text → không bao giờ dùng code box
   const method = (question.answerMethod || "").trim().toLowerCase();
-  if (method === "code") return true;
   if (method === "text") return false;
-  // Fallback bộ cũ chưa có answerMethod
+  // Chỉ bật code box khi có nội dung code thực sự
   if (question.codeSnippet?.trim()) return true;
   const type = (question.codeTemplateType || "").trim().toUpperCase();
   return (CODE_ANSWER_TEMPLATE_TYPES as readonly string[]).includes(type);
@@ -259,6 +266,7 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
   const [abandoning, setAbandoning] = useState(false);
   const [reviewOpen, setReviewOpen] = useState(false);
   const [upgradeOpen, setUpgradeOpen] = useState(false);
+  const [headerLogoError, setHeaderLogoError] = useState(false);
 
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [startedAt, setStartedAt] = useState<string | null>(null);
@@ -640,14 +648,14 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
           );
         }
       }
-      router.push(`/jobseeker/practice/${sid}/result`);
+      router.push(`/candidate/practice/${sid}/result`);
     } catch {
       // BE now enforces the question set's own time limit server-side and can
       // auto-complete a session before our client-side auto-submit reaches it —
       // complete() then 400s even though the session is actually done.
       const existing = await getPracticeSession(sid).catch(() => null);
       if (existing && existing.status !== "IN_PROGRESS") {
-        router.push(`/jobseeker/practice/${sid}/result`);
+        router.push(`/candidate/practice/${sid}/result`);
         return;
       }
       setFinishError(true);
@@ -660,7 +668,7 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
   async function handleSaveAndExit() {
     const sid = sessionIdRef.current;
     if (!sid) {
-      router.push(`/jobseeker/sets/${set.id}`);
+      router.push(`/candidate/sets/${set.id}`);
       return;
     }
 
@@ -689,7 +697,7 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
         }
       }
     }
-    router.push(`/jobseeker/sets/${set.id}`);
+    router.push(`/candidate/sets/${set.id}`);
   }
 
   function handleAbandon() {
@@ -700,7 +708,7 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
         if (typeof window !== "undefined") {
           questions.forEach((q) => window.sessionStorage.removeItem(draftKey(sessionId, q.id)));
         }
-        router.push(`/jobseeker/sets/${set.id}`);
+        router.push(`/candidate/sets/${set.id}`);
       })
       .catch(async () => {
         // Same server-side timeout race as handleFinish — if the session already
@@ -711,7 +719,7 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
           if (typeof window !== "undefined") {
             questions.forEach((q) => window.sessionStorage.removeItem(draftKey(sessionId, q.id)));
           }
-          router.push(`/jobseeker/sets/${set.id}`);
+          router.push(`/candidate/sets/${set.id}`);
           return;
         }
         setAbandoning(false);
@@ -827,19 +835,15 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
       <header className={cn("hr-topbar px-4 md:px-8 h-14 flex items-center justify-between shrink-0 border-b gap-2", portalDivider)}>
         {/* Left: set info */}
         <div className="flex items-center gap-2 min-w-0">
-          {set.companyLogoUrl ? (
-            <img
-              src={set.companyLogoUrl}
-              alt={set.company}
-              className="w-7 h-7 rounded-lg object-cover shrink-0 border border-gray-100/20 dark:border-gray-700"
-            />
-          ) : (
-            <div className={cn("w-7 h-7 rounded-lg text-white text-[11px] font-bold flex items-center justify-center shrink-0", set.companyColor)}>
-              {set.companyInitials}
-            </div>
-          )}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={(!headerLogoError && set.companyLogoUrl?.trim()) ? set.companyLogoUrl! : "/images/logo.png"}
+            alt={set.company ?? "logo"}
+            onError={() => setHeaderLogoError(true)}
+            className="w-7 h-7 rounded-lg object-contain shrink-0 border border-gray-100/20 dark:border-gray-700 bg-white dark:bg-gray-900 p-0.5"
+          />
           <div className="min-w-0 hidden sm:block">
-            <p className={cn("text-[13px] font-semibold leading-none truncate", portalHeadingAlt)}>{set.title}</p>
+            <p className={cn("text-[13px] font-semibold leading-none truncate", portalHeadingAlt)}>{cleanTitle(set.title)}</p>
             <p className={cn("text-[11px] mt-0.5", portalSubtextAlt)}>{set.company}</p>
           </div>
           {resumed && (

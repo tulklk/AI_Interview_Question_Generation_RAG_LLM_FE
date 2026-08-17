@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { ChevronRight, Menu } from "lucide-react";
-import { SearchInput } from "@/shared/components/common/search-input";
 import { NotificationBell, type NotificationItem } from "@/shared/components/common/notification-bell";
 import { UserAvatar } from "@/shared/components/common/user-avatar";
 import { LanguageSwitcher } from "@/shared/components/common/language-switcher";
@@ -116,10 +115,6 @@ export function TopHeader({
       </div>
 
       <div className="flex items-center gap-1.5 md:gap-3 shrink-0">
-        {/* Search — hidden on small mobile */}
-        <div className="hidden sm:block">
-          <SearchInput placeholder={t.topHeader.searchPlaceholder} />
-        </div>
         <ThemeToggle />
         {/* Language switcher — hidden on smallest screens */}
         <div className="hidden sm:block">

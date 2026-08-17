@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
@@ -15,6 +15,7 @@ import { portalHeadingAlt, portalSubtextAlt } from "@/shared/utils/portal-ui";
 import { toggleBookmark } from "@/features/candidate/services/question-set.service";
 import { useToast } from "@/shared/providers/toast-context";
 import { getSkillIcon } from "@/features/candidate/utils/skill-icons";
+import { cleanTitle } from "@/features/candidate/utils/clean-title";
 
 const MAX_VISIBLE = 3;
 
@@ -120,6 +121,7 @@ export function QuestionSetCard({
   const { t } = useLanguage();
   const p = t.jobseekerMarketplacePage;
   const { addToast } = useToast();
+  const [logoError, setLogoError] = useState(false);
   const [showSkills, setShowSkills] = useState(false);
   const skillsBtnRef = useRef<HTMLButtonElement>(null);
   const [bookmarked, setBookmarked] = useState(initialBookmarked);
@@ -170,26 +172,16 @@ export function QuestionSetCard({
 
         {/* Company logo + title + bookmark */}
         <div className="flex items-start gap-3">
-          {/* Company avatar */}
-          {set.companyLogoUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={set.companyLogoUrl}
-              alt={set.company}
-              loading="lazy"
-              decoding="async"
-              className="w-11 h-11 rounded-xl object-cover shrink-0 border border-gray-100 dark:border-gray-700 shadow-sm"
-            />
-          ) : (
-            <div
-              className={cn(
-                "w-11 h-11 rounded-xl flex items-center justify-center text-white text-[13px] font-bold shrink-0 shadow-sm",
-                set.companyColor
-              )}
-            >
-              {set.companyInitials}
-            </div>
-          )}
+          {/* Company avatar — React-state fallback to website logo */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={(!logoError && set.companyLogoUrl?.trim()) ? set.companyLogoUrl! : "/images/logo.png"}
+            alt={set.company}
+            loading="lazy"
+            decoding="async"
+            onError={() => setLogoError(true)}
+            className="w-11 h-11 rounded-xl object-contain shrink-0 border border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-900 p-0.5 shadow-sm"
+          />
 
           {/* Title + company */}
           <div className="flex-1 min-w-0">
@@ -219,7 +211,7 @@ export function QuestionSetCard({
                 </span>
               </div>
             <h3 className={cn("text-[14px] font-bold leading-snug line-clamp-2", portalHeadingAlt)}>
-              {set.title}
+              {cleanTitle(set.title)}
             </h3>
             <p className={cn("text-[11px] mt-0.5 font-medium", portalSubtextAlt)}>{set.company}</p>
           </div>
@@ -327,7 +319,15 @@ export function QuestionSetCard({
         <span className="flex items-center gap-1">
           <Clock size={11} className="shrink-0" />
           {set.avgCompletionMinutes
-            ? `${p.avgMinutesPrefix}${set.avgCompletionMinutes}${p.avgMinutesSuffix}`
+            ? (() => {
+                const m = set.avgCompletionMinutes;
+                if (m < 60) return `${p.avgMinutesPrefix}${m}${p.avgMinutesSuffix}`;
+                const h = Math.floor(m / 60);
+                const rem = m % 60;
+                return rem === 0
+                  ? `${p.avgMinutesPrefix}${h}${p.hoursUnit}`
+                  : `${p.avgMinutesPrefix}${h}${p.hoursUnit} ${rem}${p.avgMinutesSuffix}`;
+              })()
             : `${p.estimatedTime}${set.estimatedTime}`}
         </span>
         {set.attempts !== undefined && (
@@ -344,7 +344,7 @@ export function QuestionSetCard({
       {/* ── CTA footer ── */}
       <div className="px-5 pb-5 pt-3">
         <Link
-          href={`/jobseeker/sets/${set.id}`}
+          href={`/candidate/sets/${set.id}`}
           className="shimmer-button hr-cta-btn flex items-center justify-center gap-2 w-full h-10 rounded-xl text-[13px] font-semibold text-white group-hover:gap-3 transition-[gap] duration-150"
         >
           {p.startPractice}

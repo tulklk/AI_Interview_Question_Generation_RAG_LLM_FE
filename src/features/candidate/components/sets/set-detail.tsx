@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
@@ -25,6 +25,7 @@ import {
   portalMutedBg,
   portalSubtextAlt,
 } from "@/shared/utils/portal-ui";
+import { cleanTitle } from "@/features/candidate/utils/clean-title";
 
 interface SetDetailProps {
   set: QuestionSet;
@@ -70,6 +71,7 @@ export function SetDetail({ set }: SetDetailProps) {
   const [showAllSkills, setShowAllSkills] = useState(false);
   const [navigating, setNavigating] = useState(false);
   const [unpublishedDialogOpen, setUnpublishedDialogOpen] = useState(false);
+  const [logoError, setLogoError] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -134,7 +136,7 @@ export function SetDetail({ set }: SetDetailProps) {
 
     abandonPracticeSession(inProgressSessionId)
       .then(() => {
-        router.push(`/jobseeker/practice/${set.id}`);
+        router.push(`/candidate/practice/${set.id}`);
       })
       .catch(async () => {
         // The old session may have already been auto-completed server-side (BE
@@ -142,7 +144,7 @@ export function SetDetail({ set }: SetDetailProps) {
         // either way there's nothing IN_PROGRESS left, so starting fresh still works.
         const existing = await getPracticeSession(inProgressSessionId).catch(() => null);
         if (existing && existing.status !== "IN_PROGRESS") {
-          router.push(`/jobseeker/practice/${set.id}`);
+          router.push(`/candidate/practice/${set.id}`);
           return;
         }
         setStartingNew(false);
@@ -165,7 +167,7 @@ export function SetDetail({ set }: SetDetailProps) {
     <div>
       {/* Back link */}
       <Link
-        href="/jobseeker"
+        href="/candidate"
         className={cn(
           "inline-flex items-center gap-1.5 text-[13px] font-[500] hover:text-primary transition-colors mb-6",
           portalSubtextAlt
@@ -188,24 +190,30 @@ export function SetDetail({ set }: SetDetailProps) {
             className="hr-glass-card p-6"
           >
             <div className="flex items-start gap-4 mb-5">
-              {/* Company logo */}
-              {set.companyLogoUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={set.companyLogoUrl}
-                  alt={set.company ?? ""}
-                  className="w-12 h-12 rounded-xl object-cover shrink-0 border border-gray-100 dark:border-gray-700"
-                />
-              ) : (
-                <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center text-white text-base font-bold shrink-0", set.companyColor)}>
-                  {set.companyInitials}
-                </div>
-              )}
+              {/* Company logo — React-state fallback to website logo.
+                  logoError=true → falls back to /images/logo.png (website logo).
+                  If even /images/logo.png is missing, shows a neutral initials div. */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                key={logoError ? "fallback" : "primary"}
+                src={(!logoError && set.companyLogoUrl?.trim()) ? set.companyLogoUrl! : "/images/logo.png"}
+                alt={set.company ?? "logo"}
+                onError={(e) => {
+                  // First error: if company logo failed, switch to website logo
+                  if (!logoError) {
+                    setLogoError(true);
+                    return;
+                  }
+                  // Second error: /images/logo.png itself is missing — hide img
+                  (e.currentTarget as HTMLImageElement).style.display = "none";
+                }}
+                className="w-12 h-12 rounded-xl object-contain shrink-0 border border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-900 p-1"
+              />
 
               {/* Title + badge + company — takes remaining width */}
               <div className="flex-1 min-w-0 flex flex-col gap-2">
                 <h1 className={cn("text-[20px] sm:text-[24px] font-extrabold leading-[1.3]", portalHeadingAlt)}>
-                  {set.title}
+                  {cleanTitle(set.title)}
                 </h1>
 
                 {/* Badge · company link */}
@@ -370,7 +378,7 @@ export function SetDetail({ set }: SetDetailProps) {
               <button
                 type="button"
                 disabled={navigating}
-                onClick={() => void checkAndNavigate(`/jobseeker/practice/${set.id}`)}
+                onClick={() => void checkAndNavigate(`/candidate/practice/${set.id}`)}
                 className="shimmer-button flex items-center justify-center gap-2 w-full h-10 text-[14px] font-semibold text-white hr-cta-btn rounded-lg mt-2 disabled:opacity-70 disabled:cursor-not-allowed"
               >
                 {navigating ? (
@@ -444,7 +452,7 @@ export function SetDetail({ set }: SetDetailProps) {
             </p>
             <button
               type="button"
-              onClick={() => router.push("/jobseeker/practice")}
+              onClick={() => router.push("/candidate/practice")}
               className="w-full flex items-center justify-center gap-2 h-10 rounded-xl bg-primary text-white text-[13px] font-semibold hover:bg-primary/90 transition-colors"
             >
               <ArrowLeft size={14} />

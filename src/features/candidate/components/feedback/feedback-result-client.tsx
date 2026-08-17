@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
@@ -27,6 +27,8 @@ import type { QuestionSet } from "@/features/candidate/types/jobseeker";
 import { useLanguage } from "@/shared/providers/language-context";
 import { portalSubtextAlt } from "@/shared/utils/portal-ui";
 import { registerScoringSession, markScoringDone, removeScoringEntry } from "@/features/candidate/components/ui/scoring-progress-badge";
+import { cleanTitle } from "@/features/candidate/utils/clean-title";
+import { isCoachGeneratedSetId } from "@/features/candidate/utils/coach-job-storage";
 import type { XpReward } from "@/features/gamification/types/gamification.types";
 
 // AI scoring can still be in progress right after "complete" — the score comes
@@ -87,6 +89,12 @@ export function FeedbackResultClient() {
 
     // Drill / bộ luyện skill cá nhân: không hỏi đánh giá sao (không phải marketplace).
     if (/^drill\b/i.test(set.title.trim())) {
+      feedbackCheckedRef.current = true;
+      return;
+    }
+
+    // AI Coach-generated sets: không phải marketplace, không hỏi đánh giá.
+    if (isCoachGeneratedSetId(qsId)) {
       feedbackCheckedRef.current = true;
       return;
     }
@@ -278,13 +286,14 @@ export function FeedbackResultClient() {
       pageTitle={p.pageTitle}
       fullWidth
       breadcrumb={[
-        { label: "jobseeker", href: "/jobseeker/dashboard" },
-        { label: "history", href: "/jobseeker/history" },
+        { label: "jobseeker", href: "/candidate/dashboard" },
+        { label: "history", href: "/candidate/history" },
         { label: "feedback" },
       ]}
     >
       {loading && (
-        <div className="py-20 flex items-center justify-center">
+        /* Centre within the content pane (sidebar is w-62.5 = 250 px on lg+) */
+        <div className="fixed inset-0 lg:left-62.5 flex items-center justify-center z-10 pointer-events-none">
           <AiLoadingSpinner text={p.loadingFeedback} subtext={p.loadingFeedbackSub} />
         </div>
       )}
@@ -321,19 +330,22 @@ export function FeedbackResultClient() {
             scoring={scoring}
             scoringTimedOut={scoringTimedOut}
             onRetryScore={retryScoring}
-            setTitle={set?.title}
+            setTitle={set ? cleanTitle(set.title) : undefined}
             companyName={set?.company}
             companyLogoUrl={set?.companyLogoUrl}
             previousScore={previousScore}
             xpReward={xpReward}
           />
 
-          {/* Rating dialog — shows once after completion if no prior feedback */}
-          {session.questionSetId && !/^drill\b/i.test(set?.title?.trim() ?? "") && (
+          {/* Rating dialog — shows once after completion if no prior feedback.
+              Hidden for drill sets and AI Coach-generated sets. */}
+          {session.questionSetId &&
+            !/^drill\b/i.test(set?.title?.trim() ?? "") &&
+            !isCoachGeneratedSetId(session.questionSetId) && (
             <QuestionSetFeedbackDialog
               open={showFeedbackDialog}
               questionSetId={session.questionSetId}
-              questionSetTitle={set?.title}
+              questionSetTitle={set ? cleanTitle(set.title) : undefined}
               onClose={() => setShowFeedbackDialog(false)}
               onSubmitted={() => setShowFeedbackDialog(false)}
             />

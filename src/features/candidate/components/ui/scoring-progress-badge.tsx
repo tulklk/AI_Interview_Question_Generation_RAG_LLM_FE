@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
@@ -241,7 +241,7 @@ export function ScoringProgressBadge() {
       const { sessionId } = entry;
 
       // Let the result page poll itself
-      const onResultPage = pathname === `/jobseeker/practice/${sessionId}/result`;
+      const onResultPage = pathname === `/candidate/practice/${sessionId}/result`;
       if (onResultPage) continue;
 
       // Already polling
@@ -284,12 +284,14 @@ export function ScoringProgressBadge() {
 
   const visible = entries.filter((e) =>
     !dismissed.has(e.sessionId) &&
-    pathname !== `/jobseeker/practice/${e.sessionId}/result`
+    pathname !== `/candidate/practice/${e.sessionId}/result`
   );
   if (visible.length === 0) return null;
 
+  // Renders just card content — no fixed wrapper.
+  // The parent (FloatingBadgeStack in jobseeker-app-shell) owns the position.
   return (
-    <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-2 items-end">
+    <>
       {visible.map((entry) => (
         <AnimatedBadge
           key={entry.sessionId}
@@ -297,7 +299,7 @@ export function ScoringProgressBadge() {
           scoringTitle={b.scoring}
           scoredTitle={b.scored}
           subtitleLabel={b.subtitle}
-          onClick={() => router.push(`/jobseeker/practice/${entry.sessionId}/result`)}
+          onClick={() => router.push(`/candidate/practice/${entry.sessionId}/result`)}
           onDismiss={() => {
             // Remove from localStorage and local display
             writeScoringEntries(
@@ -311,6 +313,6 @@ export function ScoringProgressBadge() {
         <Sparkles size={9} className="text-violet-400" />
         <span className="text-[9px] text-gray-400 dark:text-gray-500 font-medium">HireGen AI</span>
       </div>
-    </div>
+    </>
   );
 }

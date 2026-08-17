@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -90,7 +90,7 @@ export function AiCoachPanel({ recommendations, loading }: AiCoachPanelProps) {
             ))}
           </ul>
           <Link
-            href="/jobseeker/coach"
+            href="/candidate/coach"
             className="inline-flex items-center gap-1.5 text-[12px] font-[600] text-primary hover:text-primary-hover"
           >
             {p.openCoach}
@@ -101,7 +101,7 @@ export function AiCoachPanel({ recommendations, loading }: AiCoachPanelProps) {
 
       {isPremium && items && incomplete.length === 0 && (
         <Link
-          href="/jobseeker/coach"
+          href="/candidate/coach"
           className="inline-flex items-center gap-1.5 text-[12px] font-[600] text-primary hover:text-primary-hover"
         >
           {items.length === 0 ? p.startDiagnostic : p.openCoach}
