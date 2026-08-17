@@ -24,6 +24,11 @@ export function invitation(overrides: Partial<CandidateInvitation> = {}): Candid
     status: "PENDING",
     createdAt: new Date().toISOString(),
     respondedAt: null,
+    scheduledAtUtc: null,
+    timeZoneId: null,
+    meetingMode: null,
+    meetingLink: null,
+    location: null,
     ...overrides,
   };
 }

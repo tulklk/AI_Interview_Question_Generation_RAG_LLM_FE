@@ -6,12 +6,14 @@ import { NotificationsSection } from "@/features/settings/components/notificatio
 
 // Grounded in src/features/settings/components/preferences-section.tsx and
 // notifications-section.tsx — HR's Settings > Preferences / Notifications
-// tabs. Neither had any prior automated coverage. Both Save buttons have no
-// backend to persist to, so each is rendered `disabled` with a
+// tabs. Neither had any prior automated coverage. Notifications' Save button
+// has no backend to persist to, so it's rendered `disabled` with a
 // `title={t.common.comingSoon}` tooltip instead of being left silently
-// non-functional (dead-button fix). Renders each section directly via
-// studio-test-utils.tsx's renderStudio (HrSubscriptionProvider) since
-// PreferencesSection reads useHrSubscription() for its AI-model gating.
+// non-functional (dead-button fix). Preferences has no Save button at all —
+// the theme picker persists instantly on click, so its footer CTA is instead
+// "Send Feedback", opening SubmitFeedbackDialog. Renders each section
+// directly via studio-test-utils.tsx's renderStudio (HrSubscriptionProvider)
+// since PreferencesSection reads useHrSubscription() for its AI-model gating.
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn(), prefetch: vi.fn() }),
@@ -23,13 +25,15 @@ beforeEach(async () => {
 });
 
 describe("HR Settings — Preferences", () => {
-  test('HRPREF-1: the "Save Changes" button is disabled with a Coming soon tooltip', async () => {
+  test('HRPREF-1: the "Send Feedback" button opens the feedback dialog', async () => {
     renderStudio(<PreferencesSection />);
     await screen.findByText("Preferences", {}, { timeout: 10000 });
 
-    const saveBtn = screen.getByRole("button", { name: "Save Changes" });
-    expect(saveBtn).toBeDisabled();
-    expect(saveBtn).toHaveAttribute("title", "Coming soon");
+    const sendFeedbackBtn = screen.getByRole("button", { name: "Send Feedback" });
+    expect(sendFeedbackBtn).toBeEnabled();
+
+    fireEvent.click(sendFeedbackBtn);
+    expect(await screen.findByText("Share Your Feedback")).toBeInTheDocument();
   });
 });
 

@@ -15,14 +15,15 @@ import { MarketplacePage } from "@/features/candidate/components/marketplace/mar
 // mocking question-set.service / admin-company.service at the module boundary.
 // Maps to Excel scenario group "Question Set Marketplace (Practice Now)".
 //
-// Key thing under test: the component's own documented workaround — "BE only
-// reliably filters by CompanyId. Difficulty, Skills, SortBy, and Keyword are
-// applied client-side on a large fetched batch so every filter actually
-// works" — i.e. search/difficulty filtering must work even if the mocked BE
-// call ignores those params entirely (matching the real backend's behavior).
+// Key thing under test: marketplace-page.tsx now forwards keyword/difficulty/
+// skills/companyId/sortBy straight to listQuestionSets and renders whatever
+// the backend returns (no client-side re-filter). mockAll()'s listQuestionSets
+// implementation below stands in for a correctly-filtering backend so these
+// tests still exercise "typing narrows the results" end to end.
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn(), prefetch: vi.fn() }),
+  useSearchParams: () => new URLSearchParams(),
 }));
 
 vi.mock("@/features/candidate/services/question-set.service", async () => {
@@ -45,6 +46,22 @@ const SETS = [
   marketSet({ id: "s3", title: "Junior QA Screening", company: "Acme Corp", difficulty: "Easy", skills: ["Manual Testing"] }),
 ];
 
+// Mimics a correctly-filtering backend: narrows SETS by whichever params
+// marketplace-page.tsx actually sends (keyword matches title/company/skill).
+function filterSets(params: { keyword?: string; difficulty?: string; skills?: string[]; companyId?: string }) {
+  const keyword = params.keyword?.trim().toLowerCase();
+  return SETS.filter((s) => {
+    if (params.difficulty && params.difficulty !== "All" && s.difficulty !== params.difficulty) return false;
+    if (params.companyId && s.company !== params.companyId) return false;
+    if (params.skills?.length && !params.skills.some((skill) => s.skills.includes(skill))) return false;
+    if (keyword) {
+      const hay = [s.title, s.company, ...s.skills].join(" ").toLowerCase();
+      if (!hay.includes(keyword)) return false;
+    }
+    return true;
+  });
+}
+
 function mockAll() {
   Object.values(questionSetApi).forEach((fn) => {
     if (typeof fn === "function" && "mockReset" in fn) (fn as ReturnType<typeof vi.fn>).mockReset();
@@ -52,7 +69,10 @@ function mockAll() {
   Object.values(companyApi).forEach((fn) => {
     if (typeof fn === "function" && "mockReset" in fn) (fn as ReturnType<typeof vi.fn>).mockReset();
   });
-  questionSetApi.listQuestionSets.mockResolvedValue({ items: SETS, totalCount: SETS.length } as never);
+  questionSetApi.listQuestionSets.mockImplementation(async (params = {}) => {
+    const items = filterSets(params as { keyword?: string; difficulty?: string; skills?: string[]; companyId?: string });
+    return { items, totalCount: items.length } as never;
+  });
   questionSetApi.getBookmarkedSetIds.mockResolvedValue(new Set() as never);
   companyApi.listCompanies.mockResolvedValue({ items: [], totalCount: 0 } as never);
 }

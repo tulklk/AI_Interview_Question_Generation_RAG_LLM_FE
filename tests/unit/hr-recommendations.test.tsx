@@ -12,6 +12,7 @@ import { RecommendationsList } from "@/features/hr/components/recommendations/re
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn(), prefetch: vi.fn() }),
+  useSearchParams: () => new URLSearchParams(),
 }));
 
 vi.mock("@/features/hr/services/recommendation.service", async () => {
@@ -136,17 +137,27 @@ describe("HR Recommendations — shortlist / dismiss actions", () => {
   });
 
   test("REC-8: a DISMISSED candidate can still be shortlisted again (not a terminal state)", async () => {
+    // DISMISSED isn't terminal, but re-acting on it now goes through an
+    // explicit Restore step first (recommendations-list.tsx canRestore/
+    // handleRestore) rather than exposing Shortlist directly — restoring
+    // flips the item back to NEW (onStatusChange), which is what makes
+    // Shortlist reappear.
     recommendationApi.listRecommendations.mockResolvedValue({
       items: [recommendation({ id: "rec-1", candidateName: "Nguyen Van A", status: "DISMISSED" })],
       totalCount: 1,
     } as never);
+    recommendationApi.restoreRecommendation.mockResolvedValue(undefined as never);
     recommendationApi.shortlistRecommendation.mockResolvedValue(undefined as never);
     const user = userEvent.setup();
     renderWithProviders(<RecommendationsList />);
     await screen.findByText("Nguyen Van A", {}, { timeout: 10000 });
 
-    const shortlistBtn = screen.getByTitle("Shortlist");
-    expect(shortlistBtn).toBeInTheDocument();
+    expect(screen.queryByTitle("Shortlist")).not.toBeInTheDocument();
+    await user.click(screen.getByTitle("Restore"));
+
+    await waitFor(() => expect(recommendationApi.restoreRecommendation).toHaveBeenCalledWith("rec-1"));
+
+    const shortlistBtn = await screen.findByTitle("Shortlist", {}, { timeout: 10000 });
     await user.click(shortlistBtn);
 
     await waitFor(() => expect(recommendationApi.shortlistRecommendation).toHaveBeenCalledWith("rec-1"));

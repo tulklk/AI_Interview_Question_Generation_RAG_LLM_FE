@@ -31,6 +31,7 @@ function draft(status: "DRAFT" | "PUBLISHED") {
 vi.mock("next/navigation", () => ({
   useParams: () => ({ id: QS_ID }),
   useRouter: () => ({ push: vi.fn(), replace: vi.fn(), prefetch: vi.fn() }),
+  useSearchParams: () => new URLSearchParams(),
 }));
 
 vi.mock("@/features/hr/components/layout/app-shell", () => ({

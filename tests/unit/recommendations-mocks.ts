@@ -8,6 +8,7 @@ export function recommendationServiceMockFactory() {
     dismissRecommendation: vi.fn(),
     inviteRecommendation: vi.fn(),
     sendOffer: vi.fn(),
+    restoreRecommendation: vi.fn(),
   };
 }
 
@@ -27,6 +28,14 @@ export function recommendation(overrides: Partial<CandidateRecommendation> = {})
     recommendationReason: null,
     invitationResponseMessage: null,
     invitationSharedPhoneNumber: null,
+    latestOfferStatus: null,
+    viewedAt: null,
+    fitPercent: null,
+    invitationScheduledAtUtc: null,
+    invitationTimeZoneId: null,
+    invitationMeetingMode: null,
+    invitationMeetingLink: null,
+    invitationLocation: null,
     ...overrides,
   };
 }

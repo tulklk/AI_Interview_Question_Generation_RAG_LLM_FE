@@ -18,10 +18,11 @@ import { HrBillingSubscription } from "@/features/settings/components/hr-billing
 // boundary (including listSubscriptionPlans) — this file additionally mocks
 // @/features/hr/services/hr-billing.service for payment history.
 //
-// NOTE 1: "Downgrade to Free" text appears in 3 places once the cancel modal
-// is open (the Free plan card's own CTA, the modal's own <h2> title, and the
-// modal's confirm button) — queries below scope to the heading role to avoid
-// ambiguity, same gotcha as the invitations/HR-history files.
+// NOTE 1: the Free plan card's CTA and the cancel modal's confirm button both
+// read "Cancel renewal" (sub.cancelConfirmBtn); the modal's own <h2> title is
+// the distinct "Cancel Premium renewal" (sub.cancelModalTitle) — queries
+// below scope to the heading role to avoid ambiguity between the two
+// same-text buttons, same gotcha as the invitations/HR-history files.
 // NOTE 2: this component renders a fairly large plan-comparison grid; every
 // test here gets an explicit 15000ms timeout since a plain findByText's
 // 10000ms inner wait can otherwise still lose to Vitest's 5000ms per-test
@@ -177,17 +178,17 @@ describe("HR Billing — payment history", () => {
 
 describe("HR Billing — cancel to Free", () => {
   test(
-    "BILL-5: clicking Downgrade to Free opens a confirm dialog without cancelling immediately",
+    "BILL-5: clicking Cancel renewal opens a confirm dialog without cancelling immediately",
     async () => {
       (await getMockedGetMySubscription()).mockResolvedValue(premiumSubscription() as never);
       const user = userEvent.setup();
       renderStudio(<HrBillingSubscription />);
       await findFirstText("Premium");
 
-      const downgradeButtons = await screen.findAllByRole("button", { name: "Downgrade to Free" }, { timeout: 10000 });
+      const downgradeButtons = await screen.findAllByRole("button", { name: "Cancel renewal" }, { timeout: 10000 });
       await user.click(downgradeButtons[0]);
 
-      expect(await screen.findByRole("heading", { name: "Downgrade to Free" }, { timeout: 10000 })).toBeInTheDocument();
+      expect(await screen.findByRole("heading", { name: "Cancel Premium renewal" }, { timeout: 10000 })).toBeInTheDocument();
       expect(screen.getByText("Keep Premium")).toBeInTheDocument();
     },
     15000
@@ -201,9 +202,9 @@ describe("HR Billing — cancel to Free", () => {
       renderStudio(<HrBillingSubscription />);
       await findFirstText("Premium");
 
-      const downgradeButtons = await screen.findAllByRole("button", { name: "Downgrade to Free" }, { timeout: 10000 });
+      const downgradeButtons = await screen.findAllByRole("button", { name: "Cancel renewal" }, { timeout: 10000 });
       await user.click(downgradeButtons[0]);
-      await screen.findByRole("heading", { name: "Downgrade to Free" }, { timeout: 10000 });
+      await screen.findByRole("heading", { name: "Cancel Premium renewal" }, { timeout: 10000 });
 
       await user.click(screen.getByRole("button", { name: "Keep Premium" }));
 
@@ -211,14 +212,14 @@ describe("HR Billing — cancel to Free", () => {
       // heading stays mounted briefly after the click — wait for it to be removed
       // rather than asserting synchronously.
       await waitFor(() =>
-        expect(screen.queryByRole("heading", { name: "Downgrade to Free" })).not.toBeInTheDocument()
+        expect(screen.queryByRole("heading", { name: "Cancel Premium renewal" })).not.toBeInTheDocument()
       );
     },
     15000
   );
 
   test(
-    "BILL-7: confirming Downgrade to Free keeps Premium active until period end — must NOT drop to Free immediately",
+    "BILL-7: confirming Cancel renewal keeps Premium active until period end — must NOT drop to Free immediately",
     async () => {
       // Backend is being fixed (in progress as of 2026-08-14) to stop
       // downgrading the instant /cancel resolves and instead keep the plan on
@@ -241,26 +242,26 @@ describe("HR Billing — cancel to Free", () => {
       renderStudio(<HrBillingSubscription />);
       await findFirstText("Premium");
 
-      const downgradeButtons = await screen.findAllByRole("button", { name: "Downgrade to Free" }, { timeout: 10000 });
+      const downgradeButtons = await screen.findAllByRole("button", { name: "Cancel renewal" }, { timeout: 10000 });
       await user.click(downgradeButtons[0]);
-      await screen.findByRole("heading", { name: "Downgrade to Free" }, { timeout: 10000 });
+      await screen.findByRole("heading", { name: "Cancel Premium renewal" }, { timeout: 10000 });
 
-      const confirmButtons = screen.getAllByRole("button", { name: "Downgrade to Free" });
+      const confirmButtons = screen.getAllByRole("button", { name: "Cancel renewal" });
       await user.click(confirmButtons[confirmButtons.length - 1]);
 
       const cancelMock = await getMockedCancelSubscriptionSandbox();
       await waitFor(() => expect(cancelMock).toHaveBeenCalledTimes(1));
       await waitFor(() =>
-        expect(screen.queryByRole("heading", { name: "Downgrade to Free" })).not.toBeInTheDocument()
+        expect(screen.queryByRole("heading", { name: "Cancel Premium renewal" })).not.toBeInTheDocument()
       );
 
       // isPremium must still be true (periodEnd honored, not reverted to
-      // Free): the Free-tier card's CTA only reads as "Downgrade to Free"
+      // Free): the Free-tier card's CTA only reads as "Cancel renewal"
       // while isPremium is true (hr-billing-subscription.tsx:494) — if the
       // old immediate-downgrade bug were still present, planId would have
       // flipped to HR_FREE and this button would no longer exist anywhere.
       expect(
-        await screen.findByRole("button", { name: "Downgrade to Free" }, { timeout: 10000 })
+        await screen.findByRole("button", { name: "Cancel renewal" }, { timeout: 10000 })
       ).toBeInTheDocument();
     },
     15000

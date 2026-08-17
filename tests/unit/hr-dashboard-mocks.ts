@@ -41,6 +41,7 @@ export function dashboardAggregate(overrides: Partial<HrDashboardData> = {}): Hr
       { id: "rec-1", candidateName: "Nguyen Van A", candidateEmail: "a@example.com", targetRole: "Backend Developer", score: 88, status: "NEW" },
     ],
     insights: { weekOverWeekTrend: "up", weekOverWeekDelta: 12 },
+    hiringFunnel: null,
     ...overrides,
   };
 }

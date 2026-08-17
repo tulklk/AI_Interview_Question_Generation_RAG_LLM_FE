@@ -101,7 +101,12 @@ test("UI016-1: the AI loading spinner renders with its status text while a plan 
 
   expect(await screen.findByText("Senior Backend Developer Interview Plan", {}, { timeout: 10000 })).toBeInTheDocument();
   expect(document.querySelector(".ai-spin-outer")).not.toBeInTheDocument();
-}, 15000);
+  // The two sequential findByText calls above can each legitimately take up
+  // to their own 10000ms under load, plus the mock's 500ms delay — worst
+  // case ~20500ms, which exceeded the old 15000ms outer test timeout and
+  // made this test flake under CI/parallel-run load even though nothing was
+  // actually broken. Give it real headroom instead of budgeting the happy path.
+}, 25000);
 
 test('UI010-2: the "Generate Questions" CTA shows a disabled "Generating…" state while the request is in flight', async () => {
   bootstrapStudio(studioApi as never, {

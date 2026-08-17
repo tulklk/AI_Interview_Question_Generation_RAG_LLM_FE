@@ -1,6 +1,6 @@
 import { describe, test, expect, vi, beforeEach } from "vitest";
 import userEvent from "@testing-library/user-event";
-import { screen, fireEvent } from "@testing-library/react";
+import { screen, fireEvent, waitFor } from "@testing-library/react";
 import { renderWithProviders } from "./test-utils";
 import { ProfileSection } from "@/features/settings/components/profile-section";
 
@@ -138,9 +138,14 @@ describe("AUTH007 — HR profile", () => {
     const file = new File([new Uint8Array([0x89, 0x50, 0x4e, 0x47])], "avatar.png", { type: "image/png" });
     await user.upload(fileInput, file);
 
-    expect(await screen.findByRole("img", { name: /nguyen van qa/i })).toHaveAttribute(
-      "src",
-      expect.stringContaining("avatar123.png")
-    );
+    // AvatarCircle intentionally renders alt="" (decorative — the candidate's
+    // name is always shown as adjacent text, so it'd otherwise be redundant
+    // screen-reader noise) — per ARIA, alt="" gives the <img> an implicit
+    // role of "presentation", removing it from the a11y tree entirely, so
+    // getByRole("img", ...) can never find it. Query the element directly.
+    await waitFor(() => {
+      const img = document.querySelector("img");
+      expect(img).toHaveAttribute("src", expect.stringContaining("avatar123.png"));
+    });
   });
 });
