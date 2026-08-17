@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { listRecommendations } from "@/features/hr/services/recommendation.service";
-import { getHrDashboard } from "@/features/hr/services/hr-dashboard.service";
+import { getHrDashboard, type HrDashboardHiringFunnel } from "@/features/hr/services/hr-dashboard.service";
 import type { GenerationSession, QuestionType, DifficultyLevel } from "@/features/interview/types/generation-session";
 import type { CandidateRecommendation } from "@/features/hr/services/recommendation.service";
 
@@ -29,6 +29,7 @@ export interface HrDashboardData {
   questionTypeDistribution: QuestionTypeCount[];
   recentSessions: GenerationSession[];
   weekOverWeekTrend: "up" | "down" | "flat" | null;
+  hiringFunnel: HrDashboardHiringFunnel | null;
   loading: boolean;
   error: boolean;
   reload: () => void;
@@ -85,6 +86,14 @@ function toRecommendationStub(row: {
     status: row.status,
     invitationResponseMessage: null,
     invitationSharedPhoneNumber: null,
+    latestOfferStatus: null,
+    viewedAt: null,
+    fitPercent: null,
+    invitationScheduledAtUtc: null,
+    invitationTimeZoneId: null,
+    invitationMeetingMode: null,
+    invitationMeetingLink: null,
+    invitationLocation: null,
   };
 }
 
@@ -149,6 +158,7 @@ export function useHrDashboard(): HrDashboardData {
       questionTypeDistribution: aggregate.questionTypeDistribution,
       recentSessions,
       weekOverWeekTrend: aggregate.insights?.weekOverWeekTrend ?? null,
+      hiringFunnel: aggregate.hiringFunnel,
       loading,
       error,
       reload,
@@ -168,6 +178,7 @@ export function useHrDashboard(): HrDashboardData {
     questionTypeDistribution: [],
     recentSessions: [],
     weekOverWeekTrend: null,
+    hiringFunnel: null,
     loading,
     error,
     reload,

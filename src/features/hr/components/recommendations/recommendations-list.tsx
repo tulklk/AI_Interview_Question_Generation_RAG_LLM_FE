@@ -3,11 +3,12 @@
 import { useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import {
   Users, RefreshCw, AlertCircle, Search,
   ChevronLeft, ChevronRight, Star, X as XIcon,
-  Mail, CheckCircle2, Loader2, Send, SlidersHorizontal, Phone,
+  Mail, CheckCircle2, Loader2, Send, SlidersHorizontal, Phone, RotateCcw,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { useLanguage, type Lang } from "@/shared/providers/language-context";
@@ -19,11 +20,14 @@ import {
   dismissRecommendation,
   inviteRecommendation,
   sendRecommendationOffer,
+  restoreRecommendation,
   type CandidateRecommendation,
   type RecommendationStatus,
   type RecommendationSortBy,
   type RecommendationSortDir,
 } from "@/features/hr/services/recommendation.service";
+import { getCurrentUser } from "@/features/auth/services/user.service";
+import { InviteScheduleFields, defaultInviteSchedule, toInvitePayload } from "./invite-schedule-fields";
 import {
   portalHeading,
   portalSubtext,
@@ -69,13 +73,12 @@ function ScoreBadge({ score }: { score: number }) {
 function StatusBadge({ status, labels }: { status: RecommendationStatus; labels: Record<string, string> }) {
   const styles: Record<RecommendationStatus, string> = {
     NEW:         "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400",
-    VIEWED:      "bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:text-blue-400",
     SHORTLISTED: "bg-violet-100 text-violet-700 dark:bg-violet-950/60 dark:text-violet-400",
     INVITED:     "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400",
     DISMISSED:   "bg-gray-100 text-gray-400 dark:bg-gray-800 dark:text-gray-500",
   };
   const text: Record<RecommendationStatus, string> = {
-    NEW: labels.new, VIEWED: labels.viewed,
+    NEW: labels.new,
     SHORTLISTED: labels.shortlisted, INVITED: labels.invited, DISMISSED: labels.dismissed,
   };
   return (
@@ -105,6 +108,7 @@ function buildDefaultInviteMessage(template: string, rec: CandidateRecommendatio
 
 function InviteModal({ rec, onClose, onSent, labels }: InviteModalProps) {
   const [message, setMessage] = useState(() => buildDefaultInviteMessage(labels.defaultMessage, rec));
+  const [schedule, setSchedule] = useState(defaultInviteSchedule);
   const [sending, setSending] = useState(false);
   const { addToast } = useToast();
   const { t } = useLanguage();
@@ -116,6 +120,10 @@ function InviteModal({ rec, onClose, onSent, labels }: InviteModalProps) {
       if (e.key === "Escape") onClose();
     }
     window.addEventListener("keydown", handleKeyDown);
+    void getCurrentUser().then((u) => {
+      const tpl = u.hrProfile?.inviteMessageTemplate?.trim();
+      if (tpl) setMessage(buildDefaultInviteMessage(tpl, rec));
+    }).catch(() => undefined);
     return () => {
       document.body.style.overflow = "";
       window.removeEventListener("keydown", handleKeyDown);
@@ -126,7 +134,7 @@ function InviteModal({ rec, onClose, onSent, labels }: InviteModalProps) {
   async function handleSend() {
     setSending(true);
     try {
-      await inviteRecommendation(rec.id, message);
+      await inviteRecommendation(rec.id, toInvitePayload(message, schedule));
       onSent(rec.id);
       addToast("success", p.inviteSuccess);
       onClose();
@@ -184,6 +192,7 @@ function InviteModal({ rec, onClose, onSent, labels }: InviteModalProps) {
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto px-5 py-4">
+          <InviteScheduleFields value={schedule} onChange={setSchedule} labels={labels} />
           <textarea
             value={message}
             onChange={(e) => setMessage(e.target.value)}
@@ -362,11 +371,13 @@ interface RowProps {
   lang: Lang;
   labels: ReturnType<typeof useLanguage>["t"]["hrRecommendationsPage"];
   index: number;
+  selected: boolean;
+  onToggleSelect: (rec: CandidateRecommendation) => void;
   onStatusChange: (id: string, status: RecommendationStatus) => void;
 }
 
-function CandidateRow({ rec, lang, labels, index, onStatusChange }: RowProps) {
-  const [busy, setBusy] = useState<"shortlist" | "dismiss" | null>(null);
+function CandidateRow({ rec, lang, labels, index, selected, onToggleSelect, onStatusChange }: RowProps) {
+  const [busy, setBusy] = useState<"shortlist" | "dismiss" | "restore" | null>(null);
   const [showInvite, setShowInvite] = useState(false);
   const [showOffer, setShowOffer] = useState(false);
   const { addToast } = useToast();
@@ -377,10 +388,21 @@ function CandidateRow({ rec, lang, labels, index, onStatusChange }: RowProps) {
   // mời"), so DISMISSED isn't fully terminal like INVITED is — keep the
   // shortlist action available instead of hiding every action.
   const canRestore = rec.status === "DISMISSED";
+  const unread = rec.status === "NEW" && !rec.viewedAt;
   const initials = getInitials(rec.candidateName || rec.candidateEmail);
   const visibleSkills = rec.techStack.slice(0, 3);
   const extraSkills = rec.techStack.length - 3;
   const hasContact = !!(rec.invitationResponseMessage || rec.invitationSharedPhoneNumber);
+
+  async function handleRestore() {
+    setBusy("restore");
+    try {
+      await restoreRecommendation(rec.id);
+      onStatusChange(rec.id, "NEW");
+      addToast("success", labels.restoreSuccess);
+    } catch { addToast("error", labels.restoreFailed); }
+    finally { setBusy(null); }
+  }
 
   async function handleShortlist() {
     setBusy("shortlist");
@@ -426,6 +448,18 @@ function CandidateRow({ rec, lang, labels, index, onStatusChange }: RowProps) {
         {/* Left accent bar */}
         <div className={cn("absolute left-0 top-3 bottom-3 w-0.75 rounded-full opacity-0 group-hover:opacity-100 transition-opacity", accentBar)} />
 
+        <div className="flex items-center gap-2 shrink-0">
+          <input
+            type="checkbox"
+            checked={selected}
+            onChange={() => onToggleSelect(rec)}
+            className="rounded border-gray-300"
+            aria-label={labels.compareBar}
+          />
+          {unread && (
+            <span title={c.unread} className="w-2 h-2 rounded-full bg-violet-500 shrink-0" />
+          )}
+        </div>
         {/* Avatar */}
         <div className={cn(
           "w-11 h-11 rounded-xl text-white text-[13px] font-bold flex items-center justify-center shrink-0 shadow-sm",
@@ -442,6 +476,11 @@ function CandidateRow({ rec, lang, labels, index, onStatusChange }: RowProps) {
               {rec.candidateName || "—"}
             </p>
             <StatusBadge status={rec.status} labels={c} />
+            {typeof rec.fitPercent === "number" && (
+              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-cyan-50 text-cyan-700 dark:bg-cyan-950/40 dark:text-cyan-400">
+                {c.fitPercent} {rec.fitPercent}%
+              </span>
+            )}
             {hasContact && (
               <span
                 title={c.contactShared}
@@ -521,14 +560,21 @@ function CandidateRow({ rec, lang, labels, index, onStatusChange }: RowProps) {
                 </button>
               </>
             ) : canRestore ? (
-              <button type="button" onClick={() => void handleShortlist()} disabled={busy !== null}
-                title={c.shortlistBtn}
+              <button type="button" onClick={() => void handleRestore()} disabled={busy !== null}
+                title={c.restoreBtn}
                 className="h-8 w-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-violet-600 dark:hover:text-violet-400 hover:bg-violet-50 dark:hover:bg-violet-950/40 transition-colors disabled:opacity-40">
-                {busy === "shortlist" ? <Loader2 size={14} className="animate-spin" /> : <Star size={14} />}
+                {busy === "restore" ? <Loader2 size={14} className="animate-spin" /> : <RotateCcw size={14} />}
               </button>
             ) : null}
-            <button type="button" onClick={() => setShowOffer(true)} disabled={busy !== null}
-              title={labels.offer.btnLabel}
+            <button
+              type="button"
+              onClick={() => setShowOffer(true)}
+              disabled={busy !== null || ["SENT", "ACCEPTED"].includes((rec.latestOfferStatus ?? "").toUpperCase())}
+              title={
+                ["SENT", "ACCEPTED"].includes((rec.latestOfferStatus ?? "").toUpperCase())
+                  ? (rec.latestOfferStatus?.toUpperCase() === "ACCEPTED" ? labels.offer.alreadyAccepted : labels.offer.alreadySent)
+                  : labels.offer.btnLabel
+              }
               className="h-8 w-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-amber-600 dark:hover:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/40 transition-colors disabled:opacity-40">
               <Send size={14} />
             </button>
@@ -575,6 +621,7 @@ const PAGE_SIZE = 10;
 const STATUS_TABS: Array<{ key: string; value: string }> = [
   { key: "allStatuses",       value: "" },
   { key: "statusNew",         value: "NEW" },
+  { key: "statusUnviewed",    value: "UNVIEWED" },
   { key: "statusShortlisted", value: "SHORTLISTED" },
   { key: "statusInvited",     value: "INVITED" },
   { key: "statusDismissed",   value: "DISMISSED" },
@@ -599,16 +646,25 @@ const SORT_OPTIONS: SortOption[] = [
 export function RecommendationsList() {
   const { t, lang } = useLanguage();
   const p = t.hrRecommendationsPage;
+  const searchParams = useSearchParams();
 
   const [items, setItems] = useState<CandidateRecommendation[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [page, setPage] = useState(1);
-  const [statusFilter, setStatusFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState(searchParams.get("status") ?? "");
   const [minScore, setMinScore] = useState<number | undefined>(undefined);
   const [sortKey, setSortKey] = useState("sortScoreDesc");
   const [searchSet, setSearchSet] = useState("");
+  const [selected, setSelected] = useState<CandidateRecommendation[]>([]);
+  const { addToast } = useToast();
+
+  useEffect(() => {
+    if (searchParams.get("unviewed") === "true") setStatusFilter("UNVIEWED");
+    const st = searchParams.get("status");
+    if (st) setStatusFilter(st);
+  }, [searchParams]);
 
   const sortOption = SORT_OPTIONS.find((o) => o.key === sortKey) ?? SORT_OPTIONS[0];
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
@@ -620,7 +676,8 @@ export function RecommendationsList() {
       const res = await listRecommendations({
         page,
         pageSize: PAGE_SIZE,
-        status: statusFilter || undefined,
+        status: statusFilter && statusFilter !== "UNVIEWED" ? statusFilter : undefined,
+        unviewed: statusFilter === "UNVIEWED" || undefined,
         minScore,
         sortBy: sortOption.sortBy,
         sortDir: sortOption.sortDir,
@@ -636,6 +693,22 @@ export function RecommendationsList() {
 
   function handleStatusChange(id: string, status: RecommendationStatus) {
     setItems((prev) => prev.map((r) => (r.id === id ? { ...r, status } : r)));
+  }
+
+  function handleToggleSelect(rec: CandidateRecommendation) {
+    setSelected((prev) => {
+      const exists = prev.some((x) => x.id === rec.id);
+      if (exists) return prev.filter((x) => x.id !== rec.id);
+      if (prev.length >= 3) {
+        addToast("error", p.compareMax);
+        return prev;
+      }
+      if (prev.length > 0 && prev[0].questionSetId !== rec.questionSetId) {
+        addToast("error", p.compareNeedSameSet);
+        return prev;
+      }
+      return [...prev, rec];
+    });
   }
 
   // Search title vẫn client-side (BE SCRUM-328 chưa hỗ trợ search title).
@@ -760,9 +833,26 @@ export function RecommendationsList() {
               lang={lang}
               labels={p}
               index={i}
+              selected={selected.some((x) => x.id === rec.id)}
+              onToggleSelect={handleToggleSelect}
               onStatusChange={handleStatusChange}
             />
           ))}
+        </div>
+      )}
+
+      {selected.length >= 2 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-30 hr-glass-card px-4 py-3 flex items-center gap-3 shadow-lg">
+          <span className="text-[13px] font-medium">{selected.length} / 3</span>
+          <Link
+            href={`/hr/candidate-recommendations/compare?ids=${selected.map((x) => x.id).join(",")}`}
+            className="h-9 px-4 text-[13px] font-semibold text-white hr-cta-btn rounded-lg"
+          >
+            {p.compareBar}
+          </Link>
+          <button type="button" onClick={() => setSelected([])} className="text-[12px] text-gray-500">
+            {p.invite.cancelBtn}
+          </button>
         </div>
       )}
 

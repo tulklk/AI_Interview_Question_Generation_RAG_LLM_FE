@@ -440,6 +440,7 @@ export function UserDetailPanel({
               <div className="absolute left-5 sm:left-6 -bottom-12">
                 <div className="rounded-full bg-white p-1 shadow-lg ring-4 ring-white dark:bg-slate-900 dark:ring-slate-900">
                   <AvatarCircle
+                    key={user.avatarUrl || user.id}
                     avatarUrl={user.avatarUrl}
                     fullName={user.fullName}
                     size="lg"

@@ -37,24 +37,36 @@ function getSkillColor(score: number) {
   return { bar: "bg-red-500", text: "text-red-700 dark:text-red-400", bg: "bg-red-50 dark:bg-red-950/40", ring: "#EF4444" };
 }
 
-/** Averages each dimension key (clarity/depth/structure/relevance, ...) across
- * every question that has a dimensionScores breakdown. Returns null if none do —
- * the radar chart section is simply omitted rather than showing fabricated data. */
-function aggregateDimensionScores(feedback: Record<string, AnswerEvaluation>, lang: Lang): { skill: string; score: number }[] | null {
-  const sums: Record<string, { total: number; count: number }> = {};
+/** Câu skip-gate (trống/quá ngắn, không gọi AI) — không tính là đã làm bài. */
+function isSkipGated(fb: AnswerEvaluation): boolean {
+  if (fb.dimensionScores) return false;
+  return fb.improvements.some((s) => /không gọi AI/i.test(s));
+}
+
+function isAiScored(fb: AnswerEvaluation): boolean {
+  return fb.evaluationStatus === "Succeeded" && fb.score !== null && !isSkipGated(fb);
+}
+
+/** Trung bình từng chiều trên TOÀN BỘ câu trong bộ — câu chưa làm / skip-gate = 0.
+ * Tránh radar 99% khi chỉ 1/10 câu được AI chấm. */
+function aggregateDimensionScores(
+  feedback: Record<string, AnswerEvaluation>,
+  lang: Lang,
+  totalQuestions: number
+): { skill: string; score: number }[] | null {
+  const n = Math.max(totalQuestions, 1);
+  const sums: Record<string, number> = {};
   Object.values(feedback).forEach((fb) => {
-    if (!fb.dimensionScores) return;
+    if (!fb.dimensionScores || isSkipGated(fb)) return;
     Object.entries(fb.dimensionScores).forEach(([key, value]) => {
-      sums[key] ??= { total: 0, count: 0 };
-      sums[key].total += value;
-      sums[key].count += 1;
+      sums[key] = (sums[key] ?? 0) + value;
     });
   });
   const keys = Object.keys(sums);
   if (keys.length === 0) return null;
   return keys.map((key) => ({
     skill: translateDimensionKey(key, lang),
-    score: Math.round(sums[key].total / sums[key].count),
+    score: Math.round(sums[key] / n),
   }));
 }
 
@@ -76,7 +88,7 @@ function buildExecutiveSummary(
 ): ExecutiveSummary | null {
   const scored = session.questions
     .map((q) => ({ q, fb: feedback[q.id] }))
-    .filter((x): x is { q: typeof x.q; fb: AnswerEvaluation } => Boolean(x.fb) && x.fb.evaluationStatus === "Succeeded" && x.fb.score !== null);
+    .filter((x): x is { q: typeof x.q; fb: AnswerEvaluation } => Boolean(x.fb) && isAiScored(x.fb));
 
   if (scored.length === 0) return null;
 
@@ -119,8 +131,7 @@ function buildActionPlan(
     .filter(
       (x): x is { q: typeof x.q; fb: AnswerEvaluation } =>
         Boolean(x.fb) &&
-        x.fb.evaluationStatus === "Succeeded" &&
-        x.fb.score !== null &&
+        isAiScored(x.fb) &&
         x.fb.improvements.length > 0
     )
     .sort((a, b) => (a.fb.score as number) - (b.fb.score as number))
@@ -237,7 +248,7 @@ export function FeedbackPage({
   const reviewQuestions = session.questions;
   const feedbackByQuestionId = new Map(Object.entries(feedback));
   // Free: radar chỉ từ câu teaser (đã mở) — không fabricate
-  const radarData = isFreeTeaser ? null : aggregateDimensionScores(feedback, lang);
+  const radarData = isFreeTeaser ? null : aggregateDimensionScores(feedback, lang, session.questions.length);
   const executiveSummary = buildExecutiveSummary(session, feedback, p.executiveSummary, lang);
   const actionPlan = isFreeTeaser ? null : buildActionPlan(session, feedback, lang);
 

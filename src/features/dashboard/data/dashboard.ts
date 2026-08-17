@@ -10,6 +10,7 @@ import {
   Settings,
   BookOpen,
   Users,
+  UserSearch,
 } from "lucide-react";
 import type {
   StatItem,
@@ -44,6 +45,11 @@ export const navItems: NavItem[] = [
     label: "Candidates",
     href: "/hr/candidate-recommendations",
     icon: Users,
+  },
+  {
+    label: "Talent pool",
+    href: "/hr/talent",
+    icon: UserSearch,
   },
   {
     label: "Settings",

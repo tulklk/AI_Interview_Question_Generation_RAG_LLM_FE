@@ -43,6 +43,7 @@ import {
   reorderJobQuestions,
   publishQuestionSet,
   unpublishQuestionSet,
+  withAbandonedToast,
   updateQuestionSetQuestion,
   deleteQuestionSetQuestion,
   addQuestionSetQuestion,
@@ -108,6 +109,7 @@ function SortableCard({
   return (
     <div
       ref={setNodeRef}
+      id={`jd-fit-q-${q.id}`}
       {...attributes}
       style={{
         transform: CSS.Transform.toString(transform),
@@ -521,9 +523,9 @@ export function ReviewQuestionsSection({
         onPublishStatusChange?.("PUBLISHED");
         addToast("success", rp.publishSuccess);
       } else {
-        await unpublishQuestionSet(questionSetId);
+        const abandoned = await unpublishQuestionSet(questionSetId);
         onPublishStatusChange?.("DRAFT");
-        addToast("success", rp.unpublishSuccess);
+        addToast("success", withAbandonedToast(rp.unpublishSuccess, abandoned));
       }
     } catch (err) {
       const message = err instanceof Error && err.message

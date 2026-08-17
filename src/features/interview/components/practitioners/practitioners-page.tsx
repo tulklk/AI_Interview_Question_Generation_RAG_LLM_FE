@@ -5,7 +5,7 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import {
   AlertCircle, ArrowLeft, ChevronLeft, ChevronRight,
-  Clock, ExternalLink, Globe, GlobeOff, Loader2, RefreshCw, Users,
+  Clock, ExternalLink, FileText, Globe, GlobeOff, Loader2, Mail, RefreshCw, Users,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { useLanguage } from "@/shared/providers/language-context";
@@ -16,10 +16,13 @@ import {
   getPractitioners,
   publishQuestionSet,
   unpublishQuestionSet,
+  withAbandonedToast,
   type Practitioner,
   type PractitionerSessionStatus,
 } from "@/features/interview/services/interview.service";
 import type { DraftQuestionSet } from "@/features/interview/types/generation-session";
+import { InviteCandidateModal } from "@/features/hr/components/recommendations/invite-candidate-modal";
+import { invitePractitioner } from "@/features/hr/services/hr-talent.service";
 import { AiLoadingSpinner } from "@/shared/components/common/ai-loading-spinner";
 import { ConfirmDialog } from "@/shared/components/ui/confirm-dialog";
 import { portalHeading, portalHeadingAlt, portalSubtext, portalSubtextAlt } from "@/shared/utils/portal-ui";
@@ -92,6 +95,7 @@ export function PractitionersPage({ questionSetId }: { questionSetId: string }) 
   const [publishing, setPublishing] = useState(false);
   const [confirmingPublishToggle, setConfirmingPublishToggle] = useState(false);
   const [page, setPage] = useState(1);
+  const [inviteTarget, setInviteTarget] = useState<Practitioner | null>(null);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -125,9 +129,9 @@ export function PractitionersPage({ questionSetId }: { questionSetId: string }) 
     setPublishing(true);
     try {
       if (set.status === "PUBLISHED") {
-        await unpublishQuestionSet(questionSetId);
+        const abandoned = await unpublishQuestionSet(questionSetId);
         setSet((s) => (s ? { ...s, status: "DRAFT" } : s));
-        addToast("success", rp.unpublishSuccess);
+        addToast("success", withAbandonedToast(rp.unpublishSuccess, abandoned));
       } else {
         await publishQuestionSet(questionSetId);
         setSet((s) => (s ? { ...s, status: "PUBLISHED" } : s));
@@ -214,11 +218,11 @@ export function PractitionersPage({ questionSetId }: { questionSetId: string }) 
             <table className="w-full">
               <thead>
                 <tr className="border-b border-gray-100 dark:border-gray-800 bg-gray-50/80 dark:bg-gray-800/40">
-                  <th className={cn("text-left px-5 py-3 text-[11px] font-semibold uppercase tracking-wider", portalSubtextAlt)}>{p.candidate}</th>
+                  <th className={cn("text-left px-5 py-3 text-[11px] font-semibold uppercase tracking-wider w-56 max-w-56", portalSubtextAlt)}>{p.candidate}</th>
                   <th className={cn("text-center px-4 py-3 text-[11px] font-semibold uppercase tracking-wider", portalSubtextAlt)}>{p.score}</th>
                   <th className={cn("text-left px-4 py-3 text-[11px] font-semibold uppercase tracking-wider", portalSubtextAlt)}>{p.status}</th>
                   <th className={cn("text-left px-4 py-3 text-[11px] font-semibold uppercase tracking-wider hidden sm:table-cell", portalSubtextAlt)}>{p.completedAt}</th>
-                  <th className={cn("text-right px-4 py-3 text-[11px] font-semibold uppercase tracking-wider", portalSubtextAlt)}>{p.actions}</th>
+                  <th className={cn("text-center px-4 py-3 text-[11px] font-semibold uppercase tracking-wider w-full min-w-80 whitespace-nowrap", portalSubtextAlt)}>{p.actions}</th>
                 </tr>
               </thead>
               <tbody>
@@ -231,7 +235,7 @@ export function PractitionersPage({ questionSetId }: { questionSetId: string }) 
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: index * 0.03 }}
                       className="border-b border-gray-100 dark:border-gray-800 last:border-0 hover:bg-gray-50/60 dark:hover:bg-gray-800/40 transition-colors">
-                      <td className="px-5 py-3.5">
+                      <td className="w-56 max-w-56 px-5 py-3.5">
                         <Link
                           href={`/hr/candidates/${item.candidateUserId}`}
                           className="flex items-center gap-3 group min-w-0"
@@ -258,15 +262,39 @@ export function PractitionersPage({ questionSetId }: { questionSetId: string }) 
                           {item.completedAt ? formatRelativeTime(item.completedAt, lang) : item.startedAt ? formatRelativeTime(item.startedAt, lang) : "—"}
                         </span>
                       </td>
-                      <td className="px-4 py-3.5 text-right">
-                        <Link
-                          href={`/hr/candidates/${item.candidateUserId}`}
-                          className="inline-flex items-center gap-1 text-[12px] font-medium text-violet-600 dark:text-violet-400 hover:text-violet-700 dark:hover:text-violet-300 hover:underline transition-colors"
-                          title={p.viewDetailBtn}
-                        >
-                          <ExternalLink size={12} />
-                          {p.viewDetailBtn}
-                        </Link>
+                      <td className="w-full min-w-80 px-4 py-3.5">
+                        <div className="mx-auto grid w-[5.75rem] grid-cols-3 gap-1">
+                          <Link
+                            href={`/hr/candidates/${item.candidateUserId}`}
+                            title={p.viewDetailBtn}
+                            className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-950/40 hover:bg-violet-100 dark:hover:bg-violet-950/70"
+                          >
+                            <ExternalLink size={13} />
+                          </Link>
+                          {item.status === "COMPLETED" && item.sessionId ? (
+                            <Link
+                              href={`/hr/candidates/${item.candidateUserId}/sessions/${item.sessionId}`}
+                              title={p.viewAnswersBtn}
+                              className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700"
+                            >
+                              <FileText size={13} />
+                            </Link>
+                          ) : (
+                            <span aria-hidden className="h-7 w-7" />
+                          )}
+                          {item.status === "COMPLETED" ? (
+                            <button
+                              type="button"
+                              onClick={() => setInviteTarget(item)}
+                              title={p.inviteBtn}
+                              className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-950/70"
+                            >
+                              <Mail size={13} />
+                            </button>
+                          ) : (
+                            <span aria-hidden className="h-7 w-7" />
+                          )}
+                        </div>
                       </td>
                     </motion.tr>
                   );
@@ -354,6 +382,21 @@ export function PractitionersPage({ questionSetId }: { questionSetId: string }) 
         onConfirm={() => void handlePublishToggle()}
         onCancel={() => setConfirmingPublishToggle(false)}
       />
+
+      {inviteTarget && (
+        <InviteCandidateModal
+          target={{
+            candidateName: inviteTarget.candidateName,
+            candidateEmail: inviteTarget.candidateEmail,
+            questionSetTitle: set.jobTitle,
+            score: inviteTarget.score,
+          }}
+          onClose={() => setInviteTarget(null)}
+          onSend={async (message) => {
+            await invitePractitioner(questionSetId, inviteTarget.candidateUserId, message);
+          }}
+        />
+      )}
     </div>
   );
 }

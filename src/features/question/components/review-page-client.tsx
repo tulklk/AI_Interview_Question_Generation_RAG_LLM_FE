@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, AlertCircle, Sparkles, ArrowRight, Pencil, Check, X, Loader2, Bookmark, Users } from "lucide-react";
 import { AiLoadingSpinner } from "@/shared/components/common/ai-loading-spinner";
 import { SessionStatusBadge } from "@/features/interview/components/history/session-status-badge";
@@ -12,6 +12,7 @@ import { useToast } from "@/shared/providers/toast-context";
 import { cn } from "@/lib/cn";
 import { portalHeading, portalInput, portalSubtext } from "@/shared/utils/portal-ui";
 import { getHrBookmarkedSetIds, toggleHrBookmark } from "@/features/interview/services/interview.service";
+import { JdFitReviewPanel } from "@/features/hr/components/question-sets/jd-fit-review-panel";
 import type { GenerationSession, GeneratedQuestion } from "@/features/interview/types/generation-session";
 
 interface ReviewPageClientProps {
@@ -178,6 +179,15 @@ export function ReviewPageClient({
           <div className="flex items-center gap-2 shrink-0">
             {questionSetId && (
               <Link
+                href="#jd-fit-review"
+                title={rp.jdFit.title}
+                className="w-9 h-9 flex items-center justify-center rounded-lg border border-gray-200 dark:border-gray-700 text-gray-400 dark:text-gray-500 hover:text-primary hover:bg-primary/5 transition-colors"
+              >
+                <Sparkles size={14} />
+              </Link>
+            )}
+            {questionSetId && (
+              <Link
                 href={`/hr/question-sets/${questionSetId}/practitioners`}
                 title={t.practitionersPage.heading}
                 className="w-9 h-9 flex items-center justify-center rounded-lg border border-gray-200 dark:border-gray-700 text-gray-400 dark:text-gray-500 hover:text-primary hover:bg-primary/5 transition-colors"
@@ -242,6 +252,14 @@ export function ReviewPageClient({
               ))}
             </div>
           </div>
+        </div>
+      )}
+
+      {questionSetId && (
+        <div id="jd-fit-review" className="animate-fade-up" style={{ animationDelay: "70ms" }}>
+          <Suspense fallback={null}>
+            <JdFitSection questionSetId={questionSetId} />
+          </Suspense>
         </div>
       )}
 
@@ -337,4 +355,10 @@ export function ReviewPageClient({
       )}
     </div>
   );
+}
+
+function JdFitSection({ questionSetId }: { questionSetId: string }) {
+  const searchParams = useSearchParams();
+  const autoRun = searchParams.get("jdFit") === "1";
+  return <JdFitReviewPanel questionSetId={questionSetId} autoRun={autoRun} />;
 }
