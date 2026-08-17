@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
@@ -319,7 +319,15 @@ export function QuestionSetCard({
         <span className="flex items-center gap-1">
           <Clock size={11} className="shrink-0" />
           {set.avgCompletionMinutes
-            ? `${p.avgMinutesPrefix}${set.avgCompletionMinutes}${p.avgMinutesSuffix}`
+            ? (() => {
+                const m = set.avgCompletionMinutes;
+                if (m < 60) return `${p.avgMinutesPrefix}${m}${p.avgMinutesSuffix}`;
+                const h = Math.floor(m / 60);
+                const rem = m % 60;
+                return rem === 0
+                  ? `${p.avgMinutesPrefix}${h}${p.hoursUnit}`
+                  : `${p.avgMinutesPrefix}${h}${p.hoursUnit} ${rem}${p.avgMinutesSuffix}`;
+              })()
             : `${p.estimatedTime}${set.estimatedTime}`}
         </span>
         {set.attempts !== undefined && (
@@ -336,7 +344,7 @@ export function QuestionSetCard({
       {/* ── CTA footer ── */}
       <div className="px-5 pb-5 pt-3">
         <Link
-          href={`/jobseeker/sets/${set.id}`}
+          href={`/candidate/sets/${set.id}`}
           className="shimmer-button hr-cta-btn flex items-center justify-center gap-2 w-full h-10 rounded-xl text-[13px] font-semibold text-white group-hover:gap-3 transition-[gap] duration-150"
         >
           {p.startPractice}

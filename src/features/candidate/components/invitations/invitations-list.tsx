@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
@@ -30,7 +30,7 @@ import {
   portalSubtextAlt,
 } from "@/shared/utils/portal-ui";
 
-const PAGE_SIZE = 10;
+const PAGE_SIZE = 6;
 
 // ── Shared badge ──────────────────────────────────────────────────────────────
 
@@ -345,7 +345,7 @@ function InvitationDetailDialog({ invitation, onClose, onStatusChange }: DetailD
                 </p>
                 {invitation.questionSetId ? (
                   <Link
-                    href={`/jobseeker/sets/${invitation.questionSetId}`}
+                    href={`/candidate/sets/${invitation.questionSetId}`}
                     onClick={onClose}
                     className="inline-flex items-center gap-1 text-[12px] font-semibold text-primary hover:underline truncate w-fit mb-2"
                   >

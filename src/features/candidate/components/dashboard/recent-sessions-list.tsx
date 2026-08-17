@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
@@ -98,14 +98,14 @@ function SessionRow({ session, scoreDelta, bookmarked, onToggleBookmark, pending
         {open && (
           <div className="absolute right-0 top-full mt-1 z-20 w-44 rounded-xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-xl py-1">
             <Link
-              href={`/jobseeker/practice/${session.id}/result`}
+              href={`/candidate/practice/${session.id}/result`}
               className={cn("flex items-center gap-2 px-3 py-2 text-[12px] font-[500] hover:bg-gray-50 dark:hover:bg-gray-800", portalHeadingAlt)}
             >
               <Eye size={13} />
               {menu.viewDetail}
             </Link>
             <Link
-              href={`/jobseeker/practice/${session.questionSetId}`}
+              href={`/candidate/practice/${session.questionSetId}`}
               className={cn("flex items-center gap-2 px-3 py-2 text-[12px] font-[500] hover:bg-gray-50 dark:hover:bg-gray-800", portalHeadingAlt)}
             >
               <RefreshCw size={13} />

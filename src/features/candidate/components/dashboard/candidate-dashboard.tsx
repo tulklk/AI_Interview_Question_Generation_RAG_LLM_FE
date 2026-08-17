@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -243,7 +243,7 @@ export function CandidateDashboard() {
             <h2 className={cn("text-[15px] font-[700]", portalHeadingAlt)}>{p.recentTitle}</h2>
             <p className={cn("text-[12px]", portalSubtextAlt)}>{p.recentSubtitle}</p>
           </div>
-          <Link href="/jobseeker/history" className="text-[12px] font-[600] text-primary hover:text-primary-hover transition-colors">
+          <Link href="/candidate/history" className="text-[12px] font-[600] text-primary hover:text-primary-hover transition-colors">
             {p.viewAllHistory}
           </Link>
         </div>
@@ -280,7 +280,7 @@ export function CandidateDashboard() {
             <h2 className={cn("text-[20px] font-[700]", portalHeadingAlt)}>{p.recommendedTitle}</h2>
             <p className={cn("text-[14px] mt-0.5", portalSubtextAlt)}>{p.recommendedSubtitle}</p>
           </div>
-          <Link href="/jobseeker/practice" className="flex items-center gap-1 text-[13px] font-[600] text-primary hover:text-primary-hover transition-colors">
+          <Link href="/candidate/practice" className="flex items-center gap-1 text-[13px] font-[600] text-primary hover:text-primary-hover transition-colors">
             {p.viewAllSets}
             <BarChart2 size={13} />
           </Link>

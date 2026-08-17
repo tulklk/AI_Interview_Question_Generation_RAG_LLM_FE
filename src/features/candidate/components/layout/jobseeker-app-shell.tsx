@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { cn } from "@/lib/cn";
@@ -113,7 +113,7 @@ function JobseekerAppShellInner({
           id: s.id,
           iso: s.completedAt,
           message: t.notificationMessages.candidateFeedbackReady.replace("{{title}}", s.setTitle || "—"),
-          href: `/jobseeker/practice/${s.id}/result`,
+          href: `/candidate/practice/${s.id}/result`,
         }));
 
         const invitationEntries = invitations
@@ -124,7 +124,7 @@ function JobseekerAppShellInner({
             message: t.notificationMessages.candidateInvitationReceived
               .replace("{{company}}", i.companyName || "—")
               .replace("{{title}}", i.questionSetTitle || "—"),
-            href: "/jobseeker/invitations",
+            href: "/candidate/invitations",
           }));
 
         const items: NotificationItem[] = [...feedbackEntries, ...invitationEntries]
