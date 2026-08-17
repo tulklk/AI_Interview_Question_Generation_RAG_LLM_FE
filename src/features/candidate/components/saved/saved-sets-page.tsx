@@ -15,27 +15,23 @@ import type { QuestionSet } from "@/features/candidate/types/jobseeker";
 import { EmptyState } from "@/features/candidate/components/ui/empty-state";
 import { DifficultyPill } from "@/features/candidate/components/ui/pill";
 import { portalHeadingAlt, portalSubtextAlt } from "@/shared/utils/portal-ui";
+import { cleanTitle } from "@/features/candidate/utils/clean-title";
 
 const MAX_SKILLS = 3;
 
 function CompanyLogo({ set }: { set: QuestionSet }) {
-  if (set.companyLogoUrl) {
-    return (
-      // eslint-disable-next-line @next/next/no-img-element
-      <img
-        src={set.companyLogoUrl}
-        alt={set.company}
-        referrerPolicy="no-referrer"
-        loading="lazy"
-        decoding="async"
-        className="w-9 h-9 rounded-lg object-cover border border-gray-100 dark:border-gray-700 shrink-0"
-      />
-    );
-  }
+  const [logoError, setLogoError] = useState(false);
   return (
-    <div className={cn("w-9 h-9 rounded-lg flex items-center justify-center text-white text-xs font-bold shrink-0", set.companyColor)}>
-      {set.companyInitials}
-    </div>
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={(!logoError && set.companyLogoUrl?.trim()) ? set.companyLogoUrl! : "/images/logo.png"}
+      alt={set.company}
+      referrerPolicy="no-referrer"
+      loading="lazy"
+      decoding="async"
+      onError={() => setLogoError(true)}
+      className="w-9 h-9 rounded-lg object-contain border border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-900 p-0.5 shrink-0"
+    />
   );
 }
 
@@ -97,7 +93,7 @@ function SavedRow({
 
       {/* Title + company */}
       <div className="flex-1 min-w-0">
-        <p className={cn("text-[13px] font-semibold leading-tight truncate", portalHeadingAlt)}>{set.title}</p>
+        <p className={cn("text-[13px] font-semibold leading-tight truncate", portalHeadingAlt)}>{cleanTitle(set.title)}</p>
         <p className={cn("text-[11px] mt-0.5 truncate", portalSubtextAlt)}>{set.company}</p>
       </div>
 

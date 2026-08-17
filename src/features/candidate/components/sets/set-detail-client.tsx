@@ -12,6 +12,7 @@ import { getQuestionSetById, NotFoundError } from "@/features/candidate/services
 import type { QuestionSet } from "@/features/candidate/types/jobseeker";
 import { useLanguage } from "@/shared/providers/language-context";
 import { portalSubtextAlt, portalHeadingAlt } from "@/shared/utils/portal-ui";
+import { cleanTitle } from "@/features/candidate/utils/clean-title";
 
 /** How often (ms) to re-check if the set is still published while on this page. */
 const PUBLISH_POLL_INTERVAL_MS = 30_000;
@@ -102,13 +103,15 @@ export function SetDetailClient() {
     };
   }, [id, set, unpublishedDialogOpen]);
 
+  const displayTitle = set ? cleanTitle(set.title) : null;
+
   return (
     <JobseekerAppShell
-      pageTitle={set?.title ?? p.loading}
+      pageTitle={displayTitle ?? p.loading}
       breadcrumb={[
         { label: "Jobseeker", href: "/jobseeker/dashboard" },
         { label: "Sets", href: "/jobseeker/practice" },
-        { label: set?.title ?? "" },
+        { label: displayTitle ?? "" },
       ]}
     >
       {loading && (

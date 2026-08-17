@@ -26,6 +26,7 @@ export function CompanyInfoCard({ name, logoUrl }: CompanyInfoCardProps) {
 
   const [company, setCompany] = useState<Company | null>(null);
   const [loading, setLoading] = useState(true);
+  const [logoError, setLogoError] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -56,25 +57,15 @@ export function CompanyInfoCard({ name, logoUrl }: CompanyInfoCardProps) {
       transition={{ duration: 0.35, ease: "easeOut" }}
       className="hr-glass-card p-6"
     >
-      <p className={cn("text-[12px] font-[700] uppercase tracking-wide mb-4", portalHeadingAlt)}>{p.title}</p>
+      <p className={cn("text-[12px] font-bold uppercase tracking-wide mb-4", portalHeadingAlt)}>{p.title}</p>
       <div className="flex items-center gap-3">
-        {resolvedLogo ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={resolvedLogo}
-            alt={name}
-            className="w-12 h-12 rounded-xl object-cover shrink-0 border border-gray-100 dark:border-gray-700"
-          />
-        ) : (
-          <motion.div
-            initial={{ scale: 0.6, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ delay: 0.1, duration: 0.3 }}
-            className="w-12 h-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-bold text-base shrink-0"
-          >
-            {name.slice(0, 2).toUpperCase()}
-          </motion.div>
-        )}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={(!logoError && resolvedLogo?.trim()) ? resolvedLogo! : "/images/logo.png"}
+          alt={name}
+          onError={() => setLogoError(true)}
+          className="w-12 h-12 rounded-xl object-contain shrink-0 border border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-900 p-1"
+        />
         <div className="min-w-0 flex-1">
           <h3 className={cn("text-[15px] font-[700] truncate", portalHeadingAlt)}>{name}</h3>
           {company?.websiteUrl && (
@@ -97,7 +88,7 @@ export function CompanyInfoCard({ name, logoUrl }: CompanyInfoCardProps) {
           <div className="h-3 w-2/3 rounded bg-gray-200 dark:bg-gray-700" />
         </div>
       ) : company?.description ? (
-        <p className={cn("mt-4 text-[13px] leading-[20px]", portalSubtextAlt)}>{company.description}</p>
+        <p className={cn("mt-4 text-[13px] leading-5", portalSubtextAlt)}>{company.description}</p>
       ) : (
         <p className={cn("mt-4 text-[12px] italic", portalSubtextAlt)}>{p.notAvailable}</p>
       )}

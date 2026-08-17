@@ -27,6 +27,7 @@ import {
   portalInput,
   portalSubtextAlt,
 } from "@/shared/utils/portal-ui";
+import { cleanTitle } from "@/features/candidate/utils/clean-title";
 
 const PAGE_SIZE = 10;
 
@@ -588,7 +589,7 @@ export function HistoryBoard() {
                         </div>
                       )}
                       <div className="min-w-0">
-                        <p className={cn("text-[13px] font-semibold truncate", portalHeadingAlt)}>{session.setTitle}</p>
+                        <p className={cn("text-[13px] font-semibold truncate", portalHeadingAlt)}>{cleanTitle(session.setTitle ?? "")}</p>
                         <p className={cn("text-[11px]", portalSubtextAlt)}>{session.company}</p>
                       </div>
                     </div>
@@ -657,7 +658,7 @@ export function HistoryBoard() {
                       </div>
                     )}
                     <div className="flex-1 min-w-0">
-                      <p className={cn("text-[13px] font-semibold truncate", portalHeadingAlt)}>{session.setTitle}</p>
+                      <p className={cn("text-[13px] font-semibold truncate", portalHeadingAlt)}>{cleanTitle(session.setTitle ?? "")}</p>
                       <p className={cn("text-[11px] mt-0.5", portalSubtextAlt)}>{session.company}</p>
                     </div>
                     <ScorePill score={session.score} pendingTooltip={p.pendingScoreTooltip} />
