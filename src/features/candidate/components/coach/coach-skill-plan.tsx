@@ -6,6 +6,7 @@ import { portalHeadingAlt, portalSubtextAlt } from "@/shared/utils/portal-ui";
 import { useLanguage } from "@/shared/providers/language-context";
 import { Pill } from "@/features/candidate/components/ui/pill";
 import { fillTemplate } from "@/features/candidate/utils/dashboard-analytics";
+import { getSkillIcon } from "@/features/candidate/utils/skill-icons";
 import type { CoachPlanItem } from "@/features/candidate/services/coach.service";
 
 interface CoachSkillPlanProps {
@@ -59,14 +60,29 @@ export function CoachSkillPlan({ items, isPremium, drillDisabled, onDrill }: Coa
             hasCurrent ? Math.max(0, Math.round(item.targetScore - item.currentScore!)) : null;
           const reached = hasCurrent && item.currentScore! >= item.targetScore;
 
+          const skillIcon = getSkillIcon(item.skill);
+          const SkillIcon = skillIcon?.icon;
+
           return (
             <div key={item.id} className="hr-glass-card p-4 flex flex-col gap-3">
+              {/* Header row: skill name + icon + status pill */}
               <div className="flex items-start justify-between gap-2">
-                <p className={cn("text-[14px] font-semibold", portalHeadingAlt)}>{item.skill}</p>
-                <Pill size="sm" className={STATUS_PILL[item.status] ?? STATUS_PILL.pending}>
+                <div className="flex items-center gap-2 min-w-0">
+                  {SkillIcon && (
+                    <span className="w-6 h-6 rounded-md bg-violet-50 dark:bg-violet-950/40 border border-violet-100 dark:border-violet-900/50 flex items-center justify-center shrink-0">
+                      <SkillIcon size={13} className="shrink-0 text-violet-600 dark:text-violet-400" />
+                    </span>
+                  )}
+                  <p className={cn("text-[14px] font-semibold truncate", portalHeadingAlt)}>
+                    {item.skill}
+                  </p>
+                </div>
+                <Pill size="sm" className={cn("shrink-0", STATUS_PILL[item.status] ?? STATUS_PILL.pending)}>
                   {statusLabel(item.status)}
                 </Pill>
               </div>
+
+              {/* Progress bar */}
               <div>
                 <div className="relative h-1.5 rounded-full bg-gray-100 dark:bg-gray-800 overflow-visible">
                   <div className="absolute inset-0 rounded-full overflow-hidden">
@@ -102,7 +118,13 @@ export function CoachSkillPlan({ items, isPremium, drillDisabled, onDrill }: Coa
                         delta === 0 && "text-gray-500 dark:text-gray-400"
                       )}
                     >
-                      {delta > 0 ? <TrendingUp size={11} /> : delta < 0 ? <TrendingDown size={11} /> : <Minus size={11} />}
+                      {delta > 0 ? (
+                        <TrendingUp size={11} />
+                      ) : delta < 0 ? (
+                        <TrendingDown size={11} />
+                      ) : (
+                        <Minus size={11} />
+                      )}
                       {fillTemplate(p.deltaVsBaseline, { delta: formatDelta(delta) })}
                     </span>
                   )}
@@ -115,6 +137,7 @@ export function CoachSkillPlan({ items, isPremium, drillDisabled, onDrill }: Coa
                       : fillTemplate(p.remainingToTarget, { points: String(remaining) })}
                 </p>
               </div>
+
               {item.status !== "done" && isPremium && (
                 <button
                   type="button"

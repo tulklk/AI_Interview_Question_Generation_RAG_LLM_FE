@@ -288,8 +288,10 @@ export function ScoringProgressBadge() {
   );
   if (visible.length === 0) return null;
 
+  // Renders just card content — no fixed wrapper.
+  // The parent (FloatingBadgeStack in jobseeker-app-shell) owns the position.
   return (
-    <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-2 items-end">
+    <>
       {visible.map((entry) => (
         <AnimatedBadge
           key={entry.sessionId}
@@ -311,6 +313,6 @@ export function ScoringProgressBadge() {
         <Sparkles size={9} className="text-violet-400" />
         <span className="text-[9px] text-gray-400 dark:text-gray-500 font-medium">HireGen AI</span>
       </div>
-    </div>
+    </>
   );
 }

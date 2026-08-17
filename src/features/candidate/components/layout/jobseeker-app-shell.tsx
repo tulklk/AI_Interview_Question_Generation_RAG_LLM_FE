@@ -217,8 +217,12 @@ function JobseekerAppShellInner({
           )}>{children}</div>
         </main>
       </div>
-      <ScoringProgressBadge />
-      <CoachGenerationBadge />
+      {/* Shared floating badge stack — bottom-right, same position as HR GenerationProgressBadge.
+          Each child badge component manages its own visibility and label. */}
+      <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-2 items-end">
+        <CoachGenerationBadge />
+        <ScoringProgressBadge />
+      </div>
     </div>
 
     {showUpgrade && (

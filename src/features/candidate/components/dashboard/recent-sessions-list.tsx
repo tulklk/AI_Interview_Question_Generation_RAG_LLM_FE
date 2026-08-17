@@ -11,6 +11,7 @@ import { getCompanyColor, getCompanyInitials } from "@/features/candidate/utils/
 import { Pill, PendingScorePill, getScoreBadgeClass } from "@/features/candidate/components/ui/pill";
 import { toggleBookmark } from "@/features/candidate/services/question-set.service";
 import type { CompletedSessionSummary } from "@/features/candidate/services/practice-session.service";
+import { cleanTitle } from "@/features/candidate/utils/clean-title";
 
 function formatSessionDate(iso: string | undefined, lang: "en" | "vi"): string {
   if (!iso) return "";
@@ -60,7 +61,7 @@ function SessionRow({ session, scoreDelta, bookmarked, onToggleBookmark, pending
       )}
 
       <div className="flex-1 min-w-0">
-        <p className={cn("text-[13px] font-[600] truncate", portalHeadingAlt)}>{session.setTitle}</p>
+        <p className={cn("text-[13px] font-[600] truncate", portalHeadingAlt)}>{cleanTitle(session.setTitle ?? "")}</p>
         <p className={cn("text-[11px] flex items-center gap-2 mt-0.5", portalSubtextAlt)}>
           <span className="flex items-center gap-1">
             <Clock size={10} />
