@@ -536,6 +536,8 @@ export const vi: Translations = {
       "Email này đã đăng ký bằng mật khẩu. Vui lòng đăng nhập email/mật khẩu.",
     googleAccountExists: "Chào mừng trở lại! Đang chuyển đến trang của bạn.",
     googleLinked: "Đã liên kết Google với tài khoản hiện có.",
+    githubAccountExists: "Chào mừng trở lại! Đang chuyển đến trang của bạn.",
+    githubLinked: "Đã liên kết GitHub với tài khoản hiện có.",
   },
 
   forgotPasswordPage: {
@@ -617,6 +619,7 @@ export const vi: Translations = {
     continueButton: "Tiếp tục",
     backButton: "Quay lại",
     googleSignupSuccess: "Đăng nhập Google thành công với {{email}}. Vui lòng hoàn tất hồ sơ.",
+    githubSignupSuccess: "Đăng nhập GitHub thành công với {{email}}. Vui lòng hoàn tất hồ sơ.",
     googleStep2Hint: "Hoàn tất thông tin công ty để bắt đầu sử dụng HireGen AI.",
     profileCompleteSuccess: "Đã lưu hồ sơ. Chào mừng bạn!",
     profileCompleteFailed: "Không thể lưu hồ sơ. Vui lòng thử lại.",
@@ -659,6 +662,7 @@ export const vi: Translations = {
     googleStep2Hint: "Hoàn tất hồ sơ để bắt đầu luyện phỏng vấn.",
     googleLinkedAs: "Đăng ký với Google: {{email}}",
     googleSignupSuccess: "Đăng nhập Google thành công với {{email}}. Vui lòng hoàn tất hồ sơ.",
+    githubSignupSuccess: "Đăng nhập GitHub thành công với {{email}}. Vui lòng hoàn tất hồ sơ.",
     profileCompleteSuccess: "Đã lưu hồ sơ. Chào mừng bạn!",
     profileCompleteFailed: "Không thể lưu hồ sơ. Vui lòng thử lại.",
   },
