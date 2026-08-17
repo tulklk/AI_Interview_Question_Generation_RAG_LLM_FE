@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, Star, X as XIcon, Mail, Loader2,
   AlertCircle, RefreshCw, CheckCircle2, Clock, Send,
@@ -75,12 +75,22 @@ function isPdfCv(contentType: string | null | undefined, fileName: string | null
   return /\.pdf$/i.test(fileName || "");
 }
 
+function capitalize(s: string): string {
+  if (!s) return s;
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+function titleCase(s: string): string {
+  if (!s) return s;
+  return s.split(" ").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+}
+
 // ---------------------------------------------------------------------------
 // Score Ring
 // ---------------------------------------------------------------------------
 
 function ScoreRing({ score, labels }: { score: number; labels: ReturnType<typeof useLanguage>["t"]["hrRecommendationsPage"]["detail"] }) {
-  const radius = 36;
+  const radius = 40;
   const circ = 2 * Math.PI * radius;
   const dash = (Math.min(100, Math.max(0, score)) / 100) * circ;
   const color = score >= 85 ? "#10b981" : score >= 70 ? "#f59e0b" : "#ef4444";
@@ -90,14 +100,14 @@ function ScoreRing({ score, labels }: { score: number; labels: ReturnType<typeof
     : "text-red-500 dark:text-red-400";
 
   return (
-    <div className="flex items-center gap-4">
-      <div className="relative w-20 h-20 shrink-0">
-        <svg width="80" height="80" viewBox="0 0 80 80" className="-rotate-90">
-          <circle cx="40" cy="40" r={radius} fill="none" stroke="currentColor"
-            strokeWidth="7" className="text-gray-100 dark:text-gray-800" />
+    <div className="flex items-center gap-5">
+      <div className="relative w-[96px] h-[96px] shrink-0">
+        <svg width="96" height="96" viewBox="0 0 96 96" className="-rotate-90">
+          <circle cx="48" cy="48" r={radius} fill="none" stroke="currentColor"
+            strokeWidth="6" className="text-gray-100 dark:text-gray-800" />
           <motion.circle
-            cx="40" cy="40" r={radius} fill="none" stroke={color}
-            strokeWidth="7" strokeLinecap="round"
+            cx="48" cy="48" r={radius} fill="none" stroke={color}
+            strokeWidth="6" strokeLinecap="round"
             strokeDasharray={`${dash} ${circ - dash}`}
             initial={{ strokeDasharray: `0 ${circ}` }}
             animate={{ strokeDasharray: `${dash} ${circ - dash}` }}
@@ -105,26 +115,17 @@ function ScoreRing({ score, labels }: { score: number; labels: ReturnType<typeof
           />
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className={cn("text-[13px] font-extrabold leading-none tabular-nums", textColor)}>{score}</span>
-          <span className="text-[8px] text-gray-400 dark:text-gray-500 font-medium mt-0.5">/100</span>
+          <span className={cn("text-[20px] font-black leading-none tabular-nums", textColor)}>{score}</span>
+          <span className="text-[9px] text-gray-400 dark:text-gray-500 font-semibold mt-0.5">/100</span>
         </div>
       </div>
       <div>
-        <p className={cn("text-[11px] font-semibold uppercase tracking-wider mb-0.5", portalSubtextAlt)}>
+        <p className={cn("text-[10px] font-semibold uppercase tracking-widest mb-1.5", portalSubtextAlt)}>
           {labels.overallScore}
         </p>
-        <p className={cn("text-[15px] font-bold", textColor)}>
+        <p className={cn("text-[16px] font-bold leading-tight", textColor)}>
           {score >= 85 ? labels.scoreExcellent : score >= 70 ? labels.scoreGood : labels.scoreFair}
         </p>
-        <div className="mt-1.5 w-32 h-1.5 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
-          <motion.div
-            className="h-full rounded-full"
-            style={{ backgroundColor: color }}
-            initial={{ width: 0 }}
-            animate={{ width: `${score}%` }}
-            transition={{ duration: 0.9, ease: "easeOut" }}
-          />
-        </div>
       </div>
     </div>
   );
@@ -413,7 +414,6 @@ export function RecommendationDetail({ id }: { id: string }) {
   // Collapsible sub-sections
   const [cvSummaryOpen, setCvSummaryOpen] = useState(true);
   const [cvSkillsOpen, setCvSkillsOpen] = useState(true);
-  const [techSkillsOpen, setTechSkillsOpen] = useState(true);
   const { addToast } = useToast();
 
   const fetchData = useCallback(async () => {
@@ -556,25 +556,25 @@ export function RecommendationDetail({ id }: { id: string }) {
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
             className="hr-glass-card p-5 flex flex-col gap-5">
             {/* Avatar + name */}
-            <div className="flex flex-col items-center text-center gap-3 pt-2">
+            <div className="flex flex-col items-center text-center gap-3 pt-3">
               {rec.avatarUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={rec.avatarUrl}
                   alt={rec.candidateName}
                   referrerPolicy="no-referrer"
-                  className="w-16 h-16 rounded-2xl object-cover"
+                  className="w-20 h-20 rounded-full object-cover ring-2 ring-white dark:ring-gray-700 shadow-md"
                 />
               ) : (
                 <div className={cn(
-                  "w-16 h-16 rounded-2xl text-white text-xl font-extrabold flex items-center justify-center",
+                  "w-20 h-20 rounded-full text-white text-2xl font-black flex items-center justify-center shadow-md ring-2 ring-white dark:ring-gray-700",
                   avatarColor(rec.candidateName || rec.id)
                 )}>
-                  {initials || <User size={22} />}
+                  {initials || <User size={24} />}
                 </div>
               )}
               <div>
-                <h1 className={cn("text-[17px] font-bold leading-tight", portalHeading)}>
+                <h1 className={cn("text-[18px] font-bold leading-tight", portalHeading)}>
                   {rec.candidateName || "—"}
                 </h1>
                 <p className={cn("text-[12px] mt-0.5", portalSubtext)}>{rec.candidateEmail}</p>
@@ -605,12 +605,29 @@ export function RecommendationDetail({ id }: { id: string }) {
               </div>
             )}
 
-            <div className={cn("border-t pt-4", portalDivider)}>
+            <div className="rounded-2xl bg-gray-50 dark:bg-gray-800/50 px-4 py-4">
               <ScoreRing score={rec.score} labels={p.detail} />
             </div>
 
             {/* Action buttons */}
             <div className="flex flex-col gap-2">
+              {/* Primary CTA: Gửi Offer */}
+              <button
+                type="button"
+                onClick={() => setShowOffer(true)}
+                disabled={busy !== null || ["SENT", "ACCEPTED"].includes((rec.latestOfferStatus ?? "").toUpperCase())}
+                title={
+                  rec.latestOfferStatus?.toUpperCase() === "ACCEPTED"
+                    ? p.offer.alreadyAccepted
+                    : rec.latestOfferStatus?.toUpperCase() === "SENT"
+                      ? p.offer.alreadySent
+                      : undefined
+                }
+                className="flex items-center justify-center gap-2 h-10 px-4 text-[13px] font-bold text-white bg-amber-500 hover:bg-amber-600 active:bg-amber-700 rounded-xl transition-colors disabled:opacity-50 w-full shadow-sm">
+                <Send size={14} /> {p.offer.btnLabel}
+              </button>
+
+              {/* Secondary actions based on status */}
               {canAct ? (
                 <>
                   {rec.status !== "SHORTLISTED" ? (
@@ -624,10 +641,12 @@ export function RecommendationDetail({ id }: { id: string }) {
                       <CheckCircle2 size={13} /> {p.card.shortlisted}
                     </div>
                   )}
+                  {/* Nút "Mời phỏng vấn" — tạm ẩn, bỏ comment để bật lại
                   <button type="button" onClick={() => setShowInvite(true)} disabled={busy !== null}
                     className="shimmer-button flex items-center justify-center gap-2 h-9 px-4 text-[13px] font-semibold text-white hr-cta-btn rounded-xl disabled:opacity-60 w-full">
                     <Mail size={13} /> {p.card.inviteBtn}
                   </button>
+                  */}
                   <button type="button" onClick={() => void handleDismiss()} disabled={busy !== null}
                     className="flex items-center justify-center gap-2 h-9 px-4 text-[13px] font-semibold text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors disabled:opacity-50 w-full">
                     {busy === "dismiss" ? <Loader2 size={13} className="animate-spin" /> : <XIcon size={13} />}
@@ -641,28 +660,11 @@ export function RecommendationDetail({ id }: { id: string }) {
                   {p.card.restoreBtn}
                 </button>
               ) : (
-                <div className={cn(
-                  "flex items-center justify-center gap-2 h-9 text-[13px] font-medium rounded-xl border",
-                  "text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/30"
-                )}>
+                <div className="flex items-center justify-center gap-1.5 py-1.5 text-[12px] font-semibold text-emerald-600 dark:text-emerald-400">
                   <CheckCircle2 size={13} />
                   {p.card.invited}
                 </div>
               )}
-              <button
-                type="button"
-                onClick={() => setShowOffer(true)}
-                disabled={busy !== null || ["SENT", "ACCEPTED"].includes((rec.latestOfferStatus ?? "").toUpperCase())}
-                title={
-                  rec.latestOfferStatus?.toUpperCase() === "ACCEPTED"
-                    ? p.offer.alreadyAccepted
-                    : rec.latestOfferStatus?.toUpperCase() === "SENT"
-                      ? p.offer.alreadySent
-                      : undefined
-                }
-                className="flex items-center justify-center gap-2 h-9 px-4 text-[13px] font-semibold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 hover:bg-amber-100 dark:hover:bg-amber-900/40 rounded-xl transition-colors disabled:opacity-50 border border-amber-200 dark:border-amber-800 w-full">
-                <Send size={13} /> {p.offer.btnLabel}
-              </button>
             </div>
           </motion.div>
 
@@ -783,37 +785,191 @@ export function RecommendationDetail({ id }: { id: string }) {
           {(typeof rec.fitPercent === "number" || rec.jdSkills.length > 0) && (
             <SectionCard title={p.fit.title} icon={Target}
               iconBg="bg-cyan-50 dark:bg-cyan-950/40" iconColor="text-cyan-600 dark:text-cyan-400">
+
+              {/* Percentage header */}
               {typeof rec.fitPercent === "number" && (
-                <p className="text-[28px] font-extrabold tabular-nums text-cyan-600 dark:text-cyan-400 mb-3">
-                  {rec.fitPercent}%
-                </p>
+                <div className="mb-5 pb-5 border-b border-gray-100 dark:border-gray-800">
+                  {/* Score + 3 mini-stat boxes */}
+                  <div className="flex items-stretch gap-4 mb-3">
+                    {/* Big percentage */}
+                    <div className="flex flex-col justify-center min-w-[68px] shrink-0">
+                      <div className="flex items-end gap-0.5 leading-none">
+                        <span className="text-[38px] font-black tabular-nums text-cyan-600 dark:text-cyan-400 leading-none">
+                          {rec.fitPercent}
+                        </span>
+                        <span className="text-[16px] font-bold text-cyan-400 dark:text-cyan-500/70 mb-1.5">%</span>
+                      </div>
+                      <p className={cn("text-[11px] mt-1 tabular-nums", portalSubtextAlt)}>
+                        {rec.matchedSkills.length} / {rec.matchedSkills.length + rec.missingOnCv.length}
+                      </p>
+                    </div>
+
+                    {/* Divider */}
+                    <div className="w-px bg-gray-100 dark:bg-gray-800 self-stretch" />
+
+                    {/* Mini stat tiles */}
+                    <div className="flex-1 grid grid-cols-3 gap-2">
+                      <div className="flex flex-col items-center justify-center py-2 px-1 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-900/40">
+                        <span className="text-[18px] font-black tabular-nums text-emerald-600 dark:text-emerald-400 leading-none">
+                          {rec.matchedSkills.length}
+                        </span>
+                        <p className="text-[9px] font-bold uppercase tracking-wider text-emerald-500/80 dark:text-emerald-400/70 mt-1">
+                          {p.fit.matched}
+                        </p>
+                      </div>
+                      <div className="flex flex-col items-center justify-center py-2 px-1 rounded-xl bg-rose-50 dark:bg-rose-950/30 border border-rose-100 dark:border-rose-900/40">
+                        <span className="text-[18px] font-black tabular-nums text-rose-500 dark:text-rose-400 leading-none">
+                          {rec.missingOnCv.length}
+                        </span>
+                        <p className="text-[9px] font-bold uppercase tracking-wider text-rose-400/80 dark:text-rose-400/70 mt-1">
+                          {p.fit.missing}
+                        </p>
+                      </div>
+                      <div className="flex flex-col items-center justify-center py-2 px-1 rounded-xl bg-blue-50 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/40">
+                        <span className="text-[18px] font-black tabular-nums text-blue-500 dark:text-blue-400 leading-none">
+                          {rec.extraOnCv.length}
+                        </span>
+                        <p className="text-[9px] font-bold uppercase tracking-wider text-blue-400/80 dark:text-blue-400/70 mt-1">
+                          {p.fit.extra}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Progress bar */}
+                  <div className="h-1.5 rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden">
+                    <motion.div
+                      className={cn(
+                        "h-full rounded-full",
+                        rec.fitPercent >= 70 ? "bg-emerald-500" : rec.fitPercent >= 40 ? "bg-amber-500" : "bg-cyan-400"
+                      )}
+                      initial={{ width: 0 }}
+                      animate={{ width: `${rec.fitPercent}%` }}
+                      transition={{ duration: 0.8, ease: "easeOut" }}
+                    />
+                  </div>
+                </div>
               )}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-[12px]">
+
+              {/* Skill chips — 3 categories */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+                {/* Khớp */}
                 <div>
-                  <p className={cn("font-semibold mb-1", portalSubtextAlt)}>{p.fit.matched}</p>
-                  <p>{rec.matchedSkills.join(", ") || "—"}</p>
+                  <div className="flex items-center gap-1.5 mb-2.5">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-emerald-600 dark:text-emerald-400">
+                      {p.fit.matched}
+                    </p>
+                  </div>
+                  {rec.matchedSkills.length > 0 ? (
+                    <div className="flex flex-wrap gap-1.5">
+                      {rec.matchedSkills.map((s) => {
+                        const si = getSkillIcon(s);
+                        const SIcon = si?.icon;
+                        return (
+                          <span key={s} className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-md bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 border border-gray-200 dark:border-gray-700">
+                            {SIcon && <SIcon size={10} className={cn("shrink-0", si.className)} />}
+                            {titleCase(s)}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <span className={cn("text-[12px] italic", portalSubtextAlt)}>—</span>
+                  )}
                 </div>
+
+                {/* Thiếu trên CV */}
                 <div>
-                  <p className={cn("font-semibold mb-1", portalSubtextAlt)}>{p.fit.missing}</p>
-                  <p>{rec.missingOnCv.join(", ") || "—"}</p>
+                  <div className="flex items-center gap-1.5 mb-2.5">
+                    <span className="w-2 h-2 rounded-full bg-rose-400 shrink-0" />
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-rose-500 dark:text-rose-400">
+                      {p.fit.missing}
+                    </p>
+                  </div>
+                  {rec.missingOnCv.length > 0 ? (
+                    <div className="flex flex-wrap gap-1.5">
+                      {rec.missingOnCv.map((s) => {
+                        const si = getSkillIcon(s);
+                        const SIcon = si?.icon;
+                        return (
+                          <span key={s} className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-md bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 border border-gray-200 dark:border-gray-700">
+                            {SIcon && <SIcon size={10} className={cn("shrink-0", si.className)} />}
+                            {titleCase(s)}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <span className={cn("text-[12px] italic", portalSubtextAlt)}>—</span>
+                  )}
                 </div>
+
+                {/* Thêm trên CV */}
                 <div>
-                  <p className={cn("font-semibold mb-1", portalSubtextAlt)}>{p.fit.extra}</p>
-                  <p>{rec.extraOnCv.join(", ") || "—"}</p>
+                  <div className="flex items-center gap-1.5 mb-2.5">
+                    <span className="w-2 h-2 rounded-full bg-blue-400 shrink-0" />
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-blue-500 dark:text-blue-400">
+                      {p.fit.extra}
+                    </p>
+                  </div>
+                  {rec.extraOnCv.length > 0 ? (
+                    <div className="flex flex-wrap gap-1.5">
+                      {rec.extraOnCv.map((s) => {
+                        const si = getSkillIcon(s);
+                        const SIcon = si?.icon;
+                        return (
+                          <span key={s} className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-md bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 border border-gray-200 dark:border-gray-700">
+                            {SIcon && <SIcon size={10} className={cn("shrink-0", si.className)} />}
+                            {titleCase(s)}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <span className={cn("text-[12px] italic", portalSubtextAlt)}>—</span>
+                  )}
                 </div>
               </div>
+
+              {/* Skill scores — improved bars with icons */}
               {rec.skillScores.length > 0 && (
-                <div className="mt-4 space-y-2">
-                  <p className={cn("text-[11px] font-semibold", portalSubtextAlt)}>{p.fit.skillScores}</p>
-                  {rec.skillScores.map((s) => (
-                    <div key={s.skill} className="flex items-center gap-2">
-                      <span className="w-28 truncate text-[12px]">{s.skill}</span>
-                      <div className="flex-1 h-1.5 rounded-full bg-gray-100 dark:bg-gray-800">
-                        <div className="h-1.5 rounded-full bg-cyan-500" style={{ width: `${Math.min(100, s.avgScore)}%` }} />
-                      </div>
-                      <span className="text-[11px] tabular-nums w-10 text-right">{Math.round(s.avgScore)}</span>
-                    </div>
-                  ))}
+                <div className="mt-5 pt-4 border-t border-gray-100 dark:border-gray-800">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 mb-3">
+                    {p.fit.skillScores}
+                  </p>
+                  <div className="space-y-3">
+                    {rec.skillScores.map((s) => {
+                      const si = getSkillIcon(s.skill);
+                      const SIcon = si?.icon;
+                      const pct = Math.min(100, Math.round(s.avgScore));
+                      const barColor = pct >= 85 ? "bg-emerald-500" : pct >= 70 ? "bg-amber-500" : "bg-cyan-500";
+                      const scoreColor = pct >= 85
+                        ? "text-emerald-600 dark:text-emerald-400"
+                        : pct >= 70 ? "text-amber-600 dark:text-amber-400"
+                        : "text-cyan-600 dark:text-cyan-400";
+                      return (
+                        <div key={s.skill} className="flex items-center gap-3">
+                          <div className="flex items-center gap-1.5 w-36 shrink-0">
+                            {SIcon
+                              ? <SIcon size={13} className={cn("shrink-0", si.className)} />
+                              : <span className="w-3.5 h-3.5 rounded-sm bg-gray-200 dark:bg-gray-700 shrink-0" />
+                            }
+                            <span className={cn("text-[12px] font-medium truncate", portalHeadingAlt)}>{capitalize(s.skill)}</span>
+                          </div>
+                          <div className="flex-1 h-2 rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden">
+                            <motion.div
+                              className={cn("h-full rounded-full", barColor)}
+                              initial={{ width: 0 }}
+                              animate={{ width: `${pct}%` }}
+                              transition={{ duration: 0.7, ease: "easeOut" }}
+                            />
+                          </div>
+                          <span className={cn("text-[12px] font-bold tabular-nums w-8 text-right", scoreColor)}>{pct}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
             </SectionCard>
@@ -904,7 +1060,7 @@ export function RecommendationDetail({ id }: { id: string }) {
                     {cvBusy ? p.detail.cvDownloading : p.detail.cvDownload}
                   </button>
                 </div>
-                {/* Summary — collapsible */}
+                {/* Summary — collapsible with smooth animation */}
                 {rec.cvSummary && (
                   <div className="border-t border-gray-100 dark:border-gray-800 pt-1">
                     <button
@@ -913,14 +1069,33 @@ export function RecommendationDetail({ id }: { id: string }) {
                       className="w-full flex items-center justify-between px-1 py-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
                     >
                       <p className={cn("text-[10px] font-bold uppercase tracking-wider", portalSubtextAlt)}>{p.detail.cvSummary}</p>
-                      <ChevronDown size={13} className={cn("transition-transform duration-200 shrink-0", portalSubtextAlt, !cvSummaryOpen && "-rotate-90")} />
+                      <ChevronDown
+                        size={13}
+                        className={cn(
+                          "transition-transform duration-300 ease-in-out shrink-0",
+                          portalSubtextAlt,
+                          cvSummaryOpen ? "rotate-0" : "-rotate-90"
+                        )}
+                      />
                     </button>
-                    {cvSummaryOpen && (
-                      <p className={cn("text-[13px] leading-relaxed px-1 pb-1", portalHeadingAlt)}>{rec.cvSummary}</p>
-                    )}
+                    <AnimatePresence initial={false}>
+                      {cvSummaryOpen && (
+                        <motion.div
+                          key="cv-summary"
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: "auto", opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
+                          className="overflow-hidden"
+                        >
+                          <p className={cn("text-[13px] leading-relaxed px-1 pb-2", portalHeadingAlt)}>{rec.cvSummary}</p>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </div>
                 )}
-                {/* CV Skills — collapsible + icons */}
+
+                {/* CV Skills — collapsible with smooth animation */}
                 {rec.cvSkills.length > 0 && (
                   <div className="border-t border-gray-100 dark:border-gray-800 pt-1">
                     <button
@@ -932,22 +1107,40 @@ export function RecommendationDetail({ id }: { id: string }) {
                         <p className={cn("text-[10px] font-bold uppercase tracking-wider", portalSubtextAlt)}>{p.detail.cvSkills}</p>
                         <span className={cn("text-[10px] font-semibold tabular-nums", portalSubtextAlt)}>({rec.cvSkills.length})</span>
                       </div>
-                      <ChevronDown size={13} className={cn("transition-transform duration-200 shrink-0", portalSubtextAlt, !cvSkillsOpen && "-rotate-90")} />
+                      <ChevronDown
+                        size={13}
+                        className={cn(
+                          "transition-transform duration-300 ease-in-out shrink-0",
+                          portalSubtextAlt,
+                          cvSkillsOpen ? "rotate-0" : "-rotate-90"
+                        )}
+                      />
                     </button>
-                    {cvSkillsOpen && (
-                      <div className="flex flex-wrap gap-1.5 px-1 pb-1">
-                        {rec.cvSkills.map((s) => {
-                          const si = getSkillIcon(s);
-                          const SIcon = si?.icon;
-                          return (
-                            <span key={s} className="inline-flex items-center gap-1 text-[11px] font-medium px-2.5 py-1 rounded-md bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border border-blue-100 dark:border-blue-900/40">
-                              {SIcon && <SIcon size={10} className={cn("shrink-0", si.className)} />}
-                              {s}
-                            </span>
-                          );
-                        })}
-                      </div>
-                    )}
+                    <AnimatePresence initial={false}>
+                      {cvSkillsOpen && (
+                        <motion.div
+                          key="cv-skills"
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: "auto", opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
+                          className="overflow-hidden"
+                        >
+                          <div className="flex flex-wrap gap-1.5 px-1 pb-2 pt-1">
+                            {rec.cvSkills.map((s) => {
+                              const si = getSkillIcon(s);
+                              const SIcon = si?.icon;
+                              return (
+                                <span key={s} className="inline-flex items-center gap-1 text-[11px] font-medium px-2.5 py-1 rounded-md bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 border border-gray-200 dark:border-gray-700">
+                                  {SIcon && <SIcon size={10} className={cn("shrink-0", si.className)} />}
+                                  {titleCase(s)}
+                                </span>
+                              );
+                            })}
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </div>
                 )}
               </div>
@@ -956,41 +1149,7 @@ export function RecommendationDetail({ id }: { id: string }) {
             )}
           </SectionCard>
 
-          {/* ④ Kỹ năng chuyên môn — collapsible + icons */}
-          {rec.techStack.length > 0 && (
-            <div className="hr-glass-card overflow-hidden">
-              <button
-                type="button"
-                onClick={() => setTechSkillsOpen((v) => !v)}
-                className="w-full flex items-center gap-2.5 px-6 py-5 hover:bg-gray-50 dark:hover:bg-gray-800/40 transition-colors text-left"
-              >
-                <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center shrink-0">
-                  <Sparkles size={15} className="text-gray-800 dark:text-gray-200" />
-                </div>
-                <h3 className="flex-1 text-[15px] font-bold text-charcoal dark:text-gray-100">
-                  {t.jobseekerProfilePage.sectionSkills}
-                </h3>
-                <span className={cn("text-[11px] font-semibold tabular-nums", portalSubtextAlt)}>
-                  {rec.techStack.length}
-                </span>
-                <ChevronDown size={16} className={cn("transition-transform duration-200 shrink-0 ml-1", portalSubtextAlt, !techSkillsOpen && "-rotate-90")} />
-              </button>
-              {techSkillsOpen && (
-                <div className="px-6 pb-5 flex flex-wrap gap-1.5 border-t border-gray-100 dark:border-gray-800 pt-4">
-                  {rec.techStack.map((s) => {
-                    const si = getSkillIcon(s);
-                    const SIcon = si?.icon;
-                    return (
-                      <span key={s} className="inline-flex items-center gap-1.5 text-[12px] font-medium px-2.5 py-1 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700">
-                        {SIcon && <SIcon size={11} className={cn("shrink-0", si.className)} />}
-                        {s}
-                      </span>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          )}
+          {/* ④ Kỹ năng chuyên môn — tạm ẩn theo yêu cầu */}
 
           {/* ⑤ Liên kết mạng xã hội */}
           {(rec.linkedInUrl || rec.githubUrl) && (

@@ -387,7 +387,7 @@
       "/hr/generate-question": "Generate question set",
       "/hr/history": "Question Sets",
       "/hr/knowledge": "Knowledge Documents",
-      "/hr/candidate-recommendations": "Candidates",
+      "/hr/candidate-recommendations": "Potential Candidates",
       "/hr/talent": "Talent pool",
       "/hr/settings": "Settings",
     },
@@ -396,6 +396,7 @@
       draft: "Saved",
       published: "Published",
       bookmarked: "Bookmarked",
+      talentPool: "Talent Pool",
     },
     quickGenerate: {
       title: "Quick Generate",
@@ -520,7 +521,7 @@
     accountDisabled: "Your account has been disabled. Please contact the administrator.",
     loginFailed: "Login failed. Please try again.",
     selectRoleTitle: "Sign in as",
-    continueWithGoogle: "Continue with Google",
+    continueWithGoogle: "Login With Google",
     emailRequired: "Email is required",
     passwordRequired: "Password is required",
     passwordResetSuccess: "Password reset successfully. You can sign in now.",
@@ -616,6 +617,7 @@
     step2Subtitle: "Step 2 / 2",
     continueButton: "Continue",
     backButton: "Back",
+    signUpWithGoogle: "Sign up with Google",
     googleSignupSuccess: "Signed in with Google as {{email}}. Please complete your profile.",
     githubSignupSuccess: "Signed in with GitHub as {{email}}. Please complete your profile.",
     googleStep2Hint: "Complete your company details to start using HireGen AI.",
@@ -3045,6 +3047,7 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
     loadFailed: "Could not load this candidate.",
     retryBtn: "Retry",
     back: "Back",
+    statsTitle: "Practice statistics",
     statsHint: "Practice stats across the whole platform (completed sessions).",
     stats: {
       sessions: "Sessions",
@@ -3090,6 +3093,9 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
     viewOverview: "View practice profile",
     viewAnswersBtn: "View answers",
     colActions: "Actions",
+    scoreExcellent: "Excellent",
+    scoreGood: "Good",
+    scoreFair: "Needs improvement",
   },
 
   practitionersPage: {

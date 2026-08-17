@@ -12,6 +12,7 @@ import {
   FileText,
   Globe,
   Layers,
+  UserSearch,
   X,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
@@ -68,10 +69,21 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
   const [newBadgeReady, setNewBadgeReady] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const [hydrated, setHydrated] = useState(false);
-  const [historyOpen, setHistoryOpen] = useState(false);
 
-  const onHistoryRoute = pathname === HISTORY_HREF || pathname.startsWith(`${HISTORY_HREF}/`);
-  const activeFilter = onHistoryRoute ? parseFilter(searchParams.get("filter")) : null;
+  // Derived route flags — computed BEFORE useState(onHistoryRoute) so the initializer can use them
+  const isTalentRoute = pathname === "/hr/talent";
+  const onHistoryRoute =
+    pathname === HISTORY_HREF ||
+    pathname.startsWith(`${HISTORY_HREF}/`) ||
+    isTalentRoute;
+  // Only parse the filter param when actually on a /hr/history* route, not on /hr/talent
+  const activeFilter =
+    !isTalentRoute && onHistoryRoute
+      ? parseFilter(searchParams.get("filter"))
+      : null;
+
+  // Initialize to true when already on a history/talent route → no collapsed flash on mount
+  const [historyOpen, setHistoryOpen] = useState(onHistoryRoute);
 
   useEffect(() => {
     const stored = localStorage.getItem(SEEN_KEY);
@@ -189,7 +201,10 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
           <ul className="space-y-0.5">
             {navItems.map((item) => {
               const isHistory = item.href === HISTORY_HREF;
-              const isActive = isHrNavActive(item.href, pathname);
+              // Also treat /hr/talent as "active" for the Bộ câu hỏi parent nav item
+              const isActive =
+                isHrNavActive(item.href, pathname) ||
+                (isHistory && isTalentRoute);
               const label = s.nav[item.href as keyof typeof s.nav] ?? item.label;
               const isNew = newBadgeReady && !seenTabs.has(item.href);
               const badgeLabel = isNew ? "New" : typeof item.badge === "number" ? String(item.badge) : null;
@@ -280,6 +295,22 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
                             </li>
                           );
                         })}
+                        {/* Kho ứng viên — sub-item under Bộ câu hỏi */}
+                        <li>
+                          <Link
+                            href="/hr/talent"
+                            onClick={() => handleNavClick("/hr/talent")}
+                            className={cn(
+                              "flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-[13px] font-medium transition-colors",
+                              pathname === "/hr/talent"
+                                ? "bg-[rgba(124,58,237,0.1)] text-[#7C3AED] dark:bg-[rgba(124,58,237,0.18)] dark:text-[#a78bff]"
+                                : "text-gray-500 hover:bg-gray-50 hover:text-gray-800 dark:text-gray-400 dark:hover:bg-gray-900 dark:hover:text-gray-100"
+                            )}
+                          >
+                            <UserSearch size={13} className="shrink-0 opacity-70" />
+                            <span className="truncate">{s.questionSetsSub.talentPool}</span>
+                          </Link>
+                        </li>
                       </ul>
                     )}
                   </li>
