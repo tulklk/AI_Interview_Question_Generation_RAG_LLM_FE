@@ -76,6 +76,9 @@ function formatSkillName(skill: string): string {
 }
 
 /** Framer Motion slide variants — direction: +1 = next (slide left), -1 = prev (slide right) */
+const slideEaseIn = [0.25, 0.46, 0.45, 0.94] as const;
+const slideEaseOut = [0.55, 0, 1, 0.45] as const;
+
 const slideVariants = {
   enter: (dir: number) => ({
     x: dir >= 0 ? "55%" : "-55%",
@@ -84,12 +87,12 @@ const slideVariants = {
   center: {
     x: 0,
     opacity: 1,
-    transition: { duration: 0.32, ease: [0.25, 0.46, 0.45, 0.94] },
+    transition: { duration: 0.32, ease: slideEaseIn },
   },
   exit: (dir: number) => ({
     x: dir >= 0 ? "-55%" : "55%",
     opacity: 0,
-    transition: { duration: 0.24, ease: [0.55, 0, 1, 0.45] },
+    transition: { duration: 0.24, ease: slideEaseOut },
   }),
 };
 
