@@ -18,6 +18,7 @@ import { searchCompanies } from "@/features/hr/services/company.service";
 import type { CompanyOption } from "@/features/hr/services/company.service";
 import type { GoogleClaims } from "@/features/auth/utils/google-oauth-flow";
 import { completeGoogleLogin, finishGoogleAuth } from "@/features/auth/utils/google-oauth-flow";
+import { completeGithubLogin, finishGithubAuth } from "@/features/auth/utils/github-oauth-flow";
 import { getRoleRedirect } from "@/core/auth/permissions";
 import { markLoginWelcomeForRedirect } from "@/features/auth/utils/login-welcome";
 import { useLanguage } from "@/shared/providers/language-context";
@@ -38,17 +39,22 @@ const TECH_OPTIONS = [
 
 const SENIORITY_LEVELS = ["Intern", "Junior", "Mid-level", "Senior", "Lead"];
 
-interface GoogleLoginOnboardingProps {
-  credential: string;
+export type OAuthOnboardingProvider = "google" | "github";
+
+interface OAuthLoginOnboardingProps {
+  provider: OAuthOnboardingProvider;
+  /** Google idToken credential, or GitHub authorization code. */
+  identifier: string;
   claims: GoogleClaims;
   onCancel: () => void;
 }
 
-export function GoogleLoginOnboarding({
-  credential,
+export function OAuthLoginOnboarding({
+  provider,
+  identifier,
   claims,
   onCancel,
-}: GoogleLoginOnboardingProps) {
+}: OAuthLoginOnboardingProps) {
   const router = useRouter();
   const { t } = useLanguage();
   const lp = t.loginPage;
@@ -175,15 +181,23 @@ export function GoogleLoginOnboarding({
 
     setLoading(true);
     try {
-      const { role } = await completeGoogleLogin(credential, {
+      const extra = {
         intendedRole: toBackendIntendedRole(selectedRole),
         companyId: companyId || undefined,
         companyName: companyName.trim(),
         jobTitle: jobTitle.trim(),
-      });
+      };
+      const { role } =
+        provider === "google"
+          ? await completeGoogleLogin(identifier, extra)
+          : await completeGithubLogin(identifier, extra);
       addToast("success", hrp.profileCompleteSuccess);
       markLoginWelcomeForRedirect(getRoleRedirect(role));
-      await finishGoogleAuth(router, refreshUser, claims, credential, role);
+      if (provider === "google") {
+        await finishGoogleAuth(router, refreshUser, claims, identifier, role);
+      } else {
+        await finishGithubAuth(router, refreshUser, claims, role);
+      }
     } catch {
       addToast("error", hrp.profileCompleteFailed);
     } finally {
@@ -205,15 +219,23 @@ export function GoogleLoginOnboarding({
 
     setLoading(true);
     try {
-      const { role } = await completeGoogleLogin(credential, {
+      const extra = {
         intendedRole: toBackendIntendedRole(selectedRole),
         targetRole: targetRole.trim(),
         seniorityLevel,
         techStack,
-      });
+      };
+      const { role } =
+        provider === "google"
+          ? await completeGoogleLogin(identifier, extra)
+          : await completeGithubLogin(identifier, extra);
       addToast("success", jsp.profileCompleteSuccess);
       markLoginWelcomeForRedirect(getRoleRedirect(role));
-      await finishGoogleAuth(router, refreshUser, claims, credential, role);
+      if (provider === "google") {
+        await finishGoogleAuth(router, refreshUser, claims, identifier, role);
+      } else {
+        await finishGithubAuth(router, refreshUser, claims, role);
+      }
     } catch {
       addToast("error", jsp.profileCompleteFailed);
     } finally {

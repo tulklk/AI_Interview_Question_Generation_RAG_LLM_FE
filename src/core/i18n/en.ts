@@ -534,6 +534,8 @@ export const en = {
       "This email is registered with a password. Please sign in with email and password.",
     googleAccountExists: "Welcome back! Redirecting to your dashboard.",
     googleLinked: "Google has been linked to your existing account.",
+    githubAccountExists: "Welcome back! Redirecting to your dashboard.",
+    githubLinked: "GitHub has been linked to your existing account.",
   },
 
   forgotPasswordPage: {
@@ -615,6 +617,7 @@ export const en = {
     continueButton: "Continue",
     backButton: "Back",
     googleSignupSuccess: "Signed in with Google as {{email}}. Please complete your profile.",
+    githubSignupSuccess: "Signed in with GitHub as {{email}}. Please complete your profile.",
     googleStep2Hint: "Complete your company details to start using HireGen AI.",
     profileCompleteSuccess: "Profile saved. Welcome!",
     profileCompleteFailed: "Could not save profile. Please try again.",
@@ -657,6 +660,7 @@ export const en = {
     googleStep2Hint: "Complete your profile to start practicing interviews.",
     googleLinkedAs: "Signed up with Google: {{email}}",
     googleSignupSuccess: "Signed in with Google as {{email}}. Please complete your profile.",
+    githubSignupSuccess: "Signed in with GitHub as {{email}}. Please complete your profile.",
     profileCompleteSuccess: "Profile saved. Welcome aboard!",
     profileCompleteFailed: "Could not save your profile. Please try again.",
   },
