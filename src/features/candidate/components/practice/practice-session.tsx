@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
@@ -648,14 +648,14 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
           );
         }
       }
-      router.push(`/jobseeker/practice/${sid}/result`);
+      router.push(`/candidate/practice/${sid}/result`);
     } catch {
       // BE now enforces the question set's own time limit server-side and can
       // auto-complete a session before our client-side auto-submit reaches it —
       // complete() then 400s even though the session is actually done.
       const existing = await getPracticeSession(sid).catch(() => null);
       if (existing && existing.status !== "IN_PROGRESS") {
-        router.push(`/jobseeker/practice/${sid}/result`);
+        router.push(`/candidate/practice/${sid}/result`);
         return;
       }
       setFinishError(true);
@@ -668,7 +668,7 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
   async function handleSaveAndExit() {
     const sid = sessionIdRef.current;
     if (!sid) {
-      router.push(`/jobseeker/sets/${set.id}`);
+      router.push(`/candidate/sets/${set.id}`);
       return;
     }
 
@@ -697,7 +697,7 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
         }
       }
     }
-    router.push(`/jobseeker/sets/${set.id}`);
+    router.push(`/candidate/sets/${set.id}`);
   }
 
   function handleAbandon() {
@@ -708,7 +708,7 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
         if (typeof window !== "undefined") {
           questions.forEach((q) => window.sessionStorage.removeItem(draftKey(sessionId, q.id)));
         }
-        router.push(`/jobseeker/sets/${set.id}`);
+        router.push(`/candidate/sets/${set.id}`);
       })
       .catch(async () => {
         // Same server-side timeout race as handleFinish — if the session already
@@ -719,7 +719,7 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
           if (typeof window !== "undefined") {
             questions.forEach((q) => window.sessionStorage.removeItem(draftKey(sessionId, q.id)));
           }
-          router.push(`/jobseeker/sets/${set.id}`);
+          router.push(`/candidate/sets/${set.id}`);
           return;
         }
         setAbandoning(false);

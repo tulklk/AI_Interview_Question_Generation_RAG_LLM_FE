@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { motion } from "framer-motion";
@@ -57,7 +57,7 @@ export function RoleReadinessList({ roles }: RoleReadinessListProps) {
           </div>
           {role.questionSetId && (
             <Link
-              href={`/jobseeker/practice/${role.questionSetId}`}
+              href={`/candidate/practice/${role.questionSetId}`}
               className="shrink-0 flex items-center gap-1 h-8 px-3 rounded-lg text-[11px] font-[600] text-primary hover:bg-violet-50 dark:hover:bg-violet-950/30 transition-colors"
             >
               <RefreshCw size={11} />

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { Bot, Crown, Loader2, Sparkles, Store } from "lucide-react";
@@ -66,7 +66,7 @@ export function CoachHero({
             {ctaLabel}
           </button>
           <Link
-            href="/jobseeker/practice"
+            href="/candidate/practice"
             className={cn(
               "inline-flex items-center gap-1.5 h-10 px-4 rounded-lg text-[13px] font-semibold border border-gray-200 dark:border-gray-700 hover:border-primary/40 transition-colors",
               portalHeadingAlt

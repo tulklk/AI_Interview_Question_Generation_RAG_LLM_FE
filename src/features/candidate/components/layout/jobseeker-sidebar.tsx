@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -51,7 +51,7 @@ export function JobseekerSidebar({ open, onClose, onOpenUpgrade }: JobseekerSide
             const isActive = pathname.startsWith(item.href);
             const label = s.nav[item.href as keyof typeof s.nav] ?? item.label;
             const badge =
-              item.href === "/jobseeker/invitations" ? pendingInvitations || undefined
+              item.href === "/candidate/invitations" ? pendingInvitations || undefined
               : item.badge;
 
             return (
@@ -121,7 +121,7 @@ export function JobseekerSidebar({ open, onClose, onOpenUpgrade }: JobseekerSide
             {s.practiceNow.desc}
           </p>
           <Link
-            href="/jobseeker/practice"
+            href="/candidate/practice"
             onClick={() => onClose?.()}
             className="shimmer-button mt-3 inline-block text-xs font-semibold text-white hr-cta-btn px-4 py-2 rounded-lg w-full text-center"
           >
@@ -135,7 +135,7 @@ export function JobseekerSidebar({ open, onClose, onOpenUpgrade }: JobseekerSide
         badge={
           isPremium ? (
             <Link
-              href="/jobseeker/settings?tab=billing"
+              href="/candidate/settings?tab=billing"
               onClick={() => onClose?.()}
               title={s.managePremiumTitle}
               className="text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 text-violet-700 dark:text-violet-300 bg-violet-50 dark:bg-violet-950/60 hover:bg-violet-100 dark:hover:bg-violet-900/60 transition-colors"

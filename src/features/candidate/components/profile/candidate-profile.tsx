@@ -487,8 +487,20 @@ export function CandidateProfile() {
           <h2 className={cn("text-[18px] font-[700]", portalHeadingAlt)}>{form.fullName}</h2>
           <p className={cn("text-[13px] mt-1", portalSubtextAlt)}>{form.email}</p>
           {googleLinked ? (
-            <span className="mt-2 inline-flex items-center gap-1 rounded-full bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 dark:text-emerald-400">
+            <span className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700 dark:text-emerald-400">
+              {/* Google G logo */}
+              <svg viewBox="0 0 24 24" width="13" height="13" aria-hidden="true" className="shrink-0">
+                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+              </svg>
               {p.googleLinkedBadge} Google
+              {/* Tick */}
+              <svg viewBox="0 0 12 12" width="11" height="11" aria-hidden="true" className="shrink-0">
+                <circle cx="6" cy="6" r="6" fill="currentColor" opacity="0.18" />
+                <path d="M3 6l2 2 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+              </svg>
             </span>
           ) : null}
 
@@ -570,14 +582,15 @@ export function CandidateProfile() {
           </div>
 
           {cvLoading ? (
-            <div className="h-[520px] flex items-center justify-center bg-gray-50 dark:bg-gray-900/40">
+            <div className="aspect-210/297 flex items-center justify-center bg-gray-50 dark:bg-gray-900/40">
               <Loader2 size={20} className="animate-spin text-primary" />
             </div>
           ) : cv && isImageCv(cv.fileName) && cv.downloadUrl ? (
+            /* Image CV — container is exactly 1 A4 page tall, scroll to see more */
             <button
               type="button"
               onClick={() => setCvLightbox(true)}
-              className="group relative block w-full text-left max-h-[640px] overflow-y-auto bg-gray-50 dark:bg-gray-900/40 scrollbar-hide"
+              className="group relative block w-full text-left aspect-210/297 overflow-y-auto bg-gray-50 dark:bg-gray-900/40"
               title={p.cv.previewHint}
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -595,17 +608,18 @@ export function CandidateProfile() {
               </span>
             </button>
           ) : cv && isPdfCv(cv.fileName) && cv.downloadUrl ? (
-            <div className="relative w-full bg-gray-50 dark:bg-gray-900/40">
+            /* PDF CV — iframe sized to 1 A4 page; native PDF viewer handles page scrolling */
+            <div className="relative w-full aspect-210/297 bg-gray-50 dark:bg-gray-900/40">
               <iframe
                 src={cv.downloadUrl}
                 title={cv.fileName}
-                className="w-full h-[640px] bg-white dark:bg-gray-950"
+                className="absolute inset-0 w-full h-full bg-white dark:bg-gray-950"
               />
               <button
                 type="button"
                 onClick={() => setCvLightbox(true)}
                 title={p.cv.previewHint}
-                className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5 text-white text-[11px] font-semibold px-2.5 py-1.5 rounded-lg bg-black/55 shadow-sm hover:bg-black/70 transition-colors"
+                className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5 text-white text-[11px] font-semibold px-2.5 py-1.5 rounded-lg bg-black/55 shadow-sm hover:bg-black/70 transition-colors z-10"
               >
                 <Maximize2 size={11} />
                 {p.cv.previewOpen}
@@ -795,12 +809,9 @@ export function CandidateProfile() {
                   className={INPUT_CLASS}
                 />
               ) : (
-                <div className="flex items-center gap-2">
-                  <Target size={14} className="text-primary" />
-                  <span className={cn("text-[14px] font-[600]", portalHeadingAlt)}>
-                    {displayValue(form.targetRole)}
-                  </span>
-                </div>
+                <span className={cn("text-[14px] font-[600]", portalHeadingAlt)}>
+                  {displayValue(form.targetRole)}
+                </span>
               )}
             </Field>
 
@@ -965,7 +976,7 @@ export function CandidateProfile() {
               )}
 
               {/* Actions */}
-              <div className="flex items-center gap-1 px-3 py-2.5 border-t border-gray-100 dark:border-gray-800">
+              <div className="flex items-center justify-end gap-1 px-3 py-2.5 border-t border-gray-100 dark:border-gray-800">
                 <button
                   type="button"
                   onClick={() => cvFileInputRef.current?.click()}

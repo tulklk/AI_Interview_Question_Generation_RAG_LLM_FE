@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { JobseekerAppShell } from "@/features/candidate/components/layout/jobseeker-app-shell";
 import { InvitationsList } from "@/features/candidate/components/invitations/invitations-list";
@@ -13,7 +13,7 @@ export default function InvitationsPage() {
   return (
     <JobseekerAppShell
       pageTitle={p.heading}
-      breadcrumb={[{ label: "jobseeker", href: "/jobseeker/dashboard" }, { label: p.heading }]}
+      breadcrumb={[{ label: "jobseeker", href: "/candidate/dashboard" }, { label: p.heading }]}
     >
       <div className="mb-6 animate-fade-up">
         <h1 className={cn("text-2xl font-bold", portalHeading)}>{p.heading}</h1>
