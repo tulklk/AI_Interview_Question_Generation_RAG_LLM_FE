@@ -52,16 +52,15 @@ export function LinkedGoogleAccount({ linked, email, labels, className }: Linked
           <GoogleIcon />
         </div>
         <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <p className={cn("text-sm font-semibold", portalHeading)}>Google</p>
-            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 dark:text-emerald-400">
-              <Check size={11} strokeWidth={2.5} />
-              {labels.linkedBadge}
-            </span>
-          </div>
+          <p className={cn("text-sm font-semibold", portalHeading)}>Google</p>
           <p className={cn("text-xs mt-0.5 truncate", portalSubtext)}>{email}</p>
           <p className={cn("text-[11px] mt-0.5", portalSubtext)}>{labels.hint}</p>
         </div>
+        {/* Badge — large, pinned to the right, vertically centred by parent items-center */}
+        <span className="shrink-0 inline-flex items-center gap-1.5 rounded-full border border-emerald-200 dark:border-emerald-800/50 bg-emerald-50 dark:bg-emerald-950/40 px-3 py-1.5 text-[13px] font-semibold text-emerald-700 dark:text-emerald-400">
+          <Check size={15} strokeWidth={2.5} />
+          {labels.linkedBadge}
+        </span>
       </div>
     </div>
   );

@@ -99,7 +99,9 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  // Dev HMR: khi vi.ts thêm key mới (vd. heatmap), reload dictionary nếu đang dùng tiếng Việt.
+  // Dev HMR: khi vi.ts (hoặc en.ts) thêm key mới, reload dictionary nếu đang dùng tiếng Việt.
+  // `en` được import tĩnh → HMR tạo reference mới mỗi lần bất kỳ i18n file thay đổi,
+  // khiến effect này re-run mà không cần user chuyển ngôn ngữ qua lại.
   useEffect(() => {
     if (process.env.NODE_ENV === "production" || lang !== "vi") return;
     let cancelled = false;
@@ -109,7 +111,8 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [lang]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lang, en]);
 
   // en luôn lấy từ import mới nhất; vi merge fallback en để key mới không crash khi HMR giữ cache cũ
   const t = useMemo(() => {

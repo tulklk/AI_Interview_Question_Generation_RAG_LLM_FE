@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
@@ -109,8 +109,8 @@ export function SetDetailClient() {
     <JobseekerAppShell
       pageTitle={displayTitle ?? p.loading}
       breadcrumb={[
-        { label: "Jobseeker", href: "/jobseeker/dashboard" },
-        { label: "Sets", href: "/jobseeker/practice" },
+        { label: "Jobseeker", href: "/candidate/dashboard" },
+        { label: "Sets", href: "/candidate/practice" },
         { label: displayTitle ?? "" },
       ]}
     >
@@ -135,7 +135,7 @@ export function SetDetailClient() {
             </p>
           </div>
           <Link
-            href="/jobseeker/practice"
+            href="/candidate/practice"
             className="flex items-center gap-2 h-9 px-4 text-[13px] font-semibold rounded-lg bg-primary text-white hover:bg-primary/90 transition-colors"
           >
             <ArrowLeft size={14} />
@@ -184,7 +184,7 @@ export function SetDetailClient() {
 
             <button
               type="button"
-              onClick={() => router.push("/jobseeker/practice")}
+              onClick={() => router.push("/candidate/practice")}
               className="w-full flex items-center justify-center gap-2 h-10 rounded-xl bg-primary text-white text-[13px] font-semibold hover:bg-primary/90 transition-colors"
             >
               <ArrowLeft size={14} />

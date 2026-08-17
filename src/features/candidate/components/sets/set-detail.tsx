@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
@@ -136,7 +136,7 @@ export function SetDetail({ set }: SetDetailProps) {
 
     abandonPracticeSession(inProgressSessionId)
       .then(() => {
-        router.push(`/jobseeker/practice/${set.id}`);
+        router.push(`/candidate/practice/${set.id}`);
       })
       .catch(async () => {
         // The old session may have already been auto-completed server-side (BE
@@ -144,7 +144,7 @@ export function SetDetail({ set }: SetDetailProps) {
         // either way there's nothing IN_PROGRESS left, so starting fresh still works.
         const existing = await getPracticeSession(inProgressSessionId).catch(() => null);
         if (existing && existing.status !== "IN_PROGRESS") {
-          router.push(`/jobseeker/practice/${set.id}`);
+          router.push(`/candidate/practice/${set.id}`);
           return;
         }
         setStartingNew(false);
@@ -167,7 +167,7 @@ export function SetDetail({ set }: SetDetailProps) {
     <div>
       {/* Back link */}
       <Link
-        href="/jobseeker"
+        href="/candidate"
         className={cn(
           "inline-flex items-center gap-1.5 text-[13px] font-[500] hover:text-primary transition-colors mb-6",
           portalSubtextAlt
@@ -378,7 +378,7 @@ export function SetDetail({ set }: SetDetailProps) {
               <button
                 type="button"
                 disabled={navigating}
-                onClick={() => void checkAndNavigate(`/jobseeker/practice/${set.id}`)}
+                onClick={() => void checkAndNavigate(`/candidate/practice/${set.id}`)}
                 className="shimmer-button flex items-center justify-center gap-2 w-full h-10 text-[14px] font-semibold text-white hr-cta-btn rounded-lg mt-2 disabled:opacity-70 disabled:cursor-not-allowed"
               >
                 {navigating ? (
@@ -452,7 +452,7 @@ export function SetDetail({ set }: SetDetailProps) {
             </p>
             <button
               type="button"
-              onClick={() => router.push("/jobseeker/practice")}
+              onClick={() => router.push("/candidate/practice")}
               className="w-full flex items-center justify-center gap-2 h-10 rounded-xl bg-primary text-white text-[13px] font-semibold hover:bg-primary/90 transition-colors"
             >
               <ArrowLeft size={14} />

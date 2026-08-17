@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { motion } from "framer-motion";
@@ -90,7 +90,7 @@ export function DashboardHeader({ loading, stats, streakDays, timeRange, onTimeR
         </Link>
 
         <Link
-          href="/jobseeker/practice"
+          href="/candidate/practice"
           className="shimmer-button flex items-center gap-1.5 h-9 px-4 text-[12px] font-semibold text-white hr-cta-btn rounded-lg"
         >
           <Sparkles size={13} />

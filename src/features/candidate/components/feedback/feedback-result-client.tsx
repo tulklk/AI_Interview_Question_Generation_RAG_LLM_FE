@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
@@ -286,13 +286,14 @@ export function FeedbackResultClient() {
       pageTitle={p.pageTitle}
       fullWidth
       breadcrumb={[
-        { label: "jobseeker", href: "/jobseeker/dashboard" },
-        { label: "history", href: "/jobseeker/history" },
+        { label: "jobseeker", href: "/candidate/dashboard" },
+        { label: "history", href: "/candidate/history" },
         { label: "feedback" },
       ]}
     >
       {loading && (
-        <div className="py-20 flex items-center justify-center">
+        /* Centre within the content pane (sidebar is w-62.5 = 250 px on lg+) */
+        <div className="fixed inset-0 lg:left-62.5 flex items-center justify-center z-10 pointer-events-none">
           <AiLoadingSpinner text={p.loadingFeedback} subtext={p.loadingFeedbackSub} />
         </div>
       )}

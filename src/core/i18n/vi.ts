@@ -1,4 +1,4 @@
-import type { Translations } from "./en";
+﻿import type { Translations } from "./en";
 
 export const vi: Translations = {
   common: {
@@ -2140,14 +2140,14 @@ Yêu cầu:
   jobseekerSidebar: {
     sectionLabel: "Ứng Viên",
     nav: {
-      "/jobseeker/dashboard": "Tổng quan",
-      "/jobseeker/practice": "Luyện tập ngay",
-      "/jobseeker/coach": "AI Coach",
-      "/jobseeker/saved": "Đã lưu",
-      "/jobseeker/invitations": "Lời mời",
-      "/jobseeker/history": "Lịch sử",
-      "/jobseeker/profile": "Hồ sơ",
-      "/jobseeker/settings": "Cài đặt",
+      "/candidate/dashboard": "Tổng quan",
+      "/candidate/practice": "Luyện tập ngay",
+      "/candidate/coach": "AI Coach",
+      "/candidate/saved": "Đã lưu",
+      "/candidate/invitations": "Lời mời",
+      "/candidate/history": "Lịch sử",
+      "/candidate/profile": "Hồ sơ",
+      "/candidate/settings": "Cài đặt",
     },
     practiceNow: {
       title: "Sẵn sàng luyện tập?",
@@ -2161,13 +2161,13 @@ Yêu cầu:
 
   jobseekerAppShell: {
     routes: {
-      "/jobseeker/dashboard": "Tổng quan",
-      "/jobseeker/practice": "Luyện tập ngay",
-      "/jobseeker/coach": "AI Coach",
-      "/jobseeker/saved": "Bộ đã lưu",
-      "/jobseeker/history": "Lịch sử luyện tập",
-      "/jobseeker/profile": "Hồ Sơ",
-      "/jobseeker/settings": "Cài đặt",
+      "/candidate/dashboard": "Tổng quan",
+      "/candidate/practice": "Luyện tập ngay",
+      "/candidate/coach": "AI Coach",
+      "/candidate/saved": "Bộ đã lưu",
+      "/candidate/history": "Lịch sử luyện tập",
+      "/candidate/profile": "Hồ Sơ",
+      "/candidate/settings": "Cài đặt",
     },
     breadcrumb: {
       jobseeker: "Ứng viên",
@@ -2258,6 +2258,10 @@ Yêu cầu:
     remainingToTarget: "Còn {{points}} điểm tới mục tiêu.",
     reachedTarget: "Đã đạt mục tiêu.",
     baselineMark: "Baseline",
+    easy: "Dễ",
+    medium: "Trung bình",
+    hard: "Khó",
+    questionsUnit: "câu",
   },
 
   jobseekerMarketplacePage: {
@@ -2325,6 +2329,7 @@ Yêu cầu:
     notAttempted: "Chưa làm",
     avgMinutesPrefix: "TB ",
     avgMinutesSuffix: " phút",
+    hoursUnit: " giờ",
     badgePinned: "Ghim",
     badgeTrending: "Đang nổi",
     loadMoreBtn: "Tải thêm",
@@ -2621,6 +2626,7 @@ Yêu cầu:
     },
     retryBtn: "Luyện lại",
     viewBtn: "Xem",
+    durationUnit: "phút",
     noHistory: "Chưa có phiên luyện tập nào. Hãy bắt đầu ngay!",
     loading: "Đang tải lịch sử luyện tập…",
     loadFailed: "Không thể tải lịch sử luyện tập.",
@@ -2628,6 +2634,11 @@ Yêu cầu:
     loadMoreBtn: "Tải thêm",
     loadingMore: "Đang tải thêm…",
     pendingScoreTooltip: "AI vẫn đang xử lý điểm cho phiên này — hãy quay lại sau ít phút.",
+    retryUnavailableDialog: {
+      title: "Bộ câu hỏi không còn khả dụng",
+      body: "Bộ câu hỏi này đã bị HR gỡ xuống hoặc chưa được công bố. Bạn vẫn có thể xem kết quả cũ, nhưng không thể luyện tập lại.",
+      closeBtn: "Đã hiểu",
+    },
   },
 
   jobseekerDashboardPage: {

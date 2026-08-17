@@ -1,11 +1,11 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { motion, animate, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, RefreshCw, Share2, Loader2,
-  Sparkles, ChevronDown, CheckCircle2, AlertTriangle, Lightbulb, Target,
+  Sparkles, ChevronDown, ChevronLeft, ChevronRight, CheckCircle2, AlertTriangle, Lightbulb, Target,
   TrendingUp, TrendingDown, Minus, BookOpen, Flame, Lock, Crown,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
@@ -29,6 +29,19 @@ import { XpGainNotification } from "@/features/gamification/components/xp-gain-n
 import type { XpReward } from "@/features/gamification/types/gamification.types";
 
 const CELEBRATION_THRESHOLD = 80;
+const Q_PAGE_SIZE = 5;
+
+function getQPageNums(current: number, total: number): (number | "…")[] {
+  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+  const left = Math.max(2, current - 1);
+  const right = Math.min(total - 1, current + 1);
+  const nums: (number | "…")[] = [1];
+  if (left > 2) nums.push("…");
+  for (let i = left; i <= right; i++) nums.push(i);
+  if (right < total - 1) nums.push("…");
+  nums.push(total);
+  return nums;
+}
 
 function getSkillColor(score: number) {
   if (score >= 80) return { bar: "bg-emerald-500", text: "text-emerald-700 dark:text-emerald-400", bg: "bg-emerald-50 dark:bg-emerald-950/40", ring: "#10B981" };
@@ -255,6 +268,9 @@ export function FeedbackPage({
   const [expandedIds, setExpandedIds] = useState<Set<string>>(
     () => new Set(reviewQuestions.length > 0 ? [reviewQuestions[0].id] : [])
   );
+  const [qPage, setQPage] = useState(1);
+  const totalQPages = Math.max(1, Math.ceil(reviewQuestions.length / Q_PAGE_SIZE));
+  const pageQuestions = reviewQuestions.slice((qPage - 1) * Q_PAGE_SIZE, qPage * Q_PAGE_SIZE);
 
   async function handleShare() {
     const url = window.location.href;
@@ -293,7 +309,7 @@ export function FeedbackPage({
     <div className="w-full">
       {/* Back */}
       <Link
-        href="/jobseeker/history"
+        href="/candidate/history"
         className={cn(
           "inline-flex items-center gap-1.5 text-[13px] font-[500] hover:text-primary transition-colors mb-6",
           portalSubtextAlt
@@ -390,7 +406,7 @@ export function FeedbackPage({
                       {p.freemium.upsellCta}
                     </button>
                     <Link
-                      href="/jobseeker/practice"
+                      href="/candidate/practice"
                       className={cn("inline-flex items-center h-8 px-3 text-[12px] font-semibold rounded-lg border border-gray-200 dark:border-gray-700", portalSubtextAlt)}
                     >
                       {p.freemium.practiceOther}
@@ -467,7 +483,7 @@ export function FeedbackPage({
         <div className="flex sm:flex-col gap-2 shrink-0 w-full sm:w-auto">
           {session.questionSetId && (
             <Link
-              href={`/jobseeker/practice/${session.questionSetId}`}
+              href={`/candidate/practice/${session.questionSetId}`}
               className="shimmer-button flex items-center gap-2 h-9 px-4 text-[13px] font-semibold text-white hr-cta-btn rounded-lg"
             >
               <RefreshCw size={13} />
@@ -620,8 +636,25 @@ export function FeedbackPage({
           transition={{ delay: 0.25 }}
           className="flex flex-col gap-4"
         >
-          <h2 className={cn("text-[20px] font-[700]", portalHeadingAlt)}>{p.questionReviews}</h2>
-          {reviewQuestions.map((q, i) => {
+          <div className="flex items-center justify-between gap-3">
+            <h2 className={cn("text-[20px] font-[700]", portalHeadingAlt)}>{p.questionReviews}</h2>
+            {totalQPages > 1 && (
+              <span className={cn("text-[13px] shrink-0", portalSubtextAlt)}>
+                {(qPage - 1) * Q_PAGE_SIZE + 1}–{Math.min(qPage * Q_PAGE_SIZE, reviewQuestions.length)} / {reviewQuestions.length}
+              </span>
+            )}
+          </div>
+          <AnimatePresence mode="wait">
+          <motion.div
+            key={qPage}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.18 }}
+            className="flex flex-col gap-4"
+          >
+          {pageQuestions.map((q, i) => {
+            const globalIndex = (qPage - 1) * Q_PAGE_SIZE + i;
             const isExpanded = expandedIds.has(q.id);
             const fb = feedbackByQuestionId.get(q.id);
             const isLocked = Boolean(fb?.isLocked) || (isFreeTeaser && !fb?.isTeaser && !(fb && fb.evaluationStatus === "Succeeded" && fb.score !== null));
@@ -632,7 +665,7 @@ export function FeedbackPage({
                 key={q.id}
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3 + i * 0.08 }}
+                transition={{ delay: 0.05 + i * 0.06 }}
                 className={cn("hr-glass-card p-6", isLocked && "relative overflow-hidden")}
               >
                 {/* Question header — always-visible summary, click to expand */}
@@ -649,7 +682,7 @@ export function FeedbackPage({
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-2 flex-wrap">
                       <CategoryPill category={q.questionType} label={translateQuestionCategory(q.questionType, lang)} />
-                      <span className={cn("text-[12px]", portalSubtextAlt)}>Q{i + 1}</span>
+                      <span className={cn("text-[12px]", portalSubtextAlt)}>Q{globalIndex + 1}</span>
                       {isTeaser && (
                         <span className="text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400">
                           {p.freemium.teaserBadge}
@@ -764,6 +797,51 @@ export function FeedbackPage({
               </motion.div>
             );
           })}
+          </motion.div>
+          </AnimatePresence>
+
+          {/* ── Pagination ── */}
+          {totalQPages > 1 && (
+            <div className="flex items-center justify-center gap-1.5 pt-2">
+              <button
+                type="button"
+                disabled={qPage <= 1}
+                onClick={() => { setQPage((p) => p - 1); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+                className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-500 dark:text-gray-400 hover:border-primary/40 hover:text-primary disabled:opacity-40 disabled:pointer-events-none transition-colors"
+              >
+                <ChevronLeft size={15} />
+              </button>
+
+              {getQPageNums(qPage, totalQPages).map((num, idx) =>
+                num === "…" ? (
+                  <span key={`e-${idx}`} className={cn("w-8 text-center text-[13px] select-none", portalSubtextAlt)}>…</span>
+                ) : (
+                  <button
+                    key={num}
+                    type="button"
+                    onClick={() => { setQPage(num as number); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+                    className={cn(
+                      "inline-flex h-8 w-8 items-center justify-center rounded-lg text-[13px] font-medium transition-colors",
+                      num === qPage
+                        ? "bg-primary text-white shadow-sm scale-105"
+                        : "border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-300 hover:border-primary/40 hover:text-primary"
+                    )}
+                  >
+                    {num}
+                  </button>
+                )
+              )}
+
+              <button
+                type="button"
+                disabled={qPage >= totalQPages}
+                onClick={() => { setQPage((p) => p + 1); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+                className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-500 dark:text-gray-400 hover:border-primary/40 hover:text-primary disabled:opacity-40 disabled:pointer-events-none transition-colors"
+              >
+                <ChevronRight size={15} />
+              </button>
+            </div>
+          )}
         </motion.div>
       )}
 
