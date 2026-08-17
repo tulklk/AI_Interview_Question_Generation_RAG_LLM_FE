@@ -369,11 +369,16 @@ export function HrCandidateOverviewPage({ candidateUserId }: { candidateUserId: 
                         <th className={cn("px-3 py-2 text-left text-[11px] font-semibold", portalSubtextAlt)}>
                           {p.colDate}
                         </th>
+                        <th className={cn("px-3 py-2 text-right text-[11px] font-semibold", portalSubtextAlt)}>
+                          {p.colActions}
+                        </th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-                      {data.practiceOnMySets.map((row, i) => (
-                        <tr key={`${row.questionSetId}-${row.startedAt ?? i}`} className="hover:bg-gray-50/60 dark:hover:bg-gray-900/40">
+                      {data.practiceOnMySets.map((row, i) => {
+                        const completed = row.sessionStatus.toUpperCase() === "COMPLETED" && row.sessionId;
+                        return (
+                        <tr key={`${row.sessionId || row.questionSetId}-${row.startedAt ?? i}`} className="hover:bg-gray-50/60 dark:hover:bg-gray-900/40">
                           <td className="px-3 py-2.5">
                             <Link
                               href={`/hr/history/${row.questionSetId}`}
@@ -395,8 +400,21 @@ export function HrCandidateOverviewPage({ candidateUserId }: { candidateUserId: 
                                 ? formatRelativeTime(row.startedAt, lang)
                                 : "—"}
                           </td>
+                          <td className="px-3 py-2.5 text-right">
+                            {completed ? (
+                              <Link
+                                href={`/hr/candidates/${data.candidateUserId}/sessions/${row.sessionId}`}
+                                className="text-[12px] font-medium text-primary hover:underline"
+                              >
+                                {p.viewAnswersBtn}
+                              </Link>
+                            ) : (
+                              <span className={portalSubtext}>—</span>
+                            )}
+                          </td>
                         </tr>
-                      ))}
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>

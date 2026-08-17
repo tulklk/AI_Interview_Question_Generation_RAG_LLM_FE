@@ -51,6 +51,14 @@ export interface HrDashboardInsights {
   weekOverWeekDelta: number | null;
 }
 
+export interface HrDashboardHiringFunnel {
+  practicedLast7Days: number;
+  newUnviewed: number;
+  shortlisted: number;
+  invitedPending: number;
+  invitedAccepted: number;
+}
+
 export interface HrDashboardData {
   kpis: HrDashboardKpis | null;
   dailyActivity: HrDashboardDailyActivity[];
@@ -58,6 +66,7 @@ export interface HrDashboardData {
   recentSessions: HrDashboardRecentSession[];
   topRecommendations: HrDashboardRecommendation[];
   insights: HrDashboardInsights | null;
+  hiringFunnel: HrDashboardHiringFunnel | null;
 }
 
 function asRecord(val: unknown): Record<string, unknown> | null {
@@ -190,7 +199,7 @@ function normalizeRecentSessions(src: Record<string, unknown>): HrDashboardRecen
 
 function normalizeRecStatus(raw: string): RecommendationStatus {
   const u = raw.toUpperCase() as RecommendationStatus;
-  return (["NEW", "VIEWED", "SHORTLISTED", "INVITED", "DISMISSED"] as RecommendationStatus[]).includes(u) ? u : "NEW";
+  return (["NEW", "SHORTLISTED", "INVITED", "DISMISSED"] as RecommendationStatus[]).includes(u) ? u : "NEW";
 }
 
 function normalizeTopRecommendations(src: Record<string, unknown>): HrDashboardRecommendation[] {
@@ -244,10 +253,21 @@ export async function getHrDashboard(params: GetHrDashboardParams = {}): Promise
   const recentSessions = normalizeRecentSessions(src);
   const topRecommendations = normalizeTopRecommendations(src);
   const insights = normalizeInsights(src);
+  const hiringFunnel = normalizeFunnel(src);
 
-  // Nothing recognizable came back — treat as unusable so the caller can fall
-  // back to the old per-endpoint aggregation instead of rendering all-zero KPIs.
   if (!kpis && dailyActivity.length === 0 && recentSessions.length === 0) return null;
 
-  return { kpis, dailyActivity, questionTypeDistribution, recentSessions, topRecommendations, insights };
+  return { kpis, dailyActivity, questionTypeDistribution, recentSessions, topRecommendations, insights, hiringFunnel };
+}
+
+function normalizeFunnel(src: Record<string, unknown>): HrDashboardHiringFunnel | null {
+  const f = asRecord(src.hiringFunnel) ?? asRecord(src.HiringFunnel);
+  if (!f) return null;
+  return {
+    practicedLast7Days: pickNum(f, "practicedLast7Days"),
+    newUnviewed: pickNum(f, "newUnviewed"),
+    shortlisted: pickNum(f, "shortlisted"),
+    invitedPending: pickNum(f, "invitedPending"),
+    invitedAccepted: pickNum(f, "invitedAccepted"),
+  };
 }

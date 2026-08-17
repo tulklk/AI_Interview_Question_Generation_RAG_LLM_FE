@@ -555,3 +555,23 @@ export async function getPracticeStats(): Promise<PracticeStats> {
     totalDurationMinutes,
   };
 }
+
+export interface CandidateSkillStat {
+  skill: string;
+  averageScore: number;
+  sampleCount: number;
+}
+
+export async function getSkillStats(): Promise<CandidateSkillStat[]> {
+  const res = await apiClient.get(`${BASE}/skill-stats`);
+  const root = asRecord(res.data);
+  const data = root && Array.isArray(root.data) ? root.data : Array.isArray(root) ? root : [];
+  return (data as unknown[]).map((raw) => {
+    const src = asRecord(raw) ?? {};
+    return {
+      skill: pickString(src, "skill"),
+      averageScore: pickNumber(src, "averageScore"),
+      sampleCount: pickNumber(src, "sampleCount"),
+    };
+  }).filter((x) => x.skill);
+}

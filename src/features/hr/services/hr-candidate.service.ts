@@ -13,6 +13,7 @@ export interface HrCandidateAchievementFlag {
 }
 
 export interface HrCandidatePracticeOnMySet {
+  sessionId: string;
   questionSetId: string;
   title: string;
   sessionStatus: string;
@@ -119,8 +120,10 @@ function normalizePractice(raw: unknown): HrCandidatePracticeOnMySet | null {
   const src = asRecord(raw);
   if (!src) return null;
   const questionSetId = pickStr(src, "questionSetId", "QuestionSetId");
+  const sessionId = pickStr(src, "sessionId", "SessionId");
   if (!questionSetId) return null;
   return {
+    sessionId,
     questionSetId,
     title: pickStr(src, "title", "Title") || "—",
     sessionStatus: pickStr(src, "sessionStatus", "SessionStatus") || "IN_PROGRESS",
@@ -187,4 +190,76 @@ export async function getHrCandidateOverview(candidateUserId: string): Promise<H
   const data = normalizeOverview(res.data);
   if (!data) throw new Error("Invalid candidate overview response");
   return data;
+}
+
+export interface HrSessionFeedbackItem {
+  questionId: string;
+  questionText: string;
+  questionType: string;
+  difficulty: string;
+  answerText: string;
+  score: number | null;
+  strengths: string[];
+  improvements: string[];
+  suggestion: string | null;
+  dimensionScores: Record<string, number> | null;
+  evaluationStatus: string;
+}
+
+export interface HrSessionFeedback {
+  sessionId: string;
+  overallScore: number | null;
+  status: string;
+  accessLevel: string;
+  aiInsight: { vi: string; en: string; skillsToImproveVi: string[]; skillsToImproveEn: string[] } | null;
+  items: HrSessionFeedbackItem[];
+}
+
+export async function getHrSessionFeedback(sessionId: string): Promise<HrSessionFeedback> {
+  const res = await apiClient.get(`/api/hr/practice-sessions/${sessionId}/feedback`);
+  const src = unwrapData(res.data) ?? asRecord(res.data);
+  if (!src) throw new Error("Invalid session feedback response");
+  const itemsRaw = src.items ?? src.Items;
+  const insightSrc = asRecord(src.aiInsight ?? src.AiInsight);
+  const skills = insightSrc ? asRecord(insightSrc.skillsToImprove ?? insightSrc.SkillsToImprove) : null;
+  return {
+    sessionId: pickStr(src, "sessionId", "SessionId"),
+    overallScore: pickNullableNum(src, "overallScore", "OverallScore"),
+    status: pickStr(src, "status", "Status"),
+    accessLevel: pickStr(src, "accessLevel", "AccessLevel"),
+    aiInsight: insightSrc
+      ? {
+          vi: pickStr(insightSrc, "vi", "Vi"),
+          en: pickStr(insightSrc, "en", "En"),
+          skillsToImproveVi: Array.isArray(skills?.vi) ? skills!.vi.filter((x): x is string => typeof x === "string") : [],
+          skillsToImproveEn: Array.isArray(skills?.en) ? skills!.en.filter((x): x is string => typeof x === "string") : [],
+        }
+      : null,
+    items: Array.isArray(itemsRaw)
+      ? itemsRaw.map((raw) => {
+          const item = asRecord(raw);
+          if (!item) return null;
+          const dim = asRecord(item.dimensionScores ?? item.DimensionScores);
+          const dimensionScores: Record<string, number> = {};
+          if (dim) {
+            for (const [k, v] of Object.entries(dim)) {
+              if (typeof v === "number") dimensionScores[k] = v;
+            }
+          }
+          return {
+            questionId: pickStr(item, "questionId", "QuestionId"),
+            questionText: pickStr(item, "questionText", "QuestionText"),
+            questionType: pickStr(item, "questionType", "QuestionType"),
+            difficulty: pickStr(item, "difficulty", "Difficulty"),
+            answerText: typeof item.answerText === "string" ? item.answerText : pickStr(item, "answerText", "AnswerText"),
+            score: pickNullableNum(item, "score", "Score"),
+            strengths: pickStrArr(item, "strengths", "Strengths"),
+            improvements: pickStrArr(item, "improvements", "Improvements"),
+            suggestion: pickNullableStr(item, "suggestion", "Suggestion"),
+            dimensionScores: Object.keys(dimensionScores).length ? dimensionScores : null,
+            evaluationStatus: pickStr(item, "evaluationStatus", "EvaluationStatus"),
+          };
+        }).filter((x): x is HrSessionFeedbackItem => x !== null && Boolean(x.questionId))
+      : [],
+  };
 }

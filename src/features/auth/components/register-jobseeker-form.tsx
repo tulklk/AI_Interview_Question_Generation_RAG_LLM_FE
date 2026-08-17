@@ -290,14 +290,9 @@ export function RegisterJobSeekerForm({ registerRole = "jobseeker" }: RegisterJo
       const claims = parseGoogleClaims(credential);
       const verify = await verifyGoogleToken(credential, { intendedRole });
 
-      if (verify.linkedToLocalAccount) {
-        addToast("error", lp.useEmailPassword);
-        return;
-      }
-
-      if (!verify.isNewUser) {
+      if (!verify.isNewUser || verify.linkedToLocalAccount) {
         const { role } = await completeGoogleLogin(credential, { intendedRole });
-        addToast("success", lp.googleAccountExists);
+        addToast("success", verify.linkedToLocalAccount ? lp.googleLinked : lp.googleAccountExists);
         await finishGoogleAuth(router, refreshUser, claims, credential, role);
         return;
       }

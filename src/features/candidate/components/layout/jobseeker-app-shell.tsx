@@ -20,6 +20,7 @@ import type { NotificationItem } from "@/shared/components/common/notification-b
 import { listCompletedSessions } from "@/features/candidate/services/practice-session.service";
 import { listInvitations } from "@/features/candidate/services/invitation.service";
 import { ScoringProgressBadge } from "@/features/candidate/components/ui/scoring-progress-badge";
+import { CoachGenerationBadge } from "@/features/candidate/components/ui/coach-generation-badge";
 import {
   CandidateSubscriptionProvider,
   useCandidateSubscription,
@@ -217,6 +218,7 @@ function JobseekerAppShellInner({
         </main>
       </div>
       <ScoringProgressBadge />
+      <CoachGenerationBadge />
     </div>
 
     {showUpgrade && (

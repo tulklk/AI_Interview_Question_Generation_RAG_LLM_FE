@@ -22,6 +22,5 @@ export interface NotificationPref {
 export type SettingsTab =
   | "profile"
   | "preferences"
-  | "notifications"
   | "security"
   | "billing";

@@ -385,6 +385,30 @@ function InvitationDetailDialog({ invitation, onClose, onStatusChange }: DetailD
             </div>
           </div>
 
+          {(invitation.scheduledAtUtc || invitation.meetingLink || invitation.location) && (
+            <div className="px-6 py-4 border-t border-gray-100 dark:border-gray-800">
+              <p className={cn("text-[10px] font-bold uppercase tracking-widest mb-2", portalSubtextAlt)}>
+                {p.detailDialog.schedule}
+              </p>
+              {invitation.scheduledAtUtc && (
+                <p className={cn("text-[13px]", portalHeadingAlt)}>
+                  {new Date(invitation.scheduledAtUtc).toLocaleString()}
+                  {invitation.timeZoneId ? ` (${invitation.timeZoneId})` : ""}
+                </p>
+              )}
+              {invitation.meetingLink && (
+                <a href={invitation.meetingLink} target="_blank" rel="noopener noreferrer" className="text-[13px] text-primary font-semibold">
+                  {p.detailDialog.meetingLink}
+                </a>
+              )}
+              {invitation.location && (
+                <p className={cn("text-[13px] mt-1", portalHeadingAlt)}>
+                  {p.detailDialog.location}: {invitation.location}
+                </p>
+              )}
+            </div>
+          )}
+
           {/* ── Message section ── */}
           <div className="px-6 py-5">
             <p className={cn("text-[10px] font-bold uppercase tracking-widest mb-3", portalSubtextAlt)}>

@@ -10,7 +10,7 @@ import { useLanguage } from "@/shared/providers/language-context";
 import { useToast } from "@/shared/providers/toast-context";
 import { useHrSubscription } from "@/features/hr/context/hr-subscription-context";
 import { getLocalSessions, toGenerationSession } from "@/features/interview/utils/local-history";
-import { getGenerationJobs, getGenerationPlans, getQuestionSetSummariesByJob, deleteGenerationPlan, exportPlanQuestions, publishQuestionSet, unpublishQuestionSet, toggleHrBookmark, getHrBookmarkedSetIds } from "@/features/interview/services/interview.service";
+import { getGenerationJobs, getGenerationPlans, getQuestionSetSummariesByJob, deleteGenerationPlan, exportPlanQuestions, publishQuestionSet, unpublishQuestionSet, withAbandonedToast, toggleHrBookmark, getHrBookmarkedSetIds } from "@/features/interview/services/interview.service";
 import type { GenerationSession, GenerationStatus } from "@/features/interview/types/generation-session";
 import { SessionStatusBadge } from "@/features/interview/components/history/session-status-badge";
 import {
@@ -234,9 +234,9 @@ export function HistoryTable({ search = "", role = "", level = "", experience = 
     setUnpublishConfirmSession(null);
     setUnpublishingTableId(session.id);
     try {
-      await unpublishQuestionSet(qsId);
+      const abandoned = await unpublishQuestionSet(qsId);
       setPublishMap(prev => new Map(prev).set(session.id, "DRAFT"));
-      addToast("success", "Gỡ đăng bộ câu hỏi thành công");
+      addToast("success", withAbandonedToast("Gỡ đăng bộ câu hỏi thành công", abandoned));
     } catch (err) {
       addToast("error", err instanceof Error && err.message ? err.message : "Không thể gỡ đăng bộ câu hỏi");
     } finally {
@@ -694,7 +694,7 @@ export function HistoryTable({ search = "", role = "", level = "", experience = 
             </div>
             <div>
               <h3 className={cn("text-base font-semibold", portalHeading)}>Gỡ đăng bộ câu hỏi</h3>
-              <p className={cn("text-xs mt-0.5", portalSubtext)}>Ứng viên sẽ không còn thấy bộ câu hỏi này</p>
+              <p className={cn("text-xs mt-0.5", portalSubtext)}>Ứng viên sẽ không còn thấy bộ câu hỏi này. Các phiên đang làm sẽ bị hủy.</p>
             </div>
           </div>
           <p className={cn("text-sm font-semibold px-3 py-2 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700", portalHeading)}>
