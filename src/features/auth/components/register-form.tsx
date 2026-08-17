@@ -144,6 +144,7 @@ export function RegisterForm({ registerRole = "hr" }: RegisterFormProps) {
     step,
     isGoogleSignup,
     googleLoading,
+    githubLoading,
     fullName,
     email,
     password,
@@ -179,6 +180,7 @@ export function RegisterForm({ registerRole = "hr" }: RegisterFormProps) {
     useTypedName,
     handleContinue,
     handleGoogle,
+    handleGithub,
     handleBackFromStep2,
     handleSubmit,
     serverError,
@@ -463,6 +465,8 @@ export function RegisterForm({ registerRole = "hr" }: RegisterFormProps) {
                   googleMode="signup"
                   onGoogleSuccess={handleGoogle}
                   onGoogleError={() => addToast("error", rp.registrationFailed)}
+                  githubLoading={githubLoading}
+                  onGithubClick={handleGithub}
                 />
               </motion.div>
               <motion.p variants={fieldRow} className="text-center text-sm text-gray-500 dark:text-gray-400 mt-5">
