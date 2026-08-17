@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -115,11 +115,11 @@ export function CoachGenerationBadge() {
 
   function handleClick() {
     if (isDone && entry!.questionSetId) {
-      router.push(`/jobseeker/sets/${entry!.questionSetId}`);
+      router.push(`/candidate/sets/${entry!.questionSetId}`);
       clearCoachJob();
       return;
     }
-    router.push("/jobseeker/coach");
+    router.push("/candidate/coach");
   }
 
   // Renders just the card — no fixed wrapper.

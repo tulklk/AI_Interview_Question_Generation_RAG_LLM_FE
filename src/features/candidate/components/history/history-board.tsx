@@ -1,12 +1,14 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useRef, useId } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Search, RefreshCw, Eye, BarChart2, Clock, Trophy, BookOpen,
   ChevronDown, AlertCircle, History as HistoryIcon, Activity, Check,
-  ChevronLeft, ChevronRight,
+  ChevronLeft, ChevronRight, Loader2, XCircle,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import {
@@ -15,6 +17,10 @@ import {
   type CompletedSessionSummary,
   type PracticeStats,
 } from "@/features/candidate/services/practice-session.service";
+import {
+  getQuestionSetById,
+  NotFoundError,
+} from "@/features/candidate/services/question-set.service";
 import { getCompanyColor, getCompanyInitials } from "@/features/candidate/utils/company-visual";
 import { useLanguage } from "@/shared/providers/language-context";
 import { StatCard } from "@/features/candidate/components/ui/stat-card";
@@ -45,11 +51,12 @@ function dateRangeFor(filter: TimeFilterKey): { fromDate?: string } {
   return { fromDate: from.toISOString() };
 }
 
-function formatSessionDate(iso?: string): string {
+function formatSessionDate(iso?: string, lang?: string): string {
   if (!iso) return "";
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+  const locale = lang === "vi" ? "vi-VN" : "en";
+  return d.toLocaleDateString(locale, { month: "short", day: "numeric", year: "numeric" });
 }
 
 function ScorePill({ score, pendingTooltip }: { score: number | null; pendingTooltip: string }) {
@@ -330,14 +337,22 @@ function PaginationBar({
 
 // ── Main component ────────────────────────────────────────────────────────────
 export function HistoryBoard() {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const p = t.jobseekerHistoryPage;
   const { addToast } = useToast();
+  const router = useRouter();
 
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [timeFilter, setTimeFilter] = useState<TimeFilterKey>("all");
   const [page, setPage] = useState(1);
+
+  // "Luyện lại" publish-check state
+  const [checkingSetId, setCheckingSetId] = useState<string | null>(null);
+  const [showUnpublishedDialog, setShowUnpublishedDialog] = useState(false);
+  // Portal mount guard (SSR safe)
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
 
   const [sessions, setSessions] = useState<CompletedSessionSummary[]>([]);
   const [totalCount, setTotalCount] = useState(0);
@@ -373,6 +388,24 @@ export function HistoryBoard() {
   function handleTimeFilterChange(v: TimeFilterKey) {
     setTimeFilter(v);
     setPage(1);
+  }
+
+  // Check if set is still published before navigating to practice
+  async function handleRetry(questionSetId: string) {
+    if (checkingSetId) return;
+    setCheckingSetId(questionSetId);
+    try {
+      await getQuestionSetById(questionSetId);
+      router.push(`/candidate/practice/${questionSetId}`);
+    } catch (err) {
+      if (err instanceof NotFoundError) {
+        setShowUnpublishedDialog(true);
+      } else {
+        addToast("error", p.loadFailed);
+      }
+    } finally {
+      setCheckingSetId(null);
+    }
   }
 
   // Fetch stats + chart sessions once (not affected by page/filter changes)
@@ -466,8 +499,8 @@ export function HistoryBoard() {
     },
     {
       icon: Clock,     label: p.statLabels[3],
-      value: `${stats?.totalDurationMinutes ?? 0} min`,
-      countUp: { value: stats?.totalDurationMinutes ?? 0, suffix: " min" },
+      value: `${stats?.totalDurationMinutes ?? 0} ${p.durationUnit}`,
+      countUp: { value: stats?.totalDurationMinutes ?? 0, suffix: ` ${p.durationUnit}` },
       bg: iconBg, color: iconColor,
       chart: durationData.some(d => d > 0)
         ? <MiniBarChart data={durationData} color="#F59E0B" />
@@ -594,13 +627,13 @@ export function HistoryBoard() {
                       </div>
                     </div>
 
-                    <p className={cn("text-[12px]", portalSubtextAlt)}>{formatSessionDate(session.completedAt)}</p>
+                    <p className={cn("text-[12px]", portalSubtextAlt)}>{formatSessionDate(session.completedAt, lang)}</p>
                     <ScorePill score={session.score} pendingTooltip={p.pendingScoreTooltip} />
-                    <p className={cn("text-[12px]", portalSubtextAlt)}>{session.durationMinutes} min</p>
+                    <p className={cn("text-[12px]", portalSubtextAlt)}>{session.durationMinutes} {p.durationUnit}</p>
 
                     <div className="flex items-center gap-1">
                       <Link
-                        href={`/jobseeker/practice/${session.id}/result`}
+                        href={`/candidate/practice/${session.id}/result`}
                         className={cn(
                           "flex items-center gap-1.5 h-7.5 px-3 text-[11px] font-semibold hover:text-primary hover:bg-[#F5F3FF] dark:hover:bg-purple-950/30 rounded-lg transition-colors",
                           portalSubtextAlt
@@ -610,14 +643,20 @@ export function HistoryBoard() {
                         <Eye size={13} />
                         {p.viewBtn}
                       </Link>
-                      <Link
-                        href={`/jobseeker/practice/${session.questionSetId}`}
-                        className="shimmer-button flex items-center gap-1.5 h-7.5 px-3 text-[11px] font-semibold text-white hr-cta-btn rounded-lg"
+                      <button
+                        type="button"
+                        onClick={() => handleRetry(session.questionSetId)}
+                        disabled={!!checkingSetId}
+                        className="shimmer-button flex items-center gap-1.5 h-7.5 px-3 text-[11px] font-semibold text-white hr-cta-btn rounded-lg disabled:opacity-60 disabled:cursor-not-allowed"
                         title={p.retryBtn}
                       >
-                        <RefreshCw size={12} />
+                        {checkingSetId === session.questionSetId ? (
+                          <Loader2 size={12} className="animate-spin" />
+                        ) : (
+                          <RefreshCw size={12} />
+                        )}
                         {p.retryBtn}
-                      </Link>
+                      </button>
                     </div>
                   </motion.li>
                 ))}
@@ -667,15 +706,15 @@ export function HistoryBoard() {
                   <div className={cn("flex items-center gap-3 text-[12px]", portalSubtextAlt)}>
                     <span className="flex items-center gap-1">
                       <Clock size={11} className="shrink-0" />
-                      {formatSessionDate(session.completedAt)}
+                      {formatSessionDate(session.completedAt, lang)}
                     </span>
                     <span>·</span>
-                    <span>{session.durationMinutes} min</span>
+                    <span>{session.durationMinutes} {p.durationUnit}</span>
                   </div>
 
                   <div className="flex items-center gap-2 pt-1">
                     <Link
-                      href={`/jobseeker/practice/${session.id}/result`}
+                      href={`/candidate/practice/${session.id}/result`}
                       className={cn(
                         "flex-1 flex items-center justify-center gap-1.5 h-8.5 text-[12px] font-semibold rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 transition-colors hover:text-primary hover:bg-violet-50 dark:hover:bg-violet-950/30 hover:border-violet-200 dark:hover:border-violet-800",
                         portalSubtextAlt
@@ -684,13 +723,19 @@ export function HistoryBoard() {
                       <Eye size={13} />
                       {p.viewBtn}
                     </Link>
-                    <Link
-                      href={`/jobseeker/practice/${session.questionSetId}`}
-                      className="flex-1 shimmer-button flex items-center justify-center gap-1.5 h-8.5 text-[12px] font-semibold text-white hr-cta-btn rounded-lg"
+                    <button
+                      type="button"
+                      onClick={() => handleRetry(session.questionSetId)}
+                      disabled={!!checkingSetId}
+                      className="flex-1 shimmer-button flex items-center justify-center gap-1.5 h-8.5 text-[12px] font-semibold text-white hr-cta-btn rounded-lg disabled:opacity-60 disabled:cursor-not-allowed"
                     >
-                      <RefreshCw size={12} />
+                      {checkingSetId === session.questionSetId ? (
+                        <Loader2 size={12} className="animate-spin" />
+                      ) : (
+                        <RefreshCw size={12} />
+                      )}
                       {p.retryBtn}
-                    </Link>
+                    </button>
                   </div>
                 </div>
               ))
@@ -709,6 +754,57 @@ export function HistoryBoard() {
             </p>
           )}
         </>
+      )}
+
+      {/* "Set no longer published" dialog — rendered via portal at document.body
+          so that ancestor overflow/scroll containers don't offset fixed positioning */}
+      {mounted && createPortal(
+        <AnimatePresence>
+          {showUnpublishedDialog && (
+            <motion.div
+              className="fixed inset-0 z-9999 flex items-center justify-center p-4"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+            >
+              {/* Backdrop */}
+              <motion.div
+                className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+                onClick={() => setShowUnpublishedDialog(false)}
+              />
+              {/* Card */}
+              <motion.div
+                className="relative z-10 w-full max-w-sm rounded-2xl bg-white dark:bg-gray-900 p-6 shadow-2xl border border-gray-100 dark:border-gray-800"
+                initial={{ scale: 0.95, y: 12 }}
+                animate={{ scale: 1, y: 0 }}
+                exit={{ scale: 0.95, y: 12 }}
+                transition={{ type: "spring", stiffness: 340, damping: 28 }}
+              >
+                <div className="flex flex-col items-center text-center gap-3">
+                  <div className="w-12 h-12 rounded-full bg-amber-50 dark:bg-amber-950/40 flex items-center justify-center">
+                    <XCircle size={24} className="text-amber-500" />
+                  </div>
+                  <div>
+                    <p className={cn("text-[15px] font-bold mb-1.5", portalHeadingAlt)}>
+                      {p.retryUnavailableDialog.title}
+                    </p>
+                    <p className={cn("text-[13px] leading-relaxed", portalSubtextAlt)}>
+                      {p.retryUnavailableDialog.body}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowUnpublishedDialog(false)}
+                    className="mt-1 w-full rounded-xl bg-primary text-white text-[13px] font-semibold py-2.5 hover:opacity-90 transition-opacity"
+                  >
+                    {p.retryUnavailableDialog.closeBtn}
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>,
+        document.body
       )}
     </div>
   );

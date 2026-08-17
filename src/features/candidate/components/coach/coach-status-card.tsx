@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { AlertCircle, CheckCircle2, Loader2, Sparkles } from "lucide-react";
@@ -47,7 +47,7 @@ export function CoachStatusCard({
           </p>
           <p className={cn("text-[12px]", portalSubtextAlt)}>{p.pollingStay}</p>
           <Link
-            href="/jobseeker/practice"
+            href="/candidate/practice"
             className="text-[12px] text-primary font-semibold hover:underline mt-0.5 w-fit"
           >
             {p.browseWhileWaiting} →

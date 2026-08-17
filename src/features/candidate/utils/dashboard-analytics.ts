@@ -1,4 +1,4 @@
-import type { CompletedSessionSummary } from "@/features/candidate/services/practice-session.service";
+﻿import type { CompletedSessionSummary } from "@/features/candidate/services/practice-session.service";
 import { readAnswerEvaluations } from "@/features/candidate/services/practice-session.service";
 import { translateDimensionKey } from "@/features/candidate/utils/skill-labels";
 import type { Lang } from "@/shared/providers/language-context";
@@ -437,7 +437,7 @@ export function buildAiRecommendations(ctx: CoachContext): CoachRecommendation[]
       evidenceKey: "firstSession",
       tokens: {},
       actionKey: "firstSession",
-      ctaHref: "/jobseeker/practice",
+      ctaHref: "/candidate/practice",
       priority: "high",
       estimatedMinutes: 15,
     }];
@@ -452,7 +452,7 @@ export function buildAiRecommendations(ctx: CoachContext): CoachRecommendation[]
       evidenceKey: "weakSkill",
       tokens: { skill: weakest.skill, score: String(weakest.score), sessions: String(sessionsAnalyzed) },
       actionKey: "weakSkill",
-      ctaHref: "/jobseeker/practice",
+      ctaHref: "/candidate/practice",
       priority: "high",
       estimatedMinutes: 15,
     });
@@ -464,7 +464,7 @@ export function buildAiRecommendations(ctx: CoachContext): CoachRecommendation[]
       evidenceKey: "consistency",
       tokens: { days: String(ctx.daysSinceLastSession) },
       actionKey: "consistency",
-      ctaHref: "/jobseeker/practice",
+      ctaHref: "/candidate/practice",
       priority: recs.length === 0 ? "high" : "medium",
       estimatedMinutes: 10,
     });
@@ -476,7 +476,7 @@ export function buildAiRecommendations(ctx: CoachContext): CoachRecommendation[]
       evidenceKey: "decliningTrend",
       tokens: { pct: String(Math.abs(ctx.trend.deltaPct)) },
       actionKey: "decliningTrend",
-      ctaHref: "/jobseeker/history",
+      ctaHref: "/candidate/history",
       priority: recs.length === 0 ? "high" : "medium",
       estimatedMinutes: 20,
     });
@@ -488,7 +488,7 @@ export function buildAiRecommendations(ctx: CoachContext): CoachRecommendation[]
       evidenceKey: "raiseBar",
       tokens: { score: String(ctx.readiness.score) },
       actionKey: "raiseBar",
-      ctaHref: "/jobseeker/practice",
+      ctaHref: "/candidate/practice",
       priority: "low",
       estimatedMinutes: 25,
     });
@@ -500,7 +500,7 @@ export function buildAiRecommendations(ctx: CoachContext): CoachRecommendation[]
       evidenceKey: "steadyProgress",
       tokens: { count: String(ctx.totalSessions), avg: String(ctx.averageScore ?? 0) },
       actionKey: "steadyProgress",
-      ctaHref: "/jobseeker/practice",
+      ctaHref: "/candidate/practice",
       priority: "medium",
       estimatedMinutes: 15,
     });

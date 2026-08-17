@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { Suspense } from "react";
 import { JobseekerAppShell } from "@/features/candidate/components/layout/jobseeker-app-shell";
@@ -14,7 +14,7 @@ export default function JobseekerSettingsPage() {
   return (
     <JobseekerAppShell
       pageTitle={p.heading}
-      breadcrumb={[{ label: "jobseeker", href: "/jobseeker/dashboard" }, { label: p.heading }]}
+      breadcrumb={[{ label: "jobseeker", href: "/candidate/dashboard" }, { label: p.heading }]}
     >
       <div className="mb-6 animate-fade-up">
         <h2 className={cn("text-2xl font-bold", portalHeading)}>{p.heading}</h2>

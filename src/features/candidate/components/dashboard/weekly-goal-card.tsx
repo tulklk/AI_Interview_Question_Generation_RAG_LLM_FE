@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import Link from "next/link";
@@ -97,7 +97,7 @@ export function WeeklyGoalCard({ sessions }: WeeklyGoalCardProps) {
       <div className="flex items-center justify-between pt-1">
         <span className={cn("text-[11px]", portalSubtextAlt)}>{fillTemplate(p.daysLeft, { days: String(daysLeft) })}</span>
         <Link
-          href="/jobseeker/practice"
+          href="/candidate/practice"
           className="flex items-center gap-1 text-[12px] font-[600] text-primary hover:text-primary-hover transition-colors"
         >
           {p.continue}

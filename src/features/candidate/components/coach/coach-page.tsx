@@ -1,11 +1,11 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { Crown, FileText, Loader2, Store, Target, X } from "lucide-react";
+import { Crown, FileText, Loader2, Target, X } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { useLanguage } from "@/shared/providers/language-context";
 import { useCandidateSubscription } from "@/features/candidate/context/candidate-subscription-context";
@@ -33,6 +33,7 @@ import { CoachHero } from "@/features/candidate/components/coach/coach-hero";
 import { CoachSteps, type CoachStepIndex } from "@/features/candidate/components/coach/coach-steps";
 import { CoachStatusCard, type CoachStatusKind } from "@/features/candidate/components/coach/coach-status-card";
 import { CoachSkillPlan } from "@/features/candidate/components/coach/coach-skill-plan";
+import { CoachMarketplacePanel } from "@/features/candidate/components/coach/coach-marketplace-panel";
 
 function apiError(e: unknown, fallback: string, lang: "en" | "vi"): string {
   const extracted = extractErrorMessage(e, lang);
@@ -300,7 +301,7 @@ export function CoachPage() {
               ) : hasCv === false ? (
                 <p className={cn("text-[13px]", portalSubtextAlt)}>
                   {p.needCv}{" "}
-                  <Link href="/jobseeker/settings?tab=profile" className="text-primary font-semibold hover:underline">
+                  <Link href="/candidate/settings?tab=profile" className="text-primary font-semibold hover:underline">
                     {p.uploadCv}
                   </Link>
                 </p>
@@ -317,7 +318,7 @@ export function CoachPage() {
                 status={statusKind}
                 purposeLabel={purposeLabel}
                 errorMessage={error}
-                onTake={() => router.push(`/jobseeker/sets/${job!.questionSetId}`)}
+                onTake={() => router.push(`/candidate/sets/${job!.questionSetId}`)}
                 onRetry={() => void runDiagnostic()}
               />
             </motion.div>
@@ -402,7 +403,7 @@ export function CoachPage() {
               </div>
               {plan?.sourceDiagnosticSetId && (
                 <Link
-                  href={`/jobseeker/sets/${plan.sourceDiagnosticSetId}`}
+                  href={`/candidate/sets/${plan.sourceDiagnosticSetId}`}
                   className="inline-block mt-3 text-[12px] text-primary font-semibold hover:underline"
                 >
                   {p.openSet}
@@ -411,24 +412,8 @@ export function CoachPage() {
             </div>
           </div>
 
-          {/* Marketplace card — flex-1 so it stretches to match left column height */}
-          <div className="hr-glass-card overflow-hidden flex-1">
-            <div className="px-5 py-3.5 border-b border-gray-100 dark:border-gray-800 flex items-center gap-2">
-              <div className="w-6 h-6 rounded-md bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 flex items-center justify-center shrink-0">
-                <Store size={12} className="text-charcoal dark:text-gray-100" />
-              </div>
-              <p className={cn("text-[12px] font-semibold", portalHeadingAlt)}>{p.marketplaceCardTitle}</p>
-            </div>
-            <div className="px-5 py-4">
-              <p className={cn("text-[12px] mb-3 leading-relaxed", portalSubtextAlt)}>{p.marketplaceCardBody}</p>
-              <Link
-                href="/jobseeker/practice"
-                className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-[12px] font-semibold bg-primary/10 text-primary hover:bg-primary/15 transition-colors"
-              >
-                {p.marketplaceCta}
-              </Link>
-            </div>
-          </div>
+          {/* Marketplace card — shows real question sets */}
+          <CoachMarketplacePanel />
 
           {/* Upgrade card (Free only) */}
           {!isPremium && (

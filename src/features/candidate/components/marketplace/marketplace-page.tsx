@@ -643,6 +643,9 @@ export function MarketplacePage() {
           ? chip
           : undefined;
 
+      // "Khớp CV" chip always sorts by best_match so highest-match sets appear first
+      const effectiveSortBy: SortValue = chip === "cv" ? "best_match" : sortBy;
+
       const res = await listQuestionSets({
         keyword: debouncedSearch.trim() || undefined,
         difficulty: difficulty === "All" ? undefined : difficulty,
@@ -650,7 +653,7 @@ export function MarketplacePage() {
         companyId: selectedCompanyId ?? undefined,
         page,
         pageSize: PAGE_SIZE,
-        sortBy,
+        sortBy: effectiveSortBy,
         chip: marketplaceChip,
       });
       if (cancelled) return;
@@ -728,7 +731,16 @@ export function MarketplacePage() {
           <button
             key={id}
             type="button"
-            onClick={() => setChip((c) => (c === id ? null : id))}
+            onClick={() => {
+              setChip((c) => {
+                const next = c === id ? null : id;
+                if (id === "cv") {
+                  // Toggling ON → sort by best match; toggling OFF → restore default
+                  setSortBy(next === "cv" ? "best_match" : "featured");
+                }
+                return next;
+              });
+            }}
             className={cn(
               "h-8 px-3 rounded-full text-[12px] font-semibold border transition-colors",
               chip === id
