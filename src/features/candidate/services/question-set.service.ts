@@ -16,8 +16,9 @@ export interface ListQuestionSetsParams {
   companyId?: string;
   page?: number;
   pageSize?: number;
-  /** SCRUM-404: featured | newest | most_practiced | highest_rated */
-  sortBy?: "featured" | "newest" | "most_practiced" | "highest_rated";
+  /** SCRUM-404: featured | newest | most_practiced | highest_rated | best_match */
+  sortBy?: "featured" | "newest" | "most_practiced" | "highest_rated" | "best_match";
+  chip?: "cv" | "targetRole" | "weak" | "trending" | "unattempted" | "retry";
 }
 
 export interface PaginatedQuestionSets {
@@ -95,12 +96,14 @@ function normalizeQuestion(raw: unknown, index: number): PracticeQuestion | null
   if (!src) return null;
   const isLocked = pickBool(src, "isLocked", "IsLocked");
   const text = pickString(src, "question", "text", "content");
-  // Câu bị lock: BE trả text rỗng — vẫn giữ slot để FE hiện soft paywall
-  if (!text && !isLocked) return null;
+  const questionType = pickString(src, "questionType", "category");
+  const skill = pickOptionalString(src, "skill");
+  // Outline (anti-spoiler) hoặc câu lock: text có thể rỗng
+  if (!text && !isLocked && !questionType && !skill) return null;
   return {
     id: pickString(src, "id", "questionId") || `q-${index}`,
     text: text || "",
-    category: pickString(src, "questionType", "category") || "technical",
+    category: questionType || "technical",
     difficulty: normalizeDifficulty(src.difficulty),
     skill: pickOptionalString(src, "skill"),
     timeLimit: pickNumber(src, "timeLimit"),
@@ -175,6 +178,12 @@ function normalizeQuestionSet(raw: unknown): QuestionSet | null {
     attempts: pickNumber(src, "attempts", "attemptCount"),
     isPinned: pickBool(src, "isPinned", "IsPinned"),
     isTrending: pickBool(src, "isTrending", "IsTrending"),
+    matchPercent: pickNumber(src, "matchPercent"),
+    matchedSkills: pickStringArray(src, "matchedSkills"),
+    missingSkills: pickStringArray(src, "missingSkills"),
+    myLastScore: pickNumber(src, "myLastScore"),
+    myLastCompletedAt: pickOptionalString(src, "myLastCompletedAt"),
+    avgCompletionMinutes: pickNumber(src, "avgCompletionMinutes"),
     questions,
   };
 }
@@ -206,6 +215,7 @@ export async function listQuestionSets(params: ListQuestionSetsParams = {}): Pro
   if (params.page) query.Page = params.page;
   if (params.pageSize) query.PageSize = params.pageSize;
   if (params.sortBy) query.SortBy = params.sortBy;
+  if (params.chip) query.Chip = params.chip;
 
   // indexes: null serializes arrays as repeated `Skills=a&Skills=b` (ASP.NET Core's
   // expected format for `[FromQuery] string[]`) instead of axios's default `Skills[]=a`.

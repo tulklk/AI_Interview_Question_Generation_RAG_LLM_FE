@@ -47,6 +47,7 @@ import { useUser } from "@/features/auth/context/user-context";
 import { useToast } from "@/shared/providers/toast-context";
 import { getCurrentUser, updateCandidateProfile } from "@/features/auth/services/user.service";
 import { AvatarUpload } from "@/shared/components/common/avatar-upload";
+import { LinkedGoogleAccount } from "@/shared/components/common/linked-google-account";
 import { uploadAvatarToCloudinary } from "@/shared/utils/cloudinary";
 import { mapAvatarUploadError } from "@/shared/utils/avatar-upload-messages";
 import { Skeleton } from "@/shared/components/ui/skeleton";
@@ -117,6 +118,10 @@ function isImageCv(fileName: string | null | undefined): boolean {
   return /\.(jpe?g|png|gif|webp|bmp)$/i.test(fileName || "");
 }
 
+function isPdfCv(fileName: string | null | undefined): boolean {
+  return /\.pdf$/i.test(fileName || "");
+}
+
 function formFromUser(user: Awaited<ReturnType<typeof getCurrentUser>>): ProfileFormState {
   const cp = user.candidateProfile;
   const avatar =
@@ -154,6 +159,7 @@ export function CandidateProfile() {
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [linkedInTouched, setLinkedInTouched] = useState(false);
   const [githubTouched, setGithubTouched] = useState(false);
+  const [googleLinked, setGoogleLinked] = useState(false);
 
   const [cv, setCv] = useState<CvInfo | null>(null);
   const [cvLoading, setCvLoading] = useState(true);
@@ -264,6 +270,7 @@ export function CandidateProfile() {
       const next = formFromUser(user);
       setForm(next);
       setSnapshot(next);
+      setGoogleLinked(Boolean(user.isGoogleLinked));
     } catch {
       addToast("error", p.saveFailed);
     } finally {
@@ -443,11 +450,29 @@ export function CandidateProfile() {
             avatarUrl={form.avatarUrl.trim() || null}
             fullName={form.fullName || "?"}
             size="lg"
-            editing={editing}
+            editing={true}
             uploading={uploadingAvatar}
             disabled={saving}
             uploadFile={uploadAvatarToCloudinary}
-            onUpload={(url) => setForm((prev) => ({ ...prev, avatarUrl: url }))}
+            onUpload={async (url) => {
+              setForm((prev) => ({ ...prev, avatarUrl: url }));
+              try {
+                await updateCandidateProfile({
+                  fullName: form.fullName.trim() || "User",
+                  targetRole: form.targetRole.trim() || undefined,
+                  seniorityLevel: form.seniorityLevel || undefined,
+                  techStack: form.skills,
+                  bio: form.bio.trim() || undefined,
+                  phoneNumber: form.phoneNumber.trim() || undefined,
+                  linkedInUrl: form.linkedInUrl.trim() || undefined,
+                  githubUrl: form.githubUrl.trim() || undefined,
+                  avatarUrl: url,
+                });
+                await refreshUser();
+              } catch {
+                addToast("error", p.saveFailed);
+              }
+            }}
             onError={handleAvatarUploadError}
             onUploadStart={() => setUploadingAvatar(true)}
             onUploadEnd={() => setUploadingAvatar(false)}
@@ -461,6 +486,11 @@ export function CandidateProfile() {
           />
           <h2 className={cn("text-[18px] font-[700]", portalHeadingAlt)}>{form.fullName}</h2>
           <p className={cn("text-[13px] mt-1", portalSubtextAlt)}>{form.email}</p>
+          {googleLinked ? (
+            <span className="mt-2 inline-flex items-center gap-1 rounded-full bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 dark:text-emerald-400">
+              {p.googleLinkedBadge} Google
+            </span>
+          ) : null}
 
           {form.targetRole ? (
             <div className={cn("flex items-center gap-1.5 mt-3 rounded-full px-3 py-1.5", TARGET_ROLE_CLS)}>
@@ -564,6 +594,23 @@ export function CandidateProfile() {
                 </span>
               </span>
             </button>
+          ) : cv && isPdfCv(cv.fileName) && cv.downloadUrl ? (
+            <div className="relative w-full bg-gray-50 dark:bg-gray-900/40">
+              <iframe
+                src={cv.downloadUrl}
+                title={cv.fileName}
+                className="w-full h-[640px] bg-white dark:bg-gray-950"
+              />
+              <button
+                type="button"
+                onClick={() => setCvLightbox(true)}
+                title={p.cv.previewHint}
+                className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5 text-white text-[11px] font-semibold px-2.5 py-1.5 rounded-lg bg-black/55 shadow-sm hover:bg-black/70 transition-colors"
+              >
+                <Maximize2 size={11} />
+                {p.cv.previewOpen}
+              </button>
+            </div>
           ) : cv ? (
             <a
               href={cv.downloadUrl}
@@ -719,6 +766,19 @@ export function CandidateProfile() {
                 </div>
               )}
             </Field>
+
+            {googleLinked ? (
+              <Field label={p.googleAccount} full>
+                <LinkedGoogleAccount
+                  linked
+                  email={form.email}
+                  labels={{
+                    linkedBadge: p.googleLinkedBadge,
+                    hint: p.googleLinkedHint,
+                  }}
+                />
+              </Field>
+            ) : null}
           </div>
         </SectionCard>
 
@@ -1051,7 +1111,7 @@ export function CandidateProfile() {
         onCancel={() => setCvDeleteConfirmOpen(false)}
       />
 
-      {cvLightbox && cv && isImageCv(cv.fileName) && cv.downloadUrl && typeof document !== "undefined" && createPortal(
+      {cvLightbox && cv && (isImageCv(cv.fileName) || isPdfCv(cv.fileName)) && cv.downloadUrl && typeof document !== "undefined" && createPortal(
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -1068,14 +1128,28 @@ export function CandidateProfile() {
               <X size={18} />
             </button>
           </div>
-          <div className="flex-1 overflow-auto flex items-start justify-center p-4 sm:p-8" onClick={(e) => e.stopPropagation()}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={cv.downloadUrl}
-              alt={cv.fileName}
-              referrerPolicy="no-referrer"
-              className="max-w-full h-auto rounded-lg shadow-2xl"
-            />
+          <div
+            className={cn(
+              "flex-1",
+              isPdfCv(cv.fileName) ? "p-0 min-h-0" : "overflow-auto flex items-start justify-center p-4 sm:p-8"
+            )}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {isPdfCv(cv.fileName) ? (
+              <iframe
+                src={cv.downloadUrl}
+                title={cv.fileName}
+                className="w-full h-full bg-white"
+              />
+            ) : (
+              /* eslint-disable-next-line @next/next/no-img-element */
+              <img
+                src={cv.downloadUrl}
+                alt={cv.fileName}
+                referrerPolicy="no-referrer"
+                className="max-w-full h-auto rounded-lg shadow-2xl"
+              />
+            )}
           </div>
         </motion.div>,
         document.body

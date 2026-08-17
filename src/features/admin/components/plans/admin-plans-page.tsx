@@ -107,7 +107,13 @@ export function AdminPlansPage() {
 
   function handleNumBlur(planId: string, field: NumField, max?: number) {
     const raw = rawValues[numKey(planId, field)] ?? "0";
-    const n = Math.max(0, parseInt(raw, 10) || 0);
+    let n = Math.max(0, parseInt(raw, 10) || 0);
+    if (field === "priceMonthly") {
+      const plan = plans.find((p) => p.id === planId);
+      const code = (plan?.code ?? "").toUpperCase();
+      if (code.includes("FREE")) n = 0;
+      else if (code.includes("PREMIUM") && n > 0 && n < 10000) n = 10000;
+    }
     const clamped = max !== undefined ? Math.min(max, n) : n;
     patchDraft(planId, { [field]: clamped } as Partial<Editable>);
     setRawValues((prev) => ({ ...prev, [numKey(planId, field)]: String(clamped) }));
@@ -151,6 +157,15 @@ export function AdminPlansPage() {
   async function handleSave(plan: SubscriptionPlan) {
     const d = drafts[plan.id];
     if (!d) return;
+    const code = (plan.code ?? "").toUpperCase();
+    if (code.includes("FREE") && d.priceMonthly !== 0) {
+      addToast("error", "Gói Free phải có giá 0 VNĐ.");
+      return;
+    }
+    if (code.includes("PREMIUM") && d.priceMonthly < 10000) {
+      addToast("error", "Gói Premium phải có giá tối thiểu 10.000 VNĐ.");
+      return;
+    }
     setSavingId(plan.id);
     try {
       // Gửi full Limits — BE serialize nguyên object (partial sẽ mất field về default)

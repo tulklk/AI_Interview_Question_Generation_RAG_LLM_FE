@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { cn } from "@/lib/cn";
 import { getInitials } from "@/shared/utils/user-display";
 
@@ -10,11 +10,19 @@ const SIZE_CLASSES = {
   lg: "w-20 h-20 text-2xl font-[800]",
 } as const;
 
+const SIZE_PX = {
+  sm: 32,
+  md: 40,
+  lg: 80,
+} as const;
+
 interface AvatarCircleProps {
   avatarUrl?: string | null;
   fullName: string;
   size?: keyof typeof SIZE_CLASSES;
   className?: string;
+  /** Ghi đè kích thước px (bảng user admin dùng 36). */
+  pixelSize?: number;
 }
 
 export function AvatarCircle({
@@ -22,9 +30,18 @@ export function AvatarCircle({
   fullName,
   size = "sm",
   className,
+  pixelSize,
 }: AvatarCircleProps) {
   const [imageFailed, setImageFailed] = useState(false);
-  const showImage = Boolean(avatarUrl?.trim()) && !imageFailed;
+  const trimmedUrl = avatarUrl?.trim() ?? "";
+
+  // Đổi URL (Cloudinary / Google) thì thử lại, không giữ trạng thái lỗi của ảnh cũ.
+  useEffect(() => {
+    setImageFailed(false);
+  }, [trimmedUrl]);
+
+  const showImage = Boolean(trimmedUrl) && !imageFailed;
+  const px = pixelSize ?? SIZE_PX[size];
 
   return (
     <div
@@ -33,12 +50,15 @@ export function AvatarCircle({
         SIZE_CLASSES[size],
         className
       )}
+      style={{ width: px, height: px, minWidth: px, minHeight: px }}
     >
       {showImage ? (
         <img
-          src={avatarUrl!.trim()}
-          alt={fullName}
-          className="w-full h-full object-cover"
+          src={trimmedUrl}
+          alt=""
+          width={px}
+          height={px}
+          className="h-full w-full object-cover"
           referrerPolicy="no-referrer"
           onError={() => setImageFailed(true)}
         />

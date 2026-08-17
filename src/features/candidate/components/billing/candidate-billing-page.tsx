@@ -345,7 +345,10 @@ export function CandidateBillingPage() {
                 {subscription.renewalDate && (
                   <div className="flex items-center gap-1.5">
                     <Calendar size={13} className="text-gray-400 dark:text-gray-500 shrink-0" />
-                    <span className={portalSubtext}>{b.renewalLabel}:&nbsp;</span>
+                    <span className={portalSubtext}>
+                      {subscription.cancelAtPeriodEnd ? `${b.renewalLabel} (đã hủy gia hạn):` : `${b.renewalLabel}:`}
+                      &nbsp;
+                    </span>
                     <span className={cn("font-semibold", portalHeading)}>{formatDate(subscription.renewalDate, locale)}</span>
                   </div>
                 )}
@@ -419,9 +422,15 @@ export function CandidateBillingPage() {
                 <button
                   type="button"
                   onClick={() => setShowCancel(true)}
-                  className="flex items-center justify-center gap-2 px-4 h-9 text-sm font-semibold rounded-xl border border-red-200 dark:border-red-800/50 text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors whitespace-nowrap"
+                  disabled={subscription.cancelAtPeriodEnd}
+                  className={cn(
+                    "flex items-center justify-center gap-2 px-4 h-9 text-sm font-semibold rounded-xl border transition-colors whitespace-nowrap",
+                    subscription.cancelAtPeriodEnd
+                      ? "border-gray-200 dark:border-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed"
+                      : "border-red-200 dark:border-red-800/50 text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30"
+                  )}
                 >
-                  {b.cancelBtn}
+                  {subscription.cancelAtPeriodEnd ? b.cancelScheduledBtn : b.cancelBtn}
                 </button>
               </>
             )}

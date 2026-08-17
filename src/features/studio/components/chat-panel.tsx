@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { useLanguage } from "@/shared/providers/language-context";
+import { useHrSubscription } from "@/features/hr/context/hr-subscription-context";
 import { AiLoadingSpinner } from "@/shared/components/common/ai-loading-spinner";
 import { AvatarCircle } from "@/shared/components/common/avatar-circle";
 import { getCachedUserProfile } from "@/core/storage/user-profile-cache";
@@ -1293,6 +1294,7 @@ function AiAssistantTab({
   onCreatePlan,
   onSendMessage,
   onRefinePlan,
+  numberOfQuestions,
 }: {
   messages: ChatMessage[];
   isStreaming: boolean;
@@ -1301,9 +1303,11 @@ function AiAssistantTab({
   onCreatePlan: () => void;
   onSendMessage: (msg: string) => Promise<void> | void;
   onRefinePlan: (instruction: string) => Promise<void> | void;
+  numberOfQuestions: number;
 }) {
   const { t } = useLanguage();
   const c = t.studioPage.chat;
+  const { limits } = useHrSubscription();
   const QUICK_REFINEMENTS = [c.quickRefine1, c.quickRefine2, c.quickRefine3, c.quickRefine4, c.quickRefine5];
   const [draft, setDraft] = useState("");
   const [userProfile, setUserProfile] = useState<{ fullName: string; avatarUrl?: string | null } | null>(null);
@@ -1404,15 +1408,26 @@ function AiAssistantTab({
       {/* Quick refinements */}
       {!composerLocked && (
         <div className="shrink-0 flex flex-wrap gap-1.5 px-4 pb-2">
-          {QUICK_REFINEMENTS.map((item) => (
+          {QUICK_REFINEMENTS.map((item, idx) => {
+            const addsQuestions = idx === 0 || idx === 2;
+            const atMax = addsQuestions && numberOfQuestions >= 50;
+            return (
             <button key={item} type="button"
-              disabled={composerLocked || isStreaming}
+              disabled={composerLocked || isStreaming || atMax}
+              title={atMax ? "Số câu đã đạt tối đa 50" : undefined}
               onClick={() => void onRefinePlan(item)}
               className="rounded-full border border-gray-200 bg-white px-2.5 py-1 text-[11px] text-gray-600 transition-colors hover:border-primary/40 hover:text-primary disabled:cursor-not-allowed disabled:opacity-40 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300">
               {item}
             </button>
-          ))}
+            );
+          })}
         </div>
+      )}
+
+      {!composerLocked && (
+        <p className="shrink-0 px-4 pb-2 text-[11px] text-gray-500 dark:text-gray-400">
+          Refine plan: tối đa {limits?.planRegeneratePerDraft ?? 5} lần / draft
+        </p>
       )}
 
       {/* Composer — hidden when no plan yet */}
@@ -1447,6 +1462,7 @@ interface Props {
   plan: PlanDetail | null;
   canCreatePlan: boolean;
   questions?: StudioQuestion[];
+  numberOfQuestions?: number;
   generationRun?: GenerationRun | null;
   isGeneratingQuestions?: boolean;
   canGenerateQuestions?: boolean;
@@ -1474,6 +1490,7 @@ export function ChatPanel({
   plan,
   canCreatePlan,
   questions = [],
+  numberOfQuestions = 15,
   generationRun,
   isGeneratingQuestions = false,
   canGenerateQuestions = false,
@@ -1587,6 +1604,7 @@ export function ChatPanel({
             onCreatePlan={() => void onCreatePlan()}
             onSendMessage={onSendMessage}
             onRefinePlan={onRefinePlan}
+            numberOfQuestions={numberOfQuestions}
           />
         )}
 

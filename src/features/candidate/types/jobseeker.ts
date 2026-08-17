@@ -56,6 +56,12 @@ export interface QuestionSet {
   isPinned?: boolean;
   /** SCRUM-404: AttemptCount meets trending threshold. */
   isTrending?: boolean;
+  matchPercent?: number | null;
+  matchedSkills?: string[];
+  missingSkills?: string[];
+  myLastScore?: number | null;
+  myLastCompletedAt?: string | null;
+  avgCompletionMinutes?: number | null;
   questions: PracticeQuestion[];
 }
 

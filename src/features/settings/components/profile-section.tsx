@@ -10,6 +10,7 @@ import { useUser } from "@/features/auth/context/user-context";
 import { useToast } from "@/shared/providers/toast-context";
 import { getCurrentUser, updateHrProfile } from "@/features/auth/services/user.service";
 import { AvatarUpload } from "@/shared/components/common/avatar-upload";
+import { LinkedGoogleAccount } from "@/shared/components/common/linked-google-account";
 import { uploadAvatarToCloudinary } from "@/shared/utils/cloudinary";
 import { mapAvatarUploadError } from "@/shared/utils/avatar-upload-messages";
 import { isValidUrl } from "@/shared/utils/url-validation";
@@ -24,6 +25,7 @@ interface HrProfileForm {
   githubUrl: string;
   avatarUrl: string;
   bio: string;
+  inviteMessageTemplate: string;
   companyId?: string;
 }
 
@@ -37,6 +39,7 @@ const EMPTY: HrProfileForm = {
   githubUrl: "",
   avatarUrl: "",
   bio: "",
+  inviteMessageTemplate: "",
 };
 
 function ViewField({ label, value }: { label: string; value: string }) {
@@ -89,6 +92,7 @@ export function ProfileSection() {
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [linkedInTouched, setLinkedInTouched] = useState(false);
   const [githubTouched, setGithubTouched] = useState(false);
+  const [googleLinked, setGoogleLinked] = useState(false);
 
   const loadProfile = useCallback(async () => {
     setLoading(true);
@@ -105,10 +109,12 @@ export function ProfileSection() {
         githubUrl: hp?.githubUrl ?? "",
         avatarUrl: typeof hp?.avatarUrl === "string" ? hp.avatarUrl : user.avatarUrl ?? "",
         bio: hp?.bio ?? "",
+        inviteMessageTemplate: hp?.inviteMessageTemplate ?? "",
         companyId: hp?.companyId,
       };
       setForm(next);
       setSnapshot(next);
+      setGoogleLinked(Boolean(user.isGoogleLinked));
     } catch {
       addToast("error", sp.saveFailed);
     } finally {
@@ -156,6 +162,7 @@ export function ProfileSection() {
         githubUrl: form.githubUrl.trim() || undefined,
         avatarUrl: form.avatarUrl.trim() || undefined,
         bio: form.bio.trim() || undefined,
+        inviteMessageTemplate: form.inviteMessageTemplate.trim() || null,
       });
       await refreshUser();
       await loadProfile();
@@ -227,12 +234,34 @@ export function ProfileSection() {
         avatarUrl={form.avatarUrl.trim() || null}
         fullName={form.fullName || "?"}
         size="md"
-        editing={editing}
+        editing={true}
         uploading={uploadingAvatar}
         disabled={saving}
         layout="inline"
         uploadFile={uploadAvatarToCloudinary}
-        onUpload={(url) => setForm((prev) => ({ ...prev, avatarUrl: url }))}
+        onUpload={async (url) => {
+          // Chỉ lưu avatarUrl mới trên nền dữ liệu đã lưu gần nhất (snapshot),
+          // không dùng form hiện tại — tránh lộ các field đang sửa dở chưa bấm Save.
+          setForm((prev) => ({ ...prev, avatarUrl: url }));
+          try {
+            await updateHrProfile({
+              fullName: snapshot.fullName.trim() || "User",
+              companyId: snapshot.companyId,
+              companyName: snapshot.companyName.trim() || undefined,
+              jobTitle: snapshot.jobTitle.trim() || undefined,
+              phoneNumber: snapshot.phoneNumber.trim() || undefined,
+              linkedInUrl: snapshot.linkedInUrl.trim() || undefined,
+              githubUrl: snapshot.githubUrl.trim() || undefined,
+              avatarUrl: url,
+              bio: snapshot.bio.trim() || undefined,
+              inviteMessageTemplate: snapshot.inviteMessageTemplate.trim() || null,
+            });
+            setSnapshot((prev) => ({ ...prev, avatarUrl: url }));
+            await refreshUser();
+          } catch {
+            addToast("error", sp.saveFailed);
+          }
+        }}
         onError={handleAvatarUploadError}
         onUploadStart={() => setUploadingAvatar(true)}
         onUploadEnd={() => setUploadingAvatar(false)}
@@ -249,12 +278,23 @@ export function ProfileSection() {
         <div className={cn("space-y-4 border rounded-xl p-5", portalMutedBg, portalDivider)}>
           <ViewField label={sp.fullName} value={form.fullName} />
           <ViewField label={sp.email} value={form.email} />
+          <LinkedGoogleAccount
+            linked={googleLinked}
+            email={form.email}
+            labels={{
+              title: sp.googleAccount,
+              linkedBadge: sp.googleLinkedBadge,
+              hint: sp.googleLinkedHint,
+            }}
+            className={cn("border-b pb-4 last:border-0 last:pb-0", portalDivider)}
+          />
           <ViewField label={sp.company} value={form.companyName} />
           <ViewField label={sp.jobTitle} value={form.jobTitle} />
           <ViewField label={sp.phoneNumber} value={form.phoneNumber} />
           <ViewUrlField label={sp.linkedInUrl} url={form.linkedInUrl} />
           <ViewUrlField label={sp.githubUrl} url={form.githubUrl} />
           <ViewField label={sp.bio} value={form.bio} />
+          <ViewField label={sp.inviteTemplate} value={form.inviteMessageTemplate} />
         </div>
       ) : (
         <div className="space-y-4">
@@ -279,6 +319,16 @@ export function ProfileSection() {
             />
             <p className={cn("text-xs mt-1", portalSubtext)}>{sp.emailReadOnly}</p>
           </FormField>
+
+          <LinkedGoogleAccount
+            linked={googleLinked}
+            email={form.email}
+            labels={{
+              title: sp.googleAccount,
+              linkedBadge: sp.googleLinkedBadge,
+              hint: sp.googleLinkedHint,
+            }}
+          />
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <FormField label={sp.company} htmlFor="company">
@@ -347,6 +397,19 @@ export function ProfileSection() {
               disabled={saving || uploadingAvatar}
               className={`${inputCls} resize-none`}
             />
+          </FormField>
+
+          <FormField label={sp.inviteTemplate} htmlFor="invite-template">
+            <textarea
+              id="invite-template"
+              value={form.inviteMessageTemplate}
+              onChange={(e) => setForm((prev) => ({ ...prev, inviteMessageTemplate: e.target.value }))}
+              rows={6}
+              maxLength={4000}
+              disabled={saving || uploadingAvatar}
+              className={`${inputCls} resize-none`}
+            />
+            <p className={cn("text-xs mt-1", portalSubtext)}>{sp.inviteTemplateHint}</p>
           </FormField>
         </div>
       )}

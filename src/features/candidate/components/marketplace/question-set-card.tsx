@@ -194,8 +194,7 @@ export function QuestionSetCard({
           {/* Title + company */}
           <div className="flex-1 min-w-0">
             {/* Pinned / Trending badges */}
-            {(set.isPinned || set.isTrending) && (
-              <div className="flex flex-wrap items-center gap-1 mb-1">
+            <div className="flex flex-wrap items-center gap-1 mb-1">
                 {set.isPinned && (
                   <span className="inline-flex items-center gap-1 rounded-md bg-amber-50 dark:bg-amber-950/40 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 dark:text-amber-300">
                     <Pin size={9} />
@@ -208,8 +207,17 @@ export function QuestionSetCard({
                     {p.badgeTrending}
                   </span>
                 )}
+                {set.matchPercent != null && (
+                  <span className="inline-flex items-center rounded-md bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary">
+                    {p.matchPercent.replace("{{n}}", String(set.matchPercent))}
+                  </span>
+                )}
+                <span className="inline-flex items-center rounded-md bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 text-[10px] font-semibold text-gray-600 dark:text-gray-300">
+                  {set.myLastScore != null
+                    ? p.lastScore.replace("{{n}}", String(Math.round(set.myLastScore)))
+                    : p.notAttempted}
+                </span>
               </div>
-            )}
             <h3 className={cn("text-[14px] font-bold leading-snug line-clamp-2", portalHeadingAlt)}>
               {set.title}
             </h3>
@@ -218,7 +226,11 @@ export function QuestionSetCard({
 
           {/* Difficulty pill + bookmark stacked */}
           <div className="flex flex-col items-end gap-1.5 shrink-0">
-            <DifficultyPill difficulty={set.difficulty} label={set.difficulty} size="sm" />
+            <DifficultyPill
+              difficulty={set.difficulty}
+              label={set.difficulty === "Easy" ? p.easy : set.difficulty === "Hard" ? p.hard : p.medium}
+              size="sm"
+            />
             <button
               type="button"
               onClick={handleToggleBookmark}
@@ -314,7 +326,9 @@ export function QuestionSetCard({
         <span className="mx-1.5 text-gray-200 dark:text-gray-700">·</span>
         <span className="flex items-center gap-1">
           <Clock size={11} className="shrink-0" />
-          {p.estimatedTime}{set.estimatedTime}
+          {set.avgCompletionMinutes
+            ? `${p.avgMinutesPrefix}${set.avgCompletionMinutes}${p.avgMinutesSuffix}`
+            : `${p.estimatedTime}${set.estimatedTime}`}
         </span>
         {set.attempts !== undefined && (
           <>

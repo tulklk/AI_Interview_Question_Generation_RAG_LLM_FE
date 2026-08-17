@@ -311,7 +311,9 @@ export function HrBillingSubscription() {
           {/* Gia hạn (Premium) / Quota lượt tạo (Free) */}
           {isPremium ? (
             <p className="text-white/90 text-xs mb-2">
-              {sub.renews}: {formatDate(subscription?.periodEnd, locale)}
+              {subscription?.cancelAtPeriodEnd
+                ? `${sub.cancelAtPeriodEndNote} ${formatDate(subscription?.periodEnd, locale)}`
+                : `${sub.renews}: ${formatDate(subscription?.periodEnd, locale)}`}
             </p>
           ) : (
             <div className="mb-3">
@@ -475,24 +477,36 @@ export function HrBillingSubscription() {
                   </ul>
 
                   <div className={cn("shrink-0 mt-auto pt-4 border-t", portalDivider)}>
-                    <button
-                      type="button"
-                      disabled={active || busy || creatingOrder}
-                      onClick={() => handlePlanClick(id)}
-                      className={cn(
-                        "w-full text-sm font-semibold py-2.5 rounded-lg transition-colors inline-flex items-center justify-center gap-2",
-                        active
-                          ? cn("cursor-not-allowed", portalIconWell, portalSubtext)
-                          : recommended
-                            ? "bg-primary text-white hover:bg-[#5535dd] shadow-sm"
-                            : "bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-200"
-                      )}
-                    >
-                      {busy || (creatingOrder && id !== "HR_FREE") ? (
-                        <Loader2 size={14} className="animate-spin" />
-                      ) : null}
-                      {active ? sub.currentPlanBtn : isPremium && id === "HR_FREE" ? sub.cancelConfirmBtn : planCta[id]}
-                    </button>
+                    {(() => {
+                      const downgradeScheduled =
+                        !active && isPremium && id === "HR_FREE" && Boolean(subscription?.cancelAtPeriodEnd);
+                      return (
+                        <button
+                          type="button"
+                          disabled={active || busy || creatingOrder || downgradeScheduled}
+                          onClick={() => handlePlanClick(id)}
+                          className={cn(
+                            "w-full text-sm font-semibold py-2.5 rounded-lg transition-colors inline-flex items-center justify-center gap-2",
+                            active || downgradeScheduled
+                              ? cn("cursor-not-allowed", portalIconWell, portalSubtext)
+                              : recommended
+                                ? "bg-primary text-white hover:bg-[#5535dd] shadow-sm"
+                                : "bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-200"
+                          )}
+                        >
+                          {busy || (creatingOrder && id !== "HR_FREE") ? (
+                            <Loader2 size={14} className="animate-spin" />
+                          ) : null}
+                          {active
+                            ? sub.currentPlanBtn
+                            : downgradeScheduled
+                              ? sub.downgradeScheduledBtn
+                              : isPremium && id === "HR_FREE"
+                                ? sub.cancelConfirmBtn
+                                : planCta[id]}
+                        </button>
+                      );
+                    })()}
                   </div>
                 </div>
               );

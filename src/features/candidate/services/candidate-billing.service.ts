@@ -26,7 +26,8 @@ function mapSubscription(sub: MySubscription): CandidateSubscription {
     currency: sub.currency || "VND",
     renewalDate: sub.periodEnd,
     startedAt: sub.periodStart,
-    cancelledAt: null,
+    cancelledAt: sub.cancelAtPeriodEnd ? sub.periodEnd : null,
+    cancelAtPeriodEnd: Boolean(sub.cancelAtPeriodEnd),
   };
 }
 

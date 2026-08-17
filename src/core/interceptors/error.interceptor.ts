@@ -45,6 +45,10 @@ export function extractErrorMessage(error: unknown, lang: "en" | "vi" = "en"): s
   }> | undefined;
   const data = axiosErr?.response?.data;
   const code = pickErrorCode(data);
+  if (data && typeof data === "object") {
+    if (typeof data.detail === "string" && data.detail) return data.detail;
+    if (typeof data.error === "string" && data.error) return data.error;
+  }
   if (code && SUBSCRIPTION_ERROR_MESSAGES[code]) {
     return SUBSCRIPTION_ERROR_MESSAGES[code][lang];
   }

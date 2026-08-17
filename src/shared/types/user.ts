@@ -2,7 +2,8 @@ export interface CandidateProfileData {
   fullName: string;
   targetRole?: string;
   seniorityLevel?: string;
-  techStack?: string[];
+    techStack?: string[];
+    cvFileName?: string | null;
   phoneNumber?: string;
   avatarUrl?: string | null;
   linkedInUrl?: string;
@@ -20,6 +21,7 @@ export interface HrProfileData {
   linkedInUrl?: string;
   githubUrl?: string;
   bio?: string;
+  inviteMessageTemplate?: string | null;
 }
 
 export interface CurrentUser {
@@ -28,6 +30,9 @@ export interface CurrentUser {
   email: string;
   role?: string;
   avatarUrl?: string | null;
+  provider?: string;
+  /** True khi đăng ký Google hoặc đã liên kết Google với tài khoản local. */
+  isGoogleLinked?: boolean;
   candidateProfile?: CandidateProfileData;
   hrProfile?: HrProfileData;
 }
@@ -44,6 +49,7 @@ export interface UpdateHrProfileRequest {
   linkedInUrl?: string;
   githubUrl?: string;
   bio?: string;
+  inviteMessageTemplate?: string | null;
 }
 
 export interface ChangePasswordRequest {
