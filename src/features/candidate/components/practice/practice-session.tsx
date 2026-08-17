@@ -247,6 +247,8 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
   const { addToast } = useToast();
   const { refreshSubscription } = useCandidateSubscription();
   const p = t.jobseekerPracticePage;
+  const [hydratedQuestions, setHydratedQuestions] = useState<QuestionSet["questions"] | null>(null);
+  const questions = hydratedQuestions ?? set.questions;
 
   const [currentIdx, setCurrentIdx] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
@@ -325,8 +327,8 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
     setExitOpen(false);
   }
 
-  const question = set.questions[currentIdx];
-  const totalQuestions = set.questions.length;
+  const question = questions[currentIdx];
+  const totalQuestions = questions.length;
   const progress = ((currentIdx + 1) / totalQuestions) * 100;
   const currentAnswer = answers[question.id] ?? "";
   // SCRUM-399: tách UX trả lời code vs lý thuyết
@@ -334,7 +336,7 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
   const isQuestionLocked = question.isLocked === true;
 
   const answeredFlags: Record<string, boolean> = {};
-  for (const q of set.questions) {
+  for (const q of questions) {
     answeredFlags[q.id] = hasAnswerText(answers[q.id]);
   }
 
@@ -355,9 +357,24 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
             answersMap[q.id] = q.answerText;
           }
         });
+        // session.questions (BE) không có isLocked — lấy lại trạng thái khóa Premium
+        // gốc từ set.questions (marketplace listing) theo id để không mất paywall.
+        const lockedById = new Map(set.questions.map((q) => [q.id, q.isLocked === true]));
+        setHydratedQuestions(session.questions.map((q) => ({
+          id: q.id,
+          text: q.question,
+          category: q.questionType,
+          difficulty: q.difficulty,
+          skill: q.skill,
+          isLocked: lockedById.get(q.id) ?? false,
+          codeTemplateType: q.codeTemplateType,
+          codeSnippet: q.codeSnippet,
+          attachedImageUrl: q.attachedImageUrl,
+          answerMethod: q.answerMethod,
+        })));
         // Gộp draft sessionStorage (nếu có) cho câu chưa có text từ BE
         if (typeof window !== "undefined") {
-          set.questions.forEach((q) => {
+          session.questions.forEach((q) => {
             if (hasAnswerText(answersMap[q.id])) return;
             const draft = window.sessionStorage.getItem(draftKey(session.id, q.id));
             if (draft) answersMap[q.id] = draft;
@@ -386,10 +403,10 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
         }
 
         if (wasResumed) addToast("success", p.resumedToast);
-        const firstUnanswered = set.questions.findIndex(
-          (q) => !q.isLocked && !hasAnswerText(answersMap[q.id])
+        const firstUnanswered = session.questions.findIndex(
+          (q) => !hasAnswerText(answersMap[q.id])
         );
-        setCurrentIdx(firstUnanswered === -1 ? set.questions.length - 1 : firstUnanswered);
+        setCurrentIdx(firstUnanswered === -1 ? session.questions.length - 1 : firstUnanswered);
       })
       .catch((err) => {
         if (cancelled) return;
@@ -517,13 +534,13 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
       // P0 fix: gate on hasAnswerText (same as UI "answered" check) so any non-empty
       // answer typed by the candidate is persisted, matching what the UI shows as "answered".
       if (!sid || !hasAnswerText(text)) return;
-      const q = set.questions.find((x) => x.id === questionId);
+      const q = questions.find((x) => x.id === questionId);
       if (!q || q.isLocked) return;
       void submitAnswerApi(sid, { questionId, answerText: text }).catch(() => {
         // Im lặng — draft vẫn còn ở sessionStorage; Finish sẽ flush lại
       });
     },
-    [set.questions]
+    [questions]
   );
 
   function goToQuestion(idx: number) {
@@ -568,11 +585,11 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
       // Flush mọi draft / câu hiện tại chưa POST lên BE trước khi complete
       // P0 fix: gate on hasAnswerText (same as UI "answered" check) — any non-empty
       // answer that shows a filled dot must be submitted, never silently skipped.
-      for (const q of set.questions) {
+      for (const q of questions) {
         if (q.isLocked) continue;
         let text = answersSnapshot[q.id] ?? "";
         // Ưu tiên text đang gõ trên câu hiện tại
-        if (q.id === set.questions[idx]?.id) {
+        if (q.id === questions[idx]?.id) {
           text = answersSnapshot[q.id] ?? "";
         }
         if (!hasAnswerText(text) && typeof window !== "undefined") {
@@ -661,7 +678,7 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
 
     // Flush câu đang trả lời (nếu hợp lệ) trước khi thoát — phiên vẫn IN_PROGRESS trên server
     // P0 fix: gate on hasAnswerText so any non-empty answer is saved, matching the UI "answered" check.
-    const currentQ = set.questions[currentIdxRef.current];
+    const currentQ = questions[currentIdxRef.current];
     if (currentQ && !currentQ.isLocked) {
       const text = answersRef.current[currentQ.id] ?? "";
       if (hasAnswerText(text)) {
@@ -681,7 +698,7 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
     abandonPracticeSession(sessionId)
       .then(() => {
         if (typeof window !== "undefined") {
-          set.questions.forEach((q) => window.sessionStorage.removeItem(draftKey(sessionId, q.id)));
+          questions.forEach((q) => window.sessionStorage.removeItem(draftKey(sessionId, q.id)));
         }
         router.push(`/jobseeker/sets/${set.id}`);
       })
@@ -692,7 +709,7 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
         const existing = await getPracticeSession(sessionId).catch(() => null);
         if (existing && existing.status !== "IN_PROGRESS") {
           if (typeof window !== "undefined") {
-            set.questions.forEach((q) => window.sessionStorage.removeItem(draftKey(sessionId, q.id)));
+            questions.forEach((q) => window.sessionStorage.removeItem(draftKey(sessionId, q.id)));
           }
           router.push(`/jobseeker/sets/${set.id}`);
           return;
@@ -702,7 +719,7 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
       });
   }
 
-  const answerableQuestions = set.questions.filter((q) => !q.isLocked);
+  const answerableQuestions = questions.filter((q) => !q.isLocked);
 
   // ── Timer display helpers ─────────────────────────────────────────────────
   // isCountdown: true for both BE-enforced (expiresAt) and estimate-based countdowns
@@ -733,7 +750,7 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
   }
 
   function goToFirstUnanswered() {
-    const idx = set.questions.findIndex((q) => !q.isLocked && !hasAnswerText(answers[q.id]));
+    const idx = questions.findIndex((q) => !q.isLocked && !hasAnswerText(answers[q.id]));
     if (idx === -1) return;
     goToQuestion(idx);
   }
@@ -1040,7 +1057,7 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
 
           {/* Dot progress indicator */}
           <div className="flex items-center justify-center gap-2">
-            {set.questions.map((q, idx) => (
+            {questions.map((q, idx) => (
               <ProgressDot
                 key={q.id}
                 active={idx === currentIdx}
@@ -1154,7 +1171,7 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
 
               {/* Question buttons — fill right side, wrap if many */}
               <div className="flex-1 flex flex-wrap gap-1.5 justify-end">
-                {set.questions.map((q, idx) => {
+                {questions.map((q, idx) => {
                   const isActive = idx === currentIdx;
                   const isDone = answeredFlags[q.id] ?? false;
                   const isLocked = q.isLocked === true;
@@ -1208,7 +1225,7 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
         </div>{/* end cards column */}
 
       <QuestionNav
-        questions={set.questions}
+        questions={questions}
         currentIdx={currentIdx}
         answered={answeredFlags}
         onSelect={goToQuestion}

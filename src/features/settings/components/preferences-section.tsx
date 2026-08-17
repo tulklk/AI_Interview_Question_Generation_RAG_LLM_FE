@@ -1,64 +1,17 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Sun, Save, Sparkles, MessageSquare } from "lucide-react";
-import { Toggle } from "@/shared/components/ui/toggle";
+import { useState } from "react";
+import { Sun, MessageSquare } from "lucide-react";
 import { ThemePreferencePicker } from "@/shared/components/common/theme-preference-picker";
-import { SelectField } from "@/shared/components/ui/select-field";
 import { cn } from "@/lib/cn";
 import { useLanguage } from "@/shared/providers/language-context";
-import { useHrSubscription } from "@/features/hr/context/hr-subscription-context";
-import { portalDivider, portalHeading, portalSubtext } from "@/shared/utils/portal-ui";
+import { portalHeading } from "@/shared/utils/portal-ui";
 import { SubmitFeedbackDialog } from "@/features/guest/components/submit-feedback-dialog";
-
-const aiModels = [
-  { value: "gpt4", label: "GPT-4 (Most Accurate)" },
-  { value: "gpt35", label: "GPT-3.5 (Faster)" },
-  { value: "claude3", label: "Claude 3 Sonnet" },
-];
-
-const outputLanguages = [
-  { value: "en-us", label: "US English" },
-  { value: "en-uk", label: "UK English" },
-  { value: "vi", label: "Vietnamese" },
-];
-
-const questionCounts = [
-  { value: "5", label: "5 questions" },
-  { value: "10", label: "10 questions" },
-  { value: "15", label: "15 questions" },
-  { value: "20", label: "20 questions" },
-];
-
-const tones = [
-  { value: "professional", label: "Professional" },
-  { value: "conversational", label: "Conversational" },
-  { value: "technical", label: "Technical" },
-];
 
 export function PreferencesSection() {
   const { t } = useLanguage();
   const pref = t.settingsPage.preferences;
-  const { isPremium } = useHrSubscription();
-  const advancedOk = isPremium;
-
-  const [aiModel, setAiModel] = useState("gpt4");
-  const [language, setLanguage] = useState("en-us");
-  const [questionsCount, setQuestionsCount] = useState("5");
-  const [tone, setTone] = useState("professional");
-  const [showDifficulty, setShowDifficulty] = useState(true);
-  const [includeSuggestedAnswers, setIncludeSuggestedAnswers] = useState(true);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
-
-  const modelOptions = advancedOk
-    ? aiModels
-    : aiModels.filter((m) => m.value === "gpt35");
-
-  useEffect(() => {
-    if (!advancedOk && (aiModel === "gpt4" || aiModel === "claude3")) {
-      setAiModel("gpt35");
-    }
-  }, [advancedOk, aiModel]);
 
   return (
     <div>
@@ -82,78 +35,9 @@ export function PreferencesSection() {
             }}
           />
         </div>
-
-        <div className={cn("border-t pt-5", portalDivider)}>
-          <div className="flex items-center gap-2 mb-4">
-            <Sparkles size={14} className="text-primary" />
-            <p className={cn("text-sm font-semibold", portalHeading)}>{pref.aiSettings}</p>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-            <div>
-              <SelectField
-                label={pref.aiModel}
-                value={aiModel}
-                onChange={setAiModel}
-                options={modelOptions}
-              />
-              {!advancedOk && (
-                <p className="text-[11px] text-amber-700 dark:text-amber-400 mt-1.5">{t.hrSubscription.lockedAdvancedModel}</p>
-              )}
-            </div>
-            <SelectField
-              label={pref.outputLanguage}
-              value={language}
-              onChange={setLanguage}
-              options={outputLanguages}
-            />
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <SelectField
-              label={pref.questionsPerCategory}
-              value={questionsCount}
-              onChange={setQuestionsCount}
-              options={questionCounts}
-            />
-            <SelectField
-              label={pref.questionTone}
-              value={tone}
-              onChange={setTone}
-              options={tones}
-            />
-          </div>
-        </div>
-
-        <div className={cn("border-t pt-5 space-y-4", portalDivider)}>
-          <div className="flex items-center justify-between">
-            <div>
-              <p className={cn("text-sm font-medium", portalHeading)}>{pref.showDifficulty}</p>
-              <p className={cn("text-xs mt-0.5", portalSubtext)}>{pref.showDifficultyDesc}</p>
-            </div>
-            <Toggle checked={showDifficulty} onChange={setShowDifficulty} />
-          </div>
-          <div className="flex items-center justify-between">
-            <div>
-              <p className={cn("text-sm font-medium", portalHeading)}>{pref.includeAnswers}</p>
-              <p className={cn("text-xs mt-0.5", portalSubtext)}>{pref.includeAnswersDesc}</p>
-            </div>
-            <Toggle
-              checked={includeSuggestedAnswers}
-              onChange={setIncludeSuggestedAnswers}
-            />
-          </div>
-        </div>
       </div>
 
       <div className="flex items-center gap-3 mt-6">
-        <button
-          type="button"
-          disabled
-          title={t.common.comingSoon}
-          className="shimmer-button flex-1 flex items-center justify-center gap-2 hr-cta-btn text-white text-sm font-semibold px-5 py-2.5 rounded-lg opacity-60 cursor-not-allowed"
-        >
-          <Save size={14} />
-          {pref.save}
-        </button>
         <button
           type="button"
           onClick={() => setFeedbackOpen(true)}

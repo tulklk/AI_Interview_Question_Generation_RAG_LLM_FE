@@ -1,6 +1,6 @@
 import { apiClient } from "@/core/api/http-client";
 
-export type RecommendationStatus = "NEW" | "VIEWED" | "SHORTLISTED" | "INVITED" | "DISMISSED";
+export type RecommendationStatus = "NEW" | "SHORTLISTED" | "INVITED" | "DISMISSED";
 
 /** List item — payload nhẹ (SCRUM-328). */
 export interface CandidateRecommendation {
@@ -19,6 +19,14 @@ export interface CandidateRecommendation {
   /** Only set once the candidate has ACCEPTED the invite — sent by the candidate themself, not their profile phone. */
   invitationResponseMessage: string | null;
   invitationSharedPhoneNumber: string | null;
+  latestOfferStatus: string | null;
+  viewedAt: string | null;
+  fitPercent: number | null;
+  invitationScheduledAtUtc: string | null;
+  invitationTimeZoneId: string | null;
+  invitationMeetingMode: string | null;
+  invitationMeetingLink: string | null;
+  invitationLocation: string | null;
 }
 
 /** Detail — kèm profile/CV/stats (SCRUM-377). */
@@ -38,6 +46,11 @@ export interface CandidateRecommendationDetail extends CandidateRecommendation {
   averageScore: number | null;
   bestScore: number | null;
   hasFastSession: boolean;
+  jdSkills: string[];
+  matchedSkills: string[];
+  missingOnCv: string[];
+  extraOnCv: string[];
+  skillScores: { skill: string; avgScore: number; questionCount: number }[];
 }
 
 export interface RecommendationCvDownload {
@@ -113,6 +126,20 @@ function pickBool(obj: Record<string, unknown>, ...keys: string[]): boolean {
   return false;
 }
 
+function pickSkillScores(obj: Record<string, unknown>): { skill: string; avgScore: number; questionCount: number }[] {
+  const raw = obj.skillScores ?? obj.SkillScores;
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((x) => asRecord(x))
+    .filter((x): x is Record<string, unknown> => x !== null)
+    .map((x) => ({
+      skill: pickStr(x, "skill", "Skill"),
+      avgScore: pickNum(x, "avgScore", "AvgScore"),
+      questionCount: pickNum(x, "questionCount", "QuestionCount"),
+    }))
+    .filter((x) => x.skill);
+}
+
 /** true nếu bất kỳ key nào có giá trị truthy (bool true hoặc string không rỗng). */
 function pickHasFlag(obj: Record<string, unknown>, ...keys: string[]): boolean {
   for (const k of keys) {
@@ -125,7 +152,7 @@ function pickHasFlag(obj: Record<string, unknown>, ...keys: string[]): boolean {
 
 function normalizeStatus(raw: string): RecommendationStatus {
   const u = raw.toUpperCase() as RecommendationStatus;
-  return (["NEW", "VIEWED", "SHORTLISTED", "INVITED", "DISMISSED"] as RecommendationStatus[]).includes(u)
+  return (["NEW", "SHORTLISTED", "INVITED", "DISMISSED"] as RecommendationStatus[]).includes(u)
     ? u
     : "NEW";
 }
@@ -155,6 +182,14 @@ function normalizeRec(raw: unknown): CandidateRecommendation | null {
           : null,
     invitationResponseMessage: pickNullableStr(src, "invitationResponseMessage"),
     invitationSharedPhoneNumber: pickNullableStr(src, "invitationSharedPhoneNumber"),
+    latestOfferStatus: pickNullableStr(src, "latestOfferStatus", "LatestOfferStatus"),
+    viewedAt: pickNullableStr(src, "viewedAt", "ViewedAt"),
+    fitPercent: pickNullableNum(src, "fitPercent", "FitPercent"),
+    invitationScheduledAtUtc: pickNullableStr(src, "invitationScheduledAtUtc"),
+    invitationTimeZoneId: pickNullableStr(src, "invitationTimeZoneId"),
+    invitationMeetingMode: pickNullableStr(src, "invitationMeetingMode"),
+    invitationMeetingLink: pickNullableStr(src, "invitationMeetingLink"),
+    invitationLocation: pickNullableStr(src, "invitationLocation"),
   };
 }
 
@@ -185,6 +220,11 @@ function normalizeDetail(raw: unknown): CandidateRecommendationDetail | null {
     averageScore: pickNullableNum(src, "averageScore", "AverageScore"),
     bestScore: pickNullableNum(src, "bestScore", "BestScore"),
     hasFastSession: pickBool(src, "hasFastSession", "HasFastSession"),
+    jdSkills: pickStrArr(src, "jdSkills", "JdSkills"),
+    matchedSkills: pickStrArr(src, "matchedSkills", "MatchedSkills"),
+    missingOnCv: pickStrArr(src, "missingOnCv", "MissingOnCv"),
+    extraOnCv: pickStrArr(src, "extraOnCv", "ExtraOnCv"),
+    skillScores: pickSkillScores(src),
   };
 }
 
@@ -221,6 +261,7 @@ export interface ListRecommendationsParams {
   minScore?: number;
   sortBy?: RecommendationSortBy;
   sortDir?: RecommendationSortDir;
+  unviewed?: boolean;
 }
 
 export async function listRecommendations(
@@ -235,6 +276,7 @@ export async function listRecommendations(
       MinScore: params.minScore,
       SortBy: params.sortBy ?? "score",
       SortDir: params.sortDir ?? "desc",
+      Unviewed: params.unviewed || undefined,
     },
   });
   const items = extractList(res.data)
@@ -271,10 +313,90 @@ export async function dismissRecommendation(id: string): Promise<void> {
   await apiClient.post(`/api/hr/recommendations/${id}/dismiss`);
 }
 
-export async function inviteRecommendation(id: string, message?: string): Promise<void> {
+export interface InvitePayload {
+  message?: string;
+  scheduledAtUtc?: string | null;
+  timeZoneId?: string | null;
+  meetingMode?: "ONLINE" | "ONSITE" | null;
+  meetingLink?: string | null;
+  location?: string | null;
+}
+
+export async function inviteRecommendation(id: string, messageOrPayload?: string | InvitePayload): Promise<void> {
+  const payload: InvitePayload =
+    typeof messageOrPayload === "string" || messageOrPayload === undefined
+      ? { message: messageOrPayload }
+      : messageOrPayload;
   await apiClient.post(`/api/hr/recommendations/${id}/invite`, {
-    message: message?.trim() || null,
+    message: payload.message?.trim() || null,
+    scheduledAtUtc: payload.scheduledAtUtc || null,
+    timeZoneId: payload.timeZoneId || null,
+    meetingMode: payload.meetingMode || null,
+    meetingLink: payload.meetingLink || null,
+    location: payload.location || null,
   });
+}
+
+export async function markRecommendationViewed(id: string): Promise<void> {
+  await apiClient.post(`/api/hr/recommendations/${id}/view`);
+}
+
+export async function restoreRecommendation(id: string): Promise<void> {
+  await apiClient.post(`/api/hr/recommendations/${id}/restore`);
+}
+
+export interface RecommendationCompareResponse {
+  questionSetId: string;
+  questionSetTitle: string;
+  items: Array<{
+    id: string;
+    candidateUserId: string;
+    candidateName: string;
+    candidateEmail: string;
+    targetRole: string | null;
+    overallScore: number;
+    status: string;
+    fitPercent: number;
+    cvSkills: string[];
+    jdSkills: string[];
+    matchedSkills: string[];
+    missingOnCv: string[];
+    skillScores: { skill: string; avgScore: number; questionCount: number }[];
+    invitationStatus: string | null;
+    latestOfferStatus: string | null;
+    viewedAt: string | null;
+  }>;
+}
+
+export async function compareRecommendations(ids: string[]): Promise<RecommendationCompareResponse> {
+  const res = await apiClient.get("/api/hr/recommendations/compare", { params: { ids: ids.join(",") } });
+  const src = asRecord(asRecord(res.data)?.data ?? res.data) ?? {};
+  const itemsRaw = Array.isArray(src.items) ? src.items : [];
+  return {
+    questionSetId: pickStr(src, "questionSetId"),
+    questionSetTitle: pickStr(src, "questionSetTitle"),
+    items: itemsRaw
+      .map((x) => asRecord(x))
+      .filter((x): x is Record<string, unknown> => x !== null)
+      .map((x) => ({
+        id: pickStr(x, "id"),
+        candidateUserId: pickStr(x, "candidateUserId"),
+        candidateName: pickStr(x, "candidateName"),
+        candidateEmail: pickStr(x, "candidateEmail"),
+        targetRole: pickNullableStr(x, "targetRole"),
+        overallScore: pickNum(x, "overallScore", "score"),
+        status: pickStr(x, "status"),
+        fitPercent: pickNum(x, "fitPercent"),
+        cvSkills: pickStrArr(x, "cvSkills"),
+        jdSkills: pickStrArr(x, "jdSkills"),
+        matchedSkills: pickStrArr(x, "matchedSkills"),
+        missingOnCv: pickStrArr(x, "missingOnCv"),
+        skillScores: pickSkillScores(x),
+        invitationStatus: pickNullableStr(x, "invitationStatus"),
+        latestOfferStatus: pickNullableStr(x, "latestOfferStatus"),
+        viewedAt: pickNullableStr(x, "viewedAt"),
+      })),
+  };
 }
 
 /**

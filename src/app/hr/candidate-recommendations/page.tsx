@@ -1,5 +1,6 @@
 "use client";
 
+import { Suspense } from "react";
 import { AppShell } from "@/features/hr/components/layout/app-shell";
 import { RecommendationsList } from "@/features/hr/components/recommendations/recommendations-list";
 import { useLanguage } from "@/shared/providers/language-context";
@@ -16,7 +17,9 @@ export default function CandidateRecommendationsPage() {
         { label: title },
       ]}
     >
-      <RecommendationsList />
+      <Suspense>
+        <RecommendationsList />
+      </Suspense>
     </AppShell>
   );
 }

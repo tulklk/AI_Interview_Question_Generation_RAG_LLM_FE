@@ -5,21 +5,19 @@ import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import {
   User,
   SlidersHorizontal,
-  Bell,
   ShieldCheck,
   CreditCard,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { ProfileSection } from "./profile-section";
 import { PreferencesSection } from "./preferences-section";
-import { NotificationsSection } from "./notifications-section";
 import { SecuritySection } from "./security-section";
 import { BillingSection } from "./billing-section";
 import type { SettingsTab } from "@/features/settings/types/settings";
 import { useLanguage } from "@/shared/providers/language-context";
 import { portalHeading } from "@/shared/utils/portal-ui";
 
-const VALID_TABS: SettingsTab[] = ["profile", "preferences", "notifications", "security", "billing"];
+const VALID_TABS: SettingsTab[] = ["profile", "preferences", "security", "billing"];
 
 function isValidTab(v: string | null): v is SettingsTab {
   return VALID_TABS.includes(v as SettingsTab);
@@ -29,7 +27,6 @@ function TabContent({ tab }: { tab: SettingsTab }) {
   switch (tab) {
     case "profile":       return <ProfileSection />;
     case "preferences":   return <PreferencesSection />;
-    case "notifications": return <NotificationsSection />;
     case "security":      return <SecuritySection />;
     case "billing":       return <BillingSection />;
   }
@@ -60,7 +57,6 @@ function SettingsLayoutInner() {
   const tabItems: { id: SettingsTab; label: string; Icon: typeof User }[] = [
     { id: "profile",       label: tabs.profile,       Icon: User },
     { id: "preferences",   label: tabs.preferences,   Icon: SlidersHorizontal },
-    { id: "notifications", label: tabs.notifications, Icon: Bell },
     { id: "security",      label: tabs.security,      Icon: ShieldCheck },
     { id: "billing",       label: tabs.billing,       Icon: CreditCard },
   ];

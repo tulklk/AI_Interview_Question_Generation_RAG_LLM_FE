@@ -1,13 +1,15 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import {
   Search, Sparkles, AlertCircle, RefreshCw,
   ChevronDown, Check, X, ChevronLeft, ChevronRight,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
-import { listQuestionSets, getBookmarkedSetIds } from "@/features/candidate/services/question-set.service";
+import { listQuestionSets, getBookmarkedSetIds, listBookmarkedQuestionSets } from "@/features/candidate/services/question-set.service";
+import { listMyPersonalSets } from "@/features/candidate/services/personal-set.service";
 import { listCompanies, type Company } from "@/features/admin/services/admin-company.service";
 import { getCompanyInitials, getCompanyColor } from "@/features/candidate/utils/company-visual";
 import { QuestionSetCard } from "./question-set-card";
@@ -23,47 +25,8 @@ import {
 
 const DIFFICULTIES: Array<"All" | Difficulty> = ["All", "Easy", "Medium", "Hard"];
 const PAGE_SIZE = 9;
-// BE only reliably filters by CompanyId. Difficulty, Skills, SortBy, and Keyword
-// are applied client-side on a large fetched batch so every filter actually works.
-const FETCH_SIZE = 200;
-
-function applyClientFilters(
-  items: QuestionSet[],
-  term: string,
-  diff: "All" | Difficulty,
-  skills: string[],
-  sort: "featured" | "newest" | "most_practiced" | "highest_rated",
-): QuestionSet[] {
-  let result = items;
-  if (term) {
-    const q = term.toLowerCase();
-    result = result.filter(
-      (s) =>
-        s.title.toLowerCase().includes(q) ||
-        s.company.toLowerCase().includes(q) ||
-        s.skills.some((sk) => sk.toLowerCase().includes(q)),
-    );
-  }
-  if (diff !== "All") {
-    result = result.filter((s) => s.difficulty === diff);
-  }
-  if (skills.length > 0) {
-    result = result.filter((s) =>
-      skills.some((sk) =>
-        s.skills.some((sk2) => sk2.toLowerCase() === sk.toLowerCase()),
-      ),
-    );
-  }
-  result = [...result].sort((a, b) => {
-    if (sort === "most_practiced") return (b.attempts ?? 0) - (a.attempts ?? 0);
-    if (sort === "highest_rated") return (b.rating ?? 0) - (a.rating ?? 0);
-    // featured / newest: pinned first, then trending
-    const pinDiff = (b.isPinned ? 1 : 0) - (a.isPinned ? 1 : 0);
-    if (pinDiff !== 0) return pinDiff;
-    return (b.isTrending ? 1 : 0) - (a.isTrending ? 1 : 0);
-  });
-  return result;
-}
+type PracticeChip = "cv" | "targetRole" | "weak" | "mine" | "saved" | "trending" | "unattempted" | "retry";
+const PRACTICE_CHIPS: PracticeChip[] = ["cv", "targetRole", "weak", "mine", "saved", "trending", "unattempted", "retry"];
 
 function difficultyColor(d: "All" | Difficulty) {
   if (d === "Easy")   return "text-emerald-600 dark:text-emerald-400";
@@ -86,7 +49,7 @@ function getPageNums(current: number, total: number): (number | "…")[] {
 
 // ── SortDropdown — custom dropdown replacing native <select> ─────────────────
 // Native <select> uses OS-level popup that ignores app dark/light theme.
-type SortValue = "featured" | "newest" | "most_practiced" | "highest_rated";
+type SortValue = "featured" | "newest" | "most_practiced" | "highest_rated" | "best_match";
 
 function SortDropdown({
   value, onChange, label, options, fullWidth = false,
@@ -201,6 +164,7 @@ interface FilterBarLabels {
   sortNewest: string;
   sortMostPracticed: string;
   sortHighestRated: string;
+  sortBestMatch: string;
 }
 
 interface FilterBarProps {
@@ -217,8 +181,8 @@ interface FilterBarProps {
   companies: Company[];
   selectedCompanyId: string | null;
   onSelectCompany: (id: string | null) => void;
-  sortBy: "featured" | "newest" | "most_practiced" | "highest_rated";
-  onSortByChange: (v: "featured" | "newest" | "most_practiced" | "highest_rated") => void;
+  sortBy: SortValue;
+  onSortByChange: (v: SortValue) => void;
   labels: FilterBarLabels;
 }
 
@@ -535,6 +499,7 @@ function FilterBar({
             { value: "newest",         label: p.sortNewest },
             { value: "most_practiced", label: p.sortMostPracticed },
             { value: "highest_rated",  label: p.sortHighestRated },
+            { value: "best_match",     label: p.sortBestMatch },
           ]}
           fullWidth
         />
@@ -571,6 +536,7 @@ function FilterBar({
 export function MarketplacePage() {
   const { t } = useLanguage();
   const p = t.jobseekerMarketplacePage;
+  const searchParams = useSearchParams();
 
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -579,7 +545,8 @@ export function MarketplacePage() {
   const [availableSkills, setAvailableSkills] = useState<string[]>([]);
   const [companies, setCompanies] = useState<Company[]>([]);
   const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
-  const [sortBy, setSortBy] = useState<"featured" | "newest" | "most_practiced" | "highest_rated">("featured");
+  const [sortBy, setSortBy] = useState<SortValue>("featured");
+  const [chip, setChip] = useState<PracticeChip | null>(null);
 
   const [sets, setSets] = useState<QuestionSet[]>([]);
   const [bookmarkedIds, setBookmarkedIds] = useState<Set<string>>(new Set());
@@ -589,18 +556,6 @@ export function MarketplacePage() {
   const [error, setError] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
 
-  // Raw results from BE — keyed by companyId (the only BE-side filter that works).
-  // All other filters (difficulty, skills, search, sort) run client-side on this cache.
-  const rawCacheRef = useRef<{ key: string; results: QuestionSet[] } | null>(null);
-  // Track previous filter values to detect filter-vs-page changes inside the effect
-  const prevFiltersRef = useRef({
-    debouncedSearch: "",
-    difficulty: "All" as "All" | Difficulty,
-    skills: "",
-    companyId: null as string | null,
-    sortBy: "featured" as "featured" | "newest" | "most_practiced" | "highest_rated",
-    reloadKey: 0,
-  });
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   function scrollToSearch() {
@@ -609,12 +564,21 @@ export function MarketplacePage() {
   }
 
   useEffect(() => {
+    const skillsParam = searchParams.get("skills");
+    const chipParam = searchParams.get("chip");
+    if (skillsParam) setSelectedSkills(skillsParam.split(",").map((s) => s.trim()).filter(Boolean));
+    if (chipParam && (PRACTICE_CHIPS as readonly string[]).includes(chipParam)) {
+      setChip(chipParam as PracticeChip);
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
     const id = setTimeout(() => setDebouncedSearch(search), 400);
     return () => clearTimeout(id);
   }, [search]);
 
   useEffect(() => {
-    listQuestionSets({ pageSize: FETCH_SIZE })
+    listQuestionSets({ pageSize: 100 })
       .then((res) => {
         const skillSet = new Set<string>();
         res.items.forEach((s) => s.skills.forEach((sk) => skillSet.add(sk)));
@@ -634,72 +598,72 @@ export function MarketplacePage() {
   }
 
   useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch, difficulty, selectedSkills, selectedCompanyId, sortBy, chip, reloadKey]);
+
+  useEffect(() => {
     let cancelled = false;
-    const term = debouncedSearch.trim();
-
-    // Detect whether a filter changed vs just a page flip
-    const prev = prevFiltersRef.current;
-    const companyOrReloadChanged =
-      prev.companyId !== selectedCompanyId || prev.reloadKey !== reloadKey;
-    const filterChanged =
-      companyOrReloadChanged ||
-      prev.debouncedSearch !== debouncedSearch ||
-      prev.difficulty !== difficulty ||
-      prev.skills !== selectedSkills.join(",") ||
-      prev.sortBy !== sortBy;
-
-    if (filterChanged) {
-      prevFiltersRef.current = {
-        debouncedSearch,
-        difficulty,
-        skills: selectedSkills.join(","),
-        companyId: selectedCompanyId,
-        sortBy,
-        reloadKey,
-      };
-      setPage(1);
-      // Only a company/reload change requires a fresh network fetch
-      if (companyOrReloadChanged) rawCacheRef.current = null;
-    }
-
-    const effectPage = filterChanged ? 1 : page;
-
-    // Cache is keyed by the only BE-side filter (companyId).
-    // All other filters are applied client-side on the cached raw results.
-    const cacheKey = `${selectedCompanyId ?? ""}|${reloadKey}`;
-    const cached = rawCacheRef.current;
-
-    function applyAndSet(allItems: QuestionSet[]) {
-      const filtered = applyClientFilters(allItems, term, difficulty, selectedSkills, sortBy);
-      setTotalCount(filtered.length);
-      const start = (effectPage - 1) * PAGE_SIZE;
-      setSets(filtered.slice(start, start + PAGE_SIZE));
-    }
-
-    if (cached && cached.key === cacheKey) {
-      // Cache hit — apply all filters client-side instantly, no network call
-      applyAndSet(cached.results);
-      return;
-    }
-
-    // Cache miss — fetch from BE using only companyId (the only reliable BE filter)
     setLoading(true);
     setError(false);
-    listQuestionSets({
-      companyId: selectedCompanyId ?? undefined,
-      page: 1,
-      pageSize: FETCH_SIZE,
-    })
-      .then((res) => {
+
+    const load = async () => {
+      if (chip === "mine") {
+        const mine = await listMyPersonalSets();
         if (cancelled) return;
-        rawCacheRef.current = { key: cacheKey, results: res.items };
-        applyAndSet(res.items);
-      })
+        const mapped: QuestionSet[] = mine.map((s) => ({
+          id: s.id,
+          title: s.title,
+          company: p.personalMineCompany,
+          companyInitials: "ME",
+          companyColor: "#6366f1",
+          difficulty: "Medium",
+          skills: s.skills,
+          totalQuestions: s.totalQuestions,
+          estimatedTime: "",
+          myLastScore: s.myLastScore,
+          myLastCompletedAt: s.myLastCompletedAt,
+          questions: [],
+        }));
+        setSets(mapped);
+        setTotalCount(mapped.length);
+        return;
+      }
+
+      if (chip === "saved") {
+        const saved = await listBookmarkedQuestionSets();
+        if (cancelled) return;
+        setSets(saved);
+        setTotalCount(saved.length);
+        return;
+      }
+
+      const marketplaceChip =
+        chip === "cv" || chip === "targetRole" || chip === "weak"
+        || chip === "trending" || chip === "unattempted" || chip === "retry"
+          ? chip
+          : undefined;
+
+      const res = await listQuestionSets({
+        keyword: debouncedSearch.trim() || undefined,
+        difficulty: difficulty === "All" ? undefined : difficulty,
+        skills: selectedSkills.length ? selectedSkills : undefined,
+        companyId: selectedCompanyId ?? undefined,
+        page,
+        pageSize: PAGE_SIZE,
+        sortBy,
+        chip: marketplaceChip,
+      });
+      if (cancelled) return;
+      setSets(res.items);
+      setTotalCount(res.totalCount);
+    };
+
+    load()
       .catch(() => { if (!cancelled) setError(true); })
       .finally(() => { if (!cancelled) setLoading(false); });
 
     return () => { cancelled = true; };
-  }, [debouncedSearch, difficulty, selectedSkills, selectedCompanyId, sortBy, page, reloadKey]);
+  }, [debouncedSearch, difficulty, selectedSkills, selectedCompanyId, sortBy, page, reloadKey, chip, p.personalMineCompany]);
 
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
 
@@ -749,6 +713,33 @@ export function MarketplacePage() {
           <p className={cn("text-[12px] hidden sm:block", portalSubtextAlt)}>{p.heroCtaSub}</p>
         </div>
       </motion.section>
+
+      <div className="flex flex-wrap gap-2 mb-4">
+        {([
+          ["cv", p.chipCv],
+          ["targetRole", p.chipTargetRole],
+          ["weak", p.chipWeak],
+          ["mine", p.chipMine],
+          ["saved", p.chipSaved],
+          ["trending", p.chipTrending],
+          ["unattempted", p.chipUnattempted],
+          ["retry", p.chipRetry],
+        ] as const).map(([id, label]) => (
+          <button
+            key={id}
+            type="button"
+            onClick={() => setChip((c) => (c === id ? null : id))}
+            className={cn(
+              "h-8 px-3 rounded-full text-[12px] font-semibold border transition-colors",
+              chip === id
+                ? "bg-primary text-white border-primary"
+                : "border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300",
+            )}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
 
       {/* ── Search + Filters ─────────────────────────────────────────────── */}
       <motion.div
@@ -851,7 +842,7 @@ export function MarketplacePage() {
             disabled={page <= 1}
             onClick={() => goToPage(page - 1)}
             className={navBtnCls}
-            aria-label="Previous page"
+            aria-label={p.prevPage}
           >
             <ChevronLeft size={15} />
           </button>
@@ -886,7 +877,7 @@ export function MarketplacePage() {
             disabled={page >= totalPages}
             onClick={() => goToPage(page + 1)}
             className={navBtnCls}
-            aria-label="Next page"
+            aria-label={p.nextPage}
           >
             <ChevronRight size={15} />
           </button>

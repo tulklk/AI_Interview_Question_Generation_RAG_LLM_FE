@@ -43,16 +43,16 @@ function normalizeCv(raw: unknown): CvInfo | null {
   const root = asRecord(raw);
   const src = root ? (asRecord(root.data) ?? root) : null;
   if (!src) return null;
-  const fileName = pickString(src, "cvFileName", "fileName");
+  const fileName = pickString(src, "cvFileName", "CvFileName", "fileName", "FileName");
   if (!fileName) return null;
   return {
     fileName,
-    skills: pickStringArray(src, "skills"),
-    summary: pickNullableString(src, "summary"),
-    techStack: pickStringArray(src, "techStack"),
-    parsedAt: pickNullableString(src, "parsedAt"),
-    uploadedAt: pickString(src, "uploadedAt"),
-    downloadUrl: pickString(src, "downloadUrl"),
+    skills: pickStringArray(src, "skills", "Skills"),
+    summary: pickNullableString(src, "summary", "Summary"),
+    techStack: pickStringArray(src, "techStack", "TechStack"),
+    parsedAt: pickNullableString(src, "parsedAt", "ParsedAt"),
+    uploadedAt: pickString(src, "uploadedAt", "UploadedAt"),
+    downloadUrl: pickString(src, "downloadUrl", "DownloadUrl"),
   };
 }
 

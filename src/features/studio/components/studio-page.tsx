@@ -544,6 +544,7 @@ export function StudioPage() {
             plan={studio.currentPlan}
             canCreatePlan={canCreatePlan && !sideColumnsLocked}
             questions={studio.questions}
+            numberOfQuestions={studio.settings?.numberOfQuestions ?? 15}
             generationRun={studio.generationRun}
             isGeneratingQuestions={studio.isGeneratingQuestions}
             canGenerateQuestions={canGenerate}

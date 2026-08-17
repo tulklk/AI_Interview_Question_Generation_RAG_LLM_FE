@@ -9,7 +9,7 @@ import {
   ArrowLeft, Star, X as XIcon, Mail, Loader2,
   AlertCircle, RefreshCw, CheckCircle2, Clock, Send,
   User, Sparkles, Phone, FileText, Download, Maximize2,
-  Target, Link as LinkIcon, ChevronDown,
+  Target, Link as LinkIcon, ChevronDown, RotateCcw,
 } from "lucide-react";
 import { getSkillIcon } from "@/features/candidate/utils/skill-icons";
 import { FaLinkedinIn, FaGithub } from "react-icons/fa";
@@ -24,11 +24,15 @@ import {
   dismissRecommendation,
   inviteRecommendation,
   sendRecommendationOffer,
+  markRecommendationViewed,
+  restoreRecommendation,
   type CandidateRecommendation,
   type CandidateRecommendationDetail,
   type RecommendationCvDownload,
   type RecommendationStatus,
 } from "@/features/hr/services/recommendation.service";
+import { getCurrentUser } from "@/features/auth/services/user.service";
+import { InviteScheduleFields, defaultInviteSchedule, toInvitePayload } from "./invite-schedule-fields";
 import {
   portalHeading,
   portalSubtext,
@@ -63,6 +67,12 @@ function isImageCv(contentType: string | null | undefined, fileName: string | nu
   if (ct.startsWith("image/")) return true;
   const name = (fileName || "").toLowerCase();
   return /\.(jpe?g|png|gif|webp|bmp)$/i.test(name);
+}
+
+function isPdfCv(contentType: string | null | undefined, fileName: string | null | undefined): boolean {
+  const ct = (contentType || "").toLowerCase();
+  if (ct === "application/pdf") return true;
+  return /\.pdf$/i.test(fileName || "");
 }
 
 // ---------------------------------------------------------------------------
@@ -127,13 +137,12 @@ function ScoreRing({ score, labels }: { score: number; labels: ReturnType<typeof
 function StatusChip({ status, labels }: { status: RecommendationStatus; labels: Record<string, string> }) {
   const styles: Record<RecommendationStatus, string> = {
     NEW:         "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400",
-    VIEWED:      "bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:text-blue-400",
     SHORTLISTED: "bg-violet-100 text-violet-700 dark:bg-violet-950/60 dark:text-violet-400",
     INVITED:     "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400",
     DISMISSED:   "bg-gray-100 text-gray-400 dark:bg-gray-800 dark:text-gray-500",
   };
   const text: Record<RecommendationStatus, string> = {
-    NEW: labels.new, VIEWED: labels.viewed,
+    NEW: labels.new,
     SHORTLISTED: labels.shortlisted, INVITED: labels.invited, DISMISSED: labels.dismissed,
   };
   return (
@@ -164,6 +173,7 @@ function buildDefaultInviteMessage(template: string, rec: CandidateRecommendatio
 
 function InviteModal({ rec, onClose, onSent, labels, actionLabels }: InviteModalProps) {
   const [message, setMessage] = useState(() => buildDefaultInviteMessage(labels.defaultMessage, rec));
+  const [schedule, setSchedule] = useState(defaultInviteSchedule);
   const [sending, setSending] = useState(false);
   const { addToast } = useToast();
   const p = actionLabels;
@@ -174,6 +184,10 @@ function InviteModal({ rec, onClose, onSent, labels, actionLabels }: InviteModal
       if (e.key === "Escape") onClose();
     }
     window.addEventListener("keydown", handleKeyDown);
+    void getCurrentUser().then((u) => {
+      const tpl = u.hrProfile?.inviteMessageTemplate?.trim();
+      if (tpl) setMessage(buildDefaultInviteMessage(tpl, rec));
+    }).catch(() => undefined);
     return () => {
       document.body.style.overflow = "";
       window.removeEventListener("keydown", handleKeyDown);
@@ -184,7 +198,7 @@ function InviteModal({ rec, onClose, onSent, labels, actionLabels }: InviteModal
   async function handleSend() {
     setSending(true);
     try {
-      await inviteRecommendation(rec.id, message);
+      await inviteRecommendation(rec.id, toInvitePayload(message, schedule));
       onSent();
       addToast("success", p.inviteSuccess);
       onClose();
@@ -232,6 +246,7 @@ function InviteModal({ rec, onClose, onSent, labels, actionLabels }: InviteModal
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto px-5 py-5">
+          <InviteScheduleFields value={schedule} onChange={setSchedule} labels={labels} />
           <textarea
             value={message}
             onChange={(e) => setMessage(e.target.value)}
@@ -388,7 +403,7 @@ export function RecommendationDetail({ id }: { id: string }) {
   const [rec, setRec] = useState<CandidateRecommendationDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
-  const [busy, setBusy] = useState<"shortlist" | "dismiss" | null>(null);
+  const [busy, setBusy] = useState<"shortlist" | "dismiss" | "restore" | null>(null);
   const [cvBusy, setCvBusy] = useState(false);
   const [cvPreview, setCvPreview] = useState<RecommendationCvDownload | null>(null);
   const [cvPreviewLoading, setCvPreviewLoading] = useState(false);
@@ -409,6 +424,9 @@ export function RecommendationDetail({ id }: { id: string }) {
       const data = await getRecommendation(id);
       if (!data) { setError(true); return; }
       setRec(data);
+      void markRecommendationViewed(id).then(() => {
+        setRec((r) => r && !r.viewedAt ? { ...r, viewedAt: new Date().toISOString() } : r);
+      }).catch(() => undefined);
     } catch { setError(true); }
     finally { setLoading(false); }
   }, [id]);
@@ -442,6 +460,17 @@ export function RecommendationDetail({ id }: { id: string }) {
       window.removeEventListener("keydown", handleKeyDown);
     };
   }, [cvLightbox]);
+
+  async function handleRestore() {
+    if (!rec) return;
+    setBusy("restore");
+    try {
+      await restoreRecommendation(rec.id);
+      setRec((r) => r ? { ...r, status: "NEW" } : r);
+      addToast("success", p.restoreSuccess);
+    } catch { addToast("error", p.restoreFailed); }
+    finally { setBusy(null); }
+  }
 
   async function handleShortlist() {
     if (!rec) return;
@@ -508,7 +537,9 @@ export function RecommendationDetail({ id }: { id: string }) {
   const canRestore = rec.status === "DISMISSED";
   const initials = getInitials(rec.candidateName || rec.candidateEmail);
   const hasSocial = !!(rec.linkedInUrl || rec.githubUrl);
-  const cvIsImage = isImageCv(cvPreview?.contentType, cvPreview?.cvFileName ?? rec.cvFileName);
+  const cvFileName = cvPreview?.cvFileName ?? rec.cvFileName;
+  const cvIsImage = isImageCv(cvPreview?.contentType, cvFileName);
+  const cvIsPdf = isPdfCv(cvPreview?.contentType, cvFileName);
 
   return (
     <>
@@ -604,10 +635,10 @@ export function RecommendationDetail({ id }: { id: string }) {
                   </button>
                 </>
               ) : canRestore ? (
-                <button type="button" onClick={() => void handleShortlist()} disabled={busy !== null}
+                <button type="button" onClick={() => void handleRestore()} disabled={busy !== null}
                   className="flex items-center justify-center gap-2 h-9 px-4 text-[13px] font-semibold text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-950/40 hover:bg-violet-100 dark:hover:bg-violet-900/50 rounded-xl transition-colors disabled:opacity-50 border border-violet-200 dark:border-violet-800 w-full">
-                  {busy === "shortlist" ? <Loader2 size={13} className="animate-spin" /> : <Star size={13} />}
-                  {p.card.shortlistBtn}
+                  {busy === "restore" ? <Loader2 size={13} className="animate-spin" /> : <RotateCcw size={13} />}
+                  {p.card.restoreBtn}
                 </button>
               ) : (
                 <div className={cn(
@@ -618,7 +649,17 @@ export function RecommendationDetail({ id }: { id: string }) {
                   {p.card.invited}
                 </div>
               )}
-              <button type="button" onClick={() => setShowOffer(true)} disabled={busy !== null}
+              <button
+                type="button"
+                onClick={() => setShowOffer(true)}
+                disabled={busy !== null || ["SENT", "ACCEPTED"].includes((rec.latestOfferStatus ?? "").toUpperCase())}
+                title={
+                  rec.latestOfferStatus?.toUpperCase() === "ACCEPTED"
+                    ? p.offer.alreadyAccepted
+                    : rec.latestOfferStatus?.toUpperCase() === "SENT"
+                      ? p.offer.alreadySent
+                      : undefined
+                }
                 className="flex items-center justify-center gap-2 h-9 px-4 text-[13px] font-semibold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 hover:bg-amber-100 dark:hover:bg-amber-900/40 rounded-xl transition-colors disabled:opacity-50 border border-amber-200 dark:border-amber-800 w-full">
                 <Send size={13} /> {p.offer.btnLabel}
               </button>
@@ -676,6 +717,23 @@ export function RecommendationDetail({ id }: { id: string }) {
                     </span>
                   </span>
                 </button>
+              ) : cvPreview && cvIsPdf ? (
+                <div className="relative w-full bg-gray-50 dark:bg-gray-900/40">
+                  <iframe
+                    src={cvPreview.downloadUrl}
+                    title={cvPreview.cvFileName || "CV"}
+                    className="w-full h-[640px] bg-white dark:bg-gray-950"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setCvLightbox(true)}
+                    title={p.detail.cvPreviewHint}
+                    className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5 text-white text-[11px] font-semibold px-2.5 py-1.5 rounded-lg bg-black/55 shadow-sm hover:bg-black/70 transition-colors"
+                  >
+                    <Maximize2 size={11} />
+                    {p.detail.cvPreviewOpen}
+                  </button>
+                </div>
               ) : cvPreview ? (
                 <button
                   type="button"
@@ -721,6 +779,45 @@ export function RecommendationDetail({ id }: { id: string }) {
         >
           {/* Heading */}
           <h1 className={cn("text-[22px] font-[800]", portalHeadingAlt)}>{p.detail.profileTitle}</h1>
+
+          {(typeof rec.fitPercent === "number" || rec.jdSkills.length > 0) && (
+            <SectionCard title={p.fit.title} icon={Target}
+              iconBg="bg-cyan-50 dark:bg-cyan-950/40" iconColor="text-cyan-600 dark:text-cyan-400">
+              {typeof rec.fitPercent === "number" && (
+                <p className="text-[28px] font-extrabold tabular-nums text-cyan-600 dark:text-cyan-400 mb-3">
+                  {rec.fitPercent}%
+                </p>
+              )}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-[12px]">
+                <div>
+                  <p className={cn("font-semibold mb-1", portalSubtextAlt)}>{p.fit.matched}</p>
+                  <p>{rec.matchedSkills.join(", ") || "—"}</p>
+                </div>
+                <div>
+                  <p className={cn("font-semibold mb-1", portalSubtextAlt)}>{p.fit.missing}</p>
+                  <p>{rec.missingOnCv.join(", ") || "—"}</p>
+                </div>
+                <div>
+                  <p className={cn("font-semibold mb-1", portalSubtextAlt)}>{p.fit.extra}</p>
+                  <p>{rec.extraOnCv.join(", ") || "—"}</p>
+                </div>
+              </div>
+              {rec.skillScores.length > 0 && (
+                <div className="mt-4 space-y-2">
+                  <p className={cn("text-[11px] font-semibold", portalSubtextAlt)}>{p.fit.skillScores}</p>
+                  {rec.skillScores.map((s) => (
+                    <div key={s.skill} className="flex items-center gap-2">
+                      <span className="w-28 truncate text-[12px]">{s.skill}</span>
+                      <div className="flex-1 h-1.5 rounded-full bg-gray-100 dark:bg-gray-800">
+                        <div className="h-1.5 rounded-full bg-cyan-500" style={{ width: `${Math.min(100, s.avgScore)}%` }} />
+                      </div>
+                      <span className="text-[11px] tabular-nums w-10 text-right">{Math.round(s.avgScore)}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </SectionCard>
+          )}
 
           {/* ① Thông tin liên hệ */}
           <SectionCard title={t.jobseekerProfilePage.sectionContact} icon={User}>
@@ -967,7 +1064,7 @@ export function RecommendationDetail({ id }: { id: string }) {
         />
       )}
 
-      {cvLightbox && cvPreview && cvIsImage && typeof document !== "undefined" && createPortal(
+      {cvLightbox && cvPreview && (cvIsImage || cvIsPdf) && typeof document !== "undefined" && createPortal(
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -986,14 +1083,28 @@ export function RecommendationDetail({ id }: { id: string }) {
               <XIcon size={18} />
             </button>
           </div>
-          <div className="flex-1 overflow-auto flex items-start justify-center p-4 sm:p-8" onClick={(e) => e.stopPropagation()}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={cvPreview.downloadUrl}
-              alt={cvPreview.cvFileName || "CV"}
-              referrerPolicy="no-referrer"
-              className="max-w-full h-auto rounded-lg shadow-2xl"
-            />
+          <div
+            className={cn(
+              "flex-1",
+              cvIsPdf ? "p-0 min-h-0" : "overflow-auto flex items-start justify-center p-4 sm:p-8"
+            )}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {cvIsPdf ? (
+              <iframe
+                src={cvPreview.downloadUrl}
+                title={cvPreview.cvFileName || "CV"}
+                className="w-full h-full bg-white"
+              />
+            ) : (
+              /* eslint-disable-next-line @next/next/no-img-element */
+              <img
+                src={cvPreview.downloadUrl}
+                alt={cvPreview.cvFileName || "CV"}
+                referrerPolicy="no-referrer"
+                className="max-w-full h-auto rounded-lg shadow-2xl"
+              />
+            )}
           </div>
         </motion.div>,
         document.body

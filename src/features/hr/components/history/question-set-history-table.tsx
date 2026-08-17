@@ -18,6 +18,7 @@ import {
   MessageSquare,
   Pencil,
   SearchX,
+  Sparkles,
   Trash2,
   Users,
   X,
@@ -41,6 +42,7 @@ import {
   renameQuestionSetTitle,
   toggleHrBookmark,
   unpublishQuestionSet,
+  withAbandonedToast,
 } from "@/features/interview/services/interview.service";
 import { useHrSubscription } from "@/features/hr/context/hr-subscription-context";
 import { QuestionSetFeedbackPanel } from "./question-set-feedback-panel";
@@ -200,13 +202,13 @@ export function QuestionSetHistoryTable({ filter = "all" }: QuestionSetHistoryTa
     setBusyId(item.questionSetId);
     try {
       if (item.status === "PUBLISHED") {
-        await unpublishQuestionSet(item.questionSetId);
+        const abandoned = await unpublishQuestionSet(item.questionSetId);
         setItems((prev) =>
           prev.map((x) =>
             x.questionSetId === item.questionSetId ? { ...x, status: "DRAFT", publishedAt: null } : x
           )
         );
-        addToast("success", t.historyPage.unpublishSuccess);
+        addToast("success", withAbandonedToast(t.historyPage.unpublishSuccess, abandoned));
       } else {
         await publishQuestionSet(item.questionSetId);
         setItems((prev) =>
@@ -565,6 +567,13 @@ export function QuestionSetHistoryTable({ filter = "all" }: QuestionSetHistoryTa
                           title={t.historyPage.practitionersTitle}
                         >
                           <Users size={14} />
+                        </Link>
+                        <Link
+                          href={`/hr/history/${item.questionSetId}?jdFit=1`}
+                          className={iconBtn}
+                          title={t.historyPage.jdFitTitle}
+                        >
+                          <Sparkles size={14} />
                         </Link>
                         <button
                           type="button"

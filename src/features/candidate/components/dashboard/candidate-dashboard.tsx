@@ -46,7 +46,7 @@ export function CandidateDashboard() {
     let cancelled = false;
     setSetsLoading(true);
     setSetsError(false);
-    listQuestionSets({ pageSize: 3 })
+    listQuestionSets({ pageSize: 3, sortBy: "best_match" })
       .then((res) => {
         if (!cancelled) setRecommendedSets(res.items.slice(0, 3));
       })
