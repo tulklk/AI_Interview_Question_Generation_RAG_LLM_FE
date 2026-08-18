@@ -1,6 +1,6 @@
 "use client";
 
-import { X, Pin, PinOff, Loader2 } from "lucide-react";
+import { X, Pin, PinOff, Loader2, GlobeOff } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { portalHeadingAlt, portalSubtextAlt } from "@/shared/utils/portal-ui";
 import {
@@ -20,8 +20,10 @@ interface MarketplaceDetailPanelProps {
   loading: boolean;
   error: string | null;
   pinning: boolean;
+  unpublishing: boolean;
   onClose: () => void;
   onTogglePin: () => void;
+  onUnpublish: () => void;
   labels: {
     title: string;
     close: string;
@@ -34,6 +36,7 @@ interface MarketplaceDetailPanelProps {
     practitioners: string;
     pin: string;
     unpin: string;
+    unpublish: string;
     emptyPractitioners: string;
     retry: string;
   };
@@ -90,8 +93,10 @@ export function MarketplaceDetailPanel({
   loading,
   error,
   pinning,
+  unpublishing,
   onClose,
   onTogglePin,
+  onUnpublish,
   labels,
   onRetry,
 }: MarketplaceDetailPanelProps) {
@@ -161,21 +166,36 @@ export function MarketplaceDetailPanel({
                 </div>
               </div>
 
-              <button
-                type="button"
-                disabled={pinning}
-                onClick={onTogglePin}
-                className="inline-flex min-h-9 items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
-              >
-                {pinning ? (
-                  <Loader2 size={14} className="animate-spin" />
-                ) : detail.isPinned ? (
-                  <PinOff size={14} />
-                ) : (
-                  <Pin size={14} />
-                )}
-                {detail.isPinned ? labels.unpin : labels.pin}
-              </button>
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  disabled={pinning || unpublishing}
+                  onClick={onTogglePin}
+                  className="inline-flex min-h-9 items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+                >
+                  {pinning ? (
+                    <Loader2 size={14} className="animate-spin" />
+                  ) : detail.isPinned ? (
+                    <PinOff size={14} />
+                  ) : (
+                    <Pin size={14} />
+                  )}
+                  {detail.isPinned ? labels.unpin : labels.pin}
+                </button>
+                <button
+                  type="button"
+                  disabled={unpublishing}
+                  onClick={onUnpublish}
+                  className="inline-flex min-h-9 items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-100 disabled:opacity-60 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-300 dark:hover:bg-red-950/60"
+                >
+                  {unpublishing ? (
+                    <Loader2 size={14} className="animate-spin" />
+                  ) : (
+                    <GlobeOff size={14} />
+                  )}
+                  {labels.unpublish}
+                </button>
+              </div>
 
               <div>
                 <div className="mb-3 flex items-center justify-between gap-2">
