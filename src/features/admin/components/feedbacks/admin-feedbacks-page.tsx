@@ -26,6 +26,7 @@ import {
   type AdminFeedback,
   type FeedbackStatus,
 } from "@/features/guest/services/feedback.service";
+import { notifyAdminFeedbacksUpdated } from "@/features/admin/hooks/use-admin-pending-feedbacks";
 
 // ── Status badge ──────────────────────────────────────────────────────────────
 
@@ -290,6 +291,7 @@ export function AdminFeedbacksPage() {
     try {
       await adminUpdateFeedbackStatus(fb.id, "Approved");
       addToast("success", p.approveSuccess);
+      notifyAdminFeedbacksUpdated();
       void fetchData();
     } catch {
       addToast("error", p.approveError);
@@ -304,6 +306,7 @@ export function AdminFeedbacksPage() {
     try {
       await adminUpdateFeedbackStatus(fb.id, "Rejected");
       addToast("success", p.rejectSuccess);
+      notifyAdminFeedbacksUpdated();
       void fetchData();
     } catch {
       addToast("error", p.rejectError);
@@ -319,6 +322,7 @@ export function AdminFeedbacksPage() {
       await adminDeleteFeedback(deleteTarget.id);
       addToast("success", p.deleteSuccess);
       setDeleteTarget(null);
+      notifyAdminFeedbacksUpdated();
       void fetchData();
     } catch {
       addToast("error", p.deleteError);

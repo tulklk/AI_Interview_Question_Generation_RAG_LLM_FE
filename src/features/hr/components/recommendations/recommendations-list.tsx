@@ -21,6 +21,7 @@ import {
   inviteRecommendation,
   sendRecommendationOffer,
   restoreRecommendation,
+  isCandidateAccepted,
   type CandidateRecommendation,
   type RecommendationStatus,
   type RecommendationSortBy,
@@ -369,6 +370,116 @@ function OfferModal({ rec, onClose, onSent, labels }: OfferModalProps) {
 }
 
 // ---------------------------------------------------------------------------
+// Contact Info Modal
+// ---------------------------------------------------------------------------
+
+interface ContactInfoModalProps {
+  rec: CandidateRecommendation;
+  labels: ReturnType<typeof useLanguage>["t"]["hrRecommendationsPage"];
+  onClose: () => void;
+}
+
+function ContactInfoModal({ rec, labels, onClose }: ContactInfoModalProps) {
+  const d = labels.detail;
+  const c = labels.card;
+
+  useEffect(() => {
+    document.body.style.overflow = "hidden";
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.body.style.overflow = "";
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-40 flex items-center justify-center p-4"
+      onClick={onClose}
+    >
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+
+      <motion.div
+        initial={{ opacity: 0, scale: 0.97, y: 8 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        transition={{ duration: 0.2, ease: "easeOut" }}
+        className="relative z-10 w-full max-w-md bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-100 dark:border-gray-800 overflow-hidden flex flex-col"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="h-0.5 bg-linear-to-r from-emerald-500 via-primary to-cyan-400 shrink-0" />
+
+        <div className={cn("flex items-center justify-between px-5 py-4 border-b shrink-0", portalDivider)}>
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 flex items-center justify-center shrink-0">
+              <Phone size={15} className="text-emerald-600 dark:text-emerald-400" />
+            </div>
+            <div className="min-w-0">
+              <p className={cn("text-[14px] font-bold truncate", portalHeading)}>{d.candidateContactTitle}</p>
+              <p className="text-[11px] text-gray-500 dark:text-gray-400 truncate mt-0.5">
+                <span className="font-semibold text-gray-700 dark:text-gray-300">{rec.candidateName}</span>
+                {" "}
+                <span className="text-gray-400 dark:text-gray-500">({rec.candidateEmail})</span>
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors shrink-0"
+          >
+            <XIcon size={15} />
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+          <p className={cn("text-[12px] leading-relaxed", portalSubtextAlt)}>{d.candidateContactSubtitle}</p>
+
+          {rec.invitationSharedPhoneNumber && (
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500 mb-1.5">
+                {d.candidateContactPhone}
+              </p>
+              <a
+                href={`tel:${rec.invitationSharedPhoneNumber}`}
+                className={cn("text-[15px] font-medium hover:text-primary transition-colors", portalHeadingAlt)}
+              >
+                {rec.invitationSharedPhoneNumber}
+              </a>
+            </div>
+          )}
+
+          {rec.invitationResponseMessage && (
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500 mb-1.5">
+                {d.candidateContactMessage}
+              </p>
+              <p className={cn("text-[14px] leading-relaxed whitespace-pre-line", portalHeadingAlt)}>
+                {rec.invitationResponseMessage}
+              </p>
+            </div>
+          )}
+        </div>
+
+        <div className={cn("flex items-center justify-end px-5 py-4 border-t shrink-0 bg-gray-50/50 dark:bg-gray-900/50", portalDivider)}>
+          <button
+            type="button"
+            onClick={onClose}
+            className="h-9 px-4 text-[13px] font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+          >
+            {c.contactPanelClose}
+          </button>
+        </div>
+      </motion.div>
+    </div>,
+    document.body
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Candidate card row
 // ---------------------------------------------------------------------------
 
@@ -386,6 +497,7 @@ function CandidateRow({ rec, lang, labels, index, selected, onToggleSelect, onSt
   const [busy, setBusy] = useState<"shortlist" | "dismiss" | "restore" | null>(null);
   const [showInvite, setShowInvite] = useState(false);
   const [showOffer, setShowOffer] = useState(false);
+  const [showContact, setShowContact] = useState(false);
   const [showAllSkills, setShowAllSkills] = useState(false);
   const [popoverPos, setPopoverPos] = useState<{ top: number; left: number } | null>(null);
   const skillBtnRef = useRef<HTMLButtonElement>(null);
@@ -499,19 +611,33 @@ function CandidateRow({ rec, lang, labels, index, selected, onToggleSelect, onSt
               {rec.candidateName || "—"}
             </p>
             <StatusBadge status={rec.status} labels={c} />
+            {isCandidateAccepted(rec) && (
+              <span
+                title={c.acceptedHint}
+                className="inline-flex text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400 whitespace-nowrap"
+              >
+                {c.accepted}
+              </span>
+            )}
             {typeof rec.fitPercent === "number" && (
               <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-cyan-50 text-cyan-700 dark:bg-cyan-950/40 dark:text-cyan-400">
                 {c.fitPercent} {rec.fitPercent}%
               </span>
             )}
             {hasContact && (
-              <span
+              <button
+                type="button"
                 title={c.contactShared}
-                className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400 whitespace-nowrap"
+                aria-label={c.contactShared}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowContact(true);
+                }}
+                className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400 whitespace-nowrap cursor-pointer hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50 transition-opacity"
               >
                 <Phone size={9} />
                 {c.contactBadge}
-              </span>
+              </button>
             )}
           </div>
 
@@ -674,6 +800,13 @@ function CandidateRow({ rec, lang, labels, index, selected, onToggleSelect, onSt
           onSent={() => undefined}
         />
       )}
+      {showContact && hasContact && (
+        <ContactInfoModal
+          rec={rec}
+          labels={labels}
+          onClose={() => setShowContact(false)}
+        />
+      )}
     </>
   );
 }
@@ -793,11 +926,6 @@ export function RecommendationsList() {
           <h2 className={cn("text-2xl font-bold", portalHeading)}>{p.heading}</h2>
           <p className={cn("text-sm mt-1", portalSubtext)}>{p.subtext}</p>
         </div>
-        {!loading && totalCount > 0 && (
-          <span className="text-[12px] font-semibold px-2.5 py-1 rounded-full bg-violet-100 dark:bg-violet-950/60 text-violet-700 dark:text-violet-400 shrink-0 mt-1">
-            {totalCount}
-          </span>
-        )}
       </div>
 
       {/* Filter bar */}

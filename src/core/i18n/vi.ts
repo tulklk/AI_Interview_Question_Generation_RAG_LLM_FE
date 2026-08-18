@@ -448,6 +448,7 @@ export const vi: Translations = {
     hrQuestionsGenerated: "Đã tạo xong câu hỏi cho {{title}}",
     candidateFeedbackReady: "Kết quả AI cho {{title}} đã sẵn sàng",
     candidateInvitationReceived: "{{company}} mời bạn phỏng vấn cho {{title}}",
+    adminFeedbackPending: "Feedback từ {{name}} cần được duyệt",
   },
 
   appShell: {
@@ -661,6 +662,7 @@ export const vi: Translations = {
     step2Subtitle: "Bước 2 / 2",
     continueButton: "Tiếp tục",
     backButton: "Quay lại",
+    signUpWithGoogle: "Đăng ký với Google",
     googleStep2Hint: "Hoàn tất hồ sơ để bắt đầu luyện phỏng vấn.",
     googleLinkedAs: "Đăng ký với Google: {{email}}",
     googleSignupSuccess: "Đăng nhập Google thành công với {{email}}. Vui lòng hoàn tất hồ sơ.",
@@ -1412,6 +1414,7 @@ Yêu cầu:
     submitting: "Đang gửi...",
     successTitle: "Cảm ơn bạn!",
     successMessage: "Phản hồi của bạn đã được gửi và đang chờ duyệt.",
+    successClose: "Đóng",
     errorMessage: "Không thể gửi phản hồi. Vui lòng thử lại.",
   },
 
@@ -2928,6 +2931,9 @@ Yêu cầu:
       new: "Mới",
       contactShared: "Ứng viên đã để lại thông tin liên hệ",
       contactBadge: "Có liên hệ",
+      accepted: "Đã chấp nhận",
+      acceptedHint: "Ứng viên đã chấp nhận lời mời/offer",
+      contactPanelClose: "Đóng",
       restoreBtn: "Khôi phục",
       unread: "Chưa đọc",
       fitPercent: "Fit",
@@ -2981,6 +2987,7 @@ Yêu cầu:
       candidateContactSubtitle: "Do ứng viên tự để lại khi chấp nhận lời mời của bạn.",
       candidateContactPhone: "Số điện thoại",
       candidateContactMessage: "Lời nhắn",
+      candidateAcceptedEmpty: "Ứng viên đã chấp nhận lời mời. Chưa để lại số điện thoại hoặc lời nhắn.",
       profileTitle: "Hồ sơ ứng viên",
       bio: "Giới thiệu",
       address: "Địa chỉ",

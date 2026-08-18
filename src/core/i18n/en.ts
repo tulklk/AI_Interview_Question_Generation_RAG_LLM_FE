@@ -446,6 +446,7 @@
     hrQuestionsGenerated: "Questions generated for {{title}}",
     candidateFeedbackReady: "Your AI feedback for {{title}} is ready",
     candidateInvitationReceived: "{{company}} invited you to interview for {{title}}",
+    adminFeedbackPending: "Feedback from {{name}} is awaiting approval",
   },
 
   appShell: {
@@ -659,6 +660,7 @@
     step2Subtitle: "Step 2 of 2",
     continueButton: "Continue",
     backButton: "Back",
+    signUpWithGoogle: "Sign up with Google",
     googleStep2Hint: "Complete your profile to start practicing interviews.",
     googleLinkedAs: "Signed up with Google: {{email}}",
     googleSignupSuccess: "Signed in with Google as {{email}}. Please complete your profile.",
@@ -1411,6 +1413,7 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
     submitting: "Sending...",
     successTitle: "Thank you!",
     successMessage: "Your feedback has been submitted and is awaiting review.",
+    successClose: "Close",
     errorMessage: "Failed to send feedback. Please try again.",
   },
 
@@ -2926,6 +2929,9 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
       new: "New",
       contactShared: "Candidate shared contact info",
       contactBadge: "Has contact info",
+      accepted: "Accepted",
+      acceptedHint: "Candidate accepted the invitation/offer",
+      contactPanelClose: "Close",
       restoreBtn: "Restore",
       unread: "Unread",
       fitPercent: "Fit",
@@ -2979,6 +2985,7 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
       candidateContactSubtitle: "Shared by the candidate when they accepted your invitation.",
       candidateContactPhone: "Phone",
       candidateContactMessage: "Message",
+      candidateAcceptedEmpty: "The candidate accepted the invitation. No phone number or message was left.",
       profileTitle: "Candidate profile",
       bio: "Bio",
       address: "Address",
