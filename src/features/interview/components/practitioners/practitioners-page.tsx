@@ -2,10 +2,9 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { motion } from "framer-motion";
 import {
   AlertCircle, ArrowLeft, ChevronLeft, ChevronRight,
-  Clock, ExternalLink, FileText, Globe, GlobeOff, Loader2, Mail, RefreshCw, Users,
+  ExternalLink, FileText, Globe, GlobeOff, Loader2, Mail, RefreshCw, Users,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { useLanguage } from "@/shared/providers/language-context";
@@ -25,7 +24,7 @@ import { InviteCandidateModal } from "@/features/hr/components/recommendations/i
 import { invitePractitioner } from "@/features/hr/services/hr-talent.service";
 import { AiLoadingSpinner } from "@/shared/components/common/ai-loading-spinner";
 import { ConfirmDialog } from "@/shared/components/ui/confirm-dialog";
-import { portalHeading, portalHeadingAlt, portalSubtext, portalSubtextAlt } from "@/shared/utils/portal-ui";
+import { portalHeading, portalSubtext } from "@/shared/utils/portal-ui";
 
 function getInitials(name: string): string {
   return name.trim().split(/\s+/).map((w) => w[0]?.toUpperCase() ?? "").slice(0, 2).join("");
@@ -42,39 +41,59 @@ function avatarColor(name: string): string {
   return AVATAR_COLORS[Math.abs(h) % AVATAR_COLORS.length];
 }
 
-function scoreColor(score: number | null): string {
-  if (score === null) return "text-gray-400 dark:text-gray-500";
-  if (score >= 85) return "text-emerald-600 dark:text-emerald-400";
-  if (score >= 70) return "text-amber-600 dark:text-amber-400";
-  return "text-red-500 dark:text-red-400";
-}
+// ── Same visual tokens as hr-talent-page / question-set-history-table ──────
+const iconBtn =
+  "inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700 disabled:opacity-40 dark:hover:bg-gray-800 dark:hover:text-gray-200";
+
+const thCls =
+  "h-10 px-3 align-middle text-[11px] font-semibold tracking-wide text-gray-500 dark:text-gray-400";
+
+const tdCls = "h-12 px-3 align-middle";
 
 function ScoreCell({ score }: { score: number | null }) {
   if (score === null) {
-    return <span className="text-[14px] font-extrabold tabular-nums text-gray-400 dark:text-gray-500">—</span>;
+    return <span className={cn("tabular-nums", portalSubtext)}>—</span>;
   }
-  const bar = score >= 85 ? "bg-emerald-500" : score >= 70 ? "bg-amber-500" : "bg-red-500";
+  const color =
+    score >= 85
+      ? "text-emerald-600 dark:text-emerald-400"
+      : score >= 70
+        ? "text-amber-600 dark:text-amber-400"
+        : "text-red-600 dark:text-red-400";
   return (
-    <div className="flex flex-col items-center gap-1 min-w-11">
-      <span className={cn("text-[14px] font-extrabold tabular-nums leading-none", scoreColor(score))}>{score}</span>
-      <div className="w-8 h-1 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
-        <div className={cn("h-full rounded-full", bar)} style={{ width: `${Math.min(100, Math.max(0, score))}%` }} />
-      </div>
-    </div>
+    <span className={cn("text-[14px] font-bold tabular-nums", color)}>
+      {score}
+    </span>
   );
 }
 
-function StatusBadge({ status, labels }: { status: PractitionerSessionStatus; labels: Record<string, string> }) {
+function StatusBadge({
+  status,
+  labels,
+}: {
+  status: PractitionerSessionStatus;
+  labels: Record<string, string>;
+}) {
   const styles: Record<PractitionerSessionStatus, string> = {
-    IN_PROGRESS: "bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:text-blue-400",
-    COMPLETED: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400",
-    ABANDONED: "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400",
+    IN_PROGRESS:
+      "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400",
+    COMPLETED:
+      "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400",
+    ABANDONED:
+      "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400",
   };
   const text: Record<PractitionerSessionStatus, string> = {
-    IN_PROGRESS: labels.inProgress, COMPLETED: labels.completed, ABANDONED: labels.abandoned,
+    IN_PROGRESS: labels.inProgress,
+    COMPLETED: labels.completed,
+    ABANDONED: labels.abandoned,
   };
   return (
-    <span className={cn("inline-flex text-[11px] font-semibold px-2.5 py-0.5 rounded-full whitespace-nowrap", styles[status])}>
+    <span
+      className={cn(
+        "inline-flex items-center rounded-md px-1.5 py-0.5 text-[11px] font-semibold whitespace-nowrap",
+        styles[status],
+      )}
+    >
       {text[status]}
     </span>
   );
@@ -213,111 +232,125 @@ export function PractitionersPage({ questionSetId }: { questionSetId: string }) 
           <p className={cn("text-xs", portalSubtext)}>{p.emptySubtext}</p>
         </div>
       ) : (
-        <div className="hr-glass-card overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full">
+        <>
+          {/* ── Table — same style as hr-talent-page ── */}
+          <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-950/40">
+            <table className="w-full min-w-160 table-fixed text-[13px]">
+              <colgroup>
+                <col style={{ width: "28%" }} />
+                <col style={{ width: "9%" }} />
+                <col style={{ width: "16%" }} />
+                <col style={{ width: "13%" }} />
+                <col style={{ width: "34%" }} />
+              </colgroup>
               <thead>
-                <tr className="border-b border-gray-100 dark:border-gray-800 bg-gray-50/80 dark:bg-gray-800/40">
-                  <th className={cn("text-left px-5 py-3 text-[11px] font-semibold uppercase tracking-wider w-56 max-w-56", portalSubtextAlt)}>{p.candidate}</th>
-                  <th className={cn("text-center px-4 py-3 text-[11px] font-semibold uppercase tracking-wider", portalSubtextAlt)}>{p.score}</th>
-                  <th className={cn("text-left px-4 py-3 text-[11px] font-semibold uppercase tracking-wider", portalSubtextAlt)}>{p.status}</th>
-                  <th className={cn("text-left px-4 py-3 text-[11px] font-semibold uppercase tracking-wider hidden sm:table-cell", portalSubtextAlt)}>{p.completedAt}</th>
-                  <th className={cn("text-center px-4 py-3 text-[11px] font-semibold uppercase tracking-wider w-full min-w-80 whitespace-nowrap", portalSubtextAlt)}>{p.actions}</th>
+                <tr className="border-b border-gray-100 bg-gray-50/90 dark:border-gray-800 dark:bg-gray-900/60">
+                  <th scope="col" className={cn(thCls, "text-left")}>{p.candidate}</th>
+                  <th scope="col" className={cn(thCls, "text-center")}>{p.score}</th>
+                  <th scope="col" className={cn(thCls, "text-left")}>{p.status}</th>
+                  <th scope="col" className={cn(thCls, "text-left")}>{p.completedAt}</th>
+                  <th scope="col" className={cn(thCls, "text-center")}>{p.actions}</th>
                 </tr>
               </thead>
-              <tbody>
-                {paginated.map((item, index) => {
+              <tbody className="divide-y divide-gray-100 dark:divide-gray-800/70">
+                {paginated.map((item, rowIdx) => {
                   const initials = getInitials(item.candidateName || item.candidateEmail);
                   return (
-                    <motion.tr
+                    <tr
                       key={item.id}
-                      initial={{ opacity: 0, y: 6 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: index * 0.03 }}
-                      className="border-b border-gray-100 dark:border-gray-800 last:border-0 hover:bg-gray-50/60 dark:hover:bg-gray-800/40 transition-colors">
-                      <td className="w-56 max-w-56 px-5 py-3.5">
-                        <Link
-                          href={`/hr/candidates/${item.candidateUserId}`}
-                          className="flex items-center gap-3 group min-w-0"
-                          title={t.hrCandidateOverviewPage.viewOverview}
-                        >
-                          <div className={cn("w-9 h-9 rounded-xl text-white text-[12px] font-bold flex items-center justify-center shrink-0", avatarColor(item.candidateName || item.id))}>
+                      className="hover:bg-gray-50/70 dark:hover:bg-gray-900/40 transition-colors"
+                      style={{ animation: `fadeIn 0.28s ease-out both ${rowIdx * 0.04}s` }}
+                    >
+                      {/* Ứng viên */}
+                      <td className={cn(tdCls, "overflow-hidden")}>
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div
+                            className={cn(
+                              "w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-white text-[11px] font-bold",
+                              avatarColor(item.candidateName || item.id),
+                            )}
+                          >
                             {initials || "?"}
                           </div>
                           <div className="min-w-0">
-                            <p className={cn("text-[13px] font-semibold leading-tight truncate group-hover:text-primary transition-colors", portalHeadingAlt)}>{item.candidateName || "—"}</p>
-                            <p className={cn("text-[11px] truncate", portalSubtextAlt)}>{item.candidateEmail}</p>
+                            <p
+                              className={cn("truncate font-medium leading-tight", portalHeading)}
+                              title={item.candidateName || item.candidateEmail}
+                            >
+                              {item.candidateName || "—"}
+                            </p>
+                            <p className={cn("truncate text-[11px] leading-tight mt-0.5", portalSubtext)}>
+                              {item.candidateEmail}
+                            </p>
                           </div>
-                        </Link>
+                        </div>
                       </td>
-                      <td className="px-4 py-3.5 text-center">
+
+                      {/* Điểm */}
+                      <td className={cn(tdCls, "text-center")}>
                         <ScoreCell score={item.score} />
                       </td>
-                      <td className="px-4 py-3.5">
+
+                      {/* Trạng thái */}
+                      <td className={cn(tdCls, "overflow-hidden")}>
                         <StatusBadge status={item.status} labels={p.statusLabels} />
                       </td>
-                      <td className="px-4 py-3.5 hidden sm:table-cell">
-                        <span className={cn("text-[12px] flex items-center gap-1.5", portalSubtextAlt)}>
-                          <Clock size={11} />
-                          {item.completedAt ? formatRelativeTime(item.completedAt, lang) : item.startedAt ? formatRelativeTime(item.startedAt, lang) : "—"}
-                        </span>
+
+                      {/* Hoàn thành */}
+                      <td className={cn(tdCls, "overflow-hidden whitespace-nowrap", portalSubtext)}>
+                        {item.completedAt
+                          ? formatRelativeTime(item.completedAt, lang)
+                          : item.startedAt
+                            ? formatRelativeTime(item.startedAt, lang)
+                            : "—"}
                       </td>
-                      <td className="w-full min-w-80 px-4 py-3.5">
-                        <div className="mx-auto grid w-[5.75rem] grid-cols-3 gap-1">
+
+                      {/* Thao tác */}
+                      <td className={tdCls}>
+                        <div className="flex flex-nowrap items-center justify-center gap-0.5">
                           <Link
                             href={`/hr/candidates/${item.candidateUserId}`}
+                            className={iconBtn}
                             title={p.viewDetailBtn}
-                            className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-950/40 hover:bg-violet-100 dark:hover:bg-violet-950/70"
                           >
-                            <ExternalLink size={13} />
+                            <ExternalLink size={14} />
                           </Link>
                           {item.status === "COMPLETED" && item.sessionId ? (
                             <Link
                               href={`/hr/candidates/${item.candidateUserId}/sessions/${item.sessionId}`}
+                              className={iconBtn}
                               title={p.viewAnswersBtn}
-                              className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700"
                             >
-                              <FileText size={13} />
+                              <FileText size={14} />
                             </Link>
                           ) : (
-                            <span aria-hidden className="h-7 w-7" />
+                            <span className="h-7 w-7" aria-hidden />
                           )}
                           {item.status === "COMPLETED" ? (
                             <button
                               type="button"
                               onClick={() => setInviteTarget(item)}
+                              className={iconBtn}
                               title={p.inviteBtn}
-                              className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-950/70"
                             >
-                              <Mail size={13} />
+                              <Mail size={14} />
                             </button>
                           ) : (
-                            <span aria-hidden className="h-7 w-7" />
+                            <span className="h-7 w-7" aria-hidden />
                           )}
                         </div>
                       </td>
-                    </motion.tr>
+                    </tr>
                   );
                 })}
-                {/* Placeholder rows — keep height constant across pages */}
-                {paginated.length < PAGE_SIZE &&
-                  Array.from({ length: PAGE_SIZE - paginated.length }).map((_, i) => (
-                    <tr key={`ph-${i}`} aria-hidden className="border-b border-gray-100 dark:border-gray-800 last:border-0">
-                      <td className="px-5 py-3.5"><div className="h-9" /></td>
-                      <td className="px-4 py-3.5" />
-                      <td className="px-4 py-3.5" />
-                      <td className="px-4 py-3.5 hidden sm:table-cell" />
-                      <td className="px-4 py-3.5" />
-                    </tr>
-                  ))}
               </tbody>
             </table>
           </div>
 
-          {/* ── Pagination ─────────────────────────────────────────────────── */}
+          {/* ── Pagination ── */}
           {totalPages > 1 && (
-            <div className="flex items-center justify-between px-5 py-3 border-t border-gray-100 dark:border-gray-800">
-              <p className={cn("text-xs tabular-nums", portalSubtextAlt)}>
+            <div className="flex items-center justify-between gap-4 px-1 py-1">
+              <p className={cn("text-xs tabular-nums", portalSubtext)}>
                 {(safePage - 1) * PAGE_SIZE + 1}–{Math.min(safePage * PAGE_SIZE, items.length)} / {items.length}
               </p>
               <div className="flex items-center gap-1">
@@ -325,7 +358,7 @@ export function PractitionersPage({ questionSetId }: { questionSetId: string }) 
                   type="button"
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
                   disabled={safePage === 1}
-                  className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                 >
                   <ChevronLeft size={14} />
                 </button>
@@ -336,7 +369,11 @@ export function PractitionersPage({ questionSetId }: { questionSetId: string }) 
                   const nearCurrent = Math.abs(pg - safePage) <= 1;
                   if (!isFirst && !isLast && !nearCurrent) {
                     if (pg === 2 || pg === totalPages - 1) {
-                      return <span key={pg} className={cn("text-xs px-0.5", portalSubtextAlt)}>…</span>;
+                      return (
+                        <span key={pg} className={cn("text-xs px-0.5", portalSubtext)}>
+                          …
+                        </span>
+                      );
                     }
                     return null;
                   }
@@ -349,7 +386,7 @@ export function PractitionersPage({ questionSetId }: { questionSetId: string }) 
                         "inline-flex h-7 min-w-7 px-1.5 items-center justify-center rounded-lg text-xs font-medium transition-colors",
                         pg === safePage
                           ? "bg-primary text-white shadow-sm"
-                          : "border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
+                          : "border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800",
                       )}
                     >
                       {pg}
@@ -361,14 +398,14 @@ export function PractitionersPage({ questionSetId }: { questionSetId: string }) 
                   type="button"
                   onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                   disabled={safePage === totalPages}
-                  className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                 >
                   <ChevronRight size={14} />
                 </button>
               </div>
             </div>
           )}
-        </div>
+        </>
       )}
 
       <ConfirmDialog

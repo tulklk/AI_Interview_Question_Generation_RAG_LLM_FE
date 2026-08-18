@@ -1,6 +1,7 @@
 "use client";
 
 import { GoogleLogin } from "@react-oauth/google";
+import { useLanguage } from "@/shared/providers/language-context";
 
 const oauthBtnClass =
   "auth-social-button-face flex h-10 w-full items-center justify-center gap-2 rounded-lg border px-3 text-sm font-medium text-gray-700 transition-colors disabled:cursor-not-allowed disabled:opacity-60 dark:text-gray-100";
@@ -39,6 +40,7 @@ function GithubIcon() {
 interface GoogleOAuthButtonProps {
   loading?: boolean;
   mode: "signin" | "signup";
+  label: string;
   onSuccess: (credential: string | undefined) => void;
   onError: () => void;
 }
@@ -50,6 +52,7 @@ interface GoogleOAuthButtonProps {
 export function GoogleOAuthButton({
   loading = false,
   mode,
+  label,
   onSuccess,
   onError,
 }: GoogleOAuthButtonProps) {
@@ -68,7 +71,7 @@ export function GoogleOAuthButton({
         ) : (
           <>
             <GoogleIcon />
-            Google
+            {label}
           </>
         )}
       </div>
@@ -142,11 +145,18 @@ export function SocialOAuthRow({
   githubLoading = false,
   onGithubClick,
 }: SocialOAuthRowProps) {
+  const { t } = useLanguage();
+  const googleLabel =
+    googleMode === "signup"
+      ? t.registerPage.signUpWithGoogle
+      : t.loginPage.continueWithGoogle;
+
   return (
-    <div className="grid grid-cols-2 gap-3">
+    <div className="w-full">
       <GoogleOAuthButton
         loading={googleLoading}
         mode={googleMode}
+        label={googleLabel}
         onSuccess={onGoogleSuccess}
         onError={onGoogleError}
       />

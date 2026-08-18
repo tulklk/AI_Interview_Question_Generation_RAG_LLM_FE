@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import {
+  Activity,
   AlertCircle,
   ArrowLeft,
   BookOpen,
@@ -28,6 +29,7 @@ import {
 import { AppShell } from "@/features/hr/components/layout/app-shell";
 import { buildPracticeHeatmapFromBuckets } from "@/features/candidate/utils/dashboard-analytics";
 import { PracticeHeatmap } from "@/features/candidate/components/dashboard/practice-heatmap";
+import { SectionCard } from "@/features/candidate/components/ui/section-card";
 
 const AVATAR_COLORS = [
   "bg-violet-500", "bg-blue-500", "bg-emerald-500", "bg-amber-500",
@@ -42,6 +44,49 @@ function avatarColor(name: string): string {
 
 function getInitials(name: string): string {
   return name.trim().split(/\s+/).map((w) => w[0]?.toUpperCase() ?? "").slice(0, 2).join("");
+}
+
+// ── Score ring — same SVG component as recommendation-detail ──────────────
+function ScoreRing({ score, label, quality }: { score: number; label: string; quality: string }) {
+  const radius = 40;
+  const circ = 2 * Math.PI * radius;
+  const dash = (Math.min(100, Math.max(0, score)) / 100) * circ;
+  const color = score >= 85 ? "#10b981" : score >= 70 ? "#f59e0b" : "#ef4444";
+  const textColor =
+    score >= 85
+      ? "text-emerald-600 dark:text-emerald-400"
+      : score >= 70
+        ? "text-amber-600 dark:text-amber-400"
+        : "text-red-500 dark:text-red-400";
+
+  return (
+    <div className="flex items-center gap-5">
+      <div className="relative w-24 h-24 shrink-0">
+        <svg width="96" height="96" viewBox="0 0 96 96" className="-rotate-90">
+          <circle cx="48" cy="48" r={radius} fill="none" stroke="currentColor"
+            strokeWidth="6" className="text-gray-100 dark:text-gray-800" />
+          <motion.circle
+            cx="48" cy="48" r={radius} fill="none" stroke={color}
+            strokeWidth="6" strokeLinecap="round"
+            strokeDasharray={`${dash} ${circ - dash}`}
+            initial={{ strokeDasharray: `0 ${circ}` }}
+            animate={{ strokeDasharray: `${dash} ${circ - dash}` }}
+            transition={{ duration: 0.9, ease: "easeOut" }}
+          />
+        </svg>
+        <div className="absolute inset-0 flex flex-col items-center justify-center">
+          <span className={cn("text-[20px] font-black leading-none tabular-nums", textColor)}>{Math.round(score)}</span>
+          <span className="text-[9px] text-gray-400 dark:text-gray-500 font-semibold mt-0.5">/100</span>
+        </div>
+      </div>
+      <div>
+        <p className={cn("text-[10px] font-semibold uppercase tracking-widest mb-1.5", portalSubtextAlt)}>
+          {label}
+        </p>
+        <p className={cn("text-[16px] font-bold leading-tight", textColor)}>{quality}</p>
+      </div>
+    </div>
+  );
 }
 
 function achievementMeta(
@@ -165,12 +210,13 @@ export function HrCandidateOverviewPage({ candidateUserId }: { candidateUserId: 
           <ArrowLeft size={14} /> {p.back}
         </button>
 
-        <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-5 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-5 items-start">
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="hr-glass-card p-5 flex flex-col gap-4"
+            className="hr-glass-card p-5 flex flex-col gap-5"
           >
+            {/* ── Avatar + identity ── */}
             <div className="flex flex-col items-center text-center gap-3 pt-1">
               {data.avatarUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -178,12 +224,12 @@ export function HrCandidateOverviewPage({ candidateUserId }: { candidateUserId: 
                   src={data.avatarUrl}
                   alt={data.candidateName}
                   referrerPolicy="no-referrer"
-                  className="w-16 h-16 rounded-2xl object-cover"
+                  className="w-20 h-20 rounded-full ring-2 ring-white dark:ring-gray-700 shadow-md object-cover"
                 />
               ) : (
                 <div
                   className={cn(
-                    "w-16 h-16 rounded-2xl text-white text-xl font-extrabold flex items-center justify-center",
+                    "w-20 h-20 rounded-full ring-2 ring-white dark:ring-gray-700 shadow-md text-white text-xl font-extrabold flex items-center justify-center",
                     avatarColor(data.candidateName || data.candidateUserId)
                   )}
                 >
@@ -204,6 +250,7 @@ export function HrCandidateOverviewPage({ candidateUserId }: { candidateUserId: 
               </div>
             </div>
 
+            {/* ── Social links — before score ring, matching recommendation-detail order ── */}
             {(data.linkedInUrl || data.githubUrl) && (
               <div className="flex justify-center gap-2">
                 {data.linkedInUrl && (
@@ -211,7 +258,7 @@ export function HrCandidateOverviewPage({ candidateUserId }: { candidateUserId: 
                     href={data.linkedInUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-sky-50 text-sky-600 dark:bg-sky-950/40 dark:text-sky-300"
+                    className="h-8 w-8 flex items-center justify-center rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
                     title="LinkedIn"
                   >
                     <FaLinkedinIn size={14} />
@@ -222,12 +269,29 @@ export function HrCandidateOverviewPage({ candidateUserId }: { candidateUserId: 
                     href={data.githubUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-200"
+                    className="h-8 w-8 flex items-center justify-center rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
                     title="GitHub"
                   >
                     <FaGithub size={14} />
                   </a>
                 )}
+              </div>
+            )}
+
+            {/* ── Best-score ring ── */}
+            {data.bestScore != null && (
+              <div className="rounded-2xl bg-gray-50 dark:bg-gray-800/50 px-4 py-4">
+                <ScoreRing
+                  score={data.bestScore}
+                  label={p.stats.bestScore}
+                  quality={
+                    data.bestScore >= 85
+                      ? p.scoreExcellent
+                      : data.bestScore >= 70
+                        ? p.scoreGood
+                        : p.scoreFair
+                  }
+                />
               </div>
             )}
 
@@ -249,14 +313,23 @@ export function HrCandidateOverviewPage({ candidateUserId }: { candidateUserId: 
             )}
           </motion.div>
 
-          <div className="space-y-5">
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.05 }}
-              className="hr-glass-card p-5"
+          {/* ── Right: practice profile — same motion wrapper as recommendation-detail ── */}
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.05 }}
+            className="flex flex-col gap-5 min-w-0"
+          >
+            <h1 className={cn("text-[22px] font-extrabold", portalHeadingAlt)}>{p.heading}</h1>
+
+            {/* ① Stats */}
+            <SectionCard
+              title={p.statsTitle}
+              icon={TrendingUp}
+              iconBg="bg-violet-50 dark:bg-violet-950/40"
+              iconColor="text-violet-600 dark:text-violet-400"
             >
-              <p className={cn("text-[11px] mb-3", portalSubtextAlt)}>{p.statsHint}</p>
+              <p className={cn("text-[11px] -mt-2 mb-4", portalSubtextAlt)}>{p.statsHint}</p>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 <div className={cn("rounded-xl px-3 py-3 text-center", portalMutedBg)}>
                   <BookOpen size={14} className="mx-auto mb-1 text-blue-500" />
@@ -268,14 +341,14 @@ export function HrCandidateOverviewPage({ candidateUserId }: { candidateUserId: 
                 <div className={cn("rounded-xl px-3 py-3 text-center", portalMutedBg)}>
                   <TrendingUp size={14} className="mx-auto mb-1 text-violet-500" />
                   <p className={cn("text-[16px] font-extrabold tabular-nums", portalHeadingAlt)}>
-                    {data.averageScore != null ? `${data.averageScore.toFixed(1)}%` : "—"}
+                    {data.averageScore != null ? `${data.averageScore.toFixed(1)}` : "—"}
                   </p>
                   <p className={cn("text-[10px]", portalSubtextAlt)}>{p.stats.avgScore}</p>
                 </div>
                 <div className={cn("rounded-xl px-3 py-3 text-center", portalMutedBg)}>
                   <Trophy size={14} className="mx-auto mb-1 text-amber-500" />
                   <p className={cn("text-[16px] font-extrabold tabular-nums", portalHeadingAlt)}>
-                    {data.bestScore != null ? `${data.bestScore.toFixed(1)}%` : "—"}
+                    {data.bestScore != null ? `${data.bestScore.toFixed(1)}` : "—"}
                   </p>
                   <p className={cn("text-[10px]", portalSubtextAlt)}>{p.stats.bestScore}</p>
                 </div>
@@ -285,37 +358,31 @@ export function HrCandidateOverviewPage({ candidateUserId }: { candidateUserId: 
                   <p className={cn("text-[10px]", portalSubtextAlt)}>{p.stats.streak}</p>
                 </div>
               </div>
-            </motion.div>
+            </SectionCard>
 
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.08 }}
-              className="hr-glass-card p-5"
+            {/* ② Heatmap */}
+            <SectionCard
+              title={p.heatmap.title}
+              icon={Activity}
+              iconBg="bg-blue-50 dark:bg-blue-950/40"
+              iconColor="text-blue-600 dark:text-blue-400"
             >
-              <div className="mb-3">
-                <h2 className={cn("text-[13px] font-bold uppercase tracking-wider", portalSubtextAlt)}>
-                  {p.heatmap.title}
-                </h2>
-                <p className={cn("text-[11px] mt-0.5", portalSubtextAlt)}>{p.heatmap.subtitle}</p>
-              </div>
+              <p className={cn("text-[11px] -mt-2 mb-4", portalSubtextAlt)}>{p.heatmap.subtitle}</p>
               {practiceHeatmap.activeDays === 0 ? (
                 <p className={cn("text-[13px] py-6 text-center", portalSubtext)}>{p.heatmap.empty}</p>
               ) : (
                 <PracticeHeatmap heatmap={practiceHeatmap} source="hr" />
               )}
-            </motion.div>
+            </SectionCard>
 
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
-              className="hr-glass-card p-5"
+            {/* ③ Achievements */}
+            <SectionCard
+              title={p.achievementsTitle}
+              icon={Trophy}
+              iconBg="bg-amber-50 dark:bg-amber-950/40"
+              iconColor="text-amber-600 dark:text-amber-400"
             >
-              <div className="flex items-center justify-between mb-3">
-                <h2 className={cn("text-[13px] font-bold uppercase tracking-wider", portalSubtextAlt)}>
-                  {p.achievementsTitle}
-                </h2>
+              <div className="flex items-center justify-between -mt-2 mb-4">
                 <span className={cn("text-[11px] font-semibold", portalSubtextAlt)}>
                   {earnedCount}/{visibleAchievements.length} {p.earned}
                 </span>
@@ -337,19 +404,16 @@ export function HrCandidateOverviewPage({ candidateUserId }: { candidateUserId: 
                   </div>
                 ))}
               </div>
-            </motion.div>
+            </SectionCard>
 
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.15 }}
-              className="hr-glass-card p-5"
+            {/* ④ Practice table */}
+            <SectionCard
+              title={p.practiceTableTitle}
+              icon={BookOpen}
+              iconBg="bg-emerald-50 dark:bg-emerald-950/40"
+              iconColor="text-emerald-600 dark:text-emerald-400"
             >
-              <h2 className={cn("text-[13px] font-bold uppercase tracking-wider mb-1", portalSubtextAlt)}>
-                {p.practiceTableTitle}
-              </h2>
-              <p className={cn("text-[11px] mb-3", portalSubtextAlt)}>{p.practiceTableHint}</p>
-
+              <p className={cn("text-[11px] -mt-2 mb-4", portalSubtextAlt)}>{p.practiceTableHint}</p>
               {data.practiceOnMySets.length === 0 ? (
                 <p className={cn("text-[13px] py-6 text-center", portalSubtext)}>{p.practiceEmpty}</p>
               ) : (
@@ -378,49 +442,52 @@ export function HrCandidateOverviewPage({ candidateUserId }: { candidateUserId: 
                       {data.practiceOnMySets.map((row, i) => {
                         const completed = row.sessionStatus.toUpperCase() === "COMPLETED" && row.sessionId;
                         return (
-                        <tr key={`${row.sessionId || row.questionSetId}-${row.startedAt ?? i}`} className="hover:bg-gray-50/60 dark:hover:bg-gray-900/40">
-                          <td className="px-3 py-2.5">
-                            <Link
-                              href={`/hr/history/${row.questionSetId}`}
-                              className={cn("font-semibold text-primary hover:underline", portalHeadingAlt)}
-                            >
-                              {row.title}
-                            </Link>
-                          </td>
-                          <td className={cn("px-3 py-2.5", portalSubtext)}>
-                            {statusLabel(row.sessionStatus, p.statusLabels)}
-                          </td>
-                          <td className={cn("px-3 py-2.5 text-center tabular-nums font-semibold", portalHeadingAlt)}>
-                            {row.overallScore != null ? row.overallScore.toFixed(0) : "—"}
-                          </td>
-                          <td className={cn("px-3 py-2.5", portalSubtext)}>
-                            {row.completedAt
-                              ? formatRelativeTime(row.completedAt, lang)
-                              : row.startedAt
-                                ? formatRelativeTime(row.startedAt, lang)
-                                : "—"}
-                          </td>
-                          <td className="px-3 py-2.5 text-right">
-                            {completed ? (
+                          <tr
+                            key={`${row.sessionId || row.questionSetId}-${row.startedAt ?? i}`}
+                            className="hover:bg-gray-50/60 dark:hover:bg-gray-900/40"
+                          >
+                            <td className="px-3 py-2.5">
                               <Link
-                                href={`/hr/candidates/${data.candidateUserId}/sessions/${row.sessionId}`}
-                                className="text-[12px] font-medium text-primary hover:underline"
+                                href={`/hr/history/${row.questionSetId}`}
+                                className={cn("font-semibold text-primary hover:underline", portalHeadingAlt)}
                               >
-                                {p.viewAnswersBtn}
+                                {row.title}
                               </Link>
-                            ) : (
-                              <span className={portalSubtext}>—</span>
-                            )}
-                          </td>
-                        </tr>
+                            </td>
+                            <td className={cn("px-3 py-2.5", portalSubtext)}>
+                              {statusLabel(row.sessionStatus, p.statusLabels)}
+                            </td>
+                            <td className={cn("px-3 py-2.5 text-center tabular-nums font-semibold", portalHeadingAlt)}>
+                              {row.overallScore != null ? row.overallScore.toFixed(0) : "—"}
+                            </td>
+                            <td className={cn("px-3 py-2.5", portalSubtext)}>
+                              {row.completedAt
+                                ? formatRelativeTime(row.completedAt, lang)
+                                : row.startedAt
+                                  ? formatRelativeTime(row.startedAt, lang)
+                                  : "—"}
+                            </td>
+                            <td className="px-3 py-2.5 text-right">
+                              {completed ? (
+                                <Link
+                                  href={`/hr/candidates/${data.candidateUserId}/sessions/${row.sessionId}`}
+                                  className="text-[12px] font-medium text-primary hover:underline"
+                                >
+                                  {p.viewAnswersBtn}
+                                </Link>
+                              ) : (
+                                <span className={portalSubtext}>—</span>
+                              )}
+                            </td>
+                          </tr>
                         );
                       })}
                     </tbody>
                   </table>
                 </div>
               )}
-            </motion.div>
-          </div>
+            </SectionCard>
+          </motion.div>
         </div>
       </div>
     );
@@ -431,7 +498,8 @@ export function HrCandidateOverviewPage({ candidateUserId }: { candidateUserId: 
       pageTitle={data?.candidateName || p.heading}
       breadcrumb={[
         { label: "HR", href: "/hr/dashboard" },
-        { label: p.heading },
+        { label: t.hrTalentPage.heading, href: "/hr/talent" },
+        { label: data?.candidateName || p.heading },
       ]}
       fullWidth
     >
