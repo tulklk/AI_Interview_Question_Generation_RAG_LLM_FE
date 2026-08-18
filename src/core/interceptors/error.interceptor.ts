@@ -8,8 +8,8 @@ const SUBSCRIPTION_ERROR_MESSAGES: Record<string, Record<"en" | "vi", string>> =
     vi: "Bạn đã hết hạn mức trong kỳ hiện tại. Nâng Premium hoặc mua thêm pack Ask-AI.",
   },
   COOLDOWN_ACTIVE: {
-    en: "Free plan allows one question set per 24 hours. Please wait or upgrade to Premium.",
-    vi: "Gói Free chỉ tạo bộ câu hỏi 1 lần / 24 giờ. Vui lòng đợi hoặc nâng Premium.",
+    en: "Free plan allows 4 question sets per 24 hours. Please wait or upgrade to Premium.",
+    vi: "Gói Free chỉ tạo bộ câu hỏi 4 lần / 24 giờ. Vui lòng đợi hoặc nâng Premium.",
   },
   FEATURE_REQUIRES_PREMIUM: {
     en: "This feature requires the Premium plan.",

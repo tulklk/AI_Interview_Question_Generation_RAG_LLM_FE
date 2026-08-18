@@ -13,11 +13,14 @@ import {
   listMarketplaceQuestionSets,
   pinMarketplaceQuestionSet,
   unpinMarketplaceQuestionSet,
+  unpublishMarketplaceQuestionSet,
   type AdminMarketplaceDetail,
   type AdminMarketplaceListItem,
   type AdminMarketplaceStats,
   type MarketplaceSortBy,
 } from "@/features/admin/services/admin-marketplace.service";
+import { withAbandonedToast } from "@/features/interview/services/interview.service";
+import { ConfirmDialog } from "@/shared/components/ui/confirm-dialog";
 import { useLanguage } from "@/shared/providers/language-context";
 import { useToast } from "@/shared/providers/toast-context";
 import { cn } from "@/lib/cn";
@@ -48,6 +51,8 @@ export default function AdminMarketplacePage() {
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState<string | null>(null);
   const [pinningId, setPinningId] = useState<string | null>(null);
+  const [unpublishingId, setUnpublishingId] = useState<string | null>(null);
+  const [confirmItem, setConfirmItem] = useState<AdminMarketplaceListItem | null>(null);
 
   useEffect(() => {
     const timer = window.setTimeout(() => setDebouncedSearch(search.trim()), SEARCH_DEBOUNCE_MS);
@@ -131,6 +136,32 @@ export default function AdminMarketplacePage() {
     }
   }
 
+  function handleUnpublish(item: AdminMarketplaceListItem) {
+    setConfirmItem(item);
+  }
+
+  async function confirmUnpublish() {
+    if (!confirmItem) return;
+    const item = confirmItem;
+    setUnpublishingId(item.id);
+    try {
+      const abandoned = await unpublishMarketplaceQuestionSet(item.id);
+      addToast("success", withAbandonedToast(m.unpublishSuccess, abandoned));
+      await Promise.all([fetchList(), fetchStats()]);
+      if (selectedId === item.id) {
+        setDetailOpen(false);
+        setSelectedId(null);
+        setDetail(null);
+        setDetailError(null);
+      }
+      setConfirmItem(null);
+    } catch (err) {
+      addToast("error", err instanceof Error && err.message ? err.message : m.unpublishFailed);
+    } finally {
+      setUnpublishingId(null);
+    }
+  }
+
   async function handleDetailTogglePin() {
     if (!detail) return;
     await handleTogglePin(detail);
@@ -186,11 +217,13 @@ export default function AdminMarketplacePage() {
             loading={loading}
             selectedId={selectedId}
             pinningId={pinningId}
+            unpublishingId={unpublishingId}
             emptyLabel={m.emptyState}
             setsFoundLabel={m.setsFound}
             totalCount={totalCount}
             onView={handleSelect}
             onTogglePin={handleTogglePin}
+            onUnpublish={handleUnpublish}
             cardLabels={{
               badgePinned: m.badgePinned,
               badgeTrending: m.badgeTrending,
@@ -201,6 +234,7 @@ export default function AdminMarketplacePage() {
               viewDetail: m.view,
               pin: m.pin,
               unpin: m.unpin,
+              unpublish: m.unpublish,
               hrPrefix: m.hrPrefix,
             }}
           />
@@ -242,8 +276,12 @@ export default function AdminMarketplacePage() {
           loading={detailLoading}
           error={detailError}
           pinning={pinningId === selectedId}
+          unpublishing={unpublishingId === selectedId}
           onClose={() => setDetailOpen(false)}
           onTogglePin={handleDetailTogglePin}
+          onUnpublish={() => {
+            if (detail) handleUnpublish(detail);
+          }}
           onRetry={() => selectedId && void loadDetail(selectedId)}
           labels={{
             title: m.detailTitle,
@@ -257,8 +295,24 @@ export default function AdminMarketplacePage() {
             practitioners: m.detail.practitioners,
             pin: m.pin,
             unpin: m.unpin,
+            unpublish: m.unpublish,
             emptyPractitioners: m.detail.emptyPractitioners,
             retry: m.retry,
+          }}
+        />
+
+        <ConfirmDialog
+          open={confirmItem !== null}
+          title={m.unpublishConfirmTitle}
+          message={m.unpublishConfirmMessage}
+          confirmLabel={m.unpublishConfirmLabel}
+          cancelLabel={m.cancel}
+          variant="danger"
+          loading={unpublishingId !== null}
+          onConfirm={() => void confirmUnpublish()}
+          onCancel={() => {
+            if (unpublishingId !== null) return;
+            setConfirmItem(null);
           }}
         />
       </AdminAppShell>

@@ -202,7 +202,7 @@
       upgradeWhy: {
         title: "Why HR teams choose Premium",
         footnote:
-          "Ask-AI and export are Premium because they consume LLM quota. Free still lets you generate once per 24h and publish to Marketplace.",
+          "Ask-AI and export are Premium because they consume LLM quota. Free still lets you generate 4 times per 24h and publish to Marketplace.",
         points: [
           {
             title: "Unlimited generate",
@@ -235,7 +235,7 @@
           cta: "Start Free",
           features: [
             "Studio: plan & generate from JD",
-            "Generate 1 set / 24-hour cooldown",
+            "Generate 4 sets / 24-hour cooldown",
             "Regenerate plan ≤ 5 times per draft",
             "Publish sets to Marketplace",
             "Export PDF / DOCX",
@@ -803,9 +803,9 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
       generateBtn: "Generate Interview Questions",
     },
     quota: {
-      exceededTitle: "Monthly limit reached",
+      exceededTitle: "Daily generation limit reached",
       exceededBody:
-        "You've hit your plan limits for JDs, questions, or exports. Open Billing to upgrade or wait until next cycle (demo).",
+        "Free plan allows 4 question sets per 24 hours. You can generate again after {{time}}, or upgrade to Premium for unlimited generation.",
       goToBilling: "Open Billing",
       createManuallyBtn: "Create manually",
     },
@@ -1226,7 +1226,7 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
       planCardRows: {
         HR_FREE: [
           { text: "Studio: create a plan & question set from a JD", included: true },
-          { text: "Generate once per 24-hour cooldown", included: true },
+          { text: "Generate 4 times per 24-hour cooldown", included: true },
           { text: "Regenerate plan up to 5 times per draft", included: true },
           { text: "Publish question sets to the Marketplace", included: true },
           { text: "Export PDF / DOCX", included: false },
@@ -1353,7 +1353,7 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
   hrSubscription: {
     quotaExceededTitle: "Daily generation limit reached",
     quotaExceededBody:
-      "Free plan allows <strong>one generation per 24 hours</strong>. You can generate again after <strong>{{time}}</strong>, or upgrade to Premium for unlimited generation.",
+      "Free plan allows <strong>4 generations per 24 hours</strong>. You can generate again after <strong>{{time}}</strong>, or upgrade to Premium for unlimited generation.",
     goToSubscription: "View plans & billing",
     lockedExport: "Upgrade plan to export",
     lockedAdvancedModel:
@@ -1438,7 +1438,7 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
     ],
     responses: {
       pricing:
-        "Plans are Free + Premium for each audience (VND):\n\nCandidates\n• Free — Marketplace practice with ~20% questions visible + feedback on those only\n• Premium (149.000₫/mo) — full set, full feedback, send recommendation to HR\n\nHR\n• Free — generate 1 set / 24h cooldown, regenerate ≤5 / draft, publish Marketplace (no export / Ask-AI)\n• Premium (699.000₫/mo) — unlimited generate, export PDF/DOCX, Ask-AI 1000 / period (+ packs)\n\nStart free — upgrade in Settings when you need full access.",
+        "Plans are Free + Premium for each audience (VND):\n\nCandidates\n• Free — Marketplace practice with ~20% questions visible + feedback on those only\n• Premium (149.000₫/mo) — full set, full feedback, send recommendation to HR\n\nHR\n• Free — generate 4 sets / 24h cooldown, regenerate ≤5 / draft, publish Marketplace (no export / Ask-AI)\n• Premium (699.000₫/mo) — unlimited generate, export PDF/DOCX, Ask-AI 1000 / period (+ packs)\n\nStart free — upgrade in Settings when you need full access.",
       features:
         "HireGen AI extracts key skills from your Job Description, then generates tailored Technical, Behavioral, and Situational questions — all powered by RAG and large language models. You can also export the full set as a PDF.",
       howItWorks:
@@ -1612,6 +1612,14 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
       pinSuccess: "Question set pinned.",
       unpinSuccess: "Question set unpinned.",
       pinError: "Could not update pin status.",
+      unpublish: "Unpublish",
+      unpublishing: "Unpublishing...",
+      unpublishSuccess: "Unpublished from Marketplace.",
+      unpublishFailed: "Failed to unpublish.",
+      unpublishConfirmTitle: "Unpublish this question set?",
+      unpublishConfirmMessage: "The set will be removed from Marketplace. In-progress candidate sessions will be abandoned.",
+      unpublishConfirmLabel: "Confirm unpublish",
+      cancel: "Cancel",
       view: "View",
       retry: "Retry",
       close: "Close",
