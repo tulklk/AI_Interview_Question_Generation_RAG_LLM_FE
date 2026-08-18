@@ -31,17 +31,18 @@ export function WorkflowSection() {
           {workflowSteps.map((step, i) => (
             <div key={step.step} className="flex items-start gap-0">
               <ScrollReveal animation="fade-up" delay={i * 120} className="flex-1">
-                <TiltCard className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm p-6">
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="w-8 h-8 rounded-full bg-[#6c47ff] flex items-center justify-center shrink-0">
-                      <span className="text-white text-xs font-bold">{step.step}</span>
+                <TiltCard className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-6">
+                  {/* Step number + icon stacked */}
+                  <div className="relative w-14 h-14 mb-5">
+                    <div className="w-14 h-14 rounded-2xl bg-[#6c47ff]/10 flex items-center justify-center">
+                      <step.icon size={24} className="text-[#6c47ff]" />
                     </div>
-                    <div className="w-9 h-9 rounded-lg bg-[#6c47ff]/10 flex items-center justify-center">
-                      <step.icon size={17} className="text-[#6c47ff]" />
-                    </div>
+                    <span className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-[#6c47ff] flex items-center justify-center text-white text-[10px] font-black">
+                      {step.step}
+                    </span>
                   </div>
-                  <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100 mb-2">{w.steps[i].title}</h3>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">{w.steps[i].description}</p>
+                  <h3 className="text-[15px] font-bold text-gray-900 dark:text-gray-100 mb-1.5 leading-snug">{w.steps[i].title}</h3>
+                  <p className="text-[12px] text-gray-400 dark:text-gray-500 leading-relaxed">{w.steps[i].description}</p>
                 </TiltCard>
               </ScrollReveal>
               {i < workflowSteps.length - 1 && (

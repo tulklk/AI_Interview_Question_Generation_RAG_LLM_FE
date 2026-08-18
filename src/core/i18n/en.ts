@@ -42,31 +42,33 @@
       "SSR renders on every request — ideal for dynamic data. SSG pre-renders at build time for maximum performance. Choose based on data freshness requirements...",
   },
 
+  statsStrip: {
+    speed: "Generation time",
+    categories: "Question types",
+    formats: "Export formats",
+    aiPowered: "AI-Powered",
+  },
+
   benefits: {
     sectionLabel: "Why HireGen AI",
     headline: "Built for modern recruitment teams",
-    subtext:
-      "Everything you need to run consistent, thorough interviews — without spending hours on preparation.",
+    subtext: "Consistent, professional interviews — without hours of preparation.",
     items: [
       {
         title: "10x Faster Prep",
-        description:
-          "Generate a full interview set from any job description in under 30 seconds. No more manual question writing.",
+        description: "Full interview set from any JD in under 30 seconds.",
       },
       {
         title: "Context-Aware AI",
-        description:
-          "RAG-powered retrieval grounds every question in real-world skills and industry knowledge from the JD.",
+        description: "Every question grounded in real skills and industry knowledge.",
       },
       {
         title: "Evaluation Consistency",
-        description:
-          "Structured Technical, Behavioral, and Situational categories ensure every interview covers the full candidate profile.",
+        description: "Technical, Behavioral, Situational — full candidate coverage.",
       },
       {
         title: "Export-Ready Sets",
-        description:
-          "Download your question sets as PDF or DOCX, share with teammates, or save to your session history.",
+        description: "Download PDF/DOCX instantly and share with teammates.",
       },
     ],
   },
@@ -74,91 +76,76 @@
   features: {
     sectionLabel: "Platform Features",
     headline: "Everything you need for smarter hiring",
-    subtext:
-      "From JD parsing to export-ready question sets, every feature is designed to save time and improve interview quality.",
+    subtext: "From JD parsing to export-ready sets — save time, improve quality.",
     items: [
       {
         title: "Job Description Input",
-        description:
-          "Paste any JD or upload a PDF/DOCX file. The AI parses the role, required skills, and experience level automatically.",
+        description: "Paste any JD or upload PDF/DOCX — AI parses it instantly.",
       },
       {
         title: "AI Skill Extraction",
-        description:
-          "The system identifies key competencies, technologies, and soft skills from your job description using NLP.",
+        description: "Identifies competencies, technologies and soft skills via NLP.",
       },
       {
         title: "RAG Knowledge Retrieval",
-        description:
-          "Retrieval-Augmented Generation pulls relevant knowledge from curated sources to ground questions in real expertise.",
+        description: "Pulls curated knowledge to ground each question in real expertise.",
       },
       {
         title: "Question Generation",
-        description:
-          "Generate role-specific Technical, Behavioral, and Situational questions tailored to experience level and domain.",
+        description: "Technical, Behavioral, Situational — tailored to role and level.",
       },
       {
         title: "Suggested Answers",
-        description:
-          "Every question includes an AI-crafted suggested answer to help evaluators benchmark candidate responses.",
+        description: "AI-crafted answer hints help evaluators benchmark responses.",
       },
       {
         title: "History & Export",
-        description:
-          "Access all past sessions from your history dashboard. Export to PDF or DOCX for use in interviews anytime.",
+        description: "Review past sessions and export to PDF or DOCX anytime.",
       },
     ],
   },
 
   workflow: {
     sectionLabel: "How It Works",
-    headline: "From job description to interview-ready in 4 steps",
-    subtext:
-      "A simple, powerful workflow that turns any JD into a structured interview question set.",
+    headline: "From JD to interview-ready in 4 steps",
+    subtext: "4 simple steps — from job description to a complete question set.",
     steps: [
       {
         title: "Enter Job Description",
-        description:
-          "Paste your JD text or upload a PDF/DOCX file directly into the platform.",
+        description: "Paste JD text or upload a PDF/DOCX file.",
       },
       {
         title: "Extract Skills",
-        description:
-          "The AI identifies required skills, technologies, and experience level from the JD.",
+        description: "AI identifies skills, technologies and experience level.",
       },
       {
         title: "Retrieve Knowledge",
-        description:
-          "RAG pulls relevant knowledge from curated sources to ground every question.",
+        description: "RAG pulls curated knowledge to sharpen every question.",
       },
       {
         title: "Generate Questions",
-        description:
-          "Receive a categorized set of Technical, Behavioral, and Situational questions instantly.",
+        description: "Get a structured, categorized set instantly.",
       },
     ],
   },
 
   pricing: {
     sectionLabel: "Pricing",
-    headline: "Simple Free & Premium plans",
-    introSubtext:
-      "One model for everyone: Free to start, Premium when you need full access — Candidates and HR each have matching Free / Premium tiers (billed in VND).",
+    headline: "Free & Premium — clear, no hidden fees",
+    introSubtext: "Free to start, Premium for full access — for both Candidates and HR.",
     mostPopular: "Recommended",
     currentPlanBadge: "Your Plan",
     managePlan: "Manage subscription",
     upgradePlan: "Upgrade to Premium",
     jobSeeker: {
       title: "For candidates",
-      subtext:
-        "Practice Marketplace question sets with AI feedback. Free shows ~20% of each set; Premium unlocks the full set and HR-ready recommendations.",
-      comparisonNote:
-        "Upgrade to Premium to unlock every question, full AI feedback, and send your scorecard to HR.",
+      subtext: "Practice Marketplace sets with AI feedback. Premium unlocks full sets and HR recommendations.",
+      comparisonNote: "",
       plans: [
         {
           name: "Free",
           period: "/ month",
-          description: "Practice Marketplace sets with ~20% of questions visible — no card required.",
+          description: "Practice Marketplace sets, ~20% visible per set. No card required.",
           cta: "Get Started Free",
           features: [
             "Practice Marketplace sets (including HR-published)",
@@ -173,8 +160,8 @@
           name: "Premium",
           badge: "Recommended",
           period: "/ month",
-          priceFootnote: "Billed monthly in VND. Cancel anytime from Settings.",
-          description: "Full questions, full feedback, and HR-ready recommendations.",
+          priceFootnote: "Billed monthly in VND. Cancel anytime.",
+          description: "Full questions, full AI feedback, and HR-ready recommendations.",
           cta: "Upgrade to Premium",
           features: [
             "Full Marketplace question sets",
@@ -188,41 +175,37 @@
     },
     recruiter: {
       title: "For HR & talent teams",
-      subtext:
-        "Generate role-specific interview sets from a JD with Studio + RAG. Free includes cooldown limits; Premium unlocks unlimited generate, export, and Ask-AI.",
-      valueMessage:
-        "Built for HR teams that need consistent, JD-grounded interview preparation — publish Free sets to Marketplace too.",
+      subtext: "Generate question sets from JD with AI + RAG. Free: 4 per 24h. Premium: unlimited.",
+      valueMessage: "",
       highlights: [
-        "Turn any Job Description into a structured interview set.",
+        "Turn any JD into a structured interview set.",
         "RAG-enhanced generation from trusted knowledge.",
         "Free can still publish to Marketplace.",
-        "Premium: unlimited generate, export, Ask-AI (1000 / period).",
-        "Regenerate plan capped at 5 per draft on both tiers.",
+        "Premium: unlimited generate + export + Ask-AI.",
       ],
       upgradeWhy: {
         title: "Why HR teams choose Premium",
-        footnote:
-          "Ask-AI and export are Premium because they consume LLM quota. Free still lets you generate 4 times per 24h and publish to Marketplace.",
+        footnote: "Ask-AI and export are Premium because they consume LLM quota. Free still allows 4 per 24h.",
         points: [
           {
             title: "Unlimited generate",
-            body: "No 24-hour cooldown — create as many question sets as hiring volume needs.",
+            body: "No cooldown — create as many sets as needed.",
           },
           {
-            title: "Export for panels",
-            body: "Download PDF / DOCX for interviewers instead of copying from the browser.",
+            title: "Export PDF / DOCX",
+            body: "Download for interviewers, no manual copying.",
           },
           {
             title: "Ask-AI in Studio",
-            body: "1,000 Ask-AI requests per anniversary billing period, with optional packs when you run out.",
+            body: "1,000 requests / period, buy packs when over quota.",
           },
           {
-            title: "Same regenerate safety",
-            body: "Both Free and Premium keep ≤ 5 plan regenerations per draft to control cost.",
+            title: "Regenerate limit",
+            body: "≤ 5 per draft on both tiers.",
           },
           {
             title: "Marketplace ready",
-            body: "Publish branded sets on Free or Premium so candidates can practice your roles.",
+            body: "Publish branded sets for candidates to practice.",
           },
         ],
       },
@@ -230,8 +213,7 @@
         {
           name: "Free",
           period: "/ month",
-          description:
-            "Create JD-based sets with a 24h generate cooldown — Marketplace publish included.",
+          description: "Generate from JD with 24h cooldown — Marketplace publish included.",
           cta: "Start Free",
           features: [
             "Studio: plan & generate from JD",
@@ -962,10 +944,10 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
 
   historyPage: {
     heading: "Question Sets",
-    subtext: "Manage question sets saved from Studio (draft / published to marketplace).",
+    subtext: "Question sets saved from Studio — draft and published.",
     openStudio: "Open Studio",
     emptyTitle: "No saved question sets yet",
-    emptyBody: "In Studio, Save the question set after generation — it will appear here.",
+    emptyBody: "Save a question set in Studio — it will appear here.",
     noFilterResults: "No results match your filters.",
     sourceCol: "Source",
     badgePublished: "Published",
@@ -1401,7 +1383,7 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
   submitFeedbackDialog: {
     trigger: "Send Feedback",
     title: "Share Your Feedback",
-    subtitle: "Rate and share your experience with the HireGen AI platform.",
+    subtitle: "Share your experience to help us improve.",
     ratingLabel: "Your rating",
     ratingLabels: ["", "Very bad", "Bad", "Okay", "Good", "Excellent"],
     contentLabel: "Feedback content",
@@ -1470,7 +1452,7 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
       ],
       secondaryStats: {
         title: "Today's signals",
-        subtitle: "Key operational metrics (mock data, refreshed hourly in a real deployment).",
+        subtitle: "Key operational metrics (mock data).",
         cards: [
           { label: "Monthly Active Users", value: "312", sub: "+18 vs last month" },
           { label: "New sign-ups (7 days)", value: "26", sub: "recruiters + guests" },
@@ -1486,12 +1468,12 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
       },
       categoryMix: {
         title: "Question category mix",
-        subtitle: "Share of generated questions across all sessions",
+        subtitle: "Distribution across all sessions",
         countLabel: "Questions",
       },
       topRecruiters: {
         title: "Top recruiters",
-        subtitle: "By total generated questions in the last 30 days (mock)",
+        subtitle: "Questions generated · last 30 days",
         rank: "Rank",
         recruiter: "Recruiter",
         sessions: "Sessions",
@@ -1530,7 +1512,7 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
       },
       health: {
         title: "System Status",
-        subtitle: "Health-check API not integrated — connection status only",
+        subtitle: "Service connection status",
         pending: "Health API pending",
         apiService: "API Service",
         database: "Database",
@@ -1594,7 +1576,7 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
     },
     marketplace: {
       heading: "Marketplace Management",
-      subtext: "Browse published question sets, HR owners, practice stats, and pin featured sets.",
+      subtext: "Published sets — pin featured, track practice stats.",
       emptyState: "No marketplace question sets found.",
       setsFound: "question sets found",
       hrPrefix: "HR",
@@ -2197,7 +2179,7 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
 
   jobseekerCoachPage: {
     title: "AI Coach",
-    subtitle: "Practice questions generated from your CV skills — not from an HR job description.",
+    subtitle: "Practice from your CV skills — not from HR job posts.",
     howTitle: "How it works",
     step1: "1. Skills from your CV / profile",
     step2: "2. AI generates a knowledge check",
@@ -2540,7 +2522,7 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
 
   questionSetFeedbackDialog: {
     title: "How was this question set?",
-    subtitle: "Your rating helps improve content quality for the community.",
+    subtitle: "Feedback helps improve content quality.",
     ratingLabel: "Star rating",
     ratingRequired: "Please select a star rating before submitting.",
     starLabels: ["Very poor", "Poor", "Okay", "Good", "Excellent"],
@@ -2564,8 +2546,8 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
 
   jobseekerInvitationsPage: {
     heading: "Invitations",
-    subtext: "Interview invitations sent to you by recruiters, based on your practice performance.",
-    emptyState: "No invitations yet. Keep practicing — recruiters may invite you to interview based on your results.",
+    subtext: "Invitations based on your practice performance.",
+    emptyState: "No invitations yet. Keep practicing — recruiters may reach out.",
     loadFailed: "Failed to load your invitations.",
     retryBtn: "Retry",
     statusPending: "Pending",
@@ -2663,48 +2645,48 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
     loadFailed: "Failed to load.",
     retryBtn: "Retry",
     noSessionsYet: "No practice sessions yet.",
-    noRecommendedSets: "No question sets to recommend yet.",
-    pendingScoreTooltip: "AI is still catching up on scoring this session — check back in a bit.",
+    noRecommendedSets: "No recommended sets yet.",
+    pendingScoreTooltip: "AI is scoring this session — check back shortly.",
     recentTitle: "Recent Practice",
     recentSubtitle: "Your latest sessions",
     recommendedTitle: "Recommended for You",
-    recommendedSubtitle: "AI-curated sets based on your target role",
+    recommendedSubtitle: "AI-curated by target role",
     viewAllHistory: "View all →",
     viewAllSets: "Browse all →",
     header: {
-      summaryEmpty: "Start your first practice session to begin tracking your progress.",
-      summaryTemplate: "You've completed {{count}} sessions with a {{avg}}% average score. Current streak: {{streak}} days.",
+      summaryEmpty: "Start your first session to track progress.",
+      summaryTemplate: "{{count}} sessions · {{avg}}% avg · {{streak}}-day streak",
       startPractice: "Start Practice",
-      viewRoadmap: "View Roadmap",
+      viewRoadmap: "Roadmap",
       rangeLabels: { "7d": "7 days", "30d": "30 days", "90d": "90 days", all: "All time" },
     },
     kpi: {
-      sessions: { label: "Practice Sessions", tooltip: "Total number of practice sessions you've completed." },
-      averageScore: { label: "Average Score", tooltip: "Average score across all your scored sessions." },
-      streak: { label: "Practice Streak", tooltip: "Consecutive days with at least one practice session." },
-      totalDuration: { label: "Total Practice Time", tooltip: "Combined duration of all completed sessions." },
+      sessions: { label: "Practice Sessions", tooltip: "Total sessions completed." },
+      averageScore: { label: "Average Score", tooltip: "Avg score across scored sessions." },
+      streak: { label: "Practice Streak", tooltip: "Consecutive days with at least one session." },
+      totalDuration: { label: "Total Time", tooltip: "Combined duration of all sessions." },
       trendUp: "+{{pct}}% vs previous period",
       trendDown: "{{pct}}% vs previous period",
       weeklyTrend: "+{{count}} this week",
     },
     readiness: {
       title: "Interview Readiness",
-      explainer: "Estimated from your average score, consistency, stability, and practice frequency.",
-      insufficientData: "Complete your first practice session to see an estimated readiness score.",
+      explainer: "Based on avg score, frequency, and streak.",
+      insufficientData: "Complete your first session to see readiness.",
       levels: { needsWork: "Needs Work", developing: "Developing", ready: "Ready", veryReady: "Very Ready" },
-      factors: { averageScore: "Average score", consistency: "Streak", stability: "Stability", frequency: "Frequency" },
+      factors: { averageScore: "Avg score", consistency: "Streak", stability: "Stability", frequency: "Frequency" },
     },
     trendChart: {
       title: "Performance Trend",
-      subtitle: "Average score per day over the selected period",
+      subtitle: "Avg score per day · selected period",
       average: "Avg",
       scoreLabel: "Score",
-      empty: "Complete at least 2 scored sessions to build a trend chart.",
-      error: "Couldn't load the performance chart.",
+      empty: "Need at least 2 scored sessions.",
+      error: "Couldn't load chart.",
     },
     heatmap: {
       title: "Practice Consistency",
-      subtitle: "Minutes practiced per day over the last 20 weeks",
+      subtitle: "Minutes per day · last 20 weeks",
       currentStreak: "Current streak",
       longestStreak: "Longest streak",
       activeDays: "Active days",
@@ -2716,84 +2698,84 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
     },
     skills: {
       title: "Skill Analysis",
-      subtitle: "Average per AI-evaluated dimension",
+      subtitle: "Avg per AI-evaluated dimension",
       strongest: "Strongest",
       weakest: "Needs focus",
       mostImproved: "Most improved",
-      noImprovement: "Not enough data yet",
-      empty: "Get a few more recent sessions AI-evaluated in this browser to unlock skill analysis.",
-      note: "Based on sessions that received a detailed AI evaluation in this browser.",
+      noImprovement: "Not enough data",
+      empty: "Complete more sessions to unlock skill analysis.",
+      note: "Based on AI-evaluated sessions in this browser.",
     },
     weakSkillsTable: {
       title: "Skills to Focus On",
-      columns: { skill: "Skill", score: "Current Score", trend: "Trend", priority: "Priority", action: "Action" },
+      columns: { skill: "Skill", score: "Score", trend: "Trend", priority: "Priority", action: "Action" },
       priorityLabels: { high: "High", medium: "Medium", low: "Low" },
       practiceNow: "Practice now",
-      empty: "Not enough data yet to identify skills to focus on.",
+      empty: "Not enough data yet.",
     },
     coach: {
       title: "AI Career Coach",
-      subtitle: "Personalized recommendations based on your practice data",
+      subtitle: "Personalized recommendations from your practice data",
       openCoach: "Open AI Coach",
-      planSkillsTitle: "Skills from your CV plan",
-      upgradeHint: "Upgrade to Premium to test knowledge from your CV and get a skill plan.",
-      startDiagnostic: "Run a CV knowledge check",
+      planSkillsTitle: "Skills from CV",
+      upgradeHint: "Premium: test CV knowledge and get a personalized skill plan.",
+      startDiagnostic: "Run CV knowledge check",
       scoreOfTarget: "{{score}} / {{target}}",
       noScoreYet: "No score yet",
-      priorityLabels: { high: "High priority", medium: "Medium priority", low: "Low priority" },
+      priorityLabels: { high: "High", medium: "Medium", low: "Low" },
       estimatedMinutes: "~{{minutes}} min",
-      ctaLabel: "Start this practice",
+      ctaLabel: "Practice now",
       evidence: {
-        firstSession: "You haven't completed a practice session yet.",
-        weakSkill: "Across {{sessions}} recently AI-evaluated sessions, your average {{skill}} score is only {{score}}%.",
-        consistency: "It's been {{days}} days since your last practice session.",
-        decliningTrend: "Your average score has dropped {{pct}}% compared to the previous period.",
-        raiseBar: "Your readiness score is {{score}}/100 — a strong result.",
-        steadyProgress: "You've completed {{count}} sessions with a {{avg}}% average score.",
+        firstSession: "You haven't completed a session yet.",
+        weakSkill: "{{sessions}} recent sessions: avg {{skill}} score {{score}}%.",
+        consistency: "{{days}} days since your last session.",
+        decliningTrend: "Avg score down {{pct}}% vs the previous period.",
+        raiseBar: "Readiness at {{score}}/100 — strong result!",
+        steadyProgress: "{{count}} sessions completed · {{avg}}% avg score.",
       },
       action: {
-        firstSession: "Complete your first practice session to get personalized recommendations.",
-        weakSkill: "Practice 5 Behavioral questions using the STAR structure to strengthen {{skill}}.",
-        consistency: "Complete a short session today to keep your momentum going.",
-        decliningTrend: "Review your recent sessions in History to spot what changed.",
-        raiseBar: "Try a set at a higher difficulty to keep challenging yourself.",
-        steadyProgress: "Keep practicing regularly to raise your readiness further.",
+        firstSession: "Complete your first session to get personalized recommendations.",
+        weakSkill: "Practice STAR-structure Behavioral questions to strengthen {{skill}}.",
+        consistency: "Do a short session today to keep momentum.",
+        decliningTrend: "Review recent sessions in History to spot what changed.",
+        raiseBar: "Try a harder set to keep challenging yourself.",
+        steadyProgress: "Keep at it to raise your readiness further.",
       },
     },
     roles: {
-      title: "Readiness by Job Role",
-      subtitle: "Based on the question sets you've practiced",
+      title: "Readiness by Role",
+      subtitle: "Based on sets you've practiced",
       sessionsLabel: "{{count}} sessions",
       practiceAgain: "Practice again",
-      empty: "Practice at least one question set to see your readiness by role.",
+      empty: "Practice at least one set to see readiness by role.",
     },
     weeklyGoal: {
-      title: "This Week's Plan",
+      title: "This Week's Goal",
       onboardingTitle: "Set a weekly practice goal",
-      onboardingSubtitle: "Pick how many sessions you want to complete each week to stay consistent.",
+      onboardingSubtitle: "Choose sessions per week to stay consistent.",
       setGoalBtn: "Set Goal",
       sessionsProgress: "{{done}}/{{target}} sessions",
       minutesProgress: "{{done}}/{{target}} minutes",
       daysLeft: "{{days}} days left",
-      continue: "Continue practicing",
+      continue: "Keep practicing",
     },
     recentSessions: {
       menu: { viewDetail: "View detail", practiceAgain: "Practice again", saveSet: "Save set", unsaveSet: "Unsave set" },
     },
     scoreDistribution: {
       title: "Score Distribution",
-      subtitle: "How your scores break down across all sessions",
+      subtitle: "How scores break down across all sessions",
       sessions: "sessions",
       scoreLabel: "Score",
       countLabel: "Sessions",
-      empty: "Complete a few sessions to see your score distribution.",
+      empty: "Complete a few sessions to see your distribution.",
     },
     companyScore: {
       title: "Performance by Company",
-      subtitle: "Average score per company (top 6)",
-      avgScore: "Avg. Score",
+      subtitle: "Avg score per company (top 6)",
+      avgScore: "Avg Score",
       sessions: "sessions",
-      empty: "Complete sessions from at least 2 companies to see this chart.",
+      empty: "Complete sessions from 2+ companies to see this chart.",
     },
   },
 
@@ -3560,7 +3542,7 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
     loadingQuestionsSubtext: "Please wait a moment.",
     jdFit: {
       title: "JD fit review",
-      subtitle: "See whether this question set still matches the job description — qualitative only, no scores.",
+      subtitle: "Check JD alignment — qualitative feedback, no scores.",
       run: "Review against JD",
       rerun: "Review again",
       running: "Reviewing…",
@@ -3626,8 +3608,8 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
 
   hrDashboardPage: {
     greeting: "Welcome back",
-    greetingSubtitle: "Here's an overview of your interview generation activity.",
-    loadFailed: "Failed to load dashboard data.",
+    greetingSubtitle: "Overview of your activity.",
+    loadFailed: "Failed to load data.",
     retryBtn: "Retry",
     noDataYet: "No data yet",
     kpi: {
@@ -3646,19 +3628,19 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
     },
     activityChart: {
       title: "Generation Activity",
-      subtitle: "Sessions created over the last 30 days",
+      subtitle: "Sessions · last 30 days",
       sessions: "Sessions",
       empty: "No activity in the last 30 days",
     },
     typeChart: {
       title: "Question Type Distribution",
-      subtitle: "Breakdown of generated question types",
+      subtitle: "Distribution by type",
       questions: "questions",
       empty: "Generate questions to see the breakdown",
     },
     recentSessions: {
       title: "Recent Sessions",
-      subtitle: "Your latest generation jobs",
+      subtitle: "Latest generation jobs",
       viewAll: "View all",
       role: "Job Title",
       status: "Status",
@@ -3680,7 +3662,7 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
     },
     candidates: {
       title: "Top Candidates",
-      subtitle: "Recent recommendations from your question sets",
+      subtitle: "From your question sets",
       viewAll: "View all",
       name: "Name",
       role: "Role",
@@ -3697,7 +3679,7 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
     },
     funnel: {
       title: "Hiring funnel",
-      subtitle: "Candidates across your published sets",
+      subtitle: "Published sets",
       practicedLast7Days: "Practiced (7d)",
       newUnviewed: "Unread new",
       shortlisted: "Shortlisted",
@@ -3706,7 +3688,7 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
     },
     insights: {
       title: "Insights",
-      subtitle: "Derived from your generation history",
+      subtitle: "From your generation history",
       noInsights: "Generate more sessions to see insights.",
       topRoleIs: "Your most generated role is",
       successRateIs: "Your success rate is",

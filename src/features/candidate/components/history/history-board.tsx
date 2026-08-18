@@ -446,9 +446,6 @@ export function HistoryBoard() {
     return () => { cancelled = true; };
   }, [reloadKey, timeFilter, debouncedSearch, page]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const iconBg = "bg-gray-100 dark:bg-gray-800 shadow-sm ring-1 ring-black/5 dark:ring-white/10";
-  const iconColor = "text-gray-900 dark:text-gray-100";
-
   // Chart data — uses dedicated chartSessions (50 most recent, chronological order)
   // so charts stay consistent across all pages, not just the current page's items.
   const scoreData = chartSessions.map(s => s.score).filter((v): v is number => v !== null);
@@ -459,9 +456,10 @@ export function HistoryBoard() {
       icon: BookOpen,  label: p.statLabels[0],
       value: (stats?.totalSessions ?? 0).toString(),
       countUp: { value: stats?.totalSessions ?? 0 },
-      bg: iconBg, color: iconColor,
+      bg: "bg-emerald-100 dark:bg-emerald-950/50 shadow-sm ring-1 ring-black/5 dark:ring-white/10",
+      color: "text-emerald-600 dark:text-emerald-400",
       chart: durationData.length > 0
-        ? <MiniBarChart data={durationData.map(() => 1)} color="#7C3AED" />
+        ? <MiniBarChart data={durationData.map(() => 1)} color="#10B981" />
         : undefined,
     },
     {
@@ -470,7 +468,8 @@ export function HistoryBoard() {
       countUp: stats?.averageScore != null
         ? { value: stats.averageScore, suffix: "%", decimals: 2 }
         : undefined,
-      bg: iconBg, color: iconColor,
+      bg: "bg-violet-100 dark:bg-violet-950/50 shadow-sm ring-1 ring-black/5 dark:ring-white/10",
+      color: "text-violet-600 dark:text-violet-400",
       chart: scoreData.length >= 2
         ? <Sparkline data={scoreData} color="#7C3AED" />
         : undefined,
@@ -481,9 +480,10 @@ export function HistoryBoard() {
       countUp: stats?.bestScore != null
         ? { value: stats.bestScore, suffix: "%", decimals: 1 }
         : undefined,
-      bg: iconBg, color: iconColor,
+      bg: "bg-amber-100 dark:bg-amber-950/50 shadow-sm ring-1 ring-black/5 dark:ring-white/10",
+      color: "text-amber-600 dark:text-amber-400",
       chart: scoreData.length >= 2
-        ? <Sparkline data={scoreData} color="#10B981" />
+        ? <Sparkline data={scoreData} color="#F59E0B" />
         : undefined,
     },
     {
@@ -492,18 +492,20 @@ export function HistoryBoard() {
       countUp: stats?.latestScore != null
         ? { value: stats.latestScore, suffix: "%", decimals: 1 }
         : undefined,
-      bg: iconBg, color: iconColor,
+      bg: "bg-blue-100 dark:bg-blue-950/50 shadow-sm ring-1 ring-black/5 dark:ring-white/10",
+      color: "text-blue-600 dark:text-blue-400",
       chart: scoreData.length >= 2
-        ? <Sparkline data={scoreData} color="#7C3AED" />
+        ? <Sparkline data={scoreData} color="#3B82F6" />
         : undefined,
     },
     {
       icon: Clock,     label: p.statLabels[3],
       value: `${stats?.totalDurationMinutes ?? 0} ${p.durationUnit}`,
       countUp: { value: stats?.totalDurationMinutes ?? 0, suffix: ` ${p.durationUnit}` },
-      bg: iconBg, color: iconColor,
+      bg: "bg-cyan-100 dark:bg-cyan-950/50 shadow-sm ring-1 ring-black/5 dark:ring-white/10",
+      color: "text-cyan-600 dark:text-cyan-400",
       chart: durationData.some(d => d > 0)
-        ? <MiniBarChart data={durationData} color="#F59E0B" />
+        ? <MiniBarChart data={durationData} color="#06B6D4" />
         : undefined,
     },
   ];

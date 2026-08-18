@@ -14,10 +14,11 @@ import {
   User,
   X,
 } from "lucide-react";
+import { motion } from "framer-motion";
 import { cn } from "@/lib/cn";
 import { useLanguage } from "@/shared/providers/language-context";
 import { formatRelativeTime } from "@/shared/utils/relative-time";
-import { portalHeading, portalSubtext } from "@/shared/utils/portal-ui";
+import { portalHeading, portalSubtext, portalHeadingAlt, portalSubtextAlt } from "@/shared/utils/portal-ui";
 import { AppShell } from "@/features/hr/components/layout/app-shell";
 import {
   listHrTalent,
@@ -239,22 +240,27 @@ export function HrTalentPage() {
     >
       <div>
         {/* ── Page header ── */}
-        <div
-          className="mb-4 flex items-start justify-between gap-3"
-          style={{ animation: "slideUpFade 0.38s cubic-bezier(0.25,0.46,0.45,0.94) both" }}
+        <motion.div
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.38, ease: "easeOut" }}
+          className="relative overflow-hidden rounded-2xl border border-amber-100 dark:border-amber-900/30 bg-linear-to-r from-amber-50 via-white to-violet-50 dark:from-amber-950/10 dark:via-gray-900 dark:to-violet-950/10 px-5 py-4 sm:px-6 mb-4"
         >
-          <div>
-            <h2 className={cn("text-xl font-bold", portalHeading)}>
-              {p.heading}
-            </h2>
-            <p
-              className={cn("mt-0.5 text-[13px]", portalSubtext)}
-              style={{ animation: "slideUpFade 0.38s cubic-bezier(0.25,0.46,0.45,0.94) both 0.06s" }}
-            >
-              {p.subtext}
-            </p>
+          <div className="absolute top-0 left-0 right-0 h-0.5 bg-linear-to-r from-amber-400 via-primary to-violet-500 opacity-70" />
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-linear-to-br from-amber-400 to-primary flex items-center justify-center shrink-0 shadow-md shadow-amber-200 dark:shadow-amber-900/30">
+              <User size={16} className="text-white" />
+            </div>
+            <div>
+              <h2 className={cn("text-[17px] font-bold leading-tight tracking-tight", portalHeadingAlt)}>
+                {p.heading}
+              </h2>
+              <p className={cn("text-[11px] mt-0.5", portalSubtextAlt)}>
+                {p.subtext}
+              </p>
+            </div>
           </div>
-        </div>
+        </motion.div>
 
         {/* ── Filter bar ── */}
         <div

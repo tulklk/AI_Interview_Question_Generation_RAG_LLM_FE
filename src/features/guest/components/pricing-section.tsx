@@ -2,7 +2,17 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { CheckCircle2, XCircle, BadgeCheck } from "lucide-react";
+import { CheckCircle2, XCircle, BadgeCheck, Zap, Download, Bot, Shield, Globe } from "lucide-react";
+
+// Icons for the 5 upgradeWhy points (in order)
+const UPGRADE_WHY_ICONS = [Zap, Download, Bot, Shield, Globe];
+const UPGRADE_WHY_COLORS = [
+  "text-violet-600 dark:text-violet-400 bg-violet-100 dark:bg-violet-950/50",
+  "text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-950/50",
+  "text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-950/50",
+  "text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-950/50",
+  "text-cyan-600 dark:text-cyan-400 bg-cyan-100 dark:bg-cyan-950/50",
+];
 import { useLanguage } from "@/shared/providers/language-context";
 import { pricingPlansJobSeeker, pricingPlansRecruiter } from "@/features/guest/data/guest";
 import { cn } from "@/lib/cn";
@@ -367,11 +377,13 @@ export function PricingSection() {
             })}
           </div>
 
-          <ScrollReveal animation="fade-up" delay={120} className="mt-8 sm:mt-10 text-center px-2">
-            <p className="text-sm sm:text-base text-gray-600 dark:text-gray-300 max-w-xl mx-auto leading-relaxed font-medium">
-              {p.jobSeeker.comparisonNote}
-            </p>
-          </ScrollReveal>
+          {p.jobSeeker.comparisonNote && (
+            <ScrollReveal animation="fade-up" delay={120} className="mt-8 sm:mt-10 text-center px-2">
+              <p className="text-sm sm:text-base text-gray-600 dark:text-gray-300 max-w-xl mx-auto leading-relaxed font-medium">
+                {p.jobSeeker.comparisonNote}
+              </p>
+            </ScrollReveal>
+          )}
         </div>
 
         {/* HR Free / Premium */}
@@ -435,28 +447,29 @@ export function PricingSection() {
           </div>
 
           {"upgradeWhy" in p.recruiter && p.recruiter.upgradeWhy ? (
-            <ScrollReveal animation="fade-up" delay={100} className="mt-14 sm:mt-16 max-w-5xl mx-auto">
-              <div className="rounded-2xl border border-gray-200/90 dark:border-gray-700 bg-white/90 dark:bg-gray-900 shadow-sm px-5 py-8 sm:px-8 sm:py-10">
-                <h4 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-50 text-center tracking-tight">
+            <ScrollReveal animation="fade-up" delay={100} className="mt-12 sm:mt-14 max-w-5xl mx-auto">
+              <div className="rounded-2xl border border-gray-200/90 dark:border-gray-700 bg-white/90 dark:bg-gray-900 shadow-sm px-5 py-7 sm:px-8 sm:py-8">
+                <h4 className="text-base sm:text-lg font-bold text-gray-900 dark:text-gray-50 text-center tracking-tight mb-6">
                   {p.recruiter.upgradeWhy.title}
                 </h4>
-                <ol className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
-                  {p.recruiter.upgradeWhy.points.map((pt, pi) => (
-                    <li key={pi} className="flex gap-4">
-                      <span
-                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary"
-                        aria-hidden
-                      >
-                        {pi + 1}
-                      </span>
-                      <div>
-                        <p className="font-semibold text-gray-900 dark:text-gray-100">{pt.title}</p>
-                        <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 leading-relaxed">{pt.body}</p>
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+                  {p.recruiter.upgradeWhy.points.map((pt, pi) => {
+                    const Icon = UPGRADE_WHY_ICONS[pi] ?? Zap;
+                    const colorClass = UPGRADE_WHY_COLORS[pi] ?? UPGRADE_WHY_COLORS[0];
+                    return (
+                      <div key={pi} className="flex flex-col items-center text-center gap-3 p-4 rounded-xl bg-gray-50 dark:bg-gray-800/50">
+                        <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center shrink-0", colorClass)}>
+                          <Icon size={18} />
+                        </div>
+                        <div>
+                          <p className="text-[13px] font-semibold text-gray-900 dark:text-gray-100 leading-tight">{pt.title}</p>
+                          <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1 leading-relaxed">{pt.body}</p>
+                        </div>
                       </div>
-                    </li>
-                  ))}
-                </ol>
-                <p className="mt-8 sm:mt-10 text-center text-xs sm:text-sm text-gray-500 dark:text-gray-400 leading-relaxed max-w-3xl mx-auto border-t border-gray-100 dark:border-gray-800 pt-6">
+                    );
+                  })}
+                </div>
+                <p className="mt-6 text-center text-[11px] text-gray-400 dark:text-gray-500 leading-relaxed max-w-2xl mx-auto border-t border-gray-100 dark:border-gray-800 pt-5">
                   {p.recruiter.upgradeWhy.footnote}
                 </p>
               </div>

@@ -5,9 +5,9 @@ import { AdminAppShell } from "@/features/admin/components/layout/admin-app-shel
 import { AuditLogFilters, AUDIT_FILTER_ALL } from "@/features/admin/components/audit/audit-log-filters";
 import { AuditLogTable } from "@/features/admin/components/audit/audit-log-table";
 import { auditLogEntries } from "@/features/admin/data/admin";
+import { ScrollText } from "lucide-react";
 import { useLanguage } from "@/shared/providers/language-context";
-import { cn } from "@/lib/cn";
-import { portalHeadingAlt, portalSubtextAlt } from "@/shared/utils/portal-ui";
+import { AdminPageHeader } from "@/features/admin/components/layout/admin-page-header";
 
 export default function AdminAuditPage() {
   const { t } = useLanguage();
@@ -35,10 +35,7 @@ export default function AdminAuditPage() {
       pageTitle={a.heading}
       breadcrumb={[{ label: "Admin", href: "/admin/dashboard" }, { label: "Audit" }]}
     >
-      <div className="mb-8 animate-fade-up">
-        <h2 className={cn("text-[30px] font-bold leading-9", portalHeadingAlt)}>{a.heading}</h2>
-        <p className={cn("mt-2 text-base leading-6", portalSubtextAlt)}>{a.subtext}</p>
-      </div>
+      <AdminPageHeader heading={a.heading} subtext={a.subtext} icon={ScrollText} />
 
       <div className="animate-fade-up" style={{ animationDelay: "80ms" }}>
         <AuditLogFilters

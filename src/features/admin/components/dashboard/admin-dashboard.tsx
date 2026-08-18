@@ -1,6 +1,7 @@
 "use client";
 
 import { AlertCircle, RefreshCw } from "lucide-react";
+import { motion } from "framer-motion";
 import { cn } from "@/lib/cn";
 import { useLanguage } from "@/shared/providers/language-context";
 import { useAdminDashboard } from "@/features/admin/hooks/use-admin-dashboard";
@@ -12,6 +13,15 @@ import { AdminAlerts } from "./admin-alerts";
 import { AdminAuditFeed } from "./admin-audit-feed";
 import { AdminUserRoleChart } from "./admin-user-role-chart";
 import { AdminPlatformBarChart } from "./admin-platform-bar-chart";
+
+/** Build per-section entrance props with staggered delay */
+function sec(i: number) {
+  return {
+    initial: { opacity: 0, y: 16 },
+    animate: { opacity: 1, y: 0 },
+    transition: { duration: 0.42, delay: i * 0.07, ease: "easeOut" as const },
+  };
+}
 
 /**
  * Platform Operations & Intelligence Center — admin dashboard.
@@ -35,12 +45,19 @@ export function AdminDashboard() {
 
   return (
     <div className="space-y-5">
-      {/* ── Compact header ─────────────────────────────────────────────────── */}
-      <AdminHeader lastUpdated={lastFetched} loading={loading} onRefresh={reload} />
+      {/* ── Header ─────────────────────────────────────────────────────────── */}
+      <motion.div {...sec(0)}>
+        <AdminHeader lastUpdated={lastFetched} loading={loading} onRefresh={reload} />
+      </motion.div>
 
       {/* ── Error banner ───────────────────────────────────────────────────── */}
       {error && (
-        <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.97 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.3 }}
+          className="flex items-center gap-3 px-4 py-3 rounded-xl bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800"
+        >
           <AlertCircle size={15} className="text-red-500 shrink-0" />
           <p className={cn("text-[13px] text-red-600 dark:text-red-400 flex-1")}>
             {t.adminPages.users.loadError}
@@ -53,29 +70,39 @@ export function AdminDashboard() {
             <RefreshCw size={11} />
             {t.adminPages.users.retry}
           </button>
-        </div>
+        </motion.div>
       )}
 
       {/* ── RAG system status ──────────────────────────────────────────────── */}
-      <AdminRagStatus />
+      <motion.div {...sec(1)}>
+        <AdminRagStatus />
+      </motion.div>
 
       {/* ── KPI grid (4 real + 2 pending) ─────────────────────────────────── */}
-      <AdminKpiGrid data={data} loading={loading} />
+      <motion.div {...sec(2)}>
+        <AdminKpiGrid data={data} loading={loading} />
+      </motion.div>
 
       {/* ── Row 1: Recent registrations + Platform alerts ──────────────────── */}
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1fr_340px]">
-        <AdminRecentUsers users={data?.recentUsers ?? []} loading={loading} />
-        <AdminAlerts data={data} loading={loading} />
-      </div>
+      <motion.div {...sec(3)}>
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1fr_340px]">
+          <AdminRecentUsers users={data?.recentUsers ?? []} loading={loading} />
+          <AdminAlerts data={data} loading={loading} />
+        </div>
+      </motion.div>
 
       {/* ── Row 2: User role donut + Platform bar chart ────────────────────── */}
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-        <AdminUserRoleChart data={data} loading={loading} />
-        <AdminPlatformBarChart data={data} loading={loading} />
-      </div>
+      <motion.div {...sec(4)}>
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+          <AdminUserRoleChart data={data} loading={loading} />
+          <AdminPlatformBarChart data={data} loading={loading} />
+        </div>
+      </motion.div>
 
       {/* ── Audit feed ─────────────────────────────────────────────────────── */}
-      <AdminAuditFeed />
+      <motion.div {...sec(5)}>
+        <AdminAuditFeed />
+      </motion.div>
     </div>
   );
 }

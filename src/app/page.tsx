@@ -1,5 +1,6 @@
 import { GuestNavbar } from "@/features/guest/components/guest-navbar";
 import { HeroSection } from "@/features/guest/components/hero-section";
+import { StatsStrip } from "@/features/guest/components/stats-strip";
 import { SectionCarousel } from "@/features/guest/components/section-carousel";
 import { PricingSection } from "@/features/guest/components/pricing-section";
 import { DemoPreviewSection } from "@/features/guest/components/demo-preview-section";
@@ -53,6 +54,7 @@ export default function RootPage() {
       <div className="relative z-10">
         <GuestNavbar />
         <HeroSection />
+        <StatsStrip />
         <SectionCarousel />
         <DemoPreviewSection />
         <PricingSection />

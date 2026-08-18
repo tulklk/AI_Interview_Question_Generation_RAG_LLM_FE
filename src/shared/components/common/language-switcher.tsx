@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Globe, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { useLanguage, type Lang } from "@/shared/providers/language-context";
@@ -19,6 +19,9 @@ export function LanguageSwitcher({ variant = "ghost" }: LanguageSwitcherProps) {
   const { lang, setLang } = useLanguage();
   const [open, setOpen] = useState(false);
   const { mounted, exiting } = useOverlayTransition(open, 220);
+  // Prevent hydration mismatch: lang comes from localStorage (client-only)
+  const [clientMounted, setClientMounted] = useState(false);
+  useEffect(() => { setClientMounted(true); }, []);
 
   const active = LANGUAGES.find((l) => l.code === lang)!;
 
@@ -39,10 +42,13 @@ export function LanguageSwitcher({ variant = "ghost" }: LanguageSwitcherProps) {
         )}
       >
         <Globe size={14} className="shrink-0" />
-        <span className="hidden sm:inline">
-          {active.flag} {active.code.toUpperCase()}
+        {/* Render flag/code only on client to avoid server/client lang mismatch */}
+        <span className="hidden sm:inline" suppressHydrationWarning>
+          {clientMounted ? `${active.flag} ${active.code.toUpperCase()}` : ""}
         </span>
-        <span className="sm:hidden">{active.flag}</span>
+        <span className="sm:hidden" suppressHydrationWarning>
+          {clientMounted ? active.flag : ""}
+        </span>
         <ChevronDown
           size={12}
           className={cn("transition-transform duration-200", open && "rotate-180")}

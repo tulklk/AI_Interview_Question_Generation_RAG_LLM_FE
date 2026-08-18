@@ -41,6 +41,19 @@ export default async function RootLayout({
       suppressHydrationWarning
     >
       <body>
+        {/*
+          True inline <script> — the browser executes this synchronously
+          while parsing the opening <body> tag, before scroll restoration
+          and before any React/Next.js JavaScript is fetched or run.
+          This is the only reliable way to prevent browser scroll restoration.
+        */}
+        {/* eslint-disable-next-line @next/next/no-sync-scripts */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              "(function(){try{history.scrollRestoration='manual';}catch(e){}try{window.scrollTo(0,0);}catch(e){}})();",
+          }}
+        />
         <Providers>{children}</Providers>
       </body>
     </html>

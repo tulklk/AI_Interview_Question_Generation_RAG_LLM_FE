@@ -19,10 +19,10 @@ const eventIcons: Record<SystemActivityEvent["type"], {
   },
   recruiter_login: {
     icon: LogIn,
-    iconBg: "bg-gray-100 dark:bg-gray-800",
-    iconColor: "text-gray-400 dark:text-gray-500",
-    badgeBg: "bg-gray-100 dark:bg-gray-800",
-    badgeColor: "text-gray-500 dark:text-gray-400",
+    iconBg: "bg-sky-50 dark:bg-sky-950/40",
+    iconColor: "text-sky-500 dark:text-sky-400",
+    badgeBg: "bg-sky-50 dark:bg-sky-950/40",
+    badgeColor: "text-sky-600 dark:text-sky-400",
   },
   jd_generation: {
     icon: Zap,

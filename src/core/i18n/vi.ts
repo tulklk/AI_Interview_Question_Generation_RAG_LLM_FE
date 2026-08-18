@@ -44,31 +44,33 @@ export const vi: Translations = {
       "SSR render theo từng yêu cầu — lý tưởng cho dữ liệu động. SSG render trước lúc build để tối đa hiệu suất. Lựa chọn dựa trên yêu cầu về độ tươi của dữ liệu...",
   },
 
+  statsStrip: {
+    speed: "Thời gian tạo câu hỏi",
+    categories: "Loại câu hỏi",
+    formats: "Định dạng xuất file",
+    aiPowered: "AI-Powered",
+  },
+
   benefits: {
     sectionLabel: "Tại sao chọn HireGen AI",
     headline: "Được xây dựng cho đội tuyển dụng hiện đại",
-    subtext:
-      "Tất cả những gì bạn cần để thực hiện những buổi phỏng vấn nhất quán, toàn diện — mà không mất hàng giờ chuẩn bị.",
+    subtext: "Phỏng vấn nhất quán, chuyên nghiệp — không mất thêm giờ chuẩn bị.",
     items: [
       {
         title: "Nhanh hơn 10 lần",
-        description:
-          "Tạo bộ câu hỏi phỏng vấn đầy đủ từ bất kỳ mô tả công việc nào trong vòng 30 giây. Không còn phải viết câu hỏi thủ công.",
+        description: "Bộ câu hỏi hoàn chỉnh từ bất kỳ JD nào trong 30 giây.",
       },
       {
         title: "AI hiểu ngữ cảnh",
-        description:
-          "Truy xuất dữ liệu bằng RAG giúp mỗi câu hỏi được đặt nền tảng trên kỹ năng thực tế và kiến thức ngành nghề từ mô tả công việc.",
+        description: "Mỗi câu hỏi bám sát kỹ năng thực tế và kiến thức ngành.",
       },
       {
         title: "Đánh giá nhất quán",
-        description:
-          "Các danh mục Kỹ thuật, Hành vi và Tình huống có cấu trúc đảm bảo mỗi buổi phỏng vấn bao quát toàn diện hồ sơ ứng viên.",
+        description: "Technical, Behavioral, Situational — đủ chiều đánh giá ứng viên.",
       },
       {
         title: "Xuất file ngay lập tức",
-        description:
-          "Tải bộ câu hỏi dạng PDF hoặc DOCX, chia sẻ với đồng nghiệp hoặc lưu vào lịch sử phiên làm việc.",
+        description: "Xuất PDF/DOCX tức thì, chia sẻ dễ dàng với đồng nghiệp.",
       },
     ],
   },
@@ -76,91 +78,76 @@ export const vi: Translations = {
   features: {
     sectionLabel: "Tính năng nền tảng",
     headline: "Tất cả những gì bạn cần để tuyển dụng thông minh hơn",
-    subtext:
-      "Từ phân tích mô tả công việc đến bộ câu hỏi sẵn sàng xuất, mọi tính năng đều được thiết kế để tiết kiệm thời gian và nâng cao chất lượng phỏng vấn.",
+    subtext: "Từ phân tích JD đến bộ câu hỏi sẵn sàng xuất — tiết kiệm thời gian, nâng chất lượng.",
     items: [
       {
         title: "Nhập mô tả công việc",
-        description:
-          "Dán bất kỳ mô tả công việc hoặc tải file PDF/DOCX. AI tự động phân tích vị trí, kỹ năng yêu cầu và cấp độ kinh nghiệm.",
+        description: "Dán JD hoặc tải PDF/DOCX, AI tự phân tích kỹ năng và cấp độ.",
       },
       {
         title: "AI trích xuất kỹ năng",
-        description:
-          "Hệ thống xác định các năng lực cốt lõi, công nghệ và kỹ năng mềm từ mô tả công việc bằng xử lý ngôn ngữ tự nhiên.",
+        description: "Xác định năng lực cốt lõi, công nghệ và kỹ năng mềm từ JD.",
       },
       {
         title: "Truy xuất kiến thức RAG",
-        description:
-          "Retrieval-Augmented Generation thu thập kiến thức liên quan từ các nguồn được chọn lọc để đặt nền tảng cho câu hỏi trên chuyên môn thực tế.",
+        description: "RAG thu thập kiến thức từ nguồn chọn lọc, câu hỏi chính xác hơn.",
       },
       {
         title: "Tạo câu hỏi tự động",
-        description:
-          "Tạo câu hỏi Kỹ thuật, Hành vi và Tình huống phù hợp với cấp độ kinh nghiệm và lĩnh vực chuyên môn.",
+        description: "Technical, Behavioral, Situational — phù hợp với vị trí và cấp độ.",
       },
       {
         title: "Gợi ý câu trả lời",
-        description:
-          "Mỗi câu hỏi đi kèm một gợi ý trả lời được AI tạo ra để giúp người đánh giá đối chiếu câu trả lời của ứng viên.",
+        description: "Mỗi câu hỏi có gợi ý trả lời AI để đối chiếu đánh giá nhanh hơn.",
       },
       {
         title: "Lịch sử & Xuất file",
-        description:
-          "Truy cập tất cả phiên làm việc trước đây từ bảng lịch sử. Xuất sang PDF hoặc DOCX để sử dụng trong phỏng vấn bất cứ lúc nào.",
+        description: "Xem lại phiên làm việc cũ, xuất PDF/DOCX bất cứ lúc nào.",
       },
     ],
   },
 
   workflow: {
     sectionLabel: "Cách thức hoạt động",
-    headline: "Từ mô tả công việc đến sẵn sàng phỏng vấn trong 4 bước",
-    subtext:
-      "Một quy trình đơn giản, mạnh mẽ biến bất kỳ mô tả công việc nào thành bộ câu hỏi phỏng vấn có cấu trúc.",
+    headline: "Từ JD đến sẵn sàng phỏng vấn trong 4 bước",
+    subtext: "4 bước đơn giản — từ mô tả công việc đến bộ câu hỏi hoàn chỉnh.",
     steps: [
       {
         title: "Nhập mô tả công việc",
-        description:
-          "Dán nội dung mô tả công việc hoặc tải file PDF/DOCX trực tiếp vào nền tảng.",
+        description: "Dán JD hoặc tải file PDF/DOCX lên nền tảng.",
       },
       {
         title: "Trích xuất kỹ năng",
-        description:
-          "AI xác định các kỹ năng yêu cầu, công nghệ và cấp độ kinh nghiệm từ mô tả công việc.",
+        description: "AI nhận diện kỹ năng, công nghệ và cấp độ kinh nghiệm.",
       },
       {
         title: "Truy xuất kiến thức",
-        description:
-          "RAG thu thập kiến thức liên quan từ các nguồn được chọn lọc để đặt nền tảng cho mỗi câu hỏi.",
+        description: "RAG thu thập kiến thức nền để câu hỏi chính xác hơn.",
       },
       {
         title: "Tạo câu hỏi",
-        description:
-          "Nhận bộ câu hỏi được phân loại gồm Kỹ thuật, Hành vi và Tình huống ngay lập tức.",
+        description: "Nhận ngay bộ câu hỏi có cấu trúc, sẵn sàng sử dụng.",
       },
     ],
   },
 
   pricing: {
     sectionLabel: "Bảng giá",
-    headline: "Gói Free & Premium rõ ràng",
-    introSubtext:
-      "Một mô hình cho mọi người: Free để bắt đầu, Premium khi cần full quyền — Candidate và HR đều có Free / Premium (tính bằng VND).",
+    headline: "Free & Premium — rõ ràng, không ẩn phí",
+    introSubtext: "Free để bắt đầu, Premium khi cần full quyền — cho cả Candidate và HR.",
     mostPopular: "Đề xuất",
     currentPlanBadge: "Gói của bạn",
     managePlan: "Quản lý gói",
     upgradePlan: "Nâng Premium",
     jobSeeker: {
       title: "Dành cho ứng viên",
-      subtext:
-        "Luyện bộ câu hỏi Marketplace với feedback AI. Free xem ~20% mỗi bộ; Premium mở full bộ và gửi recommendation tới HR.",
-      comparisonNote:
-        "Nâng Premium để mở mọi câu hỏi, full feedback AI và gửi scorecard tới HR.",
+      subtext: "Luyện Marketplace với AI feedback. Premium mở full bộ và gửi recommendation tới HR.",
+      comparisonNote: "",
       plans: [
         {
           name: "Free",
           period: "/ tháng",
-          description: "Luyện bộ Marketplace với ~20% câu hỏi — không cần thẻ.",
+          description: "Luyện Marketplace, xem ~20% câu mỗi bộ. Không cần thẻ.",
           cta: "Bắt đầu miễn phí",
           features: [
             "Practice bộ Marketplace (kể cả bộ HR)",
@@ -175,8 +162,8 @@ export const vi: Translations = {
           name: "Premium",
           badge: "Đề xuất",
           period: "/ tháng",
-          priceFootnote: "Thanh toán theo tháng (VND). Hủy bất cứ lúc nào trong Settings.",
-          description: "Full câu hỏi, full feedback và recommendation gửi HR.",
+          priceFootnote: "Thanh toán theo tháng (VND). Hủy bất cứ lúc nào.",
+          description: "Full câu hỏi, full feedback và gửi recommendation tới HR.",
           cta: "Nâng Premium",
           features: [
             "Full bộ câu hỏi Marketplace",
@@ -190,41 +177,37 @@ export const vi: Translations = {
     },
     recruiter: {
       title: "Dành cho HR & Talent",
-      subtext:
-        "Sinh bộ câu hỏi theo JD với Studio + RAG. Free có cooldown 24h; Premium mở unlimited generate, export và Ask-AI.",
-      valueMessage:
-        "Cho nhóm HR cần bộ câu bám JD, nhất quán — Free vẫn publish được lên Marketplace.",
+      subtext: "Sinh câu hỏi từ JD với AI + RAG. Free: 4 lần / 24h. Premium: không giới hạn.",
+      valueMessage: "",
       highlights: [
         "Biến JD thành bộ câu hỏi có cấu trúc.",
-        "Sinh câu có RAG từ nguồn tri thức đáng tin.",
+        "RAG từ nguồn tri thức đáng tin.",
         "Free vẫn publish Marketplace.",
-        "Premium: generate không giới hạn, export, Ask-AI (1000 / kỳ).",
-        "Regenerate plan tối đa 5 lần / draft trên cả hai gói.",
+        "Premium: generate không giới hạn + export + Ask-AI.",
       ],
       upgradeWhy: {
         title: "Vì sao HR chọn Premium",
-        footnote:
-          "Ask-AI và export thuộc Premium vì tốn hạn mức LLM. Free vẫn generate 4 lần / 24h và publish Marketplace.",
+        footnote: "Ask-AI và export thuộc Premium do tốn LLM quota. Free vẫn cho 4 lần / 24h.",
         points: [
           {
             title: "Generate không giới hạn",
-            body: "Không cooldown 24 giờ — tạo bao nhiêu bộ tùy nhu cầu tuyển dụng.",
+            body: "Không cooldown — tạo bao nhiêu bộ tùy ý.",
           },
           {
-            title: "Export cho panel",
-            body: "Tải PDF / DOCX cho interviewer thay vì copy từ trình duyệt.",
+            title: "Export PDF / DOCX",
+            body: "Tải file cho interviewer, không cần copy thủ công.",
           },
           {
             title: "Ask-AI trong Studio",
-            body: "1.000 request Ask-AI mỗi kỳ anniversary, có thể mua pack khi hết.",
+            body: "1.000 request / kỳ, mua thêm pack khi hết.",
           },
           {
-            title: "Giới hạn regenerate an toàn",
-            body: "Cả Free và Premium giữ ≤ 5 lần regenerate plan / draft để kiểm soát chi phí.",
+            title: "Giới hạn regenerate",
+            body: "≤ 5 lần / draft trên cả hai gói.",
           },
           {
-            title: "Sẵn sàng Marketplace",
-            body: "Publish bộ mang thương hiệu công ty để ứng viên luyện trên Free hoặc Premium.",
+            title: "Marketplace ready",
+            body: "Publish bộ thương hiệu để ứng viên luyện tập.",
           },
         ],
       },
@@ -232,8 +215,7 @@ export const vi: Translations = {
         {
           name: "Free",
           period: "/ tháng",
-          description:
-            "Tạo bộ từ JD với cooldown generate 24h — vẫn publish Marketplace.",
+          description: "Sinh câu từ JD, cooldown 24h — vẫn publish Marketplace.",
           cta: "Bắt đầu Free",
           features: [
             "Studio: lập plan & sinh từ JD",
@@ -964,10 +946,10 @@ Yêu cầu:
 
   historyPage: {
     heading: "Bộ câu hỏi",
-    subtext: "Quản lý các bộ câu hỏi đã lưu từ Studio (draft / đã publish lên marketplace).",
+    subtext: "Bộ câu hỏi đã lưu từ Studio — draft và đã publish.",
     openStudio: "Mở Studio",
     emptyTitle: "Chưa có bộ câu hỏi đã lưu",
-    emptyBody: "Trong Studio hãy Save bộ câu hỏi sau khi generate — bộ đó sẽ xuất hiện tại đây.",
+    emptyBody: "Lưu bộ câu hỏi trong Studio để hiển thị tại đây.",
     noFilterResults: "Không có kết quả khớp bộ lọc.",
     sourceCol: "Nguồn",
     badgePublished: "Đã publish",
@@ -1402,7 +1384,7 @@ Yêu cầu:
   submitFeedbackDialog: {
     trigger: "Gửi phản hồi",
     title: "Gửi phản hồi cho chúng tôi",
-    subtitle: "Đánh giá và chia sẻ trải nghiệm của bạn về nền tảng HireGen AI.",
+    subtitle: "Chia sẻ cảm nhận để giúp chúng tôi cải thiện.",
     ratingLabel: "Đánh giá của bạn",
     ratingLabels: ["", "Rất tệ", "Tệ", "Bình thường", "Tốt", "Tuyệt vời"],
     contentLabel: "Nội dung phản hồi",
@@ -1487,12 +1469,12 @@ Yêu cầu:
       },
       categoryMix: {
         title: "Tỷ lệ danh mục câu hỏi",
-        subtitle: "Phân bổ câu hỏi đã tạo trên mọi phiên",
+        subtitle: "Phân bổ trên tất cả phiên",
         countLabel: "Câu hỏi",
       },
       topRecruiters: {
         title: "Nhà tuyển dụng dẫn đầu",
-        subtitle: "Theo tổng câu hỏi đã tạo trong 30 ngày (mô phỏng)",
+        subtitle: "Câu hỏi đã tạo · 30 ngày",
         rank: "Hạng",
         recruiter: "Nhà tuyển dụng",
         sessions: "Phiên",
@@ -1531,7 +1513,7 @@ Yêu cầu:
       },
       health: {
         title: "Trạng thái hệ thống",
-        subtitle: "Chưa tích hợp health-check API — chỉ hiển thị trạng thái kết nối",
+        subtitle: "Trạng thái kết nối dịch vụ",
         pending: "Health API chưa tích hợp",
         apiService: "API Service",
         database: "Cơ sở dữ liệu",
@@ -1595,7 +1577,7 @@ Yêu cầu:
     },
     marketplace: {
       heading: "Quản lý Marketplace",
-      subtext: "Xem bộ câu hỏi đã publish, HR sở hữu, thống kê practice và ghim nổi bật.",
+      subtext: "Bộ câu hỏi đã xuất bản — ghim nổi bật, thống kê practice.",
       emptyState: "Không tìm thấy bộ câu hỏi trên Marketplace.",
       setsFound: "bộ câu hỏi tìm thấy",
       hrPrefix: "HR",
@@ -2198,7 +2180,7 @@ Yêu cầu:
 
   jobseekerCoachPage: {
     title: "AI Coach",
-    subtitle: "AI tạo câu hỏi luyện tập từ kỹ năng trên CV của bạn — không lấy từ tin tuyển dụng của nhà tuyển dụng.",
+    subtitle: "Luyện tập từ kỹ năng trên CV — không dựa vào tin tuyển dụng.",
     howTitle: "Cách hoạt động",
     step1: "1. Kỹ năng từ CV / hồ sơ",
     step2: "2. AI sinh bộ kiểm tra kiến thức",
@@ -2541,7 +2523,7 @@ Yêu cầu:
 
   questionSetFeedbackDialog: {
     title: "Bạn cảm thấy bộ câu hỏi này thế nào?",
-    subtitle: "Đánh giá của bạn giúp cải thiện chất lượng nội dung cho cộng đồng.",
+    subtitle: "Phản hồi giúp nâng cao chất lượng nội dung.",
     ratingLabel: "Đánh giá sao",
     ratingRequired: "Vui lòng chọn số sao trước khi gửi.",
     starLabels: ["Rất tệ", "Tệ", "Tạm được", "Tốt", "Xuất sắc"],
@@ -2565,8 +2547,8 @@ Yêu cầu:
 
   jobseekerInvitationsPage: {
     heading: "Lời mời phỏng vấn",
-    subtext: "Lời mời phỏng vấn từ nhà tuyển dụng, dựa trên kết quả luyện tập của bạn.",
-    emptyState: "Chưa có lời mời nào. Hãy tiếp tục luyện tập — nhà tuyển dụng có thể mời bạn phỏng vấn dựa trên kết quả của bạn.",
+    subtext: "Lời mời dựa trên kết quả luyện tập của bạn.",
+    emptyState: "Chưa có lời mời. Tiếp tục luyện tập để nhà tuyển dụng chú ý.",
     loadFailed: "Không thể tải danh sách lời mời.",
     retryBtn: "Thử lại",
     statusPending: "Đang chờ",
@@ -2665,136 +2647,136 @@ Yêu cầu:
     retryBtn: "Thử lại",
     noSessionsYet: "Chưa có phiên luyện tập nào.",
     noRecommendedSets: "Chưa có bộ câu hỏi đề xuất.",
-    pendingScoreTooltip: "AI vẫn đang xử lý điểm cho phiên này — hãy quay lại sau ít phút.",
+    pendingScoreTooltip: "AI đang xử lý điểm — quay lại sau ít phút.",
     recentTitle: "Luyện tập gần đây",
-    recentSubtitle: "Các phiên gần nhất của bạn",
+    recentSubtitle: "Các phiên gần nhất",
     recommendedTitle: "Đề Xuất Cho Bạn",
-    recommendedSubtitle: "Bộ câu hỏi được AI chọn lọc theo vai trò mục tiêu",
+    recommendedSubtitle: "AI chọn lọc theo vai trò mục tiêu",
     viewAllHistory: "Xem tất cả →",
     viewAllSets: "Xem thêm →",
     header: {
-      summaryEmpty: "Hãy bắt đầu phiên luyện tập đầu tiên để theo dõi tiến trình của bạn.",
-      summaryTemplate: "Bạn đã hoàn thành {{count}} phiên luyện tập với điểm trung bình {{avg}}%. Chuỗi luyện tập hiện tại: {{streak}} ngày.",
+      summaryEmpty: "Bắt đầu phiên đầu tiên để theo dõi tiến trình.",
+      summaryTemplate: "{{count}} phiên · TB {{avg}}% · Chuỗi {{streak}} ngày",
       startPractice: "Bắt đầu luyện tập",
-      viewRoadmap: "Xem lộ trình",
+      viewRoadmap: "Lộ trình",
       rangeLabels: { "7d": "7 ngày", "30d": "30 ngày", "90d": "90 ngày", all: "Tất cả" },
     },
     kpi: {
-      sessions: { label: "Phiên luyện tập", tooltip: "Tổng số phiên luyện tập bạn đã hoàn thành." },
-      averageScore: { label: "Điểm trung bình", tooltip: "Điểm trung bình trên tất cả các phiên đã được chấm điểm." },
-      streak: { label: "Chuỗi luyện tập", tooltip: "Số ngày liên tiếp gần nhất bạn có ít nhất một phiên luyện tập." },
-      totalDuration: { label: "Tổng thời gian luyện tập", tooltip: "Tổng thời lượng của tất cả các phiên đã hoàn thành." },
+      sessions: { label: "Phiên luyện tập", tooltip: "Tổng số phiên đã hoàn thành." },
+      averageScore: { label: "Điểm trung bình", tooltip: "Điểm TB trên tất cả phiên đã được chấm." },
+      streak: { label: "Chuỗi luyện tập", tooltip: "Số ngày liên tiếp có ít nhất một phiên." },
+      totalDuration: { label: "Tổng thời gian", tooltip: "Tổng thời lượng các phiên đã hoàn thành." },
       trendUp: "+{{pct}}% so với kỳ trước",
       trendDown: "{{pct}}% so với kỳ trước",
       weeklyTrend: "+{{count}} tuần này",
     },
     readiness: {
-      title: "Mức độ sẵn sàng phỏng vấn",
-      explainer: "Ước tính dựa trên điểm trung bình, tính ổn định, tần suất và chuỗi luyện tập.",
-      insufficientData: "Hoàn thành phiên luyện tập đầu tiên để xem mức độ sẵn sàng ước tính.",
+      title: "Mức sẵn sàng phỏng vấn",
+      explainer: "Dựa trên điểm TB, tần suất và chuỗi luyện tập.",
+      insufficientData: "Hoàn thành phiên đầu tiên để xem mức sẵn sàng.",
       levels: { needsWork: "Cần cải thiện", developing: "Đang phát triển", ready: "Sẵn sàng", veryReady: "Rất sẵn sàng" },
       factors: { averageScore: "Điểm trung bình", consistency: "Chuỗi luyện tập", stability: "Tính ổn định", frequency: "Tần suất luyện tập" },
     },
     trendChart: {
       title: "Xu hướng hiệu suất",
-      subtitle: "Điểm trung bình theo ngày trong khoảng thời gian đã chọn",
+      subtitle: "Điểm theo ngày · khoảng thời gian đã chọn",
       average: "TB",
       scoreLabel: "Điểm",
-      empty: "Cần thêm ít nhất 2 phiên đã chấm điểm để tạo biểu đồ xu hướng.",
-      error: "Không thể tải biểu đồ hiệu suất.",
+      empty: "Cần ít nhất 2 phiên đã chấm điểm.",
+      error: "Không thể tải biểu đồ.",
     },
     heatmap: {
-      title: "Mức độ đều đặn luyện tập",
-      subtitle: "Số phút luyện tập mỗi ngày trong 20 tuần gần nhất",
+      title: "Mức độ đều đặn",
+      subtitle: "Phút luyện tập mỗi ngày · 20 tuần gần nhất",
       currentStreak: "Chuỗi hiện tại",
       longestStreak: "Chuỗi dài nhất",
       activeDays: "Ngày hoạt động",
       legendLess: "Ít",
       legendMore: "Nhiều",
-      empty: "Chưa có hoạt động luyện tập nào được ghi nhận.",
+      empty: "Chưa có hoạt động nào được ghi nhận.",
       tooltipTemplate: "{{date}}: {{minutes}} phút · {{count}} phiên",
       tooltipEmptyTemplate: "{{date}}: Không luyện tập",
     },
     skills: {
       title: "Phân tích kỹ năng",
-      subtitle: "Điểm trung bình theo từng khía cạnh được AI đánh giá",
+      subtitle: "Điểm trung bình theo khía cạnh AI đánh giá",
       strongest: "Mạnh nhất",
       weakest: "Cần cải thiện",
       mostImproved: "Cải thiện nhanh nhất",
       noImprovement: "Chưa đủ dữ liệu",
-      empty: "Cần đánh giá lại một vài phiên gần đây trong trình duyệt này để phân tích kỹ năng.",
-      note: "Dựa trên các phiên đã được AI đánh giá chi tiết trong trình duyệt này.",
+      empty: "Hoàn thành thêm phiên để xem phân tích kỹ năng.",
+      note: "Dựa trên các phiên đã được AI đánh giá chi tiết.",
     },
     weakSkillsTable: {
       title: "Kỹ năng cần tập trung",
-      columns: { skill: "Kỹ năng", score: "Điểm hiện tại", trend: "Xu hướng", priority: "Ưu tiên", action: "Hành động" },
+      columns: { skill: "Kỹ năng", score: "Điểm", trend: "Xu hướng", priority: "Ưu tiên", action: "Hành động" },
       priorityLabels: { high: "Cao", medium: "Trung bình", low: "Thấp" },
       practiceNow: "Luyện ngay",
-      empty: "Chưa có đủ dữ liệu để xác định kỹ năng cần tập trung.",
+      empty: "Chưa đủ dữ liệu.",
     },
     coach: {
       title: "AI Career Coach",
-      subtitle: "Khuyến nghị cá nhân hoá dựa trên dữ liệu luyện tập của bạn",
+      subtitle: "Khuyến nghị cá nhân hoá từ dữ liệu luyện tập",
       openCoach: "Mở AI Coach",
-      planSkillsTitle: "Kỹ năng từ kế hoạch CV",
-      upgradeHint: "Nâng cấp Premium để kiểm tra kiến thức trên CV và nhận kế hoạch kỹ năng.",
-      startDiagnostic: "Chạy bài kiểm tra kiến thức từ CV",
+      planSkillsTitle: "Kỹ năng từ CV",
+      upgradeHint: "Premium: kiểm tra CV và nhận kế hoạch kỹ năng cá nhân.",
+      startDiagnostic: "Kiểm tra kiến thức từ CV",
       scoreOfTarget: "{{score}} / {{target}}",
       noScoreYet: "Chưa có điểm",
-      priorityLabels: { high: "Ưu tiên cao", medium: "Ưu tiên trung bình", low: "Ưu tiên thấp" },
+      priorityLabels: { high: "Cao", medium: "Trung bình", low: "Thấp" },
       estimatedMinutes: "~{{minutes}} phút",
-      ctaLabel: "Bắt đầu luyện tập này",
+      ctaLabel: "Luyện ngay",
       evidence: {
         firstSession: "Bạn chưa hoàn thành phiên luyện tập nào.",
-        weakSkill: "Trong {{sessions}} phiên gần đây được AI đánh giá chi tiết, điểm {{skill}} trung bình chỉ đạt {{score}}%.",
-        consistency: "Đã {{days}} ngày kể từ phiên luyện tập gần nhất của bạn.",
-        decliningTrend: "Điểm trung bình đã giảm {{pct}}% so với giai đoạn trước.",
-        raiseBar: "Mức độ sẵn sàng của bạn đang đạt {{score}}/100 — một kết quả rất tốt.",
-        steadyProgress: "Bạn đã hoàn thành {{count}} phiên với điểm trung bình {{avg}}%.",
+        weakSkill: "{{sessions}} phiên gần đây: điểm {{skill}} trung bình {{score}}%.",
+        consistency: "Đã {{days}} ngày kể từ phiên luyện tập gần nhất.",
+        decliningTrend: "Điểm trung bình giảm {{pct}}% so với giai đoạn trước.",
+        raiseBar: "Mức sẵn sàng {{score}}/100 — kết quả rất tốt!",
+        steadyProgress: "{{count}} phiên hoàn thành, điểm TB {{avg}}%.",
       },
       action: {
-        firstSession: "Hoàn thành phiên luyện tập đầu tiên để nhận khuyến nghị cá nhân hoá.",
-        weakSkill: "Luyện 5 câu hỏi Behavioral theo cấu trúc STAR để cải thiện {{skill}}.",
-        consistency: "Hoàn thành một phiên luyện tập ngắn hôm nay để duy trì phong độ.",
-        decliningTrend: "Xem lại các phiên gần đây trong Lịch sử để tìm điểm cần cải thiện.",
-        raiseBar: "Thử một bộ câu hỏi ở độ khó cao hơn để tiếp tục thử thách bản thân.",
-        steadyProgress: "Tiếp tục luyện tập đều đặn để nâng cao mức độ sẵn sàng.",
+        firstSession: "Hoàn thành phiên đầu tiên để nhận khuyến nghị.",
+        weakSkill: "Luyện câu hỏi Behavioral STAR để cải thiện {{skill}}.",
+        consistency: "Hoàn thành một phiên ngắn hôm nay để giữ phong độ.",
+        decliningTrend: "Xem lại Lịch sử để tìm điểm cần cải thiện.",
+        raiseBar: "Thử bộ câu hỏi độ khó cao hơn để thử thách bản thân.",
+        steadyProgress: "Tiếp tục luyện đều đặn để nâng mức sẵn sàng.",
       },
     },
     roles: {
-      title: "Mức độ sẵn sàng theo vị trí",
-      subtitle: "Dựa trên các bộ câu hỏi bạn đã luyện tập",
+      title: "Sẵn sàng theo vị trí",
+      subtitle: "Dựa trên các bộ câu hỏi đã luyện",
       sessionsLabel: "{{count}} phiên",
       practiceAgain: "Luyện tiếp",
-      empty: "Luyện tập ít nhất một bộ câu hỏi để xem mức độ sẵn sàng theo từng vị trí.",
+      empty: "Luyện ít nhất một bộ để xem mức sẵn sàng theo vị trí.",
     },
     weeklyGoal: {
-      title: "Kế hoạch tuần này",
-      onboardingTitle: "Đặt mục tiêu luyện tập hàng tuần",
-      onboardingSubtitle: "Chọn số phiên bạn muốn hoàn thành mỗi tuần để giữ nhịp độ luyện tập.",
+      title: "Mục tiêu tuần này",
+      onboardingTitle: "Đặt mục tiêu luyện tập",
+      onboardingSubtitle: "Chọn số phiên mỗi tuần để giữ nhịp độ.",
       setGoalBtn: "Đặt mục tiêu",
       sessionsProgress: "{{done}}/{{target}} phiên",
       minutesProgress: "{{done}}/{{target}} phút",
       daysLeft: "Còn {{days}} ngày",
-      continue: "Tiếp tục luyện tập",
+      continue: "Luyện tiếp",
     },
     recentSessions: {
       menu: { viewDetail: "Xem chi tiết", practiceAgain: "Luyện lại", saveSet: "Lưu bộ câu hỏi", unsaveSet: "Bỏ lưu" },
     },
     scoreDistribution: {
       title: "Phân bố điểm số",
-      subtitle: "Điểm của bạn phân bố theo khoảng như thế nào",
+      subtitle: "Phân bố điểm theo khoảng",
       sessions: "phiên",
       scoreLabel: "Điểm",
       countLabel: "Số phiên",
-      empty: "Hoàn thành một vài phiên để xem phân bố điểm của bạn.",
+      empty: "Hoàn thành thêm phiên để xem phân bố điểm.",
     },
     companyScore: {
       title: "Hiệu suất theo công ty",
-      subtitle: "Điểm trung bình theo công ty (top 6)",
+      subtitle: "Điểm TB theo công ty (top 6)",
       avgScore: "Điểm TB",
       sessions: "phiên",
-      empty: "Hoàn thành phiên từ ít nhất 2 công ty để xem biểu đồ này.",
+      empty: "Cần phiên từ ít nhất 2 công ty.",
     },
   },
 
@@ -3563,7 +3545,7 @@ Yêu cầu:
     loadingQuestionsSubtext: "Vui lòng chờ trong giây lát.",
     jdFit: {
       title: "Đánh giá với JD",
-      subtitle: "Xem bộ câu hỏi còn bám job description không — chỉ nhận xét lời, không chấm điểm.",
+      subtitle: "Kiểm tra độ phù hợp JD — nhận xét định tính, không chấm điểm.",
       run: "Đánh giá với JD",
       rerun: "Đánh giá lại",
       running: "Đang đánh giá…",
@@ -3629,8 +3611,8 @@ Yêu cầu:
 
   hrDashboardPage: {
     greeting: "Xin chào",
-    greetingSubtitle: "Tổng quan hoạt động tạo câu hỏi phỏng vấn của bạn.",
-    loadFailed: "Không thể tải dữ liệu dashboard.",
+    greetingSubtitle: "Tổng quan hoạt động của bạn.",
+    loadFailed: "Không thể tải dữ liệu.",
     retryBtn: "Thử lại",
     noDataYet: "Chưa có dữ liệu",
     kpi: {
@@ -3649,19 +3631,19 @@ Yêu cầu:
     },
     activityChart: {
       title: "Hoạt động tạo câu hỏi",
-      subtitle: "Số phiên được tạo trong 30 ngày qua",
+      subtitle: "Phiên tạo · 30 ngày qua",
       sessions: "Phiên",
       empty: "Không có hoạt động trong 30 ngày qua",
     },
     typeChart: {
       title: "Phân bố loại câu hỏi",
-      subtitle: "Phân tích các loại câu hỏi đã tạo",
+      subtitle: "Phân bố theo loại",
       questions: "câu",
       empty: "Tạo câu hỏi để xem phân bố",
     },
     recentSessions: {
       title: "Phiên gần đây",
-      subtitle: "Các công việc tạo câu hỏi mới nhất",
+      subtitle: "Công việc gần nhất",
       viewAll: "Xem tất cả",
       role: "Tên công việc",
       status: "Trạng thái",
@@ -3683,7 +3665,7 @@ Yêu cầu:
     },
     candidates: {
       title: "Ứng viên nổi bật",
-      subtitle: "Đề xuất gần đây từ bộ câu hỏi của bạn",
+      subtitle: "Từ bộ câu hỏi của bạn",
       viewAll: "Xem tất cả",
       name: "Tên",
       role: "Vai trò",
@@ -3700,7 +3682,7 @@ Yêu cầu:
     },
     funnel: {
       title: "Phễu tuyển dụng",
-      subtitle: "Ứng viên trên các bộ câu hỏi đã xuất bản",
+      subtitle: "Bộ câu hỏi đã xuất bản",
       practicedLast7Days: "Luyện 7 ngày",
       newUnviewed: "Mới chưa đọc",
       shortlisted: "Quan tâm",
@@ -3709,7 +3691,7 @@ Yêu cầu:
     },
     insights: {
       title: "Phân tích",
-      subtitle: "Được suy luận từ lịch sử tạo câu hỏi",
+      subtitle: "Từ lịch sử tạo câu hỏi",
       noInsights: "Tạo thêm phiên để xem phân tích.",
       topRoleIs: "Vai trò được tạo nhiều nhất là",
       successRateIs: "Tỷ lệ thành công của bạn là",

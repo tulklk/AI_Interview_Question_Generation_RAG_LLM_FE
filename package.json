@@ -13,10 +13,12 @@
     "@dnd-kit/utilities": "^3.2.2",
     "@microsoft/signalr": "^10.0.0",
     "@react-oauth/google": "^0.13.5",
+    "@types/three": "^0.185.4",
     "axios": "^1.16.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "framer-motion": "^12.38.0",
+    "gsap": "^3.15.0",
     "lucide-react": "^1.8.0",
     "next": "^16.2.6",
     "react": "19.2.4",
@@ -25,6 +27,7 @@
     "react-is": "^19.2.5",
     "recharts": "^3.8.1",
     "tailwind-merge": "^3.5.0",
+    "three": "^0.185.1",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
