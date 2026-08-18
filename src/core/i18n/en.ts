@@ -660,6 +660,7 @@
     step2Subtitle: "Step 2 of 2",
     continueButton: "Continue",
     backButton: "Back",
+    signUpWithGoogle: "Sign up with Google",
     googleStep2Hint: "Complete your profile to start practicing interviews.",
     googleLinkedAs: "Signed up with Google: {{email}}",
     googleSignupSuccess: "Signed in with Google as {{email}}. Please complete your profile.",
