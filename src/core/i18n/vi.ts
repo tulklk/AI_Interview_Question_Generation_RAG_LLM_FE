@@ -204,7 +204,7 @@ export const vi: Translations = {
       upgradeWhy: {
         title: "Vì sao HR chọn Premium",
         footnote:
-          "Ask-AI và export thuộc Premium vì tốn hạn mức LLM. Free vẫn generate 1 lần / 24h và publish Marketplace.",
+          "Ask-AI và export thuộc Premium vì tốn hạn mức LLM. Free vẫn generate 4 lần / 24h và publish Marketplace.",
         points: [
           {
             title: "Generate không giới hạn",
@@ -237,7 +237,7 @@ export const vi: Translations = {
           cta: "Bắt đầu Free",
           features: [
             "Studio: lập plan & sinh từ JD",
-            "Generate 1 bộ / cooldown 24 giờ",
+            "Generate 4 bộ / cooldown 24 giờ",
             "Regenerate plan ≤ 5 lần / draft",
             "Publish bộ lên Marketplace",
             "Export PDF / DOCX",
@@ -807,7 +807,7 @@ Yêu cầu:
     quota: {
       exceededTitle: "Đã hết lượt tạo trong ngày",
       exceededBody:
-        "Gói Free chỉ tạo bộ câu hỏi 1 lần / 24 giờ. Bạn có thể tạo lại sau {{time}}, hoặc nâng Premium để tạo không giới hạn.",
+        "Gói Free chỉ tạo bộ câu hỏi 4 lần / 24 giờ. Bạn có thể tạo lại sau {{time}}, hoặc nâng Premium để tạo không giới hạn.",
       goToBilling: "Mở Thanh toán",
       createManuallyBtn: "Tạo thủ công",
     },
@@ -1228,7 +1228,7 @@ Yêu cầu:
       planCardRows: {
         HR_FREE: [
           { text: "Studio: tạo plan & bộ câu hỏi từ JD", included: true },
-          { text: "Generate 1 lần / cooldown 24 giờ", included: true },
+          { text: "Generate 4 lần / cooldown 24 giờ", included: true },
           { text: "Regenerate plan tối đa 5 lần / draft", included: true },
           { text: "Publish bộ câu hỏi lên Marketplace", included: true },
           { text: "Export PDF / DOCX", included: false },
@@ -1355,7 +1355,7 @@ Yêu cầu:
   hrSubscription: {
     quotaExceededTitle: "Đã hết lượt tạo trong ngày",
     quotaExceededBody:
-      "Gói Free chỉ tạo bộ câu hỏi <strong>1 lần / 24 giờ</strong>. Bạn có thể tạo lại sau <strong>{{time}}</strong>, hoặc nâng Premium để tạo không giới hạn.",
+      "Gói Free chỉ tạo bộ câu hỏi <strong>4 lần / 24 giờ</strong>. Bạn có thể tạo lại sau <strong>{{time}}</strong>, hoặc nâng Premium để tạo không giới hạn.",
     goToSubscription: "Xem gói & thanh toán",
     lockedExport: "Nâng cấp gói để xuất file",
     lockedAdvancedModel: "Dành cho gói Premium. Chọn mô hình tiêu chuẩn hoặc nâng cấp gói.",
@@ -1439,7 +1439,7 @@ Yêu cầu:
     ],
     responses: {
       pricing:
-        "Gói Free + Premium theo từng đối tượng (VND):\n\nỨng viên\n• Free — luyện Marketplace ~20% câu + feedback trên câu visible\n• Premium (149.000₫/tháng) — full bộ, full feedback, gửi recommendation tới HR\n\nHR\n• Free — generate 1 bộ / cooldown 24h, regenerate ≤5 / draft, publish Marketplace (không export / Ask-AI)\n• Premium (699.000₫/tháng) — generate không giới hạn, export PDF/DOCX, Ask-AI 1000 / kỳ (+ pack)\n\nBắt đầu Free — nâng cấp trong Settings khi cần full quyền.",
+        "Gói Free + Premium theo từng đối tượng (VND):\n\nỨng viên\n• Free — luyện Marketplace ~20% câu + feedback trên câu visible\n• Premium (149.000₫/tháng) — full bộ, full feedback, gửi recommendation tới HR\n\nHR\n• Free — generate 4 bộ / cooldown 24h, regenerate ≤5 / draft, publish Marketplace (không export / Ask-AI)\n• Premium (699.000₫/tháng) — generate không giới hạn, export PDF/DOCX, Ask-AI 1000 / kỳ (+ pack)\n\nBắt đầu Free — nâng cấp trong Settings khi cần full quyền.",
       features:
         "HireGen AI trích xuất kỹ năng chính từ Mô tả Công việc, sau đó tạo ra các câu hỏi Kỹ thuật, Hành vi và Tình huống phù hợp — được hỗ trợ bởi RAG và mô hình ngôn ngữ lớn. Bạn cũng có thể xuất toàn bộ dưới dạng PDF.",
       howItWorks:
@@ -1613,6 +1613,14 @@ Yêu cầu:
       pinSuccess: "Đã ghim bộ câu hỏi.",
       unpinSuccess: "Đã bỏ ghim bộ câu hỏi.",
       pinError: "Không thể cập nhật trạng thái ghim.",
+      unpublish: "Gỡ đăng",
+      unpublishing: "Đang gỡ...",
+      unpublishSuccess: "Đã gỡ bộ câu hỏi khỏi Marketplace.",
+      unpublishFailed: "Gỡ đăng bộ câu hỏi thất bại.",
+      unpublishConfirmTitle: "Gỡ đăng bộ câu hỏi này?",
+      unpublishConfirmMessage: "Bộ sẽ bị gỡ khỏi Marketplace. Các phiên ứng viên đang làm sẽ bị hủy.",
+      unpublishConfirmLabel: "Xác nhận gỡ đăng",
+      cancel: "Hủy",
       view: "Xem",
       retry: "Thử lại",
       close: "Đóng",

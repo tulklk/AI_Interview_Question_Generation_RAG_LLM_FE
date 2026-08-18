@@ -4,6 +4,7 @@ import { apiClient } from "@/core/api/http-client";
 export interface SubscriptionLimits {
   generateCooldownHours: number;
   generateUnlimited: boolean;
+  generatePerWindow: number;
   planRegeneratePerDraft: number;
   canExport: boolean;
   askAiPerMonth: number;
@@ -36,6 +37,8 @@ export interface MySubscription {
   askAiUsed: number;
   askAiLimit: number;
   generateSetUsed: number;
+  generateWindowUsed: number;
+  generateWindowLimit: number;
   entitlements: SubscriptionEntitlements;
 }
 
@@ -115,6 +118,7 @@ function normalizeLimits(raw: unknown): SubscriptionLimits {
   return {
     generateCooldownHours: pickNumber(o, "generateCooldownHours", "GenerateCooldownHours"),
     generateUnlimited: pickBool(o, "generateUnlimited", "GenerateUnlimited"),
+    generatePerWindow: pickNumber(o, "generatePerWindow", "GeneratePerWindow") || 4,
     planRegeneratePerDraft: pickNumber(o, "planRegeneratePerDraft", "PlanRegeneratePerDraft"),
     canExport: pickBool(o, "canExport", "CanExport"),
     askAiPerMonth: pickNumber(o, "askAiPerMonth", "AskAiPerMonth"),
@@ -160,6 +164,9 @@ export function normalizeMySubscription(raw: unknown): MySubscription {
     askAiUsed: pickNumber(src, "askAiUsed", "AskAiUsed"),
     askAiLimit: pickNumber(src, "askAiLimit", "AskAiLimit"),
     generateSetUsed: pickNumber(src, "generateSetUsed", "GenerateSetUsed"),
+    generateWindowUsed: pickNumber(src, "generateWindowUsed", "GenerateWindowUsed"),
+    generateWindowLimit:
+      pickNumber(src, "generateWindowLimit", "GenerateWindowLimit") || limits.generatePerWindow,
     entitlements: normalizeEntitlements(src.entitlements ?? src.Entitlements, limits),
   };
 }

@@ -28,10 +28,12 @@ interface HrSubscriptionContextValue {
   subscription: MySubscription | null;
   isPremium: boolean;
   limits: SubscriptionLimits | null;
-  /** true nếu có thể generate ngay (Premium = luôn true; Free = ngoài cooldown) */
+  /** true nếu có thể generate ngay (Premium = luôn true; Free = còn lượt trong window) */
   canGenerateNow: boolean;
-  /** Thời điểm hết cooldown (null nếu không đang cooldown / chưa từng generate) */
+  /** Thời điểm hết cooldown (null nếu không đang cooldown / chưa hết lượt trong window) */
   cooldownEndsAt: Date | null;
+  generateWindowUsed: number;
+  generateWindowLimit: number;
   hasFeature: (featureId: HrFeatureId) => boolean;
   /** Hạ Free — hành động thật, đồng bộ (khác upgrade, không cần thanh toán) */
   cancelPremium: () => Promise<void>;
@@ -102,9 +104,18 @@ export function HrSubscriptionProvider({ children }: { children: ReactNode }) {
 
     let canGenerateNow = true;
     let cooldownEndsAt: Date | null = null;
-    if (limits && !limits.generateUnlimited && subscription?.lastSuccessfulGenerateAt) {
+    const generateWindowUsed = subscription?.generateWindowUsed ?? 0;
+    const generateWindowLimit =
+      subscription?.generateWindowLimit || limits?.generatePerWindow || 4;
+
+    if (limits?.generateUnlimited) {
+      canGenerateNow = true;
+    } else if (generateWindowUsed < generateWindowLimit) {
+      canGenerateNow = true;
+    } else if (subscription?.lastSuccessfulGenerateAt) {
       const last = new Date(subscription.lastSuccessfulGenerateAt);
-      const endsAt = new Date(last.getTime() + limits.generateCooldownHours * 60 * 60 * 1000);
+      const hours = limits?.generateCooldownHours ?? 24;
+      const endsAt = new Date(last.getTime() + hours * 60 * 60 * 1000);
       if (endsAt.getTime() > Date.now()) {
         canGenerateNow = false;
         cooldownEndsAt = endsAt;
@@ -119,6 +130,8 @@ export function HrSubscriptionProvider({ children }: { children: ReactNode }) {
       limits,
       canGenerateNow,
       cooldownEndsAt,
+      generateWindowUsed,
+      generateWindowLimit,
       hasFeature,
       cancelPremium,
       purchaseAskAiPack: buyAskAiPack,

@@ -199,9 +199,8 @@ export function StudioPage() {
   const cooldownTimeStr = cooldownEndsAt
     ? cooldownEndsAt.toLocaleString(locale)
     : "";
-  // Note: quotaBlocked is intentionally excluded — the button stays enabled when the session
-  // is ready so users can click it and see the quota dialog explaining why it's blocked.
-  // handleGenerateQuestions guards the actual generation call.
+  // Note: quotaBlocked is intentionally excluded from canGenerate — sinh câu hỏi
+  // trên plan hiện có không trừ thêm lượt. handleGenerateQuestions chỉ chặn khi chưa có currentPlan.
   const canGenerate = useMemo(
     () => studio.settings?.readiness?.canGenerateQuestions ?? false,
     [studio.settings?.readiness?.canGenerateQuestions]
@@ -237,10 +236,9 @@ export function StudioPage() {
   }, [quotaBlocked, studio, switchMobileTab]);
 
   const handleGenerateQuestions = useCallback(() => {
-    // FE-side quota gate: show dialog immediately when we already know quota is blocked.
-    // This gives instant feedback without a round-trip. The BE still guards the actual call —
-    // if the local cache is stale, studio.quotaExceeded fires and shows the dialog too.
-    if (quotaBlocked) {
+    // BE trừ lượt lúc lập plan thành công. Sinh câu hỏi cùng phiên (currentPlan đã có)
+    // không trừ thêm — không chặn bằng quotaBlocked.
+    if (quotaBlocked && !studio.currentPlan) {
       quotaDialogTriggeredRef.current = true;
       setQuotaDialogOpen(true);
       return;

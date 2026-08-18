@@ -71,6 +71,8 @@ export function HrBillingSubscription() {
     loading,
     canGenerateNow,
     cooldownEndsAt,
+    generateWindowUsed,
+    generateWindowLimit,
     cancelPremium,
     purchaseAskAiPack,
     refresh,
@@ -322,19 +324,23 @@ export function HrBillingSubscription() {
                   {lang === "vi" ? "Lượt tạo bộ câu hỏi hôm nay" : "Question set generations today"}
                 </p>
                 <p className="text-white text-sm font-bold tabular-nums">
-                  {canGenerateNow ? "0" : "1"}
-                  <span className="text-white/75 font-normal">/1</span>
+                  {generateWindowUsed}
+                  <span className="text-white/75 font-normal">/{generateWindowLimit}</span>
                 </p>
               </div>
-              {/* Mini progress bar — green shimmer when exhausted (1/1), empty when quota remains */}
               <div className="h-1.5 rounded-full bg-white/20 overflow-hidden">
                 <div
                   className={cn(
                     "h-full rounded-full transition-all duration-500",
-                    canGenerateNow
-                      ? "w-0"
-                      : "w-full energy-bar-fill"
+                    generateWindowUsed >= generateWindowLimit
+                      ? "energy-bar-fill"
+                      : "bg-white/80"
                   )}
+                  style={{
+                    width: `${generateWindowLimit > 0
+                      ? Math.min(100, (generateWindowUsed / generateWindowLimit) * 100)
+                      : 0}%`,
+                  }}
                 />
               </div>
               {!canGenerateNow && cooldownEndsAt && (

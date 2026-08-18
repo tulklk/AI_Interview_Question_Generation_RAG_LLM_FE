@@ -40,24 +40,6 @@ export default async function RootLayout({
       style={{ colorScheme: isDark ? "dark" : "light" }}
       suppressHydrationWarning
     >
-      <head>
-        {/*
-          Blocking script — runs SYNCHRONOUSLY before any CSS/JS/React.
-          Reads localStorage and applies the correct class to <html> immediately,
-          preventing any flash of incorrect theme (FOIT) on page load.
-          Must stay inline (no src=) so the browser cannot defer it.
-        */}
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `(function(){try{
-  var s=localStorage.getItem('hiregena-theme');
-  var d=s==='dark'||(s==='system'&&window.matchMedia('(prefers-color-scheme:dark)').matches);
-  document.documentElement.classList.toggle('dark',d);
-  document.documentElement.style.colorScheme=d?'dark':'light';
-}catch(e){}})();`,
-          }}
-        />
-      </head>
       <body>
         <Providers>{children}</Providers>
       </body>
