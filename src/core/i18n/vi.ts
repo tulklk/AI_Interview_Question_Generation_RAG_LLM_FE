@@ -662,6 +662,7 @@ export const vi: Translations = {
     step2Subtitle: "Bước 2 / 2",
     continueButton: "Tiếp tục",
     backButton: "Quay lại",
+    signUpWithGoogle: "Đăng ký với Google",
     googleStep2Hint: "Hoàn tất hồ sơ để bắt đầu luyện phỏng vấn.",
     googleLinkedAs: "Đăng ký với Google: {{email}}",
     googleSignupSuccess: "Đăng nhập Google thành công với {{email}}. Vui lòng hoàn tất hồ sơ.",
