@@ -34,17 +34,17 @@ export function BenefitsSection() {
               delay={i * 100}
               className="h-full"
             >
-              <TiltCard className="h-full bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm p-6 flex flex-col gap-4">
+              <TiltCard className="h-full bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-6 flex flex-col gap-5">
                 <div
-                  className={`w-11 h-11 rounded-lg flex items-center justify-center shrink-0 ${item.iconBg}`}
+                  className={`w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 ${item.iconBg}`}
                 >
-                  <item.icon size={20} className={item.iconColor} />
+                  <item.icon size={26} className={item.iconColor} />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100 mb-1.5">
+                  <h3 className="text-[15px] font-bold text-gray-900 dark:text-gray-100 mb-1.5 leading-snug">
                     {b.items[i].title}
                   </h3>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">
+                  <p className="text-[12px] text-gray-400 dark:text-gray-500 leading-relaxed">
                     {b.items[i].description}
                   </p>
                 </div>

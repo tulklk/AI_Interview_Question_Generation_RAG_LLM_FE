@@ -20,8 +20,8 @@ export function AdminPlatformHealth() {
     <div className="hr-glass-card p-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center shrink-0">
-            <Activity size={14} className="text-gray-500 dark:text-gray-400" />
+          <div className="w-8 h-8 rounded-xl bg-emerald-100 dark:bg-emerald-950/50 flex items-center justify-center shrink-0">
+            <Activity size={14} className="text-emerald-600 dark:text-emerald-400" />
           </div>
           <div>
             <h2 className={cn("text-sm font-bold leading-tight", portalHeadingAlt)}>{h.title}</h2>

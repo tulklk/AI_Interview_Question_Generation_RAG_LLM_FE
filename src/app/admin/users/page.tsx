@@ -12,9 +12,9 @@ import { UserDetailPanel } from "@/features/admin/components/users/user-detail-p
 import { UserPagination } from "@/features/admin/components/users/user-pagination";
 import { getUserById, listUsers, updateUserStatus } from "@/features/admin/services/admin-users.service";
 import { UserFilters } from "@/features/admin/components/users/user-filters";
+import { Users as UsersIcon } from "lucide-react";
 import { useLanguage } from "@/shared/providers/language-context";
-import { cn } from "@/lib/cn";
-import { portalHeadingAlt, portalSubtextAlt } from "@/shared/utils/portal-ui";
+import { AdminPageHeader } from "@/features/admin/components/layout/admin-page-header";
 import { useToast } from "@/shared/providers/toast-context";
 import type { AdminUserDetail, AdminUserListItem } from "@/features/admin/types/admin-user";
 import { useSubscriptionRealtime } from "@/features/subscription/hooks/use-subscription-realtime";
@@ -218,10 +218,7 @@ export default function UserManagementPage() {
       breadcrumb={[{ label: "Admin", href: "/admin/dashboard" }, { label: u.heading }]}
     >
       <AdminRouteGuard>
-        <div className="mb-8 animate-fade-up">
-          <h2 className={cn("text-[30px] font-bold leading-9", portalHeadingAlt)}>{u.heading}</h2>
-          <p className={cn("text-base leading-6 mt-2", portalSubtextAlt)}>{u.subtext}</p>
-        </div>
+        <AdminPageHeader heading={u.heading} subtext={u.subtext} icon={UsersIcon} />
 
         <div className="animate-fade-up" style={{ animationDelay: "80ms" }}>
           <UserStats users={users} totalCount={totalCount} loading={loading} />

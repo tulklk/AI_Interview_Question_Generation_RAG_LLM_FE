@@ -23,6 +23,10 @@ export interface KpiCardCountUp {
 
 export interface KpiCardProps {
   icon: LucideIcon;
+  /** Tailwind classes for the icon container background (default: gray) */
+  iconBg?: string;
+  /** Tailwind classes for the icon color (default: gray) */
+  iconColor?: string;
   label: string;
   value: string;
   tooltip?: string;
@@ -65,6 +69,8 @@ function useCountUp(countUp: KpiCardCountUp | undefined, loading: boolean | unde
 
 export function KpiCard({
   icon: Icon,
+  iconBg = "bg-gray-100 dark:bg-gray-800",
+  iconColor = "text-gray-900 dark:text-gray-100",
   label,
   value,
   tooltip,
@@ -108,8 +114,8 @@ export function KpiCard({
   return (
     <div className="hr-stat-card p-5 h-full flex flex-col">
       <div className="flex items-center justify-between mb-3">
-        <div className="w-9 h-9 rounded-lg flex items-center justify-center shadow-sm ring-1 ring-black/5 dark:ring-white/10 bg-gray-100 dark:bg-gray-800">
-          <Icon size={16} className="text-gray-900 dark:text-gray-100" />
+        <div className={cn("w-9 h-9 rounded-lg flex items-center justify-center shadow-sm ring-1 ring-black/5 dark:ring-white/10", iconBg)}>
+          <Icon size={16} className={iconColor} />
         </div>
         {sparklineData && sparklineData.length >= 3 && (
           <motion.div

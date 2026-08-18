@@ -24,18 +24,24 @@ export function MarketplaceStats({ stats, loading, labels }: MarketplaceStatsPro
       label: labels.totalPublished,
       value: stats?.totalPublished ?? 0,
       icon: FileStack,
+      iconBg: "bg-blue-50 dark:bg-blue-950/40",
+      iconColor: "text-blue-600 dark:text-blue-400",
     },
     {
       key: "practices",
       label: labels.practicesLast7Days,
       value: stats?.practicesLast7Days ?? 0,
       icon: Activity,
+      iconBg: "bg-emerald-50 dark:bg-emerald-950/40",
+      iconColor: "text-emerald-600 dark:text-emerald-400",
     },
     {
       key: "pinned",
       label: labels.pinnedCount,
       value: stats?.pinnedCount ?? 0,
       icon: Pin,
+      iconBg: "bg-amber-50 dark:bg-amber-950/40",
+      iconColor: "text-amber-600 dark:text-amber-400",
     },
   ];
 
@@ -48,7 +54,9 @@ export function MarketplaceStats({ stats, loading, labels }: MarketplaceStatsPro
             <div key={card.key} className={cn("rounded-xl border p-4", portalCard)}>
               <div className="flex items-center justify-between gap-2">
                 <p className={cn("text-xs font-medium", portalSubtextAlt)}>{card.label}</p>
-                <Icon size={14} className="text-primary shrink-0" />
+                <div className={cn("w-7 h-7 rounded-lg flex items-center justify-center shrink-0", card.iconBg)}>
+                  <Icon size={13} className={card.iconColor} />
+                </div>
               </div>
               <p className={cn("mt-2 text-2xl font-bold tabular-nums", portalHeadingAlt)}>
                 {loading ? "—" : card.value.toLocaleString()}

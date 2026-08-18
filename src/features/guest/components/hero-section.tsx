@@ -1,12 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { Sparkles, ArrowRight, CheckCircle2, Tag } from "lucide-react";
+import { Sparkles, ArrowRight, CheckCircle2 } from "lucide-react";
 import { useLanguage } from "@/shared/providers/language-context";
 import { CosmicField } from "@/features/guest/components/cosmic-field";
-import { KEYWORD_ICONS } from "@/features/guest/components/keyword-icons";
-
-const keywords = ["React", "TypeScript", "Next.js", "SSR", "REST API"];
+import { MockupCard3D } from "@/features/guest/components/mockup-card-3d";
 
 const LIGHT_PARTICLES = [
   { x: 12, y: 18, size: 5, color: "rgba(124, 58, 237, 0.35)", delay: 0, dur: 14 },
@@ -24,7 +22,15 @@ export function HeroSection() {
   const h = t.hero;
 
   return (
-    <section id="home" className="relative py-20 px-6 overflow-hidden bg-white/92 dark:bg-gray-950/85">
+    <section
+      id="home"
+      className="relative px-6 overflow-hidden bg-white/92 dark:bg-gray-950/85"
+      style={{
+        minHeight: "calc(100dvh - 4rem)", /* fill remaining viewport after sticky navbar */
+        paddingTop: "0",
+        paddingBottom: "clamp(0.5rem, 2vh, 1.5rem)",
+      }}
+    >
       {/* ── Hero holographic accents: grid, aurora beams, glows, stars ── */}
       <div className="light-hero-bg absolute inset-0 pointer-events-none" aria-hidden="true">
         <div className="mesh-gradient hidden md:block" />
@@ -135,84 +141,21 @@ export function HeroSection() {
         </div>
 
         {/* Right column — slide-in wrapper + idle 3D tilt/float */}
+        {/* Right column — interactive 3D card (drag to rotate 360°) */}
         <div
-          className="hero-card-enter"
+          className="hero-card-enter w-full flex items-center justify-center"
           style={{ animationDelay: "200ms" }}
         >
-        <div className="hero-mockup-3d-wrap">
-          <div className="hero-mockup-3d-shadow" aria-hidden="true" />
-          <div className="hero-mockup-3d">
-          <div className="hero-mockup-card bg-white/80 dark:bg-gray-900 backdrop-blur-xl rounded-xl border border-gray-200 dark:border-gray-700 shadow-xl overflow-hidden">
-            <div className="bg-[#f5f7fb] dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700 px-5 py-3.5 flex items-center gap-3">
-              <div className="flex gap-1.5">
-                <span className="w-3 h-3 rounded-full bg-red-400" />
-                <span className="w-3 h-3 rounded-full bg-amber-400" />
-                <span className="w-3 h-3 rounded-full bg-emerald-400" />
-              </div>
-              <span className="text-xs font-medium text-gray-500 dark:text-gray-400 ml-1">{h.mockupTitle}</span>
-            </div>
-
-            <div className="p-5 space-y-4">
-              <div className="mockup-block-lift rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-4">
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="w-5 h-5 rounded-md bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
-                    <span className="text-gray-400 text-[10px]">📄</span>
-                  </div>
-                  <span className="text-xs font-semibold text-gray-700 dark:text-gray-200">{h.mockupJdLabel}</span>
-                </div>
-                <div className="text-xs text-gray-400 dark:text-gray-500 leading-relaxed bg-gray-50 dark:bg-gray-800 rounded-lg p-3 border border-gray-100 dark:border-gray-700">
-                  {h.mockupJdText}
-                </div>
-              </div>
-
-              <div className="mockup-block-lift rounded-lg border border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-900 p-4">
-                <div className="flex items-center gap-2 mb-2.5">
-                  <Tag size={13} className="text-[#6c47ff]" />
-                  <span className="text-xs font-semibold text-gray-700 dark:text-gray-200">{h.mockupKeywordsLabel}</span>
-                </div>
-                <div className="flex flex-wrap gap-1.5">
-                  {keywords.map((k) => {
-                    const iconConfig = KEYWORD_ICONS[k];
-                    const Icon = iconConfig?.icon;
-                    return (
-                      <span
-                        key={k}
-                        className="chip-pulse inline-flex items-center gap-1.5 text-xs font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 hover:bg-[#6c47ff]/10 hover:text-[#6c47ff] px-2.5 py-1 rounded-full transition-colors"
-                      >
-                        {Icon && <Icon size={12} className={`shrink-0 ${iconConfig.className}`} />}
-                        {k}
-                      </span>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div className="mockup-block-lift rounded-lg border border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-900 p-4">
-                <div className="flex items-center gap-2 mb-3">
-                  <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-700">
-                    Medium
-                  </span>
-                  <span className="text-xs font-medium text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-2.5 py-0.5 rounded-full">
-                    Next.js
-                  </span>
-                </div>
-                <p className="text-sm font-medium text-gray-800 dark:text-gray-200 leading-relaxed">
-                  {h.mockupQuestion}
-                </p>
-                <div className="mt-3 rounded-lg bg-[#f5f3ff] dark:bg-[#6c47ff]/10 border border-[#6c47ff]/15 p-3">
-                  <div className="flex items-center gap-1.5 mb-1.5">
-                    <Sparkles size={11} className="text-[#6c47ff]" />
-                    <span className="text-[10px] font-semibold text-[#6c47ff]">
-                      {h.mockupAiLabel}
-                    </span>
-                  </div>
-                  <p className="text-xs text-gray-600 dark:text-gray-300 leading-relaxed">{h.mockupAnswer}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-          </div>
-        </div>
+          <MockupCard3D
+            title={h.mockupTitle}
+            jdLabel={h.mockupJdLabel}
+            jdText={h.mockupJdText}
+            kwLabel={h.mockupKeywordsLabel}
+            question={h.mockupQuestion}
+            aiLabel={h.mockupAiLabel}
+            aiAnswer={h.mockupAnswer}
+            className="w-full h-175"
+          />
         </div>
       </div>
     </section>

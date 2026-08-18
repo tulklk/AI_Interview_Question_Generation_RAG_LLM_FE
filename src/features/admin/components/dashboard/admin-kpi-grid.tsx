@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { animate } from "framer-motion";
+import { animate, motion } from "framer-motion";
 import { useAdminInView } from "@/features/admin/hooks/use-admin-in-view";
 import { Users, UserCheck, UserSearch, Building2, Zap, MonitorPlay } from "lucide-react";
 import { cn } from "@/lib/cn";
@@ -28,14 +28,13 @@ interface KpiCardProps {
   iconBg: string;
   iconColor: string;
   label: string;
-  desc: string;
   value: number;
   loading: boolean;
   pending?: boolean;
   isInView: boolean;
 }
 
-function KpiCard({ icon: Icon, iconBg, iconColor, label, desc, value, loading, pending, isInView }: KpiCardProps) {
+function KpiCard({ icon: Icon, iconBg, iconColor, label, value, loading, pending, isInView }: KpiCardProps) {
   const animated = useCountUp(value, isInView && !loading && !pending);
 
   return (
@@ -61,7 +60,6 @@ function KpiCard({ icon: Icon, iconBg, iconColor, label, desc, value, loading, p
         <p className={cn("text-[11px] font-semibold uppercase tracking-wider mt-2", portalSubtextAlt)}>
           {label}
         </p>
-        <p className={cn("text-[10px] mt-0.5 leading-snug", portalSubtextAlt)}>{desc}</p>
       </div>
     </div>
   );
@@ -83,7 +81,6 @@ export function AdminKpiGrid({ data, loading }: AdminKpiGridProps) {
       iconBg: "bg-violet-50 dark:bg-violet-950/40",
       iconColor: "text-violet-600 dark:text-violet-400",
       label: k.totalUsers,
-      desc: k.totalUsersDesc,
       value: data?.totalUsers ?? 0,
       loading,
     },
@@ -92,7 +89,6 @@ export function AdminKpiGrid({ data, loading }: AdminKpiGridProps) {
       iconBg: "bg-blue-50 dark:bg-blue-950/40",
       iconColor: "text-blue-600 dark:text-blue-400",
       label: k.hrManagers,
-      desc: k.hrManagersDesc,
       value: data?.hrManagers ?? 0,
       loading,
     },
@@ -101,7 +97,6 @@ export function AdminKpiGrid({ data, loading }: AdminKpiGridProps) {
       iconBg: "bg-emerald-50 dark:bg-emerald-950/40",
       iconColor: "text-emerald-600 dark:text-emerald-400",
       label: k.jobSeekers,
-      desc: k.jobSeekersDesc,
       value: data?.jobSeekers ?? 0,
       loading,
     },
@@ -110,7 +105,6 @@ export function AdminKpiGrid({ data, loading }: AdminKpiGridProps) {
       iconBg: "bg-amber-50 dark:bg-amber-950/40",
       iconColor: "text-amber-600 dark:text-amber-400",
       label: k.companies,
-      desc: k.companiesDesc,
       value: data?.totalCompanies ?? 0,
       loading,
     },
@@ -119,7 +113,6 @@ export function AdminKpiGrid({ data, loading }: AdminKpiGridProps) {
       iconBg: "bg-gray-50 dark:bg-gray-800",
       iconColor: "text-gray-400 dark:text-gray-600",
       label: k.questionsGenerated,
-      desc: k.questionsDesc,
       value: 0,
       loading: false,
       pending: true,
@@ -129,7 +122,6 @@ export function AdminKpiGrid({ data, loading }: AdminKpiGridProps) {
       iconBg: "bg-gray-50 dark:bg-gray-800",
       iconColor: "text-gray-400 dark:text-gray-600",
       label: k.practiceSessions,
-      desc: k.practiceDesc,
       value: 0,
       loading: false,
       pending: true,
@@ -138,8 +130,15 @@ export function AdminKpiGrid({ data, loading }: AdminKpiGridProps) {
 
   return (
     <div ref={ref} className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-4">
-      {kpis.map((kpi) => (
-        <KpiCard key={kpi.label} {...kpi} isInView={isInView} />
+      {kpis.map((kpi, index) => (
+        <motion.div
+          key={kpi.label}
+          initial={{ opacity: 0, y: 14, scale: 0.97 }}
+          animate={isInView ? { opacity: 1, y: 0, scale: 1 } : {}}
+          transition={{ duration: 0.4, delay: index * 0.06, ease: "easeOut" }}
+        >
+          <KpiCard {...kpi} isInView={isInView} />
+        </motion.div>
       ))}
     </div>
   );
