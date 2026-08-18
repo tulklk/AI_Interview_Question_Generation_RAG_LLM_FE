@@ -26,6 +26,7 @@ import {
   sendRecommendationOffer,
   markRecommendationViewed,
   restoreRecommendation,
+  isCandidateAccepted,
   type CandidateRecommendation,
   type CandidateRecommendationDetail,
   type RecommendationCvDownload,
@@ -582,7 +583,17 @@ export function RecommendationDetail({ id }: { id: string }) {
                   <p className={cn("text-[12px] font-medium mt-1", portalSubtextAlt)}>{rec.targetRole}</p>
                 )}
               </div>
-              <StatusChip status={rec.status} labels={p.card} />
+              <div className="flex flex-wrap items-center gap-2">
+                <StatusChip status={rec.status} labels={p.card} />
+                {isCandidateAccepted(rec) && (
+                  <span
+                    title={p.card.acceptedHint}
+                    className="inline-flex text-[12px] font-semibold px-3 py-1 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400 whitespace-nowrap"
+                  >
+                    {p.card.accepted}
+                  </span>
+                )}
+              </div>
             </div>
 
             {/* Social quick links */}
@@ -1176,10 +1187,15 @@ export function RecommendationDetail({ id }: { id: string }) {
           )}
 
           {/* ⑥ Phản hồi lời mời */}
-          {(rec.invitationResponseMessage || rec.invitationSharedPhoneNumber) && (
+          {(isCandidateAccepted(rec) || rec.invitationResponseMessage || rec.invitationSharedPhoneNumber) && (
             <SectionCard title={p.detail.candidateContactTitle} icon={Phone}
               iconBg="bg-emerald-50 dark:bg-emerald-950/40" iconColor="text-emerald-600 dark:text-emerald-400">
               <p className={cn("text-[12px] mb-4 -mt-2", portalSubtextAlt)}>{p.detail.candidateContactSubtitle}</p>
+              {isCandidateAccepted(rec) && !rec.invitationSharedPhoneNumber && !rec.invitationResponseMessage ? (
+                <p className={cn("text-[14px] leading-relaxed", portalHeadingAlt)}>
+                  {p.detail.candidateAcceptedEmpty}
+                </p>
+              ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-5">
                 {rec.invitationSharedPhoneNumber && (
                   <Field label={p.detail.candidateContactPhone}>
@@ -1198,6 +1214,7 @@ export function RecommendationDetail({ id }: { id: string }) {
                   </Field>
                 )}
               </div>
+              )}
             </SectionCard>
           )}
 

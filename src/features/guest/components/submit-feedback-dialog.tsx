@@ -143,7 +143,7 @@ function SuccessIcon() {
 // ── Dialog ────────────────────────────────────────────────────────────────────
 
 export function SubmitFeedbackDialog({ open, onClose }: SubmitFeedbackDialogProps) {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const p = t.submitFeedbackDialog;
   const { mounted, exiting } = useOverlayTransition(open);
   const visible = mounted && !exiting;
@@ -256,6 +256,7 @@ export function SubmitFeedbackDialog({ open, onClose }: SubmitFeedbackDialogProp
         {/* ── Success state ─────────────────────────────────────────────── */}
         {done && (
           <div
+            key={lang}
             className="flex flex-col items-center gap-5 px-8 py-12 text-center"
             style={{ animation: "sectionSlideUp 0.3s ease-out both" }}
           >
@@ -279,7 +280,7 @@ export function SubmitFeedbackDialog({ open, onClose }: SubmitFeedbackDialogProp
               )}
               style={{ animation: "sectionSlideUp 0.38s ease-out 0.25s both" }}
             >
-              {p.cancel}
+              {p.successClose}
             </button>
           </div>
         )}

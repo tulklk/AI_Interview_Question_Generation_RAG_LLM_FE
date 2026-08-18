@@ -19,6 +19,7 @@ export interface CandidateRecommendation {
   /** Only set once the candidate has ACCEPTED the invite — sent by the candidate themself, not their profile phone. */
   invitationResponseMessage: string | null;
   invitationSharedPhoneNumber: string | null;
+  invitationStatus: string | null;
   latestOfferStatus: string | null;
   viewedAt: string | null;
   fitPercent: number | null;
@@ -157,6 +158,14 @@ function normalizeStatus(raw: string): RecommendationStatus {
     : "NEW";
 }
 
+export function isCandidateAccepted(
+  rec: Pick<CandidateRecommendation, "invitationStatus" | "latestOfferStatus">,
+): boolean {
+  const inv = (rec.invitationStatus ?? "").toUpperCase();
+  const off = (rec.latestOfferStatus ?? "").toUpperCase();
+  return inv === "ACCEPTED" || off === "ACCEPTED";
+}
+
 function normalizeRec(raw: unknown): CandidateRecommendation | null {
   const src = asRecord(raw);
   if (!src) return null;
@@ -182,6 +191,7 @@ function normalizeRec(raw: unknown): CandidateRecommendation | null {
           : null,
     invitationResponseMessage: pickNullableStr(src, "invitationResponseMessage"),
     invitationSharedPhoneNumber: pickNullableStr(src, "invitationSharedPhoneNumber"),
+    invitationStatus: pickNullableStr(src, "invitationStatus", "InvitationStatus"),
     latestOfferStatus: pickNullableStr(src, "latestOfferStatus", "LatestOfferStatus"),
     viewedAt: pickNullableStr(src, "viewedAt", "ViewedAt"),
     fitPercent: pickNullableNum(src, "fitPercent", "FitPercent"),

@@ -86,6 +86,7 @@ function toRecommendationStub(row: {
     status: row.status,
     invitationResponseMessage: null,
     invitationSharedPhoneNumber: null,
+    invitationStatus: null,
     latestOfferStatus: null,
     viewedAt: null,
     fitPercent: null,
