@@ -72,8 +72,8 @@ describe("login-welcome.ts", () => {
   afterEach(() => sessionStorage.clear());
 
   test.each([
-    ["/jobseeker", "jobseeker"],
-    ["/jobseeker/", "jobseeker"],
+    ["/candidate", "jobseeker"],
+    ["/candidate/", "jobseeker"],
     ["/admin/dashboard", "admin"],
     ["/admin/users", "admin"],
     ["/hr/dashboard", "hr"],

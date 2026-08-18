@@ -28,7 +28,7 @@ vi.mock("@/core/auth/permissions", () => ({
   isAuthenticated: vi.fn(),
   getUserRole: vi.fn(),
   getRoleRedirect: (role: string | null) =>
-    role === "HR_MANAGER" ? "/hr/dashboard" : role === "JOB_SEEKER" ? "/jobseeker" : "/login",
+    role === "HR_MANAGER" ? "/hr/dashboard" : role === "JOB_SEEKER" ? "/candidate" : "/login",
 }));
 
 vi.mock("@/features/auth/context/user-context", () => ({
@@ -86,7 +86,7 @@ describe("AUTH006 — Admin route access control", () => {
     await waitFor(() => expect(replace).toHaveBeenCalledWith("/hr/dashboard"));
   });
 
-  test("AUTH006-3: Jobseeker role is denied with a toast and redirected to /jobseeker", async () => {
+  test("AUTH006-3: Jobseeker role is denied with a toast and redirected to /candidate", async () => {
     vi.mocked(isAuthenticated).mockReturnValue(true);
     vi.mocked(getUserRole).mockReturnValue("JOB_SEEKER");
     vi.mocked(useUser).mockReturnValue({
@@ -99,7 +99,7 @@ describe("AUTH006 — Admin route access control", () => {
     renderGuard();
 
     expect(await screen.findByText("You do not have permission to access this page.")).toBeInTheDocument();
-    await waitFor(() => expect(replace).toHaveBeenCalledWith("/jobseeker"));
+    await waitFor(() => expect(replace).toHaveBeenCalledWith("/candidate"));
   });
 
   test("AUTH006-4: Admin role renders the guarded page normally", async () => {

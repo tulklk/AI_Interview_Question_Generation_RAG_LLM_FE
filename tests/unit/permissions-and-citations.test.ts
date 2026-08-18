@@ -59,8 +59,8 @@ describe("permissions.ts", () => {
     ["ADMIN", "/admin/dashboard"],
     ["SUPER_ADMIN", "/admin/dashboard"],
     ["HR_MANAGER", "/hr/dashboard"],
-    ["JOB_SEEKER", "/jobseeker"],
-    [null, "/jobseeker"],
+    ["JOB_SEEKER", "/candidate"],
+    [null, "/candidate"],
   ] as const)("getRoleRedirect(%s) -> %s", (role, expected) => {
     expect(getRoleRedirect(role)).toBe(expected);
   });

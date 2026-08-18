@@ -170,7 +170,7 @@ describe("Marketplace — bookmarking", () => {
 });
 
 describe("Marketplace — navigating to a set", () => {
-  test("MKT-7: each card's Start Practice button links to its own set-detail route (/jobseeker/sets/{id})", async () => {
+  test("MKT-7: each card's Start Practice button links to its own set-detail route (/candidate/sets/{id})", async () => {
     renderCandidate(<MarketplacePage />);
     await screen.findByText("Backend Developer Interview", {}, { timeout: 10000 });
 
@@ -179,8 +179,8 @@ describe("Marketplace — navigating to a set", () => {
     // index the Start Practice links the same way as the SETS fixture array.
     const links = screen.getAllByRole("link", { name: "Start Practice" });
     expect(links).toHaveLength(3);
-    expect(links[0]).toHaveAttribute("href", "/jobseeker/sets/s1");
-    expect(links[1]).toHaveAttribute("href", "/jobseeker/sets/s2");
-    expect(links[2]).toHaveAttribute("href", "/jobseeker/sets/s3");
+    expect(links[0]).toHaveAttribute("href", "/candidate/sets/s1");
+    expect(links[1]).toHaveAttribute("href", "/candidate/sets/s2");
+    expect(links[2]).toHaveAttribute("href", "/candidate/sets/s3");
   });
 });

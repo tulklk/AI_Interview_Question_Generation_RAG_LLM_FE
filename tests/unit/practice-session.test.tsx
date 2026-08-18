@@ -178,7 +178,7 @@ describe("Practice Session — answering and finishing", () => {
     await user.click(screen.getByRole("button", { name: "Submit & grade" }));
 
     await waitFor(() => expect(practiceApi.completePracticeSession).toHaveBeenCalledWith("session-1"));
-    await waitFor(() => expect(push).toHaveBeenCalledWith("/jobseeker/practice/session-1/result"));
+    await waitFor(() => expect(push).toHaveBeenCalledWith("/candidate/practice/session-1/result"));
   });
 
   test("PRACTICE-9: if complete() fails but the session already reports COMPLETED server-side (BE auto-completed via its own time limit), the candidate is still routed to the result page instead of shown an error", async () => {
@@ -201,7 +201,7 @@ describe("Practice Session — answering and finishing", () => {
     await screen.findByText("Submit this session?");
     await user.click(screen.getByRole("button", { name: "Submit & grade" }));
 
-    await waitFor(() => expect(push).toHaveBeenCalledWith("/jobseeker/practice/session-1/result"));
+    await waitFor(() => expect(push).toHaveBeenCalledWith("/candidate/practice/session-1/result"));
     expect(screen.queryByText("Failed to finish the session. Please try again.")).not.toBeInTheDocument();
   });
 });

@@ -120,7 +120,7 @@ describe("AUTH002 — Login form", () => {
     expect(push.mock.calls[0][0]).toContain("/hr/dashboard");
   });
 
-  test("AUTH002-7: valid Jobseeker credentials redirect to /jobseeker", async () => {
+  test("AUTH002-7: valid Jobseeker credentials redirect to /candidate", async () => {
     vi.mocked(login).mockResolvedValueOnce({
       accessToken: "fake-token",
       refreshToken: "fake-refresh",
@@ -134,7 +134,7 @@ describe("AUTH002 — Login form", () => {
     await user.click(screen.getByRole("button", { name: /sign in/i }));
 
     await waitFor(() => expect(push).toHaveBeenCalled());
-    expect(push.mock.calls[0][0]).toContain("/jobseeker");
+    expect(push.mock.calls[0][0]).toContain("/candidate");
   });
 });
 
