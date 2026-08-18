@@ -23,8 +23,10 @@ import { withAbandonedToast } from "@/features/interview/services/interview.serv
 import { ConfirmDialog } from "@/shared/components/ui/confirm-dialog";
 import { useLanguage } from "@/shared/providers/language-context";
 import { useToast } from "@/shared/providers/toast-context";
+import { ShoppingBag } from "lucide-react";
 import { cn } from "@/lib/cn";
-import { portalHeadingAlt, portalInput, portalSubtextAlt } from "@/shared/utils/portal-ui";
+import { portalInput, portalSubtextAlt, portalHeadingAlt } from "@/shared/utils/portal-ui";
+import { AdminPageHeader } from "@/features/admin/components/layout/admin-page-header";
 
 const PAGE_SIZE = 9;
 const SEARCH_DEBOUNCE_MS = 300;
@@ -173,10 +175,16 @@ export default function AdminMarketplacePage() {
     <AdminRouteGuard>
       <AdminAppShell pageTitle={m.heading}>
         <div className="space-y-5">
-          <div>
-            <h1 className={cn("text-xl font-bold", portalHeadingAlt)}>{m.heading}</h1>
-            <p className={cn("mt-1 text-sm", portalSubtextAlt)}>{m.subtext}</p>
-          </div>
+          <AdminPageHeader
+            heading={m.heading}
+            subtext={m.subtext}
+            icon={ShoppingBag}
+            iconGradient="bg-linear-to-br from-pink-500 to-rose-500"
+            accentGradient="bg-linear-to-r from-pink-500 via-rose-400 to-primary"
+            cardGradient="bg-linear-to-r from-pink-50 via-white to-violet-50 dark:from-pink-950/10 dark:via-gray-900 dark:to-violet-950/10"
+            cardBorder="border-pink-100 dark:border-pink-900/30"
+            iconShadow="shadow-pink-200 dark:shadow-pink-900/30"
+          />
 
           <MarketplaceStats
             stats={stats}

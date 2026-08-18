@@ -428,11 +428,13 @@
 html {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  overscroll-behavior: none; /* prevent rubber-band / elastic scroll in all directions */
 }
 
 body {
   margin: 0;
   overflow-x: hidden;
+  overscroll-behavior: none; /* belt-and-suspenders: some browsers check body, not html */
   background-color: #F8FAFC;
   color: #111827;
   font-family: var(--font-be-vietnam-pro), "Be Vietnam Pro", system-ui, -apple-system, sans-serif;

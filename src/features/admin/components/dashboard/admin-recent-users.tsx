@@ -160,7 +160,7 @@ export function AdminRecentUsers({ users, loading }: AdminRecentUsersProps) {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-              {users.slice(0, 5).map((user) => {
+              {users.slice(0, 5).map((user, idx) => {
                 const statusKey = getAdminUserStatus(user);
                 const roleKey = user.roleKey ?? normalizeAdminRoleKey(user.role);
                 const statusLabel =
@@ -174,7 +174,11 @@ export function AdminRecentUsers({ users, loading }: AdminRecentUsersProps) {
                     })
                   : "—";
                 return (
-                  <tr key={user.id} className="hr-table-row">
+                  <tr
+                    key={user.id}
+                    className="hr-table-row"
+                    style={{ animation: `rowSlideIn 0.3s ease-out ${idx * 55}ms both` }}
+                  >
                     <td className="px-4 py-3">
                       <p
                         className={cn(

@@ -126,23 +126,22 @@ interface KpiCardProps {
   iconBg: string;
   iconColor: string;
   label: string;
-  desc: string;
   value: string | number;
   loading: boolean;
   sparkline?: number[];
   sparklineColor?: string;
 }
 
-function KpiCard({ icon: Icon, iconBg, iconColor, label, desc, value, loading, sparkline, sparklineColor = "#7C3AED" }: KpiCardProps) {
+function KpiCard({ icon: Icon, iconBg, iconColor, label, value, loading, sparkline, sparklineColor = "#7C3AED" }: KpiCardProps) {
   const isNumeric = typeof value === "number" || /^\d+(?:\.\d+)?%?$/.test(String(value));
   const hasChart = !loading && sparkline && sparkline.length >= 2 && sparkline.some(v => v > 0);
   return (
-    <div className="hr-glass-card p-4 flex flex-col gap-2 h-full min-h-30">
+    <div className="hr-glass-card p-4 flex flex-col gap-3 h-full min-h-28">
 
-      {/* Row 1: icon (left) + chart (right) — text is NOT in this row */}
+      {/* Row 1: icon (left) + sparkline (right) */}
       <div className="flex items-start justify-between">
-        <div className={cn("w-9 h-9 rounded-xl flex items-center justify-center shrink-0", iconBg)}>
-          <Icon size={16} className={iconColor} />
+        <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center shrink-0", iconBg)}>
+          <Icon size={18} className={iconColor} />
         </div>
         {hasChart ? (
           <motion.div
@@ -156,38 +155,30 @@ function KpiCard({ icon: Icon, iconBg, iconColor, label, desc, value, loading, s
             <HrSparkline data={sparkline!} color={sparklineColor} />
           </motion.div>
         ) : (
-          /* placeholder keeps consistent height when no chart */
           <div className="h-7" />
         )}
       </div>
 
-      {/* Row 2: label + desc — full width, no truncation */}
-      <div>
-        <p className={cn("text-[11px] font-semibold uppercase tracking-wider leading-tight", portalSubtextAlt)}>
-          {label}
-        </p>
-        <p className={cn("text-[10px] mt-0.5 leading-tight", portalSubtextAlt)}>
-          {desc}
-        </p>
-      </div>
-
-      {/* Row 3: value — pushed to bottom */}
+      {/* Row 2: value — large, prominent */}
       {loading ? (
-        <div className="mt-auto h-7 w-20 rounded-lg bg-gray-100 dark:bg-gray-800 animate-pulse" />
+        <div className="h-7 w-16 rounded-lg bg-gray-100 dark:bg-gray-800 animate-pulse" />
       ) : (
         <p
           title={isNumeric ? undefined : String(value)}
           className={cn(
-            "mt-auto font-extrabold tracking-tight min-w-0",
-            isNumeric
-              ? "text-[26px] leading-none tabular-nums"
-              : "text-[15px] leading-none truncate",
+            "font-extrabold tracking-tight min-w-0 leading-none",
+            isNumeric ? "text-[28px] tabular-nums" : "text-[15px] truncate",
             portalHeadingAlt
           )}
         >
           <KpiValue value={value} />
         </p>
       )}
+
+      {/* Row 3: label — concise, bottom */}
+      <p className={cn("text-[11px] font-semibold uppercase tracking-wider leading-tight mt-auto", portalSubtextAlt)}>
+        {label}
+      </p>
     </div>
   );
 }
@@ -340,6 +331,8 @@ interface ChartCardProps {
   title: string;
   subtitle: string;
   icon: React.ElementType;
+  iconBg?: string;
+  iconColor?: string;
   children: React.ReactNode;
   loading: boolean;
   empty: boolean;
@@ -347,13 +340,13 @@ interface ChartCardProps {
   headerRight?: React.ReactNode;
 }
 
-function ChartCard({ title, subtitle, icon: Icon, children, loading, empty, emptyText, headerRight }: ChartCardProps) {
+function ChartCard({ title, subtitle, icon: Icon, iconBg = "bg-gray-100 dark:bg-gray-800", iconColor = "text-gray-600 dark:text-gray-400", children, loading, empty, emptyText, headerRight }: ChartCardProps) {
   return (
     <div className="hr-glass-card overflow-hidden">
       <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-800">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center shrink-0">
-            <Icon size={15} className="text-gray-600 dark:text-gray-400" />
+          <div className={cn("w-8 h-8 rounded-xl flex items-center justify-center shrink-0", iconBg)}>
+            <Icon size={15} className={iconColor} />
           </div>
           <div>
             <h2 className={cn("text-[14px] font-bold leading-tight", portalHeadingAlt)}>{title}</h2>
@@ -396,27 +389,23 @@ function SkeletonRows({ count }: { count: number }) {
 // Quick action card
 // ---------------------------------------------------------------------------
 
-function QuickAction({ icon: Icon, iconBg, iconColor, label, desc, href }: {
+function QuickAction({ icon: Icon, iconBg, iconColor, label, href }: {
   icon: React.ElementType;
   iconBg: string;
   iconColor: string;
   label: string;
-  desc: string;
   href: string;
 }) {
   return (
     <Link
       href={href}
-      className="flex items-center gap-3 p-3.5 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors group"
+      className="flex items-center gap-3 px-3.5 py-3 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors group"
     >
-      <div className={cn("w-9 h-9 rounded-xl flex items-center justify-center shrink-0", iconBg)}>
-        <Icon size={16} className={iconColor} />
+      <div className={cn("w-8 h-8 rounded-xl flex items-center justify-center shrink-0", iconBg)}>
+        <Icon size={15} className={iconColor} />
       </div>
-      <div className="min-w-0 flex-1">
-        <p className={cn("text-[13px] font-semibold leading-tight", portalHeadingAlt)}>{label}</p>
-        <p className={cn("text-[11px] mt-0.5 truncate", portalSubtextAlt)}>{desc}</p>
-      </div>
-      <ArrowRight size={14} className="text-gray-400 group-hover:text-primary transition-colors shrink-0" />
+      <p className={cn("text-[13px] font-semibold flex-1 leading-tight", portalHeadingAlt)}>{label}</p>
+      <ArrowRight size={13} className="text-gray-400 group-hover:text-primary transition-colors shrink-0" />
     </Link>
   );
 }
@@ -458,10 +447,9 @@ export function HrDashboard() {
   const kpis: KpiCardProps[] = [
     {
       icon: Zap,
-      iconBg: "bg-gray-100 dark:bg-gray-800",
-      iconColor: "text-gray-600 dark:text-gray-400",
+      iconBg: "bg-violet-100 dark:bg-violet-950/50",
+      iconColor: "text-violet-600 dark:text-violet-400",
       label: p.kpi.totalSessions,
-      desc: p.kpi.totalSessionsDesc,
       value: data.totalSessions,
       loading: data.loading,
       sparkline: totalSparkline,
@@ -469,10 +457,9 @@ export function HrDashboard() {
     },
     {
       icon: CheckCircle2,
-      iconBg: "bg-gray-100 dark:bg-gray-800",
-      iconColor: "text-gray-600 dark:text-gray-400",
+      iconBg: "bg-emerald-100 dark:bg-emerald-950/50",
+      iconColor: "text-emerald-600 dark:text-emerald-400",
       label: p.kpi.completedSessions,
-      desc: p.kpi.completedSessionsDesc,
       value: data.completedSessions,
       loading: data.loading,
       sparkline: completedSparkline,
@@ -480,10 +467,9 @@ export function HrDashboard() {
     },
     {
       icon: MessageSquareText,
-      iconBg: "bg-gray-100 dark:bg-gray-800",
-      iconColor: "text-gray-600 dark:text-gray-400",
+      iconBg: "bg-blue-100 dark:bg-blue-950/50",
+      iconColor: "text-blue-600 dark:text-blue-400",
       label: p.kpi.totalQuestions,
-      desc: p.kpi.totalQuestionsDesc,
       value: data.totalQuestionsGenerated,
       loading: data.loading,
       sparkline: questionsSparkline,
@@ -491,10 +477,9 @@ export function HrDashboard() {
     },
     {
       icon: TrendingUp,
-      iconBg: "bg-gray-100 dark:bg-gray-800",
-      iconColor: "text-gray-600 dark:text-gray-400",
+      iconBg: "bg-amber-100 dark:bg-amber-950/50",
+      iconColor: "text-amber-600 dark:text-amber-400",
       label: p.kpi.successRate,
-      desc: p.kpi.successRateDesc,
       value: `${data.successRate}%`,
       loading: data.loading,
       sparkline: successSparkline,
@@ -502,10 +487,9 @@ export function HrDashboard() {
     },
     {
       icon: CalendarDays,
-      iconBg: "bg-gray-100 dark:bg-gray-800",
-      iconColor: "text-gray-600 dark:text-gray-400",
+      iconBg: "bg-cyan-100 dark:bg-cyan-950/50",
+      iconColor: "text-cyan-600 dark:text-cyan-400",
       label: p.kpi.thisMonth,
-      desc: p.kpi.thisMonthDesc,
       value: data.thisMonthSessions,
       loading: data.loading,
       sparkline: thisMonthSparkline,
@@ -513,10 +497,9 @@ export function HrDashboard() {
     },
     {
       icon: Briefcase,
-      iconBg: "bg-gray-100 dark:bg-gray-800",
-      iconColor: "text-gray-600 dark:text-gray-400",
+      iconBg: "bg-rose-100 dark:bg-rose-950/50",
+      iconColor: "text-rose-600 dark:text-rose-400",
       label: p.kpi.topRole,
-      desc: p.kpi.topRoleDesc,
       value: sanitizeRoleLabel(data.topRole) || "—",
       loading: data.loading,
       // no sparkline — text value, not numeric
@@ -602,6 +585,8 @@ export function HrDashboard() {
           title={p.activityChart.title}
           subtitle={p.activityChart.subtitle}
           icon={BarChart2}
+          iconBg="bg-blue-100 dark:bg-blue-950/50"
+          iconColor="text-blue-600 dark:text-blue-400"
           loading={data.loading}
           empty={activityEmpty}
           emptyText={p.activityChart.empty}
@@ -613,6 +598,8 @@ export function HrDashboard() {
           title={p.typeChart.title}
           subtitle={p.typeChart.subtitle}
           icon={PieChart}
+          iconBg="bg-violet-100 dark:bg-violet-950/50"
+          iconColor="text-violet-600 dark:text-violet-400"
           loading={data.loading}
           empty={typeEmpty}
           emptyText={p.typeChart.empty}
@@ -627,8 +614,8 @@ export function HrDashboard() {
         <motion.div className="hr-glass-card overflow-hidden" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
           <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-800">
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center shrink-0">
-                <History size={15} className="text-gray-600 dark:text-gray-400" />
+              <div className="w-8 h-8 rounded-xl bg-amber-100 dark:bg-amber-950/50 flex items-center justify-center shrink-0">
+                <History size={15} className="text-amber-600 dark:text-amber-400" />
               </div>
               <div>
                 <h2 className={cn("text-[14px] font-bold leading-tight", portalHeadingAlt)}>{p.recentSessions.title}</h2>
@@ -711,8 +698,8 @@ export function HrDashboard() {
           {/* AI Insights */}
           <motion.div className="hr-glass-card p-5" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
             <div className="flex items-center gap-2.5 mb-4">
-              <div className="w-8 h-8 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center shrink-0">
-                <Lightbulb size={15} className="text-gray-600 dark:text-gray-400" />
+              <div className="w-8 h-8 rounded-xl bg-yellow-100 dark:bg-yellow-950/50 flex items-center justify-center shrink-0">
+                <Lightbulb size={15} className="text-yellow-600 dark:text-yellow-400" />
               </div>
               <div>
                 <h2 className={cn("text-[14px] font-bold leading-tight", portalHeadingAlt)}>{p.insights.title}</h2>
@@ -757,10 +744,10 @@ export function HrDashboard() {
           {/* Quick Actions */}
           <motion.div className="hr-glass-card p-2" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}>
             <p className={cn("text-[11px] font-semibold uppercase tracking-wider px-3 pt-3 pb-1", portalSubtextAlt)}>{p.quickActions.title}</p>
-            <QuickAction icon={Zap} iconBg="bg-violet-100 dark:bg-violet-950/50" iconColor="text-violet-600 dark:text-violet-400" label={p.quickActions.generate} desc={p.quickActions.generateDesc} href="/hr/generate-question" />
-            <QuickAction icon={History} iconBg="bg-gray-100 dark:bg-gray-800" iconColor="text-gray-600 dark:text-gray-400" label={p.quickActions.history} desc={p.quickActions.historyDesc} href="/hr/history" />
-            <QuickAction icon={Users} iconBg="bg-blue-100 dark:bg-blue-950/50" iconColor="text-blue-600 dark:text-blue-400" label={p.quickActions.candidates} desc={p.quickActions.candidatesDesc} href="/hr/candidate-recommendations" />
-            <QuickAction icon={Settings} iconBg="bg-emerald-100 dark:bg-emerald-950/50" iconColor="text-emerald-600 dark:text-emerald-400" label={p.quickActions.settings} desc={p.quickActions.settingsDesc} href="/hr/settings" />
+            <QuickAction icon={Zap} iconBg="bg-violet-100 dark:bg-violet-950/50" iconColor="text-violet-600 dark:text-violet-400" label={p.quickActions.generate} href="/hr/generate-question" />
+            <QuickAction icon={History} iconBg="bg-amber-100 dark:bg-amber-950/50" iconColor="text-amber-600 dark:text-amber-400" label={p.quickActions.history} href="/hr/history" />
+            <QuickAction icon={Users} iconBg="bg-blue-100 dark:bg-blue-950/50" iconColor="text-blue-600 dark:text-blue-400" label={p.quickActions.candidates} href="/hr/candidate-recommendations" />
+            <QuickAction icon={Settings} iconBg="bg-emerald-100 dark:bg-emerald-950/50" iconColor="text-emerald-600 dark:text-emerald-400" label={p.quickActions.settings} href="/hr/settings" />
           </motion.div>
         </div>
       </div>
@@ -769,8 +756,8 @@ export function HrDashboard() {
       <motion.div className="hr-glass-card overflow-hidden" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-800">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center shrink-0">
-              <Users size={15} className="text-gray-600 dark:text-gray-400" />
+            <div className="w-8 h-8 rounded-xl bg-blue-100 dark:bg-blue-950/50 flex items-center justify-center shrink-0">
+              <Users size={15} className="text-blue-600 dark:text-blue-400" />
             </div>
             <div>
               <h2 className={cn("text-[14px] font-bold leading-tight", portalHeadingAlt)}>{p.candidates.title}</h2>
@@ -801,8 +788,12 @@ export function HrDashboard() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-                {data.candidates.slice(0, 8).map((c: CandidateRecommendation) => (
-                  <tr key={c.id} className="hover:bg-gray-50/70 dark:hover:bg-gray-800/40 transition-colors">
+                {data.candidates.slice(0, 8).map((c: CandidateRecommendation, rowIdx: number) => (
+                  <tr
+                    key={c.id}
+                    className="hover:bg-gray-50/70 dark:hover:bg-gray-800/40 transition-colors"
+                    style={{ animation: `rowSlideIn 0.28s ease-out ${rowIdx * 45}ms both` }}
+                  >
                     <td className="px-4 py-3">
                       <p className={cn("font-medium leading-tight", portalHeadingAlt)}>{c.candidateName || "—"}</p>
                       <p className={cn("text-[10px] truncate max-w-40", portalSubtextAlt)}>{c.candidateEmail}</p>
