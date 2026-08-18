@@ -24,6 +24,12 @@ function isLang(v: string | null | undefined): v is Lang {
   return v === "en" || v === "vi";
 }
 
+function getStoredLang(): Lang {
+  if (typeof window === "undefined") return "en";
+  const saved = localStorage.getItem(STORAGE_KEY);
+  return isLang(saved) ? saved : "en";
+}
+
 /**
  * Proxy fallback: khi dictionary vi (cache HMR) thiếu key mới, đọc từ en.
  * Cache proxy theo target để không tạo object mới mỗi lần access (tránh infinite useEffect).
@@ -66,7 +72,7 @@ function loadDictionary(lang: Lang): Promise<Translations> {
 }
 
 export function LanguageProvider({ children }: { children: ReactNode }) {
-  const [lang, setLangState] = useState<Lang>("en");
+  const [lang, setLangState] = useState<Lang>(getStoredLang);
   // Giữ riêng bản vi đã load — luôn đọc `en` trực tiếp từ module để HMR không giữ dictionary cũ
   const [viDict, setViDict] = useState<Translations | null>(null);
 
@@ -89,15 +95,17 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (isLang(saved) && saved !== "en") {
-      loadDictionary(saved).then((dict) => {
-        setLangState(saved);
-        document.documentElement.lang = saved === "vi" ? "vi-VN" : "en";
-        setViDict(dict);
-      });
-    }
-  }, []);
+    document.documentElement.lang = lang === "vi" ? "vi-VN" : "en";
+    if (lang !== "vi") return;
+
+    let cancelled = false;
+    loadDictionary("vi").then((dict) => {
+      if (!cancelled) setViDict(dict);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [lang]);
 
   // Dev HMR: khi vi.ts (hoặc en.ts) thêm key mới, reload dictionary nếu đang dùng tiếng Việt.
   // `en` được import tĩnh → HMR tạo reference mới mỗi lần bất kỳ i18n file thay đổi,

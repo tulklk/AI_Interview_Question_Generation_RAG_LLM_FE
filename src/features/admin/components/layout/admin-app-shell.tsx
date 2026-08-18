@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import { AdminSidebar } from "./admin-sidebar";
 import { TopHeader } from "@/features/hr/components/layout/top-header";
@@ -15,6 +15,9 @@ import {
 } from "@/features/auth/utils/login-welcome";
 import { getInitials } from "@/shared/utils/user-display";
 import { AdminScrollContext } from "@/features/admin/context/admin-scroll-context";
+import { useAdminPendingFeedbacks } from "@/features/admin/hooks/use-admin-pending-feedbacks";
+import { formatRelativeTime } from "@/shared/utils/relative-time";
+import type { NotificationItem } from "@/shared/components/common/notification-bell";
 
 interface AdminAppShellProps {
   children: ReactNode;
@@ -23,12 +26,35 @@ interface AdminAppShellProps {
 }
 
 export function AdminAppShell({ children, breadcrumb, pageTitle }: AdminAppShellProps) {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const pathname = usePathname();
   const { addToast } = useToast();
   const { user, loading } = useUser();
   const welcomedRef = useRef(false);
   const mainRef = useRef<HTMLElement>(null);
+  const { pendingCount, pendingItems } = useAdminPendingFeedbacks();
+
+  const notifications = useMemo<NotificationItem[]>(
+    () =>
+      pendingItems.map((fb) => ({
+        id: `feedback-pending-${fb.id}`,
+        message: t.notificationMessages.adminFeedbackPending.replace(
+          "{{name}}",
+          fb.authorName || "—",
+        ),
+        time: fb.createdAt
+          ? formatRelativeTime(fb.createdAt, lang)
+          : "",
+        read: false,
+        href: "/admin/feedbacks",
+      })),
+    [pendingItems, t.notificationMessages.adminFeedbackPending, lang],
+  );
+
+  const navBadges = useMemo(
+    () => (pendingCount > 0 ? { "/admin/feedbacks": pendingCount } : undefined),
+    [pendingCount],
+  );
 
   useEffect(() => {
     if (loading || welcomedRef.current || !hasLoginWelcomePending("admin")) return;
@@ -66,12 +92,13 @@ export function AdminAppShell({ children, breadcrumb, pageTitle }: AdminAppShell
   return (
     <AdminScrollContext.Provider value={mainRef}>
     <div className="flex h-screen overflow-hidden">
-      <AdminSidebar />
+      <AdminSidebar navBadges={navBadges} />
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
         <TopHeader
           variant="admin"
           breadcrumb={translatedBreadcrumb}
           pageTitle={translatedTitle}
+          notifications={notifications}
           user={{
             initials: user?.fullName ? getInitials(user.fullName) : loading ? "..." : "AD",
             name: user?.fullName ?? (loading ? "..." : t.adminPages.dashboard.defaultUserName),

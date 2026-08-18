@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence, type Variants } from "framer-motion";
 import { type RegisterRoleKey } from "@/features/auth/utils/google-onboarding";
-import { SocialOAuthRow } from "@/features/auth/components/social-oauth-buttons";
+import { GoogleOAuthButton } from "@/features/auth/components/social-oauth-buttons";
 import { useRegister } from "@/features/auth/hooks/use-register";
 import { useTheme } from "@/shared/providers/theme-context";
 
@@ -144,7 +144,6 @@ export function RegisterForm({ registerRole = "hr" }: RegisterFormProps) {
     step,
     isGoogleSignup,
     googleLoading,
-    githubLoading,
     fullName,
     email,
     password,
@@ -180,7 +179,6 @@ export function RegisterForm({ registerRole = "hr" }: RegisterFormProps) {
     useTypedName,
     handleContinue,
     handleGoogle,
-    handleGithub,
     handleBackFromStep2,
     handleSubmit,
     serverError,
@@ -460,13 +458,12 @@ export function RegisterForm({ registerRole = "hr" }: RegisterFormProps) {
                 <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700" />
               </motion.div>
               <motion.div variants={fieldRow}>
-                <SocialOAuthRow
-                  googleLoading={googleLoading}
-                  googleMode="signup"
-                  onGoogleSuccess={handleGoogle}
-                  onGoogleError={() => addToast("error", rp.registrationFailed)}
-                  githubLoading={githubLoading}
-                  onGithubClick={handleGithub}
+                <GoogleOAuthButton
+                  loading={googleLoading}
+                  mode="signup"
+                  label={rp.signUpWithGoogle}
+                  onSuccess={handleGoogle}
+                  onError={() => addToast("error", rp.registrationFailed)}
                 />
               </motion.div>
               <motion.p variants={fieldRow} className="text-center text-sm text-gray-500 dark:text-gray-400 mt-5">
