@@ -24,6 +24,26 @@ import {
 } from "@/shared/utils/portal-ui";
 
 const DIFFICULTIES: Array<"All" | Difficulty> = ["All", "Easy", "Medium", "Hard"];
+
+/**
+ * Returns ALL "Dành cho bạn" items — every set tied at the highest CV match.
+ * Priority: (1) all sets sharing the highest matchPercent → (2) first pinned → (3) first item.
+ *
+ * If there are multiple sets at 100% (or any equal top score), they ALL belong
+ * together in the "Dành cho bạn" section; only non-tied items go to "Gợi ý tiếp theo".
+ */
+function selectTopMatchSets(items: QuestionSet[]): QuestionSet[] {
+  if (items.length === 0) return [];
+  const withMatch = items.filter((s) => s.matchPercent != null);
+  if (withMatch.length > 0) {
+    const maxPct = Math.max(...withMatch.map((s) => s.matchPercent!));
+    // Return every set tied at the top score, in their current sort order.
+    return withMatch.filter((s) => s.matchPercent === maxPct);
+  }
+  // No CV data: fall back to a single hero (pinned or first).
+  const hero = items.find((s) => s.isPinned) ?? items[0];
+  return hero ? [hero] : [];
+}
 const PAGE_SIZE = 9;
 type PracticeChip = "cv" | "targetRole" | "weak" | "mine" | "saved" | "trending" | "unattempted" | "retry";
 const PRACTICE_CHIPS: PracticeChip[] = ["cv", "targetRole", "weak", "mine", "saved", "trending", "unattempted", "retry"];
@@ -533,6 +553,151 @@ function FilterBar({
   );
 }
 
+// ── ScrollRevealCard ─────────────────────────────────────────────────────────
+// Two-phase animation:
+//
+// PHASE 1 — "entering" (on every mount: initial page load OR after a filter
+//   change that causes the loading skeleton to appear and cards to remount):
+//   A CSS @keyframes animation handles the appearance so it starts on the
+//   VERY FIRST browser paint — no JS rAF tricks, no invisible frames.
+//   animationFillMode:"both" means cards start from the `from` keyframe
+//   even during the stagger delay period (never a blank flash).
+//   Duration 0.36s + per-card stagger. Switches to idle phase afterwards.
+//
+// PHASE 2 — "idle" (after mount animation finishes, ~400ms post-mount):
+//   IntersectionObserver handles scroll-based show / hide.
+//
+//   SCROLL DOWN — card enters from below:
+//     translateY(+10px) → 0   stagger delay ✓
+//
+//   SCROLL DOWN past card — exits from TOP:
+//     Hide INSTANTLY (no CSS transition). Top cards never "disappear"
+//     when the user later scrolls back up.
+//
+//   SCROLL UP — card exits from BOTTOM:
+//     0 → translateY(+10px)  delay=0, slides DOWN.
+//     Observer fires bottom-most card first → bottom-to-top cascade ✓
+//
+//   SCROLL UP to revisit — re-enters from TOP:
+//     translateY(-10px) → 0   no stagger, slides smoothly.
+function ScrollRevealCard({
+  children,
+  delay = 0,
+}: {
+  children: React.ReactNode;
+  delay?: number;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+
+  // 'entering': CSS animation is running — IntersectionObserver not yet active.
+  // 'idle':     CSS animation done — IntersectionObserver owns visibility.
+  const [phase, setPhase] = useState<"entering" | "idle">("entering");
+
+  // Idle-phase visibility state (ignored during entering).
+  const [visible, setVisible]           = useState(true);
+  const [transEnabled, setTransEnabled] = useState(false);
+  const [hiddenY, setHiddenY]           = useState(10);
+  const [activeDelay, setActiveDelay]   = useState(delay);
+  // instant=true → this render uses transition:none.
+  const [instant, setInstant]           = useState(false);
+
+  // Switch to idle after the CSS animation + stagger completes.
+  useEffect(() => {
+    const id = setTimeout(() => {
+      setPhase("idle");
+      setTransEnabled(true);
+    }, delay + 400); // 360ms animation + 40ms buffer
+    return () => clearTimeout(id);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // intentionally captured once — delay is constant per card instance
+
+  // IntersectionObserver (idle phase only).
+  useEffect(() => {
+    if (phase !== "idle") return;
+    const el = ref.current;
+    if (!el) return;
+
+    let firstFire = true;
+
+    const obs = new IntersectionObserver(
+      ([entry]) => {
+        const cardTop = entry.boundingClientRect.top;
+        const vh      = entry.rootBounds?.height ?? window.innerHeight;
+
+        // ── First fire after phase switch: sync state, no animation ────────
+        if (firstFire) {
+          firstFire = false;
+          if (!entry.isIntersecting) {
+            // Card is off-screen — position it correctly without animating.
+            setInstant(true);
+            setHiddenY(cardTop < 0 ? -10 : 10);
+            setVisible(false);
+            requestAnimationFrame(() => setInstant(false));
+          }
+          // Still intersecting → card is already visible from CSS anim; nothing to do.
+          return;
+        }
+
+        // ── Subsequent scroll events ────────────────────────────────────────
+        if (entry.isIntersecting) {
+          const fromBelow = cardTop > vh * 0.5;
+          setHiddenY(fromBelow ? 10 : -10);
+          setActiveDelay(fromBelow ? delay : 0);
+          setVisible(true);
+        } else {
+          const exitFromTop = cardTop < 0;
+          if (exitFromTop) {
+            setInstant(true);
+            setHiddenY(-10);
+            setVisible(false);
+            requestAnimationFrame(() => setInstant(false));
+          } else {
+            setActiveDelay(0);
+            setHiddenY(10);
+            setVisible(false);
+          }
+        }
+      },
+      { threshold: 0.04 }
+    );
+
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [phase, delay]);
+
+  const style: React.CSSProperties =
+    phase === "entering"
+      ? {
+          // CSS animation: starts on the first browser paint, no JS gap.
+          animationName:           "src-card-enter",
+          animationDuration:       "0.36s",
+          animationDelay:          `${delay}ms`,
+          animationTimingFunction: "cubic-bezier(0.4,0,0.2,1)",
+          // "both" = apply `from` state during delay + keep `to` state after.
+          animationFillMode:       "both",
+        }
+      : {
+          opacity:    visible ? 1 : 0,
+          transform:  visible ? "translateY(0)" : `translateY(${hiddenY}px)`,
+          transition: transEnabled && !instant
+            ? `opacity 0.36s ${activeDelay}ms cubic-bezier(0.4,0,0.2,1),` +
+              `transform 0.36s ${activeDelay}ms cubic-bezier(0.4,0,0.2,1)`
+            : "none",
+        };
+
+  return (
+    <>
+      {/* Keyframe injected once per entering card; removed when phase→idle. */}
+      {phase === "entering" && (
+        <style>{`@keyframes src-card-enter{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}`}</style>
+      )}
+      <div ref={ref} style={style}>
+        {children}
+      </div>
+    </>
+  );
+}
+
 export function MarketplacePage() {
   const { t } = useLanguage();
   const p = t.jobseekerMarketplacePage;
@@ -555,12 +720,36 @@ export function MarketplacePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
+  // True if any item in the latest API response has CV match data (matchPercent != null).
+  // Used to decide whether to show "Dành cho bạn" empty state when filters
+  // remove all CV-matched sets from the current view.
+  const [hasCvData, setHasCvData] = useState(false);
 
   const searchInputRef = useRef<HTMLInputElement>(null);
+  // Ref for the top of the page content — used by goToPage to scroll the
+  // nearest scroll container back to top (works even when the parent shell
+  // uses its own overflow container instead of window).
+  const topRef = useRef<HTMLDivElement>(null);
 
   function scrollToSearch() {
     searchInputRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
     searchInputRef.current?.focus();
+  }
+
+  function scrollToTop() {
+    const el = topRef.current;
+    if (!el) { window.scrollTo({ top: 0, behavior: "smooth" }); return; }
+    // Walk up to find the nearest scrollable ancestor (the app-shell's content panel).
+    let parent: Element | null = el.parentElement;
+    while (parent) {
+      const { overflowY } = window.getComputedStyle(parent);
+      if (overflowY === "auto" || overflowY === "scroll") {
+        parent.scrollTo({ top: 0, behavior: "smooth" });
+        return;
+      }
+      parent = parent.parentElement;
+    }
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   useEffect(() => {
@@ -606,17 +795,81 @@ export function MarketplacePage() {
     setLoading(true);
     setError(false);
 
+    // ── Client-side filter + sort (fallback for backend that ignores params) ──
+    function applyLocalFilters(items: QuestionSet[]): QuestionSet[] {
+      let out = items;
+
+      // 1. Keyword — matches title, company name, or any skill tag
+      const q = debouncedSearch.trim().toLowerCase();
+      if (q) {
+        out = out.filter((s) =>
+          s.title.toLowerCase().includes(q) ||
+          s.company.toLowerCase().includes(q) ||
+          s.skills.some((sk) => sk.toLowerCase().includes(q))
+        );
+      }
+
+      // 2. Difficulty
+      if (difficulty !== "All") {
+        out = out.filter((s) => s.difficulty === difficulty);
+      }
+
+      // 3. Skills (any-match)
+      if (selectedSkills.length > 0) {
+        out = out.filter((s) => selectedSkills.some((sk) => s.skills.includes(sk)));
+      }
+
+      // 4. Company — resolve company id → name, then match
+      if (selectedCompanyId) {
+        const compName = companies.find((c) => c.id === selectedCompanyId)?.name ?? "";
+        if (compName) {
+          out = out.filter((s) => s.company.toLowerCase() === compName.toLowerCase());
+        }
+      }
+
+      // 5. Sort
+      switch (sortBy) {
+        case "best_match":
+          out = [...out].sort((a, b) => (b.matchPercent ?? 0) - (a.matchPercent ?? 0));
+          break;
+        case "newest":
+          out = [...out].sort((a, b) =>
+            (b.myLastCompletedAt ?? "").localeCompare(a.myLastCompletedAt ?? "")
+          );
+          break;
+        case "most_practiced":
+          out = [...out].sort((a, b) => (b.attempts ?? 0) - (a.attempts ?? 0));
+          break;
+        case "highest_rated":
+          out = [...out].sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0));
+          break;
+        // "featured": pinned first, then highest CV match, then backend order.
+        // Sorting by matchPercent here ensures items with 100% match land
+        // in the first page slice so selectFeaturedSet() can pick them as hero.
+        default:
+          out = [...out].sort((a, b) => {
+            const pinDiff = (b.isPinned ? 1 : 0) - (a.isPinned ? 1 : 0);
+            if (pinDiff !== 0) return pinDiff;
+            return (b.matchPercent ?? 0) - (a.matchPercent ?? 0);
+          });
+          break;
+      }
+
+      return out;
+    }
+
     const load = async () => {
+      // ── "Bộ của tôi": personal sets have their own endpoint ──────────────
       if (chip === "mine") {
         const mine = await listMyPersonalSets();
         if (cancelled) return;
-        const mapped: QuestionSet[] = mine.map((s) => ({
+        const allMapped: QuestionSet[] = mine.map((s) => ({
           id: s.id,
           title: s.title,
           company: p.personalMineCompany,
           companyInitials: "ME",
           companyColor: "#6366f1",
-          difficulty: "Medium",
+          difficulty: "Medium" as const,
           skills: s.skills,
           totalQuestions: s.totalQuestions,
           estimatedTime: "",
@@ -624,41 +877,60 @@ export function MarketplacePage() {
           myLastCompletedAt: s.myLastCompletedAt,
           questions: [],
         }));
-        setSets(mapped);
-        setTotalCount(mapped.length);
+        const filtered = applyLocalFilters(allMapped);
+        // Personal sets never have CV match data.
+        setHasCvData(false);
+        const start = (page - 1) * PAGE_SIZE;
+        setSets(filtered.slice(start, start + PAGE_SIZE));
+        setTotalCount(filtered.length);
         return;
       }
 
+      // ── "Đã lưu": bookmarked sets have their own endpoint ─────────────────
       if (chip === "saved") {
         const saved = await listBookmarkedQuestionSets();
         if (cancelled) return;
-        setSets(saved);
-        setTotalCount(saved.length);
+        const filtered = applyLocalFilters(saved);
+        // Saved-sets view doesn't show "Dành cho bạn".
+        setHasCvData(false);
+        const start = (page - 1) * PAGE_SIZE;
+        setSets(filtered.slice(start, start + PAGE_SIZE));
+        setTotalCount(filtered.length);
         return;
       }
 
+      // ── Main marketplace: fetch ALL then filter client-side ───────────────
+      // Backend may or may not honour filter params; client-side is the
+      // authoritative layer so filters always work regardless of BE support.
       const marketplaceChip =
         chip === "cv" || chip === "targetRole" || chip === "weak"
         || chip === "trending" || chip === "unattempted" || chip === "retry"
           ? chip
           : undefined;
 
-      // "Khớp CV" chip always sorts by best_match so highest-match sets appear first
       const effectiveSortBy: SortValue = chip === "cv" ? "best_match" : sortBy;
 
-      const res = await listQuestionSets({
+      // Pass params to backend as hints (reduces payload when BE supports them),
+      // but we re-filter on the full result set regardless.
+      const allRes = await listQuestionSets({
         keyword: debouncedSearch.trim() || undefined,
         difficulty: difficulty === "All" ? undefined : difficulty,
         skills: selectedSkills.length ? selectedSkills : undefined,
         companyId: selectedCompanyId ?? undefined,
-        page,
-        pageSize: PAGE_SIZE,
+        pageSize: 500,          // fetch all; client handles pagination
         sortBy: effectiveSortBy,
         chip: marketplaceChip,
       });
       if (cancelled) return;
-      setSets(res.items);
-      setTotalCount(res.totalCount);
+
+      const filtered = applyLocalFilters(allRes.items);
+      // Track whether the backend returned ANY CV-match data at all.
+      // Used to decide whether to show the "Dành cho bạn" empty state when
+      // active filters happen to remove all CV-matched sets from the current page.
+      setHasCvData(allRes.items.some((s) => s.matchPercent != null));
+      const start = (page - 1) * PAGE_SIZE;
+      setSets(filtered.slice(start, start + PAGE_SIZE));
+      setTotalCount(filtered.length);
     };
 
     load()
@@ -673,7 +945,7 @@ export function MarketplacePage() {
   function goToPage(newPage: number) {
     if (newPage < 1 || newPage > totalPages || newPage === page) return;
     setPage(newPage);
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    scrollToTop();
   }
 
   const navBtnCls = cn(
@@ -684,7 +956,7 @@ export function MarketplacePage() {
   );
 
   return (
-    <div>
+    <div ref={topRef}>
       {/* ── Hero ─────────────────────────────────────────────────────────── */}
       <motion.section
         initial={{ opacity: 0, y: 20 }}
@@ -780,29 +1052,14 @@ export function MarketplacePage() {
       />
       </motion.div>
 
-      {/* ── Results count ─────────────────────────────────────────────────── */}
-      {!loading && !error && (
-        <motion.p
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.3, delay: 0.18 }}
-          className={cn("text-[13px] mb-5", portalSubtextAlt)}
-        >
-          <span className={cn("font-semibold", portalHeadingAlt)}>{totalCount}</span>{" "}
-          {p.setsFound}
-        </motion.p>
-      )}
-
-      {/* ── Card Grid ─────────────────────────────────────────────────────── */}
+      {/* ── Feed: Hero + Horizontal Smart Cards ──────────────────────────── */}
       {loading ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-          {Array.from({ length: PAGE_SIZE }).map((_, i) => (
-            <div key={i} className="hr-glass-card p-6 h-56 animate-pulse flex flex-col gap-4">
-              <div className="h-10 w-10 rounded-lg bg-gray-200 dark:bg-gray-700" />
-              <div className="h-4 w-3/4 rounded bg-gray-200 dark:bg-gray-700" />
-              <div className="h-3 w-full rounded bg-gray-200 dark:bg-gray-700" />
-              <div className="h-3 w-2/3 rounded bg-gray-200 dark:bg-gray-700" />
-            </div>
+        <div className="flex flex-col gap-3">
+          <div className="h-4 w-24 rounded bg-gray-200 dark:bg-gray-700/60 animate-pulse mb-1" />
+          <div className="h-60 rounded-2xl bg-gray-100 dark:bg-gray-800/60 animate-pulse" />
+          <div className="h-5 w-32 rounded bg-gray-200 dark:bg-gray-700/60 animate-pulse mt-5 mb-1" />
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="h-24 rounded-xl bg-gray-100 dark:bg-gray-800/60 animate-pulse" />
           ))}
         </div>
       ) : error ? (
@@ -820,31 +1077,114 @@ export function MarketplacePage() {
         </div>
       ) : sets.length === 0 ? (
         <EmptyState icon={Search} title={p.noResults} />
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-          {sets.map((set, i) => (
-            <motion.div
-              key={set.id}
-              initial={{ opacity: 0, y: 18 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.35, delay: i * 0.05, ease: "easeOut" }}
-              className="hover:drop-shadow-md transition-[filter] duration-200"
-            >
-              <QuestionSetCard
-                set={set}
-                initialBookmarked={bookmarkedIds.has(set.id)}
-                onBookmarkChange={(id, bookmarked) => {
-                  setBookmarkedIds((prev) => {
-                    const next = new Set(prev);
-                    if (bookmarked) next.add(id); else next.delete(id);
-                    return next;
-                  });
-                }}
-              />
-            </motion.div>
-          ))}
-        </div>
-      )}
+      ) : (() => {
+        // topItems = all sets sharing the highest CV match (could be 1 or many).
+        // heroItem  = sentinel (non-null = CV-matched sets exist to show).
+        // listSets  = everything else → rendered under "Gợi ý tiếp theo".
+        const topItems = page === 1 ? selectTopMatchSets(sets) : [];
+        // Only treat top items as "Dành cho bạn" when they have actual CV match
+        // data. When hasCvData=true but filters removed all CV-matched sets,
+        // selectTopMatchSets falls back to the first/pinned item (no matchPercent)
+        // — those should NOT render as featured, and an empty state is shown instead.
+        const topItemsHaveCvMatch = topItems.some((s) => s.matchPercent != null);
+        // heroItem is just a sentinel: non-null means we have real CV-matched sets to show.
+        const heroItem = topItemsHaveCvMatch ? (topItems[0] ?? null) : null;
+        const topIds = new Set(topItemsHaveCvMatch ? topItems.map((s) => s.id) : []);
+
+        // Remaining items after removing all "Dành cho bạn" items.
+        const rawList = sets.filter((s) => !topIds.has(s.id));
+        // Sort remaining by CV match when in default "featured" order.
+        const listSets = heroItem && sortBy === "featured"
+          ? [...rawList].sort((a, b) => (b.matchPercent ?? 0) - (a.matchPercent ?? 0))
+          : rawList;
+
+        const bookmarkCb = (id: string, bm: boolean) =>
+          setBookmarkedIds((prev) => { const next = new Set(prev); if (bm) next.add(id); else next.delete(id); return next; });
+
+        return (
+          <>
+            {/* ── "Dành cho bạn" section ── */}
+            {page === 1 && hasCvData && (
+              heroItem ? (
+                // Show all CV-matched top items as QuestionSetCard (featured)
+                // for consistent UI regardless of count.
+                <div className="mb-8">
+                  <div className="flex items-center gap-1.5 mb-3">
+                    <span className="text-[13px] font-bold text-primary flex items-center gap-1.5">
+                      <span aria-hidden>✦</span>
+                      {p.featuredLabel}
+                    </span>
+                  </div>
+                  <div className="flex flex-col gap-3">
+                    {topItems.map((set, i) => (
+                      <ScrollRevealCard key={set.id} delay={Math.min(i, 4) * 40}>
+                        <QuestionSetCard
+                          set={set}
+                          initialBookmarked={bookmarkedIds.has(set.id)}
+                          onBookmarkChange={bookmarkCb}
+                          featured
+                        />
+                      </ScrollRevealCard>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                // CV data exists but active filters removed all CV-matched sets.
+                // Show an empty state so the user knows their best-match sets
+                // are hidden (not gone) — they can clear a filter to reveal them.
+                <div className="mb-8">
+                  <style>{`
+                    @keyframes fdb-spark{0%,100%{transform:scale(1) rotate(0deg);filter:drop-shadow(0 0 0 rgba(124,58,237,0))}50%{transform:scale(1.4) rotate(22deg);filter:drop-shadow(0 0 6px rgba(124,58,237,0.8))}}
+                    @keyframes fdb-glow{0%,100%{text-shadow:0 0 0 transparent}50%{text-shadow:0 0 10px rgba(124,58,237,0.5)}}
+                  `}</style>
+                  <div className="flex items-center gap-1.5 mb-3">
+                    <span className="text-[13px] font-bold text-primary flex items-center gap-1.5">
+                      <span aria-hidden className="inline-block" style={{ animation: "fdb-spark 2.4s ease-in-out infinite" }}>✦</span>
+                      <span style={{ animation: "fdb-glow 2.4s ease-in-out infinite" }}>{p.featuredLabel}</span>
+                    </span>
+                  </div>
+                  <div className="rounded-xl border border-dashed border-primary/25 bg-primary/[0.03] dark:bg-primary/[0.06] p-5 flex items-center gap-4">
+                    <span className="text-[26px] shrink-0">🔍</span>
+                    <div>
+                      <p className="text-[13.5px] font-semibold text-gray-700 dark:text-gray-300">
+                        Không có bộ phù hợp với bạn
+                      </p>
+                      <p className="text-[12px] text-gray-400 dark:text-gray-500 mt-0.5">
+                        Thử thay đổi điều kiện lọc để xem các bộ khớp với CV của bạn.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )
+            )}
+
+            {/* ── "Gợi ý tiếp theo" / full list section ── */}
+            {listSets.length > 0 && (
+              <div className="flex items-center justify-between mb-4">
+                <h2 className={cn("text-[15px] font-bold", portalHeadingAlt)}>
+                  {heroItem ? p.feedTitle : `${totalCount} ${p.setsFound}`}
+                </h2>
+                {heroItem && (
+                  <span className={cn("text-[13px]", portalSubtextAlt)}>
+                    <span className={cn("font-semibold", portalHeadingAlt)}>{totalCount}</span>{" "}{p.setsFound}
+                  </span>
+                )}
+              </div>
+            )}
+            <div className="flex flex-col gap-3">
+              {listSets.map((set, i) => (
+                <ScrollRevealCard key={set.id} delay={Math.min(i, 5) * 40}>
+                  <QuestionSetCard
+                    set={set}
+                    initialBookmarked={bookmarkedIds.has(set.id)}
+                    onBookmarkChange={bookmarkCb}
+                  />
+                </ScrollRevealCard>
+              ))}
+            </div>
+          </>
+        );
+      })()}
 
       {/* ── Pagination ────────────────────────────────────────────────────── */}
       {!loading && !error && totalPages > 1 && (

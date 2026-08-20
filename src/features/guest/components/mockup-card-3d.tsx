@@ -101,6 +101,7 @@ export function MockupCard3D({
 
     // ── Ghost border helper (used on both canvases) ───────────────────────
     function drawGhostBorder(cx: CanvasRenderingContext2D) {
+      const darkMode = document.documentElement.classList.contains("dark");
       cx.beginPath();
       cx.moveTo(_x0 + R_OUT, _y0);
       cx.lineTo(_x1 - R_OUT, _y0);
@@ -113,8 +114,8 @@ export function MockupCard3D({
       cx.arcTo(_x0, _y0, _x0 + R_OUT, _y0, R_OUT);
       cx.closePath();
       cx.globalAlpha = 1;
-      cx.strokeStyle = "rgba(139,92,246,0.22)";
-      cx.lineWidth   = 1.2;
+      cx.strokeStyle = darkMode ? "rgba(139,92,246,0.22)" : "rgba(109,40,217,0.5)";
+      cx.lineWidth   = darkMode ? 1.2 : 1.5;
       cx.stroke();
     }
 
@@ -153,19 +154,27 @@ export function MockupCard3D({
         i === 0 ? offCtx.moveTo(px, py) : offCtx.lineTo(px, py);
       }
 
-      offCtx.globalAlpha = 0.55;
-      offCtx.strokeStyle = "rgba(109,40,217,1)";
-      offCtx.lineWidth   = 11;
+      // Theme-aware energy colours:
+      // • Light: darker/more-saturated strokes so trail pops against white card
+      // • Dark : original neon-glow look (bright core vs dark bg)
+      const dark = document.documentElement.classList.contains("dark");
+
+      // Layer 1 — outer halo (widest, most transparent)
+      offCtx.globalAlpha = dark ? 0.55 : 0.42;
+      offCtx.strokeStyle = dark ? "rgba(109,40,217,1)" : "rgba(76,29,149,1)";
+      offCtx.lineWidth   = dark ? 11 : 13;
       offCtx.stroke();
 
-      offCtx.globalAlpha = 0.82;
-      offCtx.strokeStyle = "rgba(139,92,246,1)";
-      offCtx.lineWidth   = 4;
+      // Layer 2 — main glow body
+      offCtx.globalAlpha = dark ? 0.82 : 1;
+      offCtx.strokeStyle = dark ? "rgba(139,92,246,1)" : "rgba(109,40,217,1)";
+      offCtx.lineWidth   = dark ? 4 : 5;
       offCtx.stroke();
 
+      // Layer 3 — hot core (must be visible on both white and dark bg)
       offCtx.globalAlpha = 1;
-      offCtx.strokeStyle = "rgba(216,180,254,1)";
-      offCtx.lineWidth   = 1.5;
+      offCtx.strokeStyle = dark ? "rgba(216,180,254,1)" : "rgba(167,139,250,1)";
+      offCtx.lineWidth   = dark ? 1.5 : 2;
       offCtx.stroke();
 
       // Radial gradient mask (destination-in) — smooth fade, zero banding
