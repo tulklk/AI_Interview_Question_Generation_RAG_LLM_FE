@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Zap, Brain, FileDown, Users } from "lucide-react";
+import { Zap, Brain, FileSpreadsheet, Users } from "lucide-react";
 import { useLanguage } from "@/shared/providers/language-context";
 
 // ── Animated counter hook ──────────────────────────────────────────────────
@@ -52,21 +52,22 @@ export function StatsStrip() {
   const stats: StatItem[] = [
     { icon: Zap, iconColor: "text-amber-500", value: 30, suffix: "s", label: s.speed },
     { icon: Brain, iconColor: "text-violet-500", value: 3, suffix: "+", label: s.categories },
-    { icon: FileDown, iconColor: "text-emerald-500", value: 2, suffix: "", label: s.formats, prefix: "" },
+    { icon: FileSpreadsheet, iconColor: "text-green-600", value: 2, suffix: "", label: s.formats, prefix: "" },
     { icon: Users, iconColor: "text-cyan-500", value: 100, suffix: "%", label: s.aiPowered },
   ];
 
-  const c0 = useCountUp(stats[0].value, 900, started);
+  // c0 unused (speed stat shows text, not number)
   const c1 = useCountUp(stats[1].value, 700, started);
-  const c2 = useCountUp(stats[2].value, 600, started);
+  // c2 unused (formats stat shows "EXCEL" text)
   const c3 = useCountUp(stats[3].value, 1200, started);
-  const counts = [c0, c1, c2, c3];
+  const counts = [0, c1, 0, c3];
 
-  // Stat 3 (formats) shows "PDF & DOCX" instead of a number
+  // Stat 1 (speed) shows descriptive text instead of a number
+  // Stat 3 (formats) shows "EXCEL" instead of a number
   const displayValues = [
-    `${counts[0]}${stats[0].suffix}`,
+    s.speedValue,
     `${counts[1]}${stats[1].suffix}`,
-    "PDF & DOCX",
+    "EXCEL",
     `${counts[3]}${stats[3].suffix}`,
   ];
 

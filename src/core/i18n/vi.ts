@@ -29,7 +29,7 @@ export const vi: Translations = {
       "Dán bất kỳ mô tả công việc nào và nhận câu hỏi phỏng vấn Kỹ thuật, Hành vi và Tình huống phù hợp trong vài giây — được hỗ trợ bởi RAG và mô hình ngôn ngữ lớn.",
     point1: "Tiết kiệm thời gian tuyển dụng",
     point2: "Câu hỏi theo ngữ cảnh",
-    point3: "Xuất PDF sẵn sàng",
+    point3: "Xuất Excel sẵn sàng",
     ctaPrimary: "Dùng miễn phí",
     ctaSecondary: "Đăng nhập",
     mockupTitle: "HireGen AI — Trình tạo câu hỏi",
@@ -46,9 +46,45 @@ export const vi: Translations = {
 
   statsStrip: {
     speed: "Thời gian tạo câu hỏi",
+    speedValue: "Nhanh chóng",
     categories: "Loại câu hỏi",
     formats: "Định dạng xuất file",
     aiPowered: "AI-Powered",
+  },
+
+  loginHero: {
+    headline1: "Biến Mô Tả Công Việc",
+    headline2: "Thành",
+    headlineGradient: "Buổi Phỏng Vấn Hoàn Hảo",
+    subtext: "Dùng AI để tạo câu hỏi phỏng vấn phù hợp vai trò trong vài giây — từ bất kỳ mô tả công việc nào.",
+    features: [
+      {
+        title: "AI theo ngữ cảnh",
+        description: "Câu hỏi dựa trên JD thực tế qua công nghệ truy xuất tăng cường (RAG)",
+      },
+      {
+        title: "Nhanh chóng",
+        description: "Câu hỏi theo vai trò trong vài giây, đa cấp độ năng lực",
+      },
+      {
+        title: "Phân tích chi tiết",
+        description: "Theo dõi lượt dùng, danh mục và tiến trình pipeline tuyển dụng",
+      },
+    ],
+    testimonials: [
+      {
+        quote: "Giảm 80% thời gian chuẩn bị phỏng vấn. Công cụ thực sự ấn tượng.",
+        name: "Minh T.",
+        role: "Trưởng phòng Tuyển dụng @ VNG",
+        initials: "M",
+      },
+      {
+        quote: "Câu hỏi bám sát đúng từng vị trí, tiết kiệm rất nhiều công sức.",
+        name: "Lan P.",
+        role: "HR Manager @ FPT Software",
+        initials: "L",
+      },
+    ],
   },
 
   benefits: {
@@ -2336,6 +2372,8 @@ Yêu cầu:
     bookmarkFailed: "Không thể cập nhật danh sách đã lưu. Vui lòng thử lại.",
     prevPage: "Trang trước",
     nextPage: "Trang sau",
+    featuredLabel: "Dành cho bạn",
+    feedTitle: "Gợi ý tiếp theo",
   },
 
   jobseekerSetDetailPage: {
