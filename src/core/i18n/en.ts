@@ -27,7 +27,7 @@
       "Paste any job description and get tailored Technical, Behavioral, and Situational interview questions in seconds — powered by RAG and large language models.",
     point1: "Saves recruiter time",
     point2: "Context-aware questions",
-    point3: "Export-ready PDF",
+    point3: "Export-ready Excel",
     ctaPrimary: "Try for Free",
     ctaSecondary: "Log in",
     mockupTitle: "HireGen AI — Question Generator",
@@ -44,9 +44,45 @@
 
   statsStrip: {
     speed: "Generation time",
+    speedValue: "Instant",
     categories: "Question types",
     formats: "Export formats",
     aiPowered: "AI-Powered",
+  },
+
+  loginHero: {
+    headline1: "Transform Job Descriptions",
+    headline2: "Into",
+    headlineGradient: "Perfect Interviews",
+    subtext: "Use AI to generate tailored, role-specific interview questions in seconds — from any job description.",
+    features: [
+      {
+        title: "RAG-Powered AI",
+        description: "Questions grounded in your JD via retrieval-augmented generation",
+      },
+      {
+        title: "30-Second Turnaround",
+        description: "Instant role-specific questions across all competency levels",
+      },
+      {
+        title: "Rich Analytics",
+        description: "Track usage, categories, and hiring pipeline progress",
+      },
+    ],
+    testimonials: [
+      {
+        quote: "Cut our interview prep time by 80%. Incredible tool.",
+        name: "Sarah K.",
+        role: "Talent Manager @ Meta",
+        initials: "S",
+      },
+      {
+        quote: "The questions are remarkably tailored to each role.",
+        name: "James L.",
+        role: "Head of HR @ Stripe",
+        initials: "J",
+      },
+    ],
   },
 
   benefits: {
@@ -2335,6 +2371,8 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
     bookmarkFailed: "Couldn't update your saved sets. Please try again.",
     prevPage: "Previous page",
     nextPage: "Next page",
+    featuredLabel: "For You",
+    feedTitle: "More Suggestions",
   },
 
   jobseekerSetDetailPage: {

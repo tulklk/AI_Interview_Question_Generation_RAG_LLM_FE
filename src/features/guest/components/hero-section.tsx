@@ -106,17 +106,33 @@ export function HeroSection() {
             {h.subtext}
           </p>
 
-          <div className="flex flex-wrap items-center gap-3 mb-10">
-            {[h.point1, h.point2, h.point3].map((point, i) => (
-              <span
-                key={point}
-                className="checklist-item flex items-center gap-1.5 text-sm text-gray-600 dark:text-gray-300"
-                style={{ animationDelay: `${420 + i * 90}ms` }}
-              >
-                <CheckCircle2 size={15} className="checklist-icon-glow text-emerald-500 shrink-0" />
-                {point}
-              </span>
-            ))}
+          <div className="flex flex-wrap items-center gap-y-1.5 gap-x-3 mb-10">
+            {/* Point 1 — same line */}
+            <span
+              className="checklist-item flex items-center gap-1.5 text-sm text-gray-600 dark:text-gray-300"
+              style={{ animationDelay: "420ms" }}
+            >
+              <CheckCircle2 size={15} className="checklist-icon-glow text-emerald-500 shrink-0" />
+              {h.point1}
+            </span>
+            {/* Force point2 onto its own line */}
+            <div className="basis-full h-0" />
+            <span
+              className="checklist-item flex items-center gap-1.5 text-sm text-gray-600 dark:text-gray-300"
+              style={{ animationDelay: "510ms" }}
+            >
+              <CheckCircle2 size={15} className="checklist-icon-glow text-emerald-500 shrink-0" />
+              {h.point2}
+            </span>
+            {/* Force point3 onto its own line */}
+            <div className="basis-full h-0" />
+            <span
+              className="checklist-item flex items-center gap-1.5 text-sm text-gray-600 dark:text-gray-300"
+              style={{ animationDelay: "600ms" }}
+            >
+              <CheckCircle2 size={15} className="checklist-icon-glow text-emerald-500 shrink-0" />
+              {h.point3}
+            </span>
           </div>
 
           <div

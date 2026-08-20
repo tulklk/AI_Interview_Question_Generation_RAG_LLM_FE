@@ -7,6 +7,7 @@ import { cn } from "@/lib/cn";
 import { useLanguage } from "@/shared/providers/language-context";
 import { useAchievements } from "@/features/gamification/hooks/use-achievements";
 import { AchievementCard } from "@/features/gamification/components/achievement-card";
+import { ACH_ANIM_CSS } from "@/features/gamification/components/achievement-icons";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import { portalHeadingAlt, portalSubtextAlt } from "@/shared/utils/portal-ui";
 import type {
@@ -85,6 +86,9 @@ export function AchievementGrid({ variant = "full", className }: AchievementGrid
     const sorted = sortAchievements(achievements);
 
     return (
+      <>
+      {/* Hover-animation keyframes — injected once here, applied per-card via animClass. */}
+      <style>{ACH_ANIM_CSS}</style>
       <div className={cn("hr-glass-card p-5 overflow-visible", className)}>
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
@@ -165,6 +169,7 @@ export function AchievementGrid({ variant = "full", className }: AchievementGrid
           </p>
         )}
       </div>
+      </>
     );
   }
 
@@ -176,6 +181,8 @@ export function AchievementGrid({ variant = "full", className }: AchievementGrid
   const sortedFull = sortAchievements(filtered);
 
   return (
+    <>
+    <style>{ACH_ANIM_CSS}</style>
     <div className={className}>
       {/* Header */}
       <div className="flex items-center justify-between mb-3">
@@ -264,5 +271,6 @@ export function AchievementGrid({ variant = "full", className }: AchievementGrid
         </div>
       )}
     </div>
+    </>
   );
 }
