@@ -1,23 +1,23 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { createPortal } from "react-dom";
 import Link from "next/link";
 import {
   AlertTriangle,
   BookOpen,
   Check,
   Clock,
-  Copy,
   FileImage,
   FileText,
   FolderOpen,
   Loader2,
+  Lock,
   Upload,
   X,
 } from "lucide-react";
 import type { AnalyzeJobDescriptionResponse, StudioDocument, StudioLibraryDocument } from "@/features/studio/types/studio.types";
 import * as studioApi from "@/features/studio/services/studio.service";
+import { SampleJdModal } from "@/features/studio/components/sample-jd-modal";
 import { cn } from "@/lib/cn";
 import { useLanguage } from "@/shared/providers/language-context";
 import { portalCard, portalHeading, portalSubtext } from "@/shared/utils/portal-ui";
@@ -120,151 +120,6 @@ function SectionLabel({ text, required }: { text: string; required?: boolean }) 
   );
 }
 
-// ── Sample JD ─────────────────────────────────────────────────────────────────
-
-const SAMPLE_JD = `Chúng tôi đang tìm kiếm một Fullstack Developer với 1–3 năm kinh nghiệm để xây dựng các ứng dụng web hoàn chỉnh từ frontend đến backend.
-
-Trách nhiệm:
-- Xây dựng RESTful API sử dụng ASP.NET Core hoặc Node.js.
-- Phát triển giao diện người dùng sử dụng React.js hoặc Next.js.
-- Thiết kế và làm việc với cơ sở dữ liệu PostgreSQL, SQL Server hoặc MySQL.
-- Tích hợp xác thực, phân quyền và bảo mật hệ thống.
-- Phối hợp với QA, UI/UX Designer và Product Team để phát triển tính năng.
-- Debug các vấn đề trên frontend, backend và tầng cơ sở dữ liệu.
-
-Yêu cầu:
-- Có kinh nghiệm với C#, ASP.NET Core hoặc Node.js.
-- Thành thạo React.js, TypeScript, HTML, CSS.
-- Hiểu biết về REST API, JWT, thiết kế database, DTO và service layer.
-- Quen thuộc với Git, Swagger, Postman, Docker là một lợi thế.
-- Tư duy hệ thống và khả năng xử lý lỗi trong môi trường production.
-
-Ứng viên cần có khả năng giải thích kiến trúc fullstack, luồng frontend-backend, bảo mật API, tối ưu hóa cơ sở dữ liệu và xử lý lỗi production.`;
-
-const MODAL_ANIM_MS = 220;
-
-function SampleJdModal({
-  onClose,
-  onUse,
-}: {
-  onClose: () => void;
-  onUse: (content: string) => void;
-}) {
-  const { t } = useLanguage();
-  const src = t.studioPage.sources;
-  const [visible, setVisible] = useState(false);
-  const [copied, setCopied] = useState(false);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    requestAnimationFrame(() => requestAnimationFrame(() => setVisible(true)));
-    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
-  }, []);
-
-  function close() {
-    setVisible(false);
-    timerRef.current = setTimeout(onClose, MODAL_ANIM_MS);
-  }
-
-  function handleCopy() {
-    void navigator.clipboard.writeText(SAMPLE_JD).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1800);
-    });
-  }
-
-  return createPortal(
-    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
-      <div
-        className={cn(
-          "absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity",
-          visible ? "opacity-100" : "opacity-0"
-        )}
-        style={{ transitionDuration: `${MODAL_ANIM_MS}ms` }}
-        onClick={close}
-      />
-      <div
-        className={cn(
-          "relative z-10 flex w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-2xl dark:border-gray-800 dark:bg-gray-900",
-          "max-h-[85vh] transition-all ease-[cubic-bezier(0.34,1.4,0.64,1)]",
-          visible ? "scale-100 translate-y-0 opacity-100" : "scale-95 translate-y-3 opacity-0"
-        )}
-        style={{ transitionDuration: `${MODAL_ANIM_MS}ms` }}
-      >
-        {/* Header */}
-        <div className="flex shrink-0 items-start justify-between gap-3 px-5 pb-3 pt-5">
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-violet-50 dark:bg-violet-950/40">
-              <BookOpen size={15} className="text-violet-600 dark:text-violet-400" />
-            </div>
-            <div>
-              <p className={cn("text-sm font-semibold leading-tight", portalHeading)}>{src.sampleJd}</p>
-              <p className={cn("mt-0.5 text-[11px]", portalSubtext)}>Fullstack Developer · 1–3 năm kinh nghiệm</p>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={close}
-            className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-800 dark:hover:text-gray-300"
-          >
-            <X size={14} />
-          </button>
-        </div>
-
-        <div className="mx-5 h-px shrink-0 bg-gray-100 dark:bg-gray-800" />
-
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto px-5 py-4">
-          <pre className={cn(
-            "whitespace-pre-wrap rounded-xl border border-gray-100 bg-gray-50 p-4 font-sans text-[13px] leading-relaxed dark:border-gray-700/50 dark:bg-gray-800/60",
-            portalHeading
-          )}>
-            {SAMPLE_JD}
-          </pre>
-        </div>
-
-        <div className="mx-5 h-px shrink-0 bg-gray-100 dark:bg-gray-800" />
-
-        {/* Footer */}
-        <div className="flex shrink-0 items-center gap-2 px-5 py-4">
-          <button
-            type="button"
-            onClick={handleCopy}
-            className={cn(
-              "flex h-8 items-center gap-1.5 rounded-lg border px-3 text-xs font-semibold transition-colors",
-              "border-gray-200 hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800",
-              portalHeading
-            )}
-          >
-            {copied ? <Check size={13} className="text-emerald-500" /> : <Copy size={13} />}
-            {copied ? src.copied : "Copy"}
-          </button>
-          <div className="flex-1" />
-          <button
-            type="button"
-            onClick={close}
-            className={cn(
-              "h-8 rounded-lg border px-4 text-xs font-semibold transition-colors",
-              "border-gray-200 hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800",
-              portalHeading
-            )}
-          >
-            {src.close}
-          </button>
-          <button
-            type="button"
-            onClick={() => { onUse(SAMPLE_JD); close(); }}
-            className="shimmer-button h-8 rounded-lg px-4 text-xs font-semibold text-white hr-cta-btn"
-          >
-            {src.useSample}
-          </button>
-        </div>
-      </div>
-    </div>,
-    document.body
-  );
-}
-
 export function SourcesPanel({
   jdContent,
   onJdChange,
@@ -364,7 +219,7 @@ export function SourcesPanel({
   const attachableCount = libraryDocs.filter((d) => !d.alreadyAttached && d.status.toUpperCase() === "COMPLETED").length;
 
   return (
-    <div className={cn(portalCard, "relative space-y-4 p-3.5", locked && "opacity-60")}>
+    <div className={cn(portalCard, "relative space-y-4 p-3.5")}>
       {locked && (
         <div
           className="absolute inset-0 z-10 cursor-not-allowed rounded-xl"
@@ -373,7 +228,21 @@ export function SourcesPanel({
         />
       )}
 
-      <fieldset disabled={locked} className="min-w-0 space-y-4 border-0 p-0">
+      <fieldset
+        disabled={locked}
+        className={cn(
+          "min-w-0 space-y-4 border-0 p-0",
+          "disabled:[&_input]:opacity-60 disabled:[&_select]:opacity-60 disabled:[&_button]:opacity-60 disabled:[&_textarea]:opacity-60"
+        )}
+      >
+        {locked && (
+          <div className="flex items-center gap-1.5 rounded-lg border border-amber-200/80 bg-amber-50/90 px-2.5 py-1.5 dark:border-amber-900/50 dark:bg-amber-950/40">
+            <Lock className="h-3.5 w-3.5 shrink-0 text-amber-700 dark:text-amber-300" strokeWidth={2.5} />
+            <p className="text-[11px] font-semibold text-amber-900 dark:text-amber-200" title={src.lockedTitle}>
+              {src.locked}
+            </p>
+          </div>
+        )}
 
         {/* ── JD section ── */}
         <section className={cn("relative space-y-2.5", jdBlocked && !locked && "opacity-70")}>

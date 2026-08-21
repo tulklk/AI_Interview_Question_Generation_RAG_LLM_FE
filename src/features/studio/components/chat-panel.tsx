@@ -17,9 +17,6 @@ import {
   RefreshCw,
   Send,
   Sparkles,
-  Trash2,
-  FileText,
-  ImagePlus,
   X,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
@@ -29,16 +26,8 @@ import { AiLoadingSpinner } from "@/shared/components/common/ai-loading-spinner"
 import { AvatarCircle } from "@/shared/components/common/avatar-circle";
 import { getCachedUserProfile } from "@/core/storage/user-profile-cache";
 import { portalCard, portalHeading, portalSubtext } from "@/shared/utils/portal-ui";
-import {
-  citationDisplayName,
-  citationsForDisplay,
-  formatCitationExcerpt,
-  isJdCitation,
-} from "@/features/studio/utils/citation-display";
-import { STUDIO_QUESTION_TEMPLATES } from "@/features/studio/constants/question-templates";
-import { inferStudioTemplate } from "@/features/studio/utils/question-template-infer";
-import { QuestionContent } from "@/shared/components/ui/question-content";
-import { CodeSnippetBlock } from "@/shared/components/ui/code-snippet-block";
+import { QuestionReviewWorkspace } from "@/features/studio/components/question-review-workspace";
+import { formatDifficultyMixLabel } from "@/features/studio/utils/difficulty-mix";
 import type {
   ChatMessage,
   GenerationRun,
@@ -46,23 +35,12 @@ import type {
   PlanFocusAreaItem,
   PlanSectionItem,
   StudioQuestion,
-  StudioQuestionDifficulty,
-  StudioQuestionType,
 } from "@/features/studio/types/studio.types";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
 function asArray<T>(v: T[] | null | undefined): T[] {
   return Array.isArray(v) ? v : [];
-}
-
-function normalizeDifficultyMix(mix: PlanDetail["difficultyMix"] | null | undefined) {
-  const raw = (mix ?? {}) as Record<string, unknown>;
-  const num = (a: unknown, b: unknown) => {
-    const v = a ?? b;
-    return typeof v === "number" && Number.isFinite(v) ? v : 0;
-  };
-  return { easy: num(raw.easy, raw.Easy), medium: num(raw.medium, raw.Medium), hard: num(raw.hard, raw.Hard) };
 }
 
 function difficultyBadge(d: string) {
@@ -82,8 +60,6 @@ function typeBadge(t: string) {
   return "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300";
 }
 
-const QUESTIONS_PER_PAGE = 6;
-
 // ── Plan section card ─────────────────────────────────────────────────────────
 
 function PlanSectionCard({ section, index }: { section: PlanSectionItem; index: number }) {
@@ -99,7 +75,7 @@ function PlanSectionCard({ section, index }: { section: PlanSectionItem; index: 
         className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left"
         aria-expanded={open}
       >
-        <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-primary/10 text-[11px] font-bold text-primary">
+        <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-primary/10 text-[11px] font-bold text-gray-900 dark:text-gray-100">
           {index + 1}
         </div>
         <div className="min-w-0 flex-1">
@@ -171,379 +147,7 @@ function FocusAreaRow({ area, index }: { area: PlanFocusAreaItem; index: number 
   );
 }
 
-// ── Question card ─────────────────────────────────────────────────────────────
-
-function QuestionCard({
-  question,
-  onUpdate,
-  onDelete,
-  onRegenerate,
-  onUploadImage,
-  onDeleteImage,
-}: {
-  question: StudioQuestion;
-  onUpdate?: (q: StudioQuestion) => Promise<void> | void;
-  onDelete?: (id: string) => Promise<void> | void;
-  onRegenerate?: (id: string) => Promise<void> | void;
-  onUploadImage?: (questionId: string, file: File) => Promise<void> | void;
-  onDeleteImage?: (questionId: string) => Promise<void> | void;
-}) {
-  const { t } = useLanguage();
-  const c = t.studioPage.chat;
-  const [detailsOpen, setDetailsOpen] = useState(false);
-  const [sourcesOpen, setSourcesOpen] = useState(false);
-  const [editing, setEditing] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [draftContent, setDraftContent] = useState(question.content);
-  const [draftAnswer, setDraftAnswer] = useState(question.expectedAnswer ?? "");
-  const [draftRubric, setDraftRubric] = useState(question.scoringRubric ?? "");
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  // SCRUM-396: badge template + snippet + image hint trên card chat Studio
-  const templateView = useMemo(() => inferStudioTemplate(question), [question]);
-  const templateLabel = templateView.templateId
-    ? (STUDIO_QUESTION_TEMPLATES.find((t) => t.id === templateView.templateId)?.label ?? templateView.templateId)
-    : null;
-
-  const startEdit = () => {
-    setDraftContent(question.content);
-    setDraftAnswer(question.expectedAnswer ?? "");
-    setDraftRubric(question.scoringRubric ?? "");
-    setEditing(true);
-    setDetailsOpen(true);
-  };
-
-  const saveEdit = async () => {
-    if (!onUpdate || !draftContent.trim()) return;
-    setBusy(true);
-    try {
-      await onUpdate({
-        ...question,
-        content: draftContent.trim(),
-        expectedAnswer: draftAnswer.trim() || null,
-        scoringRubric: draftRubric.trim() || null,
-        difficulty: question.difficulty as StudioQuestionDifficulty,
-        type: question.type as StudioQuestionType,
-      });
-      setEditing(false);
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const handleImagePick = async (file: File | undefined) => {
-    if (!file || !onUploadImage) return;
-    setBusy(true);
-    try {
-      await onUploadImage(question.id, file);
-    } finally {
-      setBusy(false);
-      if (fileInputRef.current) fileInputRef.current.value = "";
-    }
-  };
-
-  return (
-    <div className="rounded-xl border border-gray-200/80 bg-white p-3 shadow-sm dark:border-gray-700 dark:bg-gray-900/60">
-      <div className="mb-2 flex items-start justify-between gap-3">
-        <div className="flex min-w-0 flex-wrap items-center gap-1.5">
-          <span className="inline-flex h-6 min-w-6 shrink-0 items-center justify-center rounded-md bg-primary/10 px-1.5 text-[11px] font-semibold text-primary">
-            #{question.orderIndex + 1}
-          </span>
-          <span className={cn("inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold", typeBadge(question.type))}>
-            {question.type}
-          </span>
-          <span className={cn("inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold", difficultyBadge(question.difficulty))}>
-            {question.difficulty}
-          </span>
-          {templateLabel && (
-            <span className="inline-flex rounded-full bg-indigo-100 px-2 py-0.5 text-[10px] font-semibold text-indigo-800 dark:bg-indigo-950/50 dark:text-indigo-300">
-              {templateLabel}
-            </span>
-          )}
-          {/* SCRUM-400: phương thức trả lời Candidate */}
-          {question.answerMethod && (
-            <span className="inline-flex rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300">
-              Answer: {question.answerMethod}
-            </span>
-          )}
-        </div>
-
-        <div className="flex shrink-0 items-center overflow-hidden rounded-lg border border-gray-200 bg-gray-50/80 dark:border-gray-700 dark:bg-gray-950/50">
-          {onUpdate && (
-            <button
-              type="button"
-              onClick={startEdit}
-              disabled={busy}
-              className="inline-flex h-7 w-7 items-center justify-center text-gray-500 transition-colors hover:bg-white hover:text-primary disabled:opacity-40 dark:text-gray-400 dark:hover:bg-gray-800"
-              title={c.edit}
-            >
-              <Pencil className="h-3.5 w-3.5" strokeWidth={2} />
-            </button>
-          )}
-          {onRegenerate && (
-            <button
-              type="button"
-              onClick={async () => { setBusy(true); try { await onRegenerate(question.id); } finally { setBusy(false); } }}
-              disabled={busy}
-              className="inline-flex h-7 w-7 items-center justify-center border-l border-gray-200 text-gray-500 transition-colors hover:bg-white hover:text-amber-600 disabled:opacity-40 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-800"
-              title={c.regenerate}
-            >
-              <RefreshCw className={cn("h-3.5 w-3.5", busy && "animate-spin")} strokeWidth={2} />
-            </button>
-          )}
-          {onDelete && (
-            <button
-              type="button"
-              onClick={async () => {
-                if (!window.confirm(c.confirmDelete)) return;
-                setBusy(true);
-                try { await onDelete(question.id); } finally { setBusy(false); }
-              }}
-              disabled={busy}
-              className="inline-flex h-7 w-7 items-center justify-center border-l border-gray-200 text-gray-500 transition-colors hover:bg-white hover:text-red-600 disabled:opacity-40 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-800"
-              title={c.delete}
-            >
-              <Trash2 className="h-3.5 w-3.5" strokeWidth={2} />
-            </button>
-          )}
-        </div>
-      </div>
-
-      {editing ? (
-        <div className="space-y-2">
-          <textarea
-            value={draftContent}
-            onChange={(e) => setDraftContent(e.target.value)}
-            rows={3}
-            className="w-full rounded-lg border border-gray-200 p-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/20 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:placeholder:text-gray-500"
-            placeholder={c.editQuestionPlaceholder}
-          />
-          <textarea
-            value={draftAnswer}
-            onChange={(e) => setDraftAnswer(e.target.value)}
-            rows={2}
-            className="w-full rounded-lg border border-emerald-200 p-2 text-xs text-gray-800 placeholder:text-gray-400 focus:border-emerald-400 focus:outline-none dark:border-emerald-900 dark:bg-gray-950 dark:text-gray-100 dark:placeholder:text-gray-500"
-            placeholder={c.editAnswerPlaceholder}
-          />
-          <textarea
-            value={draftRubric}
-            onChange={(e) => setDraftRubric(e.target.value)}
-            rows={2}
-            className="w-full rounded-lg border border-amber-200 p-2 text-xs text-gray-800 placeholder:text-gray-400 focus:border-amber-400 focus:outline-none dark:border-amber-900 dark:bg-gray-950 dark:text-gray-100 dark:placeholder:text-gray-500"
-            placeholder={c.editRubricPlaceholder}
-          />
-          <div className="flex justify-end gap-2">
-            <button type="button" onClick={() => setEditing(false)} disabled={busy}
-              className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800">
-              {c.cancel}
-            </button>
-            <button type="button" onClick={() => void saveEdit()} disabled={busy || !draftContent.trim()}
-              className="rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50">
-              {busy ? c.saving : c.save}
-            </button>
-          </div>
-        </div>
-      ) : (
-        <>
-          {/* Ảnh đính kèm — trên nội dung câu hỏi */}
-          {(templateView.attachedImageUrl || onUploadImage) && (
-            <div className="mb-3 space-y-1.5">
-              {templateView.attachedImageUrl ? (
-                <div className="overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={templateView.attachedImageUrl}
-                    alt="Ảnh đính kèm"
-                    className="max-h-72 w-full object-contain bg-gray-50 dark:bg-gray-950"
-                  />
-                </div>
-              ) : null}
-              <div className="flex flex-wrap items-center gap-1.5">
-                {onUploadImage && (
-                  <>
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"
-                      className="hidden"
-                      onChange={(e) => void handleImagePick(e.target.files?.[0])}
-                    />
-                    <button
-                      type="button"
-                      disabled={busy}
-                      onClick={() => fileInputRef.current?.click()}
-                      className="inline-flex items-center gap-1 rounded-md border border-gray-200 bg-gray-50 px-2 py-1 text-[10px] font-medium text-gray-600 hover:border-primary/40 hover:text-primary disabled:opacity-40 dark:border-gray-700 dark:bg-gray-950/40 dark:text-gray-300"
-                    >
-                      <ImagePlus className="h-3 w-3" strokeWidth={2} />
-                      {templateView.attachedImageUrl ? "Đổi ảnh" : "Thêm ảnh"}
-                    </button>
-                  </>
-                )}
-                {onDeleteImage && templateView.attachedImageUrl && (
-                  <button
-                    type="button"
-                    disabled={busy}
-                    onClick={async () => {
-                      setBusy(true);
-                      try { await onDeleteImage(question.id); } finally { setBusy(false); }
-                    }}
-                    className="inline-flex items-center gap-1 rounded-md border border-red-200 bg-red-50 px-2 py-1 text-[10px] font-medium text-red-600 hover:bg-red-100 disabled:opacity-40 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300"
-                  >
-                    Xóa ảnh
-                  </button>
-                )}
-              </div>
-            </div>
-          )}
-
-          <p className="text-sm leading-relaxed text-gray-800 dark:text-gray-100">{question.content}</p>
-
-          {/* Code snippet / diagram theo template (SCRUM-396) */}
-          {templateView.snippet ? (
-            <CodeSnippetBlock
-              code={templateView.snippet}
-              language={templateView.snippetLanguage}
-              variant="question"
-              className="mt-3"
-            />
-          ) : null}
-          {templateView.templateId === "SYSTEM_DESIGN" && templateView.diagramDescription ? (
-            <div className="mt-3 rounded-lg border border-sky-200 bg-sky-50/70 px-3 py-2 dark:border-sky-900 dark:bg-sky-950/40">
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-sky-800 dark:text-sky-300">
-                Gợi ý diagram cho HR
-              </p>
-              <p className="mt-0.5 text-[10px] text-sky-700/80 dark:text-sky-300/70">
-                Không AI gen — chỉ gợi ý loại sơ đồ cần tìm/đính kèm.
-              </p>
-              <p className="mt-1 text-xs text-sky-900 dark:text-sky-200">{templateView.diagramDescription}</p>
-            </div>
-          ) : null}
-
-          <div className="mt-2 flex flex-wrap items-center gap-1.5">
-            {/* SCRUM-390: nút nhỏ — bấm mới xem chi tiết nguồn RAG */}
-            <button
-              type="button"
-              onClick={() => setSourcesOpen((v) => !v)}
-              className={cn(
-                "inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[10px] font-medium transition-colors",
-                sourcesOpen
-                  ? "border-sky-300 bg-sky-50 text-sky-800 dark:border-sky-800 dark:bg-sky-950/50 dark:text-sky-200"
-                  : "border-gray-200 bg-gray-50 text-gray-500 hover:border-sky-200 hover:bg-sky-50/80 hover:text-sky-700 dark:border-gray-700 dark:bg-gray-950/40 dark:text-gray-400 dark:hover:border-sky-900 dark:hover:text-sky-300"
-              )}
-              aria-expanded={sourcesOpen}
-              title="Nguồn RAG"
-            >
-              <FileText className="h-3 w-3" strokeWidth={2} />
-              Nguồn
-              {(question.citations?.length ?? 0) > 0 && (
-                <span className="rounded bg-sky-100 px-1 text-[9px] font-semibold text-sky-700 dark:bg-sky-900/60 dark:text-sky-200">
-                  {question.citations!.length}
-                </span>
-              )}
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setDetailsOpen((v) => !v)}
-              className={cn(
-                "inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-[11px] font-medium",
-                "text-gray-500 hover:bg-gray-100 hover:text-gray-800 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100",
-                detailsOpen && "text-primary"
-              )}
-              aria-expanded={detailsOpen}
-            >
-              <ChevronDown className={cn("h-3.5 w-3.5 transition-transform duration-150", detailsOpen && "rotate-180")} />
-              {detailsOpen ? c.collapse : "Sample answer & scoring rubric"}
-            </button>
-          </div>
-
-          {sourcesOpen && (
-            <div className="mt-1.5 rounded-lg border border-sky-200/70 bg-sky-50/70 px-3 py-2 dark:border-sky-900 dark:bg-sky-950/40">
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-sky-800 dark:text-sky-300">
-                Nguồn tài liệu
-              </p>
-              {(() => {
-                const rows = citationsForDisplay(question.citations);
-                return rows.length > 0 ? (
-                <ul className="mt-1 space-y-1">
-                  {rows.map((cit, i) => {
-                    const primary = isJdCitation(cit.sourceFile);
-                    const excerpt = formatCitationExcerpt(cit.excerpt);
-                    const label = citationDisplayName(cit.sourceFile, {
-                      jobDescription: c.sourceJobDescription,
-                    });
-                    return (
-                      <li key={`${cit.sourceFile}-${i}`} className="text-xs text-gray-700 dark:text-gray-200">
-                        <span
-                          className={cn(
-                            "mr-1.5 inline-flex rounded px-1 py-px text-[9px] font-bold uppercase tracking-wide",
-                            primary
-                              ? "bg-sky-200/80 text-sky-900 dark:bg-sky-800 dark:text-sky-100"
-                              : "bg-gray-200/80 text-gray-600 dark:bg-gray-700 dark:text-gray-300"
-                          )}
-                        >
-                          {primary ? c.sourcePrimary : c.sourceSecondary}
-                        </span>
-                        <span className="font-medium">{label}</span>
-                        {excerpt ? (
-                          <span className="text-gray-500 dark:text-gray-400">{` — “${excerpt}”`}</span>
-                        ) : null}
-                      </li>
-                    );
-                  })}
-                </ul>
-                ) : (
-                <p className="mt-0.5 text-[11px] italic text-gray-500 dark:text-gray-400">
-                  {c.sourcesEmptyLegacy}
-                </p>
-                );
-              })()}
-            </div>
-          )}
-
-          {detailsOpen && (
-            <div className="mt-1.5 space-y-1.5">
-              {question.expectedAnswer?.trim() ? (
-                <div className="rounded-lg border border-emerald-200/70 bg-emerald-50/80 px-3 py-2 dark:border-emerald-900 dark:bg-emerald-950/40">
-                  <p className="text-[10px] font-semibold uppercase tracking-wide text-emerald-800 dark:text-emerald-300">
-                    Đáp án mẫu
-                  </p>
-                  <QuestionContent
-                    text={question.expectedAnswer}
-                    stripMatchingSnippet={templateView.snippet}
-                    codeVariant="answer"
-                    className="mt-1.5 text-xs text-gray-700 dark:text-gray-200"
-                  />
-                </div>
-              ) : <p className="text-[11px] text-gray-400">{c.noAnswer}</p>}
-              {question.scoringRubric?.trim() ? (
-                <div className="rounded-lg border border-amber-200/70 bg-amber-50/80 px-3 py-2 dark:border-amber-900 dark:bg-amber-950/40">
-                  <p className="text-[10px] font-semibold uppercase tracking-wide text-amber-900 dark:text-amber-200">Scoring rubric</p>
-                  <p className="mt-0.5 text-xs text-gray-700 dark:text-gray-200">{question.scoringRubric}</p>
-                </div>
-              ) : <p className="text-[11px] text-gray-400">{c.noRubric}</p>}
-            </div>
-          )}
-        </>
-      )}
-    </div>
-  );
-}
-
 // ── Generation progress banner ────────────────────────────────────────────────
-
-// Estimate where simulated progress should be based on elapsed time since run started.
-// This lets the bar resume at the correct position after a page reload instead of
-// restarting from 10 — mirrors the 800ms tick formula: delta += max(0.3, (88-x)*0.015)
-// Resuming simulated % from elapsed time (after page reload).
-// Calibrated for ~65s generation: coefficient 0.040 → reaches ~85% at t=65s.
-function computeElapsedPct(startedAt: string | undefined): number {
-  if (!startedAt) return 10;
-  const elapsedMs = Date.now() - new Date(startedAt).getTime();
-  if (elapsedMs <= 0) return 10;
-  const n = elapsedMs / 800;
-  return Math.max(10, Math.min(88, 88 - 78 * Math.pow(0.960, n)));
-}
 
 function GenerationBanner({
   run,
@@ -562,35 +166,8 @@ function GenerationBanner({
   const c = t.studioPage.chat;
   const isFailed = run?.status === "Failed";
   const isPending = isGenerating || run?.status === "Generating" || run?.status === "Pending";
-
-  // Real percentage from backend (stays 0 until backend updates the count)
-  const realPct = run?.requestedQuestionCount
-    ? Math.round(((run.generatedQuestionCount ?? 0) / run.requestedQuestionCount) * 100)
-    : 0;
-
-  // Simulated animated progress — initialise from elapsed time so the bar picks up
-  // where it left off after a page reload instead of restarting from 10.
-  const [simPct, setSimPct] = useState(() => computeElapsedPct(run?.startedAt));
-
-  useEffect(() => {
-    if (!isPending) {
-      setSimPct(10); // reset for next run
-      return;
-    }
-    // Sync to time-based estimate so the bar never jumps backward after a reload
-    setSimPct((prev) => Math.max(prev, computeElapsedPct(run?.startedAt)));
-    const id = setInterval(() => {
-      setSimPct((prev) => {
-        if (prev >= 88) return prev;
-        return Math.min(88, prev + Math.max(0.3, (88 - prev) * 0.015));
-      });
-    }, 800);
-    return () => clearInterval(id);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isPending, run?.startedAt]);
-
-  // Use real value if the backend actually updates the count
-  const displayPct = Math.min(92, Math.max(simPct, realPct));
+  const done = run?.generatedQuestionCount ?? 0;
+  const total = run?.requestedQuestionCount ?? 0;
 
   if (!isPending && !isFailed) return null;
 
@@ -635,17 +212,16 @@ function GenerationBanner({
       </div>
       {isPending && (
         <div className="mt-3">
-          {run?.requestedQuestionCount ? (
-            <div className="mb-1.5 flex items-center justify-between">
-              <span className="text-[10px] font-medium text-amber-700 dark:text-amber-400">{c.generationProgress}</span>
-              <span className="text-[10px] font-semibold tabular-nums text-amber-700 dark:text-amber-400">{Math.round(displayPct)}%</span>
-            </div>
-          ) : null}
-          <div className="h-1.5 w-full overflow-hidden rounded-full bg-amber-100 dark:bg-amber-950/50">
-            <div
-              className="h-full rounded-full bg-linear-to-r from-amber-500 to-amber-400 transition-all duration-700"
-              style={{ width: `${displayPct}%` }}
-            />
+          <div className="mb-1.5 flex items-center justify-between">
+            <span className="text-[10px] font-medium text-amber-700 dark:text-amber-400">{c.generationProgress}</span>
+            {total > 0 && done > 0 ? (
+              <span className="text-[10px] font-semibold tabular-nums text-amber-700 dark:text-amber-400">
+                {c.questionsGeneratedCount.replace("{{done}}", String(done)).replace("{{total}}", String(total))}
+              </span>
+            ) : null}
+          </div>
+          <div className="studio-progress-indeterminate h-1.5 w-full rounded-full bg-amber-100 dark:bg-amber-950/50">
+            <span className="bg-linear-to-r from-amber-500 to-amber-400" />
           </div>
         </div>
       )}
@@ -664,10 +240,15 @@ function GenerationBanner({
 // Full-screen step-by-step loading UI shown while RAG generation is in progress.
 // Mirrors the plan-creation streaming UI in PlanEmptyState so both feel consistent.
 
+const QGEN_LOAD_STEP_COUNT = 4;
+
 function QuestionGenerationLoading({
   run,
+  tickSteps,
 }: {
   run?: GenerationRun | null;
+  /** Time-based steps lifted to ChatPanel so tab switches do not reset progress */
+  tickSteps: number;
 }) {
   const { t } = useLanguage();
   const c = t.studioPage.chat;
@@ -679,39 +260,14 @@ function QuestionGenerationLoading({
     { label: c.qGenStep4, sub: c.qGenStepSub4 },
   ];
 
-  // ── Percentage calculation (mirrors GenerationBanner) ──
-  // Simulated progress — initialises from elapsed time so bar resumes after reload
-  const [simPct, setSimPct] = useState<number>(() => computeElapsedPct(run?.startedAt));
+  const done = run?.generatedQuestionCount ?? 0;
+  const total = run?.requestedQuestionCount ?? 0;
 
-  useEffect(() => {
-    // Sync to elapsed-time estimate so the bar never jumps backward on reload
-    setSimPct((prev) => Math.max(prev, computeElapsedPct(run?.startedAt)));
-    const id = setInterval(() => {
-      setSimPct((prev) => {
-        if (prev >= 88) return prev;
-        // coefficient 0.040 / 800ms → reaches ~85% at t=65s
-        return Math.min(88, prev + Math.max(0.4, (88 - prev) * 0.040));
-      });
-    }, 800);
-    return () => clearInterval(id);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [run?.startedAt]);
-
-  // Real count from backend overrides simulated progress when available
-  const realPct = run?.requestedQuestionCount
-    ? Math.round(((run.generatedQuestionCount ?? 0) / run.requestedQuestionCount) * 100)
-    : 0;
-
-  // Allow 100% when backend confirms all questions generated; otherwise cap at 95
-  const displayPct = realPct >= 100 ? 100 : Math.min(95, Math.max(simPct, realPct));
-
-  // ── Step logic derived from percentage ──
-  // 4 steps, each covers 25% of progress range so steps advance in sync with progress
+  // Prefer real BE counts for step index; otherwise time-based ticks
   const completedSteps =
-    displayPct >= 75 ? 3
-    : displayPct >= 50 ? 2
-    : displayPct >= 25 ? 1
-    : 0;
+    total > 0 && done > 0
+      ? Math.min(3, Math.floor((done / total) * 4))
+      : tickSteps;
 
   const activeIdx = Math.min(completedSteps, QGEN_STEPS.length - 1);
 
@@ -733,28 +289,31 @@ function QuestionGenerationLoading({
         </div>
       </div>
 
-      {/* Progress bar + percentage */}
+      {/* Indeterminate progress (no fake %) */}
       <div className="w-full max-w-xs" style={{ animation: "slideUpFade 0.35s ease-out 0.2s both" }}>
         <div className="mb-2 flex items-center justify-between">
           <span className="text-[11px] font-medium text-gray-500 dark:text-gray-400">
             {c.generationProgress}
           </span>
-          <span className="text-sm font-bold tabular-nums text-primary">
-            {Math.round(displayPct)}%
-          </span>
+          {total > 0 && done > 0 ? (
+            <span className="text-[11px] font-semibold tabular-nums text-primary">
+              {c.questionsGeneratedCount.replace("{{done}}", String(done)).replace("{{total}}", String(total))}
+            </span>
+          ) : (
+            <span className="text-[11px] font-medium text-gray-400">
+              {c.stepOf.replace("{{current}}", String(activeIdx + 1)).replace("{{total}}", String(QGEN_STEPS.length))}
+            </span>
+          )}
         </div>
-        <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800">
-          <div
-            className="h-full rounded-full bg-linear-to-r from-primary to-primary/70 transition-all duration-700"
-            style={{ width: `${displayPct}%` }}
-          />
+        <div className="studio-progress-indeterminate h-1.5 w-full rounded-full bg-gray-100 dark:bg-gray-800">
+          <span className="bg-linear-to-r from-primary to-primary/70" />
         </div>
       </div>
 
       {/* Step list */}
       <div className="w-full max-w-xs space-y-2">
         {QGEN_STEPS.map((step, i) => {
-          const done   = i < completedSteps;
+          const stepDone = i < completedSteps;
           const active = i === completedSteps && completedSteps < QGEN_STEPS.length;
           return (
             <div
@@ -762,12 +321,12 @@ function QuestionGenerationLoading({
               style={{ animation: `slideUpFade 0.3s ease-out ${0.15 + i * 0.09}s both` }}
               className={cn(
                 "flex items-center gap-2 rounded-lg px-3 py-2 text-xs transition-all duration-500",
-                done   ? "bg-emerald-50 dark:bg-emerald-950/25"
+                stepDone ? "bg-emerald-50 dark:bg-emerald-950/25"
                 : active ? "bg-primary/8 dark:bg-primary/10"
                 :          "bg-gray-50 dark:bg-gray-800/60"
               )}
             >
-              {done ? (
+              {stepDone ? (
                 <Check className="h-3 w-3 shrink-0 text-emerald-500" strokeWidth={3} />
               ) : active ? (
                 <Loader2 className="h-3 w-3 shrink-0 animate-spin text-primary" />
@@ -777,14 +336,14 @@ function QuestionGenerationLoading({
               <span
                 className={cn(
                   "transition-all duration-300",
-                  done   ? "text-emerald-700 line-through dark:text-emerald-400"
+                  stepDone ? "text-emerald-700 line-through dark:text-emerald-400"
                   : active ? "font-semibold text-gray-900 dark:text-gray-100"
                   :          "text-gray-400 opacity-40 dark:text-gray-600"
                 )}
               >
                 {step.label}
               </span>
-              {done && (
+              {stepDone && (
                 <span className="ml-auto text-[10px] font-semibold text-emerald-500">{c.stepDone}</span>
               )}
             </div>
@@ -797,18 +356,24 @@ function QuestionGenerationLoading({
 
 // ── Empty / Ready state ───────────────────────────────────────────────────────
 
+const PLAN_LOAD_STEP_COUNT = 4;
+
 function PlanEmptyState({
   hasJd,
   skillCount,
   canCreatePlan,
   isStreaming,
   onCreatePlan,
+  completedSteps,
+  showLoading,
 }: {
   hasJd: boolean;
   skillCount: number;
   canCreatePlan: boolean;
   isStreaming: boolean;
   onCreatePlan: () => void;
+  completedSteps: number;
+  showLoading: boolean;
 }) {
   const { t } = useLanguage();
   const c = t.studioPage.chat;
@@ -818,58 +383,6 @@ function PlanEmptyState({
     { label: c.planStep3, sub: c.stepStructuring },
     { label: c.planStep4, sub: c.stepFinalizing },
   ];
-  const [completedSteps, setCompletedSteps] = useState(0);
-  const [simPct, setSimPct] = useState(5);
-  // showLoading stays true briefly after isStreaming→false so we can animate completion
-  const [showLoading, setShowLoading] = useState(isStreaming);
-  const prevStreamingRef = useRef(false);
-
-  // Detect streaming start / end transitions
-  useEffect(() => {
-    const wasStreaming = prevStreamingRef.current;
-    prevStreamingRef.current = isStreaming;
-
-    if (isStreaming && !wasStreaming) {
-      // Streaming just started — reset and show overlay
-      setShowLoading(true);
-      setSimPct(5);
-      setCompletedSteps(0);
-    } else if (!isStreaming && wasStreaming) {
-      // Plan just finished — rush all steps to ✓ and fill bar, then dismiss after 1500ms.
-      // PlanWorkspace will unmount us after 1000ms (when plan arrives), so the 1500ms timer
-      // only fires in the error case (no plan) to fall back to the empty-state buttons.
-      setSimPct(100);
-      setCompletedSteps(PLAN_STEPS.length);
-      const timer = setTimeout(() => {
-        setShowLoading(false);
-        setSimPct(5);
-        setCompletedSteps(0);
-      }, 1500);
-      return () => clearTimeout(timer);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isStreaming]);
-
-  // Smooth percentage tick — calibrated for ~18-20s plan creation.
-  // coefficient 0.065 per 600ms tick → reaches ~73% at 19s, capped at 88%.
-  useEffect(() => {
-    if (!showLoading || !isStreaming) return;
-    const id = setInterval(() => {
-      setSimPct((prev) => {
-        if (prev >= 88) return prev;
-        return Math.min(88, prev + Math.max(0.5, (88 - prev) * 0.065));
-      });
-    }, 600);
-    return () => clearInterval(id);
-  }, [showLoading, isStreaming]);
-
-  // Time-based step advancement — ~18-20s total / 4 steps → advance every 5s
-  useEffect(() => {
-    if (!showLoading || !isStreaming) return;
-    if (completedSteps >= PLAN_STEPS.length) return;
-    const timer = setTimeout(() => setCompletedSteps((p) => p + 1), 5_000);
-    return () => clearTimeout(timer);
-  }, [showLoading, isStreaming, completedSteps]);
 
   if (showLoading) {
     const allDone  = completedSteps >= PLAN_STEPS.length;
@@ -887,21 +400,18 @@ function PlanEmptyState({
             </p>
           </div>
         </div>
-        {/* Progress bar + percentage */}
+        {/* Indeterminate progress — plan creation (no fake %) */}
         <div className="w-full max-w-xs" style={{ animation: "slideUpFade 0.35s ease-out 0.2s both" }}>
           <div className="mb-2 flex items-center justify-between">
             <span className="text-[11px] font-medium text-gray-500 dark:text-gray-400">
-              {c.generationProgress}
+              {c.planProgress}
             </span>
-            <span className="text-sm font-bold tabular-nums text-primary">
-              {Math.round(simPct)}%
+            <span className="text-[11px] font-medium text-gray-400">
+              {c.stepOf.replace("{{current}}", String(activeIdx + 1)).replace("{{total}}", String(PLAN_STEPS.length))}
             </span>
           </div>
-          <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800">
-            <div
-              className="h-full rounded-full bg-linear-to-r from-primary to-primary/70 transition-all duration-700"
-              style={{ width: `${simPct}%` }}
-            />
+          <div className="studio-progress-indeterminate h-1.5 w-full rounded-full bg-gray-100 dark:bg-gray-800">
+            <span className="bg-linear-to-r from-primary to-primary/70" />
           </div>
         </div>
         <div className="w-full max-w-xs space-y-2">
@@ -949,7 +459,7 @@ function PlanEmptyState({
 
   if (!hasJd) {
     return (
-      <div className="flex flex-1 flex-col items-center justify-center gap-4 px-6 py-16 text-center">
+      <div className="flex flex-1 flex-col items-center justify-center gap-5 px-6 py-14 text-center">
         <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-100 dark:bg-gray-800" style={{ animation: "popIn 0.45s cubic-bezier(0.34,1.56,0.64,1) 0.08s both" }}>
           <Layers className="h-7 w-7 text-gray-400" />
         </div>
@@ -958,6 +468,18 @@ function PlanEmptyState({
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
             {c.noJdSub}
           </p>
+        </div>
+        {/* 3-step flow hint */}
+        <div className="flex items-center gap-1.5 text-[11px] text-gray-400 dark:text-gray-500 select-none">
+          {[c.flowStep1, c.flowStep2, c.flowStep3].map((label, i) => (
+            <span key={i} className="flex items-center gap-1.5">
+              <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800 text-[10px] font-bold text-gray-500 dark:text-gray-400 shrink-0">
+                {i + 1}
+              </span>
+              <span className="whitespace-nowrap">{label}</span>
+              {i < 2 && <span className="text-gray-300 dark:text-gray-600">→</span>}
+            </span>
+          ))}
         </div>
       </div>
     );
@@ -1015,6 +537,9 @@ function PlanWorkspace({
   onGenerateQuestions,
   onRefreshGenerationStatus,
   onRenameTitle,
+  planLoadCompletedSteps,
+  planLoadShowLoading,
+  qGenTickSteps,
 }: {
   plan: PlanDetail | null;
   isStreaming: boolean;
@@ -1030,6 +555,9 @@ function PlanWorkspace({
   onGenerateQuestions: () => void;
   onRefreshGenerationStatus: () => void;
   onRenameTitle?: (title: string) => Promise<boolean>;
+  planLoadCompletedSteps: number;
+  planLoadShowLoading: boolean;
+  qGenTickSteps: number;
 }) {
   const { t } = useLanguage();
   const c = t.studioPage.chat;
@@ -1039,7 +567,10 @@ function PlanWorkspace({
   const planSections = useMemo(() => asArray<PlanSectionItem>(plan?.sections ?? plan?.estimatedSections), [plan]);
   const focusAreas = useMemo(() => asArray<PlanFocusAreaItem>(plan?.focusAreas), [plan]);
   const sources = useMemo(() => asArray<string>(plan?.sourcesUsed), [plan]);
-  const mix = useMemo(() => normalizeDifficultyMix(plan?.difficultyMix), [plan]);
+  const mixLabel = useMemo(
+    () => formatDifficultyMixLabel(plan?.difficultyMix, plan?.totalQuestions ?? 0, "·"),
+    [plan]
+  );
 
   const displayTitle = useMemo(() => {
     if (!plan) return "";
@@ -1126,6 +657,8 @@ function PlanWorkspace({
         canCreatePlan={canCreatePlan}
         isStreaming={isStreaming}
         onCreatePlan={onCreatePlan}
+        completedSteps={planLoadCompletedSteps}
+        showLoading={planLoadShowLoading}
       />
     );
   }
@@ -1155,7 +688,7 @@ function PlanWorkspace({
             {[
               `${plan.totalQuestions} ${st.settings.unitQuestions}`,
               `${plan.interviewLengthMinutes} ${st.settings.unitMin}`,
-              `${mix.easy}E·${mix.medium}M·${mix.hard}H`,
+              mixLabel,
             ].map((stat) => (
               <span key={stat} className="rounded-md bg-white/90 px-2 py-0.5 text-[11px] font-medium text-gray-600 shadow-sm dark:bg-gray-800 dark:text-gray-300">
                 {stat}
@@ -1221,7 +754,7 @@ function PlanWorkspace({
 
       {/* Generation: full-screen step overlay while generating or in 1200ms completion grace period */}
       {(isGeneratingQuestions || generationRun?.status === "Generating" || generationRun?.status === "Pending" || blockQGenSwitch) ? (
-        <QuestionGenerationLoading run={generationRun} />
+        <QuestionGenerationLoading run={generationRun} tickSteps={qGenTickSteps} />
       ) : (
         /* Failed / completed banner */
         <GenerationBanner
@@ -1480,6 +1013,12 @@ interface Props {
   onRegenerateQuestion?: (questionId: string) => Promise<void> | void;
   onUploadQuestionImage?: (questionId: string, file: File) => Promise<void> | void;
   onDeleteQuestionImage?: (questionId: string) => Promise<void> | void;
+  onSaveDraft?: () => void;
+  onPublish?: () => void;
+  onPublishBlocked?: () => void;
+  isSavingDraft?: boolean;
+  isDraftSaved?: boolean;
+  isPublished?: boolean;
 }
 
 type TabId = "plan" | "ai" | "questions";
@@ -1508,18 +1047,73 @@ export function ChatPanel({
   onRegenerateQuestion,
   onUploadQuestionImage,
   onDeleteQuestionImage,
+  onSaveDraft,
+  onPublish,
+  onPublishBlocked,
+  isSavingDraft = false,
+  isDraftSaved = false,
+  isPublished = false,
 }: Props) {
   const { t } = useLanguage();
   const c = t.studioPage.chat;
   const s = t.studioPage;
   const [activeTab, setActiveTab] = useState<TabId>(questions.length > 0 ? "questions" : "plan");
-  const [questionsPage, setQuestionsPage] = useState(1);
   const hasQuestions = questions.length > 0;
 
-  const totalPages = Math.max(1, Math.ceil(questions.length / QUESTIONS_PER_PAGE));
-  const pagedQuestions = questions.slice((questionsPage - 1) * QUESTIONS_PER_PAGE, questionsPage * QUESTIONS_PER_PAGE);
+  // Plan-creation progress lives here so switching tabs does not reset steps
+  const [planLoadCompletedSteps, setPlanLoadCompletedSteps] = useState(0);
+  const [planLoadShowLoading, setPlanLoadShowLoading] = useState(isStreaming);
+  const planLoadPrevStreamingRef = useRef(false);
 
-  useEffect(() => { setQuestionsPage(1); }, [questions.length]);
+  useEffect(() => {
+    const wasStreaming = planLoadPrevStreamingRef.current;
+    planLoadPrevStreamingRef.current = isStreaming;
+
+    if (isStreaming && !wasStreaming) {
+      setPlanLoadShowLoading(true);
+      setPlanLoadCompletedSteps(0);
+    } else if (!isStreaming && wasStreaming) {
+      setPlanLoadCompletedSteps(PLAN_LOAD_STEP_COUNT);
+      const timer = setTimeout(() => {
+        setPlanLoadShowLoading(false);
+        setPlanLoadCompletedSteps(0);
+      }, 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [isStreaming]);
+
+  useEffect(() => {
+    if (!planLoadShowLoading || !isStreaming) return;
+    if (planLoadCompletedSteps >= PLAN_LOAD_STEP_COUNT) return;
+    const timer = setTimeout(() => setPlanLoadCompletedSteps((p) => p + 1), 5_000);
+    return () => clearTimeout(timer);
+  }, [planLoadShowLoading, isStreaming, planLoadCompletedSteps]);
+
+  // Question-generation tick progress — lifted so tab switches do not reset steps
+  const isQGenBusy =
+    isGeneratingQuestions
+    || generationRun?.status === "Generating"
+    || generationRun?.status === "Pending";
+  const qGenDone = generationRun?.generatedQuestionCount ?? 0;
+  const qGenTotal = generationRun?.requestedQuestionCount ?? 0;
+  const [qGenTickSteps, setQGenTickSteps] = useState(0);
+  const qGenPrevBusyRef = useRef(false);
+
+  useEffect(() => {
+    const wasBusy = qGenPrevBusyRef.current;
+    qGenPrevBusyRef.current = isQGenBusy;
+    if (isQGenBusy && !wasBusy) {
+      setQGenTickSteps(0);
+    }
+  }, [isQGenBusy]);
+
+  useEffect(() => {
+    if (!isQGenBusy) return;
+    if (qGenDone > 0 && qGenTotal > 0) return;
+    if (qGenTickSteps >= QGEN_LOAD_STEP_COUNT - 1) return;
+    const timer = setTimeout(() => setQGenTickSteps((p) => p + 1), 12_000);
+    return () => clearTimeout(timer);
+  }, [isQGenBusy, qGenDone, qGenTotal, qGenTickSteps]);
 
   // Auto-switch to questions tab when generation completes (0 → >0 questions)
   const prevQuestionsLengthRef = useRef(questions.length);
@@ -1572,9 +1166,10 @@ export function ChatPanel({
       </div>
 
       {/* Tab content — flex-1 when plan empty state so it fills the stretched card and centers content */}
-      <div key={activeTab} style={{ animation: "fadeSlideIn 0.2s ease-out both" }} className={cn(
-        "flex flex-col overflow-y-auto",
-        activeTab === "plan" && !plan && "flex-1"
+      <div style={{ animation: "fadeSlideIn 0.2s ease-out both" }} className={cn(
+        "flex min-h-0 flex-col overflow-y-auto",
+        activeTab === "plan" && !plan && "flex-1",
+        activeTab === "questions" && "flex-1 overflow-hidden"
       )}>
         {activeTab === "plan" && (
           <PlanWorkspace
@@ -1592,6 +1187,9 @@ export function ChatPanel({
             onGenerateQuestions={() => void onGenerateQuestions?.()}
             onRefreshGenerationStatus={() => void onRefreshGenerationStatus?.()}
             onRenameTitle={onRenamePlanTitle}
+            planLoadCompletedSteps={planLoadCompletedSteps}
+            planLoadShowLoading={planLoadShowLoading}
+            qGenTickSteps={qGenTickSteps}
           />
         )}
 
@@ -1609,91 +1207,20 @@ export function ChatPanel({
         )}
 
         {activeTab === "questions" && hasQuestions && (
-          <div className="flex flex-col gap-3 p-4">
-            {/* Header */}
-            <div className="flex items-center justify-between">
-              <p className={cn("text-sm font-semibold", portalHeading)}>
-                {questions.length} {s.settings.unitQuestions}
-              </p>
-              {generationRun && (
-                <div className="flex items-center gap-2">
-                  {onRefreshGenerationStatus && (
-                    <button type="button" onClick={() => void onRefreshGenerationStatus()}
-                      className="rounded-lg border border-gray-200 bg-white px-2 py-1 text-[11px] text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300">
-                      {c.refresh}
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {generationRun?.status === "Failed" && (
-              <p className="text-xs font-medium text-red-600 dark:text-red-400">
-                [{generationRun.errorCode ?? "FAILED"}] {generationRun.errorMessage || c.unknownError}
-              </p>
-            )}
-
-            {/* Paged question list */}
-            <div key={questionsPage} className="space-y-3">
-              {pagedQuestions.map((q, idx) => (
-                <div key={q.id} style={{ animation: `scaleInFade 0.28s cubic-bezier(0.34,1.56,0.64,1) ${idx * 0.06}s both` }}>
-                  <QuestionCard
-                    question={q}
-                    onUpdate={onUpdateQuestion}
-                    onDelete={onDeleteQuestion}
-                    onRegenerate={onRegenerateQuestion}
-                    onUploadImage={onUploadQuestionImage}
-                    onDeleteImage={onDeleteQuestionImage}
-                  />
-                </div>
-              ))}
-            </div>
-
-            {/* Pagination controls */}
-            {totalPages > 1 && (
-              <div className="flex items-center justify-between border-t border-gray-100 pt-3 dark:border-gray-800">
-                <p className="text-[11px] text-gray-400">
-                  {c.pageLabel}{" "}
-                  <span className="font-semibold text-gray-700 dark:text-gray-200">{questionsPage}</span>
-                  {" "}{c.ofLabel} {totalPages}
-                  <span className="text-gray-300 dark:text-gray-600"> · {questions.length} {s.settings.unitQuestions}</span>
-                </p>
-                <div className="flex items-center gap-1">
-                  <button
-                    type="button"
-                    disabled={questionsPage <= 1}
-                    onClick={() => setQuestionsPage((p) => p - 1)}
-                    className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-600 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800"
-                  >
-                    <ChevronLeft className="h-3.5 w-3.5" />
-                  </button>
-                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                    <button
-                      key={page}
-                      type="button"
-                      onClick={() => setQuestionsPage(page)}
-                      className={cn(
-                        "inline-flex h-7 w-7 items-center justify-center rounded-lg text-xs font-semibold transition-all duration-150",
-                        questionsPage === page
-                          ? "bg-primary text-white shadow-sm shadow-primary/30"
-                          : "border border-gray-200 bg-white text-gray-600 hover:border-primary/40 hover:text-primary dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:border-primary/40 dark:hover:text-primary"
-                      )}
-                    >
-                      {page}
-                    </button>
-                  ))}
-                  <button
-                    type="button"
-                    disabled={questionsPage >= totalPages}
-                    onClick={() => setQuestionsPage((p) => p + 1)}
-                    className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-600 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800"
-                  >
-                    <ChevronRight className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
+          <QuestionReviewWorkspace
+            questions={questions}
+            onUpdateQuestion={onUpdateQuestion}
+            onDeleteQuestion={onDeleteQuestion}
+            onRegenerateQuestion={onRegenerateQuestion}
+            onUploadQuestionImage={onUploadQuestionImage}
+            onDeleteQuestionImage={onDeleteQuestionImage}
+            onSaveDraft={onSaveDraft}
+            onPublish={onPublish}
+            onPublishBlocked={onPublishBlocked}
+            isSavingDraft={isSavingDraft}
+            isDraftSaved={isDraftSaved}
+            isPublished={isPublished}
+          />
         )}
       </div>
     </div>

@@ -23,6 +23,7 @@ import {
   type StudioContentMode,
   type StudioCodeTemplateId,
 } from "@/features/studio/constants/question-templates";
+import { refineJdSummary } from "@/features/studio/utils/refine-jd-summary";
 
 const STUDIO_TASK_KEY = "studio_active_task";
 const STUDIO_ACTIVE_PROJECT_KEY = "studio_active_project_id";
@@ -220,12 +221,14 @@ export function useStudio() {
         setJdFileName(
           summary.sourceType === "UploadedFile" ? (summary.originalFileName ?? null) : null
         );
-        setJdSummary(summary.summary ?? {
+        const baseSummary = summary.summary ?? {
           detectedRole: null,
           detectedSeniority: null,
           detectedLanguage: null,
           skills: [],
-        });
+        };
+        const locale = lang === "en" ? "en" : "vi";
+        setJdSummary(refineJdSummary(summary.content ?? "", baseSummary, locale));
       } else {
         setJdFileName(null);
         setJdSummary(null);
@@ -247,7 +250,7 @@ export function useStudio() {
     } finally {
       setLoading(false);
     }
-  }, [addToast, normalizeSettings]);
+  }, [addToast, lang, normalizeSettings, tx.loadFailed]);
 
   useEffect(() => {
     bootstrap();
@@ -326,7 +329,8 @@ export function useStudio() {
       await studioApi.upsertJobDescription(project.id, jdContent, "PastedText");
       const summary = await studioApi.analyzeJobDescription(project.id);
       setJdFileName(null);
-      setJdSummary(summary);
+      const locale = lang === "en" ? "en" : "vi";
+      setJdSummary(refineJdSummary(jdContent, summary, locale));
       addToast("success", tx.jdSaved);
       await refreshPlanAndSettings();
     } catch (error) {
@@ -343,7 +347,8 @@ export function useStudio() {
       const result = await studioApi.uploadJobDescriptionFile(project.id, file);
       setJdContent(result.content);
       setJdFileName(result.originalFileName ?? file.name);
-      setJdSummary(result.summary);
+      const locale = lang === "en" ? "en" : "vi";
+      setJdSummary(refineJdSummary(result.content, result.summary, locale));
       addToast("success", tx.jdUploaded.replace("{{name}}", result.originalFileName ?? file.name));
       await refreshPlanAndSettings();
       return true;
@@ -395,7 +400,6 @@ export function useStudio() {
     if (!project) return;
     setIsStreaming(true);
     try {
-      addToast("success", tx.planCreating);
       setMessages((prev) => [
         ...prev.filter((m) => !m.content.startsWith("Refined message:")),
         {
@@ -429,7 +433,7 @@ export function useStudio() {
     } finally {
       setIsStreaming(false);
     }
-  }, [addToast, project, refreshStudioState]);
+  }, [addToast, project, refreshStudioState, lang, tx.planCreated]);
 
   const sendMessage = useCallback(async (message: string) => {
     // SCRUM-368: chat chỉ refine plan qua RAG — không SSE mock
@@ -610,8 +614,8 @@ export function useStudio() {
           throw error;
         }
       }
+      // Ephemeral start toast — center loader is the primary in-progress indicator.
       addToast("success", tx.generationStarted);
-
       setGenerationRun(run);
 
       // SCRUM-371: poll generation run tới Completed/Failed (RAG callback)

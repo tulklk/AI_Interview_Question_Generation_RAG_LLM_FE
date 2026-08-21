@@ -509,13 +509,13 @@ export function QuestionSetCard({
 
         {/* ── DESKTOP only (hidden below md) ───────────────────────────────── */}
         {/*
-          Vertical column, right-aligned:
-            TOP    → [☆ bookmark]          self-start in col = top-right
-            MIDDLE → [X% Khớp CV] + [bar] (flex-1 so it fills remaining space)
-            BOTTOM → [Bắt Đầu Luyện Tập →]
+          Fixed 3-row column — stable regardless of whether rating/match data exists:
+            TOP    → bookmark (always)
+            MIDDLE → Khớp CV + bar (flex-1 keeps height constant when absent)
+            BOTTOM → rating (secondary, when present) + CTA (always)
         */}
-        <div className="hidden md:flex flex-col items-end justify-between self-stretch min-w-44 pl-2 py-0.5 shrink-0">
-          {/* TOP: Star rating + Bookmark (side by side, right-aligned) */}
+        <div className="hidden md:flex flex-col items-end self-stretch min-w-44 pl-2 py-0.5 shrink-0">
+          {/* TOP: Star rating (secondary) + Bookmark — right-aligned together */}
           <div className="flex items-center gap-2">
             {set.rating !== undefined && (
               <StarDisplay rating={set.rating} />
@@ -541,73 +541,76 @@ export function QuestionSetCard({
             </button>
           </div>
 
-          {/* MIDDLE: Match score (only when hasMatch) */}
-          {hasMatch && (
-            <div className="flex flex-col items-end gap-1.5">
-              <span className={cn(
-                "inline-flex items-center font-bold rounded-full border whitespace-nowrap",
-                featured
-                  ? "text-[14px] px-3.5 py-1"
-                  : "text-[11.5px] px-2.5 py-0.5",
-                "bg-primary/10 dark:bg-primary/15 text-primary border-primary/20",
-              )}>
-                {set.matchPercent}% Khớp CV
-              </span>
-              <div className={cn(
-                "h-1.5 rounded-full bg-gray-100 dark:bg-gray-800/80 overflow-hidden",
-                featured ? "w-36" : "w-28",
-              )}>
-                <div
-                  className="h-full rounded-full bg-linear-to-r from-primary to-violet-400 relative overflow-hidden"
-                  style={{ width: `${Math.min(100, set.matchPercent!)}%` }}
-                >
-                  <span
-                    aria-hidden
-                    className="absolute inset-0"
-                    style={{
-                      background: "linear-gradient(90deg,transparent 0%,rgba(255,255,255,0.45) 50%,transparent 100%)",
-                      animation: "qs-bar-shimmer 2s linear infinite",
-                    }}
-                  />
+          {/* MIDDLE: Match score — flex-1 keeps layout stable whether or not data exists */}
+          <div className="flex-1 flex flex-col items-end justify-end gap-1.5 pb-2">
+            {hasMatch && (
+              <>
+                <span className={cn(
+                  "inline-flex items-center font-bold rounded-full border whitespace-nowrap",
+                  featured
+                    ? "text-[14px] px-3.5 py-1"
+                    : "text-[11.5px] px-2.5 py-0.5",
+                  "bg-primary/10 dark:bg-primary/15 text-primary border-primary/20",
+                )}>
+                  {set.matchPercent}% Khớp CV
+                </span>
+                <div className={cn(
+                  "h-1.5 rounded-full bg-gray-100 dark:bg-gray-800/80 overflow-hidden",
+                  featured ? "w-36" : "w-28",
+                )}>
+                  <div
+                    className="h-full rounded-full bg-linear-to-r from-primary to-violet-400 relative overflow-hidden"
+                    style={{ width: `${Math.min(100, set.matchPercent!)}%` }}
+                  >
+                    <span
+                      aria-hidden
+                      className="absolute inset-0"
+                      style={{
+                        background: "linear-gradient(90deg,transparent 0%,rgba(255,255,255,0.45) 50%,transparent 100%)",
+                        animation: "qs-bar-shimmer 2s linear infinite",
+                      }}
+                    />
+                  </div>
                 </div>
-              </div>
-            </div>
-          )}
+              </>
+            )}
+          </div>
 
-          {/* BOTTOM: CTA — gradient pill when featured, plain primary otherwise */}
-          <Link
-            href={`/candidate/sets/${set.id}`}
-            onClick={(e) => e.stopPropagation()}
-            className={cn(
-              "relative flex items-center gap-1.5 whitespace-nowrap shrink-0 overflow-hidden",
-              "font-semibold text-white",
-              featured
-                ? "h-9 px-5 rounded-xl text-[13px]"
-                : "h-8 px-4 rounded-lg text-[12px] bg-primary hover:bg-primary/90 transition-[background-color,gap] duration-150",
-              "group-hover:gap-2 transition-[gap] duration-150",
-            )}
-            style={featured ? {
-              background: "linear-gradient(90deg,#7c3aed,#a855f7 40%,#06b6d4)",
-              backgroundSize: "200% auto",
-              animation: "qs-cta-grad 4s ease-in-out infinite",
-            } : undefined}
-          >
-            {/* Light sweep overlay for featured button */}
-            {featured && (
-              <span
-                aria-hidden
-                className="absolute inset-0 pointer-events-none"
-                style={{
-                  background: "linear-gradient(90deg,transparent 0%,rgba(255,255,255,0.22) 50%,transparent 100%)",
-                  animation: "qs-cta-sweep 3s ease-in-out infinite",
-                }}
-              />
-            )}
-            <span className="relative z-10 flex items-center gap-1.5">
-              {p.startPractice}
-              <ChevronRight size={13} className="transition-transform group-hover:translate-x-0.5" />
-            </span>
-          </Link>
+          {/* BOTTOM: CTA — always anchored to bottom */}
+          <div className="flex flex-col items-end gap-1.5">
+            <Link
+              href={`/candidate/sets/${set.id}`}
+              onClick={(e) => e.stopPropagation()}
+              className={cn(
+                "relative flex items-center gap-1.5 whitespace-nowrap shrink-0 overflow-hidden",
+                "font-semibold text-white",
+                featured
+                  ? "h-9 px-5 rounded-xl text-[13px]"
+                  : "h-8 px-4 rounded-lg text-[12px] bg-primary hover:bg-primary/90 transition-[background-color,gap] duration-150",
+                "group-hover:gap-2 transition-[gap] duration-150",
+              )}
+              style={featured ? {
+                background: "linear-gradient(90deg,#7c3aed,#a855f7 40%,#06b6d4)",
+                backgroundSize: "200% auto",
+                animation: "qs-cta-grad 4s ease-in-out infinite",
+              } : undefined}
+            >
+              {featured && (
+                <span
+                  aria-hidden
+                  className="absolute inset-0 pointer-events-none"
+                  style={{
+                    background: "linear-gradient(90deg,transparent 0%,rgba(255,255,255,0.22) 50%,transparent 100%)",
+                    animation: "qs-cta-sweep 3s ease-in-out infinite",
+                  }}
+                />
+              )}
+              <span className="relative z-10 flex items-center gap-1.5">
+                {p.startPractice}
+                <ChevronRight size={13} className="transition-transform group-hover:translate-x-0.5" />
+              </span>
+            </Link>
+          </div>
         </div>
       </div>
     </div>
