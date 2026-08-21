@@ -142,7 +142,7 @@ export function StudioProgressBar({
                         ? "text-[10px] font-semibold text-[#7C3AED] dark:text-[#a78bff]"
                         : done
                           ? "text-[10px] font-medium text-emerald-600 dark:text-emerald-400"
-                          : "text-[10px] font-medium text-gray-400 dark:text-gray-500"
+                          : "text-[10px] font-medium text-gray-500 dark:text-gray-400"
                     )}
                   >
                     {step.label}

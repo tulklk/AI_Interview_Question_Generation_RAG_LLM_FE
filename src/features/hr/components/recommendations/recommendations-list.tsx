@@ -925,19 +925,10 @@ export function RecommendationsList() {
         initial={{ opacity: 0, y: -8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.38, ease: "easeOut" }}
-        className="relative overflow-hidden rounded-2xl border border-violet-100 dark:border-violet-900/30 bg-linear-to-r from-violet-50 via-white to-cyan-50 dark:from-violet-950/20 dark:via-gray-900 dark:to-cyan-950/10 px-5 py-4 sm:px-6 mb-6"
+        className="mb-6"
       >
-        {/* Gradient accent bar */}
-        <div className="absolute top-0 left-0 right-0 h-0.5 bg-linear-to-r from-violet-500 via-primary to-cyan-400 opacity-70" />
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-linear-to-br from-violet-500 to-primary flex items-center justify-center shrink-0 shadow-md shadow-violet-200 dark:shadow-violet-900/30">
-            <Users size={16} className="text-white" />
-          </div>
-          <div>
-            <h2 className={cn("text-[17px] font-bold leading-tight tracking-tight", portalHeadingAlt)}>{p.heading}</h2>
-            <p className={cn("text-[11px] mt-0.5", portalSubtextAlt)}>{p.subtext}</p>
-          </div>
-        </div>
+        <h2 className={cn("text-[17px] font-bold leading-tight tracking-tight", portalHeadingAlt)}>{p.heading}</h2>
+        <p className={cn("text-[11px] mt-0.5", portalSubtextAlt)}>{p.subtext}</p>
       </motion.div>
 
       {/* Filter bar */}

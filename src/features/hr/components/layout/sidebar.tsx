@@ -25,6 +25,7 @@ import { SidebarUserFooter } from "@/features/hr/components/layout/sidebar-user-
 import { HrUpgradeModal } from "@/features/hr/components/billing/hr-upgrade-modal";
 import type { HrPlanId } from "@/features/hr/types/hr-subscription";
 import type { QuestionSetsFilterKey } from "@/features/hr/types/history-question-set";
+import { useQuestionSetNavCounts } from "@/features/hr/hooks/use-question-set-nav-counts";
 
 const COLLAPSE_KEY = "hr-sidebar-collapsed";
 const HISTORY_HREF = "/hr/history";
@@ -84,6 +85,7 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
 
   // Initialize to true when already on a history/talent route → no collapsed flash on mount
   const [historyOpen, setHistoryOpen] = useState(onHistoryRoute);
+  const navCounts = useQuestionSetNavCounts(historyOpen || onHistoryRoute);
 
   useEffect(() => {
     const stored = localStorage.getItem(SEEN_KEY);
@@ -277,6 +279,14 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
                         {QUESTION_SET_SUB.map((sub) => {
                           const subActive = onHistoryRoute && activeFilter === sub.filter;
                           const SubIcon = sub.icon;
+                          const count =
+                            sub.filter === "all"
+                              ? navCounts.all
+                              : sub.filter === "DRAFT"
+                                ? navCounts.draft
+                                : sub.filter === "PUBLISHED"
+                                  ? navCounts.published
+                                  : navCounts.bookmarked;
                           return (
                             <li key={sub.filter}>
                               <Link
@@ -290,7 +300,19 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
                                 )}
                               >
                                 <SubIcon size={13} className="shrink-0 opacity-70" />
-                                <span className="truncate">{s.questionSetsSub[sub.labelKey]}</span>
+                                <span className="min-w-0 flex-1 truncate">
+                                  {s.questionSetsSub[sub.labelKey]}
+                                </span>
+                                <span
+                                  className={cn(
+                                    "shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-semibold tabular-nums",
+                                    subActive
+                                      ? "bg-[rgba(124,58,237,0.15)] text-[#7C3AED] dark:bg-[rgba(124,58,237,0.25)] dark:text-[#a78bff]"
+                                      : "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400"
+                                  )}
+                                >
+                                  {count}
+                                </span>
                               </Link>
                             </li>
                           );

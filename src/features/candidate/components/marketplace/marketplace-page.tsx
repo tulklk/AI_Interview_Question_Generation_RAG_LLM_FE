@@ -256,7 +256,7 @@ function FilterBar({
   const optionBase = "flex items-center gap-2.5 w-full px-3 py-2 text-[13px] transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/60 cursor-pointer";
 
   return (
-    <div className="hr-glass-card p-3 mb-6">
+    <div className="hr-glass-card p-3 mb-4">
       <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-row sm:flex-wrap sm:items-center sm:gap-2">
         {/* Search */}
         <div className={cn(
@@ -288,7 +288,11 @@ function FilterBar({
             className={cn(
               "w-full sm:w-auto flex items-center gap-2 h-10 px-3.5 rounded-lg text-[13px] font-medium transition-all whitespace-nowrap",
               portalInput,
-              diffOpen ? "border-primary shadow-[0_0_0_3px_rgba(108,71,255,0.1)]" : "",
+              diffOpen
+                ? "border-primary shadow-[0_0_0_3px_rgba(108,71,255,0.1)]"
+                : difficulty !== "All"
+                ? "border-primary/40 bg-primary/4 dark:bg-primary/8"
+                : "",
             )}
           >
             <span className="text-[11px] font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500 hidden sm:block">
@@ -335,7 +339,11 @@ function FilterBar({
               className={cn(
                 "w-full sm:w-auto flex items-center gap-2 h-10 px-3.5 rounded-lg text-[13px] font-medium transition-all whitespace-nowrap sm:max-w-44",
                 portalInput,
-                companyOpen ? "border-primary shadow-[0_0_0_3px_rgba(108,71,255,0.1)]" : "",
+                companyOpen
+                  ? "border-primary shadow-[0_0_0_3px_rgba(108,71,255,0.1)]"
+                  : selectedCompany
+                  ? "border-primary/40 bg-primary/4 dark:bg-primary/8"
+                  : "",
               )}
             >
               <span className="text-[11px] font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500 hidden sm:block shrink-0">
@@ -428,7 +436,11 @@ function FilterBar({
               className={cn(
                 "w-full sm:w-auto flex items-center gap-2 h-10 px-3.5 rounded-lg text-[13px] font-medium transition-all whitespace-nowrap",
                 portalInput,
-                skillOpen ? "border-primary shadow-[0_0_0_3px_rgba(108,71,255,0.1)]" : "",
+                skillOpen
+                  ? "border-primary shadow-[0_0_0_3px_rgba(108,71,255,0.1)]"
+                  : selectedSkills.length > 0
+                  ? "border-primary/40 bg-primary/4 dark:bg-primary/8"
+                  : "",
               )}
             >
               <span className="text-[11px] font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500 hidden sm:block">
@@ -962,7 +974,7 @@ export function MarketplacePage() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.45, ease: "easeOut" }}
-        className="hr-quick-generate rounded-xl px-6 sm:px-10 py-7 sm:py-9 mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6"
+        className="hr-quick-generate rounded-xl px-6 sm:px-10 py-5 sm:py-7 mb-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
       >
         <div className="max-w-xl">
           <div className="inline-flex items-center gap-1.5 bg-primary/10 dark:bg-primary/15 border border-primary/20 rounded-full px-3 py-1 mb-4">
