@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -16,6 +17,7 @@ import {
   Inbox,
   Loader2,
   MessageSquare,
+  MoreHorizontal,
   Pencil,
   SearchX,
   Sparkles,
@@ -84,6 +86,9 @@ const PAGE_SIZE = 10;
 const iconBtn =
   "inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700 disabled:opacity-40 dark:hover:bg-gray-800 dark:hover:text-gray-200";
 
+const menuItemCls =
+  "flex w-full items-center gap-2 px-3 py-2 text-left text-[12px] font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:opacity-40 dark:text-gray-200 dark:hover:bg-gray-800";
+
 const thCls =
   "h-10 px-3 align-middle text-[11px] font-semibold tracking-wide text-gray-500 dark:text-gray-400";
 
@@ -117,6 +122,10 @@ export function QuestionSetHistoryTable({ filter = "all" }: QuestionSetHistoryTa
   const [sourceFilter, setSourceFilter] = useState<"all" | "studio" | "legacy">("all");
   const [questionFilter, setQuestionFilter] = useState<"all" | "1-5" | "6-10" | "11-20" | "21+">("all");
   const [dateSort, setDateSort] = useState<"newest" | "oldest">("newest");
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [menuPos, setMenuPos] = useState({ top: 0, right: 0 });
+  const menuBtnRef = useRef<HTMLButtonElement | null>(null);
+  const menuDropRef = useRef<HTMLDivElement | null>(null);
 
   const reload = useCallback(async () => {
     setLoading(true);
@@ -133,6 +142,35 @@ export function QuestionSetHistoryTable({ filter = "all" }: QuestionSetHistoryTa
   useEffect(() => {
     void reload();
   }, [reload]);
+
+  useEffect(() => {
+    if (!openMenuId) return;
+    function onPointerDown(e: MouseEvent) {
+      const target = e.target as Node;
+      if (menuDropRef.current?.contains(target)) return;
+      if (menuBtnRef.current?.contains(target)) return;
+      setOpenMenuId(null);
+    }
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setOpenMenuId(null);
+    }
+    function onScroll() {
+      setOpenMenuId(null);
+    }
+    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("keydown", onKey);
+    document.addEventListener("scroll", onScroll, true);
+    return () => {
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("keydown", onKey);
+      document.removeEventListener("scroll", onScroll, true);
+    };
+  }, [openMenuId]);
+
+  const openMenuItem = useMemo(
+    () => (openMenuId ? items.find((i) => i.questionSetId === openMenuId) ?? null : null),
+    [openMenuId, items]
+  );
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -170,6 +208,14 @@ export function QuestionSetHistoryTable({ filter = "all" }: QuestionSetHistoryTa
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
   const paginated = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+
+  const publishedSummary = useMemo(() => {
+    if (filter !== "PUBLISHED" || filtered.length === 0) return null;
+    const q = filtered.reduce((sum, item) => sum + item.questionCount, 0);
+    return t.historyPage.publishedSummary
+      .replace("{{n}}", String(filtered.length))
+      .replace("{{q}}", String(q));
+  }, [filter, filtered, t.historyPage.publishedSummary]);
 
   // Key changes on every tab/page switch → re-mounts content div → CSS animation replays
   const contentKey = `${filter}-${safePage}`;
@@ -395,6 +441,10 @@ export function QuestionSetHistoryTable({ filter = "all" }: QuestionSetHistoryTa
         )}
       </div>
 
+      {publishedSummary && (
+        <p className={cn("text-[12px] font-medium", portalSubtext)}>{publishedSummary}</p>
+      )}
+
       {items.length === 0 ? (
         <div
           className="rounded-xl border border-dashed border-gray-200 px-6 py-12 text-center dark:border-gray-700"
@@ -544,7 +594,7 @@ export function QuestionSetHistoryTable({ filter = "all" }: QuestionSetHistoryTa
                       )}
                     </td>
                     <td className={tdCls}>
-                      <div className="flex flex-nowrap items-center justify-center gap-0.5">
+                      <div className="relative flex flex-nowrap items-center justify-center gap-0.5">
                         <Link
                           href={`/hr/history/${item.questionSetId}`}
                           className={iconBtn}
@@ -561,72 +611,35 @@ export function QuestionSetHistoryTable({ filter = "all" }: QuestionSetHistoryTa
                         >
                           <Bookmark size={14} fill={item.isBookmarked ? "currentColor" : "none"} />
                         </button>
-                        <Link
-                          href={`/hr/question-sets/${item.questionSetId}/practitioners`}
-                          className={iconBtn}
-                          title={t.historyPage.practitionersTitle}
-                        >
-                          <Users size={14} />
-                        </Link>
-                        <Link
-                          href={`/hr/history/${item.questionSetId}?jdFit=1`}
-                          className={iconBtn}
-                          title={t.historyPage.jdFitTitle}
-                        >
-                          <Sparkles size={14} />
-                        </Link>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setFeedbackTarget({ id: item.questionSetId, title: item.title })
-                          }
-                          className={cn(iconBtn, "hover:text-violet-600 dark:hover:text-violet-400")}
-                          title="Xem feedback ứng viên"
-                        >
-                          <MessageSquare size={14} />
-                        </button>
-                        <button
-                          type="button"
-                          disabled={busy}
-                          onClick={() => void handlePublishToggle(item)}
-                          className={iconBtn}
-                          title={
-                            item.status === "PUBLISHED"
-                              ? t.historyPage.unpublishTitle
-                              : t.historyPage.publishTitle
-                          }
-                        >
-                          {item.status === "PUBLISHED" ? <GlobeOff size={14} /> : <Globe size={14} />}
-                        </button>
-                        {isPremium && (
+                        <div className="relative">
                           <button
+                            ref={openMenuId === item.questionSetId ? menuBtnRef : undefined}
                             type="button"
-                            disabled={busy}
-                            onClick={() => void handleExport(item)}
-                            className={iconBtn}
-                            title={ht.exportTitle}
+                            className={cn(
+                              iconBtn,
+                              openMenuId === item.questionSetId &&
+                                "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-200"
+                            )}
+                            title={openMenuId === item.questionSetId ? undefined : t.historyPage.moreActionsTitle}
+                            aria-label={t.historyPage.moreActionsTitle}
+                            aria-expanded={openMenuId === item.questionSetId}
+                            aria-haspopup="menu"
+                            onClick={(e) => {
+                              if (openMenuId === item.questionSetId) {
+                                setOpenMenuId(null);
+                                return;
+                              }
+                              const rect = e.currentTarget.getBoundingClientRect();
+                              setMenuPos({
+                                top: rect.bottom + 4,
+                                right: window.innerWidth - rect.right,
+                              });
+                              setOpenMenuId(item.questionSetId);
+                            }}
                           >
-                            <Download size={14} />
+                            <MoreHorizontal size={14} />
                           </button>
-                        )}
-                        <button
-                          type="button"
-                          disabled={busy || item.status === "PUBLISHED"}
-                          onClick={() => item.status !== "PUBLISHED" && setDeleteTarget(item)}
-                          className={cn(
-                            iconBtn,
-                            item.status === "PUBLISHED"
-                              ? "cursor-not-allowed opacity-40"
-                              : "hover:text-red-600"
-                          )}
-                          title={
-                            item.status === "PUBLISHED"
-                              ? ht.deletePublishedTitle
-                              : ht.deleteTitle
-                          }
-                        >
-                          <Trash2 size={14} />
-                        </button>
+                        </div>
                       </div>
                     </td>
                   </tr>
@@ -694,6 +707,117 @@ export function QuestionSetHistoryTable({ filter = "all" }: QuestionSetHistoryTa
           </div>
         </div>
       )}
+
+      {/* Overflow actions menu — portal escapes table overflow-x-auto */}
+      {openMenuItem &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <div
+            ref={menuDropRef}
+            role="menu"
+            style={{ position: "fixed", top: menuPos.top, right: menuPos.right, zIndex: 9999 }}
+            className="w-52 overflow-hidden rounded-lg border border-gray-200 bg-white py-1 shadow-lg dark:border-gray-700 dark:bg-gray-900"
+          >
+            <Link
+              href={`/hr/question-sets/${openMenuItem.questionSetId}/practitioners`}
+              role="menuitem"
+              className={menuItemCls}
+              title={t.historyPage.practitionersTitle}
+              onClick={() => setOpenMenuId(null)}
+            >
+              <Users size={14} className="shrink-0 opacity-70" />
+              <span className="truncate">{t.historyPage.practitionersTitle}</span>
+            </Link>
+            <Link
+              href={`/hr/history/${openMenuItem.questionSetId}?jdFit=1`}
+              role="menuitem"
+              className={menuItemCls}
+              title={t.historyPage.jdFitTitle}
+              onClick={() => setOpenMenuId(null)}
+            >
+              <Sparkles size={14} className="shrink-0 opacity-70" />
+              <span className="truncate">{t.historyPage.jdFitTitle}</span>
+            </Link>
+            <button
+              type="button"
+              role="menuitem"
+              className={menuItemCls}
+              title={t.historyPage.feedbackTitle}
+              onClick={() => {
+                setFeedbackTarget({ id: openMenuItem.questionSetId, title: openMenuItem.title });
+                setOpenMenuId(null);
+              }}
+            >
+              <MessageSquare size={14} className="shrink-0 opacity-70" />
+              <span className="truncate">{t.historyPage.feedbackTitle}</span>
+            </button>
+            <button
+              type="button"
+              role="menuitem"
+              disabled={busyId === openMenuItem.questionSetId}
+              className={menuItemCls}
+              title={
+                openMenuItem.status === "PUBLISHED"
+                  ? t.historyPage.unpublishTitle
+                  : t.historyPage.publishTitle
+              }
+              onClick={() => {
+                setOpenMenuId(null);
+                void handlePublishToggle(openMenuItem);
+              }}
+            >
+              {openMenuItem.status === "PUBLISHED" ? (
+                <GlobeOff size={14} className="shrink-0 opacity-70" />
+              ) : (
+                <Globe size={14} className="shrink-0 opacity-70" />
+              )}
+              <span className="truncate">
+                {openMenuItem.status === "PUBLISHED"
+                  ? t.historyPage.unpublishTitle
+                  : t.historyPage.publishTitle}
+              </span>
+            </button>
+            {isPremium && (
+              <button
+                type="button"
+                role="menuitem"
+                disabled={busyId === openMenuItem.questionSetId}
+                className={menuItemCls}
+                title={ht.exportTitle}
+                onClick={() => {
+                  setOpenMenuId(null);
+                  void handleExport(openMenuItem);
+                }}
+              >
+                <Download size={14} className="shrink-0 opacity-70" />
+                <span className="truncate">{ht.exportTitle}</span>
+              </button>
+            )}
+            <button
+              type="button"
+              role="menuitem"
+              disabled={busyId === openMenuItem.questionSetId || openMenuItem.status === "PUBLISHED"}
+              className={cn(
+                menuItemCls,
+                openMenuItem.status === "PUBLISHED"
+                  ? "cursor-not-allowed opacity-40"
+                  : "text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/30"
+              )}
+              title={
+                openMenuItem.status === "PUBLISHED" ? ht.deletePublishedTitle : ht.deleteTitle
+              }
+              onClick={() => {
+                if (openMenuItem.status === "PUBLISHED") return;
+                setOpenMenuId(null);
+                setDeleteTarget(openMenuItem);
+              }}
+            >
+              <Trash2 size={14} className="shrink-0 opacity-70" />
+              <span className="truncate">{ht.deleteTitle}</span>
+            </button>
+          </div>,
+          document.body
+        )}
 
       {/* Feedback slide-over panel */}
       <QuestionSetFeedbackPanel

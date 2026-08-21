@@ -28,7 +28,7 @@ export function Pill({ className, children, size = "md", title }: PillProps) {
 
 const DIFFICULTY_BADGE_CLASS: Record<Difficulty, string> = {
   Easy: "bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300",
-  Medium: "bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300",
+  Medium: "bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-200",
   Hard: "bg-red-100 dark:bg-red-950 text-red-600 dark:text-red-400",
 };
 

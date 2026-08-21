@@ -1,25 +1,22 @@
 "use client";
 
 import { useState } from "react";
-import { Check, CheckCircle2, FileQuestion, Loader2, Sparkles } from "lucide-react";
+import { Check, CheckCircle2, ChevronDown, ChevronRight, FileQuestion, Loader2, Lock, Sparkles } from "lucide-react";
 import { SelectField } from "@/shared/components/ui/select-field";
 import { Toggle } from "@/shared/components/ui/toggle";
 import { cn } from "@/lib/cn";
 import { useLanguage } from "@/shared/providers/language-context";
 import { portalCard, portalHeading, portalSubtext } from "@/shared/utils/portal-ui";
 import type { PlanDetail, StudioSettings } from "@/features/studio/types/studio.types";
+import { formatDifficultyMixLabel } from "@/features/studio/utils/difficulty-mix";
 import {
   STUDIO_QUESTION_TEMPLATES,
   DEFAULT_ENABLED_CODE_TEMPLATES,
 } from "@/features/studio/constants/question-templates";
 
-const QUESTION_TYPE_OPTIONS: { value: string; label: string; shortLabel: string }[] = [
-  { value: "technical",       label: "Technical",       shortLabel: "Tech" },
-  { value: "system_design",   label: "System Design",   shortLabel: "Design" },
-  { value: "problem_solving", label: "Problem Solving", shortLabel: "Problem" },
-  { value: "behavioral",      label: "Behavioral",      shortLabel: "Behavior" },
-  { value: "situational",     label: "Situational",     shortLabel: "Situation" },
-];
+const QUESTION_TYPE_VALUES = [
+  "technical", "system_design", "problem_solving", "behavioral", "situational",
+] as const;
 
 interface Props {
   settings: StudioSettings | null;
@@ -31,7 +28,38 @@ interface Props {
 }
 
 function SectionLabel({ text }: { text: string }) {
-  return <p className="text-[11px] font-semibold text-gray-500 dark:text-gray-400">{text}</p>;
+  return <p className="text-[11px] font-semibold text-gray-500 dark:text-gray-300">{text}</p>;
+}
+
+function AccordionSection({
+  label,
+  open,
+  onToggle,
+  children,
+}: {
+  label: string;
+  open: boolean;
+  onToggle: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="rounded-xl border border-gray-100 bg-gray-50/60 dark:border-gray-800 dark:bg-gray-900/40 overflow-hidden">
+      <button
+        type="button"
+        onClick={onToggle}
+        className="flex w-full items-center justify-between px-3 py-2.5 text-left"
+      >
+        <span className="text-[11px] font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wide">{label}</span>
+        <ChevronDown
+          className={cn(
+            "h-3.5 w-3.5 text-gray-400 transition-transform duration-200",
+            open && "rotate-180"
+          )}
+        />
+      </button>
+      {open && <div className="px-3 pb-3 space-y-3">{children}</div>}
+    </div>
+  );
 }
 
 function NumberInputField({
@@ -122,6 +150,24 @@ export function StudioSettingsPanel({ settings, plan, isApplying, locked = false
   const totalQ = settings?.numberOfQuestions ?? 15;
   const qPerType = selectedTypes.length > 0 ? Math.round(totalQ / selectedTypes.length) : 0;
 
+  // Accordion open state — basic open by default, others collapsed
+  const [openBasic,  setOpenBasic]  = useState(true);
+  const [openTypes,  setOpenTypes]  = useState(false);
+  const [openOutput, setOpenOutput] = useState(false);
+
+  // Question type chip labels from i18n (so they Vietnamize with locale)
+  const TYPE_LABELS: Record<string, string> = {
+    technical:       s.settings.typeTechnical,
+    system_design:   s.settings.typeDesign,
+    problem_solving: s.settings.typeProblem,
+    behavioral:      s.settings.typeBehavioral,
+    situational:     s.settings.typeSituational,
+  };
+  const QUESTION_TYPE_OPTIONS = QUESTION_TYPE_VALUES.map((v) => ({
+    value: v,
+    label: TYPE_LABELS[v] ?? v,
+  }));
+
   const toggleType = (value: string) => {
     if (!canEdit || planApproved) return;
     const set = new Set(selectedTypes);
@@ -136,12 +182,14 @@ export function StudioSettingsPanel({ settings, plan, isApplying, locked = false
 
   const isReady = settings?.readiness?.canGenerateQuestions;
   const sourcesCount = plan?.sourcesUsed?.length ?? 0;
+  const sourceNames = plan?.sourcesUsed ?? [];
+  const [sourcesOpen, setSourcesOpen] = useState(false);
   const enabledTemplates = settings?.enabledCodeTemplates?.length
     ? settings.enabledCodeTemplates
     : DEFAULT_ENABLED_CODE_TEMPLATES;
 
   return (
-    <div className={cn(portalCard, "relative space-y-4 p-4", locked && "opacity-60")}>
+    <div className={cn(portalCard, "relative space-y-3 p-4")}>
       {locked && (
         <div
           className="absolute inset-0 z-10 cursor-not-allowed rounded-xl"
@@ -149,9 +197,23 @@ export function StudioSettingsPanel({ settings, plan, isApplying, locked = false
           aria-hidden
         />
       )}
-      <fieldset disabled={locked} className="min-w-0 space-y-4 border-0 p-0">
+      <fieldset
+        disabled={locked}
+        className={cn(
+          "min-w-0 space-y-3 border-0 p-0",
+          "disabled:[&_input]:opacity-60 disabled:[&_select]:opacity-60 disabled:[&_button]:opacity-60 disabled:[&_textarea]:opacity-60"
+        )}
+      >
+        {locked && (
+          <div className="flex items-center gap-1.5 rounded-lg border border-amber-200/80 bg-amber-50/90 px-2.5 py-1.5 dark:border-amber-900/50 dark:bg-amber-950/40">
+            <Lock className="h-3.5 w-3.5 shrink-0 text-amber-700 dark:text-amber-300" strokeWidth={2.5} />
+            <p className="text-[11px] font-semibold text-amber-900 dark:text-amber-200" title={s.settings.lockedTitle}>
+              {s.settings.locked}
+            </p>
+          </div>
+        )}
 
-        {/* Status line */}
+        {/* Status banner */}
         {isReady ? (
           <div className="flex items-center gap-2 rounded-xl bg-emerald-50 px-3 py-2.5 dark:bg-emerald-950/30">
             <Check className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-300" strokeWidth={3} />
@@ -176,15 +238,12 @@ export function StudioSettingsPanel({ settings, plan, isApplying, locked = false
           </div>
         ) : null}
 
-        {/* ── Plan quick controls ── */}
-        <section className="space-y-3 rounded-xl border border-gray-100 bg-gray-50/60 p-3 dark:border-gray-800 dark:bg-gray-900/40">
-          <div className="flex items-center justify-between gap-2">
-            <SectionLabel text={s.settings.sectionPlan} />
-            {planApproved && (
-              <span className="text-[10px] text-amber-600 dark:text-amber-400">{s.settings.locked}</span>
-            )}
-          </div>
-
+        {/* ── Accordion 1: Cấu hình cơ bản ── */}
+        <AccordionSection
+          label={s.settings.sectionPlan + (planApproved ? ` · ${s.settings.locked}` : "")}
+          open={openBasic}
+          onToggle={() => setOpenBasic((v) => !v)}
+        >
           <NumberInputField
             label={s.settings.duration}
             value={settings?.interviewLengthMinutes ?? 60}
@@ -216,40 +275,52 @@ export function StudioSettingsPanel({ settings, plan, isApplying, locked = false
             ]}
             disabled={!canEdit || planApproved}
           />
+          <SelectField
+            label={s.settings.languageLabel}
+            value={settings?.outputLanguage ?? "Vietnamese"}
+            onChange={(v) => void onChangeSetting({ outputLanguage: v })}
+            options={[
+              { value: "Vietnamese", label: "Tiếng Việt" },
+              { value: "English",    label: "English" },
+            ]}
+            disabled={!canEdit || planApproved}
+          />
+        </AccordionSection>
 
-          {/* Question types */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <p className={cn("text-xs font-medium", portalHeading)}>{s.settings.questionTypes}</p>
-              <span className={cn("text-[10px]", portalSubtext)}>
-                {selectedTypes.length}/{QUESTION_TYPE_OPTIONS.length} · {s.settings.perType.replace("{{count}}", String(qPerType))}
-              </span>
-            </div>
-            <div className="flex flex-wrap gap-1.5">
-              {QUESTION_TYPE_OPTIONS.map((opt) => {
-                const active = selectedTypes.includes(opt.value);
-                return (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    disabled={!canEdit || planApproved}
-                    onClick={() => toggleType(opt.value)}
-                    title={opt.label}
-                    className={cn(
-                      "flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50",
-                      active
-                        ? "border-primary bg-primary/10 text-primary"
-                        : "border-gray-200 text-gray-600 hover:border-gray-300 dark:border-gray-700 dark:text-gray-300"
-                    )}
-                  >
-                    {active && <Check className="h-2.5 w-2.5" strokeWidth={3} />}
-                    {opt.shortLabel}
-                  </button>
-                );
-              })}
-            </div>
+        {/* ── Accordion 2: Loại câu hỏi ── */}
+        <AccordionSection
+          label={s.settings.sectionTypes}
+          open={openTypes}
+          onToggle={() => setOpenTypes((v) => !v)}
+        >
+          <div className="flex items-center justify-between -mt-0.5 mb-1">
+            <span className={cn("text-[10px]", portalSubtext)}>
+              {selectedTypes.length}/{QUESTION_TYPE_OPTIONS.length} · {s.settings.perType.replace("{{count}}", String(qPerType))}
+            </span>
           </div>
-
+          <div className="flex flex-wrap gap-1.5">
+            {QUESTION_TYPE_OPTIONS.map((opt) => {
+              const active = selectedTypes.includes(opt.value);
+              return (
+                <button
+                  key={opt.value}
+                  type="button"
+                  disabled={!canEdit || planApproved}
+                  onClick={() => toggleType(opt.value)}
+                  title={opt.label}
+                  className={cn(
+                    "flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50",
+                    active
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-gray-200 text-gray-600 hover:border-gray-300 dark:border-gray-700 dark:text-gray-300"
+                  )}
+                >
+                  {active && <Check className="h-2.5 w-2.5" strokeWidth={3} />}
+                  {opt.label}
+                </button>
+              );
+            })}
+          </div>
           {showApply && (
             <button
               type="button"
@@ -261,30 +332,35 @@ export function StudioSettingsPanel({ settings, plan, isApplying, locked = false
               {isApplying ? s.settings.applying : s.settings.applyToPlan}
             </button>
           )}
-        </section>
+        </AccordionSection>
 
-        {/* ── Generate output ── */}
-        <section className="space-y-3 rounded-xl border border-gray-100 bg-gray-50/60 p-3 dark:border-gray-800 dark:bg-gray-900/40">
-          <SectionLabel text={s.settings.sectionOutput} />
+        {/* ── Accordion 3: Tùy chọn đầu ra ── */}
+        <AccordionSection
+          label={s.settings.sectionOutput}
+          open={openOutput}
+          onToggle={() => setOpenOutput((v) => !v)}
+        >
           <SelectField
             label={s.settings.toneLabel}
             value={settings?.questionTone ?? "Professional"}
             onChange={(v) => void onChangeSetting({ questionTone: v })}
             options={[
-              { value: "Professional", label: "Professional" },
-              { value: "Concise",      label: "Concise" },
-              { value: "Friendly",     label: "Friendly" },
+              { value: "Professional", label: s.settings.toneProfessional },
+              { value: "Concise",      label: s.settings.toneConcise },
+              { value: "Friendly",     label: s.settings.toneFriendly },
             ]}
+            disabled={!canEdit || planApproved}
           />
           <SelectField
             label={s.settings.formatLabel}
             value={settings?.outputFormat ?? "StructuredInterviewKit"}
             onChange={(v) => void onChangeSetting({ outputFormat: v })}
             options={[
-              { value: "StructuredInterviewKit", label: "Structured Interview Kit" },
-              { value: "SimpleList",             label: "Simple List" },
-              { value: "TechnicalDeepDive",      label: "Technical Deep Dive" },
+              { value: "StructuredInterviewKit", label: s.settings.formatStructured },
+              { value: "SimpleList",             label: s.settings.formatSimple },
+              { value: "TechnicalDeepDive",      label: s.settings.formatTechnical },
             ]}
+            disabled={!canEdit || planApproved}
           />
           <SelectField
             label={s.settings.contentModeLabel}
@@ -292,9 +368,10 @@ export function StudioSettingsPanel({ settings, plan, isApplying, locked = false
             onChange={(v) => void onChangeSetting({ contentMode: v as StudioSettings["contentMode"] })}
             options={[
               { value: "TheoryOnly", label: s.settings.contentModeTheory },
-              { value: "CodeOnly", label: s.settings.contentModeCode },
-              { value: "Mixed", label: s.settings.contentModeMixed },
+              { value: "CodeOnly",   label: s.settings.contentModeCode },
+              { value: "Mixed",      label: s.settings.contentModeMixed },
             ]}
+            disabled={!canEdit || planApproved}
           />
           <div className="space-y-2">
             <p className={cn("text-xs font-medium", portalHeading)}>{s.settings.codeTemplatesLabel}</p>
@@ -331,16 +408,7 @@ export function StudioSettingsPanel({ settings, plan, isApplying, locked = false
               })}
             </div>
           </div>
-          <SelectField
-            label={s.settings.languageLabel}
-            value={settings?.outputLanguage ?? "Vietnamese"}
-            onChange={(v) => void onChangeSetting({ outputLanguage: v })}
-            options={[
-              { value: "Vietnamese", label: "Tiếng Việt" },
-              { value: "English",    label: "English" },
-            ]}
-          />
-          <div className="space-y-2.5">
+          <div className="space-y-2.5 pt-0.5">
             <div className="flex items-center justify-between">
               <div>
                 <p className={cn("text-xs font-medium", portalHeading)}>{s.settings.sampleAnswers}</p>
@@ -362,7 +430,7 @@ export function StudioSettingsPanel({ settings, plan, isApplying, locked = false
               />
             </div>
           </div>
-        </section>
+        </AccordionSection>
 
         {/* ── Plan stats ── */}
         {plan && (
@@ -372,19 +440,16 @@ export function StudioSettingsPanel({ settings, plan, isApplying, locked = false
               <SectionLabel text={s.settings.sectionStats} />
             </div>
             <dl className="space-y-1.5">
+              {/* Static rows */}
               {[
                 { label: s.settings.statTotal,    value: String(plan.totalQuestions) },
                 { label: s.settings.statDuration, value: `${plan.interviewLengthMinutes} ${s.settings.unitMin}` },
                 { label: s.settings.statRevision, value: `Rev ${plan.revision}` },
-                { label: s.settings.statSources,  value: String(sourcesCount) },
                 {
                   label: s.settings.statDifficulty,
                   value: (() => {
                     const m = plan.difficultyMix ?? { easy: 0, medium: 0, hard: 0 };
-                    const e = Math.round(m.easy * 100);
-                    const med = Math.round(m.medium * 100);
-                    const h = Math.round(m.hard * 100);
-                    return `${e}E · ${med}M · ${h}H`;
+                    return formatDifficultyMixLabel(m, plan.totalQuestions);
                   })(),
                 },
               ].map(({ label, value }) => (
@@ -393,6 +458,37 @@ export function StudioSettingsPanel({ settings, plan, isApplying, locked = false
                   <dd className={cn("text-[11px] font-semibold", portalHeading)}>{value}</dd>
                 </div>
               ))}
+              {/* Sources row — expandable to show source names */}
+              <div className="flex flex-col gap-1">
+                <div className="flex items-center justify-between gap-2">
+                  <dt className={cn("text-[11px]", portalSubtext)}>{s.settings.statSources}</dt>
+                  <dd className="flex items-center gap-1">
+                    <span className={cn("text-[11px] font-semibold", portalHeading)}>{sourcesCount}</span>
+                    {sourcesCount > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setSourcesOpen((v) => !v)}
+                        className="ml-0.5 text-gray-400 hover:text-primary transition-colors"
+                        title={sourcesOpen ? s.settings.sourcesCollapse : s.settings.sourcesExpand}
+                      >
+                        <ChevronRight className={cn("h-3 w-3 transition-transform duration-150", sourcesOpen && "rotate-90")} />
+                      </button>
+                    )}
+                  </dd>
+                </div>
+                {sourcesOpen && sourceNames.length > 0 && (
+                  <ul className="mt-0.5 space-y-1 pl-1">
+                    {sourceNames.map((name) => (
+                      <li key={name} className={cn(
+                        "text-[10px] truncate rounded px-1.5 py-0.5",
+                        "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400"
+                      )}>
+                        {name === "job-description" ? "JD (Mô tả công việc)" : name}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
             </dl>
           </section>
         )}

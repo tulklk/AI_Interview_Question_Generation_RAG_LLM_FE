@@ -9,9 +9,9 @@ export const portalHeading = "text-gray-900 dark:text-gray-100";
 
 export const portalHeadingAlt = "text-[#111827] dark:text-gray-100";
 
-export const portalSubtext = "text-gray-500 dark:text-gray-400";
+export const portalSubtext = "text-gray-500 dark:text-gray-300";
 
-export const portalSubtextAlt = "text-[#6B7280] dark:text-gray-400";
+export const portalSubtextAlt = "text-[#6B7280] dark:text-gray-300";
 
 export const portalInput =
   "bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500";
