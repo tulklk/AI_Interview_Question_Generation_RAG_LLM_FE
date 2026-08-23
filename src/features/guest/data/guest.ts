@@ -182,7 +182,7 @@ export const pricingPlansRecruiter: PricingPlan[] = [
     cta: "Bắt đầu Free",
     features: [
       { text: "Studio: tạo plan & bộ câu hỏi từ JD", included: true },
-      { text: "Generate 1 lần / cooldown 24 giờ", included: true },
+      { text: "Generate 4 lần / cooldown 24 giờ", included: true },
       { text: "Regenerate plan ≤ 5 lần / draft", included: true },
       { text: "Publish bộ câu hỏi lên Marketplace", included: true },
       { text: "Export PDF / DOCX", included: false },

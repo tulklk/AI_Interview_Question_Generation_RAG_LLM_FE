@@ -9,10 +9,9 @@ import {
   reingestAdminKnowledgeDoc,
   getAdminKnowledgeDoc,
 } from "@/features/knowledge/services/knowledge.service";
-import { cn } from "@/lib/cn";
-import { portalHeadingAlt, portalSubtextAlt } from "@/shared/utils/portal-ui";
 import { BookOpen } from "lucide-react";
 import { useLanguage } from "@/shared/providers/language-context";
+import { AdminPageHeader } from "@/features/admin/components/layout/admin-page-header";
 
 export default function AdminKnowledgePage() {
   const { t } = useLanguage();
@@ -26,19 +25,16 @@ export default function AdminKnowledgePage() {
         { label: kb.breadcrumbLabel },
       ]}
     >
-      <div className="mb-8 animate-fade-up">
-        <div className="flex items-center gap-3 mb-2">
-          <div className="w-10 h-10 rounded-xl bg-[#f5f3ff] dark:bg-[#6c47ff]/10 flex items-center justify-center">
-            <BookOpen size={20} className="text-[#6c47ff]" />
-          </div>
-          <h2 className={cn("text-[30px] font-bold leading-9", portalHeadingAlt)}>
-            {kb.adminTitle}
-          </h2>
-        </div>
-        <p className={cn("mt-2 text-base leading-6 ml-[52px]", portalSubtextAlt)}>
-          {kb.adminSubtext}
-        </p>
-      </div>
+      <AdminPageHeader
+        heading={kb.adminTitle}
+        subtext={kb.adminSubtext}
+        icon={BookOpen}
+        iconGradient="bg-linear-to-br from-violet-500 to-primary"
+        accentGradient="bg-linear-to-r from-violet-500 via-primary to-cyan-400"
+        cardGradient="bg-linear-to-r from-violet-50 via-white to-cyan-50 dark:from-violet-950/20 dark:via-gray-900 dark:to-cyan-950/10"
+        cardBorder="border-violet-100 dark:border-violet-900/30"
+        iconShadow="shadow-violet-200 dark:shadow-violet-900/30"
+      />
 
       <div className="animate-fade-up" style={{ animationDelay: "80ms" }}>
         <KnowledgePageContent

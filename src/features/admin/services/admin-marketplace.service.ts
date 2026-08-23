@@ -267,3 +267,25 @@ export async function pinMarketplaceQuestionSet(id: string): Promise<void> {
 export async function unpinMarketplaceQuestionSet(id: string): Promise<void> {
   await apiClient.delete(`/api/admin/marketplace/question-sets/${id}/pin`);
 }
+
+function extractBeErrorMessage(err: unknown): string {
+  const data = (err as { response?: { data?: { error?: string; detail?: string; message?: string } } })
+    ?.response?.data;
+  return data?.error ?? data?.detail ?? data?.message ?? "";
+}
+
+function parseAbandonedSessionCount(raw: unknown): number {
+  const rec = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
+  const inner = rec.data && typeof rec.data === "object" ? (rec.data as Record<string, unknown>) : rec;
+  const n = Number(inner.abandonedSessionCount ?? inner.AbandonedSessionCount ?? 0);
+  return Number.isFinite(n) ? Math.max(0, n) : 0;
+}
+
+export async function unpublishMarketplaceQuestionSet(id: string): Promise<number> {
+  try {
+    const { data } = await apiClient.post<unknown>(`/api/admin/marketplace/question-sets/${id}/unpublish`);
+    return parseAbandonedSessionCount(data);
+  } catch (err) {
+    throw new Error(extractBeErrorMessage(err));
+  }
+}

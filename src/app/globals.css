@@ -222,6 +222,31 @@
   100% { transform: translateX(300%)  skewX(-12deg); }
 }
 
+/* Progress-bar horizontal shimmer (no skew — used on match-% bars) */
+@keyframes barShimmer {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(300%); }
+}
+
+/* Studio loading — indeterminate progress (no fake %) */
+@keyframes studioProgressIndeterminate {
+  0%   { transform: translateX(-120%); }
+  100% { transform: translateX(220%); }
+}
+
+.studio-progress-indeterminate {
+  position: relative;
+  overflow: hidden;
+}
+
+.studio-progress-indeterminate > span {
+  position: absolute;
+  inset: 0;
+  width: 40%;
+  border-radius: inherit;
+  animation: studioProgressIndeterminate 1.4s ease-in-out infinite;
+}
+
 @keyframes fadeUpScale {
   from { opacity: 0; transform: translateY(14px) scale(0.96); }
   to   { opacity: 1; transform: translateY(0)     scale(1); }
@@ -428,11 +453,13 @@
 html {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  overscroll-behavior: none; /* prevent rubber-band / elastic scroll in all directions */
 }
 
 body {
   margin: 0;
   overflow-x: hidden;
+  overscroll-behavior: none; /* belt-and-suspenders: some browsers check body, not html */
   background-color: #F8FAFC;
   color: #111827;
   font-family: var(--font-be-vietnam-pro), "Be Vietnam Pro", system-ui, -apple-system, sans-serif;
@@ -2040,8 +2067,9 @@ body.lang-switching {
 }
 
 .dark .hr-glass-card {
-  background: rgba(15, 23, 42, 0.82);
-  border-color: rgba(124, 58, 237, 0.13);
+  /* Slightly brighter than the #050816 page bg for clear surface layering */
+  background: rgba(22, 32, 58, 0.90);
+  border-color: rgba(124, 58, 237, 0.15);
   box-shadow:
     0 1px 3px rgba(0, 0, 0, 0.28),
     0 4px 16px -4px rgba(124, 58, 237, 0.17),
@@ -2279,8 +2307,8 @@ body.lang-switching {
   /* Dark: purple + black only — no teal/cyan */
   background-color: #050816;
   background-image:
-    linear-gradient(rgba(124, 58, 237, 0.08) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(124, 58, 237, 0.08) 1px, transparent 1px),
+    linear-gradient(rgba(124, 58, 237, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(124, 58, 237, 0.045) 1px, transparent 1px),
     radial-gradient(ellipse 60% 50% at 80% 20%, rgba(124, 58, 237, 0.2) 0%, transparent 60%),
     radial-gradient(ellipse 55% 45% at 10% 80%, rgba(109, 40, 217, 0.12) 0%, transparent 60%),
     linear-gradient(160deg, #020617 0%, #050816 35%, #070b1a 70%, #0b1026 100%);

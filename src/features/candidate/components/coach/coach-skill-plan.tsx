@@ -146,8 +146,15 @@ export function CoachSkillPlan({ items, isPremium, drillDisabled, onDrill }: Coa
           const currentLabel = item.currentScore == null ? "—" : String(Math.round(item.currentScore));
           const hasCurrent = item.currentScore != null;
           const hasBaseline = item.baselineScore != null;
+          // Only show delta when the candidate has a real scored result (score > 0).
+          // score=0 almost always means "unscored yet", not a genuine zero result.
           const delta =
-            hasCurrent && hasBaseline ? item.currentScore! - item.baselineScore! : null;
+            hasCurrent && hasBaseline && item.currentScore! > 0
+              ? item.currentScore! - item.baselineScore!
+              : null;
+          // When there IS baseline data but no real score yet, show a neutral hint
+          // instead of the alarming red "-95" badge.
+          const showNeutralDelta = item.currentScore === 0 && hasBaseline;
           const remaining =
             hasCurrent ? Math.max(0, Math.round(item.targetScore - item.currentScore!)) : null;
           const reached = hasCurrent && item.currentScore! >= item.targetScore;
@@ -168,20 +175,20 @@ export function CoachSkillPlan({ items, isPremium, drillDisabled, onDrill }: Coa
                     : "bg-gray-200 dark:bg-gray-700"
               )} />
 
-              <div className="p-5 flex flex-col gap-4 flex-1">
+              <div className="p-3.5 flex flex-col gap-2.5 flex-1">
                 {/* ── Header: icon + name + status badge ── */}
                 <div className="flex items-start justify-between gap-3">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <span className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <span className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm">
                       {SkillIcon ? (
-                        <SkillIcon size={20} className={cn("shrink-0", skillIcon.className)} />
+                        <SkillIcon size={16} className={cn("shrink-0", skillIcon.className)} />
                       ) : (
-                        <span className={cn("text-[11px] font-bold leading-none", portalSubtextAlt)}>
+                        <span className={cn("text-[10px] font-bold leading-none", portalSubtextAlt)}>
                           {displayName.slice(0, 2).toUpperCase()}
                         </span>
                       )}
                     </span>
-                    <p className={cn("text-[15px] font-bold leading-snug", portalHeadingAlt)}>
+                    <p className={cn("text-[14px] font-bold leading-snug", portalHeadingAlt)}>
                       {displayName}
                     </p>
                   </div>
@@ -191,12 +198,12 @@ export function CoachSkillPlan({ items, isPremium, drillDisabled, onDrill }: Coa
                 </div>
 
                 {/* ── Score + progress ── */}
-                <div className="space-y-2.5">
+                <div className="space-y-1.5">
                   {/* Score row */}
                   <div className="flex items-end justify-between gap-2">
                     <div className="flex items-baseline gap-1.5">
                       <span className={cn(
-                        "text-[26px] font-extrabold leading-none tabular-nums",
+                        "text-[22px] font-extrabold leading-none tabular-nums",
                         !hasCurrent
                           ? "text-gray-300 dark:text-gray-600"
                           : reached
@@ -209,13 +216,13 @@ export function CoachSkillPlan({ items, isPremium, drillDisabled, onDrill }: Coa
                         / {item.targetScore}
                       </span>
                     </div>
-                    {delta != null && (
+                    {delta != null ? (
                       <span className={cn(
                         "inline-flex items-center gap-0.5 text-[11px] font-semibold px-1.5 py-0.5 rounded-md shrink-0",
                         delta > 0
                           ? "bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400"
                           : delta < 0
-                            ? "bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400"
+                            ? "bg-red-50 dark:bg-red-950/25 text-red-500 dark:text-red-400/80"
                             : "bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400"
                       )}>
                         {delta > 0
@@ -225,7 +232,12 @@ export function CoachSkillPlan({ items, isPremium, drillDisabled, onDrill }: Coa
                             : <Minus size={10} />}
                         {fillTemplate(p.deltaVsBaseline, { delta: formatDelta(delta) })}
                       </span>
-                    )}
+                    ) : showNeutralDelta ? (
+                      <span className="inline-flex items-center gap-0.5 text-[10.5px] px-1.5 py-0.5 rounded-md shrink-0 bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500">
+                        <Minus size={9} />
+                        {p.noCompareData}
+                      </span>
+                    ) : null}
                   </div>
 
                   {/* Progress bar */}
@@ -244,8 +256,10 @@ export function CoachSkillPlan({ items, isPremium, drillDisabled, onDrill }: Coa
                     {hasBaseline && (
                       <span
                         title={p.baselineMark}
-                        className="absolute top-1/2 -translate-y-1/2 w-0.5 h-4 rounded-full bg-gray-400 dark:bg-gray-400"
-                        style={{ left: `calc(${baselinePct}% - 1px)` }}
+                        aria-label={p.baselineMark}
+                        role="presentation"
+                        className="absolute top-1/2 -translate-y-1/2 w-px h-3 rounded-full bg-gray-300/90 dark:bg-gray-500/70"
+                        style={{ left: `calc(${baselinePct}% - 0.5px)` }}
                       />
                     )}
                   </div>
@@ -282,7 +296,7 @@ export function CoachSkillPlan({ items, isPremium, drillDisabled, onDrill }: Coa
       </AnimatePresence>
       </div>
 
-      {/* ── Pagination controls ── */}
+      {/* ── Pagination controls — ‹ N / total › style ── */}
       {totalPages > 1 && (
         <div className="flex items-center justify-center gap-3 mt-5">
           <button
@@ -300,21 +314,9 @@ export function CoachSkillPlan({ items, isPremium, drillDisabled, onDrill }: Coa
             <ChevronLeft size={15} />
           </button>
 
-          <div className="flex items-center gap-1.5">
-            {Array.from({ length: totalPages }).map((_, i) => (
-              <button
-                key={i}
-                type="button"
-                onClick={() => goTo(i)}
-                className={cn(
-                  "h-2 rounded-full transition-all duration-300",
-                  i === page
-                    ? "bg-primary w-5"
-                    : "w-2 bg-gray-300 dark:bg-gray-600 hover:bg-gray-400 dark:hover:bg-gray-500"
-                )}
-              />
-            ))}
-          </div>
+          <span className={cn("text-[13px] font-semibold tabular-nums min-w-10 text-center", portalSubtextAlt)}>
+            {page + 1} / {totalPages}
+          </span>
 
           <button
             type="button"

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { motion, AnimatePresence, useAnimationControls } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   ChevronLeft, ChevronRight, X,
   Loader2, Sparkles, AlertCircle, RefreshCw, Lock, Save, Crown,
@@ -80,40 +80,6 @@ function hasAnswerText(text: string | undefined | null): boolean {
   return (text ?? "").trim().length > 0;
 }
 
-interface ProgressDotProps {
-  active: boolean;
-  answered: boolean;
-  onClick: () => void;
-}
-
-function ProgressDot({ active, answered, onClick }: ProgressDotProps) {
-  const controls = useAnimationControls();
-  const wasAnswered = useRef(answered);
-
-  useEffect(() => {
-    if (answered && !wasAnswered.current) {
-      controls.start({ scale: [1, 1.7, 1], transition: { duration: 0.4, ease: "easeOut" } });
-    }
-    wasAnswered.current = answered;
-  }, [answered, controls]);
-
-  return (
-    <motion.button
-      type="button"
-      onClick={onClick}
-      animate={controls}
-      className={cn(
-        "rounded-full transition-all duration-200",
-        active
-          ? "w-6 h-2 bg-primary"
-          : answered
-          ? "w-2 h-2 bg-emerald-400"
-          : "w-2 h-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600"
-      )}
-    />
-  );
-}
-
 interface QuestionNavProps {
   questions: QuestionSet["questions"];
   currentIdx: number;
@@ -125,7 +91,9 @@ interface QuestionNavProps {
   isCountdown: boolean;
   /** Seconds to display — already computed (countdown remaining or elapsed). */
   timerSeconds: number;
-  /** True when < 5 minutes remaining on a countdown. */
+  /** True when 5–10 minutes remaining (amber warning). */
+  isTimerAmber: boolean;
+  /** True when < 5 minutes remaining on a countdown (red alert). */
   isTimerWarning: boolean;
   labels: {
     title: string; answered: string; current: string; unanswered: string;
@@ -134,7 +102,7 @@ interface QuestionNavProps {
   };
 }
 
-function QuestionNav({ questions, currentIdx, answered, onSelect, onRequestFinish, finishing, isCountdown, timerSeconds, isTimerWarning, labels }: QuestionNavProps) {
+function QuestionNav({ questions, currentIdx, answered, onSelect, onRequestFinish, finishing, isCountdown, timerSeconds, isTimerWarning, isTimerAmber, labels }: QuestionNavProps) {
   const answerable = questions.filter((q) => !q.isLocked);
   const answeredCount = answerable.filter((q) => answered[q.id]).length;
   const total = answerable.length;
@@ -143,7 +111,7 @@ function QuestionNav({ questions, currentIdx, answered, onSelect, onRequestFinis
   return (
     <aside className={cn(
       "hidden lg:flex flex-col w-72 shrink-0 scrollbar-hide",
-      "max-h-[calc(100vh-128px)] rounded-2xl shadow-xl border",
+      "lg:sticky lg:top-6 max-h-[calc(100vh-64px)] rounded-2xl shadow-xl border",
       "bg-white/95 dark:bg-gray-900/95 backdrop-blur-md",
       portalDivider
     )}>
@@ -162,7 +130,7 @@ function QuestionNav({ questions, currentIdx, answered, onSelect, onRequestFinis
           </p>
           <p className={cn(
             "text-[22px] font-bold tabular-nums leading-none",
-            isTimerWarning ? "text-red-500" : isCountdown ? "text-primary" : portalHeadingAlt
+            isTimerWarning ? "text-red-500" : isTimerAmber ? "text-amber-500 dark:text-amber-400" : isCountdown ? "text-primary" : portalHeadingAlt
           )}>
             {formatTime(timerSeconds)}
           </p>
@@ -177,10 +145,13 @@ function QuestionNav({ questions, currentIdx, answered, onSelect, onRequestFinis
             const isDone = answered[q.id] ?? false;
             const isLocked = q.isLocked === true;
             return (
-              <button
+              <motion.button
                 key={q.id}
                 type="button"
                 onClick={() => onSelect(idx)}
+                animate={{ scale: isActive ? 1.1 : 1 }}
+                transition={{ duration: 0.15, ease: "easeOut" }}
+                whileTap={{ scale: 0.9 }}
                 title={
                   isLocked
                     ? "Premium"
@@ -191,18 +162,20 @@ function QuestionNav({ questions, currentIdx, answered, onSelect, onRequestFinis
                         : labels.unanswered
                 }
                 className={cn(
-                  "w-9 h-9 rounded-full text-[13px] font-bold transition-all duration-150 flex items-center justify-center",
+                  "w-9 h-9 rounded-full text-[13px] font-bold",
+                  "transition-[background-color,border-color,color,box-shadow] duration-150",
+                  "flex items-center justify-center",
                   isLocked
                     ? "bg-amber-100 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 border border-amber-300/60 dark:border-amber-700"
                     : isActive
-                    ? "bg-primary text-white shadow-md shadow-primary/30 scale-110"
+                    ? "bg-primary text-white shadow-md shadow-primary/30"
                     : isDone
                     ? "bg-emerald-500 dark:bg-emerald-600 text-white hover:bg-emerald-600 dark:hover:bg-emerald-500"
                     : "border-2 border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-primary/50 hover:text-primary"
                 )}
               >
                 {isLocked ? <Lock size={12} /> : idx + 1}
-              </button>
+              </motion.button>
             );
           })}
         </div>
@@ -215,7 +188,12 @@ function QuestionNav({ questions, currentIdx, answered, onSelect, onRequestFinis
           onClick={onRequestFinish}
           disabled={finishing || !allAnswered}
           title={!allAnswered ? labels.answerAllHint : undefined}
-          className="w-full h-10 rounded-xl text-[14px] font-bold text-white hr-cta-btn shimmer-button disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          className={cn(
+            "w-full h-10 rounded-xl text-[14px] font-bold flex items-center justify-center gap-2 transition-all duration-200",
+            allAnswered
+              ? "text-white hr-cta-btn shimmer-button disabled:opacity-70 disabled:cursor-not-allowed"
+              : "bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-600 cursor-not-allowed"
+          )}
         >
           {finishing && <Loader2 size={14} className="animate-spin" />}
           {labels.submitBtn}
@@ -738,6 +716,8 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
     : hasEstimatedCountdown
       ? Math.max(0, estimatedTotalSeconds - elapsedSeconds)
       : elapsedSeconds;
+  // Amber warning: 5–10 min remaining on any countdown
+  const isTimerAmber = isCountdown && timerSeconds >= 300 && timerSeconds < 600;
   // Red warning: < 5 min remaining on any countdown
   const isTimerWarning = isCountdown && timerSeconds < 300;
 
@@ -882,7 +862,7 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
       </header>
 
       {/* ── Body (main + sidebar) ──────────────────────────────────── */}
-      <div className="flex-1 flex items-center justify-center overflow-y-auto scrollbar-hide py-6 px-3 sm:px-6">
+      <div className="flex-1 flex items-center justify-center overflow-y-auto scrollbar-hide py-3 sm:py-4 px-3 sm:px-6">
         <div className="w-full flex gap-5 items-start">
         <div className="flex-1 flex flex-col gap-5">
 
@@ -896,7 +876,7 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
               animate="center"
               exit="exit"
               transition={{ duration: 0.25, ease: "easeInOut" }}
-              className="hr-glass-card p-5 sm:p-8"
+              className="hr-glass-card p-5 sm:p-8 border-l-[3px] border-l-violet-400/40 dark:border-l-violet-500/30"
             >
               {/* Category + difficulty badges */}
               <div className="flex items-center gap-2 mb-5">
@@ -1007,9 +987,9 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
                       placeholder={p.codeAnswerPlaceholder}
                       spellCheck={false}
                       className={cn(
-                        "w-full min-h-40 sm:min-h-52 bg-transparent px-3 py-3 outline-none resize-y",
+                        "w-full min-h-34 sm:min-h-44 bg-transparent px-3 py-3 outline-none resize-y",
                         "font-mono text-[12px] leading-relaxed text-gray-900 dark:text-violet-100",
-                        "placeholder:text-gray-400 dark:placeholder:text-gray-500"
+                        "placeholder:text-gray-400 dark:placeholder:text-gray-300"
                       )}
                     />
                   </div>
@@ -1022,9 +1002,9 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
                     }}
                     placeholder={p.answerPlaceholder}
                     className={cn(
-                      "w-full min-h-35 sm:min-h-45 text-[14px] font-normal bg-transparent outline-none resize-none leading-6",
+                      "w-full min-h-28 sm:min-h-38 text-[14px] font-normal bg-transparent outline-none resize-none leading-6",
                       portalHeadingAlt,
-                      "placeholder:text-gray-400 dark:placeholder:text-gray-500"
+                      "placeholder:text-gray-400 dark:placeholder:text-gray-300"
                     )}
                   />
                 )}
@@ -1057,18 +1037,6 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
                 </div>
               </>
             )}
-          </div>
-
-          {/* Dot progress indicator */}
-          <div className="flex items-center justify-center gap-2">
-            {questions.map((q, idx) => (
-              <ProgressDot
-                key={q.id}
-                active={idx === currentIdx}
-                answered={answeredFlags[q.id] ?? false}
-                onClick={() => goToQuestion(idx)}
-              />
-            ))}
           </div>
 
           {/* Navigation buttons — pushed below the stats panel on mobile */}
@@ -1166,7 +1134,7 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
                   </p>
                   <p className={cn(
                     "text-[18px] font-bold tabular-nums leading-none",
-                    isTimerWarning ? "text-red-500" : isCountdown ? "text-primary" : portalHeadingAlt
+                    isTimerWarning ? "text-red-500" : isTimerAmber ? "text-amber-500 dark:text-amber-400" : isCountdown ? "text-primary" : portalHeadingAlt
                   )}>
                     {formatTime(timerSeconds)}
                   </p>
@@ -1180,10 +1148,13 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
                   const isDone = answeredFlags[q.id] ?? false;
                   const isLocked = q.isLocked === true;
                   return (
-                    <button
+                    <motion.button
                       key={q.id}
                       type="button"
                       onClick={() => goToQuestion(idx)}
+                      animate={{ scale: isActive ? 1.1 : 1 }}
+                      transition={{ duration: 0.15, ease: "easeOut" }}
+                      whileTap={{ scale: 0.88 }}
                       title={
                         isLocked ? "Premium"
                           : isActive ? p.questionCurrent
@@ -1191,18 +1162,20 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
                           : p.questionUnanswered
                       }
                       className={cn(
-                        "w-8 h-8 rounded-full text-[12px] font-bold transition-all flex items-center justify-center shrink-0",
+                        "w-8 h-8 rounded-full text-[12px] font-bold shrink-0",
+                        "transition-[background-color,border-color,color,box-shadow] duration-150",
+                        "flex items-center justify-center",
                         isLocked
                           ? "bg-amber-100 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 border border-amber-300/60 dark:border-amber-700"
                           : isActive
-                          ? "bg-primary text-white shadow-md shadow-primary/30 scale-110"
+                          ? "bg-primary text-white shadow-md shadow-primary/30"
                           : isDone
                           ? "bg-emerald-500 dark:bg-emerald-600 text-white"
                           : "border-2 border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400"
                       )}
                     >
                       {isLocked ? <Lock size={11} /> : idx + 1}
-                    </button>
+                    </motion.button>
                   );
                 })}
               </div>
@@ -1214,7 +1187,12 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
               onClick={requestFinish}
               disabled={finishing || !allAnswered}
               title={!allAnswered ? p.answerAllToFinish.replace("{{count}}", String(unansweredCount)) : undefined}
-              className="w-full h-10 rounded-xl text-[14px] font-bold text-white hr-cta-btn shimmer-button disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className={cn(
+              "w-full h-10 rounded-xl text-[14px] font-bold flex items-center justify-center gap-2 transition-all duration-200",
+              allAnswered
+                ? "text-white hr-cta-btn shimmer-button disabled:opacity-70 disabled:cursor-not-allowed"
+                : "bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-600 cursor-not-allowed"
+            )}
             >
               {finishing && <Loader2 size={14} className="animate-spin" />}
               {p.sidebarSubmitBtn}
@@ -1238,6 +1216,7 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
         isCountdown={isCountdown}
         timerSeconds={timerSeconds}
         isTimerWarning={isTimerWarning}
+        isTimerAmber={isTimerAmber}
         labels={{
           title: p.questionListTitle,
           answered: p.questionAnswered,

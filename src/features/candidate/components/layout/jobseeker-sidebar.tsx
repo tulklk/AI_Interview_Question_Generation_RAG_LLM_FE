@@ -32,6 +32,11 @@ export function JobseekerSidebar({ open, onClose, onOpenUpgrade }: JobseekerSide
       .catch(() => {});
   }, []);
 
+  // Hide the "Practice CTA" promo on set detail pages AND the main practice
+  // marketplace — user is already there, so the promo competes with page CTAs.
+  const isSetDetail = /^\/candidate\/sets\/[^/]+\/?$/.test(pathname);
+  const hidePracticeCta = isSetDetail || pathname === "/candidate/practice" || pathname === "/candidate/coach";
+
   const sidebarContent = (
     <>
       <div className="px-5 pt-6 pb-2">
@@ -108,8 +113,8 @@ export function JobseekerSidebar({ open, onClose, onOpenUpgrade }: JobseekerSide
         </ul>
       </nav>
 
-      {/* Practice CTA */}
-      <div className="px-4 mb-4">
+      {/* Practice CTA — hidden on set detail pages to avoid competing with the main CTA */}
+      {!hidePracticeCta && <div className="px-4 mb-4">
         <div className="hr-quick-generate rounded-xl p-4">
           <div className="w-8 h-8 rounded-lg hr-icon-box flex items-center justify-center mb-3">
             <BookOpen size={15} className="text-[#7C3AED] dark:text-[#a78bff]" />
@@ -128,7 +133,7 @@ export function JobseekerSidebar({ open, onClose, onOpenUpgrade }: JobseekerSide
             {s.practiceNow.btn}
           </Link>
         </div>
-      </div>
+      </div>}
 
       <SidebarUserFooter
         logoutTitle={s.logoutTitle}

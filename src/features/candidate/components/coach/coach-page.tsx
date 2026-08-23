@@ -67,6 +67,20 @@ function uniqueSkills(...lists: (string[] | undefined)[]): string[] {
   return out.slice(0, 12);
 }
 
+/**
+ * Derive a display-friendly name from a raw CV filename.
+ * "Phan-Thanh-Tu-TopCV...pdf" → "Phan Thanh Tu"
+ * Takes the first 3 dash/underscore-separated segments and title-cases them.
+ */
+function humanizeCvName(filename: string): string {
+  const base = filename.replace(/\.[^.]+$/, ""); // strip extension
+  const words = base.split(/[-_\s]+/).filter(Boolean);
+  return words
+    .slice(0, 3)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .join(" ");
+}
+
 export function CoachPage() {
   const { t, lang } = useLanguage();
   const p = t.jobseekerCoachPage;
@@ -233,7 +247,11 @@ export function CoachPage() {
       ? null
       : Math.round(scored.reduce((sum, i) => sum + (i.currentScore ?? 0), 0) / scored.length);
   const doneCount = (plan?.items ?? []).filter((i) => i.status === "done").length;
-  const compared = (plan?.items ?? []).filter((i) => i.currentScore != null && i.baselineScore != null);
+  // Exclude items with currentScore=0 from trend: a zero almost always means
+  // "unscored yet" (no session completed), not a genuine score of zero.
+  const compared = (plan?.items ?? []).filter(
+    (i) => i.currentScore != null && i.currentScore > 0 && i.baselineScore != null
+  );
   const improvingCount = compared.filter((i) => (i.currentScore ?? 0) > (i.baselineScore ?? 0)).length;
   const decliningCount = compared.filter((i) => (i.currentScore ?? 0) < (i.baselineScore ?? 0)).length;
 
@@ -272,9 +290,12 @@ export function CoachPage() {
                 <p className={cn("text-[13px] font-semibold", portalHeadingAlt)}>{p.skillsFromCv}</p>
               </div>
               {(cv?.fileName || skills.length > 0) && (
-                <p className={cn("text-[11px] font-medium", portalSubtextAlt)}>
+                <p
+                  className={cn("text-[11px] font-medium truncate max-w-50", portalSubtextAlt)}
+                  title={cv?.fileName ?? undefined}
+                >
                   {cv?.fileName
-                    ? fillTemplate(p.cvFile, { name: cv.fileName })
+                    ? fillTemplate(p.cvFile, { name: humanizeCvName(cv.fileName) })
                     : fillTemplate(p.skillsCount, { count: String(skills.length) })}
                 </p>
               )}
@@ -366,7 +387,7 @@ export function CoachPage() {
         </div>
 
         {/* ── Right sidebar (1/3) ── */}
-        <div className="flex flex-col gap-5">
+        <div className="flex flex-col gap-5 lg:sticky lg:top-6 lg:self-start">
           {/* Stats overview */}
           <div className="hr-glass-card overflow-hidden shrink-0">
             <div className="px-5 py-3.5 border-b border-gray-100 dark:border-gray-800">
@@ -384,6 +405,12 @@ export function CoachPage() {
                 </div>
               ))}
             </div>
+            {/* Hint when all stats are still at zero (no sessions completed) */}
+            {doneCount === 0 && avgScore === null && (plan?.items.length ?? 0) > 0 && (
+              <p className={cn("text-[11px] text-center px-4 pb-3 -mt-1 leading-relaxed", portalSubtextAlt)}>
+                {p.statsZeroHint}
+              </p>
+            )}
             <div className="px-5 pb-4 pt-0">
               <div className="pt-3 border-t border-gray-100 dark:border-gray-800">
                 <p className={cn("text-[10px] font-semibold uppercase tracking-wide mb-1.5", portalSubtextAlt)}>{p.trendTitle}</p>

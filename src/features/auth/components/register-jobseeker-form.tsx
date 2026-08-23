@@ -27,20 +27,13 @@ import {
   parseGoogleClaims,
   type GoogleClaims,
 } from "@/features/auth/utils/google-oauth-flow";
-import {
-  verifyGithubCode,
-  completeGithubLogin,
-  finishGithubAuth,
-  claimsFromGithubVerify,
-} from "@/features/auth/utils/github-oauth-flow";
-import { openGithubOAuthPopup } from "@/features/auth/utils/github-oauth-popup";
 import type { OAuthOnboardingProvider } from "@/features/auth/components/oauth-login-onboarding";
 import { toBackendIntendedRole, type RegisterRoleKey } from "@/features/auth/utils/google-onboarding";
 import type { ApiErrorResponse } from "@/features/auth/types/auth";
 import { useLanguage } from "@/shared/providers/language-context";
 import { useToast } from "@/shared/providers/toast-context";
 import { useUser } from "@/features/auth/context/user-context";
-import { SocialOAuthRow } from "@/features/auth/components/social-oauth-buttons";
+import { GoogleOAuthButton } from "@/features/auth/components/social-oauth-buttons";
 
 // ── Animation variants ───────────────────────────────────────────────────────
 
@@ -164,7 +157,6 @@ export function RegisterJobSeekerForm({ registerRole = "jobseeker" }: RegisterJo
 
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
-  const [githubLoading, setGithubLoading] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
 
   const techDropdownRef = useRef<HTMLDivElement>(null);
@@ -250,16 +242,9 @@ export function RegisterJobSeekerForm({ registerRole = "jobseeker" }: RegisterJo
           seniorityLevel,
           techStack,
         };
-        const { role } =
-          oauthSignup.provider === "google"
-            ? await completeGoogleLogin(oauthSignup.identifier, extra)
-            : await completeGithubLogin(oauthSignup.identifier, extra);
+        const { role } = await completeGoogleLogin(oauthSignup.identifier, extra);
         addToast("success", rp.profileCompleteSuccess);
-        if (oauthSignup.provider === "google") {
-          await finishGoogleAuth(router, refreshUser, oauthSignup.claims, oauthSignup.identifier, role);
-        } else {
-          await finishGithubAuth(router, refreshUser, oauthSignup.claims, role);
-        }
+        await finishGoogleAuth(router, refreshUser, oauthSignup.claims, oauthSignup.identifier, role);
         return;
       }
 
@@ -331,38 +316,6 @@ export function RegisterJobSeekerForm({ registerRole = "jobseeker" }: RegisterJo
       addToast("error", rp.registrationFailed);
     } finally {
       setGoogleLoading(false);
-    }
-  }
-
-  async function handleGithub() {
-    setGithubLoading(true);
-    try {
-      const code = await openGithubOAuthPopup();
-      const verify = await verifyGithubCode(code, { intendedRole });
-      const claims = claimsFromGithubVerify(verify);
-
-      if (!verify.isNewUser || verify.linkedToLocalAccount) {
-        const { role } = await completeGithubLogin(code, { intendedRole });
-        addToast("success", verify.linkedToLocalAccount ? lp.githubLinked : lp.githubAccountExists);
-        await finishGithubAuth(router, refreshUser, claims, role);
-        return;
-      }
-
-      setOauthSignup({ provider: "github", identifier: code, claims });
-      setFullName(claims.name);
-      setEmail(claims.email);
-      setPassword("");
-      setConfirmPassword("");
-      setFieldErrors({});
-      stepDir.current = 1;
-      setStep(2);
-      addToast("success", rp.githubSignupSuccess.replace("{{email}}", claims.email || claims.name));
-    } catch (err) {
-      if (!(err instanceof Error && (err.message === "popup_closed" || err.message === "popup_blocked"))) {
-        addToast("error", rp.registrationFailed);
-      }
-    } finally {
-      setGithubLoading(false);
     }
   }
 
@@ -630,13 +583,12 @@ export function RegisterJobSeekerForm({ registerRole = "jobseeker" }: RegisterJo
                 <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700" />
               </motion.div>
               <motion.div variants={fieldRow}>
-                <SocialOAuthRow
-                  googleLoading={googleLoading}
-                  googleMode="signup"
-                  onGoogleSuccess={handleGoogle}
-                  onGoogleError={() => addToast("error", rp.registrationFailed)}
-                  githubLoading={githubLoading}
-                  onGithubClick={handleGithub}
+                <GoogleOAuthButton
+                  loading={googleLoading}
+                  mode="signup"
+                  label={rp.signUpWithGoogle}
+                  onSuccess={handleGoogle}
+                  onError={() => addToast("error", rp.registrationFailed)}
                 />
               </motion.div>
               <motion.p variants={fieldRow} className="text-center text-sm text-gray-500 dark:text-gray-400 mt-5">

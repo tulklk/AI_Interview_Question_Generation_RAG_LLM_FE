@@ -1,6 +1,6 @@
 "use client";
 
-import { Pin, PinOff, Eye, Loader2 } from "lucide-react";
+import { Pin, PinOff, Eye, Loader2, GlobeOff } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { portalCard, portalHeadingAlt, portalSubtextAlt } from "@/shared/utils/portal-ui";
 import type { AdminMarketplaceListItem } from "@/features/admin/services/admin-marketplace.service";
@@ -10,8 +10,10 @@ interface MarketplaceTableProps {
   loading: boolean;
   selectedId: string | null;
   pinningId: string | null;
+  unpublishingId: string | null;
   onSelect: (id: string) => void;
   onTogglePin: (item: AdminMarketplaceListItem) => void;
+  onUnpublish: (item: AdminMarketplaceListItem) => void;
   labels: {
     title: string;
     hr: string;
@@ -26,6 +28,7 @@ interface MarketplaceTableProps {
     view: string;
     pin: string;
     unpin: string;
+    unpublish: string;
   };
 }
 
@@ -41,8 +44,10 @@ export function MarketplaceTable({
   loading,
   selectedId,
   pinningId,
+  unpublishingId,
   onSelect,
   onTogglePin,
+  onUnpublish,
   labels,
 }: MarketplaceTableProps) {
   if (loading) {
@@ -149,6 +154,19 @@ export function MarketplaceTable({
                         <PinOff size={12} />
                       ) : (
                         <Pin size={12} />
+                      )}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={unpublishingId === item.id}
+                      onClick={() => onUnpublish(item)}
+                      className="inline-flex h-8 items-center gap-1 rounded-lg border border-gray-200 px-2 text-xs font-semibold hover:border-red-300 hover:text-red-600 disabled:opacity-60 dark:border-gray-700"
+                      title={labels.unpublish}
+                    >
+                      {unpublishingId === item.id ? (
+                        <Loader2 size={12} className="animate-spin" />
+                      ) : (
+                        <GlobeOff size={12} />
                       )}
                     </button>
                   </div>

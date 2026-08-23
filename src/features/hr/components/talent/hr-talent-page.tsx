@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   AlertCircle,
@@ -14,15 +14,18 @@ import {
   User,
   X,
 } from "lucide-react";
+import { motion } from "framer-motion";
 import { cn } from "@/lib/cn";
 import { useLanguage } from "@/shared/providers/language-context";
 import { formatRelativeTime } from "@/shared/utils/relative-time";
-import { portalHeading, portalSubtext } from "@/shared/utils/portal-ui";
+import { portalHeading, portalSubtext, portalHeadingAlt, portalSubtextAlt } from "@/shared/utils/portal-ui";
 import { AppShell } from "@/features/hr/components/layout/app-shell";
 import {
   listHrTalent,
   type HrTalentItem,
 } from "@/features/hr/services/hr-talent.service";
+import { listHistoryQuestionSets } from "@/features/hr/services/hr-history.service";
+import type { HistoryQuestionSetItem } from "@/features/hr/types/history-question-set";
 
 // ---------------------------------------------------------------------------
 // Constants — same class tokens as question-set-history-table
@@ -66,6 +69,27 @@ function avatarColor(seed: string): string {
   let h = 0;
   for (const c of seed) h = (h * 31 + c.charCodeAt(0)) & 0xffffffff;
   return AVATAR_COLORS[Math.abs(h) % AVATAR_COLORS.length];
+}
+
+/** Attempt # within (candidate, questionSet) on the loaded page, oldest → newest. */
+function buildAttemptMap(rows: HrTalentItem[]): Map<string, number> {
+  const groups = new Map<string, HrTalentItem[]>();
+  for (const row of rows) {
+    const key = `${row.candidateUserId}::${row.questionSetId}`;
+    const list = groups.get(key);
+    if (list) list.push(row);
+    else groups.set(key, [row]);
+  }
+  const map = new Map<string, number>();
+  for (const list of groups.values()) {
+    const ordered = [...list].sort((a, b) => {
+      const tA = new Date(a.completedAt ?? a.startedAt ?? 0).getTime();
+      const tB = new Date(b.completedAt ?? b.startedAt ?? 0).getTime();
+      return tA - tB;
+    });
+    ordered.forEach((row, i) => map.set(row.sessionId, i + 1));
+  }
+  return map;
 }
 
 // ---------------------------------------------------------------------------
@@ -112,9 +136,19 @@ function InvitedBadge({ label }: { label: string }) {
   );
 }
 
-function ScoreCell({ score }: { score: number | null }) {
+function ScoreCell({
+  score,
+  pendingTitle,
+}: {
+  score: number | null;
+  pendingTitle: string;
+}) {
   if (score === null)
-    return <span className={cn("tabular-nums", portalSubtext)}>—</span>;
+    return (
+      <span className={cn("tabular-nums", portalSubtext)} title={pendingTitle}>
+        —
+      </span>
+    );
   const color =
     score >= 85
       ? "text-emerald-600 dark:text-emerald-400"
@@ -145,12 +179,14 @@ export function HrTalentPage() {
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [questionSets, setQuestionSets] = useState<HistoryQuestionSetItem[]>([]);
 
   // Filters
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("");
   const [scoreFilter, setScoreFilter] = useState<ScoreFilter>("");
   const [dateSort, setDateSort] = useState<DateSort>("newest");
+  const [questionSetId, setQuestionSetId] = useState("");
 
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
 
@@ -160,6 +196,7 @@ export function HrTalentPage() {
       kw: string,
       status: StatusFilter,
       minScore: number | null,
+      qsId: string,
     ) => {
       setLoading(true);
       setError(false);
@@ -170,6 +207,7 @@ export function HrTalentPage() {
           keyword: kw.trim() || undefined,
           status: status || undefined,
           minScore,
+          questionSetId: qsId || undefined,
         });
         setItems(result.items);
         setTotalCount(result.totalCount);
@@ -182,18 +220,23 @@ export function HrTalentPage() {
     [],
   );
 
-  const minScoreNum =
-    scoreFilter ? Number(scoreFilter) : null;
+  const minScoreNum = scoreFilter ? Number(scoreFilter) : null;
 
   useEffect(() => {
-    void fetchData(page, search, statusFilter, minScoreNum);
+    void listHistoryQuestionSets()
+      .then(setQuestionSets)
+      .catch(() => setQuestionSets([]));
+  }, []);
+
+  useEffect(() => {
+    void fetchData(page, search, statusFilter, minScoreNum, questionSetId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fetchData, page, search, statusFilter, scoreFilter]);
+  }, [fetchData, page, search, statusFilter, scoreFilter, questionSetId]);
 
   // Reset page when filters change
   useEffect(() => {
     setPage(1);
-  }, [search, statusFilter, scoreFilter, dateSort]);
+  }, [search, statusFilter, scoreFilter, dateSort, questionSetId]);
 
   // Client-side date sort (server returns most-recent by default; we flip for oldest)
   const sorted =
@@ -205,11 +248,14 @@ export function HrTalentPage() {
         )
       : items;
 
+  const attemptMap = useMemo(() => buildAttemptMap(items), [items]);
+
   const hasFilters =
     search.trim() !== "" ||
     statusFilter !== "" ||
     scoreFilter !== "" ||
-    dateSort !== "newest";
+    dateSort !== "newest" ||
+    questionSetId !== "";
 
   const filterDropdownCls = (active: boolean) =>
     cn(
@@ -229,6 +275,7 @@ export function HrTalentPage() {
     setStatusFilter("");
     setScoreFilter("");
     setDateSort("newest");
+    setQuestionSetId("");
   }
 
   return (
@@ -239,29 +286,33 @@ export function HrTalentPage() {
     >
       <div>
         {/* ── Page header ── */}
-        <div
-          className="mb-4 flex items-start justify-between gap-3"
-          style={{ animation: "slideUpFade 0.38s cubic-bezier(0.25,0.46,0.45,0.94) both" }}
+        <motion.div
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.38, ease: "easeOut" }}
+          className="relative overflow-hidden rounded-2xl border border-amber-100 dark:border-amber-900/30 bg-linear-to-r from-amber-50 via-white to-violet-50 dark:from-amber-950/10 dark:via-gray-900 dark:to-violet-950/10 px-5 py-2.5 sm:px-6 mb-3"
         >
-          <div>
-            <h2 className={cn("text-xl font-bold", portalHeading)}>
-              {p.heading}
-            </h2>
-            <p
-              className={cn("mt-0.5 text-[13px]", portalSubtext)}
-              style={{ animation: "slideUpFade 0.38s cubic-bezier(0.25,0.46,0.45,0.94) both 0.06s" }}
-            >
-              {p.subtext}
-            </p>
+          <div className="absolute top-0 left-0 right-0 h-0.5 bg-linear-to-r from-amber-400 via-primary to-violet-500 opacity-70" />
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-xl bg-linear-to-br from-amber-400 to-primary flex items-center justify-center shrink-0 shadow-md shadow-amber-200 dark:shadow-amber-900/30">
+              <User size={14} className="text-white" />
+            </div>
+            <div>
+              <h2 className={cn("text-[15px] font-bold leading-tight tracking-tight", portalHeadingAlt)}>
+                {p.heading}
+              </h2>
+              <p className={cn("text-[11px] mt-0.5", portalSubtextAlt)}>
+                {p.subtext}
+              </p>
+            </div>
           </div>
-        </div>
+        </motion.div>
 
         {/* ── Filter bar ── */}
         <div
           className="mb-3 flex flex-wrap items-center gap-2"
           style={{ animation: "slideUpFade 0.32s cubic-bezier(0.25,0.46,0.45,0.94) both 0.08s" }}
         >
-          {/* Search */}
           <input
             type="search"
             value={search}
@@ -270,7 +321,21 @@ export function HrTalentPage() {
             className="w-full sm:w-72 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-[13px] outline-none focus:border-primary/40 dark:border-gray-700 dark:bg-gray-900"
           />
 
-          {/* Trạng thái */}
+          <select
+            value={questionSetId}
+            onChange={(e) => setQuestionSetId(e.target.value)}
+            className={filterDropdownCls(questionSetId !== "")}
+          >
+            <option value="">
+              {p.questionSetFilter}: {p.allQuestionSets}
+            </option>
+            {questionSets.map((qs) => (
+              <option key={qs.questionSetId} value={qs.questionSetId}>
+                {qs.title}
+              </option>
+            ))}
+          </select>
+
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
@@ -282,7 +347,6 @@ export function HrTalentPage() {
             <option value="ABANDONED">{p.statusLabels.abandoned}</option>
           </select>
 
-          {/* Điểm */}
           <select
             value={scoreFilter}
             onChange={(e) => setScoreFilter(e.target.value as ScoreFilter)}
@@ -294,7 +358,6 @@ export function HrTalentPage() {
             <option value="85">≥ 85</option>
           </select>
 
-          {/* Ngày */}
           <select
             value={dateSort}
             onChange={(e) => setDateSort(e.target.value as DateSort)}
@@ -304,7 +367,6 @@ export function HrTalentPage() {
             <option value="oldest">Ngày: Cũ nhất</option>
           </select>
 
-          {/* Clear */}
           {hasFilters && (
             <button
               type="button"
@@ -330,45 +392,41 @@ export function HrTalentPage() {
               <p className={cn("text-[13px]", portalSubtext)}>{p.loadFailed}</p>
               <button
                 type="button"
-                onClick={() => void fetchData(page, search, statusFilter, minScoreNum)}
-                className="text-[13px] font-semibold text-primary hover:underline"
+                onClick={() => void fetchData(page, search, statusFilter, minScoreNum, questionSetId)}
+                className="rounded-lg bg-primary px-3 py-1.5 text-[12px] font-semibold text-white"
               >
                 {p.retryBtn}
               </button>
             </div>
           ) : items.length === 0 && !hasFilters ? (
-            /* Completely empty — no data at all */
-            <div
-              className="rounded-xl border border-dashed border-gray-200 px-6 py-12 text-center dark:border-gray-700"
-              style={{ animation: "fadeIn 0.4s ease-out both 0.1s" }}
-            >
+            <div className="rounded-xl border border-dashed border-gray-200 px-6 py-12 text-center dark:border-gray-700">
               <Inbox className="mx-auto mb-2 h-8 w-8 text-gray-300" />
               <p className={cn("text-sm font-medium", portalHeading)}>{p.emptyTitle}</p>
               <p className={cn("mt-1 text-[12px]", portalSubtext)}>{p.emptySubtext}</p>
             </div>
-          ) : sorted.length === 0 ? (
-            /* Filters returned no results */
-            <div
-              className="rounded-xl border border-dashed border-gray-200 px-6 py-10 text-center dark:border-gray-700"
-              style={{ animation: "fadeIn 0.3s ease-out both" }}
-            >
+          ) : items.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-gray-200 px-6 py-10 text-center dark:border-gray-700">
               <SearchX className="mx-auto mb-2 h-7 w-7 text-gray-300" />
-              <p className={cn("text-[13px]", portalSubtext)}>Không tìm thấy ứng viên phù hợp với bộ lọc hiện tại.</p>
+              <p className={cn("text-[13px]", portalSubtext)}>
+                Không tìm thấy ứng viên phù hợp với bộ lọc hiện tại.
+              </p>
             </div>
           ) : (
             <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-950/40">
-              <table className="w-full min-w-190 table-fixed text-[13px]">
+              <table className="w-full min-w-200 table-fixed text-[13px]">
                 <colgroup>
+                  <col style={{ width: "22%" }} />
+                  <col style={{ width: "10%" }} />
                   <col style={{ width: "24%" }} />
-                  <col style={{ width: "28%" }} />
                   <col style={{ width: "8%" }} />
-                  <col style={{ width: "20%" }} />
+                  <col style={{ width: "18%" }} />
                   <col style={{ width: "10%" }} />
-                  <col style={{ width: "10%" }} />
+                  <col style={{ width: "8%" }} />
                 </colgroup>
                 <thead>
                   <tr className="border-b border-gray-100 bg-gray-50/90 dark:border-gray-800 dark:bg-gray-900/60">
                     <th scope="col" className={cn(thCls, "text-left")}>{p.candidate}</th>
+                    <th scope="col" className={cn(thCls, "text-center")}>{p.attempt}</th>
                     <th scope="col" className={cn(thCls, "text-left")}>{p.questionSet}</th>
                     <th scope="col" className={cn(thCls, "text-center")}>{p.score}</th>
                     <th scope="col" className={cn(thCls, "text-left")}>{p.status}</th>
@@ -380,12 +438,10 @@ export function HrTalentPage() {
                   {sorted.map((item, rowIdx) => {
                     const seed = item.candidateName || item.candidateEmail;
                     const initials = getInitials(seed);
-                    // Always link to the candidate overview page (not recommendation-detail),
-                    // so the breadcrumb correctly reads "Kho ứng viên > ..."
                     const profileHref = `/hr/candidates/${item.candidateUserId}`;
                     const sessionHref = `/hr/candidates/${item.candidateUserId}/sessions/${item.sessionId}`;
-                    const isInvited =
-                      item.invitationStatus?.toUpperCase() === "INVITED";
+                    const isInvited = item.invitationStatus?.toUpperCase() === "INVITED";
+                    const attemptNo = attemptMap.get(item.sessionId) ?? 1;
 
                     return (
                       <tr
@@ -395,7 +451,6 @@ export function HrTalentPage() {
                           animation: `fadeIn 0.28s ease-out both ${rowIdx * 0.04}s`,
                         }}
                       >
-                        {/* Ứng viên */}
                         <td className={cn(tdCls, "overflow-hidden")}>
                           <div className="flex items-center gap-2.5 min-w-0">
                             <div
@@ -422,7 +477,10 @@ export function HrTalentPage() {
                           </div>
                         </td>
 
-                        {/* Bộ câu hỏi */}
+                        <td className={cn(tdCls, "text-center tabular-nums", portalSubtext)}>
+                          #{attemptNo}
+                        </td>
+
                         <td className={cn(tdCls, "overflow-hidden")}>
                           <span
                             className={cn("block truncate", portalSubtext)}
@@ -432,32 +490,31 @@ export function HrTalentPage() {
                           </span>
                         </td>
 
-                        {/* Điểm */}
                         <td className={cn(tdCls, "text-center")}>
-                          <ScoreCell score={item.overallScore} />
+                          <ScoreCell
+                            score={item.overallScore}
+                            pendingTitle={p.scorePendingTitle}
+                          />
                         </td>
 
-                        {/* Trạng thái */}
                         <td className={cn(tdCls, "overflow-hidden")}>
                           <div className="flex flex-wrap gap-1">
                             <SessionStatusChip
                               status={item.sessionStatus}
                               labels={p.statusLabels}
                             />
-                            {isInvited && (
-                              <InvitedBadge label={p.invitedBadge} />
-                            )}
+                            {isInvited && <InvitedBadge label={p.invitedBadge} />}
                           </div>
                         </td>
 
-                        {/* Ngày */}
                         <td className={cn(tdCls, "overflow-hidden whitespace-nowrap", portalSubtext)}>
-                          {item.completedAt
-                            ? formatRelativeTime(item.completedAt, lang)
-                            : "—"}
+                          {item.completedAt ? (
+                            formatRelativeTime(item.completedAt, lang)
+                          ) : (
+                            <span title={p.dateIncompleteTitle}>—</span>
+                          )}
                         </td>
 
-                        {/* Thao tác */}
                         <td className={tdCls}>
                           <div className="flex flex-nowrap items-center justify-center gap-0.5">
                             <Link
@@ -485,7 +542,6 @@ export function HrTalentPage() {
           )}
         </div>
 
-        {/* ── Pagination ── */}
         {!loading && !error && totalPages > 1 && (
           <div
             className="flex items-center justify-between gap-4 px-1 py-3"

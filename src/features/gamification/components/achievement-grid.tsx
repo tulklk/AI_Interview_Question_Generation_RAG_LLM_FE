@@ -1,11 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import { motion } from "framer-motion";
 import { Trophy, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { useLanguage } from "@/shared/providers/language-context";
 import { useAchievements } from "@/features/gamification/hooks/use-achievements";
 import { AchievementCard } from "@/features/gamification/components/achievement-card";
+import { ACH_ANIM_CSS } from "@/features/gamification/components/achievement-icons";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import { portalHeadingAlt, portalSubtextAlt } from "@/shared/utils/portal-ui";
 import type {
@@ -84,6 +86,9 @@ export function AchievementGrid({ variant = "full", className }: AchievementGrid
     const sorted = sortAchievements(achievements);
 
     return (
+      <>
+      {/* Hover-animation keyframes — injected once here, applied per-card via animClass. */}
+      <style>{ACH_ANIM_CSS}</style>
       <div className={cn("hr-glass-card p-5 overflow-visible", className)}>
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
@@ -138,13 +143,19 @@ export function AchievementGrid({ variant = "full", className }: AchievementGrid
           </p>
         ) : (
           <div className="grid grid-cols-3 gap-2.5">
-            {sorted.map((ach) => (
-              <AchievementCard
+            {sorted.map((ach, i) => (
+              <motion.div
                 key={ach.id}
-                achievement={ach}
-                size="sm"
-                isNewlyUnlocked={ach.id === newestUnlockedId}
-              />
+                initial={{ opacity: 0, scale: 0.88 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.22, delay: i * 0.04, ease: "easeOut" }}
+              >
+                <AchievementCard
+                  achievement={ach}
+                  size="sm"
+                  isNewlyUnlocked={ach.id === newestUnlockedId}
+                />
+              </motion.div>
             ))}
           </div>
         )}
@@ -158,6 +169,7 @@ export function AchievementGrid({ variant = "full", className }: AchievementGrid
           </p>
         )}
       </div>
+      </>
     );
   }
 
@@ -169,6 +181,8 @@ export function AchievementGrid({ variant = "full", className }: AchievementGrid
   const sortedFull = sortAchievements(filtered);
 
   return (
+    <>
+    <style>{ACH_ANIM_CSS}</style>
     <div className={className}>
       {/* Header */}
       <div className="flex items-center justify-between mb-3">
@@ -240,16 +254,23 @@ export function AchievementGrid({ variant = "full", className }: AchievementGrid
         </p>
       ) : (
         <div className="space-y-2">
-          {sortedFull.map((ach) => (
-            <AchievementCard
+          {sortedFull.map((ach, i) => (
+            <motion.div
               key={ach.id}
-              achievement={ach}
-              size="md"
-              isNewlyUnlocked={ach.id === newestUnlockedId}
-            />
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.2, delay: i * 0.035, ease: "easeOut" }}
+            >
+              <AchievementCard
+                achievement={ach}
+                size="md"
+                isNewlyUnlocked={ach.id === newestUnlockedId}
+              />
+            </motion.div>
           ))}
         </div>
       )}
     </div>
+    </>
   );
 }

@@ -25,8 +25,12 @@ export function AchievementCard({
   const { lang, t } = useLanguage();
   const g = t.gamification;
 
-  const { Icon, emoji, bgClass, colorClass, barClass, unlockedBg, unlockedBorder, gradientClass } =
+  const { Icon, emoji, bgClass, colorClass, barClass, unlockedBg, unlockedBorder, gradientClass, animClass } =
     getAchievementVisual(ach.code);
+
+  // Animation class is applied to the icon/emoji only for unlocked achievements.
+  // Locked icons always stay static.
+  const activeAnimClass = ach.unlocked ? animClass : "";
 
   // Use backend-supplied text when available; fall back to built-in labels.
   const fallback = getAchievementLabel(ach.code, lang);
@@ -91,12 +95,15 @@ export function AchievementCard({
           </span>
         )}
 
-        {/* Emoji icon — naturally colourful & filled; grayscale when locked */}
+        {/* Emoji icon — naturally colourful & filled; grayscale when locked.
+            activeAnimClass is set only for unlocked achievements; the CSS in
+            ACH_ANIM_CSS activates the matching @keyframes on .group:hover. */}
         <span
           aria-hidden
           className={cn(
             "text-3xl leading-none select-none",
-            !ach.unlocked && "grayscale opacity-50"
+            !ach.unlocked && "grayscale opacity-50",
+            activeAnimClass,
           )}
         >
           {emoji}
@@ -203,7 +210,7 @@ export function AchievementCard({
     <div
       aria-label={ariaLabel}
       className={cn(
-        "flex items-start gap-3 p-3 rounded-xl border",
+        "group flex items-start gap-3 p-3 rounded-xl border",
         "transition-transform duration-200 ease-out",
         "hover:-translate-y-0.5 hover:shadow-sm",
         ach.unlocked
@@ -211,11 +218,12 @@ export function AchievementCard({
           : "bg-gray-50/60 dark:bg-gray-800/30 border-gray-100 dark:border-gray-800/40 opacity-75"
       )}
     >
-      {/* Icon well */}
+      {/* Icon well — activeAnimClass makes it animate on .group:hover (unlocked only) */}
       <div
         className={cn(
           "shrink-0 w-10 h-10 rounded-xl flex items-center justify-center",
-          ach.unlocked ? bgClass : "bg-gray-100 dark:bg-gray-800/60"
+          ach.unlocked ? bgClass : "bg-gray-100 dark:bg-gray-800/60",
+          activeAnimClass,
         )}
       >
         <Icon

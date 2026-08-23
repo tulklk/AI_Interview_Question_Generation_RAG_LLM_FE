@@ -5,9 +5,9 @@ import { AnalyticsStats } from "@/features/admin/components/analytics/analytics-
 import { WeeklyUsageChart } from "@/features/admin/components/analytics/weekly-usage-chart";
 import { CategoryChart } from "@/features/admin/components/analytics/category-chart";
 import { RoleDistribution } from "@/features/admin/components/analytics/role-distribution";
+import { BarChart2 } from "lucide-react";
 import { useLanguage } from "@/shared/providers/language-context";
-import { cn } from "@/lib/cn";
-import { portalHeadingAlt, portalSubtextAlt } from "@/shared/utils/portal-ui";
+import { AdminPageHeader } from "@/features/admin/components/layout/admin-page-header";
 
 export default function SystemAnalyticsPage() {
   const { t } = useLanguage();
@@ -18,10 +18,16 @@ export default function SystemAnalyticsPage() {
       pageTitle={a.heading}
       breadcrumb={[{ label: "Admin", href: "/admin/dashboard" }, { label: a.heading }]}
     >
-      <div className="mb-8 animate-fade-up">
-        <h2 className={cn("text-[30px] font-bold leading-9", portalHeadingAlt)}>{a.heading}</h2>
-        <p className={cn("text-base leading-6 mt-2", portalSubtextAlt)}>{a.subtext}</p>
-      </div>
+      <AdminPageHeader
+        heading={a.heading}
+        subtext={a.subtext}
+        icon={BarChart2}
+        iconGradient="bg-linear-to-br from-blue-500 to-cyan-500"
+        accentGradient="bg-linear-to-r from-blue-500 via-cyan-400 to-primary"
+        cardGradient="bg-linear-to-r from-blue-50 via-white to-cyan-50 dark:from-blue-950/20 dark:via-gray-900 dark:to-cyan-950/10"
+        cardBorder="border-blue-100 dark:border-blue-900/30"
+        iconShadow="shadow-blue-200 dark:shadow-blue-900/30"
+      />
 
       <div className="animate-fade-up" style={{ animationDelay: "80ms" }}>
         <AnalyticsStats />

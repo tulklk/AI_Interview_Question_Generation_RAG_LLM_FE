@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { AiLoadingSpinner } from "@/shared/components/common/ai-loading-spinner";
 import { cn } from "@/lib/cn";
 import { useLanguage } from "@/shared/providers/language-context";
+import { useToast } from "@/shared/providers/toast-context";
 import { useStudio } from "@/features/studio/hooks/use-studio";
 import { useHrSubscription } from "@/features/hr/context/hr-subscription-context";
 import { StudioTopBar } from "@/features/studio/components/studio-top-bar";
@@ -27,6 +28,7 @@ function renderBold(text: string, boldClassName: string) {
 export function StudioPage() {
   const studio = useStudio();
   const { t, lang } = useLanguage();
+  const { addToast } = useToast();
   const s = t.studioPage;
   const hs = t.hrSubscription;
   const router = useRouter();
@@ -199,9 +201,8 @@ export function StudioPage() {
   const cooldownTimeStr = cooldownEndsAt
     ? cooldownEndsAt.toLocaleString(locale)
     : "";
-  // Note: quotaBlocked is intentionally excluded — the button stays enabled when the session
-  // is ready so users can click it and see the quota dialog explaining why it's blocked.
-  // handleGenerateQuestions guards the actual generation call.
+  // Note: quotaBlocked is intentionally excluded from canGenerate — sinh câu hỏi
+  // trên plan hiện có không trừ thêm lượt. handleGenerateQuestions chỉ chặn khi chưa có currentPlan.
   const canGenerate = useMemo(
     () => studio.settings?.readiness?.canGenerateQuestions ?? false,
     [studio.settings?.readiness?.canGenerateQuestions]
@@ -237,10 +238,9 @@ export function StudioPage() {
   }, [quotaBlocked, studio, switchMobileTab]);
 
   const handleGenerateQuestions = useCallback(() => {
-    // FE-side quota gate: show dialog immediately when we already know quota is blocked.
-    // This gives instant feedback without a round-trip. The BE still guards the actual call —
-    // if the local cache is stale, studio.quotaExceeded fires and shows the dialog too.
-    if (quotaBlocked) {
+    // BE trừ lượt lúc lập plan thành công. Sinh câu hỏi cùng phiên (currentPlan đã có)
+    // không trừ thêm — không chặn bằng quotaBlocked.
+    if (quotaBlocked && !studio.currentPlan) {
       quotaDialogTriggeredRef.current = true;
       setQuotaDialogOpen(true);
       return;
@@ -251,6 +251,13 @@ export function StudioPage() {
 
   const hasJd = Boolean(studio.jdContent?.trim()) || Boolean(studio.settings?.readiness?.hasJobDescription);
   const skillCount = studio.jdSummary?.skills?.length ?? 0;
+  const readyCount = useMemo(
+    () =>
+      studio.questions.filter(
+        (q) => Boolean(q.expectedAnswer?.trim()) && Boolean(q.scoringRubric?.trim())
+      ).length,
+    [studio.questions]
+  );
 
   // Sources and inspector lock when questions are generated
   const sideColumnsLocked = studio.isGeneratingQuestions || studio.questions.length > 0;
@@ -422,6 +429,7 @@ export function StudioPage() {
           isSaving={studio.isSavingDraft}
           isSaved={studio.isDraftSaved}
           questionCount={studio.questions.length}
+          hasJd={hasJd}
         />
       </div>
 
@@ -483,13 +491,18 @@ export function StudioPage() {
             <button
               type="button"
               onClick={() => setSourcesCollapsed(false)}
-              title={s.sourcesHeader}
-              aria-label={s.aria.expandSource}
-              className="flex w-full flex-col items-center gap-3 rounded-xl border border-gray-200 bg-white py-4 text-gray-400 transition-colors hover:border-gray-300 hover:text-gray-600 dark:border-gray-800 dark:bg-gray-900 dark:hover:border-gray-700 dark:hover:text-gray-200"
+              title={s.aria.viewSources ?? s.aria.expandSource}
+              aria-label={s.aria.viewSources ?? s.aria.expandSource}
+              className="flex w-full flex-col items-center gap-2 rounded-xl border border-gray-200 bg-white px-1 py-4 text-gray-400 transition-colors hover:border-primary/30 hover:text-primary dark:border-gray-800 dark:bg-gray-900 dark:hover:border-primary/40 dark:hover:text-primary"
             >
-              <Database className="h-4 w-4" />
-              <div className="h-px w-5 bg-gray-100 dark:bg-gray-800" aria-hidden />
-              <ChevronRight className="h-3.5 w-3.5" />
+              <Database className="h-4 w-4 shrink-0" />
+              <span
+                className="max-h-28 overflow-hidden text-[9px] font-semibold uppercase leading-tight tracking-wide"
+                style={{ writingMode: "vertical-rl", transform: "rotate(180deg)" }}
+              >
+                {s.aria.viewSources ?? s.aria.expandSource}
+              </span>
+              <ChevronRight className="h-3.5 w-3.5 shrink-0" />
             </button>
           ) : (
             <>
@@ -628,6 +641,19 @@ export function StudioPage() {
                 )
               );
             }}
+            onSaveDraft={() => void studio.saveDraftAction()}
+            onPublish={() => void studio.togglePublish()}
+            onPublishBlocked={() => {
+              addToast(
+                "error",
+                s.publishBlockedToast
+                  .replace("{{ready}}", String(readyCount))
+                  .replace("{{total}}", String(studio.questions.length))
+              );
+            }}
+            isSavingDraft={studio.isSavingDraft}
+            isDraftSaved={studio.isDraftSaved}
+            isPublished={studio.project?.isPublished ?? false}
           />
         </div>
 
@@ -647,13 +673,18 @@ export function StudioPage() {
             <button
               type="button"
               onClick={() => setInspectorCollapsed(false)}
-              title={s.settingsHeader}
-              aria-label={s.aria.expandSetting}
-              className="flex w-full flex-col items-center gap-3 rounded-xl border border-gray-200 bg-white py-4 text-gray-400 transition-colors hover:border-gray-300 hover:text-gray-600 dark:border-gray-800 dark:bg-gray-900 dark:hover:border-gray-700 dark:hover:text-gray-200"
+              title={s.aria.viewConfig ?? s.aria.expandSetting}
+              aria-label={s.aria.viewConfig ?? s.aria.expandSetting}
+              className="flex w-full flex-col items-center gap-2 rounded-xl border border-gray-200 bg-white px-1 py-4 text-gray-400 transition-colors hover:border-primary/30 hover:text-primary dark:border-gray-800 dark:bg-gray-900 dark:hover:border-primary/40 dark:hover:text-primary"
             >
-              <SlidersHorizontal className="h-4 w-4" />
-              <div className="h-px w-5 bg-gray-100 dark:bg-gray-800" aria-hidden />
-              <ChevronLeft className="h-3.5 w-3.5" />
+              <SlidersHorizontal className="h-4 w-4 shrink-0" />
+              <span
+                className="max-h-28 overflow-hidden text-[9px] font-semibold uppercase leading-tight tracking-wide"
+                style={{ writingMode: "vertical-rl", transform: "rotate(180deg)" }}
+              >
+                {s.aria.viewConfig ?? s.aria.expandSetting}
+              </span>
+              <ChevronLeft className="h-3.5 w-3.5 shrink-0" />
             </button>
           ) : (
             <>
@@ -688,12 +719,14 @@ export function StudioPage() {
         hasJd={hasJd}
         plan={studio.currentPlan}
         questionCount={studio.questions.length}
+        readyCount={readyCount}
         isStreaming={studio.isStreaming}
         isGeneratingQuestions={studio.isGeneratingQuestions}
         canCreatePlan={canCreatePlan && !sideColumnsLocked}
         canGenerate={canGenerate}
         skillCount={skillCount}
         isPublished={studio.project?.isPublished ?? false}
+        questionSetId={studio.project?.questionSetId ?? null}
         isSavingDraft={studio.isSavingDraft}
         isDraftSaved={studio.isDraftSaved}
         onCreatePlan={handleCreatePlan}
@@ -701,6 +734,15 @@ export function StudioPage() {
         onGenerateQuestions={handleGenerateQuestions}
         onSaveDraft={studio.saveDraftAction}
         onTogglePublish={() => void studio.togglePublish()}
+        onCopyShareLink={() => void studio.createShare()}
+        onPublishBlocked={() => {
+          addToast(
+            "error",
+            s.publishBlockedToast
+              .replace("{{ready}}", String(readyCount))
+              .replace("{{total}}", String(studio.questions.length))
+          );
+        }}
       />
     </div>
   );

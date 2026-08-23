@@ -32,13 +32,6 @@ import {
   parseGoogleClaims,
   type GoogleClaims,
 } from "@/features/auth/utils/google-oauth-flow";
-import {
-  verifyGithubCode,
-  completeGithubLogin,
-  finishGithubAuth,
-  claimsFromGithubVerify,
-} from "@/features/auth/utils/github-oauth-flow";
-import { openGithubOAuthPopup } from "@/features/auth/utils/github-oauth-popup";
 import type { OAuthOnboardingProvider } from "@/features/auth/components/oauth-login-onboarding";
 import { markLoginWelcomeForRedirect } from "@/features/auth/utils/login-welcome";
 
@@ -106,7 +99,6 @@ export function useLogin() {
   const [fieldErrors, setFieldErrors] = useState<LoginFieldErrors>({});
 
   const [googleLoading, setGoogleLoading] = useState(false);
-  const [githubLoading, setGithubLoading] = useState(false);
   const [view, setView] = useState<LoginView>("login");
   const [onboarding, setOnboarding] = useState<OnboardingState | null>(null);
 
@@ -244,36 +236,6 @@ export function useLogin() {
     }
   }
 
-  async function handleGithubSuccess() {
-    setGithubLoading(true);
-    try {
-      const code = await openGithubOAuthPopup();
-      const verify = await verifyGithubCode(code);
-      const claims = claimsFromGithubVerify(verify);
-
-      if (!verify.isNewUser || verify.linkedToLocalAccount) {
-        const { role } = await completeGithubLogin(code);
-        if (verify.linkedToLocalAccount) addToast("success", lp.githubLinked);
-        markLoginWelcomeForRedirect(getRoleRedirect(role));
-        await finishGithubAuth(router, refreshUser, claims, role);
-        return;
-      }
-
-      setOnboarding({ provider: "github", identifier: code, claims });
-      setView("onboarding");
-    } catch (err) {
-      if (err instanceof Error && (err.message === "popup_closed" || err.message === "popup_blocked")) {
-        // User cancelled or blocked the popup — no error toast needed.
-      } else if (isUnverifiedLoginError(err)) {
-        showUnverifiedDialog(email);
-      } else {
-        addToast("error", parseLoginError(err));
-      }
-    } finally {
-      setGithubLoading(false);
-    }
-  }
-
   function handleOnboardingCancel() {
     clearUser();
     clearAuth();
@@ -292,7 +254,6 @@ export function useLogin() {
     rememberMe,
     loading,
     googleLoading,
-    githubLoading,
     fieldErrors,
     unverifiedOpen,
     unverifiedEmail,
@@ -305,7 +266,6 @@ export function useLogin() {
     setUnverifiedOpen,
     handleSignIn,
     handleGoogleSuccess,
-    handleGithubSuccess,
     handleOnboardingCancel,
     handleResendVerification,
   };

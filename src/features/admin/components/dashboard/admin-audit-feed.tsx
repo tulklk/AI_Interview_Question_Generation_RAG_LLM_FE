@@ -82,7 +82,7 @@ const DUMMY_ENTRIES: AuditLogEntry[] = [
 
 const EVENT_BADGE: Record<AuditEventType, { bg: string; text: string; label: string }> = {
   user_created:    { bg: "bg-blue-100 dark:bg-blue-950/40",     text: "text-blue-600 dark:text-blue-400",     label: "Tạo TK"       },
-  recruiter_login: { bg: "bg-gray-100 dark:bg-gray-800/60",     text: "text-gray-500 dark:text-gray-400",     label: "Đăng nhập"    },
+  recruiter_login: { bg: "bg-sky-100 dark:bg-sky-950/40",       text: "text-sky-600 dark:text-sky-400",       label: "Đăng nhập"    },
   jd_generation:   { bg: "bg-violet-100 dark:bg-violet-950/40", text: "text-violet-600 dark:text-violet-400", label: "Sinh câu hỏi" },
   export:          { bg: "bg-emerald-100 dark:bg-emerald-950/40",text: "text-emerald-600 dark:text-emerald-400",label: "Xuất báo cáo"},
   settings_change: { bg: "bg-amber-100 dark:bg-amber-950/40",   text: "text-amber-600 dark:text-amber-400",   label: "Cài đặt"      },
@@ -122,10 +122,14 @@ export function AdminAuditFeed() {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-            {DUMMY_ENTRIES.map((row) => {
+            {DUMMY_ENTRIES.map((row, idx) => {
               const badge = EVENT_BADGE[row.type];
               return (
-                <tr key={row.id} className="hr-table-row">
+                <tr
+                  key={row.id}
+                  className="hr-table-row"
+                  style={{ animation: `rowSlideIn 0.3s ease-out ${idx * 50}ms both` }}
+                >
                   <td className="px-4 py-3 whitespace-nowrap">
                     <span className={cn("inline-block rounded-md px-2 py-0.5 text-[10px] font-semibold", badge.bg, badge.text)}>
                       {badge.label}

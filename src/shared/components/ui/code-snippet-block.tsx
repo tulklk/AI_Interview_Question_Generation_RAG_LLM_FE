@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+import { ChevronDown, ChevronUp } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { useLanguage } from "@/shared/providers/language-context";
 
@@ -73,6 +75,10 @@ export function isSameAsQuestionSnippet(code: string, questionSnippet?: string |
 
 export type CodeSnippetVariant = "question" | "answer";
 
+/** ~14 lines at text-[11px] leading-relaxed (~1.625) ≈ 14 * 1.625 * 11px ≈ 250px */
+const COLLAPSE_LINE_THRESHOLD = 14;
+const COLLAPSED_MAX_HEIGHT_PX = 280;
+
 interface CodeSnippetBlockProps {
   code: string;
   /** Ghi đè ngôn ngữ nếu đã biết (vd. từ fence ```sql). */
@@ -96,6 +102,10 @@ export function CodeSnippetBlock({
   const lang = (language || guessCodeLanguage(displayCode) || "code").trim() || "code";
   const isAnswer = variant === "answer";
   const roleLabel = isAnswer ? t.questionBuilder.snippetLabelAnswer : t.questionBuilder.snippetLabelQuestion;
+  const lineCount = displayCode.split("\n").length;
+  const canCollapse = lineCount > COLLAPSE_LINE_THRESHOLD;
+  const [expanded, setExpanded] = useState(false);
+  const collapsed = canCollapse && !expanded;
 
   return (
     <div
@@ -139,23 +149,58 @@ export function CodeSnippetBlock({
       </div>
 
       {/* ── Code area ── */}
-      <pre
-        className={cn(
-          "m-0 overflow-x-auto whitespace-pre px-3 py-3 font-mono text-[11px] leading-relaxed",
-          "bg-gray-50 dark:bg-gray-950"
-        )}
-      >
-        <code
+      <div className="relative">
+        <pre
           className={cn(
-            "block whitespace-pre font-mono text-[11px] leading-relaxed",
+            "m-0 overflow-x-auto whitespace-pre px-3 py-3 font-mono text-[11px] leading-relaxed",
+            "bg-gray-50 dark:bg-gray-950",
+            collapsed && "overflow-hidden"
+          )}
+          style={collapsed ? { maxHeight: COLLAPSED_MAX_HEIGHT_PX } : undefined}
+        >
+          <code
+            className={cn(
+              "block whitespace-pre font-mono text-[11px] leading-relaxed",
+              isAnswer
+                ? "text-emerald-900 dark:text-emerald-300"
+                : "text-sky-900 dark:text-sky-200"
+            )}
+          >
+            {displayCode}
+          </code>
+        </pre>
+        {collapsed && (
+          <div
+            className="pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-linear-to-t from-gray-50 to-transparent dark:from-gray-950"
+            aria-hidden
+          />
+        )}
+      </div>
+
+      {canCollapse && (
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          className={cn(
+            "flex w-full items-center justify-center gap-1 border-t px-3 py-1.5 text-[11px] font-medium transition-colors",
             isAnswer
-              ? "text-emerald-900 dark:text-emerald-300"
-              : "text-sky-900 dark:text-sky-200"
+              ? "border-emerald-100 bg-emerald-50/80 text-emerald-800 hover:bg-emerald-100 dark:border-emerald-900 dark:bg-emerald-950/60 dark:text-emerald-300 dark:hover:bg-emerald-950"
+              : "border-sky-100 bg-sky-50/80 text-sky-800 hover:bg-sky-100 dark:border-sky-900 dark:bg-sky-950/60 dark:text-sky-300 dark:hover:bg-sky-950"
           )}
         >
-          {displayCode}
-        </code>
-      </pre>
+          {expanded ? (
+            <>
+              <ChevronUp className="h-3.5 w-3.5" />
+              {t.questionBuilder.showLessCode}
+            </>
+          ) : (
+            <>
+              <ChevronDown className="h-3.5 w-3.5" />
+              {t.questionBuilder.showMoreCode}
+            </>
+          )}
+        </button>
+      )}
     </div>
   );
 }

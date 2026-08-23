@@ -2,39 +2,9 @@
 
 import { motion } from "framer-motion";
 import { Bot, Timer, BarChart3 } from "lucide-react";
+import { useLanguage } from "@/shared/providers/language-context";
 
-const features = [
-  {
-    icon: Bot,
-    title: "RAG-Powered AI",
-    description: "Questions grounded in your JD via retrieval-augmented generation",
-  },
-  {
-    icon: Timer,
-    title: "30-Second Turnaround",
-    description: "Instant role-specific questions across all competency levels",
-  },
-  {
-    icon: BarChart3,
-    title: "Rich Analytics",
-    description: "Track usage, categories, and hiring pipeline progress",
-  },
-];
-
-const testimonials = [
-  {
-    quote: "Cut our interview prep time by 80%. Incredible tool.",
-    name: "Sarah K.",
-    role: "Talent Manager @ Meta",
-    initials: "S",
-  },
-  {
-    quote: "The questions are remarkably tailored to each role.",
-    name: "James L.",
-    role: "Head of HR @ Stripe",
-    initials: "J",
-  },
-];
+const FEATURE_ICONS = [Bot, Timer, BarChart3];
 
 const PARTICLES = [
   { x: 8,  y: 18, size: 3,   delay: 0,   dur: 4.5 },
@@ -61,6 +31,9 @@ const SPARKLES = [
 ];
 
 export function LoginHero() {
+  const { t } = useLanguage();
+  const h = t.loginHero;
+
   return (
     <div className="relative flex flex-col h-full px-10 py-10 overflow-y-auto overflow-x-hidden">
       {/* ── Background layers ── */}
@@ -133,9 +106,9 @@ export function LoginHero() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.65, delay: 0.08, ease: "easeOut" }}
         >
-          Transform Job Descriptions
+          {h.headline1}
           <br />
-          Into{" "}
+          {h.headline2}{" "}
           <span
             className="auth-heading-glow text-transparent bg-clip-text"
             style={{
@@ -145,7 +118,7 @@ export function LoginHero() {
               animation: "gradientText 4s ease-in-out infinite",
             }}
           >
-            Perfect Interviews
+            {h.headlineGradient}
           </span>
         </motion.h1>
 
@@ -155,45 +128,47 @@ export function LoginHero() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.2, ease: "easeOut" }}
         >
-          Use AI to generate tailored, role-specific interview questions in seconds
-          — from any job description.
+          {h.subtext}
         </motion.p>
 
         <div className="space-y-3">
-          {features.map((f, i) => (
-            <motion.div
-              key={f.title}
-              className="glass-feature-card group flex items-start gap-3.5 rounded-lg px-4 py-3.5 relative overflow-hidden cursor-default"
-              initial={{ opacity: 0, x: -26 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{
-                duration: 0.55,
-                delay: 0.3 + i * 0.1,
-                ease: "easeOut",
-              }}
-              whileHover={{ scale: 1.025, x: 6 }}
-            >
-              {/* Shimmer sweep on hover */}
-              <div className="absolute inset-0 translate-x-[-100%] group-hover:translate-x-[250%] -skew-x-12 bg-linear-to-r from-transparent via-white/12 to-transparent transition-transform duration-700 ease-out pointer-events-none" />
+          {h.features.map((f, i) => {
+            const Icon = FEATURE_ICONS[i];
+            return (
+              <motion.div
+                key={i}
+                className="glass-feature-card group flex items-start gap-3.5 rounded-lg px-4 py-3.5 relative overflow-hidden cursor-default"
+                initial={{ opacity: 0, x: -26 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{
+                  duration: 0.55,
+                  delay: 0.3 + i * 0.1,
+                  ease: "easeOut",
+                }}
+                whileHover={{ scale: 1.025, x: 6 }}
+              >
+                {/* Shimmer sweep on hover */}
+                <div className="absolute inset-0 translate-x-[-100%] group-hover:translate-x-[250%] -skew-x-12 bg-linear-to-r from-transparent via-white/12 to-transparent transition-transform duration-700 ease-out pointer-events-none" />
 
-              <div className="w-8 h-8 rounded-lg bg-white/15 group-hover:bg-white/25 transition-colors flex items-center justify-center shrink-0 mt-0.5">
-                <f.icon size={15} className="text-white" />
-              </div>
-              <div>
-                <p className="text-white font-semibold text-sm">{f.title}</p>
-                <p className="text-white/60 text-xs mt-0.5 leading-relaxed">
-                  {f.description}
-                </p>
-              </div>
-            </motion.div>
-          ))}
+                <div className="w-8 h-8 rounded-lg bg-white/15 group-hover:bg-white/25 transition-colors flex items-center justify-center shrink-0 mt-0.5">
+                  <Icon size={15} className="text-white" />
+                </div>
+                <div>
+                  <p className="text-white font-semibold text-sm">{f.title}</p>
+                  <p className="text-white/60 text-xs mt-0.5 leading-relaxed">
+                    {f.description}
+                  </p>
+                </div>
+              </motion.div>
+            );
+          })}
         </div>
       </div>
 
       <div className="relative z-10 mt-6 space-y-3">
-        {testimonials.map((t, i) => (
+        {h.testimonials.map((testimonial, i) => (
           <motion.div
-            key={t.name}
+            key={i}
             className="glass-testimonial-card px-4 py-3.5 relative overflow-hidden"
             initial={{ opacity: 0, y: 22 }}
             animate={{ opacity: 1, y: 0 }}
@@ -208,17 +183,17 @@ export function LoginHero() {
             <div className="absolute left-0 top-3 bottom-3 w-[3px] rounded-full bg-linear-to-b from-amber-400/80 to-orange-400/40" />
 
             <p className="text-white/85 text-sm leading-relaxed">
-              &ldquo;{t.quote}&rdquo;
+              &ldquo;{testimonial.quote}&rdquo;
             </p>
             <div className="flex items-center gap-2.5 mt-2.5">
               <div className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center shrink-0 ring-1 ring-white/30">
-                <span className="text-white text-xs font-bold">{t.initials}</span>
+                <span className="text-white text-xs font-bold">{testimonial.initials}</span>
               </div>
               <div>
                 <p className="text-white text-xs font-semibold leading-tight">
-                  {t.name}
+                  {testimonial.name}
                 </p>
-                <p className="text-white/50 text-[11px] leading-tight">{t.role}</p>
+                <p className="text-white/50 text-[11px] leading-tight">{testimonial.role}</p>
               </div>
             </div>
           </motion.div>

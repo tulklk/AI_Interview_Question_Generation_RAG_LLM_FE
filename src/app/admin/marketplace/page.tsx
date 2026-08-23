@@ -13,15 +13,20 @@ import {
   listMarketplaceQuestionSets,
   pinMarketplaceQuestionSet,
   unpinMarketplaceQuestionSet,
+  unpublishMarketplaceQuestionSet,
   type AdminMarketplaceDetail,
   type AdminMarketplaceListItem,
   type AdminMarketplaceStats,
   type MarketplaceSortBy,
 } from "@/features/admin/services/admin-marketplace.service";
+import { withAbandonedToast } from "@/features/interview/services/interview.service";
+import { ConfirmDialog } from "@/shared/components/ui/confirm-dialog";
 import { useLanguage } from "@/shared/providers/language-context";
 import { useToast } from "@/shared/providers/toast-context";
+import { ShoppingBag } from "lucide-react";
 import { cn } from "@/lib/cn";
-import { portalHeadingAlt, portalInput, portalSubtextAlt } from "@/shared/utils/portal-ui";
+import { portalInput, portalSubtextAlt, portalHeadingAlt } from "@/shared/utils/portal-ui";
+import { AdminPageHeader } from "@/features/admin/components/layout/admin-page-header";
 
 const PAGE_SIZE = 9;
 const SEARCH_DEBOUNCE_MS = 300;
@@ -48,6 +53,8 @@ export default function AdminMarketplacePage() {
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState<string | null>(null);
   const [pinningId, setPinningId] = useState<string | null>(null);
+  const [unpublishingId, setUnpublishingId] = useState<string | null>(null);
+  const [confirmItem, setConfirmItem] = useState<AdminMarketplaceListItem | null>(null);
 
   useEffect(() => {
     const timer = window.setTimeout(() => setDebouncedSearch(search.trim()), SEARCH_DEBOUNCE_MS);
@@ -131,6 +138,32 @@ export default function AdminMarketplacePage() {
     }
   }
 
+  function handleUnpublish(item: AdminMarketplaceListItem) {
+    setConfirmItem(item);
+  }
+
+  async function confirmUnpublish() {
+    if (!confirmItem) return;
+    const item = confirmItem;
+    setUnpublishingId(item.id);
+    try {
+      const abandoned = await unpublishMarketplaceQuestionSet(item.id);
+      addToast("success", withAbandonedToast(m.unpublishSuccess, abandoned));
+      await Promise.all([fetchList(), fetchStats()]);
+      if (selectedId === item.id) {
+        setDetailOpen(false);
+        setSelectedId(null);
+        setDetail(null);
+        setDetailError(null);
+      }
+      setConfirmItem(null);
+    } catch (err) {
+      addToast("error", err instanceof Error && err.message ? err.message : m.unpublishFailed);
+    } finally {
+      setUnpublishingId(null);
+    }
+  }
+
   async function handleDetailTogglePin() {
     if (!detail) return;
     await handleTogglePin(detail);
@@ -142,10 +175,16 @@ export default function AdminMarketplacePage() {
     <AdminRouteGuard>
       <AdminAppShell pageTitle={m.heading}>
         <div className="space-y-5">
-          <div>
-            <h1 className={cn("text-xl font-bold", portalHeadingAlt)}>{m.heading}</h1>
-            <p className={cn("mt-1 text-sm", portalSubtextAlt)}>{m.subtext}</p>
-          </div>
+          <AdminPageHeader
+            heading={m.heading}
+            subtext={m.subtext}
+            icon={ShoppingBag}
+            iconGradient="bg-linear-to-br from-pink-500 to-rose-500"
+            accentGradient="bg-linear-to-r from-pink-500 via-rose-400 to-primary"
+            cardGradient="bg-linear-to-r from-pink-50 via-white to-violet-50 dark:from-pink-950/10 dark:via-gray-900 dark:to-violet-950/10"
+            cardBorder="border-pink-100 dark:border-pink-900/30"
+            iconShadow="shadow-pink-200 dark:shadow-pink-900/30"
+          />
 
           <MarketplaceStats
             stats={stats}
@@ -186,11 +225,13 @@ export default function AdminMarketplacePage() {
             loading={loading}
             selectedId={selectedId}
             pinningId={pinningId}
+            unpublishingId={unpublishingId}
             emptyLabel={m.emptyState}
             setsFoundLabel={m.setsFound}
             totalCount={totalCount}
             onView={handleSelect}
             onTogglePin={handleTogglePin}
+            onUnpublish={handleUnpublish}
             cardLabels={{
               badgePinned: m.badgePinned,
               badgeTrending: m.badgeTrending,
@@ -201,6 +242,7 @@ export default function AdminMarketplacePage() {
               viewDetail: m.view,
               pin: m.pin,
               unpin: m.unpin,
+              unpublish: m.unpublish,
               hrPrefix: m.hrPrefix,
             }}
           />
@@ -242,8 +284,12 @@ export default function AdminMarketplacePage() {
           loading={detailLoading}
           error={detailError}
           pinning={pinningId === selectedId}
+          unpublishing={unpublishingId === selectedId}
           onClose={() => setDetailOpen(false)}
           onTogglePin={handleDetailTogglePin}
+          onUnpublish={() => {
+            if (detail) handleUnpublish(detail);
+          }}
           onRetry={() => selectedId && void loadDetail(selectedId)}
           labels={{
             title: m.detailTitle,
@@ -257,8 +303,24 @@ export default function AdminMarketplacePage() {
             practitioners: m.detail.practitioners,
             pin: m.pin,
             unpin: m.unpin,
+            unpublish: m.unpublish,
             emptyPractitioners: m.detail.emptyPractitioners,
             retry: m.retry,
+          }}
+        />
+
+        <ConfirmDialog
+          open={confirmItem !== null}
+          title={m.unpublishConfirmTitle}
+          message={m.unpublishConfirmMessage}
+          confirmLabel={m.unpublishConfirmLabel}
+          cancelLabel={m.cancel}
+          variant="danger"
+          loading={unpublishingId !== null}
+          onConfirm={() => void confirmUnpublish()}
+          onCancel={() => {
+            if (unpublishingId !== null) return;
+            setConfirmItem(null);
           }}
         />
       </AdminAppShell>
