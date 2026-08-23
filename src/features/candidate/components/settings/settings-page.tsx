@@ -308,8 +308,8 @@ export function SettingsPage() {
                 </p>
                 <div className="rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
                   <div className="flex items-center gap-3 px-4 py-4 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
-                    <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center shrink-0">
-                      <RefreshCw size={14} className="text-gray-700 dark:text-gray-300" />
+                    <div className="w-8 h-8 rounded-lg bg-cyan-100 dark:bg-cyan-950/50 flex items-center justify-center shrink-0">
+                      <RefreshCw size={14} className="text-cyan-600 dark:text-cyan-400" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className={cn("text-sm font-medium", portalHeading)}>

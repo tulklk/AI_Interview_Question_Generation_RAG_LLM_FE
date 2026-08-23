@@ -40,25 +40,20 @@ export default async function RootLayout({
       style={{ colorScheme: isDark ? "dark" : "light" }}
       suppressHydrationWarning
     >
-      <head>
+      <body>
         {/*
-          Blocking script — runs SYNCHRONOUSLY before any CSS/JS/React.
-          Reads localStorage and applies the correct class to <html> immediately,
-          preventing any flash of incorrect theme (FOIT) on page load.
-          Must stay inline (no src=) so the browser cannot defer it.
+          True inline <script> — the browser executes this synchronously
+          while parsing the opening <body> tag, before scroll restoration
+          and before any React/Next.js JavaScript is fetched or run.
+          This is the only reliable way to prevent browser scroll restoration.
         */}
+        {/* eslint-disable-next-line @next/next/no-sync-scripts */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{
-  var s=localStorage.getItem('hiregena-theme');
-  var d=s==='dark'||(s==='system'&&window.matchMedia('(prefers-color-scheme:dark)').matches);
-  document.documentElement.classList.toggle('dark',d);
-  document.documentElement.style.colorScheme=d?'dark':'light';
-}catch(e){}})();`,
+            __html:
+              "(function(){try{history.scrollRestoration='manual';}catch(e){}try{window.scrollTo(0,0);}catch(e){}})();",
           }}
         />
-      </head>
-      <body>
         <Providers>{children}</Providers>
       </body>
     </html>

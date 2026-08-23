@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import type {
   GenerationRun,
   StudioQuestion,
@@ -14,6 +14,7 @@ import {
   isJdCitation,
 } from "@/features/studio/utils/citation-display";
 import { inferStudioTemplate } from "@/features/studio/utils/question-template-infer";
+import { formatStudioQuestionTypeLabel } from "@/features/studio/utils/format-question-type-label";
 import { cn } from "@/lib/cn";
 import { useLanguage } from "@/shared/providers/language-context";
 import { portalCard, portalHeading, portalSubtext } from "@/shared/utils/portal-ui";
@@ -36,6 +37,16 @@ function statusBannerClass(status?: string) {
   return "border-gray-200 bg-gray-50 text-gray-800 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100";
 }
 
+function buildDisplayNumberMap(questions: StudioQuestion[]): Map<string, number> {
+  const sorted = [...questions].sort((a, b) => {
+    const d = a.orderIndex - b.orderIndex;
+    return d !== 0 ? d : a.id.localeCompare(b.id);
+  });
+  const map = new Map<string, number>();
+  sorted.forEach((q, i) => map.set(q.id, i + 1));
+  return map;
+}
+
 export function QuestionsTab({
   questions,
   generationRun,
@@ -45,10 +56,12 @@ export function QuestionsTab({
   onDeleteQuestion,
   onRegenerateQuestion,
 }: Props) {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const c = t.studioPage.chat;
+  const typeLang = lang === "vi" ? "vi" : "en";
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draftText, setDraftText] = useState("");
+  const displayNumberById = useMemo(() => buildDisplayNumberMap(questions), [questions]);
 
   return (
     <div className={cn(portalCard, "p-4")}>
@@ -101,11 +114,14 @@ export function QuestionsTab({
       )}
 
       <div className="mt-3 space-y-2">
-        {questions.map((question) => (
+        {questions.map((question) => {
+          const displayNo = displayNumberById.get(question.id) ?? 0;
+          const typeLabel = formatStudioQuestionTypeLabel(question.type, typeLang);
+          return (
           <div key={question.id} className="rounded-lg border border-gray-200 p-3 dark:border-gray-700">
             <div className="mb-2 flex items-center justify-between gap-2">
               <span className={cn("text-xs", portalSubtext)}>
-                #{question.orderIndex + 1} • {question.type} • {question.difficulty}
+                #{displayNo} • {typeLabel} • {question.difficulty}
               </span>
               <div className="flex items-center gap-2">
                 <button
@@ -161,7 +177,7 @@ export function QuestionsTab({
                   const templateVm = inferStudioTemplate(question);
                   return (
                     <QuestionTemplateCard
-                      title={`Question #${question.orderIndex + 1}`}
+                      title={`Question #${displayNo}`}
                       difficulty={question.difficulty}
                       prompt={question.content}
                       snippet={templateVm.snippet}
@@ -212,7 +228,8 @@ export function QuestionsTab({
               </>
             )}
           </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

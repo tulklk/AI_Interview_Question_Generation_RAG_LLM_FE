@@ -10,7 +10,7 @@ import { useLanguage } from "@/shared/providers/language-context";
 import { useLogout } from "@/features/auth/hooks/use-logout";
 import { BrandLogo } from "@/shared/components/common/brand-logo";
 
-export function AdminSidebar() {
+export function AdminSidebar({ navBadges }: { navBadges?: Partial<Record<string, number>> }) {
   const pathname = usePathname();
   const { t } = useLanguage();
   const { logout, loggingOut } = useLogout();
@@ -34,6 +34,9 @@ export function AdminSidebar() {
           {adminNavItems.map((item) => {
             const isActive = isAdminNavActive(item.href, pathname);
             const label = s.nav[item.href as keyof typeof s.nav] ?? item.label;
+            const badgeCount = navBadges?.[item.href] ?? item.badge;
+            const isPendingFeedbackBadge =
+              item.href === "/admin/feedbacks" && (navBadges?.[item.href] ?? 0) > 0;
 
             return (
               <li key={item.href}>
@@ -67,16 +70,20 @@ export function AdminSidebar() {
 
                   <span className="text-sm font-medium flex-1">{label}</span>
 
-                  {item.badge !== undefined && (
+                  {badgeCount !== undefined && badgeCount > 0 && (
                     <span
                       className={cn(
                         "text-[10px] font-semibold px-1.5 py-0.5 rounded-md leading-none",
-                        isActive
-                          ? "bg-[rgba(124,58,237,0.12)] dark:bg-[rgba(124,58,237,0.2)] text-[#7C3AED] dark:text-[#a78bff]"
-                          : "bg-page-bg dark:bg-gray-800 text-[#6b7280] dark:text-gray-400"
+                        isPendingFeedbackBadge
+                          ? isActive
+                            ? "bg-amber-100 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300"
+                            : "bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400"
+                          : isActive
+                            ? "bg-[rgba(124,58,237,0.12)] dark:bg-[rgba(124,58,237,0.2)] text-[#7C3AED] dark:text-[#a78bff]"
+                            : "bg-page-bg dark:bg-gray-800 text-[#6b7280] dark:text-gray-400"
                       )}
                     >
-                      {item.badge}
+                      {badgeCount}
                     </span>
                   )}
                 </Link>

@@ -7,6 +7,10 @@ import { portalHeadingAlt, portalSubtextAlt } from "@/shared/utils/portal-ui";
 interface AdminPendingSectionProps {
   /** Lucide icon for the card header */
   icon: React.ElementType;
+  /** Tailwind classes for the icon well background */
+  iconBg?: string;
+  /** Tailwind classes for the icon color */
+  iconColor?: string;
   title: string;
   subtitle: string;
   /** One-line explanation of what's missing */
@@ -21,6 +25,8 @@ interface AdminPendingSectionProps {
  */
 export function AdminPendingSection({
   icon: Icon,
+  iconBg = "bg-gray-100 dark:bg-gray-800",
+  iconColor = "text-gray-400 dark:text-gray-600",
   title,
   subtitle,
   pendingMessage,
@@ -30,8 +36,8 @@ export function AdminPendingSection({
     <div className="hr-glass-card overflow-hidden">
       {/* Header */}
       <div className="flex items-center gap-2.5 px-5 py-4 border-b border-gray-200 dark:border-gray-800">
-        <div className="w-8 h-8 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center shrink-0">
-          <Icon size={14} className="text-gray-400 dark:text-gray-600" />
+        <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${iconBg}`}>
+          <Icon size={14} className={iconColor} />
         </div>
         <div>
           <h2 className={cn("text-sm font-bold leading-tight", portalHeadingAlt)}>{title}</h2>

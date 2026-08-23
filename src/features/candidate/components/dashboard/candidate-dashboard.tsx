@@ -112,6 +112,8 @@ export function CandidateDashboard() {
           title={p.trendChart.title}
           subtitle={p.trendChart.subtitle}
           icon={LineChart}
+          iconBg="bg-blue-100 dark:bg-blue-950/50"
+          iconColor="text-blue-600 dark:text-blue-400"
           state={trendState}
           emptyIcon={LineChart}
           emptyTitle={p.trendChart.empty}
@@ -129,6 +131,8 @@ export function CandidateDashboard() {
           title={p.scoreDistribution.title}
           subtitle={p.scoreDistribution.subtitle}
           icon={PieChart}
+          iconBg="bg-violet-100 dark:bg-violet-950/50"
+          iconColor="text-violet-600 dark:text-violet-400"
           state={distState}
           emptyIcon={PieChart}
           emptyTitle={p.scoreDistribution.empty}
@@ -144,6 +148,8 @@ export function CandidateDashboard() {
           title={p.companyScore.title}
           subtitle={p.companyScore.subtitle}
           icon={Building2}
+          iconBg="bg-teal-100 dark:bg-teal-950/50"
+          iconColor="text-teal-600 dark:text-teal-400"
           state={companyState}
           emptyIcon={Building2}
           emptyTitle={p.companyScore.empty}
@@ -161,6 +167,8 @@ export function CandidateDashboard() {
           title={p.skills.title}
           subtitle={p.skills.subtitle}
           icon={Radar}
+          iconBg="bg-indigo-100 dark:bg-indigo-950/50"
+          iconColor="text-indigo-600 dark:text-indigo-400"
           state={skillsState}
           emptyIcon={Radar}
           emptyTitle={p.skills.empty}
@@ -174,8 +182,8 @@ export function CandidateDashboard() {
 
         <div className="hr-glass-card p-5 sm:p-6">
           <div className="flex items-center gap-2.5 mb-4">
-            <div className="w-8 h-8 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center shrink-0">
-              <Bot size={15} className="text-gray-500 dark:text-gray-400" />
+            <div className="w-8 h-8 rounded-xl bg-violet-100 dark:bg-violet-950/50 flex items-center justify-center shrink-0">
+              <Bot size={15} className="text-violet-600 dark:text-violet-400" />
             </div>
             <div>
               <h2 className={cn("text-[15px] font-bold leading-tight", portalHeadingAlt)}>{p.coach.title}</h2>
@@ -191,6 +199,8 @@ export function CandidateDashboard() {
           title={p.heatmap.title}
           subtitle={p.heatmap.subtitle}
           icon={CalendarDays}
+          iconBg="bg-emerald-100 dark:bg-emerald-950/50"
+          iconColor="text-emerald-600 dark:text-emerald-400"
           state={heatmapState}
           emptyIcon={CalendarDays}
           emptyTitle={p.heatmap.empty}
@@ -213,6 +223,8 @@ export function CandidateDashboard() {
           title={p.roles.title}
           subtitle={p.roles.subtitle}
           icon={Briefcase}
+          iconBg="bg-amber-100 dark:bg-amber-950/50"
+          iconColor="text-amber-600 dark:text-amber-400"
           state={rolesState}
           emptyIcon={Briefcase}
           emptyTitle={p.roles.empty}
@@ -228,8 +240,8 @@ export function CandidateDashboard() {
       {dashboard.skillAnalytics && dashboard.skillAnalytics.skills.some((s) => s.score < 80) && (
         <div className="hr-glass-card p-5 sm:p-6 mb-6">
           <div className="flex items-center gap-2.5 mb-4">
-            <div className="w-8 h-8 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center shrink-0">
-              <ListChecks size={15} className="text-gray-500 dark:text-gray-400" />
+            <div className="w-8 h-8 rounded-xl bg-rose-100 dark:bg-rose-950/50 flex items-center justify-center shrink-0">
+              <ListChecks size={15} className="text-rose-600 dark:text-rose-400" />
             </div>
             <h2 className={cn("text-[15px] font-bold leading-tight", portalHeadingAlt)}>{p.weakSkillsTable.title}</h2>
           </div>

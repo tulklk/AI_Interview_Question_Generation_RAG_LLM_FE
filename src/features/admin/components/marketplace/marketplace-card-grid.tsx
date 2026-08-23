@@ -12,6 +12,7 @@ import {
   PinOff,
   TrendingUp,
   Loader2,
+  GlobeOff,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { DifficultyPill } from "@/features/candidate/components/ui/pill";
@@ -97,25 +98,30 @@ export interface AdminMarketplaceSetCardLabels {
   viewDetail: string;
   pin: string;
   unpin: string;
+  unpublish: string;
   hrPrefix: string;
 }
 
 interface AdminMarketplaceSetCardProps {
   item: AdminMarketplaceListItem;
   pinning: boolean;
+  unpublishing: boolean;
   selected?: boolean;
   labels: AdminMarketplaceSetCardLabels;
   onView: (id: string) => void;
   onTogglePin: (item: AdminMarketplaceListItem) => void;
+  onUnpublish: (item: AdminMarketplaceListItem) => void;
 }
 
 export function AdminMarketplaceSetCard({
   item,
   pinning,
+  unpublishing,
   selected,
   labels,
   onView,
   onTogglePin,
+  onUnpublish,
 }: AdminMarketplaceSetCardProps) {
   const [showSkills, setShowSkills] = useState(false);
   const skillsBtnRef = useRef<HTMLButtonElement>(null);
@@ -209,6 +215,26 @@ export function AdminMarketplaceSetCard({
               <Pin size={14} />
             )}
           </button>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onUnpublish(item);
+            }}
+            disabled={unpublishing}
+            title={labels.unpublish}
+            aria-label={labels.unpublish}
+            className={cn(
+              "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border transition-colors disabled:opacity-60",
+              "border-gray-200 bg-gray-50 text-gray-500 hover:border-red-300 hover:text-red-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:border-red-800 dark:hover:text-red-400"
+            )}
+          >
+            {unpublishing ? (
+              <Loader2 size={14} className="animate-spin" />
+            ) : (
+              <GlobeOff size={14} />
+            )}
+          </button>
         </div>
 
         {item.description ? (
@@ -294,12 +320,14 @@ interface AdminMarketplaceCardGridProps {
   loading: boolean;
   selectedId: string | null;
   pinningId: string | null;
+  unpublishingId: string | null;
   emptyLabel: string;
   setsFoundLabel: string;
   totalCount: number;
   cardLabels: AdminMarketplaceSetCardLabels;
   onView: (id: string) => void;
   onTogglePin: (item: AdminMarketplaceListItem) => void;
+  onUnpublish: (item: AdminMarketplaceListItem) => void;
 }
 
 export function AdminMarketplaceCardGrid({
@@ -307,12 +335,14 @@ export function AdminMarketplaceCardGrid({
   loading,
   selectedId,
   pinningId,
+  unpublishingId,
   emptyLabel,
   setsFoundLabel,
   totalCount,
   cardLabels,
   onView,
   onTogglePin,
+  onUnpublish,
 }: AdminMarketplaceCardGridProps) {
   if (loading) {
     return (
@@ -341,10 +371,12 @@ export function AdminMarketplaceCardGrid({
             key={item.id}
             item={item}
             pinning={pinningId === item.id}
+            unpublishing={unpublishingId === item.id}
             selected={selectedId === item.id}
             labels={cardLabels}
             onView={onView}
             onTogglePin={onTogglePin}
+            onUnpublish={onUnpublish}
           />
         ))}
       </div>

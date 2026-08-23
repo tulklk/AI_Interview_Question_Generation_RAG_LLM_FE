@@ -6,9 +6,9 @@ import { ContentFilters } from "@/features/admin/components/content/content-filt
 import { ContentTable } from "@/features/admin/components/content/content-table";
 import { contentSessions } from "@/features/admin/data/admin";
 import type { ContentSession } from "@/features/admin/types/admin";
+import { FileText } from "lucide-react";
 import { useLanguage } from "@/shared/providers/language-context";
-import { cn } from "@/lib/cn";
-import { portalHeadingAlt, portalSubtextAlt } from "@/shared/utils/portal-ui";
+import { AdminPageHeader } from "@/features/admin/components/layout/admin-page-header";
 
 function matchesDateRange(
   daysAgo: number,
@@ -115,10 +115,7 @@ export default function GeneratedContentPage() {
       pageTitle={c.heading}
       breadcrumb={[{ label: "Admin", href: "/admin/dashboard" }, { label: c.heading }]}
     >
-      <div className="mb-8 animate-fade-up">
-        <h2 className={cn("text-[30px] font-bold leading-9", portalHeadingAlt)}>{c.heading}</h2>
-        <p className={cn("mt-2 text-base leading-6", portalSubtextAlt)}>{c.subtext}</p>
-      </div>
+      <AdminPageHeader heading={c.heading} subtext={c.subtext} icon={FileText} />
 
       <div className="animate-fade-up" style={{ animationDelay: "80ms" }}>
         <ContentFilters

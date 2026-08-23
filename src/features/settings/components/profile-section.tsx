@@ -230,64 +230,66 @@ export function ProfileSection() {
         )}
       </div>
 
-      <AvatarUpload
-        avatarUrl={form.avatarUrl.trim() || null}
-        fullName={form.fullName || "?"}
-        size="md"
-        editing={true}
-        uploading={uploadingAvatar}
-        disabled={saving}
-        layout="inline"
-        uploadFile={uploadAvatarToCloudinary}
-        onUpload={async (url) => {
-          // Chỉ lưu avatarUrl mới trên nền dữ liệu đã lưu gần nhất (snapshot),
-          // không dùng form hiện tại — tránh lộ các field đang sửa dở chưa bấm Save.
-          setForm((prev) => ({ ...prev, avatarUrl: url }));
-          try {
-            await updateHrProfile({
-              fullName: snapshot.fullName.trim() || "User",
-              companyId: snapshot.companyId,
-              companyName: snapshot.companyName.trim() || undefined,
-              jobTitle: snapshot.jobTitle.trim() || undefined,
-              phoneNumber: snapshot.phoneNumber.trim() || undefined,
-              linkedInUrl: snapshot.linkedInUrl.trim() || undefined,
-              githubUrl: snapshot.githubUrl.trim() || undefined,
-              avatarUrl: url,
-              bio: snapshot.bio.trim() || undefined,
-              inviteMessageTemplate: snapshot.inviteMessageTemplate.trim() || null,
-            });
-            setSnapshot((prev) => ({ ...prev, avatarUrl: url }));
-            await refreshUser();
-          } catch {
-            addToast("error", sp.saveFailed);
-          }
-        }}
-        onError={handleAvatarUploadError}
-        onUploadStart={() => setUploadingAvatar(true)}
-        onUploadEnd={() => setUploadingAvatar(false)}
-        labels={{
-          uploadPhoto: sp.uploadPhoto,
-          photoFormats: sp.photoFormats,
-          uploadingPhoto: sp.uploadingPhoto,
-          photo: sp.photo,
-        }}
-        className="mb-6"
-      />
+      <div className="mb-6 flex flex-col sm:flex-row sm:items-start gap-4 sm:gap-6">
+        <AvatarUpload
+          avatarUrl={form.avatarUrl.trim() || null}
+          fullName={form.fullName || "?"}
+          size="md"
+          editing={true}
+          uploading={uploadingAvatar}
+          disabled={saving}
+          layout="inline"
+          uploadFile={uploadAvatarToCloudinary}
+          onUpload={async (url) => {
+            // Chỉ lưu avatarUrl mới trên nền dữ liệu đã lưu gần nhất (snapshot),
+            // không dùng form hiện tại — tránh lộ các field đang sửa dở chưa bấm Save.
+            setForm((prev) => ({ ...prev, avatarUrl: url }));
+            try {
+              await updateHrProfile({
+                fullName: snapshot.fullName.trim() || "User",
+                companyId: snapshot.companyId,
+                companyName: snapshot.companyName.trim() || undefined,
+                jobTitle: snapshot.jobTitle.trim() || undefined,
+                phoneNumber: snapshot.phoneNumber.trim() || undefined,
+                linkedInUrl: snapshot.linkedInUrl.trim() || undefined,
+                githubUrl: snapshot.githubUrl.trim() || undefined,
+                avatarUrl: url,
+                bio: snapshot.bio.trim() || undefined,
+                inviteMessageTemplate: snapshot.inviteMessageTemplate.trim() || null,
+              });
+              setSnapshot((prev) => ({ ...prev, avatarUrl: url }));
+              await refreshUser();
+            } catch {
+              addToast("error", sp.saveFailed);
+            }
+          }}
+          onError={handleAvatarUploadError}
+          onUploadStart={() => setUploadingAvatar(true)}
+          onUploadEnd={() => setUploadingAvatar(false)}
+          labels={{
+            uploadPhoto: sp.uploadPhoto,
+            photoFormats: sp.photoFormats,
+            uploadingPhoto: sp.uploadingPhoto,
+            photo: sp.photo,
+          }}
+          className="shrink-0"
+        />
+        <LinkedGoogleAccount
+          linked={googleLinked}
+          email={form.email}
+          labels={{
+            title: sp.googleAccount,
+            linkedBadge: sp.googleLinkedBadge,
+            hint: sp.googleLinkedHint,
+          }}
+          className="flex-1 min-w-0 w-full"
+        />
+      </div>
 
       {!editing ? (
         <div className={cn("space-y-4 border rounded-xl p-5", portalMutedBg, portalDivider)}>
           <ViewField label={sp.fullName} value={form.fullName} />
           <ViewField label={sp.email} value={form.email} />
-          <LinkedGoogleAccount
-            linked={googleLinked}
-            email={form.email}
-            labels={{
-              title: sp.googleAccount,
-              linkedBadge: sp.googleLinkedBadge,
-              hint: sp.googleLinkedHint,
-            }}
-            className={cn("border-b pb-4 last:border-0 last:pb-0", portalDivider)}
-          />
           <ViewField label={sp.company} value={form.companyName} />
           <ViewField label={sp.jobTitle} value={form.jobTitle} />
           <ViewField label={sp.phoneNumber} value={form.phoneNumber} />
@@ -319,16 +321,6 @@ export function ProfileSection() {
             />
             <p className={cn("text-xs mt-1", portalSubtext)}>{sp.emailReadOnly}</p>
           </FormField>
-
-          <LinkedGoogleAccount
-            linked={googleLinked}
-            email={form.email}
-            labels={{
-              title: sp.googleAccount,
-              linkedBadge: sp.googleLinkedBadge,
-              hint: sp.googleLinkedHint,
-            }}
-          />
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <FormField label={sp.company} htmlFor="company">

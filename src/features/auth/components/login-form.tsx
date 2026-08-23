@@ -24,7 +24,7 @@ const headingWord: Variants = {
   visible: { opacity: 1, y: 0, scale: 1, filter: "blur(0px)", transition: { duration: 0.5, ease: "easeOut" } },
 };
 import { ConfirmDialog } from "@/shared/components/ui/confirm-dialog";
-import { SocialOAuthRow } from "@/features/auth/components/social-oauth-buttons";
+import { GoogleOAuthButton } from "@/features/auth/components/social-oauth-buttons";
 import { OAuthLoginOnboarding } from "@/features/auth/components/oauth-login-onboarding";
 import { useLogin } from "@/features/auth/hooks/use-login";
 
@@ -40,7 +40,6 @@ export function LoginForm() {
     rememberMe,
     loading,
     googleLoading,
-    githubLoading,
     fieldErrors,
     unverifiedOpen,
     unverifiedEmail,
@@ -53,7 +52,6 @@ export function LoginForm() {
     setUnverifiedOpen,
     handleSignIn,
     handleGoogleSuccess,
-    handleGithubSuccess,
     handleOnboardingCancel,
     handleResendVerification,
   } = useLogin();
@@ -245,13 +243,12 @@ export function LoginForm() {
       </motion.div>
 
       <motion.div variants={formRow}>
-        <SocialOAuthRow
-          googleLoading={googleLoading}
-          googleMode="signin"
-          onGoogleSuccess={handleGoogleSuccess}
-          onGoogleError={() => addToast("error", lp.loginFailed)}
-          githubLoading={githubLoading}
-          onGithubClick={handleGithubSuccess}
+        <GoogleOAuthButton
+          loading={googleLoading}
+          mode="signin"
+          label={lp.continueWithGoogle}
+          onSuccess={handleGoogleSuccess}
+          onError={() => addToast("error", lp.loginFailed)}
         />
       </motion.div>
 

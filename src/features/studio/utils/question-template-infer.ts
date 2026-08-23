@@ -1,5 +1,10 @@
 import type { StudioCodeTemplateId } from "@/features/studio/constants/question-templates";
 import type { StudioQuestion } from "@/features/studio/types/studio.types";
+import {
+  hasSnippetLanguageMismatch,
+  isCodeHeavyTemplate,
+  isConceptualTheoryQuestion,
+} from "@/features/studio/utils/question-content-match";
 
 export interface StudioTemplateViewModel {
   templateId: StudioCodeTemplateId | null;
@@ -94,23 +99,16 @@ function normalizeSnippetEscapes(snippet: string): string {
   return snippet;
 }
 
-/** Lấy snippet từ codeSnippet, expectedAnswer ("Code snippet:"), hoặc fenced ``` trong content. */
-function resolveSnippet(question: StudioQuestion): string | undefined {
+/**
+ * Snippet ĐỀ BÀI only: `codeSnippet` or fenced ``` in content.
+ * Never use `expectedAnswer` (sample SQL/code ending in `;` caused false mismatch warnings).
+ */
+function resolveProblemSnippet(question: StudioQuestion): string | undefined {
   const direct = (question.codeSnippet || "").trim();
   if (direct) return normalizeSnippetEscapes(direct);
 
-  const answer = question.expectedAnswer || "";
-  const fromAnswer = answer.match(/Code\s*snippet\s*:\s*([\s\S]+)/i);
-  if (fromAnswer?.[1]?.trim()) return normalizeSnippetEscapes(fromAnswer[1].trim());
-
   const fromFence = (question.content || "").match(/```(?:[\w+-]+)?\s*\n([\s\S]*?)```/);
   if (fromFence?.[1]?.trim()) return normalizeSnippetEscapes(fromFence[1].trim());
-
-  if (/^\s*(public |private |class |def |function |const |let |var |#include|using )/m.test(answer)
-    || /[{;]\s*$/m.test(answer)) {
-    const trimmed = answer.trim();
-    if (trimmed.length > 20 && trimmed.length < 4000) return normalizeSnippetEscapes(trimmed);
-  }
 
   return undefined;
 }
@@ -128,22 +126,53 @@ function resolveImageHint(question: StudioQuestion, templateId: StudioCodeTempla
   return "Tìm hình ảnh hoặc diagram minh họa khái niệm chính trong câu hỏi (slide nội bộ, whiteboard, screenshot).";
 }
 
+function isNoCodeQuestionType(type?: string | null): boolean {
+  const t = (type || "").trim().toLowerCase();
+  return t === "behavioral" || t === "situational";
+}
+
+/** Problem-statement snippet only (codeSnippet / content fence) — for mismatch checks. */
+export function peekProblemSnippet(question: StudioQuestion): string | undefined {
+  return resolveProblemSnippet(question);
+}
+
+/** @deprecated Prefer peekProblemSnippet — same source (no expectedAnswer). */
+export function peekQuestionSnippet(question: StudioQuestion): string | undefined {
+  return peekProblemSnippet(question);
+}
+
 /**
  * Suy ra template + snippet + image hint để render UI.
  * Câu lý thuyết thuần vẫn có imageHint; templateId có thể null.
+ * Behavioral / Situational: mặc định không render code snippet.
+ * Conceptual theory + code-heavy/wrong snippet: ẩn ĐỀ BÀI code (BE data lệch).
  */
 export function inferStudioTemplate(question: StudioQuestion): StudioTemplateViewModel {
   const explicit = normalizeTemplateId(question.codeTemplateType);
-  const snippet = resolveSnippet(question);
+  const rawSnippet = resolveProblemSnippet(question);
+  const noCodeType = isNoCodeQuestionType(question.type);
+  const conceptualTheory = isConceptualTheoryQuestion(question.content);
+  const languageMismatch = Boolean(
+    rawSnippet && hasSnippetLanguageMismatch(question.content, rawSnippet)
+  );
 
   const inferred =
     explicit
     ?? extractFromText(question.content)
     ?? extractFromText(question.scoringRubric)
     ?? (question.type === "SystemDesign" ? "SYSTEM_DESIGN" : null)
-    ?? (snippet ? "CODE_COMPLETION" : null);
+    ?? (!noCodeType && !conceptualTheory && !languageMismatch && rawSnippet ? "CODE_COMPLETION" : null);
 
-  const imageHint = resolveImageHint(question, inferred);
+  const suppressCodeBlock =
+    noCodeType
+    || languageMismatch
+    || (conceptualTheory && Boolean(rawSnippet || isCodeHeavyTemplate(inferred)));
+
+  const snippet = suppressCodeBlock ? undefined : rawSnippet;
+  const clearTemplateBadge = suppressCodeBlock && (conceptualTheory || languageMismatch || noCodeType);
+  const displayTemplateId = clearTemplateBadge ? null : inferred;
+
+  const imageHint = resolveImageHint(question, displayTemplateId ?? inferred);
   const attachedImageUrl = (question.attachedImageUrl || "").trim() || undefined;
 
   const langFromMeta =
@@ -154,11 +183,20 @@ export function inferStudioTemplate(question: StudioQuestion): StudioTemplateVie
       ? langFromMeta.trim().toLowerCase()
       : undefined;
 
+  if (noCodeType || (suppressCodeBlock && (conceptualTheory || languageMismatch))) {
+    return {
+      templateId: null,
+      imageHint,
+      attachedImageUrl,
+      snippetLanguage,
+    };
+  }
+
   if (inferred === "SYSTEM_DESIGN") {
     const diagramFromMeta =
       pickMeta(question.scoringRubric, "diagramHint")
       ?? pickMeta(question.scoringRubric, "diagram")
-      ?? (snippet && !snippet.includes("{") ? snippet : undefined);
+      ?? (rawSnippet && !rawSnippet.includes("{") ? rawSnippet : undefined);
 
     return {
       templateId: inferred,
@@ -170,7 +208,7 @@ export function inferStudioTemplate(question: StudioQuestion): StudioTemplateVie
   }
 
   return {
-    templateId: inferred,
+    templateId: displayTemplateId,
     snippet,
     snippetLanguage,
     imageHint,

@@ -2,14 +2,13 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, Star, X as XIcon, Mail, Loader2,
   AlertCircle, RefreshCw, CheckCircle2, Clock, Send,
   User, Sparkles, Phone, FileText, Download, Maximize2,
-  Target, Link as LinkIcon, ChevronDown, RotateCcw,
+  Target, ChevronDown, RotateCcw, MapPin, Briefcase,
 } from "lucide-react";
 import { getSkillIcon } from "@/features/candidate/utils/skill-icons";
 import { FaLinkedinIn, FaGithub } from "react-icons/fa";
@@ -26,6 +25,7 @@ import {
   sendRecommendationOffer,
   markRecommendationViewed,
   restoreRecommendation,
+  isCandidateAccepted,
   type CandidateRecommendation,
   type CandidateRecommendationDetail,
   type RecommendationCvDownload,
@@ -36,12 +36,10 @@ import { InviteScheduleFields, defaultInviteSchedule, toInvitePayload } from "./
 import {
   portalHeading,
   portalSubtext,
-  portalMutedBg,
   portalDivider,
   portalHeadingAlt,
   portalSubtextAlt,
 } from "@/shared/utils/portal-ui";
-import { SectionCard, Field } from "@/features/candidate/components/ui/section-card";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -86,52 +84,6 @@ function titleCase(s: string): string {
 }
 
 // ---------------------------------------------------------------------------
-// Score Ring
-// ---------------------------------------------------------------------------
-
-function ScoreRing({ score, labels }: { score: number; labels: ReturnType<typeof useLanguage>["t"]["hrRecommendationsPage"]["detail"] }) {
-  const radius = 40;
-  const circ = 2 * Math.PI * radius;
-  const dash = (Math.min(100, Math.max(0, score)) / 100) * circ;
-  const color = score >= 85 ? "#10b981" : score >= 70 ? "#f59e0b" : "#ef4444";
-  const textColor = score >= 85
-    ? "text-emerald-600 dark:text-emerald-400"
-    : score >= 70 ? "text-amber-600 dark:text-amber-400"
-    : "text-red-500 dark:text-red-400";
-
-  return (
-    <div className="flex items-center gap-5">
-      <div className="relative w-[96px] h-[96px] shrink-0">
-        <svg width="96" height="96" viewBox="0 0 96 96" className="-rotate-90">
-          <circle cx="48" cy="48" r={radius} fill="none" stroke="currentColor"
-            strokeWidth="6" className="text-gray-100 dark:text-gray-800" />
-          <motion.circle
-            cx="48" cy="48" r={radius} fill="none" stroke={color}
-            strokeWidth="6" strokeLinecap="round"
-            strokeDasharray={`${dash} ${circ - dash}`}
-            initial={{ strokeDasharray: `0 ${circ}` }}
-            animate={{ strokeDasharray: `${dash} ${circ - dash}` }}
-            transition={{ duration: 0.9, ease: "easeOut" }}
-          />
-        </svg>
-        <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className={cn("text-[20px] font-black leading-none tabular-nums", textColor)}>{score}</span>
-          <span className="text-[9px] text-gray-400 dark:text-gray-500 font-semibold mt-0.5">/100</span>
-        </div>
-      </div>
-      <div>
-        <p className={cn("text-[10px] font-semibold uppercase tracking-widest mb-1.5", portalSubtextAlt)}>
-          {labels.overallScore}
-        </p>
-        <p className={cn("text-[16px] font-bold leading-tight", textColor)}>
-          {score >= 85 ? labels.scoreExcellent : score >= 70 ? labels.scoreGood : labels.scoreFair}
-        </p>
-      </div>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
 // Status chip
 // ---------------------------------------------------------------------------
 
@@ -147,7 +99,7 @@ function StatusChip({ status, labels }: { status: RecommendationStatus; labels: 
     SHORTLISTED: labels.shortlisted, INVITED: labels.invited, DISMISSED: labels.dismissed,
   };
   return (
-    <span className={cn("text-[12px] font-semibold px-3 py-1 rounded-full", styles[status])}>
+    <span className={cn("text-[11px] font-semibold px-2.5 py-0.5 rounded-full", styles[status])}>
       {text[status]}
     </span>
   );
@@ -411,9 +363,14 @@ export function RecommendationDetail({ id }: { id: string }) {
   const [cvLightbox, setCvLightbox] = useState(false);
   const [showInvite, setShowInvite] = useState(false);
   const [showOffer, setShowOffer] = useState(false);
-  // Collapsible sub-sections
+  // CV section collapse
   const [cvSummaryOpen, setCvSummaryOpen] = useState(true);
   const [cvSkillsOpen, setCvSkillsOpen] = useState(true);
+  // Chip expansion
+  const [extraOnCvExpanded, setExtraOnCvExpanded] = useState(false);
+  const [cvSkillsExpanded, setCvSkillsExpanded] = useState(false);
+  // CV summary clamp
+  const [cvSummaryExpanded, setCvSummaryExpanded] = useState(false);
   const { addToast } = useToast();
 
   const fetchData = useCallback(async () => {
@@ -433,7 +390,6 @@ export function RecommendationDetail({ id }: { id: string }) {
 
   useEffect(() => { void fetchData(); }, [fetchData]);
 
-  // Lấy SAS URL để preview CV ảnh dưới identity card (SCRUM-377).
   useEffect(() => {
     if (!rec?.hasCv) {
       setCvPreview(null);
@@ -531,316 +487,257 @@ export function RecommendationDetail({ id }: { id: string }) {
   );
 
   const canAct = rec.status !== "INVITED" && rec.status !== "DISMISSED";
-  // BE allows re-shortlisting a dismissed recommendation to bring it back into
-  // play (confirmed live: dismiss → invite fails 409 "shortlist lại trước khi
-  // mời"), so DISMISSED isn't fully terminal like INVITED is.
   const canRestore = rec.status === "DISMISSED";
   const initials = getInitials(rec.candidateName || rec.candidateEmail);
   const hasSocial = !!(rec.linkedInUrl || rec.githubUrl);
   const cvFileName = cvPreview?.cvFileName ?? rec.cvFileName;
   const cvIsImage = isImageCv(cvPreview?.contentType, cvFileName);
   const cvIsPdf = isPdfCv(cvPreview?.contentType, cvFileName);
+  const scoreColor = rec.score >= 85
+    ? "text-emerald-500 dark:text-emerald-400"
+    : rec.score >= 70 ? "text-amber-500 dark:text-amber-400"
+    : "text-red-500 dark:text-red-400";
+
+  const CHIP_LIMIT = 5;
+  const SKILL_CHIP_LIMIT = 6;
 
   return (
     <>
       {/* Back */}
       <button type="button" onClick={() => router.back()}
-        className={cn("inline-flex items-center gap-1.5 text-[13px] font-medium mb-5 hover:text-primary transition-colors", portalSubtext)}>
+        className={cn("inline-flex items-center gap-1.5 text-[13px] font-medium mb-4 hover:text-primary transition-colors", portalSubtext)}>
         <ArrowLeft size={14} /> {p.backToList}
       </button>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-5 items-start">
+      {/* ① Candidate Summary Bar */}
+      <motion.div
+        initial={{ opacity: 0, y: -6 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="hr-glass-card p-5 mb-5"
+      >
+        <div className="flex flex-col sm:flex-row sm:items-center gap-4">
 
-        {/* ── Left: Identity card ── */}
-        <div className="flex flex-col gap-4">
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-            className="hr-glass-card p-5 flex flex-col gap-5">
-            {/* Avatar + name */}
-            <div className="flex flex-col items-center text-center gap-3 pt-3">
-              {rec.avatarUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={rec.avatarUrl}
-                  alt={rec.candidateName}
-                  referrerPolicy="no-referrer"
-                  className="w-20 h-20 rounded-full object-cover ring-2 ring-white dark:ring-gray-700 shadow-md"
-                />
-              ) : (
-                <div className={cn(
-                  "w-20 h-20 rounded-full text-white text-2xl font-black flex items-center justify-center shadow-md ring-2 ring-white dark:ring-gray-700",
-                  avatarColor(rec.candidateName || rec.id)
-                )}>
-                  {initials || <User size={24} />}
-                </div>
-              )}
-              <div>
-                <h1 className={cn("text-[18px] font-bold leading-tight", portalHeading)}>
-                  {rec.candidateName || "—"}
-                </h1>
-                <p className={cn("text-[12px] mt-0.5", portalSubtext)}>{rec.candidateEmail}</p>
-                {rec.targetRole && (
-                  <p className={cn("text-[12px] font-medium mt-1", portalSubtextAlt)}>{rec.targetRole}</p>
-                )}
-              </div>
-              <StatusChip status={rec.status} labels={p.card} />
-            </div>
-
-            {/* Social quick links */}
-            {hasSocial && (
-              <div className="flex items-center justify-center gap-2">
-                {rec.linkedInUrl && (
-                  <a href={rec.linkedInUrl} target="_blank" rel="noopener noreferrer"
-                    title={p.detail.linkedIn}
-                    className="h-8 w-8 flex items-center justify-center rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
-                    <FaLinkedinIn size={14} />
-                  </a>
-                )}
-                {rec.githubUrl && (
-                  <a href={rec.githubUrl} target="_blank" rel="noopener noreferrer"
-                    title={p.detail.github}
-                    className="h-8 w-8 flex items-center justify-center rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
-                    <FaGithub size={14} />
-                  </a>
-                )}
+          {/* Identity */}
+          <div className="flex items-center gap-3.5 flex-1 min-w-0">
+            {rec.avatarUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={rec.avatarUrl} alt={rec.candidateName} referrerPolicy="no-referrer"
+                className="w-14 h-14 rounded-full object-cover ring-2 ring-white dark:ring-gray-700 shadow shrink-0" />
+            ) : (
+              <div className={cn(
+                "w-14 h-14 rounded-full text-white text-xl font-black flex items-center justify-center shadow ring-2 ring-white dark:ring-gray-700 shrink-0",
+                avatarColor(rec.candidateName || rec.id)
+              )}>
+                {initials || <User size={20} />}
               </div>
             )}
 
-            <div className="rounded-2xl bg-gray-50 dark:bg-gray-800/50 px-4 py-4">
-              <ScoreRing score={rec.score} labels={p.detail} />
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2 flex-wrap mb-0.5">
+                <h1 className={cn("text-[20px] font-bold leading-tight", portalHeading)}>
+                  {rec.candidateName || "—"}
+                </h1>
+                <StatusChip status={rec.status} labels={p.card} />
+                {isCandidateAccepted(rec) && (
+                  <span title={p.card.acceptedHint}
+                    className="inline-flex text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400 whitespace-nowrap">
+                    {p.card.accepted}
+                  </span>
+                )}
+              </div>
+              <p className={cn("text-[13px] truncate", portalSubtext)}>{rec.candidateEmail}</p>
+              {rec.targetRole && (
+                <p className={cn("text-[12px] font-medium mt-0.5 truncate", portalSubtextAlt)}>{rec.targetRole}</p>
+              )}
+              {hasSocial && (
+                <div className="flex items-center gap-1.5 mt-1.5">
+                  {rec.linkedInUrl && (
+                    <a href={rec.linkedInUrl} target="_blank" rel="noopener noreferrer"
+                      title={p.detail.linkedIn}
+                      className="h-5 w-5 flex items-center justify-center rounded bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
+                      <FaLinkedinIn size={10} />
+                    </a>
+                  )}
+                  {rec.githubUrl && (
+                    <a href={rec.githubUrl} target="_blank" rel="noopener noreferrer"
+                      title={p.detail.github}
+                      className="h-5 w-5 flex items-center justify-center rounded bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
+                      <FaGithub size={10} />
+                    </a>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Divider */}
+          <div className="hidden sm:block w-px h-14 bg-gray-200 dark:bg-gray-700 shrink-0" />
+
+          {/* Metrics */}
+          <div className="flex items-center gap-4 sm:gap-5 flex-wrap shrink-0">
+            {/* Evaluation Score */}
+            <div className="flex flex-col items-center min-w-12">
+              <span className={cn("text-[26px] font-black leading-none tabular-nums", scoreColor)}>
+                {rec.score}
+              </span>
+              <span className={cn("text-[9px] font-bold uppercase tracking-wide mt-0.5 whitespace-nowrap", portalSubtextAlt)}>
+                {p.detail.overallScore}
+              </span>
             </div>
 
-            {/* Action buttons */}
-            <div className="flex flex-col gap-2">
-              {/* Primary CTA: Gửi Offer */}
+            {typeof rec.fitPercent === "number" && (
+              <>
+                <div className="w-px h-10 bg-gray-200 dark:bg-gray-700 shrink-0" />
+                <div className="flex flex-col items-center min-w-10">
+                  <span className="text-[26px] font-black leading-none tabular-nums text-cyan-500 dark:text-cyan-400">
+                    {rec.fitPercent}
+                    <span className="text-[13px] font-bold text-cyan-400/80 dark:text-cyan-500/70">%</span>
+                  </span>
+                  <span className={cn("text-[9px] font-bold uppercase tracking-wide mt-0.5 whitespace-nowrap", portalSubtextAlt)}>
+                    Khớp CV–JD
+                  </span>
+                </div>
+              </>
+            )}
+
+            <div className="hidden sm:block w-px h-10 bg-gray-200 dark:bg-gray-700 shrink-0" />
+
+            {/* Actions */}
+            <div className="flex flex-col gap-1.5 min-w-28">
+              {/* Gửi Offer */}
               <button
                 type="button"
                 onClick={() => setShowOffer(true)}
                 disabled={busy !== null || ["SENT", "ACCEPTED"].includes((rec.latestOfferStatus ?? "").toUpperCase())}
                 title={
-                  rec.latestOfferStatus?.toUpperCase() === "ACCEPTED"
-                    ? p.offer.alreadyAccepted
-                    : rec.latestOfferStatus?.toUpperCase() === "SENT"
-                      ? p.offer.alreadySent
-                      : undefined
+                  rec.latestOfferStatus?.toUpperCase() === "ACCEPTED" ? p.offer.alreadyAccepted
+                    : rec.latestOfferStatus?.toUpperCase() === "SENT" ? p.offer.alreadySent
+                    : undefined
                 }
-                className="flex items-center justify-center gap-2 h-10 px-4 text-[13px] font-bold text-white bg-amber-500 hover:bg-amber-600 active:bg-amber-700 rounded-xl transition-colors disabled:opacity-50 w-full shadow-sm">
-                <Send size={14} /> {p.offer.btnLabel}
+                className="flex items-center justify-center gap-1.5 h-8 px-3 text-[12px] font-bold text-white bg-amber-500 hover:bg-amber-600 active:bg-amber-700 rounded-lg transition-colors disabled:opacity-50 shadow-sm">
+                <Send size={12} /> {p.offer.btnLabel}
               </button>
 
-              {/* Secondary actions based on status */}
-              {canAct ? (
-                <>
-                  {rec.status !== "SHORTLISTED" ? (
-                    <button type="button" onClick={() => void handleShortlist()} disabled={busy !== null}
-                      className="flex items-center justify-center gap-2 h-9 px-4 text-[13px] font-semibold text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-950/40 hover:bg-violet-100 dark:hover:bg-violet-900/50 rounded-xl transition-colors disabled:opacity-50 border border-violet-200 dark:border-violet-800 w-full">
-                      {busy === "shortlist" ? <Loader2 size={13} className="animate-spin" /> : <Star size={13} />}
-                      {p.card.shortlistBtn}
+              {/* Xem CV */}
+              {rec.hasCv && (
+                <button
+                  type="button"
+                  onClick={() => cvPreview ? setCvLightbox(true) : void handleDownloadCv()}
+                  disabled={cvBusy || cvPreviewLoading}
+                  className="flex items-center justify-center gap-1.5 h-8 px-3 text-[12px] font-semibold text-primary hover:bg-violet-50 dark:hover:bg-violet-950/40 rounded-lg transition-colors border border-violet-200 dark:border-violet-800 disabled:opacity-50">
+                  {cvPreviewLoading ? <Loader2 size={12} className="animate-spin" /> : <Maximize2 size={12} />}
+                  {p.detail.cvView}
+                </button>
+              )}
+
+              {/* Shortlist / Dismiss / Restore */}
+              <div className="flex items-center gap-1">
+                {canAct ? (
+                  <>
+                    {rec.status !== "SHORTLISTED" ? (
+                      <button type="button" onClick={() => void handleShortlist()} disabled={busy !== null}
+                        className="flex-1 flex items-center justify-center gap-1 h-7 px-2 text-[11px] font-semibold text-violet-600 dark:text-violet-400 hover:bg-violet-50 dark:hover:bg-violet-950/40 rounded-md transition-colors border border-violet-200 dark:border-violet-800 disabled:opacity-50">
+                        {busy === "shortlist" ? <Loader2 size={11} className="animate-spin" /> : <Star size={11} />}
+                        {p.card.shortlistBtn}
+                      </button>
+                    ) : (
+                      <div className="flex-1 flex items-center justify-center gap-1 h-7 px-2 text-[11px] font-semibold text-violet-600 dark:text-violet-400 rounded-md border border-violet-200 dark:border-violet-800">
+                        <CheckCircle2 size={11} /> {p.card.shortlisted}
+                      </div>
+                    )}
+                    <button type="button" onClick={() => void handleDismiss()} disabled={busy !== null}
+                      className="h-7 w-7 flex items-center justify-center text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md transition-colors disabled:opacity-50 shrink-0">
+                      {busy === "dismiss" ? <Loader2 size={12} className="animate-spin" /> : <XIcon size={12} />}
                     </button>
-                  ) : (
-                    <div className="flex items-center justify-center gap-2 h-9 px-4 text-[13px] font-semibold text-violet-600 dark:text-violet-400 rounded-xl border border-violet-200 dark:border-violet-800 w-full">
-                      <CheckCircle2 size={13} /> {p.card.shortlisted}
-                    </div>
-                  )}
-                  {/* Nút "Mời phỏng vấn" — tạm ẩn, bỏ comment để bật lại
-                  <button type="button" onClick={() => setShowInvite(true)} disabled={busy !== null}
-                    className="shimmer-button flex items-center justify-center gap-2 h-9 px-4 text-[13px] font-semibold text-white hr-cta-btn rounded-xl disabled:opacity-60 w-full">
-                    <Mail size={13} /> {p.card.inviteBtn}
+                  </>
+                ) : canRestore ? (
+                  <button type="button" onClick={() => void handleRestore()} disabled={busy !== null}
+                    className="w-full flex items-center justify-center gap-1 h-7 px-2 text-[11px] font-semibold text-violet-600 dark:text-violet-400 hover:bg-violet-50 dark:hover:bg-violet-950/40 rounded-md transition-colors border border-violet-200 dark:border-violet-800 disabled:opacity-50">
+                    {busy === "restore" ? <Loader2 size={11} className="animate-spin" /> : <RotateCcw size={11} />}
+                    {p.card.restoreBtn}
                   </button>
-                  */}
-                  <button type="button" onClick={() => void handleDismiss()} disabled={busy !== null}
-                    className="flex items-center justify-center gap-2 h-9 px-4 text-[13px] font-semibold text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors disabled:opacity-50 w-full">
-                    {busy === "dismiss" ? <Loader2 size={13} className="animate-spin" /> : <XIcon size={13} />}
-                    {p.card.dismissBtn}
-                  </button>
-                </>
-              ) : canRestore ? (
-                <button type="button" onClick={() => void handleRestore()} disabled={busy !== null}
-                  className="flex items-center justify-center gap-2 h-9 px-4 text-[13px] font-semibold text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-950/40 hover:bg-violet-100 dark:hover:bg-violet-900/50 rounded-xl transition-colors disabled:opacity-50 border border-violet-200 dark:border-violet-800 w-full">
-                  {busy === "restore" ? <Loader2 size={13} className="animate-spin" /> : <RotateCcw size={13} />}
-                  {p.card.restoreBtn}
-                </button>
-              ) : (
-                <div className="flex items-center justify-center gap-1.5 py-1.5 text-[12px] font-semibold text-emerald-600 dark:text-emerald-400">
-                  <CheckCircle2 size={13} />
-                  {p.card.invited}
-                </div>
-              )}
-            </div>
-          </motion.div>
-
-          {/* CV preview — below identity card */}
-          {rec.hasCv && (
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.08 }}
-              className="hr-glass-card overflow-hidden"
-            >
-              <div className="flex items-center justify-between px-3.5 py-2.5 border-b border-gray-100 dark:border-gray-800">
-                <div className="flex items-center gap-2 min-w-0">
-                  <FileText size={13} className="text-blue-600 dark:text-blue-400 shrink-0" />
-                  <p className={cn("text-[12px] font-bold truncate", portalHeadingAlt)}>
-                    {p.detail.cvTitle}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => void handleDownloadCv()}
-                  disabled={cvBusy}
-                  className="h-7 px-2 flex items-center gap-1 text-[11px] font-semibold text-primary hover:bg-violet-50 dark:hover:bg-violet-950/40 rounded-lg transition-colors disabled:opacity-50 shrink-0"
-                >
-                  {cvBusy ? <Loader2 size={11} className="animate-spin" /> : <Download size={11} />}
-                  {p.detail.cvDownload}
-                </button>
+                ) : (
+                  <div className="flex items-center gap-1 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+                    <CheckCircle2 size={11} /> {p.card.invited}
+                  </div>
+                )}
               </div>
-
-              {cvPreviewLoading ? (
-                <div className="h-[520px] flex items-center justify-center bg-gray-50 dark:bg-gray-900/40">
-                  <Loader2 size={20} className="animate-spin text-primary" />
-                </div>
-              ) : cvPreview && cvIsImage ? (
-                <button
-                  type="button"
-                  onClick={() => setCvLightbox(true)}
-                  className="group relative block w-full text-left max-h-[640px] overflow-y-auto bg-gray-50 dark:bg-gray-900/40 scrollbar-hide"
-                  title={p.detail.cvPreviewHint}
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={cvPreview.downloadUrl}
-                    alt={cvPreview.cvFileName || "CV"}
-                    referrerPolicy="no-referrer"
-                    className="w-full h-auto object-contain bg-white dark:bg-gray-950"
-                  />
-                  <span className="sticky bottom-0 inset-x-0 pointer-events-none flex justify-center pb-3 -mt-10">
-                    <span className="opacity-90 group-hover:opacity-100 transition-opacity flex items-center gap-1.5 text-white text-[11px] font-semibold px-2.5 py-1.5 rounded-lg bg-black/55 shadow-sm">
-                      <Maximize2 size={11} />
-                      {p.detail.cvPreviewOpen}
-                    </span>
-                  </span>
-                </button>
-              ) : cvPreview && cvIsPdf ? (
-                <div className="relative w-full bg-gray-50 dark:bg-gray-900/40">
-                  <iframe
-                    src={cvPreview.downloadUrl}
-                    title={cvPreview.cvFileName || "CV"}
-                    className="w-full h-[640px] bg-white dark:bg-gray-950"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setCvLightbox(true)}
-                    title={p.detail.cvPreviewHint}
-                    className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5 text-white text-[11px] font-semibold px-2.5 py-1.5 rounded-lg bg-black/55 shadow-sm hover:bg-black/70 transition-colors"
-                  >
-                    <Maximize2 size={11} />
-                    {p.detail.cvPreviewOpen}
-                  </button>
-                </div>
-              ) : cvPreview ? (
-                <button
-                  type="button"
-                  onClick={() => void handleDownloadCv()}
-                  className="w-full h-40 flex flex-col items-center justify-center gap-2 bg-gray-50 dark:bg-gray-900/40 hover:bg-gray-100 dark:hover:bg-gray-800/60 transition-colors"
-                >
-                  <FileText size={22} className="text-gray-400" />
-                  <span className={cn("text-[11px] font-medium px-3 text-center truncate max-w-full", portalSubtextAlt)}>
-                    {cvPreview.cvFileName}
-                  </span>
-                </button>
-              ) : (
-                <div className="h-40 flex items-center justify-center px-4">
-                  <p className={cn("text-[12px] text-center", portalSubtext)}>{p.detail.cvEmpty}</p>
-                </div>
-              )}
-            </motion.div>
-          )}
-
-          {/* Lý do đề xuất — hiển thị dưới CV */}
-          {rec.recommendationReason && (
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
-            >
-              <SectionCard title={p.detail.reason} icon={Sparkles}
-                iconBg="bg-amber-50 dark:bg-amber-950/40" iconColor="text-amber-600 dark:text-amber-400">
-                <p className={cn("text-[13px] leading-relaxed", portalHeadingAlt)}>
-                  {rec.recommendationReason}
-                </p>
-              </SectionCard>
-            </motion.div>
-          )}
+            </div>
+          </div>
         </div>
+      </motion.div>
 
-        {/* ── Right: candidate-profile style sections ── */}
+      {/* ② Recommendation Reason */}
+      {rec.recommendationReason && (
         <motion.div
-          initial={{ opacity: 0, y: 16 }}
+          initial={{ opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.05 }}
-          className="flex flex-col gap-5 min-w-0"
+          className="flex items-center gap-2 px-3.5 py-2 mb-5 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-100 dark:border-amber-900/40"
         >
-          {/* Heading */}
-          <h1 className={cn("text-[22px] font-[800]", portalHeadingAlt)}>{p.detail.profileTitle}</h1>
+          <Sparkles size={12} className="text-amber-500 dark:text-amber-400 shrink-0" />
+          <p className="text-[12px] leading-snug min-w-0 truncate">
+            <span className="font-bold text-amber-600 dark:text-amber-400 text-[10px] uppercase tracking-wide mr-1.5">
+              {p.detail.reason} ·
+            </span>
+            <span className={cn(portalHeadingAlt)}>{rec.recommendationReason}</span>
+          </p>
+        </motion.div>
+      )}
 
+      {/* ③ CV-JD Analysis + Skill Performance — side by side */}
+      {(typeof rec.fitPercent === "number" || rec.jdSkills.length > 0 || rec.skillScores.length > 0) && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.08 }}
+          className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-5 items-start"
+        >
+          {/* CV-JD Analysis */}
           {(typeof rec.fitPercent === "number" || rec.jdSkills.length > 0) && (
-            <SectionCard title={p.fit.title} icon={Target}
-              iconBg="bg-cyan-50 dark:bg-cyan-950/40" iconColor="text-cyan-600 dark:text-cyan-400">
+            <div className="hr-glass-card p-3.5">
+              <div className="flex items-center gap-2 mb-2.5">
+                <div className="w-6 h-6 rounded-lg bg-cyan-50 dark:bg-cyan-950/40 flex items-center justify-center shrink-0">
+                  <Target size={13} className="text-cyan-600 dark:text-cyan-400" />
+                </div>
+                <h3 className={cn("text-[14px] font-semibold", portalHeadingAlt)}>{p.fit.title}</h3>
+              </div>
 
-              {/* Percentage header */}
               {typeof rec.fitPercent === "number" && (
-                <div className="mb-5 pb-5 border-b border-gray-100 dark:border-gray-800">
-                  {/* Score + 3 mini-stat boxes */}
-                  <div className="flex items-stretch gap-4 mb-3">
-                    {/* Big percentage */}
-                    <div className="flex flex-col justify-center min-w-[68px] shrink-0">
+                <>
+                  {/* Stats row */}
+                  <div className="flex items-center gap-3 mb-2.5">
+                    <div className="flex flex-col shrink-0">
                       <div className="flex items-end gap-0.5 leading-none">
-                        <span className="text-[38px] font-black tabular-nums text-cyan-600 dark:text-cyan-400 leading-none">
+                        <span className="text-[30px] font-black tabular-nums text-cyan-600 dark:text-cyan-400 leading-none">
                           {rec.fitPercent}
                         </span>
-                        <span className="text-[16px] font-bold text-cyan-400 dark:text-cyan-500/70 mb-1.5">%</span>
+                        <span className="text-[13px] font-bold text-cyan-400 dark:text-cyan-500/70 mb-1">%</span>
                       </div>
-                      <p className={cn("text-[11px] mt-1 tabular-nums", portalSubtextAlt)}>
-                        {rec.matchedSkills.length} / {rec.matchedSkills.length + rec.missingOnCv.length}
+                      <p className={cn("text-[9px] font-bold uppercase tracking-wide mt-0.5", portalSubtextAlt)}>
+                        {p.fit.title}
                       </p>
                     </div>
-
-                    {/* Divider */}
-                    <div className="w-px bg-gray-100 dark:bg-gray-800 self-stretch" />
-
-                    {/* Mini stat tiles */}
-                    <div className="flex-1 grid grid-cols-3 gap-2">
-                      <div className="flex flex-col items-center justify-center py-2 px-1 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-900/40">
-                        <span className="text-[18px] font-black tabular-nums text-emerald-600 dark:text-emerald-400 leading-none">
-                          {rec.matchedSkills.length}
-                        </span>
-                        <p className="text-[9px] font-bold uppercase tracking-wider text-emerald-500/80 dark:text-emerald-400/70 mt-1">
-                          {p.fit.matched}
-                        </p>
+                    <div className="w-px h-10 bg-gray-100 dark:bg-gray-800 shrink-0" />
+                    <div className="flex gap-2 flex-1">
+                      <div className="flex-1 flex flex-col items-center py-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-900/40">
+                        <span className="text-[16px] font-black tabular-nums text-emerald-600 dark:text-emerald-400 leading-none">{rec.matchedSkills.length}</span>
+                        <p className="text-[8px] font-bold uppercase tracking-wide text-emerald-500/80 dark:text-emerald-400/70 mt-0.5">{p.fit.matched}</p>
                       </div>
-                      <div className="flex flex-col items-center justify-center py-2 px-1 rounded-xl bg-rose-50 dark:bg-rose-950/30 border border-rose-100 dark:border-rose-900/40">
-                        <span className="text-[18px] font-black tabular-nums text-rose-500 dark:text-rose-400 leading-none">
-                          {rec.missingOnCv.length}
-                        </span>
-                        <p className="text-[9px] font-bold uppercase tracking-wider text-rose-400/80 dark:text-rose-400/70 mt-1">
-                          {p.fit.missing}
-                        </p>
+                      <div className="flex-1 flex flex-col items-center py-1.5 rounded-lg bg-rose-50 dark:bg-rose-950/30 border border-rose-100 dark:border-rose-900/40">
+                        <span className="text-[16px] font-black tabular-nums text-rose-500 dark:text-rose-400 leading-none">{rec.missingOnCv.length}</span>
+                        <p className="text-[8px] font-bold uppercase tracking-wide text-rose-400/80 dark:text-rose-400/70 mt-0.5">{p.fit.missing}</p>
                       </div>
-                      <div className="flex flex-col items-center justify-center py-2 px-1 rounded-xl bg-blue-50 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/40">
-                        <span className="text-[18px] font-black tabular-nums text-blue-500 dark:text-blue-400 leading-none">
-                          {rec.extraOnCv.length}
-                        </span>
-                        <p className="text-[9px] font-bold uppercase tracking-wider text-blue-400/80 dark:text-blue-400/70 mt-1">
-                          {p.fit.extra}
-                        </p>
+                      <div className="flex-1 flex flex-col items-center py-1.5 rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/40">
+                        <span className="text-[16px] font-black tabular-nums text-blue-500 dark:text-blue-400 leading-none">{rec.extraOnCv.length}</span>
+                        <p className="text-[8px] font-bold uppercase tracking-wide text-blue-400/80 dark:text-blue-400/70 mt-0.5">{p.fit.extra}</p>
                       </div>
                     </div>
                   </div>
-
                   {/* Progress bar */}
-                  <div className="h-1.5 rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden">
+                  <div className="h-1 rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden mb-3">
                     <motion.div
-                      className={cn(
-                        "h-full rounded-full",
+                      className={cn("h-full rounded-full",
                         rec.fitPercent >= 70 ? "bg-emerald-500" : rec.fitPercent >= 40 ? "bg-amber-500" : "bg-cyan-400"
                       )}
                       initial={{ width: 0 }}
@@ -848,362 +745,435 @@ export function RecommendationDetail({ id }: { id: string }) {
                       transition={{ duration: 0.8, ease: "easeOut" }}
                     />
                   </div>
-                </div>
+                </>
               )}
 
-              {/* Skill chips — 3 categories */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-                {/* Khớp */}
+              {/* Skill columns */}
+              <div className="grid grid-cols-3 gap-2">
+                {/* Khớp — max 3 chips */}
                 <div>
-                  <div className="flex items-center gap-1.5 mb-2.5">
-                    <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-emerald-600 dark:text-emerald-400">
-                      {p.fit.matched}
-                    </p>
-                  </div>
+                  <p className="text-[9px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-400 mb-1 flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0 inline-block" />
+                    {p.fit.matched}
+                  </p>
                   {rec.matchedSkills.length > 0 ? (
-                    <div className="flex flex-wrap gap-1.5">
-                      {rec.matchedSkills.map((s) => {
+                    <div className="flex flex-wrap gap-1">
+                      {rec.matchedSkills.slice(0, 3).map((s) => {
                         const si = getSkillIcon(s);
                         const SIcon = si?.icon;
                         return (
-                          <span key={s} className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-md bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 border border-gray-200 dark:border-gray-700">
-                            {SIcon && <SIcon size={10} className={cn("shrink-0", si.className)} />}
+                          <span key={s} className="inline-flex items-center gap-0.5 text-[10px] font-medium px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300">
+                            {SIcon && <SIcon size={9} className={cn("shrink-0", si.className)} />}
                             {titleCase(s)}
                           </span>
                         );
                       })}
+                      {rec.matchedSkills.length > 3 && (
+                        <span className="inline-flex items-center text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400">
+                          +{rec.matchedSkills.length - 3}
+                        </span>
+                      )}
                     </div>
-                  ) : (
-                    <span className={cn("text-[12px] italic", portalSubtextAlt)}>—</span>
-                  )}
+                  ) : <span className={cn("text-[11px] italic", portalSubtextAlt)}>—</span>}
                 </div>
 
-                {/* Thiếu trên CV */}
+                {/* Thiếu — max 3 chips */}
                 <div>
-                  <div className="flex items-center gap-1.5 mb-2.5">
-                    <span className="w-2 h-2 rounded-full bg-rose-400 shrink-0" />
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-rose-500 dark:text-rose-400">
-                      {p.fit.missing}
-                    </p>
-                  </div>
+                  <p className="text-[9px] font-black uppercase tracking-widest text-rose-500 dark:text-rose-400 mb-1 flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-rose-400 shrink-0 inline-block" />
+                    {p.fit.missing}
+                  </p>
                   {rec.missingOnCv.length > 0 ? (
-                    <div className="flex flex-wrap gap-1.5">
-                      {rec.missingOnCv.map((s) => {
+                    <div className="flex flex-wrap gap-1">
+                      {rec.missingOnCv.slice(0, 3).map((s) => {
                         const si = getSkillIcon(s);
                         const SIcon = si?.icon;
                         return (
-                          <span key={s} className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-md bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 border border-gray-200 dark:border-gray-700">
-                            {SIcon && <SIcon size={10} className={cn("shrink-0", si.className)} />}
+                          <span key={s} className="inline-flex items-center gap-0.5 text-[10px] font-medium px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300">
+                            {SIcon && <SIcon size={9} className={cn("shrink-0", si.className)} />}
                             {titleCase(s)}
                           </span>
                         );
                       })}
+                      {rec.missingOnCv.length > 3 && (
+                        <span className="inline-flex items-center text-[10px] font-bold px-1.5 py-0.5 rounded bg-rose-50 dark:bg-rose-950/40 text-rose-500 dark:text-rose-400">
+                          +{rec.missingOnCv.length - 3}
+                        </span>
+                      )}
                     </div>
-                  ) : (
-                    <span className={cn("text-[12px] italic", portalSubtextAlt)}>—</span>
-                  )}
+                  ) : <span className={cn("text-[11px] italic", portalSubtextAlt)}>—</span>}
                 </div>
 
                 {/* Thêm trên CV */}
                 <div>
-                  <div className="flex items-center gap-1.5 mb-2.5">
-                    <span className="w-2 h-2 rounded-full bg-blue-400 shrink-0" />
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-blue-500 dark:text-blue-400">
-                      {p.fit.extra}
-                    </p>
-                  </div>
+                  <p className="text-[9px] font-black uppercase tracking-widest text-blue-500 dark:text-blue-400 mb-1 flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-blue-400 shrink-0 inline-block" />
+                    {p.fit.extra}
+                  </p>
                   {rec.extraOnCv.length > 0 ? (
-                    <div className="flex flex-wrap gap-1.5">
-                      {rec.extraOnCv.map((s) => {
+                    <div className="flex flex-wrap gap-1">
+                      {(extraOnCvExpanded ? rec.extraOnCv : rec.extraOnCv.slice(0, CHIP_LIMIT)).map((s) => {
                         const si = getSkillIcon(s);
                         const SIcon = si?.icon;
                         return (
-                          <span key={s} className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-md bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 border border-gray-200 dark:border-gray-700">
-                            {SIcon && <SIcon size={10} className={cn("shrink-0", si.className)} />}
+                          <span key={s} className="inline-flex items-center gap-0.5 text-[10px] font-medium px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300">
+                            {SIcon && <SIcon size={9} className={cn("shrink-0", si.className)} />}
                             {titleCase(s)}
                           </span>
                         );
                       })}
+                      {rec.extraOnCv.length > CHIP_LIMIT && !extraOnCvExpanded && (
+                        <button
+                          type="button"
+                          onClick={() => setExtraOnCvExpanded(true)}
+                          className="inline-flex items-center text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors"
+                        >
+                          +{rec.extraOnCv.length - CHIP_LIMIT}
+                        </button>
+                      )}
                     </div>
-                  ) : (
-                    <span className={cn("text-[12px] italic", portalSubtextAlt)}>—</span>
-                  )}
+                  ) : <span className={cn("text-[11px] italic", portalSubtextAlt)}>—</span>}
                 </div>
               </div>
-
-              {/* Skill scores — improved bars with icons */}
-              {rec.skillScores.length > 0 && (
-                <div className="mt-5 pt-4 border-t border-gray-100 dark:border-gray-800">
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 mb-3">
-                    {p.fit.skillScores}
-                  </p>
-                  <div className="space-y-3">
-                    {rec.skillScores.map((s) => {
-                      const si = getSkillIcon(s.skill);
-                      const SIcon = si?.icon;
-                      const pct = Math.min(100, Math.round(s.avgScore));
-                      const barColor = pct >= 85 ? "bg-emerald-500" : pct >= 70 ? "bg-amber-500" : "bg-cyan-500";
-                      const scoreColor = pct >= 85
-                        ? "text-emerald-600 dark:text-emerald-400"
-                        : pct >= 70 ? "text-amber-600 dark:text-amber-400"
-                        : "text-cyan-600 dark:text-cyan-400";
-                      return (
-                        <div key={s.skill} className="flex items-center gap-3">
-                          <div className="flex items-center gap-1.5 w-36 shrink-0">
-                            {SIcon
-                              ? <SIcon size={13} className={cn("shrink-0", si.className)} />
-                              : <span className="w-3.5 h-3.5 rounded-sm bg-gray-200 dark:bg-gray-700 shrink-0" />
-                            }
-                            <span className={cn("text-[12px] font-medium truncate", portalHeadingAlt)}>{capitalize(s.skill)}</span>
-                          </div>
-                          <div className="flex-1 h-2 rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden">
-                            <motion.div
-                              className={cn("h-full rounded-full", barColor)}
-                              initial={{ width: 0 }}
-                              animate={{ width: `${pct}%` }}
-                              transition={{ duration: 0.7, ease: "easeOut" }}
-                            />
-                          </div>
-                          <span className={cn("text-[12px] font-bold tabular-nums w-8 text-right", scoreColor)}>{pct}</span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-            </SectionCard>
+            </div>
           )}
 
-          {/* ① Thông tin liên hệ */}
-          <SectionCard title={t.jobseekerProfilePage.sectionContact} icon={User}>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-5">
-              <Field label={t.jobseekerProfilePage.fullName}>
-                <span className={cn("text-[14px] font-semibold", portalHeadingAlt)}>{rec.candidateName || "—"}</span>
-              </Field>
-              <Field label={p.detail.phone}>
-                {rec.phoneNumber ? (
-                  <a href={`tel:${rec.phoneNumber}`} className={cn("text-[14px] hover:text-primary transition-colors", portalHeadingAlt)}>
-                    {rec.phoneNumber}
-                  </a>
-                ) : (
-                  <span className={cn("text-[14px] italic", portalSubtextAlt)}>—</span>
-                )}
-              </Field>
-              <Field label="Email" full>
-                <div className="flex items-center gap-2">
-                  <Mail size={14} className="text-gray-400 shrink-0" />
-                  <a href={`mailto:${rec.candidateEmail}`} className={cn("text-[14px] hover:text-primary transition-colors break-all", portalHeadingAlt)}>
-                    {rec.candidateEmail}
-                  </a>
+          {/* Skill Performance */}
+          {rec.skillScores.length > 0 && (
+            <div className="hr-glass-card p-3.5">
+              <div className="flex items-center gap-2 mb-2.5">
+                <div className="w-6 h-6 rounded-lg bg-violet-50 dark:bg-violet-950/40 flex items-center justify-center shrink-0">
+                  <Star size={13} className="text-violet-500 dark:text-violet-400" />
                 </div>
-              </Field>
-              {rec.address && (
-                <Field label={p.detail.address} full>
-                  <span className={cn("text-[14px]", portalHeadingAlt)}>{rec.address}</span>
-                </Field>
-              )}
-            </div>
-          </SectionCard>
-
-          {/* ② Định hướng nghề nghiệp */}
-          <SectionCard title={t.jobseekerProfilePage.sectionCareer} icon={Target}>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-5 mb-5">
-              <Field label={p.card.targetRole}>
-                {rec.targetRole ? (
-                  <div className="flex items-center gap-2">
-                    <Target size={14} className="text-primary shrink-0" />
-                    <span className="text-[14px] font-semibold text-primary">{rec.targetRole}</span>
-                  </div>
-                ) : (
-                  <span className={cn("text-[14px] italic", portalSubtextAlt)}>—</span>
-                )}
-              </Field>
-              {rec.questionSetTitle && (
-                <Field label={p.card.questionSet}>
-                  <span className={cn("text-[14px]", portalHeadingAlt)}>{rec.questionSetTitle}</span>
-                </Field>
-              )}
-              {rec.completedAt && (
-                <Field label={p.detail.completedAt}>
-                  <div className="flex items-center gap-1.5">
-                    <Clock size={13} className="text-gray-400 shrink-0" />
-                    <span className={cn("text-[14px]", portalHeadingAlt)}>{formatRelativeTime(rec.completedAt, lang)}</span>
-                  </div>
-                </Field>
-              )}
-            </div>
-            {rec.bio && (
-              <Field label={p.detail.bio}>
-                <p className={cn("text-[14px] leading-relaxed whitespace-pre-line mt-1", portalHeadingAlt)}>{rec.bio}</p>
-              </Field>
-            )}
-          </SectionCard>
-
-          {/* ③ CV / Hồ sơ */}
-          <SectionCard title={p.detail.cvTitle} icon={FileText}
-            iconBg="bg-blue-50 dark:bg-blue-950/40" iconColor="text-blue-600 dark:text-blue-400">
-            {rec.hasCv ? (
-              <div className="flex flex-col gap-4">
-                {/* File row */}
-                <div className="flex items-center gap-3 p-3 rounded-xl border border-gray-200 dark:border-gray-800">
-                  <FileText size={15} className={cn("shrink-0", portalSubtextAlt)} />
-                  <div className="flex-1 min-w-0">
-                    <p className={cn("text-[13px] font-semibold truncate", portalHeadingAlt)}>{rec.cvFileName || "CV"}</p>
-                    {rec.cvUploadedAt && (
-                      <p className={cn("text-[11px]", portalSubtextAlt)}>{formatRelativeTime(rec.cvUploadedAt, lang)}</p>
-                    )}
-                  </div>
-                  <button type="button" onClick={() => void handleDownloadCv()} disabled={cvBusy}
-                    className="flex items-center gap-1.5 h-8 px-3 text-[12px] font-semibold text-primary hover:bg-violet-50 dark:hover:bg-violet-950/40 rounded-lg transition-colors shrink-0 disabled:opacity-50">
-                    {cvBusy ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />}
-                    {cvBusy ? p.detail.cvDownloading : p.detail.cvDownload}
-                  </button>
-                </div>
-                {/* Summary — collapsible with smooth animation */}
-                {rec.cvSummary && (
-                  <div className="border-t border-gray-100 dark:border-gray-800 pt-1">
-                    <button
-                      type="button"
-                      onClick={() => setCvSummaryOpen((v) => !v)}
-                      className="w-full flex items-center justify-between px-1 py-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
-                    >
-                      <p className={cn("text-[10px] font-bold uppercase tracking-wider", portalSubtextAlt)}>{p.detail.cvSummary}</p>
-                      <ChevronDown
-                        size={13}
-                        className={cn(
-                          "transition-transform duration-300 ease-in-out shrink-0",
-                          portalSubtextAlt,
-                          cvSummaryOpen ? "rotate-0" : "-rotate-90"
-                        )}
-                      />
-                    </button>
-                    <AnimatePresence initial={false}>
-                      {cvSummaryOpen && (
-                        <motion.div
-                          key="cv-summary"
-                          initial={{ height: 0, opacity: 0 }}
-                          animate={{ height: "auto", opacity: 1 }}
-                          exit={{ height: 0, opacity: 0 }}
-                          transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
-                          className="overflow-hidden"
-                        >
-                          <p className={cn("text-[13px] leading-relaxed px-1 pb-2", portalHeadingAlt)}>{rec.cvSummary}</p>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </div>
-                )}
-
-                {/* CV Skills — collapsible with smooth animation */}
-                {rec.cvSkills.length > 0 && (
-                  <div className="border-t border-gray-100 dark:border-gray-800 pt-1">
-                    <button
-                      type="button"
-                      onClick={() => setCvSkillsOpen((v) => !v)}
-                      className="w-full flex items-center justify-between px-1 py-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
-                    >
-                      <div className="flex items-center gap-1.5">
-                        <p className={cn("text-[10px] font-bold uppercase tracking-wider", portalSubtextAlt)}>{p.detail.cvSkills}</p>
-                        <span className={cn("text-[10px] font-semibold tabular-nums", portalSubtextAlt)}>({rec.cvSkills.length})</span>
+                <h3 className={cn("text-[14px] font-semibold", portalHeadingAlt)}>{p.fit.skillScores}</h3>
+              </div>
+              <div className="space-y-2">
+                {rec.skillScores.map((s) => {
+                  const si = getSkillIcon(s.skill);
+                  const SIcon = si?.icon;
+                  const pct = Math.min(100, Math.round(s.avgScore));
+                  const barColor = pct >= 85 ? "bg-emerald-500" : pct >= 70 ? "bg-amber-500" : "bg-cyan-500";
+                  const sc = pct >= 85
+                    ? "text-emerald-600 dark:text-emerald-400"
+                    : pct >= 70 ? "text-amber-600 dark:text-amber-400"
+                    : "text-cyan-600 dark:text-cyan-400";
+                  return (
+                    <div key={s.skill} className="flex items-center gap-2.5">
+                      <div className="flex items-center gap-1.5 w-28 shrink-0">
+                        {SIcon
+                          ? <SIcon size={12} className={cn("shrink-0", si.className)} />
+                          : <span className="w-3 h-3 rounded-sm bg-gray-200 dark:bg-gray-700 shrink-0" />
+                        }
+                        <span className={cn("text-[12px] font-medium truncate", portalHeadingAlt)}>{capitalize(s.skill)}</span>
                       </div>
-                      <ChevronDown
-                        size={13}
-                        className={cn(
-                          "transition-transform duration-300 ease-in-out shrink-0",
-                          portalSubtextAlt,
-                          cvSkillsOpen ? "rotate-0" : "-rotate-90"
-                        )}
-                      />
-                    </button>
-                    <AnimatePresence initial={false}>
-                      {cvSkillsOpen && (
+                      <div className="flex-1 h-1.5 rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden">
                         <motion.div
-                          key="cv-skills"
-                          initial={{ height: 0, opacity: 0 }}
-                          animate={{ height: "auto", opacity: 1 }}
-                          exit={{ height: 0, opacity: 0 }}
-                          transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
-                          className="overflow-hidden"
-                        >
-                          <div className="flex flex-wrap gap-1.5 px-1 pb-2 pt-1">
-                            {rec.cvSkills.map((s) => {
-                              const si = getSkillIcon(s);
-                              const SIcon = si?.icon;
-                              return (
-                                <span key={s} className="inline-flex items-center gap-1 text-[11px] font-medium px-2.5 py-1 rounded-md bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 border border-gray-200 dark:border-gray-700">
-                                  {SIcon && <SIcon size={10} className={cn("shrink-0", si.className)} />}
-                                  {titleCase(s)}
-                                </span>
-                              );
-                            })}
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </div>
-                )}
+                          className={cn("h-full rounded-full", barColor)}
+                          initial={{ width: 0 }}
+                          animate={{ width: `${pct}%` }}
+                          transition={{ duration: 0.7, ease: "easeOut" }}
+                        />
+                      </div>
+                      <span className={cn("text-[12px] font-bold tabular-nums w-7 text-right shrink-0", sc)}>{pct}</span>
+                    </div>
+                  );
+                })}
               </div>
-            ) : (
-              <p className={cn("text-[13px] italic", portalSubtextAlt)}>{p.detail.cvEmpty}</p>
-            )}
-          </SectionCard>
-
-          {/* ④ Kỹ năng chuyên môn — tạm ẩn theo yêu cầu */}
-
-          {/* ⑤ Liên kết mạng xã hội */}
-          {(rec.linkedInUrl || rec.githubUrl) && (
-            <SectionCard title={t.jobseekerProfilePage.sectionLinks} icon={LinkIcon}>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-5">
-                {rec.linkedInUrl && (
-                  <Field label={p.detail.linkedIn}>
-                    <a href={rec.linkedInUrl} target="_blank" rel="noopener noreferrer"
-                      className="text-[14px] text-primary hover:underline break-all">
-                      {rec.linkedInUrl}
-                    </a>
-                  </Field>
-                )}
-                {rec.githubUrl && (
-                  <Field label={p.detail.github}>
-                    <a href={rec.githubUrl} target="_blank" rel="noopener noreferrer"
-                      className="text-[14px] text-primary hover:underline break-all">
-                      {rec.githubUrl}
-                    </a>
-                  </Field>
-                )}
-              </div>
-            </SectionCard>
+            </div>
           )}
-
-          {/* ⑥ Phản hồi lời mời */}
-          {(rec.invitationResponseMessage || rec.invitationSharedPhoneNumber) && (
-            <SectionCard title={p.detail.candidateContactTitle} icon={Phone}
-              iconBg="bg-emerald-50 dark:bg-emerald-950/40" iconColor="text-emerald-600 dark:text-emerald-400">
-              <p className={cn("text-[12px] mb-4 -mt-2", portalSubtextAlt)}>{p.detail.candidateContactSubtitle}</p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-5">
-                {rec.invitationSharedPhoneNumber && (
-                  <Field label={p.detail.candidateContactPhone}>
-                    <a href={`tel:${rec.invitationSharedPhoneNumber}`}
-                      className={cn("text-[14px] hover:text-primary transition-colors", portalHeadingAlt)}>
-                      {rec.invitationSharedPhoneNumber}
-                    </a>
-                  </Field>
-                )}
-                {rec.invitationResponseMessage && (
-                  <Field label={p.detail.candidateContactMessage}
-                    full={!rec.invitationSharedPhoneNumber}>
-                    <p className={cn("text-[14px] leading-relaxed whitespace-pre-line", portalHeadingAlt)}>
-                      {rec.invitationResponseMessage}
-                    </p>
-                  </Field>
-                )}
-              </div>
-            </SectionCard>
-          )}
-
         </motion.div>
-      </div>
+      )}
 
+      {/* ④ Candidate Information — merged */}
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1 }}
+        className="hr-glass-card p-5 mb-5"
+      >
+        <div className="flex items-center gap-2 mb-4">
+          <div className="w-6 h-6 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center shrink-0">
+            <User size={13} className={portalSubtextAlt} />
+          </div>
+          <h3 className={cn("text-[14px] font-semibold", portalHeadingAlt)}>Thông tin ứng viên</h3>
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-3">
+          {/* Email */}
+          <div>
+            <div className="flex items-center gap-1 mb-0.5">
+              <Mail size={9} className="text-gray-400 shrink-0" />
+              <p className={cn("text-[10px] font-bold uppercase tracking-wider", portalSubtextAlt)}>Email</p>
+            </div>
+            <a href={`mailto:${rec.candidateEmail}`}
+              className={cn("text-[12px] hover:text-primary transition-colors truncate block", portalHeadingAlt)}>
+              {rec.candidateEmail}
+            </a>
+          </div>
+          {/* Phone */}
+          <div>
+            <div className="flex items-center gap-1 mb-0.5">
+              <Phone size={9} className="text-gray-400 shrink-0" />
+              <p className={cn("text-[10px] font-bold uppercase tracking-wider", portalSubtextAlt)}>{p.detail.phone}</p>
+            </div>
+            {rec.phoneNumber
+              ? <a href={`tel:${rec.phoneNumber}`} className={cn("text-[12px] hover:text-primary transition-colors", portalHeadingAlt)}>{rec.phoneNumber}</a>
+              : <span className={cn("text-[12px] italic", portalSubtextAlt)}>—</span>
+            }
+          </div>
+          {/* Target role */}
+          {rec.targetRole && (
+            <div>
+              <div className="flex items-center gap-1 mb-0.5">
+                <Briefcase size={9} className="text-gray-400 shrink-0" />
+                <p className={cn("text-[10px] font-bold uppercase tracking-wider", portalSubtextAlt)}>{p.card.targetRole}</p>
+              </div>
+              <span className="text-[12px] font-semibold text-primary">{rec.targetRole}</span>
+            </div>
+          )}
+          {/* Status */}
+          <div>
+            <div className="flex items-center gap-1 mb-0.5">
+              <CheckCircle2 size={9} className="text-gray-400 shrink-0" />
+              <p className={cn("text-[10px] font-bold uppercase tracking-wider", portalSubtextAlt)}>Trạng thái</p>
+            </div>
+            <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
+              <StatusChip status={rec.status} labels={p.card} />
+              {isCandidateAccepted(rec) && (
+                <span className="inline-flex text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400">
+                  {p.card.accepted}
+                </span>
+              )}
+            </div>
+          </div>
+          {/* Question set */}
+          {rec.questionSetTitle && (
+            <div>
+              <div className="flex items-center gap-1 mb-0.5">
+                <FileText size={9} className="text-gray-400 shrink-0" />
+                <p className={cn("text-[10px] font-bold uppercase tracking-wider", portalSubtextAlt)}>{p.card.questionSet}</p>
+              </div>
+              <span className={cn("text-[12px]", portalHeadingAlt)}>{rec.questionSetTitle}</span>
+            </div>
+          )}
+          {/* Completed at */}
+          {rec.completedAt && (
+            <div>
+              <div className="flex items-center gap-1 mb-0.5">
+                <Clock size={9} className="text-gray-400 shrink-0" />
+                <p className={cn("text-[10px] font-bold uppercase tracking-wider", portalSubtextAlt)}>{p.detail.completedAt}</p>
+              </div>
+              <span className={cn("text-[12px]", portalHeadingAlt)}>{formatRelativeTime(rec.completedAt, lang)}</span>
+            </div>
+          )}
+          {/* Address */}
+          {rec.address && (
+            <div>
+              <div className="flex items-center gap-1 mb-0.5">
+                <MapPin size={9} className="text-gray-400 shrink-0" />
+                <p className={cn("text-[10px] font-bold uppercase tracking-wider", portalSubtextAlt)}>{p.detail.address}</p>
+              </div>
+              <span className={cn("text-[12px]", portalHeadingAlt)}>{rec.address}</span>
+            </div>
+          )}
+          {/* LinkedIn */}
+          {rec.linkedInUrl && (
+            <div>
+              <div className="flex items-center gap-1 mb-0.5">
+                <FaLinkedinIn size={9} className="text-gray-400 shrink-0" />
+                <p className={cn("text-[10px] font-bold uppercase tracking-wider", portalSubtextAlt)}>LinkedIn</p>
+              </div>
+              <a href={rec.linkedInUrl} target="_blank" rel="noopener noreferrer"
+                className="text-[12px] text-primary hover:underline truncate block">{rec.linkedInUrl}</a>
+            </div>
+          )}
+          {/* GitHub */}
+          {rec.githubUrl && (
+            <div>
+              <div className="flex items-center gap-1 mb-0.5">
+                <FaGithub size={9} className="text-gray-400 shrink-0" />
+                <p className={cn("text-[10px] font-bold uppercase tracking-wider", portalSubtextAlt)}>GitHub</p>
+              </div>
+              <a href={rec.githubUrl} target="_blank" rel="noopener noreferrer"
+                className="text-[12px] text-primary hover:underline truncate block">{rec.githubUrl}</a>
+            </div>
+          )}
+          {/* Bio — full width */}
+          {rec.bio && (
+            <div className="col-span-2 sm:col-span-4">
+              <div className="flex items-center gap-1 mb-0.5">
+                <User size={9} className="text-gray-400 shrink-0" />
+                <p className={cn("text-[10px] font-bold uppercase tracking-wider", portalSubtextAlt)}>{p.detail.bio}</p>
+              </div>
+              <p className={cn("text-[12px] leading-relaxed", portalHeadingAlt)}>{rec.bio}</p>
+            </div>
+          )}
+        </div>
+
+        {/* Invitation response — only show when there's actual phone/message data */}
+        {(rec.invitationSharedPhoneNumber || rec.invitationResponseMessage) && (
+          <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-800">
+            <div className="flex items-center gap-1.5 mb-2">
+              <Phone size={12} className="text-emerald-500 shrink-0" />
+              <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+                {p.detail.candidateContactTitle}
+              </p>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-3">
+              {rec.invitationSharedPhoneNumber && (
+                <div>
+                  <p className={cn("text-[10px] font-bold uppercase tracking-wider mb-0.5", portalSubtextAlt)}>{p.detail.candidateContactPhone}</p>
+                  <a href={`tel:${rec.invitationSharedPhoneNumber}`}
+                    className={cn("text-[13px] hover:text-primary transition-colors", portalHeadingAlt)}>
+                    {rec.invitationSharedPhoneNumber}
+                  </a>
+                </div>
+              )}
+              {rec.invitationResponseMessage && (
+                <div className="col-span-2 sm:col-span-3">
+                  <p className={cn("text-[10px] font-bold uppercase tracking-wider mb-0.5", portalSubtextAlt)}>{p.detail.candidateContactMessage}</p>
+                  <p className={cn("text-[13px] leading-relaxed whitespace-pre-line", portalHeadingAlt)}>
+                    {rec.invitationResponseMessage}
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </motion.div>
+
+      {/* ⑤ CV section */}
+      {rec.hasCv && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.12 }}
+          className="hr-glass-card p-5 mb-5"
+        >
+          {/* Header row */}
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="w-6 h-6 rounded-lg bg-blue-50 dark:bg-blue-950/40 flex items-center justify-center shrink-0">
+                <FileText size={13} className="text-blue-600 dark:text-blue-400" />
+              </div>
+              <div className="min-w-0">
+                <h3 className={cn("text-[14px] font-semibold", portalHeadingAlt)}>{p.detail.cvTitle}</h3>
+                {cvFileName && (
+                  <p className={cn("text-[12px] font-semibold truncate", portalHeadingAlt)}>{cvFileName}</p>
+                )}
+              </div>
+            </div>
+            <div className="flex items-center gap-1 shrink-0">
+              {cvPreview && (cvIsImage || cvIsPdf) && (
+                <button type="button" onClick={() => setCvLightbox(true)}
+                  className="flex items-center gap-1.5 h-7 px-3 text-[11px] font-semibold text-primary border border-primary/30 dark:border-primary/40 hover:bg-primary/5 dark:hover:bg-primary/10 rounded-lg transition-colors">
+                  <Maximize2 size={11} /> {p.detail.cvView}
+                </button>
+              )}
+              <button type="button" onClick={() => void handleDownloadCv()} disabled={cvBusy}
+                className="flex items-center gap-1.5 h-7 px-3 text-[11px] font-medium text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors disabled:opacity-50">
+                {cvBusy ? <Loader2 size={11} className="animate-spin" /> : <Download size={11} />}
+                {p.detail.cvDownload}
+              </button>
+            </div>
+          </div>
+
+          {/* CV Summary — collapsible */}
+          {rec.cvSummary && (
+            <div className="border-t border-gray-100 dark:border-gray-800 pt-2 mb-2">
+              <button
+                type="button"
+                onClick={() => setCvSummaryOpen((v) => !v)}
+                className="w-full flex items-center justify-between mb-1 hover:opacity-75 transition-opacity"
+              >
+                <p className={cn("text-[10px] font-bold uppercase tracking-wider", portalSubtextAlt)}>{p.detail.cvSummary}</p>
+                <ChevronDown size={12} className={cn("transition-transform duration-200 shrink-0", portalSubtextAlt, cvSummaryOpen ? "rotate-0" : "-rotate-90")} />
+              </button>
+              <AnimatePresence initial={false}>
+                {cvSummaryOpen && (
+                  <motion.div
+                    key="cv-summary"
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="overflow-hidden"
+                  >
+                    <p className={cn(
+                      "text-[13px] leading-relaxed",
+                      portalHeadingAlt,
+                      !cvSummaryExpanded && "line-clamp-2"
+                    )}>
+                      {rec.cvSummary}
+                    </p>
+                    {!cvSummaryExpanded && rec.cvSummary.length > 100 && (
+                      <button
+                        type="button"
+                        onClick={() => setCvSummaryExpanded(true)}
+                        className="text-[11px] font-medium text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-400 transition-colors"
+                      >
+                        · Xem thêm
+                      </button>
+                    )}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          )}
+
+          {/* CV Skills — collapsible with truncation */}
+          {rec.cvSkills.length > 0 && (
+            <div className={cn("pt-2", rec.cvSummary ? "border-t border-gray-100 dark:border-gray-800" : "")}>
+              <button
+                type="button"
+                onClick={() => setCvSkillsOpen((v) => !v)}
+                className="w-full flex items-center justify-between mb-1 hover:opacity-75 transition-opacity"
+              >
+                <div className="flex items-center gap-1.5">
+                  <p className={cn("text-[10px] font-bold uppercase tracking-wider", portalSubtextAlt)}>{p.detail.cvSkills}</p>
+                  <span className={cn("text-[10px] font-semibold tabular-nums", portalSubtextAlt)}>({rec.cvSkills.length})</span>
+                </div>
+                <ChevronDown size={12} className={cn("transition-transform duration-200 shrink-0", portalSubtextAlt, cvSkillsOpen ? "rotate-0" : "-rotate-90")} />
+              </button>
+              <AnimatePresence initial={false}>
+                {cvSkillsOpen && (
+                  <motion.div
+                    key="cv-skills"
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="flex flex-wrap gap-1.5 pt-1">
+                      {(cvSkillsExpanded ? rec.cvSkills : rec.cvSkills.slice(0, SKILL_CHIP_LIMIT)).map((s) => {
+                        const si = getSkillIcon(s);
+                        const SIcon = si?.icon;
+                        return (
+                          <span key={s} className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-md bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700">
+                            {SIcon && <SIcon size={9} className={cn("shrink-0", si.className)} />}
+                            {titleCase(s)}
+                          </span>
+                        );
+                      })}
+                      {rec.cvSkills.length > SKILL_CHIP_LIMIT && !cvSkillsExpanded && (
+                        <button
+                          type="button"
+                          onClick={() => setCvSkillsExpanded(true)}
+                          className="inline-flex items-center text-[11px] font-semibold px-2 py-0.5 rounded-md bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors"
+                        >
+                          +{rec.cvSkills.length - SKILL_CHIP_LIMIT} kỹ năng khác
+                        </button>
+                      )}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          )}
+        </motion.div>
+      )}
+
+      {/* Modals */}
       {showInvite && (
         <InviteModal
           rec={rec}
