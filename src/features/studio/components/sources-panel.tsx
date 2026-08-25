@@ -20,7 +20,13 @@ import * as studioApi from "@/features/studio/services/studio.service";
 import { SampleJdModal } from "@/features/studio/components/sample-jd-modal";
 import { cn } from "@/lib/cn";
 import { useLanguage } from "@/shared/providers/language-context";
+import { useToast } from "@/shared/providers/toast-context";
 import { portalCard, portalHeading, portalSubtext } from "@/shared/utils/portal-ui";
+
+const JD_MAX_BYTES = 20 * 1024 * 1024; // 20 MB
+const DOC_MAX_BYTES = 20 * 1024 * 1024; // 20 MB
+const JD_VALID_EXTS = /\.(pdf|docx?|txt|jpe?g|png)$/i;
+const DOC_VALID_EXTS = /\.(pdf|docx?|txt)$/i;
 
 interface Props {
   jdContent: string;
@@ -138,6 +144,7 @@ export function SourcesPanel({
 }: Props) {
   const { t } = useLanguage();
   const src = t.studioPage.sources;
+  const { addToast } = useToast();
   const jdBlocked = locked || jdLocked;
   const [jdMode, setJdMode] = useState<JdMode>(jdFileName ? "upload" : "paste");
   const [sampleOpen, setSampleOpen] = useState(false);
@@ -182,6 +189,14 @@ export function SourcesPanel({
 
   async function handleJdFile(file: File | undefined | null) {
     if (!file) return;
+    if (!JD_VALID_EXTS.test(file.name)) {
+      addToast("error", src.jdInvalidType);
+      return;
+    }
+    if (file.size > JD_MAX_BYTES) {
+      addToast("error", src.jdFileTooLarge);
+      return;
+    }
     setUploading(true);
     try {
       // onUploadJd no longer throws on failure — it returns false instead, so
@@ -448,7 +463,19 @@ export function SourcesPanel({
             <label className="inline-flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-gray-200 py-2 text-[11px] font-medium text-gray-600 whitespace-nowrap transition-colors hover:border-primary/40 hover:bg-primary/5 hover:text-primary dark:border-gray-700 dark:text-gray-300 dark:hover:border-primary/50 dark:hover:bg-primary/10 dark:hover:text-primary">
               <Upload size={12} />
               {src.uploadDoc}
-              <input type="file" className="hidden" accept=".pdf,.docx,.txt" onChange={(e) => { const f = e.target.files?.[0]; if (f) void onUploadDocument(f); }} />
+              <input
+                type="file"
+                className="hidden"
+                accept=".pdf,.docx,.txt"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  e.target.value = "";
+                  if (!f) return;
+                  if (!DOC_VALID_EXTS.test(f.name)) { addToast("error", src.docInvalidType); return; }
+                  if (f.size > DOC_MAX_BYTES) { addToast("error", src.docFileTooLarge); return; }
+                  void onUploadDocument(f);
+                }}
+              />
             </label>
           </div>
 

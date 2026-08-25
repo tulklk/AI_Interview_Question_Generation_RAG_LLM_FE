@@ -1,10 +1,26 @@
 "use client";
 
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { Sparkles, ArrowRight, CheckCircle2 } from "lucide-react";
 import { useLanguage } from "@/shared/providers/language-context";
 import { CosmicField } from "@/features/guest/components/cosmic-field";
-import { MockupCard3D } from "@/features/guest/components/mockup-card-3d";
+
+// Lazy-load the heavy Canvas/RAF card — it is decorative and below the LCP text.
+// ssr:false avoids loading the canvas polyfill on the server.
+const MockupCard3D = dynamic(
+  () => import("@/features/guest/components/mockup-card-3d").then((m) => ({ default: m.MockupCard3D })),
+  {
+    ssr: false,
+    loading: () => (
+      <div
+        className="w-full rounded-2xl bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-900 animate-pulse"
+        style={{ height: "44rem" }}
+        aria-hidden="true"
+      />
+    ),
+  }
+);
 
 const LIGHT_PARTICLES = [
   { x: 12, y: 18, size: 5, color: "rgba(124, 58, 237, 0.35)", delay: 0, dur: 14 },
@@ -85,24 +101,23 @@ export function HeroSection() {
           </div>
 
           <h1 className="text-4xl sm:text-[2.5rem] lg:text-[2.75rem] font-extrabold text-gray-900 dark:text-gray-50 leading-[1.1] tracking-tight mb-5">
-            <span className="block animate-fade-up" style={{ animationDelay: "80ms" }}>
+            {/* animate-hero-fade-up: slides up without ever hiding text (no opacity:0 start) */}
+            <span className="block animate-hero-fade-up" style={{ animationDelay: "80ms" }}>
               {h.headline1}
             </span>
-            <span className="block animate-fade-up" style={{ animationDelay: "160ms" }}>
+            <span className="block animate-hero-fade-up" style={{ animationDelay: "160ms" }}>
               {h.headline2}{" "}
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#7C3AED] via-[#8B5CF6] to-[#22D3EE] bg-size-[200%_auto] animate-gradient-text">
                 {h.headlineGradient}
               </span>
             </span>
-            <span className="block animate-fade-up" style={{ animationDelay: "240ms" }}>
+            <span className="block animate-hero-fade-up" style={{ animationDelay: "240ms" }}>
               {h.headline3}
             </span>
           </h1>
 
-          <p
-            className="text-lg text-gray-500 dark:text-gray-400 leading-relaxed mb-8 max-w-md animate-fade-up"
-            style={{ animationDelay: "340ms" }}
-          >
+          {/* No animation on subtext — it is the LCP element; must be visible at first paint */}
+          <p className="text-lg text-gray-500 dark:text-gray-400 leading-relaxed mb-8 max-w-md">
             {h.subtext}
           </p>
 

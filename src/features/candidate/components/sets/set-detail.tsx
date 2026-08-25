@@ -121,11 +121,11 @@ function normalizeSkillName(skill: string): string {
 interface CatCfg { Icon: LucideIcon; bar: string; iconBg: string; iconText: string }
 
 const CAT_CFG: Record<string, CatCfg> = {
-  technical:         { Icon: Code2,        bar: "from-violet-500 to-indigo-500",  iconBg: "bg-violet-50 dark:bg-violet-950/40",  iconText: "text-violet-600 dark:text-violet-400"  },
-  behavioral:        { Icon: MessageSquare, bar: "from-emerald-500 to-teal-500",   iconBg: "bg-emerald-50 dark:bg-emerald-950/40", iconText: "text-emerald-600 dark:text-emerald-400" },
-  situational:       { Icon: Compass,       bar: "from-amber-500 to-orange-500",   iconBg: "bg-amber-50 dark:bg-amber-950/40",    iconText: "text-amber-600 dark:text-amber-400"    },
-  "problem-solving": { Icon: Bug,           bar: "from-blue-500 to-cyan-500",      iconBg: "bg-blue-50 dark:bg-blue-950/40",      iconText: "text-blue-600 dark:text-blue-400"      },
-  "system-design":   { Icon: Network,       bar: "from-indigo-500 to-purple-500",  iconBg: "bg-indigo-50 dark:bg-indigo-950/40",  iconText: "text-indigo-600 dark:text-indigo-400"  },
+  technical:         { Icon: Code2,        bar: "from-violet-500 to-indigo-500",  iconBg: "bg-violet-50 dark:bg-violet-950/30",   iconText: "text-violet-950 dark:text-violet-300"  },
+  behavioral:        { Icon: MessageSquare, bar: "from-emerald-500 to-teal-500",  iconBg: "bg-emerald-50 dark:bg-emerald-950/30", iconText: "text-emerald-950 dark:text-emerald-300" },
+  situational:       { Icon: Compass,       bar: "from-amber-500 to-orange-500",  iconBg: "bg-amber-50 dark:bg-amber-950/30",    iconText: "text-amber-950 dark:text-amber-300"    },
+  "problem-solving": { Icon: Bug,           bar: "from-blue-500 to-cyan-500",     iconBg: "bg-blue-50 dark:bg-blue-950/30",      iconText: "text-blue-950 dark:text-blue-300"      },
+  "system-design":   { Icon: Network,       bar: "from-indigo-500 to-purple-500", iconBg: "bg-indigo-50 dark:bg-indigo-950/30",  iconText: "text-indigo-950 dark:text-indigo-300"  },
 };
 const CAT_CFG_FALLBACK: CatCfg = {
   Icon: Layers,
@@ -512,7 +512,7 @@ export function SetDetail({ set }: SetDetailProps) {
             {heroSkills.map((skill) => (
               <span
                 key={skill}
-                className="text-[11px] font-medium px-2 py-0.5 rounded-full border border-violet-200 dark:border-violet-800/50 bg-violet-50/80 dark:bg-violet-950/30 text-violet-700 dark:text-violet-300"
+                className="text-[11px] font-medium px-2 py-0.5 rounded-full border border-violet-100 dark:border-violet-900/40 bg-violet-50/50 dark:bg-violet-950/20 text-gray-600 dark:text-gray-400"
               >
                 {normalizeSkillName(skill)}
               </span>
@@ -621,83 +621,138 @@ export function SetDetail({ set }: SetDetailProps) {
                   {questionGroups[0].count}/{set.totalQuestions} {p.questions} · 100%
                 </span>
               </div>
-            ) : (
+            ) : (() => {
               /* ── Multiple categories: icon + index + animated bar ── */
-              questionGroups.map((group, idx) => {
-                const { Icon, bar, iconBg, iconText } = getCatCfg(group.key);
-                return (
-                  <div
-                    key={group.key}
-                    className={cn("flex items-start gap-3 py-3", idx > 0 && "border-t border-gray-100 dark:border-gray-800")}
-                  >
-                    {/* Index */}
-                    <span className={cn("text-[10px] font-bold w-4 shrink-0 pt-0.5 tabular-nums", portalSubtextAlt)}>
-                      {String(idx + 1).padStart(2, "0")}
-                    </span>
-                    {/* Icon */}
-                    <div className={cn("w-7 h-7 rounded-md flex items-center justify-center shrink-0", iconBg)}>
-                      <Icon size={13} className={iconText} />
-                    </div>
-                    {/* Content */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between gap-3 mb-1">
-                        <div className="min-w-0">
-                          <p className={cn("text-[13px] font-semibold leading-tight", portalHeadingAlt)}>
-                            {getCatName(group.key)}
-                          </p>
-                          <p className={cn("text-[11px] leading-snug", portalSubtextAlt)}>
-                            {getCatDesc(group.key)}
-                          </p>
-                        </div>
-                        <span className={cn("shrink-0 text-[12px] font-bold tabular-nums whitespace-nowrap", portalHeadingAlt)}>
-                          {group.count} {p.questions}
+              // Shimmer cascade constants:
+              // Each bar's fill animation completes at roughly (480 + idx*70 + idx*60) ms.
+              // We wait for the slowest bar, then cascade the shimmer sweep top→bottom.
+              const n = questionGroups.length;
+              const SHIMMER_MS = 1400;          // duration of one sweep across a bar
+              const GAP_MS = 400;               // pause between consecutive sweeps
+              const CYCLE_MS = n * (SHIMMER_MS + GAP_MS) + 200; // full loop period
+              const SWEEP_PCT = +((SHIMMER_MS / CYCLE_MS) * 100).toFixed(2);
+              // Approx time when the LAST bar finishes its fill animation:
+              const FILL_DONE = 480 + (n - 1) * 70 + (n - 1) * 60 + 240;
+
+              return (
+                <>
+                  <style>{`
+                    @keyframes sd-bar-shimmer {
+                      0%            { transform: translateX(-150%); opacity: 1; }
+                      ${SWEEP_PCT - 0.05}% { transform: translateX(450%);  opacity: 1; }
+                      ${SWEEP_PCT}%  { transform: translateX(450%);  opacity: 0; }
+                      100%          { transform: translateX(450%);  opacity: 0; }
+                    }
+                  `}</style>
+                  {questionGroups.map((group, idx) => {
+                    const { Icon, bar, iconBg, iconText } = getCatCfg(group.key);
+                    // Each bar's shimmer is offset by idx * (SHIMMER_MS + GAP_MS) within the cycle
+                    const shimmerDelay = FILL_DONE + idx * (SHIMMER_MS + GAP_MS);
+                    return (
+                      <div
+                        key={group.key}
+                        className={cn("flex items-start gap-3 py-3", idx > 0 && "border-t border-gray-100 dark:border-gray-800")}
+                      >
+                        {/* Index */}
+                        <span className={cn("text-[10px] font-bold w-4 shrink-0 pt-0.5 tabular-nums", portalSubtextAlt)}>
+                          {String(idx + 1).padStart(2, "0")}
                         </span>
+                        {/* Icon */}
+                        <div className={cn("w-7 h-7 rounded-md flex items-center justify-center shrink-0", iconBg)}>
+                          <Icon size={13} className={iconText} />
+                        </div>
+                        {/* Content */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-start justify-between gap-3 mb-1">
+                            <div className="min-w-0">
+                              <p className={cn("text-[13px] font-semibold leading-tight", portalHeadingAlt)}>
+                                {getCatName(group.key)}
+                              </p>
+                              <p className={cn("text-[11px] leading-snug", portalSubtextAlt)}>
+                                {getCatDesc(group.key)}
+                              </p>
+                            </div>
+                            <span className={cn("shrink-0 text-[12px] font-bold tabular-nums whitespace-nowrap", portalHeadingAlt)}>
+                              {group.count} {p.questions}
+                            </span>
+                          </div>
+                          {/* Animated progress bar + shimmer sweep */}
+                          <div className="w-full h-1.5 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
+                            <div
+                              className={cn("relative h-full bg-linear-to-r rounded-full transition-[width] ease-out overflow-hidden", bar)}
+                              style={{
+                                width: planVisible ? `${group.percentage}%` : "0%",
+                                transitionDuration: `${480 + idx * 70}ms`,
+                                transitionDelay: planVisible ? `${idx * 60}ms` : "0ms",
+                              }}
+                            >
+                              {/* Shimmer light — cascades bar 1 → 2 → 3 … in sequence */}
+                              <span
+                                aria-hidden
+                                className="absolute inset-0 pointer-events-none"
+                                style={{
+                                  background: "linear-gradient(90deg,transparent 0%,rgba(255,255,255,0.55) 50%,transparent 100%)",
+                                  animation: planVisible
+                                    ? `sd-bar-shimmer ${CYCLE_MS}ms linear ${shimmerDelay}ms infinite`
+                                    : "none",
+                                }}
+                              />
+                            </div>
+                          </div>
+                          <span className={cn("text-[10px] tabular-nums", portalSubtextAlt)}>
+                            {group.percentage}%
+                          </span>
+                        </div>
                       </div>
-                      {/* Animated progress bar */}
-                      <div className="w-full h-1.5 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
-                        <div
-                          className={cn("h-full bg-gradient-to-r rounded-full transition-[width] ease-out", bar)}
-                          style={{
-                            width: planVisible ? `${group.percentage}%` : "0%",
-                            transitionDuration: `${480 + idx * 70}ms`,
-                            transitionDelay: planVisible ? `${idx * 60}ms` : "0ms",
-                          }}
-                        />
-                      </div>
-                      <span className={cn("text-[10px] tabular-nums", portalSubtextAlt)}>
-                        {group.percentage}%
-                      </span>
-                    </div>
-                  </div>
-                );
-              })
-            )}
+                    );
+                  })}
+                </>
+              );
+            })()}
           </div>
 
-          {/* ── Section: Key Skills ──────────────────────────────────────── */}
+          {/* ── Section: Key Skills (single row + overflow chip) ─────────── */}
           {set.skills.length > 0 && (
             <div className={cn("px-5 py-3 border-t", portalDivider)}>
-              <div className="flex flex-wrap items-center gap-1.5">
-                {/* Inline label chip */}
-                <span className={cn("text-[10px] font-bold uppercase tracking-wider pr-1 shrink-0", portalSubtextAlt)}>
+              <div className="flex flex-nowrap items-center gap-1.5 overflow-hidden">
+                {/* Label */}
+                <span className={cn("text-[10px] font-bold uppercase tracking-wider shrink-0 pr-1", portalSubtextAlt)}>
                   {p.skillsTitle}
                 </span>
-                {set.skills.map((skill) => {
-                  const si = getSkillIcon(skill);
-                  const SI = si?.icon;
+                {/* Visible skills — capped so the row stays single-line */}
+                {(() => {
+                  const MAX = 5;
+                  const visible = set.skills.slice(0, MAX);
+                  const extra = set.skills.length - MAX;
                   return (
-                    <span
-                      key={skill}
-                      className={cn(
-                        "inline-flex items-center gap-1 text-[11px] font-medium h-7 px-2.5 rounded-md",
-                        portalMutedBg, portalHeadingAlt,
+                    <>
+                      {visible.map((skill) => {
+                        const si = getSkillIcon(skill);
+                        const SI = si?.icon;
+                        return (
+                          <span
+                            key={skill}
+                            className={cn(
+                              "inline-flex items-center gap-1 text-[11px] font-medium h-7 px-2.5 rounded-md shrink-0 max-w-36 truncate",
+                              portalMutedBg, portalHeadingAlt,
+                            )}
+                          >
+                            {SI && <SI size={12} className={cn("shrink-0", si.className)} />}
+                            <span className="truncate">{normalizeSkillName(skill)}</span>
+                          </span>
+                        );
+                      })}
+                      {extra > 0 && (
+                        <span className={cn(
+                          "inline-flex items-center text-[11px] font-semibold h-7 px-2.5 rounded-md shrink-0",
+                          "bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400",
+                        )}>
+                          +{extra}
+                        </span>
                       )}
-                    >
-                      {SI && <SI size={12} className={cn("shrink-0", si.className)} />}
-                      {normalizeSkillName(skill)}
-                    </span>
+                    </>
                   );
-                })}
+                })()}
               </div>
             </div>
           )}
