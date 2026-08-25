@@ -169,7 +169,11 @@ export function useLogin() {
     setFieldErrors({});
 
     const errs: LoginFieldErrors = {};
-    if (!email.trim()) errs.email = lp.emailRequired;
+    if (!email.trim()) {
+      errs.email = lp.emailRequired;
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      errs.email = lp.emailInvalid;
+    }
     if (!password) errs.password = lp.passwordRequired;
     if (Object.keys(errs).length > 0) {
       setFieldErrors(errs);

@@ -168,8 +168,10 @@ export function CandidateProfile() {
   const [cvDeleteConfirmOpen, setCvDeleteConfirmOpen] = useState(false);
   const [showCvInsights, setShowCvInsights] = useState(false);
   const [showAllCvSkills, setShowAllCvSkills] = useState(false);
+  const [showAllSkills, setShowAllSkills] = useState(false);
   const [cvLightbox, setCvLightbox] = useState(false);
   const cvFileInputRef = useRef<HTMLInputElement>(null);
+  const [cvDragOver, setCvDragOver] = useState(false);
 
 
   const [stats, setStats] = useState<PracticeStats | null>(null);
@@ -212,10 +214,7 @@ export function CandidateProfile() {
     return () => { cancelled = true; };
   }, []);
 
-  function handleCvFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (!file) return;
+  function uploadCvFile(file: File) {
     if (!/\.(pdf|docx|jpe?g|png)$/i.test(file.name)) {
       addToast("error", p.cv.invalidFormat);
       return;
@@ -249,11 +248,46 @@ export function CandidateProfile() {
       .finally(() => setCvUploading(false));
   }
 
+  function handleCvFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    uploadCvFile(file);
+  }
+
+  function handleCvDrop(e: React.DragEvent) {
+    e.preventDefault();
+    setCvDragOver(false);
+    if (cvUploading || cvDeleting) return;
+    const file = e.dataTransfer.files?.[0];
+    if (!file) return;
+    uploadCvFile(file);
+  }
+
   function handleCvDelete() {
     setCvDeleting(true);
     deleteCv()
       .then(() => {
         setCv(null);
+        // Clear CV-derived skills from both form and snapshot so the
+        // "Kỹ năng chuyên môn" section empties along with the CV.
+        setForm((prev) => ({ ...prev, skills: [] }));
+        setSnapshot((prev) => ({ ...prev, skills: [] }));
+        // Persist skill-clearing to the backend so a page refresh does not
+        // bring the old skills back. Fire-and-forget — failure is silent
+        // because local state is already cleared and the next explicit
+        // profile save will also persist the empty techStack.
+        void updateCandidateProfile({
+          fullName: form.fullName.trim(),
+          targetRole: form.targetRole.trim() || undefined,
+          seniorityLevel: form.seniorityLevel || undefined,
+          techStack: [],
+          bio: form.bio.trim() || undefined,
+          phoneNumber: form.phoneNumber.trim() || undefined,
+          linkedInUrl: form.linkedInUrl.trim() || undefined,
+          githubUrl: form.githubUrl.trim() || undefined,
+          avatarUrl: form.avatarUrl.trim() || undefined,
+        }).catch(() => {/* non-critical — local state already cleared */});
         addToast("success", p.cv.deleteSuccess);
       })
       .catch(() => addToast("error", p.cv.deleteFailed))
@@ -566,7 +600,7 @@ export function CandidateProfile() {
           <div className="flex items-center justify-between px-3.5 py-2.5 border-b border-gray-100 dark:border-gray-800">
             <div className="flex items-center gap-2 min-w-0">
               <FileText size={13} className="text-blue-600 dark:text-blue-400 shrink-0" />
-              <p className={cn("text-[12px] font-bold truncate", portalHeadingAlt)}>{p.cv.title}</p>
+              <p className={cn("text-[12px] font-bold truncate", portalHeadingAlt)}>CV Review</p>
             </div>
             {cv?.downloadUrl && (
               <a
@@ -638,17 +672,8 @@ export function CandidateProfile() {
               </span>
             </a>
           ) : (
-            <div className="h-40 flex flex-col items-center justify-center gap-3 px-4 text-center">
-              <p className={cn("text-[12px]", portalSubtextAlt)}>{p.cv.emptyState}</p>
-              <button
-                type="button"
-                onClick={() => cvFileInputRef.current?.click()}
-                disabled={cvUploading}
-                className="shimmer-button flex items-center gap-1.5 h-8 px-3 text-[12px] font-semibold text-white hr-cta-btn rounded-lg disabled:opacity-60"
-              >
-                {cvUploading ? <Loader2 size={12} className="animate-spin" /> : <Upload size={12} />}
-                {cvUploading ? p.cv.uploading : p.cv.uploadBtn}
-              </button>
+            <div className="h-32 flex items-center justify-center">
+              <p className={cn("text-[12px] italic", portalSubtextAlt)}>Chưa cập nhật</p>
             </div>
           )}
         </motion.div>
@@ -860,6 +885,25 @@ export function CandidateProfile() {
             onChange={handleCvFileChange}
           />
 
+          {/* ── Drag-and-drop wrapper ── */}
+          <div
+            className="relative"
+            onDragOver={(e) => { e.preventDefault(); if (!cvUploading && !cvDeleting) setCvDragOver(true); }}
+            onDragEnter={(e) => { e.preventDefault(); if (!cvUploading && !cvDeleting) setCvDragOver(true); }}
+            onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setCvDragOver(false); }}
+            onDrop={handleCvDrop}
+          >
+            {/* Drag overlay — renders on top of any CV state */}
+            {cvDragOver && (
+              <div className="absolute inset-0 z-20 flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-primary bg-white/96 dark:bg-gray-900/96 pointer-events-none">
+                <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mb-3">
+                  <Upload size={26} className="text-primary" aria-hidden="true" />
+                </div>
+                <p className="text-sm font-bold text-primary">Thả file vào đây</p>
+                <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">PDF · DOCX · JPG · PNG</p>
+              </div>
+            )}
+
           {cvLoading ? (
             <div className="h-12 flex items-center justify-center">
               <Loader2 size={16} className="animate-spin text-gray-400" />
@@ -1002,11 +1046,16 @@ export function CandidateProfile() {
               </div>
             </div>
           ) : (
-            <div className="flex flex-col items-center gap-3 py-6 text-center">
+            <div className="flex flex-col items-center gap-3 py-8 text-center rounded-xl border-2 border-dashed border-gray-200 dark:border-gray-700 transition-colors duration-200">
               <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center", portalIconWell)}>
                 <FileText size={20} className="text-gray-400 dark:text-gray-500" />
               </div>
-              <p className={cn("text-[13px] max-w-xs", portalSubtextAlt)}>{p.cv.emptyState}</p>
+              <div>
+                <p className={cn("text-[13px] max-w-xs", portalSubtextAlt)}>{p.cv.emptyState}</p>
+                <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-1">
+                  Kéo thả file vào đây hoặc
+                </p>
+              </div>
               <button
                 type="button"
                 onClick={() => cvFileInputRef.current?.click()}
@@ -1016,33 +1065,67 @@ export function CandidateProfile() {
                 {cvUploading ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
                 {cvUploading ? p.cv.uploading : p.cv.uploadBtn}
               </button>
+              <p className="text-[10px] text-gray-400 dark:text-gray-600">PDF · DOCX · JPG · PNG</p>
             </div>
           )}
+          </div>{/* end drag-and-drop wrapper */}
         </SectionCard>
 
         {/* Skills */}
         <SectionCard title={p.sectionSkills} icon={Sparkles}>
-          <div className="flex flex-wrap gap-2 mb-4">
-            {form.skills.length === 0 && !editing ? (
-              <span className={cn("text-[14px] italic", portalSubtextAlt)}>{p.emptyField}</span>
-            ) : (
-              form.skills.map((skill) => (
-                <SkillBadge
-                  key={skill}
-                  skill={skill}
-                  editing={editing}
-                  onRemove={() =>
-                    setForm((prev) => ({
-                      ...prev,
-                      skills: prev.skills.filter((s) => s !== skill),
-                    }))
-                  }
-                />
-              ))
-            )}
-          </div>
+          {(() => {
+            const MAX_VISIBLE = 8;
+            const visibleSkills =
+              editing || showAllSkills
+                ? form.skills
+                : form.skills.slice(0, MAX_VISIBLE);
+            const hiddenCount = form.skills.length - MAX_VISIBLE;
+
+            return (
+              <>
+                <div className="flex flex-wrap gap-2 mb-3">
+                  {form.skills.length === 0 && !editing ? (
+                    <span className={cn("text-[14px] italic", portalSubtextAlt)}>
+                      {p.emptyField}
+                    </span>
+                  ) : (
+                    visibleSkills.map((skill) => (
+                      <SkillBadge
+                        key={skill}
+                        skill={skill}
+                        editing={editing}
+                        onRemove={() =>
+                          setForm((prev) => ({
+                            ...prev,
+                            skills: prev.skills.filter((s) => s !== skill),
+                          }))
+                        }
+                      />
+                    ))
+                  )}
+                </div>
+
+                {/* Show more / collapse — only in view mode */}
+                {!editing && hiddenCount > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setShowAllSkills((v) => !v)}
+                    className={cn(
+                      "text-[12px] font-semibold px-3 py-1.5 rounded-lg transition-colors",
+                      "text-primary bg-violet-50 hover:bg-violet-100 dark:bg-violet-950/30 dark:hover:bg-violet-950/50"
+                    )}
+                  >
+                    {showAllSkills
+                      ? "Thu gọn ↑"
+                      : `+${hiddenCount} kỹ năng khác`}
+                  </button>
+                )}
+              </>
+            );
+          })()}
+
           {editing && (
-            <div className="flex gap-2">
+            <div className="flex gap-2 mt-2">
               <input
                 type="text"
                 value={skillInput}

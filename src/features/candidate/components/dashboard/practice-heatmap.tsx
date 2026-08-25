@@ -100,8 +100,8 @@ export function PracticeHeatmap({ heatmap, source, labels, compact = false }: Pr
     return prevD.getMonth() !== month ? MONTHS[month] : null;
   }
 
-  const CELL = "w-3 h-3";
-  const GAP = "gap-[3px]";
+  const CELL = "w-3.5 h-3.5";
+  const GAP = "gap-1";
 
   return (
     <div className="flex flex-col">
@@ -185,11 +185,11 @@ export function PracticeHeatmap({ heatmap, source, labels, compact = false }: Pr
       {/* Legend — right-aligned in compact mode */}
       <div className={cn("flex items-center gap-1.5 mt-3 text-[10px]", portalSubtextAlt, compact && "justify-end")}>
         <span>{p.legendLess}</span>
-        <span className="w-2.5 h-2.5 rounded-[2px] bg-gray-100 dark:bg-gray-800/70" />
-        <span className="w-2.5 h-2.5 rounded-[2px] bg-emerald-200 dark:bg-emerald-900/60" />
-        <span className="w-2.5 h-2.5 rounded-[2px] bg-emerald-400 dark:bg-emerald-700/80" />
-        <span className="w-2.5 h-2.5 rounded-[2px] bg-emerald-500 dark:bg-emerald-500" />
-        <span className="w-2.5 h-2.5 rounded-[2px] bg-emerald-700 dark:bg-emerald-400" />
+        <span className="w-2.5 h-2.5 rounded-xs bg-gray-100 dark:bg-gray-800/70" />
+        <span className="w-2.5 h-2.5 rounded-xs bg-emerald-200 dark:bg-emerald-900/60" />
+        <span className="w-2.5 h-2.5 rounded-xs bg-emerald-400 dark:bg-emerald-700/80" />
+        <span className="w-2.5 h-2.5 rounded-xs bg-emerald-500 dark:bg-emerald-500" />
+        <span className="w-2.5 h-2.5 rounded-xs bg-emerald-700 dark:bg-emerald-400" />
         <span>{p.legendMore}</span>
       </div>
     </div>
