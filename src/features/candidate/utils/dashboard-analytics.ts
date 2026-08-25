@@ -291,6 +291,7 @@ function fillHeatmapWindow(byDay: Map<string, HeatmapDay>, weeks: number): Pract
 export interface RoleReadiness {
   role: string;
   company: string;
+  companyLogoUrl: string | null;
   sessionCount: number;
   avgScore: number | null;
   lastPracticedAt: string | undefined;
@@ -314,6 +315,7 @@ export function buildRoleReadiness(sessions: CompletedSessionSummary[]): RoleRea
       return {
         role,
         company: sorted[0]?.company ?? "",
+        companyLogoUrl: sorted[0]?.companyLogoUrl ?? null,
         sessionCount: list.length,
         avgScore: scored.length > 0 ? Math.round(scored.reduce((sum, s) => sum + s.score, 0) / scored.length) : null,
         lastPracticedAt: sorted[0]?.completedAt,

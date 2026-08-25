@@ -9,6 +9,16 @@ import { ScrollReveal } from "@/shared/components/common/scroll-reveal";
 import { TiltCard } from "@/shared/components/common/tilt-card";
 import { CosmicField } from "@/features/guest/components/cosmic-field";
 
+/**
+ * Transform a Cloudinary URL to request a small, optimised image.
+ * Inserts `w_{w},h_{h},c_fill,f_auto,q_auto` right after `/upload/` so
+ * Cloudinary serves a WebP thumbnail instead of the original high-res file.
+ * Non-Cloudinary URLs are returned unchanged.
+ */
+function cloudinaryResize(url: string, w: number, h: number): string {
+  return url.replace(/\/upload\/(?!w_\d)/, `/upload/w_${w},h_${h},c_fill,f_auto,q_auto/`);
+}
+
 // Predefined avatar colours — cycle through these for API items that have no avatarUrl
 const AVATAR_COLORS = [
   "bg-blue-500",
@@ -192,8 +202,12 @@ export function TestimonialsSection() {
                     {fb.authorAvatarUrl ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
-                        src={fb.authorAvatarUrl}
+                        src={cloudinaryResize(fb.authorAvatarUrl, 80, 80)}
                         alt={fb.authorName}
+                        width={80}
+                        height={80}
+                        loading="lazy"
+                        decoding="async"
                         className="w-10 h-10 rounded-full object-cover shrink-0 transition-transform duration-300 hover:scale-105"
                       />
                     ) : (

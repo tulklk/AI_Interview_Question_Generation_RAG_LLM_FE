@@ -1,11 +1,11 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import {
   Sparkles, BarChart2, RefreshCw, AlertCircle, History,
-  LineChart, Radar, CalendarDays, Briefcase, ListChecks, Bot,
+  LineChart, Radar, CalendarDays, Briefcase,
   PieChart, Building2,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
@@ -25,7 +25,6 @@ import { SkillRadarPanel } from "@/features/candidate/components/dashboard/skill
 import { WeakSkillsTable } from "@/features/candidate/components/dashboard/weak-skills-table";
 import { AiCoachPanel } from "@/features/candidate/components/dashboard/ai-coach-panel";
 import { RoleReadinessList } from "@/features/candidate/components/dashboard/role-readiness-list";
-import { WeeklyGoalCard } from "@/features/candidate/components/dashboard/weekly-goal-card";
 import { RecentSessionsList } from "@/features/candidate/components/dashboard/recent-sessions-list";
 import { ScoreDistributionChart } from "@/features/candidate/components/dashboard/score-distribution-chart";
 import { CompanyScoreChart } from "@/features/candidate/components/dashboard/company-score-chart";
@@ -47,21 +46,11 @@ export function CandidateDashboard() {
     setSetsLoading(true);
     setSetsError(false);
     listQuestionSets({ pageSize: 3, sortBy: "best_match" })
-      .then((res) => {
-        if (!cancelled) setRecommendedSets(res.items.slice(0, 3));
-      })
-      .catch(() => {
-        if (!cancelled) setSetsError(true);
-      })
-      .finally(() => {
-        if (!cancelled) setSetsLoading(false);
-      });
-    getBookmarkedSetIds().then((ids) => {
-      if (!cancelled) setBookmarkedIds(ids);
-    });
-    return () => {
-      cancelled = true;
-    };
+      .then((res) => { if (!cancelled) setRecommendedSets(res.items.slice(0, 3)); })
+      .catch(() => { if (!cancelled) setSetsError(true); })
+      .finally(() => { if (!cancelled) setSetsLoading(false); });
+    getBookmarkedSetIds().then((ids) => { if (!cancelled) setBookmarkedIds(ids); });
+    return () => { cancelled = true; };
   }, [setsReloadKey]);
 
   function handleBookmarkChange(setId: string, bookmarked: boolean) {
@@ -73,19 +62,20 @@ export function CandidateDashboard() {
     });
   }
 
-  const trendState = dashboard.loading ? "loading" : dashboard.error ? "error" : dashboard.performanceTrend.length < 2 ? "empty" : "ready";
-  const skillsState = dashboard.loading ? "loading" : dashboard.error ? "error" : !dashboard.skillAnalytics ? "empty" : "ready";
+  const trendState   = dashboard.loading ? "loading" : dashboard.error ? "error" : dashboard.performanceTrend.length < 2 ? "empty" : "ready";
+  const skillsState  = dashboard.loading ? "loading" : dashboard.error ? "error" : !dashboard.skillAnalytics ? "empty" : "ready";
   const heatmapState = dashboard.loading ? "loading" : dashboard.error ? "error" : dashboard.practiceHeatmap.activeDays === 0 ? "empty" : "ready";
-  const rolesState = dashboard.loading ? "loading" : dashboard.error ? "error" : dashboard.roleReadiness.length === 0 ? "empty" : "ready";
+  const rolesState   = dashboard.loading ? "loading" : dashboard.error ? "error" : dashboard.roleReadiness.length === 0 ? "empty" : "ready";
 
   const scoredSessions = dashboard.allSessions.filter((s) => s.score !== null);
-  const distState = dashboard.loading ? "loading" : dashboard.error ? "error" : scoredSessions.length < 2 ? "empty" : "ready";
-
-  const companies = new Set(scoredSessions.map((s) => s.company).filter(Boolean));
+  const distState    = dashboard.loading ? "loading" : dashboard.error ? "error" : scoredSessions.length < 2 ? "empty" : "ready";
+  const companies    = new Set(scoredSessions.map((s) => s.company).filter(Boolean));
   const companyState = dashboard.loading ? "loading" : dashboard.error ? "error" : companies.size < 2 ? "empty" : "ready";
 
   return (
     <div>
+
+      {/* ── Header: greeting + time range ── */}
       <DashboardHeader
         loading={dashboard.loading}
         stats={dashboard.stats}
@@ -94,6 +84,7 @@ export function CandidateDashboard() {
         onTimeRangeChange={dashboard.setTimeRange}
       />
 
+      {/* ── KPI overview: readiness score + 4 stat cards ── */}
       <KpiGrid
         loading={dashboard.loading}
         stats={dashboard.stats}
@@ -107,100 +98,100 @@ export function CandidateDashboard() {
         durationSparkline={dashboard.durationSparkline}
       />
 
-      <div className="mb-6">
+      {/* ══════════════════════════════════════════════════
+          ZONE A  —  Performance
+          [Xu hướng điểm số (2/3)] | [Sẵn sàng theo vị trí (1/3)]
+      ══════════════════════════════════════════════════ */}
+      <div className="grid grid-cols-1 xl:grid-cols-[1fr_340px] gap-6 mb-6">
         <ChartCard
           title={p.trendChart.title}
           subtitle={p.trendChart.subtitle}
-          icon={LineChart}
-          iconBg="bg-blue-100 dark:bg-blue-950/50"
-          iconColor="text-blue-600 dark:text-blue-400"
           state={trendState}
           emptyIcon={LineChart}
           emptyTitle={p.trendChart.empty}
           errorLabel={p.trendChart.error}
           retryLabel={p.retryBtn}
           onRetry={dashboard.reload}
-          minHeight={260}
+          minHeight={220}
         >
           <PerformanceTrendChart data={dashboard.performanceTrend} />
         </ChartCard>
+
+        <div id="role-readiness" className="scroll-mt-20">
+          <ChartCard
+            title={p.roles.title}
+            subtitle={p.roles.subtitle}
+            state={rolesState}
+            emptyIcon={Briefcase}
+            emptyTitle={p.roles.empty}
+            errorLabel={p.trendChart.error}
+            retryLabel={p.retryBtn}
+            onRetry={dashboard.reload}
+            minHeight={220}
+          >
+            <div className="max-h-66 overflow-y-auto pr-0.5">
+              <RoleReadinessList roles={dashboard.roleReadiness} />
+            </div>
+          </ChartCard>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+      {/* ══════════════════════════════════════════════════
+          ZONE B  —  Analytics deep-dive  (3 columns)
+          [Phân bố điểm] | [Radar kỹ năng] | [Điểm theo công ty]
+      ══════════════════════════════════════════════════ */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-6">
         <ChartCard
           title={p.scoreDistribution.title}
           subtitle={p.scoreDistribution.subtitle}
-          icon={PieChart}
-          iconBg="bg-violet-100 dark:bg-violet-950/50"
-          iconColor="text-violet-600 dark:text-violet-400"
           state={distState}
           emptyIcon={PieChart}
           emptyTitle={p.scoreDistribution.empty}
           errorLabel={p.trendChart.error}
           retryLabel={p.retryBtn}
           onRetry={dashboard.reload}
-          minHeight={220}
+          minHeight={200}
         >
           <ScoreDistributionChart sessions={dashboard.allSessions} />
         </ChartCard>
 
         <ChartCard
-          title={p.companyScore.title}
-          subtitle={p.companyScore.subtitle}
-          icon={Building2}
-          iconBg="bg-teal-100 dark:bg-teal-950/50"
-          iconColor="text-teal-600 dark:text-teal-400"
-          state={companyState}
-          emptyIcon={Building2}
-          emptyTitle={p.companyScore.empty}
-          errorLabel={p.trendChart.error}
-          retryLabel={p.retryBtn}
-          onRetry={dashboard.reload}
-          minHeight={220}
-        >
-          <CompanyScoreChart sessions={dashboard.allSessions} />
-        </ChartCard>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        <ChartCard
           title={p.skills.title}
           subtitle={p.skills.subtitle}
-          icon={Radar}
-          iconBg="bg-indigo-100 dark:bg-indigo-950/50"
-          iconColor="text-indigo-600 dark:text-indigo-400"
           state={skillsState}
           emptyIcon={Radar}
           emptyTitle={p.skills.empty}
           errorLabel={p.trendChart.error}
           retryLabel={p.retryBtn}
           onRetry={dashboard.reload}
-          minHeight={280}
+          minHeight={200}
         >
           {dashboard.skillAnalytics && <SkillRadarPanel skillAnalytics={dashboard.skillAnalytics} />}
         </ChartCard>
 
-        <div className="hr-glass-card p-5 sm:p-6">
-          <div className="flex items-center gap-2.5 mb-4">
-            <div className="w-8 h-8 rounded-xl bg-violet-100 dark:bg-violet-950/50 flex items-center justify-center shrink-0">
-              <Bot size={15} className="text-violet-600 dark:text-violet-400" />
-            </div>
-            <div>
-              <h2 className={cn("text-[15px] font-bold leading-tight", portalHeadingAlt)}>{p.coach.title}</h2>
-              <p className={cn("text-[11px] mt-0.5", portalSubtextAlt)}>{p.coach.subtitle}</p>
-            </div>
-          </div>
-          <AiCoachPanel recommendations={dashboard.aiRecommendations} loading={dashboard.loading} />
-        </div>
+        <ChartCard
+          title={p.companyScore.title}
+          subtitle={p.companyScore.subtitle}
+          state={companyState}
+          emptyIcon={Building2}
+          emptyTitle={p.companyScore.empty}
+          errorLabel={p.trendChart.error}
+          retryLabel={p.retryBtn}
+          onRetry={dashboard.reload}
+          minHeight={200}
+        >
+          <CompanyScoreChart sessions={dashboard.allSessions} />
+        </ChartCard>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+      {/* ══════════════════════════════════════════════════
+          ZONE C  —  Activity & Guidance  (2 columns)
+          [Lịch luyện tập] | [AI Coach  +  Mục tiêu tuần stacked]
+      ══════════════════════════════════════════════════ */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6 lg:items-start">
         <ChartCard
           title={p.heatmap.title}
           subtitle={p.heatmap.subtitle}
-          icon={CalendarDays}
-          iconBg="bg-emerald-100 dark:bg-emerald-950/50"
-          iconColor="text-emerald-600 dark:text-emerald-400"
           state={heatmapState}
           emptyIcon={CalendarDays}
           emptyTitle={p.heatmap.empty}
@@ -212,50 +203,43 @@ export function CandidateDashboard() {
           <PracticeHeatmap heatmap={dashboard.practiceHeatmap} />
         </ChartCard>
 
+        {/* Right column: AI Coach */}
         <div className="hr-glass-card p-5 sm:p-6">
-          <h2 className={cn("text-[15px] font-bold leading-tight mb-4", portalHeadingAlt)}>{p.weeklyGoal.title}</h2>
-          <WeeklyGoalCard sessions={dashboard.allSessions} />
+          <div className="mb-4">
+            <h2 className={cn("text-[15px] font-bold leading-tight", portalHeadingAlt)}>{p.coach.title}</h2>
+            <p className={cn("text-[11px] mt-0.5", portalSubtextAlt)}>{p.coach.subtitle}</p>
+          </div>
+          <AiCoachPanel recommendations={dashboard.aiRecommendations} loading={dashboard.loading} />
         </div>
       </div>
 
-      <div id="role-readiness" className="scroll-mt-20 mb-6">
-        <ChartCard
-          title={p.roles.title}
-          subtitle={p.roles.subtitle}
-          icon={Briefcase}
-          iconBg="bg-amber-100 dark:bg-amber-950/50"
-          iconColor="text-amber-600 dark:text-amber-400"
-          state={rolesState}
-          emptyIcon={Briefcase}
-          emptyTitle={p.roles.empty}
-          errorLabel={p.trendChart.error}
-          retryLabel={p.retryBtn}
-          onRetry={dashboard.reload}
-          minHeight={140}
-        >
-          <RoleReadinessList roles={dashboard.roleReadiness} />
-        </ChartCard>
-      </div>
-
+      {/* ══════════════════════════════════════════════════
+          ZONE D  —  Weak skills  (conditional)
+      ══════════════════════════════════════════════════ */}
       {dashboard.skillAnalytics && dashboard.skillAnalytics.skills.some((s) => s.score < 80) && (
         <div className="hr-glass-card p-5 sm:p-6 mb-6">
-          <div className="flex items-center gap-2.5 mb-4">
-            <div className="w-8 h-8 rounded-xl bg-rose-100 dark:bg-rose-950/50 flex items-center justify-center shrink-0">
-              <ListChecks size={15} className="text-rose-600 dark:text-rose-400" />
-            </div>
-            <h2 className={cn("text-[15px] font-bold leading-tight", portalHeadingAlt)}>{p.weakSkillsTable.title}</h2>
-          </div>
+          <h2 className={cn("text-[15px] font-bold leading-tight mb-4", portalHeadingAlt)}>{p.weakSkillsTable.title}</h2>
           <WeakSkillsTable skills={dashboard.skillAnalytics.skills} />
         </div>
       )}
 
-      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="hr-glass-card overflow-hidden mb-6">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/60">
+      {/* ══════════════════════════════════════════════════
+          ZONE E  —  Recent sessions
+      ══════════════════════════════════════════════════ */}
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="hr-glass-card overflow-hidden mb-6"
+      >
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-800 bg-gray-50/80 dark:bg-gray-800/60">
           <div>
-            <h2 className={cn("text-[15px] font-[700]", portalHeadingAlt)}>{p.recentTitle}</h2>
+            <h2 className={cn("text-[15px] font-bold", portalHeadingAlt)}>{p.recentTitle}</h2>
             <p className={cn("text-[12px]", portalSubtextAlt)}>{p.recentSubtitle}</p>
           </div>
-          <Link href="/candidate/history" className="text-[12px] font-[600] text-primary hover:text-primary-hover transition-colors">
+          <Link
+            href="/candidate/history"
+            className="text-[12px] font-semibold text-primary hover:text-primary-hover transition-colors"
+          >
             {p.viewAllHistory}
           </Link>
         </div>
@@ -270,7 +254,11 @@ export function CandidateDashboard() {
           <div className="p-5 flex items-center justify-center gap-3">
             <AlertCircle size={16} className="text-red-500 shrink-0" />
             <p className={cn("text-[13px]", portalSubtextAlt)}>{p.loadFailed}</p>
-            <button type="button" onClick={dashboard.reload} className="flex items-center gap-1.5 text-[12px] font-semibold text-primary hover:underline">
+            <button
+              type="button"
+              onClick={dashboard.reload}
+              className="flex items-center gap-1.5 text-[12px] font-semibold text-primary hover:underline"
+            >
               <RefreshCw size={12} />
               {p.retryBtn}
             </button>
@@ -286,13 +274,19 @@ export function CandidateDashboard() {
         )}
       </motion.div>
 
+      {/* ══════════════════════════════════════════════════
+          ZONE F  —  Recommended question sets  (3-col grid)
+      ══════════════════════════════════════════════════ */}
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
         <div className="flex items-center justify-between mb-5">
           <div>
-            <h2 className={cn("text-[20px] font-[700]", portalHeadingAlt)}>{p.recommendedTitle}</h2>
+            <h2 className={cn("text-[20px] font-bold", portalHeadingAlt)}>{p.recommendedTitle}</h2>
             <p className={cn("text-[14px] mt-0.5", portalSubtextAlt)}>{p.recommendedSubtitle}</p>
           </div>
-          <Link href="/candidate/practice" className="flex items-center gap-1 text-[13px] font-[600] text-primary hover:text-primary-hover transition-colors">
+          <Link
+            href="/candidate/practice"
+            className="flex items-center gap-1 text-[13px] font-semibold text-primary hover:text-primary-hover transition-colors"
+          >
             {p.viewAllSets}
             <BarChart2 size={13} />
           </Link>
@@ -301,14 +295,18 @@ export function CandidateDashboard() {
         {setsLoading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="h-56 rounded-xl bg-gray-100 dark:bg-gray-800 animate-pulse" />
+              <div key={i} className="h-64 rounded-xl bg-gray-100 dark:bg-gray-800 animate-pulse" />
             ))}
           </div>
         ) : setsError ? (
           <div className="flex items-center justify-center gap-3 py-8">
             <AlertCircle size={16} className="text-red-500 shrink-0" />
             <p className={cn("text-[13px]", portalSubtextAlt)}>{p.loadFailed}</p>
-            <button type="button" onClick={() => setSetsReloadKey((k) => k + 1)} className="flex items-center gap-1.5 text-[12px] font-semibold text-primary hover:underline">
+            <button
+              type="button"
+              onClick={() => setSetsReloadKey((k) => k + 1)}
+              className="flex items-center gap-1.5 text-[12px] font-semibold text-primary hover:underline"
+            >
               <RefreshCw size={12} />
               {p.retryBtn}
             </button>
@@ -320,6 +318,7 @@ export function CandidateDashboard() {
             {recommendedSets.map((set, i) => (
               <motion.div
                 key={set.id}
+                className="h-full"
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.08 }}

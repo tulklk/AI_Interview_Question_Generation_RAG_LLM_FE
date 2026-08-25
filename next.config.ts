@@ -35,6 +35,11 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "**.googleusercontent.com",
       },
+      {
+        // Cloudinary CDN — avatar images for testimonials / user profiles
+        protocol: "https",
+        hostname: "res.cloudinary.com",
+      },
     ],
   },
 };

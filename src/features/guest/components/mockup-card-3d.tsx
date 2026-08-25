@@ -395,7 +395,7 @@ export function MockupCard3D({
                   const cfg = KEYWORD_ICONS[k]; const Icon = cfg?.icon;
                   return (
                     <span key={k} className="inline-flex items-center gap-1 text-[11px] font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-full">
-                      {Icon && <Icon size={11} className={cfg.className} />}{k}
+                      {Icon && <Icon size={11} aria-hidden="true" className={cfg.className} />}{k}
                     </span>
                   );
                 })}
@@ -409,7 +409,7 @@ export function MockupCard3D({
               <p className="text-[13px] font-semibold text-gray-800 dark:text-gray-100 leading-snug mb-2.5 line-clamp-2 shrink-0">{question}</p>
               <div className="rounded-lg bg-lavender dark:bg-primary/10 border border-primary/15 px-3 py-2.5 flex-1 min-h-0 flex flex-col">
                 <div className="flex items-center gap-1 mb-1.5 shrink-0">
-                  <Sparkles size={10} className="text-primary shrink-0" />
+                  <Sparkles size={10} className="text-primary shrink-0" aria-hidden="true" />
                   <span className="text-[10px] font-semibold text-primary">{aiLabel}</span>
                 </div>
                 <p className="text-[11px] text-gray-600 dark:text-gray-300 leading-relaxed overflow-hidden flex-1">{aiAnswer}</p>

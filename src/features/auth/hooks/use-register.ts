@@ -147,9 +147,11 @@ export function useRegister(registerRole: RegisterRoleKey = "hr") {
 
   function validateStep1(): boolean {
     const errors: RegisterFieldErrors = {};
-    if (!fullName.trim()) errors.fullName = "Full name is required";
-    if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-      errors.email = "Email is required";
+    if (!fullName.trim()) errors.fullName = rp.fullNameRequired;
+    if (!email.trim()) {
+      errors.email = rp.emailInvalid;
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      errors.email = rp.emailInvalid;
     }
     if (password.length < 8) {
       errors.password = rp.passwordTooShort;
@@ -233,8 +235,8 @@ export function useRegister(registerRole: RegisterRoleKey = "hr") {
     }
 
     const errors: RegisterFieldErrors = {};
-    if (!companyName.trim()) errors.companyName = "Company name is required";
-    if (!jobTitle.trim()) errors.jobTitle = "Job title is required";
+    if (!companyName.trim()) errors.companyName = rp.companyNameRequired;
+    if (!jobTitle.trim()) errors.jobTitle = rp.jobTitleRequired;
     if (Object.keys(errors).length > 0) {
       setFieldErrors(errors);
       return;
