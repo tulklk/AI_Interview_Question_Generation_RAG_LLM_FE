@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import { Suspense, useEffect, useRef, useState } from "react";
+import { ScrollToTopButton } from "@/shared/components/ui/scroll-to-top-button";
 import { usePathname } from "next/navigation";
 import { Sidebar } from "./sidebar";
 import { TopHeader } from "./top-header";
@@ -39,12 +40,23 @@ export function AppShell({ children, breadcrumb, pageTitle, fullWidth = false }:
   const { addToast } = useToast();
   const welcomedRef = useRef(false);
   const prevPlanIdRef = useRef<string | null>(null);
+  const mainRef = useRef<HTMLElement>(null);
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [showCelebration, setShowCelebration] = useState(false);
   const [showRevoked, setShowRevoked] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [scrolledDown, setScrolledDown] = useState(false);
+
+  // Native scroll listener — more reliable than React's synthetic onScroll
+  useEffect(() => {
+    const el = mainRef.current;
+    if (!el) return;
+    const handler = () => setScrolledDown(el.scrollTop > 200);
+    el.addEventListener("scroll", handler, { passive: true });
+    return () => el.removeEventListener("scroll", handler);
+  }, []);
 
   // Show Premium celebration once per plan period (payment OR admin grant).
   // Only clear the localStorage flag on a genuine HR_PREMIUM → HR_FREE downgrade
@@ -83,6 +95,9 @@ export function AppShell({ children, breadcrumb, pageTitle, fullWidth = false }:
   // Close sidebar on route change
   useEffect(() => {
     setSidebarOpen(false);
+    // Reset scroll-to-top when navigating to a new page
+    setScrolledDown(false);
+    if (mainRef.current) mainRef.current.scrollTop = 0;
   }, [pathname]);
 
   // Notifications từ Studio projects (Generated) — không gọi V1 jobs.
@@ -183,7 +198,10 @@ export function AppShell({ children, breadcrumb, pageTitle, fullWidth = false }:
               avatarUrl: resolveAvatarUrl(user),
             }}
           />
-          <main className="flex-1 overflow-y-auto overflow-x-hidden hr-main-bg scrollbar-hide">
+          <main
+            ref={mainRef}
+            className="flex-1 overflow-y-auto overflow-x-hidden hr-main-bg scrollbar-hide"
+          >
             <div className="hr-aurora-orb hr-aurora-orb--purple w-125 h-125 -top-30 -left-20" aria-hidden="true" />
             <div className="hr-aurora-orb hr-aurora-orb--cyan w-100 h-100 top-[30%] -right-15" aria-hidden="true" />
             <div className="hr-aurora-orb hr-aurora-orb--violet w-87.5 h-87.5 -bottom-20 left-[30%]" aria-hidden="true" />
@@ -200,6 +218,20 @@ export function AppShell({ children, breadcrumb, pageTitle, fullWidth = false }:
           <GenerationProgressBadge />
           <StudioProgressBadge />
         </div>
+      </div>
+
+      {/* Scroll-to-top: outer div owns fixed position (avoids `relative` class conflict
+          inside ScrollToTopButton). On studio pages push higher to clear StudioProgressBadge. */}
+      <div className={
+        pathname.startsWith("/hr/studio")
+          ? "fixed bottom-32 right-6 z-60"
+          : "fixed bottom-20 right-6 z-60"
+      }>
+        <ScrollToTopButton
+          visible={scrolledDown}
+          onClick={() => mainRef.current?.scrollTo({ top: 0, behavior: "smooth" })}
+          positionClassName=""
+        />
       </div>
 
       <PremiumCelebrationDialog

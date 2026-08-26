@@ -169,7 +169,7 @@ export function JobseekerSidebar({ open, onClose, onOpenUpgrade }: JobseekerSide
   return (
     <>
       {/* Desktop sidebar */}
-      <aside className="hidden lg:flex flex-col w-62.5 shrink-0 h-screen hr-sidebar overflow-y-auto">
+      <aside className="hidden lg:flex flex-col w-68 shrink-0 h-screen hr-sidebar overflow-y-auto">
         {sidebarContent}
       </aside>
 
