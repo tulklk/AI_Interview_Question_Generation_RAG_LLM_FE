@@ -5,7 +5,7 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import {
   Sparkles, BarChart2, RefreshCw, AlertCircle, History,
-  LineChart, Radar, CalendarDays, Briefcase,
+  LineChart, CalendarDays, Briefcase,
   PieChart, Building2,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
@@ -21,8 +21,8 @@ import { DashboardHeader } from "@/features/candidate/components/dashboard/dashb
 import { KpiGrid } from "@/features/candidate/components/dashboard/kpi-grid";
 import { PerformanceTrendChart } from "@/features/candidate/components/dashboard/performance-trend-chart";
 import { PracticeHeatmap } from "@/features/candidate/components/dashboard/practice-heatmap";
-import { SkillRadarPanel } from "@/features/candidate/components/dashboard/skill-radar-panel";
 import { WeakSkillsTable } from "@/features/candidate/components/dashboard/weak-skills-table";
+import { StreakCard } from "@/features/candidate/components/dashboard/streak-card";
 import { AiCoachPanel } from "@/features/candidate/components/dashboard/ai-coach-panel";
 import { RoleReadinessList } from "@/features/candidate/components/dashboard/role-readiness-list";
 import { RecentSessionsList } from "@/features/candidate/components/dashboard/recent-sessions-list";
@@ -63,7 +63,6 @@ export function CandidateDashboard() {
   }
 
   const trendState   = dashboard.loading ? "loading" : dashboard.error ? "error" : dashboard.performanceTrend.length < 2 ? "empty" : "ready";
-  const skillsState  = dashboard.loading ? "loading" : dashboard.error ? "error" : !dashboard.skillAnalytics ? "empty" : "ready";
   const heatmapState = dashboard.loading ? "loading" : dashboard.error ? "error" : dashboard.practiceHeatmap.activeDays === 0 ? "empty" : "ready";
   const rolesState   = dashboard.loading ? "loading" : dashboard.error ? "error" : dashboard.roleReadiness.length === 0 ? "empty" : "ready";
 
@@ -77,17 +76,16 @@ export function CandidateDashboard() {
 
       {/* ── Header: greeting + time range ── */}
       <DashboardHeader
-        loading={dashboard.loading}
-        stats={dashboard.stats}
-        streakDays={dashboard.streakDays}
         timeRange={dashboard.timeRange}
         onTimeRangeChange={dashboard.setTimeRange}
+        activeDate={dashboard.activeDate}
+        onDateChange={dashboard.setActiveDate}
       />
 
       {/* ── KPI overview: readiness score + 4 stat cards ── */}
       <KpiGrid
         loading={dashboard.loading}
-        stats={dashboard.stats}
+        filteredStats={dashboard.filteredStats}
         streakDays={dashboard.streakDays}
         sessionsLast7Days={dashboard.sessionsLast7Days}
         readiness={dashboard.readiness}
@@ -100,7 +98,7 @@ export function CandidateDashboard() {
 
       {/* ══════════════════════════════════════════════════
           ZONE A  —  Performance
-          [Xu hướng điểm số (2/3)] | [Sẵn sàng theo vị trí (1/3)]
+          [Xu hướng điểm số (2/3)] | [Streak của bạn (1/3)]
       ══════════════════════════════════════════════════ */}
       <div className="grid grid-cols-1 xl:grid-cols-[1fr_340px] gap-6 mb-6">
         <ChartCard
@@ -117,28 +115,12 @@ export function CandidateDashboard() {
           <PerformanceTrendChart data={dashboard.performanceTrend} />
         </ChartCard>
 
-        <div id="role-readiness" className="scroll-mt-20">
-          <ChartCard
-            title={p.roles.title}
-            subtitle={p.roles.subtitle}
-            state={rolesState}
-            emptyIcon={Briefcase}
-            emptyTitle={p.roles.empty}
-            errorLabel={p.trendChart.error}
-            retryLabel={p.retryBtn}
-            onRetry={dashboard.reload}
-            minHeight={220}
-          >
-            <div className="max-h-66 overflow-y-auto pr-0.5">
-              <RoleReadinessList roles={dashboard.roleReadiness} />
-            </div>
-          </ChartCard>
-        </div>
+        <StreakCard heatmap={dashboard.practiceHeatmap} loading={dashboard.loading} />
       </div>
 
       {/* ══════════════════════════════════════════════════
           ZONE B  —  Analytics deep-dive  (3 columns)
-          [Phân bố điểm] | [Radar kỹ năng] | [Điểm theo công ty]
+          [Phân bố điểm] | [Điểm theo công ty] | [Sẵn sàng theo vị trí]
       ══════════════════════════════════════════════════ */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-6">
         <ChartCard
@@ -156,20 +138,6 @@ export function CandidateDashboard() {
         </ChartCard>
 
         <ChartCard
-          title={p.skills.title}
-          subtitle={p.skills.subtitle}
-          state={skillsState}
-          emptyIcon={Radar}
-          emptyTitle={p.skills.empty}
-          errorLabel={p.trendChart.error}
-          retryLabel={p.retryBtn}
-          onRetry={dashboard.reload}
-          minHeight={200}
-        >
-          {dashboard.skillAnalytics && <SkillRadarPanel skillAnalytics={dashboard.skillAnalytics} />}
-        </ChartCard>
-
-        <ChartCard
           title={p.companyScore.title}
           subtitle={p.companyScore.subtitle}
           state={companyState}
@@ -182,6 +150,24 @@ export function CandidateDashboard() {
         >
           <CompanyScoreChart sessions={dashboard.allSessions} />
         </ChartCard>
+
+        <div id="role-readiness" className="scroll-mt-20">
+          <ChartCard
+            title={p.roles.title}
+            subtitle={p.roles.subtitle}
+            state={rolesState}
+            emptyIcon={Briefcase}
+            emptyTitle={p.roles.empty}
+            errorLabel={p.trendChart.error}
+            retryLabel={p.retryBtn}
+            onRetry={dashboard.reload}
+            minHeight={200}
+          >
+            <div className="max-h-52 overflow-y-auto pr-0.5">
+              <RoleReadinessList roles={dashboard.roleReadiness} />
+            </div>
+          </ChartCard>
+        </div>
       </div>
 
       {/* ══════════════════════════════════════════════════

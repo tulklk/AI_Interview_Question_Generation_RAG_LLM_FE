@@ -16,7 +16,7 @@ export function UserAvatar({ initials, name, plan, avatarUrl }: UserAvatarProps)
           {name}
         </p>
         {plan && (
-          <span className="inline-block text-[10px] font-bold px-1.5 py-px rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 leading-none">
+          <span className="text-[10px] font-bold text-violet-500 dark:text-violet-400 leading-none">
             {plan}
           </span>
         )}
