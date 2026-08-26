@@ -2202,6 +2202,8 @@ Yêu cầu:
   jobseekerAppShell: {
     routes: {
       "/candidate/dashboard": "Tổng quan",
+      "/candidate/roadmap": "Lộ trình",
+      "/candidate/leaderboard": "Bảng xếp hạng",
       "/candidate/practice": "Luyện tập ngay",
       "/candidate/coach": "AI Coach",
       "/candidate/saved": "Bộ đã lưu",
@@ -2212,6 +2214,8 @@ Yêu cầu:
     breadcrumb: {
       jobseeker: "Ứng viên",
       dashboard: "Tổng quan",
+      roadmap: "Lộ trình",
+      leaderboard: "Bảng xếp hạng",
       practice: "Luyện tập",
       coach: "AI Coach",
       history: "Lịch sử",

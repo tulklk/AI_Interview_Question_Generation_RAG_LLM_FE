@@ -2201,6 +2201,8 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
   jobseekerAppShell: {
     routes: {
       "/candidate/dashboard": "Dashboard",
+      "/candidate/roadmap": "Roadmap",
+      "/candidate/leaderboard": "Leaderboard",
       "/candidate/practice": "Practice Now",
       "/candidate/coach": "AI Coach",
       "/candidate/saved": "Saved Sets",
@@ -2211,6 +2213,8 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
     breadcrumb: {
       jobseeker: "Candidate",
       dashboard: "Dashboard",
+      roadmap: "Roadmap",
+      leaderboard: "Leaderboard",
       practice: "Practice",
       coach: "AI Coach",
       history: "History",

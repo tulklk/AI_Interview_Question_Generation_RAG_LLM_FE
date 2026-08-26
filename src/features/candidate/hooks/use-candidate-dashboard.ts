@@ -19,15 +19,20 @@ import {
   buildSkillAnalytics,
   buildStreakSparkline,
   calculateReadinessScore,
+  computeFilteredStats,
   computePeriodComparison,
   daysSince,
+  filterSessionsByDate,
   filterSessionsByRange,
   formatTrend,
+  type FilteredStats,
   type TimeRangeKey,
 } from "@/features/candidate/utils/dashboard-analytics";
 import { useLanguage } from "@/shared/providers/language-context";
 
 const RANGE_COMPARISON_DAYS: Record<TimeRangeKey, number> = { "7d": 7, "30d": 30, "90d": 90, all: 30 };
+
+export type { FilteredStats };
 
 export function useCandidateDashboard() {
   const { lang } = useLanguage();
@@ -37,6 +42,7 @@ export function useCandidateDashboard() {
   const [error, setError] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
   const [timeRange, setTimeRange] = useState<TimeRangeKey>("30d");
+  const [activeDate, setActiveDate] = useState<string | null>(null); // YYYY-MM-DD
 
   useEffect(() => {
     let cancelled = false;
@@ -61,7 +67,14 @@ export function useCandidateDashboard() {
 
   const reload = () => setReloadKey((k) => k + 1);
 
-  const sessions = useMemo(() => filterSessionsByRange(allSessions, timeRange), [allSessions, timeRange]);
+  const sessions = useMemo(
+    () => activeDate
+      ? filterSessionsByDate(allSessions, activeDate)
+      : filterSessionsByRange(allSessions, timeRange),
+    [allSessions, timeRange, activeDate],
+  );
+
+  const filteredStats = useMemo(() => computeFilteredStats(sessions), [sessions]);
 
   const streakDays = useMemo(() => computeStreakDays(allSessions.map((s) => s.completedAt)), [allSessions]);
 
@@ -129,11 +142,14 @@ export function useCandidateDashboard() {
     error,
     reload,
     stats,
+    filteredStats,
     allSessions,
     sessions,
     recentSessions,
     timeRange,
     setTimeRange,
+    activeDate,
+    setActiveDate,
     streakDays,
     sessionsLast7Days,
     readiness,

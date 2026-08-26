@@ -5,12 +5,11 @@ import { motion } from "framer-motion";
 import { KpiCard } from "@/features/candidate/components/dashboard/kpi-card";
 import { ReadinessScoreCard } from "@/features/candidate/components/dashboard/readiness-score-card";
 import { useLanguage } from "@/shared/providers/language-context";
-import { fillTemplate, formatDuration, type ReadinessResult, type TrendResult } from "@/features/candidate/utils/dashboard-analytics";
-import type { PracticeStats } from "@/features/candidate/services/practice-session.service";
+import { fillTemplate, formatDuration, type FilteredStats, type ReadinessResult, type TrendResult } from "@/features/candidate/utils/dashboard-analytics";
 
 interface KpiGridProps {
   loading: boolean;
-  stats: PracticeStats | null;
+  filteredStats: FilteredStats;
   streakDays: number;
   sessionsLast7Days: number;
   readiness: ReadinessResult;
@@ -21,8 +20,8 @@ interface KpiGridProps {
   durationSparkline: number[];
 }
 
-export function KpiGrid({ loading, stats, streakDays, sessionsLast7Days, readiness, scoreTrend, sessionsSparkline, sessionCountSparkline, streakSparkline, durationSparkline }: KpiGridProps) {
-  const { t } = useLanguage();
+export function KpiGrid({ loading, filteredStats, streakDays, sessionsLast7Days, readiness, scoreTrend, sessionsSparkline, sessionCountSparkline, streakSparkline, durationSparkline }: KpiGridProps) {
+  const { t, lang } = useLanguage();
   const k = t.jobseekerDashboardPage.kpi;
 
   const trendLabel =
@@ -38,8 +37,8 @@ export function KpiGrid({ loading, stats, streakDays, sessionsLast7Days, readine
       iconColor: "text-emerald-600 dark:text-emerald-400",
       label: k.sessions.label,
       tooltip: k.sessions.tooltip,
-      value: (stats?.totalSessions ?? 0).toString(),
-      countUp: { value: stats?.totalSessions ?? 0 },
+      value: filteredStats.totalSessions.toString(),
+      countUp: { value: filteredStats.totalSessions },
       sparklineData: sessionCountSparkline,
       sparklineColor: "#10B981",
       trendLabel: sessionsLast7Days > 0 ? fillTemplate(k.weeklyTrend, { count: String(sessionsLast7Days) }) : undefined,
@@ -52,9 +51,9 @@ export function KpiGrid({ loading, stats, streakDays, sessionsLast7Days, readine
       iconColor: "text-violet-600 dark:text-violet-400",
       label: k.averageScore.label,
       tooltip: k.averageScore.tooltip,
-      value: stats?.averageScore !== null && stats?.averageScore !== undefined ? `${stats.averageScore}%` : "—",
-      countUp: stats?.averageScore !== null && stats?.averageScore !== undefined
-        ? { value: stats.averageScore, suffix: "%" as const, decimals: 1 }
+      value: filteredStats.averageScore !== null ? `${filteredStats.averageScore}%` : "—",
+      countUp: filteredStats.averageScore !== null
+        ? { value: filteredStats.averageScore, suffix: "%" as const, decimals: 1 }
         : undefined,
       sparklineData: sessionsSparkline,
       sparklineColor: "#7C3AED",
@@ -80,10 +79,10 @@ export function KpiGrid({ loading, stats, streakDays, sessionsLast7Days, readine
       iconColor: "text-blue-600 dark:text-blue-400",
       label: k.totalDuration.label,
       tooltip: k.totalDuration.tooltip,
-      value: formatDuration(stats?.totalDurationMinutes ?? 0),
+      value: formatDuration(filteredStats.totalDurationMinutes, lang),
       countUp: {
-        value: stats?.totalDurationMinutes ?? 0,
-        formatter: (v: number) => formatDuration(Math.round(v)),
+        value: filteredStats.totalDurationMinutes,
+        formatter: (v: number) => formatDuration(Math.round(v), lang),
       },
       sparklineData: durationSparkline,
       sparklineColor: "#3B82F6",

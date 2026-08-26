@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { ChevronRight, Menu } from "lucide-react";
 import { NotificationBell, type NotificationItem } from "@/shared/components/common/notification-bell";
@@ -28,6 +29,8 @@ interface TopHeaderProps {
   variant?: "default" | "admin";
   onMenuToggle?: () => void;
   notifications?: NotificationItem[];
+  /** Extra icon buttons injected between the divider and the notification bell */
+  extraActions?: ReactNode;
 }
 
 const DEFAULT_USER: TopHeaderUser = {
@@ -43,6 +46,7 @@ export function TopHeader({
   variant = "default",
   onMenuToggle,
   notifications = [],
+  extraActions,
 }: TopHeaderProps) {
   const { t } = useLanguage();
   const isAdmin = variant === "admin";
@@ -121,6 +125,7 @@ export function TopHeader({
           <LanguageSwitcher />
         </div>
         <div className="hidden sm:block w-px h-5 bg-gray-200 dark:bg-gray-700" />
+        {extraActions}
         <NotificationBell
           items={notifications}
           title={t.topHeader.notificationsTitle}

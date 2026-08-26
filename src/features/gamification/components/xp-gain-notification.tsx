@@ -8,6 +8,7 @@ import { useLanguage } from "@/shared/providers/language-context";
 import type { XpReward } from "@/features/gamification/types/gamification.types";
 import { XpProgressBar } from "@/features/gamification/components/xp-progress-bar";
 import { playXpGainSound, playLevelUpSound, playGoalSound } from "@/features/gamification/utils/xp-sound";
+import { xpRewardTypeLabel } from "@/features/gamification/utils/gamification-formatters";
 
 interface XpGainNotificationProps {
   xpReward: XpReward;
@@ -44,8 +45,9 @@ export function XpGainNotification({
   dailyGoalCompleted = false,
   className,
 }: XpGainNotificationProps) {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const g = t.gamification;
+  const locale = lang === "vi" ? "vi" : "en";
 
   const [visible, setVisible] = useState(false);
   const [dismissed, setDismissed] = useState(false);
@@ -177,10 +179,12 @@ export function XpGainNotification({
                   initial={{ opacity: 0, x: -8 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.2 + i * 0.07 }}
-                  className="flex items-center justify-between"
+                  className="flex items-center justify-between gap-2"
                 >
-                  <span className="text-[11px] text-gray-500 dark:text-gray-400">{r.label}</span>
-                  <span className="text-[11px] font-semibold text-violet-600 dark:text-violet-400 tabular-nums">
+                  <span className="text-[11px] text-gray-500 dark:text-gray-400 leading-tight">
+                    {r.label || xpRewardTypeLabel(r.type, locale)}
+                  </span>
+                  <span className="text-[11px] font-semibold text-violet-600 dark:text-violet-400 tabular-nums shrink-0">
                     +{r.xp} XP
                   </span>
                 </motion.div>
