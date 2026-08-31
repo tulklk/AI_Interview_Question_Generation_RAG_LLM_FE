@@ -1135,6 +1135,7 @@ export function MarketplacePage() {
                           initialBookmarked={bookmarkedIds.has(set.id)}
                           onBookmarkChange={bookmarkCb}
                           featured
+                          layout="horizontal"
                         />
                       </ScrollRevealCard>
                     ))}
@@ -1190,6 +1191,7 @@ export function MarketplacePage() {
                     set={set}
                     initialBookmarked={bookmarkedIds.has(set.id)}
                     onBookmarkChange={bookmarkCb}
+                    layout="horizontal"
                   />
                 </ScrollRevealCard>
               ))}

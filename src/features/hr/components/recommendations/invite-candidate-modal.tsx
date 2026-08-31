@@ -104,13 +104,16 @@ export function InviteCandidateModal({ target, onClose, onSend }: InviteCandidat
         <div className="flex-1 overflow-y-auto px-5 py-4">
           <textarea
             value={message}
-            onChange={(e) => setMessage(e.target.value)}
+            onChange={(e) => setMessage(e.target.value.slice(0, 2000))}
             placeholder={labels.messagePlaceholder}
+            maxLength={2000}
             className="w-full text-[13px] leading-relaxed bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-3 outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 resize-none placeholder:text-gray-400 dark:placeholder:text-gray-500 text-gray-900 dark:text-gray-100 transition-all"
             style={{ minHeight: "280px" }}
             autoFocus
           />
-          <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-2 text-right">{message.length} / 2000</p>
+          <p className={`text-[11px] mt-2 text-right ${message.length >= 1900 ? "text-amber-500 dark:text-amber-400 font-medium" : "text-gray-400 dark:text-gray-500"}`}>
+            {message.length} / 2000
+          </p>
         </div>
         <div className={cn("flex items-center justify-end gap-2 px-5 py-4 border-t shrink-0 bg-gray-50/50 dark:bg-gray-900/50", portalDivider)}>
           <button
@@ -124,7 +127,7 @@ export function InviteCandidateModal({ target, onClose, onSend }: InviteCandidat
           <button
             type="button"
             onClick={() => void handleSend()}
-            disabled={sending || !message.trim()}
+            disabled={sending || !message.trim() || message.length > 2000}
             className="shimmer-button flex items-center gap-1.5 h-9 px-4 text-[13px] font-semibold text-white hr-cta-btn rounded-lg disabled:opacity-60"
           >
             {sending ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}

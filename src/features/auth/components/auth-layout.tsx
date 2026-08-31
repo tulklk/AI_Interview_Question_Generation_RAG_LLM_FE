@@ -1,6 +1,7 @@
 "use client";
 
 import { ReactNode, useRef, useState, useCallback, useEffect } from "react";
+import { GoogleOAuthProvider } from "@react-oauth/google";
 import { LoginHero } from "@/features/auth/components/login-hero";
 import { Auth3DVisual } from "@/features/auth/components/auth-3d-visual";
 import { BrandLogo } from "@/shared/components/common/brand-logo";
@@ -24,6 +25,7 @@ const particlePositions = [
 ];
 
 export function AuthLayout({ children, formAreaClassName = "items-center justify-center" }: AuthLayoutProps) {
+  const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ?? "";
   const scrollRef = useRef<HTMLDivElement>(null);
   const lastScrollY = useRef(0);
   const [logoVisible, setLogoVisible] = useState(true);
@@ -40,6 +42,7 @@ export function AuthLayout({ children, formAreaClassName = "items-center justify
   }, []);
 
   return (
+    <GoogleOAuthProvider clientId={clientId}>
     <div className="auth-page flex h-screen overflow-hidden">
       {/* Multi-layer background, toggled by theme */}
       <div className="auth-light-bg" />
@@ -105,5 +108,6 @@ export function AuthLayout({ children, formAreaClassName = "items-center justify
         </div>
       </div>
     </div>
+    </GoogleOAuthProvider>
   );
 }

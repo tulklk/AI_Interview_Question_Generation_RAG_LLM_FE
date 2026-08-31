@@ -54,7 +54,9 @@ export function GuestNavbar() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [mobileAvatarOpen, setMobileAvatarOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const mobileAvatarRef = useRef<HTMLDivElement>(null);
 
   const navLinks = [
     { label: t.nav.home, href: "#home" },
@@ -85,7 +87,7 @@ export function GuestNavbar() {
     };
   }, [mobileOpen]);
 
-  // Close dropdown on outside click
+  // Close desktop dropdown on outside click
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
@@ -97,6 +99,19 @@ export function GuestNavbar() {
     }
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [dropdownOpen]);
+
+  // Close mobile avatar dropdown on outside click
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (mobileAvatarRef.current && !mobileAvatarRef.current.contains(e.target as Node)) {
+        setMobileAvatarOpen(false);
+      }
+    }
+    if (mobileAvatarOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [mobileAvatarOpen]);
 
   const isLoggedIn = !loading && !!user;
 
@@ -204,12 +219,89 @@ export function GuestNavbar() {
             )}
           </div>
 
-          <button
-            className="md:hidden ml-auto p-2 rounded-lg text-gray-500 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-gray-800 transition-colors"
-            onClick={() => setMobileOpen((v) => !v)}
-          >
-            {mobileOpen ? <X size={20} /> : <Menu size={20} />}
-          </button>
+          {/* Mobile right area: avatar (logged-in) or nothing (guest) + burger */}
+          <div className="md:hidden ml-auto flex items-center gap-0.5">
+            {isLoggedIn ? (
+              <div ref={mobileAvatarRef} className="relative">
+                {/* Avatar trigger — clean border, no p-gap */}
+                <button
+                  type="button"
+                  aria-label="Tài khoản"
+                  onClick={() => {
+                    setMobileAvatarOpen((v) => !v);
+                    if (mobileOpen) setMobileOpen(false);
+                  }}
+                  className={`flex items-center justify-center rounded-full border-2 transition-all duration-200 ${
+                    mobileAvatarOpen
+                      ? "border-violet-500 shadow-[0_0_0_3px_rgba(124,58,237,0.15)]"
+                      : "border-gray-200 dark:border-gray-700 hover:border-violet-400 dark:hover:border-violet-500"
+                  }`}
+                  style={{ width: 36, height: 36 }}
+                >
+                  <UserAvatar avatarUrl={user.avatarUrl} fullName={user.fullName} size={32} />
+                </button>
+
+                {/* Mobile avatar dropdown */}
+                {mobileAvatarOpen && (
+                  <div
+                    className="absolute right-0 top-[calc(100%+8px)] w-56 rounded-2xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-[0_8px_30px_rgba(0,0,0,0.12)] dark:shadow-[0_8px_30px_rgba(0,0,0,0.4)] overflow-hidden z-50"
+                    style={{ transformOrigin: "top right" }}
+                  >
+                    {/* User info — no avatar duplicate, no top bar */}
+                    <div className="px-4 pt-3.5 pb-3 border-b border-gray-100 dark:border-gray-800">
+                      <p className="text-[13px] font-semibold text-gray-900 dark:text-gray-50 truncate leading-tight">{user.fullName}</p>
+                      <p className="text-[11px] text-gray-400 dark:text-gray-500 truncate mt-0.5">{user.email}</p>
+                    </div>
+
+                    <div className="p-1.5 space-y-0.5">
+                      <Link
+                        href={dashboardHref}
+                        onClick={() => setMobileAvatarOpen(false)}
+                        className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-[13px] font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                      >
+                        <div className="w-7 h-7 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center shrink-0">
+                          <LayoutDashboard size={14} className="text-gray-500 dark:text-gray-400" />
+                        </div>
+                        {t.common.goToDashboard}
+                      </Link>
+
+                      <button
+                        type="button"
+                        onClick={() => { setMobileAvatarOpen(false); logout(); }}
+                        disabled={loggingOut}
+                        className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-[13px] font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors disabled:opacity-50"
+                      >
+                        <div className="w-7 h-7 rounded-lg bg-red-50 dark:bg-red-950/30 flex items-center justify-center shrink-0">
+                          <LogOut size={14} className="text-red-500 dark:text-red-400" />
+                        </div>
+                        {t.common.logout}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              !loading && (
+                <Link
+                  href="/login"
+                  className="px-3 py-1.5 text-xs font-semibold text-primary border border-primary/25 rounded-lg hover:bg-primary/5 transition-colors"
+                >
+                  {t.common.login}
+                </Link>
+              )
+            )}
+
+            <button
+              className="p-2 rounded-lg text-gray-500 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-gray-800 transition-colors"
+              onClick={() => {
+                setMobileAvatarOpen(false);
+                setMobileOpen((v) => !v);
+              }}
+              aria-label={mobileOpen ? "Đóng menu" : "Mở menu"}
+            >
+              {mobileOpen ? <X size={20} /> : <Menu size={20} />}
+            </button>
+          </div>
         </div>
       </header>
 
@@ -258,52 +350,24 @@ export function GuestNavbar() {
             <LanguageSwitcher variant="light" />
           </div>
 
-          {isLoggedIn ? (
+          {/* Logged-in: avatar moved to header — drawer shows nothing extra */}
+          {!isLoggedIn && !loading && (
             <>
-              <div className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-gray-50 dark:bg-gray-900">
-                <UserAvatar avatarUrl={user.avatarUrl} fullName={user.fullName} size={36} />
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold text-gray-800 dark:text-gray-100 truncate">{user.fullName}</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{user.email}</p>
-                </div>
-              </div>
               <Link
-                href={dashboardHref}
+                href="/login"
                 onClick={() => setMobileOpen(false)}
-                className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-semibold text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                className="block px-3 py-2.5 text-sm font-semibold text-center text-gray-700 border border-gray-200 rounded-lg hover:bg-gray-50 dark:text-gray-300 dark:border-gray-700 dark:hover:bg-gray-800 transition-colors"
               >
-                <LayoutDashboard size={15} className="text-gray-400 shrink-0" />
-                {t.common.goToDashboard}
+                {t.common.login}
               </Link>
-              <button
-                type="button"
-                onClick={() => { setMobileOpen(false); logout(); }}
-                disabled={loggingOut}
-                className="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-semibold text-red-600 dark:text-red-400 border border-red-100 dark:border-red-900/40 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors disabled:opacity-50"
+              <Link
+                href="/login"
+                onClick={() => setMobileOpen(false)}
+                className="btn-cta-primary shimmer-button block px-3 py-2.5 text-sm font-semibold text-center text-white rounded-lg"
               >
-                <LogOut size={15} className="shrink-0" />
-                {t.common.logout}
-              </button>
+                {t.common.getStarted}
+              </Link>
             </>
-          ) : (
-            !loading && (
-              <>
-                <Link
-                  href="/login"
-                  onClick={() => setMobileOpen(false)}
-                  className="block px-3 py-2.5 text-sm font-semibold text-center text-gray-700 border border-gray-200 rounded-lg hover:bg-gray-50 dark:text-gray-300 dark:border-gray-700 dark:hover:bg-gray-800 transition-colors"
-                >
-                  {t.common.login}
-                </Link>
-                <Link
-                  href="/login"
-                  onClick={() => setMobileOpen(false)}
-                  className="btn-cta-primary shimmer-button block px-3 py-2.5 text-sm font-semibold text-center text-white rounded-lg"
-                >
-                  {t.common.getStarted}
-                </Link>
-              </>
-            )
           )}
         </div>
       </div>

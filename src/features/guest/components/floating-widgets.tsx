@@ -147,15 +147,17 @@ function ChatPanel({
         <button
           onClick={clearChat}
           title={cw.clear}
+          aria-label={cw.clear}
           className="text-white/60 hover:text-white transition-colors p-1 rounded-lg hover:bg-white/10"
         >
-          <Trash2 size={15} />
+          <Trash2 size={15} aria-hidden="true" />
         </button>
         <button
           onClick={onClose}
+          aria-label="Đóng trợ lý AI"
           className="text-white/60 hover:text-white transition-colors p-1 rounded-lg hover:bg-white/10"
         >
-          <X size={16} />
+          <X size={16} aria-hidden="true" />
         </button>
       </div>
 
@@ -248,14 +250,15 @@ function ChatPanel({
         <button
           onClick={() => sendMessage(input)}
           disabled={!input.trim() || isTyping}
+          aria-label="Gửi tin nhắn"
           className={cn(
-            "w-9 h-9 rounded-lg flex items-center justify-center transition-all shrink-0",
+            "w-9 h-9 rounded-lg flex items-center justify-center transition-colors shrink-0",
             input.trim() && !isTyping
               ? "bg-[#6c47ff] text-white hover:bg-[#5535dd] shadow-sm"
               : "bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500 cursor-not-allowed"
           )}
         >
-          <Send size={14} />
+          <Send size={14} aria-hidden="true" />
         </button>
       </div>
     </div>

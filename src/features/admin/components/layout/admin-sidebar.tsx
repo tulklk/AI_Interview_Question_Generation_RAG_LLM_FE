@@ -8,16 +8,29 @@ import { isAdminNavActive } from "@/shared/utils/nav";
 import { adminNavItems } from "@/features/admin/data/admin";
 import { useLanguage } from "@/shared/providers/language-context";
 import { useLogout } from "@/features/auth/hooks/use-logout";
+import { useUser } from "@/features/auth/context/user-context";
+import { resolveAvatarUrl } from "@/shared/utils/user-display";
+import { AvatarCircle } from "@/shared/components/common/avatar-circle";
 import { BrandLogo } from "@/shared/components/common/brand-logo";
 
 export function AdminSidebar({ navBadges }: { navBadges?: Partial<Record<string, number>> }) {
   const pathname = usePathname();
   const { t } = useLanguage();
   const { logout, loggingOut } = useLogout();
+  const { user, loading } = useUser();
   const s = t.adminSidebar;
 
+  const displayName = user?.fullName || (loading ? "..." : "Administrator");
+  const displayEmail = user?.email || (loading ? "..." : "");
+  const avatarUrl = resolveAvatarUrl(user);
+  /** Lấy 2 từ cuối của tên đầy đủ để hiển thị trong sidebar */
+  const shortName = (() => {
+    const words = displayName.trim().split(/\s+/);
+    return words.length <= 2 ? displayName : words.slice(-2).join(" ");
+  })();
+
   return (
-    <aside className="hr-sidebar flex flex-col w-62.5 shrink-0 h-screen overflow-y-auto">
+    <aside className="hr-sidebar flex flex-col w-68 shrink-0 h-screen overflow-y-auto">
       <div className="px-5 pt-6 pb-2">
         <BrandLogo
           logoClassName="w-9 h-9"
@@ -96,16 +109,18 @@ export function AdminSidebar({ navBadges }: { navBadges?: Partial<Record<string,
       {/* User Footer */}
       <div className="px-4 py-4 border-t border-black/5 dark:border-white/8">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full bg-linear-to-br from-[#7C3AED] to-[#06B6D4] flex items-center justify-center shrink-0 hr-avatar-ring">
-            <span className="text-white text-xs font-bold">AD</span>
+          <div className="hr-avatar-ring rounded-full shrink-0">
+            <AvatarCircle avatarUrl={avatarUrl} fullName={displayName} size="sm" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-gray-800 dark:text-gray-100 text-sm font-semibold leading-tight truncate">
-              Administrator
+            <p className="text-gray-800 dark:text-gray-100 text-sm font-semibold leading-tight truncate" title={displayName}>
+              {shortName}
             </p>
-            <p className="text-gray-400 dark:text-gray-500 text-[11px] leading-tight truncate">
-              admin@interviewai.io
-            </p>
+            {displayEmail ? (
+              <p className="text-gray-400 dark:text-gray-500 text-[11px] leading-tight truncate">
+                {displayEmail}
+              </p>
+            ) : null}
           </div>
           <span className="text-[10px] font-bold text-violet-600 dark:text-violet-300 bg-violet-50 dark:bg-violet-950/60 px-2 py-0.5 rounded-full shrink-0">
             Admin

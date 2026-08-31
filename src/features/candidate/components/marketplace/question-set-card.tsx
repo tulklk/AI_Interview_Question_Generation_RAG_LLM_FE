@@ -210,8 +210,13 @@ export interface QuestionSetCardProps {
   set: QuestionSet;
   initialBookmarked?: boolean;
   onBookmarkChange?: (id: string, bookmarked: boolean) => void;
-  /** When true, renders the CV-match badge + bar at a larger size. */
+  /** When true, renders the CV-match badge + bar at a larger size (vertical layout only). */
   featured?: boolean;
+  /**
+   * "vertical"  — stacked card for grid view (default, used in dashboard).
+   * "horizontal" — row layout for list view (used in marketplace).
+   */
+  layout?: "vertical" | "horizontal";
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -220,6 +225,7 @@ export function QuestionSetCard({
   initialBookmarked = false,
   onBookmarkChange,
   featured = false,
+  layout = "vertical",
 }: QuestionSetCardProps) {
   const { t } = useLanguage();
   const p = t.jobseekerMarketplacePage;
@@ -258,360 +264,407 @@ export function QuestionSetCard({
   const extraSkills = set.skills.length - SKILLS_SHOWN;
   const hasMatch = set.matchPercent != null;
 
-  return (
-    <>
-    {/* Keyframes injected inline — independent of CSS bundle compile state */}
+  // ── Shared pieces ────────────────────────────────────────────────────────────
+
+  const logoImg = (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={(!logoError && set.companyLogoUrl?.trim()) ? set.companyLogoUrl! : "/images/logo.png"}
+      alt={set.company}
+      loading="lazy"
+      decoding="async"
+      onError={() => setLogoError(true)}
+      className="w-full h-full object-contain p-0.5"
+    />
+  );
+
+  const pillsRow = (
+    <div className="flex flex-wrap items-center gap-1.5">
+      <DifficultyPill
+        difficulty={diff}
+        label={diff === "Easy" ? p.easy : diff === "Hard" ? p.hard : p.medium}
+        size="sm"
+      />
+      {set.myLastScore != null ? (
+        <span className={cn(
+          "inline-flex items-center text-[10.5px] font-semibold px-2 py-0.5 rounded-full border",
+          "bg-violet-50 text-violet-700 border-violet-200/80",
+          "dark:bg-violet-950/40 dark:text-violet-300 dark:border-violet-700/40",
+        )}>
+          {p.lastScore.replace("{{n}}", String(Math.round(set.myLastScore)))}
+        </span>
+      ) : (
+        <span className={cn(
+          "inline-flex items-center text-[10.5px] font-semibold px-2 py-0.5 rounded-full border",
+          "bg-gray-100/80 text-gray-500 border-gray-200/80",
+          "dark:bg-gray-800/60 dark:text-gray-400 dark:border-gray-700/60",
+        )}>
+          {p.notAttempted}
+        </span>
+      )}
+      {set.isTrending && (
+        <span className={cn(
+          "inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full border",
+          "bg-emerald-100 text-emerald-700 border-emerald-200/70",
+          "dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-700/40",
+        )}>
+          <TrendingUp size={9} />
+          {p.badgeTrending}
+        </span>
+      )}
+    </div>
+  );
+
+  const skillsRow = set.skills.length > 0 ? (
+    <div className="flex flex-wrap items-center gap-1.5">
+      {visSkills.map((skill) => {
+        const si = getSkillIcon(skill);
+        const SIcon = si?.icon;
+        return (
+          <span
+            key={skill}
+            className={cn(
+              "inline-flex items-center gap-1 text-[10.5px] font-medium px-2 py-0.5 rounded-md max-w-28",
+              "bg-white/70 dark:bg-gray-800/80",
+              "border border-gray-200/80 dark:border-gray-700/60",
+              "text-gray-600 dark:text-gray-300",
+            )}
+          >
+            {SIcon && <SIcon size={10} className={cn("shrink-0", si.className)} />}
+            <span className="truncate">{skill}</span>
+          </span>
+        );
+      })}
+      {extraSkills > 0 && (
+        <button
+          ref={skillsBtnRef}
+          type="button"
+          onClick={() => setShowSkills((v) => !v)}
+          className={cn(
+            "text-[10.5px] font-semibold px-2 py-0.5 rounded-md border transition-colors",
+            "bg-primary/10 dark:bg-primary/15 border-primary/20 text-primary",
+            "hover:bg-primary/15 dark:hover:bg-primary/20",
+          )}
+        >
+          +{extraSkills}
+        </button>
+      )}
+      {showSkills && (
+        <SkillsPopover
+          skills={set.skills}
+          anchorRef={skillsBtnRef}
+          onClose={() => setShowSkills(false)}
+        />
+      )}
+    </div>
+  ) : null;
+
+  const statsRow = (
+    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-gray-500 dark:text-gray-400">
+      <span className="flex items-center gap-1 font-semibold text-gray-700 dark:text-gray-300 tabular-nums">
+        <BarChart2 size={10} className="text-primary/60 shrink-0" />
+        {set.totalQuestions} {p.questions}
+      </span>
+      {dur && (
+        <>
+          <span className="text-gray-200 dark:text-gray-700 select-none">·</span>
+          <span className="flex items-center gap-1">
+            <Clock size={10} className="text-primary/60 shrink-0" />
+            {dur}
+          </span>
+        </>
+      )}
+      {set.attempts !== undefined && (
+        <>
+          <span className="text-gray-200 dark:text-gray-700 select-none">·</span>
+          <span className="flex items-center gap-1">
+            <Users size={10} className="text-primary/60 shrink-0" />
+            <span className="tabular-nums">{set.attempts.toLocaleString()}</span>
+          </span>
+        </>
+      )}
+    </div>
+  );
+
+  const matchBar = hasMatch ? (
+    <div className="flex items-center justify-between gap-3">
+      <div className="flex-1 h-1.5 rounded-full bg-gray-100 dark:bg-gray-800/80 overflow-hidden">
+        <div
+          className="h-full rounded-full bg-linear-to-r from-primary to-violet-400 relative overflow-hidden"
+          style={{ width: `${Math.min(100, set.matchPercent!)}%` }}
+        >
+          <span
+            aria-hidden
+            className="absolute inset-0"
+            style={{
+              background: "linear-gradient(90deg,transparent 0%,rgba(255,255,255,0.45) 50%,transparent 100%)",
+              animation: "qs-bar-shimmer 2s linear infinite",
+            }}
+          />
+        </div>
+      </div>
+      <span className="text-[11px] font-bold text-primary whitespace-nowrap shrink-0">
+        {set.matchPercent}% Khớp CV
+      </span>
+    </div>
+  ) : null;
+
+  const bookmarkBtn = (
+    <button
+      type="button"
+      onClick={handleBookmark}
+      disabled={bookmarking}
+      aria-label={bookmarked ? p.unsaveBtn : p.saveBtn}
+      title={bookmarked ? p.unsaveBtn : p.saveBtn}
+      className={cn(
+        "w-7 h-7 flex items-center justify-center rounded-lg border transition-all duration-150",
+        bookmarked
+          ? "bg-primary/10 border-primary/30 text-primary"
+          : "bg-white/70 dark:bg-gray-800/80 border-gray-200 dark:border-gray-700 text-gray-400 hover:text-primary hover:border-primary/30 hover:bg-primary/5",
+      )}
+    >
+      {bookmarking
+        ? <Loader2 size={12} className="animate-spin" />
+        : <Bookmark size={12} className={bookmarked ? "fill-primary" : ""} />}
+    </button>
+  );
+
+  const style_block = (
     <style>{`
       @keyframes qs-bar-shimmer{0%{transform:translateX(-100%)}100%{transform:translateX(300%)}}
-      @keyframes qs-card-glow{0%,100%{filter:drop-shadow(0 0 0 rgba(124,58,237,0))}50%{filter:drop-shadow(0 0 10px rgba(124,58,237,0.22))}}
       @keyframes qs-cta-grad{0%,100%{background-position:0% center}50%{background-position:100% center}}
       @keyframes qs-cta-sweep{0%{transform:translateX(-100%) skewX(-12deg)}100%{transform:translateX(300%) skewX(-12deg)}}
     `}</style>
+  );
+
+  // ── Horizontal layout (marketplace list view) ────────────────────────────────
+  if (layout === "horizontal") {
+    return (
+      <>
+        {style_block}
+        <div
+          className={cn(
+            "group relative overflow-hidden rounded-xl border flex flex-row",
+            "border-gray-100/80 dark:border-gray-800/70",
+            DIFF_CARD_BG[diff],
+            "shadow-[0_1px_4px_rgba(0,0,0,0.05)]",
+            "hover:-translate-y-0.5 hover:border-primary/30",
+            DIFF_GLOW[diff],
+            "transition-all duration-200 ease-out",
+          )}
+        >
+          {/* Hover overlay */}
+          <div className="absolute inset-0 bg-primary/2.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none" />
+
+          {/* Left accent strip (4px vertical) */}
+          <div className={cn("w-1 shrink-0 self-stretch", DIFF_ACCENT_BG[diff])} />
+
+          {/* Content row */}
+          <div className="relative z-10 flex flex-row flex-1 min-w-0 gap-4 px-4 py-4">
+
+            {/* Logo — aligned to top */}
+            <div className="w-12 h-12 rounded-xl overflow-hidden border border-white/80 dark:border-gray-700/60 bg-white dark:bg-gray-800 shadow-sm shrink-0 self-start mt-0.5">
+              {logoImg}
+            </div>
+
+            {/* Middle: meta */}
+            <div className="flex-1 min-w-0 flex flex-col gap-1.5">
+              {pillsRow}
+              <h3 className="text-[15px] font-bold leading-snug line-clamp-1 text-gray-900 dark:text-gray-100 group-hover:text-primary transition-colors duration-150">
+                {cleanTitle(set.title)}
+              </h3>
+              <p className="text-[12px] font-semibold text-gray-400 dark:text-gray-500">
+                {set.company}
+              </p>
+              {skillsRow}
+              {statsRow}
+            </div>
+
+            {/* Right column: bookmark → spacer → match badge + bar → CTA */}
+            <div className="hidden sm:flex flex-col items-end gap-2.5 shrink-0 w-44">
+
+              {/* Top: bookmark (+ stars if rated) */}
+              <div className="flex items-center gap-2 self-end">
+                {set.rating !== undefined && <StarDisplay rating={set.rating} />}
+                {bookmarkBtn}
+              </div>
+
+              {/* Spacer */}
+              <div className="flex-1" />
+
+              {/* Match% badge + bar */}
+              {hasMatch && (
+                <div className="w-full flex flex-col items-end gap-1.5">
+                  <span className={cn(
+                    "inline-flex items-center text-[12px] font-bold px-3 py-1 rounded-full",
+                    "bg-violet-50 dark:bg-violet-950/50",
+                    "text-violet-600 dark:text-violet-300",
+                    "border border-violet-200/70 dark:border-violet-700/40",
+                  )}>
+                    {set.matchPercent}% Khớp CV
+                  </span>
+                  <div className="w-full h-1 rounded-full bg-gray-100 dark:bg-gray-800/80 overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-linear-to-r from-primary to-violet-400 relative overflow-hidden"
+                      style={{ width: `${Math.min(100, set.matchPercent!)}%` }}
+                    >
+                      <span
+                        aria-hidden
+                        className="absolute inset-0"
+                        style={{
+                          background: "linear-gradient(90deg,transparent 0%,rgba(255,255,255,0.45) 50%,transparent 100%)",
+                          animation: "qs-bar-shimmer 2s linear infinite",
+                        }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* CTA button — full width of right column */}
+              <Link
+                href={`/candidate/sets/${set.id}`}
+                onClick={(e) => e.stopPropagation()}
+                className={cn(
+                  "relative w-full h-9 flex items-center justify-center gap-1.5 overflow-hidden",
+                  "rounded-lg font-semibold text-white text-[12.5px]",
+                  "group-hover:gap-2 transition-[gap] duration-150",
+                  !featured && "bg-primary hover:bg-primary/90 transition-colors duration-150",
+                )}
+                style={featured ? {
+                  background: "linear-gradient(90deg,#7c3aed,#a855f7 40%,#06b6d4)",
+                  backgroundSize: "200% auto",
+                  animation: "qs-cta-grad 4s ease-in-out infinite",
+                } : undefined}
+              >
+                {featured && (
+                  <span
+                    aria-hidden
+                    className="absolute inset-0 pointer-events-none"
+                    style={{
+                      background: "linear-gradient(90deg,transparent 0%,rgba(255,255,255,0.22) 50%,transparent 100%)",
+                      animation: "qs-cta-sweep 3s ease-in-out infinite",
+                    }}
+                  />
+                )}
+                <span className="relative z-10 flex items-center gap-1.5">
+                  {p.startPractice}
+                  <ChevronRight size={12} className="transition-transform group-hover:translate-x-0.5" />
+                </span>
+              </Link>
+            </div>
+
+            {/* Mobile right: bookmark + icon CTA */}
+            <div className="flex sm:hidden flex-col items-end justify-between gap-2 shrink-0">
+              {bookmarkBtn}
+              <Link
+                href={`/candidate/sets/${set.id}`}
+                onClick={(e) => e.stopPropagation()}
+                className="h-7 w-7 flex items-center justify-center rounded-lg text-white bg-primary hover:bg-primary/90 transition-colors"
+              >
+                <ChevronRight size={13} />
+              </Link>
+            </div>
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  // ── Vertical layout (dashboard grid — default) ───────────────────────────────
+  return (
+    <>
+    {style_block}
     <div
       className={cn(
-        "group relative overflow-hidden rounded-xl border flex flex-row",
+        "group relative overflow-hidden rounded-xl border flex flex-col h-full",
         "border-gray-100/80 dark:border-gray-800/70",
         DIFF_CARD_BG[diff],
         "shadow-[0_1px_4px_rgba(0,0,0,0.05)]",
-        // Hover: lift + primary border + colored glow
-        "hover:-translate-y-1 hover:border-primary/30",
+        "hover:-translate-y-0.5 hover:border-primary/30",
         DIFF_GLOW[diff],
         "transition-all duration-200 ease-out",
       )}
     >
-      {/* Hover primary overlay */}
+      {/* Hover overlay */}
       <div className="absolute inset-0 bg-primary/2.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none" />
 
-      {/* ── Left 4px accent strip ── */}
-      <div className={cn("w-1 shrink-0 self-stretch", DIFF_ACCENT_BG[diff])} />
+      {/* Top accent strip */}
+      <div className={cn("h-1 w-full shrink-0", DIFF_ACCENT_BG[diff])} />
 
-      {/* ── Card body ── */}
-      <div className="relative z-10 flex flex-col md:flex-row md:items-stretch gap-3 flex-1 min-w-0 px-4 py-3.5">
+      {/* Card body */}
+      <div className="relative z-10 flex flex-col flex-1 p-4 gap-3">
 
-        {/* ── LEFT+CENTER: logo + meta ── */}
-        <div className="flex flex-1 min-w-0 gap-3.5 items-start">
-          {/* Company logo */}
-          <div className="shrink-0 mt-0.5">
-            <div className="w-11 h-11 rounded-xl overflow-hidden border border-white/80 dark:border-gray-700/60 bg-white dark:bg-gray-800 shadow-sm">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={(!logoError && set.companyLogoUrl?.trim()) ? set.companyLogoUrl! : "/images/logo.png"}
-                alt={set.company}
-                loading="lazy"
-                decoding="async"
-                onError={() => setLogoError(true)}
-                className="w-full h-full object-contain p-0.5"
-              />
-            </div>
+        {/* Row 1: Logo + bookmark */}
+        <div className="flex items-start justify-between gap-2">
+          <div className="w-10 h-10 rounded-xl overflow-hidden border border-white/80 dark:border-gray-700/60 bg-white dark:bg-gray-800 shadow-sm shrink-0">
+            {logoImg}
           </div>
 
-          {/* Meta: pills → title → company → stats → skills */}
-          <div className="flex-1 min-w-0 flex flex-col gap-1.5">
-
-            {/* Row 1: Status pills (difficulty · attempt status · trending) */}
-            <div className="flex flex-wrap items-center gap-1.5">
-              <DifficultyPill
-                difficulty={diff}
-                label={diff === "Easy" ? p.easy : diff === "Hard" ? p.hard : p.medium}
-                size="sm"
-              />
-
-              {set.myLastScore != null ? (
-                /* Violet pill — đã luyện */
-                <span
-                  className={cn(
-                    "inline-flex items-center text-[10.5px] font-semibold px-2 py-0.5 rounded-full border",
-                    "bg-violet-50 text-violet-700 border-violet-200/80",
-                    "dark:bg-violet-950/40 dark:text-violet-300 dark:border-violet-700/40",
-                  )}
-                >
-                  {p.lastScore.replace("{{n}}", String(Math.round(set.myLastScore)))}
-                </span>
-              ) : (
-                /* Gray pill — chưa làm */
-                <span
-                  className={cn(
-                    "inline-flex items-center text-[10.5px] font-semibold px-2 py-0.5 rounded-full border",
-                    "bg-gray-100/80 text-gray-500 border-gray-200/80",
-                    "dark:bg-gray-800/60 dark:text-gray-400 dark:border-gray-700/60",
-                  )}
-                >
-                  {p.notAttempted}
-                </span>
-              )}
-
-              {set.isTrending && (
-                <span
-                  className={cn(
-                    "inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full border",
-                    "bg-emerald-100 text-emerald-700 border-emerald-200/70",
-                    "dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-700/40",
-                  )}
-                >
-                  <TrendingUp size={9} />
-                  {p.badgeTrending}
-                </span>
-              )}
-            </div>
-
-            {/* Row 2: Title */}
-            <h3 className="text-[15px] font-bold leading-snug line-clamp-2 text-gray-900 dark:text-gray-100 group-hover:text-primary transition-colors duration-150">
-              {cleanTitle(set.title)}
-            </h3>
-
-            {/* Row 3: Company */}
-            <p className="text-[11px] font-semibold text-gray-400 dark:text-gray-500 -mt-0.5">
-              {set.company}
-            </p>
-
-            {/* Row 4: Skills chips (moved above stats) */}
-            {set.skills.length > 0 && (
-              <div className="flex flex-wrap items-center gap-1.5">
-                {visSkills.map((skill) => {
-                  const si = getSkillIcon(skill);
-                  const SIcon = si?.icon;
-                  return (
-                    <span
-                      key={skill}
-                      className={cn(
-                        "inline-flex items-center gap-1 text-[10.5px] font-medium px-2 py-0.5 rounded-md max-w-30",
-                        "bg-white/70 dark:bg-gray-800/80",
-                        "border border-gray-200/80 dark:border-gray-700/60",
-                        "text-gray-600 dark:text-gray-300",
-                      )}
-                    >
-                      {SIcon && <SIcon size={10} className={cn("shrink-0", si.className)} />}
-                      <span className="truncate">{skill}</span>
-                    </span>
-                  );
-                })}
-
-                {extraSkills > 0 && (
-                  <button
-                    ref={skillsBtnRef}
-                    type="button"
-                    onClick={() => setShowSkills((v) => !v)}
-                    className={cn(
-                      "text-[10.5px] font-semibold px-2 py-0.5 rounded-md border transition-colors",
-                      "bg-primary/10 dark:bg-primary/15 border-primary/20 text-primary",
-                      "hover:bg-primary/15 dark:hover:bg-primary/20",
-                    )}
-                  >
-                    +{extraSkills}
-                  </button>
-                )}
-
-                {showSkills && (
-                  <SkillsPopover
-                    skills={set.skills}
-                    anchorRef={skillsBtnRef}
-                    onClose={() => setShowSkills(false)}
-                  />
-                )}
-              </div>
-            )}
-
-            {/* Row 5: Inline stats — rating moved to top-right near bookmark */}
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-gray-500 dark:text-gray-400">
-              <span className="flex items-center gap-1 font-semibold text-gray-700 dark:text-gray-300 tabular-nums">
-                <BarChart2 size={10} className="text-primary/60 shrink-0" />
-                {set.totalQuestions} {p.questions}
-              </span>
-
-              {dur && (
-                <>
-                  <span className="text-gray-200 dark:text-gray-700 select-none">·</span>
-                  <span className="flex items-center gap-1">
-                    <Clock size={10} className="text-primary/60 shrink-0" />
-                    {dur}
-                  </span>
-                </>
-              )}
-
-              {set.attempts !== undefined && (
-                <>
-                  <span className="text-gray-200 dark:text-gray-700 select-none">·</span>
-                  <span className="flex items-center gap-1">
-                    <Users size={10} className="text-primary/60 shrink-0" />
-                    <span className="tabular-nums">{set.attempts.toLocaleString()}</span>
-                  </span>
-                </>
-              )}
-            </div>
+          <div className="flex items-center gap-2 shrink-0">
+            {set.rating !== undefined && <StarDisplay rating={set.rating} />}
+            {bookmarkBtn}
           </div>
         </div>
 
-        {/* ── RIGHT: two separate layouts to keep each breakpoint crystal-clear ── */}
+        {/* Row 2: Difficulty + status pills */}
+        {pillsRow}
 
-        {/* ── MOBILE only (hidden on md+) ─────────────────────────────────── */}
-        <div className="flex items-center justify-between gap-2 md:hidden mt-1">
-          {/* Match badge + bar (left) */}
-          {hasMatch && (
-            <div className="flex flex-col items-start gap-1.5 flex-1">
-              <span className={cn(
-                "inline-flex items-center font-bold rounded-full border whitespace-nowrap",
-                featured
-                  ? "text-[13px] px-3 py-0.5"
-                  : "text-[11px] px-2 py-0.5",
-                "bg-primary/10 dark:bg-primary/15 text-primary border-primary/20",
-              )}>
-                {set.matchPercent}% Khớp CV
-              </span>
-              <div className={cn(
-                "h-1.5 rounded-full bg-gray-100 dark:bg-gray-800/80 overflow-hidden",
-                featured ? "w-32" : "w-24",
-              )}>
-                <div
-                  className="h-full rounded-full bg-linear-to-r from-primary to-violet-400 relative overflow-hidden"
-                  style={{ width: `${Math.min(100, set.matchPercent!)}%` }}
-                >
-                  <span
-                    aria-hidden
-                    className="absolute inset-0"
-                    style={{
-                      background: "linear-gradient(90deg,transparent 0%,rgba(255,255,255,0.45) 50%,transparent 100%)",
-                      animation: "qs-bar-shimmer 2s linear infinite",
-                    }}
-                  />
-                </div>
-              </div>
-            </div>
+        {/* Row 3: Title */}
+        <h3 className="text-[14px] font-bold leading-snug line-clamp-2 text-gray-900 dark:text-gray-100 group-hover:text-primary transition-colors duration-150">
+          {cleanTitle(set.title)}
+        </h3>
+
+        {/* Row 4: Company */}
+        <p className="text-[11px] font-semibold text-gray-400 dark:text-gray-500 -mt-1">
+          {set.company}
+        </p>
+
+        {/* Row 5: Skills chips */}
+        {skillsRow}
+
+        {/* Row 6: Stats */}
+        {statsRow}
+
+        {/* Spacer — pushes match% + CTA to bottom */}
+        <div className="flex-1" />
+
+        {/* Row 7: CV match bar */}
+        {matchBar}
+
+        {/* Row 8: CTA */}
+        <Link
+          href={`/candidate/sets/${set.id}`}
+          onClick={(e) => e.stopPropagation()}
+          className={cn(
+            "relative w-full flex items-center justify-center gap-1.5 overflow-hidden",
+            "font-semibold text-white rounded-lg",
+            featured
+              ? "h-9 text-[13px]"
+              : "h-9 text-[12.5px] bg-primary hover:bg-primary/90 transition-colors duration-150",
+            "group-hover:gap-2 transition-[gap] duration-150",
           )}
-          {/* Bookmark + star rating + CTA (right) */}
-          <div className="flex items-center gap-2 shrink-0 ml-auto">
-            {set.rating !== undefined && (
-              <StarDisplay rating={set.rating} />
-            )}
-            <button
-              type="button"
-              onClick={handleBookmark}
-              disabled={bookmarking}
-              aria-label={bookmarked ? p.unsaveBtn : p.saveBtn}
-              className={cn(
-                "w-7 h-7 flex items-center justify-center rounded-lg border transition-all duration-150",
-                bookmarked
-                  ? "bg-primary/10 border-primary/30 text-primary"
-                  : "bg-white/70 dark:bg-gray-800/80 border-gray-200 dark:border-gray-700 text-gray-400 hover:text-primary hover:border-primary/30 hover:bg-primary/5",
-              )}
-            >
-              {bookmarking ? <Loader2 size={12} className="animate-spin" /> : <Bookmark size={12} className={bookmarked ? "fill-primary" : ""} />}
-            </button>
-            <Link
-              href={`/candidate/sets/${set.id}`}
-              onClick={(e) => e.stopPropagation()}
-              className="flex items-center gap-1.5 h-8 px-3 rounded-lg whitespace-nowrap text-[12px] font-semibold text-white bg-primary hover:bg-primary/90 transition-colors shrink-0"
-            >
-              {p.startPractice}
-              <ChevronRight size={13} />
-            </Link>
-          </div>
-        </div>
-
-        {/* ── DESKTOP only (hidden below md) ───────────────────────────────── */}
-        {/*
-          Fixed 3-row column — stable regardless of whether rating/match data exists:
-            TOP    → bookmark (always)
-            MIDDLE → Khớp CV + bar (flex-1 keeps height constant when absent)
-            BOTTOM → rating (secondary, when present) + CTA (always)
-        */}
-        <div className="hidden md:flex flex-col items-end self-stretch min-w-44 pl-2 py-0.5 shrink-0">
-          {/* TOP: Star rating (secondary) + Bookmark — right-aligned together */}
-          <div className="flex items-center gap-2">
-            {set.rating !== undefined && (
-              <StarDisplay rating={set.rating} />
-            )}
-            <button
-              type="button"
-              onClick={handleBookmark}
-              disabled={bookmarking}
-              aria-label={bookmarked ? p.unsaveBtn : p.saveBtn}
-              title={bookmarked ? p.unsaveBtn : p.saveBtn}
-              className={cn(
-                "w-7 h-7 flex items-center justify-center rounded-lg border transition-all duration-150",
-                bookmarked
-                  ? "bg-primary/10 border-primary/30 text-primary"
-                  : "bg-white/70 dark:bg-gray-800/80 border-gray-200 dark:border-gray-700 text-gray-400 hover:text-primary hover:border-primary/30 hover:bg-primary/5",
-              )}
-            >
-              {bookmarking ? (
-                <Loader2 size={12} className="animate-spin" />
-              ) : (
-                <Bookmark size={12} className={bookmarked ? "fill-primary" : ""} />
-              )}
-            </button>
-          </div>
-
-          {/* MIDDLE: Match score — flex-1 keeps layout stable whether or not data exists */}
-          <div className="flex-1 flex flex-col items-end justify-end gap-1.5 pb-2">
-            {hasMatch && (
-              <>
-                <span className={cn(
-                  "inline-flex items-center font-bold rounded-full border whitespace-nowrap",
-                  featured
-                    ? "text-[14px] px-3.5 py-1"
-                    : "text-[11.5px] px-2.5 py-0.5",
-                  "bg-primary/10 dark:bg-primary/15 text-primary border-primary/20",
-                )}>
-                  {set.matchPercent}% Khớp CV
-                </span>
-                <div className={cn(
-                  "h-1.5 rounded-full bg-gray-100 dark:bg-gray-800/80 overflow-hidden",
-                  featured ? "w-36" : "w-28",
-                )}>
-                  <div
-                    className="h-full rounded-full bg-linear-to-r from-primary to-violet-400 relative overflow-hidden"
-                    style={{ width: `${Math.min(100, set.matchPercent!)}%` }}
-                  >
-                    <span
-                      aria-hidden
-                      className="absolute inset-0"
-                      style={{
-                        background: "linear-gradient(90deg,transparent 0%,rgba(255,255,255,0.45) 50%,transparent 100%)",
-                        animation: "qs-bar-shimmer 2s linear infinite",
-                      }}
-                    />
-                  </div>
-                </div>
-              </>
-            )}
-          </div>
-
-          {/* BOTTOM: CTA — always anchored to bottom */}
-          <div className="flex flex-col items-end gap-1.5">
-            <Link
-              href={`/candidate/sets/${set.id}`}
-              onClick={(e) => e.stopPropagation()}
-              className={cn(
-                "relative flex items-center gap-1.5 whitespace-nowrap shrink-0 overflow-hidden",
-                "font-semibold text-white",
-                featured
-                  ? "h-9 px-5 rounded-xl text-[13px]"
-                  : "h-8 px-4 rounded-lg text-[12px] bg-primary hover:bg-primary/90 transition-[background-color,gap] duration-150",
-                "group-hover:gap-2 transition-[gap] duration-150",
-              )}
-              style={featured ? {
-                background: "linear-gradient(90deg,#7c3aed,#a855f7 40%,#06b6d4)",
-                backgroundSize: "200% auto",
-                animation: "qs-cta-grad 4s ease-in-out infinite",
-              } : undefined}
-            >
-              {featured && (
-                <span
-                  aria-hidden
-                  className="absolute inset-0 pointer-events-none"
-                  style={{
-                    background: "linear-gradient(90deg,transparent 0%,rgba(255,255,255,0.22) 50%,transparent 100%)",
-                    animation: "qs-cta-sweep 3s ease-in-out infinite",
-                  }}
-                />
-              )}
-              <span className="relative z-10 flex items-center gap-1.5">
-                {p.startPractice}
-                <ChevronRight size={13} className="transition-transform group-hover:translate-x-0.5" />
-              </span>
-            </Link>
-          </div>
-        </div>
+          style={featured ? {
+            background: "linear-gradient(90deg,#7c3aed,#a855f7 40%,#06b6d4)",
+            backgroundSize: "200% auto",
+            animation: "qs-cta-grad 4s ease-in-out infinite",
+          } : undefined}
+        >
+          {featured && (
+            <span
+              aria-hidden
+              className="absolute inset-0 pointer-events-none"
+              style={{
+                background: "linear-gradient(90deg,transparent 0%,rgba(255,255,255,0.22) 50%,transparent 100%)",
+                animation: "qs-cta-sweep 3s ease-in-out infinite",
+              }}
+            />
+          )}
+          <span className="relative z-10 flex items-center gap-1.5">
+            {p.startPractice}
+            <ChevronRight size={13} className="transition-transform group-hover:translate-x-0.5" />
+          </span>
+        </Link>
       </div>
     </div>
     </>

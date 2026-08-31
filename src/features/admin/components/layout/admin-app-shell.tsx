@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useRef, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { ScrollToTopButton } from "@/shared/components/ui/scroll-to-top-button";
 import { usePathname } from "next/navigation";
 import { AdminSidebar } from "./admin-sidebar";
 import { TopHeader } from "@/features/hr/components/layout/top-header";
@@ -32,7 +33,23 @@ export function AdminAppShell({ children, breadcrumb, pageTitle }: AdminAppShell
   const { user, loading } = useUser();
   const welcomedRef = useRef(false);
   const mainRef = useRef<HTMLElement>(null);
+  const [scrolledDown, setScrolledDown] = useState(false);
   const { pendingCount, pendingItems } = useAdminPendingFeedbacks();
+
+  // Native scroll listener — more reliable than React's synthetic onScroll
+  useEffect(() => {
+    const el = mainRef.current;
+    if (!el) return;
+    const handler = () => setScrolledDown(el.scrollTop > 200);
+    el.addEventListener("scroll", handler, { passive: true });
+    return () => el.removeEventListener("scroll", handler);
+  }, []);
+
+  // Reset scroll position and button on route change
+  useEffect(() => {
+    setScrolledDown(false);
+    if (mainRef.current) mainRef.current.scrollTop = 0;
+  }, [pathname]);
 
   const notifications = useMemo<NotificationItem[]>(
     () =>
@@ -105,7 +122,10 @@ export function AdminAppShell({ children, breadcrumb, pageTitle }: AdminAppShell
             plan: "Admin",
           }}
         />
-        <main ref={mainRef} className="flex-1 overflow-y-auto overflow-x-hidden hr-main-bg scrollbar-hide">
+        <main
+          ref={mainRef}
+          className="flex-1 overflow-y-auto overflow-x-hidden hr-main-bg scrollbar-hide"
+        >
           <div className="hr-aurora-orb hr-aurora-orb--purple w-130 h-130 -top-20 -left-15" aria-hidden="true" />
           <div className="hr-aurora-orb hr-aurora-orb--cyan w-100 h-100 bottom-[10%] -right-10" aria-hidden="true" />
           <div className="hr-aurora-orb hr-aurora-orb--violet w-80 h-80 top-[40%] left-[30%]" aria-hidden="true" />
@@ -114,6 +134,13 @@ export function AdminAppShell({ children, breadcrumb, pageTitle }: AdminAppShell
           </div>
         </main>
       </div>
+    </div>
+    <div className="fixed bottom-20 right-6 z-60">
+      <ScrollToTopButton
+        visible={scrolledDown}
+        onClick={() => mainRef.current?.scrollTo({ top: 0, behavior: "smooth" })}
+        positionClassName=""
+      />
     </div>
     </AdminScrollContext.Provider>
   );
