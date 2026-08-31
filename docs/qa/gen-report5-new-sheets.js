@@ -19,7 +19,7 @@ const thin = { style: "thin", color: { argb: BLACK } };
 const medium = { style: "medium", color: { argb: BLACK } };
 const borderAll = { top: thin, left: thin, bottom: thin, right: thin };
 
-const TESTER = "Vitest CI (khoa3107)";
+const TESTER = "Vitest CI";
 const DATE = "2026-08-16";
 
 // ---------------------------------------------------------------------------
