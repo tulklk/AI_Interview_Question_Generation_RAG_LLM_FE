@@ -168,8 +168,10 @@ export function CandidateProfile() {
   const [cvDeleteConfirmOpen, setCvDeleteConfirmOpen] = useState(false);
   const [showCvInsights, setShowCvInsights] = useState(false);
   const [showAllCvSkills, setShowAllCvSkills] = useState(false);
+  const [showAllSkills, setShowAllSkills] = useState(false);
   const [cvLightbox, setCvLightbox] = useState(false);
   const cvFileInputRef = useRef<HTMLInputElement>(null);
+  const [cvDragOver, setCvDragOver] = useState(false);
 
 
   const [stats, setStats] = useState<PracticeStats | null>(null);
@@ -212,10 +214,7 @@ export function CandidateProfile() {
     return () => { cancelled = true; };
   }, []);
 
-  function handleCvFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (!file) return;
+  function uploadCvFile(file: File) {
     if (!/\.(pdf|docx|jpe?g|png)$/i.test(file.name)) {
       addToast("error", p.cv.invalidFormat);
       return;
@@ -249,11 +248,46 @@ export function CandidateProfile() {
       .finally(() => setCvUploading(false));
   }
 
+  function handleCvFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    uploadCvFile(file);
+  }
+
+  function handleCvDrop(e: React.DragEvent) {
+    e.preventDefault();
+    setCvDragOver(false);
+    if (cvUploading || cvDeleting) return;
+    const file = e.dataTransfer.files?.[0];
+    if (!file) return;
+    uploadCvFile(file);
+  }
+
   function handleCvDelete() {
     setCvDeleting(true);
     deleteCv()
       .then(() => {
         setCv(null);
+        // Clear CV-derived skills from both form and snapshot so the
+        // "Kỹ năng chuyên môn" section empties along with the CV.
+        setForm((prev) => ({ ...prev, skills: [] }));
+        setSnapshot((prev) => ({ ...prev, skills: [] }));
+        // Persist skill-clearing to the backend so a page refresh does not
+        // bring the old skills back. Fire-and-forget — failure is silent
+        // because local state is already cleared and the next explicit
+        // profile save will also persist the empty techStack.
+        void updateCandidateProfile({
+          fullName: form.fullName.trim(),
+          targetRole: form.targetRole.trim() || undefined,
+          seniorityLevel: form.seniorityLevel || undefined,
+          techStack: [],
+          bio: form.bio.trim() || undefined,
+          phoneNumber: form.phoneNumber.trim() || undefined,
+          linkedInUrl: form.linkedInUrl.trim() || undefined,
+          githubUrl: form.githubUrl.trim() || undefined,
+          avatarUrl: form.avatarUrl.trim() || undefined,
+        }).catch(() => {/* non-critical — local state already cleared */});
         addToast("success", p.cv.deleteSuccess);
       })
       .catch(() => addToast("error", p.cv.deleteFailed))
@@ -566,7 +600,7 @@ export function CandidateProfile() {
           <div className="flex items-center justify-between px-3.5 py-2.5 border-b border-gray-100 dark:border-gray-800">
             <div className="flex items-center gap-2 min-w-0">
               <FileText size={13} className="text-blue-600 dark:text-blue-400 shrink-0" />
-              <p className={cn("text-[12px] font-bold truncate", portalHeadingAlt)}>{p.cv.title}</p>
+              <p className={cn("text-[12px] font-bold truncate", portalHeadingAlt)}>CV Review</p>
             </div>
             {cv?.downloadUrl && (
               <a
@@ -638,17 +672,8 @@ export function CandidateProfile() {
               </span>
             </a>
           ) : (
-            <div className="h-40 flex flex-col items-center justify-center gap-3 px-4 text-center">
-              <p className={cn("text-[12px]", portalSubtextAlt)}>{p.cv.emptyState}</p>
-              <button
-                type="button"
-                onClick={() => cvFileInputRef.current?.click()}
-                disabled={cvUploading}
-                className="shimmer-button flex items-center gap-1.5 h-8 px-3 text-[12px] font-semibold text-white hr-cta-btn rounded-lg disabled:opacity-60"
-              >
-                {cvUploading ? <Loader2 size={12} className="animate-spin" /> : <Upload size={12} />}
-                {cvUploading ? p.cv.uploading : p.cv.uploadBtn}
-              </button>
+            <div className="h-32 flex items-center justify-center">
+              <p className={cn("text-[12px] italic", portalSubtextAlt)}>Chưa cập nhật</p>
             </div>
           )}
         </motion.div>
@@ -707,30 +732,8 @@ export function CandidateProfile() {
           )}
         </div>
 
-        {/* SCRUM-401: Contribution heatmap — cột phải đủ rộng cho 52 tuần */}
-        <div className="hr-glass-card p-5 overflow-hidden">
-          <div className="mb-3">
-            <h3 className={cn("text-[14px] font-[700]", portalHeadingAlt)}>{p.heatmap.title}</h3>
-            <p className={cn("text-[12px] mt-0.5", portalSubtextAlt)}>{p.heatmap.subtitle}</p>
-          </div>
-          {activityLoading ? (
-            <div className="space-y-3">
-              <div className="grid grid-cols-3 gap-3">
-                {Array.from({ length: 3 }).map((_, i) => (
-                  <Skeleton key={i} className="h-14 rounded-lg" />
-                ))}
-              </div>
-              <Skeleton className="h-24 w-full rounded-lg" />
-            </div>
-          ) : practiceHeatmap.activeDays === 0 ? (
-            <p className={cn("text-[13px] py-6 text-center", portalSubtextAlt)}>{p.heatmap.empty}</p>
-          ) : (
-            <PracticeHeatmap heatmap={practiceHeatmap} source="profile" compact />
-          )}
-        </div>
-
         {/* Contact information */}
-        <SectionCard title={p.sectionContact} icon={User}>
+        <SectionCard title={p.sectionContact}>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-5">
             <Field label={p.fullName}>
               {editing ? (
@@ -796,8 +799,30 @@ export function CandidateProfile() {
           </div>
         </SectionCard>
 
+        {/* SCRUM-401: Contribution heatmap — cột phải đủ rộng cho 52 tuần */}
+        <div className="hr-glass-card p-5 overflow-hidden">
+          <div className="mb-3">
+            <h3 className={cn("text-[14px] font-bold", portalHeadingAlt)}>{p.heatmap.title}</h3>
+            <p className={cn("text-[12px] mt-0.5", portalSubtextAlt)}>{p.heatmap.subtitle}</p>
+          </div>
+          {activityLoading ? (
+            <div className="space-y-3">
+              <div className="grid grid-cols-3 gap-3">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <Skeleton key={i} className="h-14 rounded-lg" />
+                ))}
+              </div>
+              <Skeleton className="h-24 w-full rounded-lg" />
+            </div>
+          ) : practiceHeatmap.activeDays === 0 ? (
+            <p className={cn("text-[13px] py-6 text-center", portalSubtextAlt)}>{p.heatmap.empty}</p>
+          ) : (
+            <PracticeHeatmap heatmap={practiceHeatmap} source="profile" compact />
+          )}
+        </div>
+
         {/* Career goals */}
-        <SectionCard title={p.sectionCareer} icon={Target}>
+        <SectionCard title={p.sectionCareer}>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-5 mb-5">
             <Field label={p.targetRole}>
               {editing ? (
@@ -851,7 +876,7 @@ export function CandidateProfile() {
         </SectionCard>
 
         {/* CV / Resume */}
-        <SectionCard title={p.cv.title} icon={FileText}>
+        <SectionCard title={p.cv.title}>
           <input
             ref={cvFileInputRef}
             type="file"
@@ -859,6 +884,25 @@ export function CandidateProfile() {
             className="hidden"
             onChange={handleCvFileChange}
           />
+
+          {/* ── Drag-and-drop wrapper ── */}
+          <div
+            className="relative"
+            onDragOver={(e) => { e.preventDefault(); if (!cvUploading && !cvDeleting) setCvDragOver(true); }}
+            onDragEnter={(e) => { e.preventDefault(); if (!cvUploading && !cvDeleting) setCvDragOver(true); }}
+            onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setCvDragOver(false); }}
+            onDrop={handleCvDrop}
+          >
+            {/* Drag overlay — renders on top of any CV state */}
+            {cvDragOver && (
+              <div className="absolute inset-0 z-20 flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-primary bg-white/96 dark:bg-gray-900/96 pointer-events-none">
+                <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mb-3">
+                  <Upload size={26} className="text-primary" aria-hidden="true" />
+                </div>
+                <p className="text-sm font-bold text-primary">Thả file vào đây</p>
+                <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">PDF · DOCX · JPG · PNG</p>
+              </div>
+            )}
 
           {cvLoading ? (
             <div className="h-12 flex items-center justify-center">
@@ -1002,11 +1046,16 @@ export function CandidateProfile() {
               </div>
             </div>
           ) : (
-            <div className="flex flex-col items-center gap-3 py-6 text-center">
+            <div className="flex flex-col items-center gap-3 py-8 text-center rounded-xl border-2 border-dashed border-gray-200 dark:border-gray-700 transition-colors duration-200">
               <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center", portalIconWell)}>
                 <FileText size={20} className="text-gray-400 dark:text-gray-500" />
               </div>
-              <p className={cn("text-[13px] max-w-xs", portalSubtextAlt)}>{p.cv.emptyState}</p>
+              <div>
+                <p className={cn("text-[13px] max-w-xs", portalSubtextAlt)}>{p.cv.emptyState}</p>
+                <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-1">
+                  Kéo thả file vào đây hoặc
+                </p>
+              </div>
               <button
                 type="button"
                 onClick={() => cvFileInputRef.current?.click()}
@@ -1016,33 +1065,67 @@ export function CandidateProfile() {
                 {cvUploading ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
                 {cvUploading ? p.cv.uploading : p.cv.uploadBtn}
               </button>
+              <p className="text-[10px] text-gray-400 dark:text-gray-600">PDF · DOCX · JPG · PNG</p>
             </div>
           )}
+          </div>{/* end drag-and-drop wrapper */}
         </SectionCard>
 
         {/* Skills */}
-        <SectionCard title={p.sectionSkills} icon={Sparkles}>
-          <div className="flex flex-wrap gap-2 mb-4">
-            {form.skills.length === 0 && !editing ? (
-              <span className={cn("text-[14px] italic", portalSubtextAlt)}>{p.emptyField}</span>
-            ) : (
-              form.skills.map((skill) => (
-                <SkillBadge
-                  key={skill}
-                  skill={skill}
-                  editing={editing}
-                  onRemove={() =>
-                    setForm((prev) => ({
-                      ...prev,
-                      skills: prev.skills.filter((s) => s !== skill),
-                    }))
-                  }
-                />
-              ))
-            )}
-          </div>
+        <SectionCard title={p.sectionSkills}>
+          {(() => {
+            const MAX_VISIBLE = 8;
+            const visibleSkills =
+              editing || showAllSkills
+                ? form.skills
+                : form.skills.slice(0, MAX_VISIBLE);
+            const hiddenCount = form.skills.length - MAX_VISIBLE;
+
+            return (
+              <>
+                <div className="flex flex-wrap gap-2 mb-3">
+                  {form.skills.length === 0 && !editing ? (
+                    <span className={cn("text-[14px] italic", portalSubtextAlt)}>
+                      {p.emptyField}
+                    </span>
+                  ) : (
+                    visibleSkills.map((skill) => (
+                      <SkillBadge
+                        key={skill}
+                        skill={skill}
+                        editing={editing}
+                        onRemove={() =>
+                          setForm((prev) => ({
+                            ...prev,
+                            skills: prev.skills.filter((s) => s !== skill),
+                          }))
+                        }
+                      />
+                    ))
+                  )}
+                </div>
+
+                {/* Show more / collapse — only in view mode */}
+                {!editing && hiddenCount > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setShowAllSkills((v) => !v)}
+                    className={cn(
+                      "text-[12px] font-semibold px-3 py-1.5 rounded-lg transition-colors",
+                      "text-primary bg-violet-50 hover:bg-violet-100 dark:bg-violet-950/30 dark:hover:bg-violet-950/50"
+                    )}
+                  >
+                    {showAllSkills
+                      ? "Thu gọn ↑"
+                      : `+${hiddenCount} kỹ năng khác`}
+                  </button>
+                )}
+              </>
+            );
+          })()}
+
           {editing && (
-            <div className="flex gap-2">
+            <div className="flex gap-2 mt-2">
               <input
                 type="text"
                 value={skillInput}
@@ -1065,9 +1148,16 @@ export function CandidateProfile() {
         </SectionCard>
 
         {/* Social links */}
-        <SectionCard title={p.sectionLinks} icon={Link}>
+        <SectionCard title={p.sectionLinks}>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-5">
-            <Field label={p.linkedInUrl}>
+            <Field
+              label={p.linkedInUrl}
+              labelIcon={
+                <svg viewBox="0 0 24 24" fill="#0A66C2" className="w-3.5 h-3.5 shrink-0" aria-hidden>
+                  <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+                </svg>
+              }
+            >
               {editing ? (
                 <div>
                   <div className="relative">
@@ -1087,7 +1177,14 @@ export function CandidateProfile() {
               )}
             </Field>
 
-            <Field label={p.githubUrl}>
+            <Field
+              label={p.githubUrl}
+              labelIcon={
+                <svg viewBox="0 0 24 24" fill="currentColor" className="w-3.5 h-3.5 shrink-0 text-gray-800 dark:text-gray-200" aria-hidden>
+                  <path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/>
+                </svg>
+              }
+            >
               {editing ? (
                 <div>
                   <div className="relative">

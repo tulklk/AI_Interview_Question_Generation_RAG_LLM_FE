@@ -10,11 +10,13 @@ export function formatScore(score: number | null | undefined): string {
   return score === null || score === undefined ? "—" : `${Math.round(score)}%`;
 }
 
-export function formatDuration(totalMinutes: number): string {
+export function formatDuration(totalMinutes: number, lang?: string): string {
   const minutes = Math.max(0, Math.round(totalMinutes));
-  if (minutes < 60) return `${minutes} min`;
+  const isVi = lang === "vi";
+  if (minutes < 60) return isVi ? `${minutes} phút` : `${minutes} min`;
   const hours = Math.floor(minutes / 60);
   const rest = minutes % 60;
+  if (isVi) return rest === 0 ? `${hours} giờ` : `${hours} giờ ${rest} phút`;
   return rest === 0 ? `${hours}h` : `${hours}h ${rest}m`;
 }
 
@@ -127,6 +129,39 @@ export function filterSessionsByRange(sessions: CompletedSessionSummary[], range
     const t = new Date(s.completedAt ?? 0).getTime();
     return !Number.isNaN(t) && t >= cutoff;
   });
+}
+
+/** Lọc phiên cho một ngày cụ thể (YYYY-MM-DD, local time). */
+export function filterSessionsByDate(
+  sessions: CompletedSessionSummary[],
+  date: string,
+): CompletedSessionSummary[] {
+  return sessions.filter((s) => {
+    if (!s.completedAt) return false;
+    const d = new Date(s.completedAt);
+    const local = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    return local === date;
+  });
+}
+
+/** Thống kê tính từ danh sách phiên đã lọc (không phụ thuộc API). */
+export interface FilteredStats {
+  totalSessions: number;
+  averageScore: number | null;
+  totalDurationMinutes: number;
+}
+
+export function computeFilteredStats(sessions: CompletedSessionSummary[]): FilteredStats {
+  const scored = sessions.filter((s) => s.score !== null);
+  const avgScore =
+    scored.length > 0
+      ? Math.round((scored.reduce((sum, s) => sum + (s.score ?? 0), 0) / scored.length) * 10) / 10
+      : null;
+  return {
+    totalSessions: sessions.length,
+    averageScore: avgScore,
+    totalDurationMinutes: sessions.reduce((sum, s) => sum + (s.durationMinutes ?? 0), 0),
+  };
 }
 
 export interface TrendPoint {
@@ -291,6 +326,7 @@ function fillHeatmapWindow(byDay: Map<string, HeatmapDay>, weeks: number): Pract
 export interface RoleReadiness {
   role: string;
   company: string;
+  companyLogoUrl: string | null;
   sessionCount: number;
   avgScore: number | null;
   lastPracticedAt: string | undefined;
@@ -314,6 +350,7 @@ export function buildRoleReadiness(sessions: CompletedSessionSummary[]): RoleRea
       return {
         role,
         company: sorted[0]?.company ?? "",
+        companyLogoUrl: sorted[0]?.companyLogoUrl ?? null,
         sessionCount: list.length,
         avgScore: scored.length > 0 ? Math.round(scored.reduce((sum, s) => sum + s.score, 0) / scored.length) : null,
         lastPracticedAt: sorted[0]?.completedAt,

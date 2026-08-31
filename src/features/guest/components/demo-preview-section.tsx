@@ -76,7 +76,7 @@ function QuestionCard({
           {open && (
             <div className="mt-3 rounded-lg bg-[#f5f3ff] dark:bg-[#6c47ff]/15 border border-[#6c47ff]/15 dark:border-[#6c47ff]/25 p-4 animate-fade-up">
               <div className="flex items-center gap-1.5 mb-2">
-                <Sparkles size={12} className="text-[#6c47ff]" />
+                <Sparkles size={12} className="text-[#6c47ff]" aria-hidden="true" />
                 <span className="text-xs font-semibold text-[#6c47ff]">{d.aiAnswerLabel}</span>
               </div>
               <p className="text-sm text-gray-700 dark:text-gray-200 leading-relaxed">
@@ -136,7 +136,7 @@ export function DemoPreviewSection() {
                 </div>
               </div>
               <div className="mt-3 flex items-center gap-2 flex-wrap">
-                <Tag size={12} className="text-[#6c47ff] shrink-0" />
+                <Tag size={12} className="text-[#6c47ff] shrink-0" aria-hidden="true" />
                 {demoKeywords.map((k) => {
                   const iconConfig = KEYWORD_ICONS[k];
                   const Icon = iconConfig?.icon;
@@ -145,7 +145,8 @@ export function DemoPreviewSection() {
                       key={k}
                       className="chip-pulse inline-flex items-center gap-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 px-2.5 py-1 rounded-full"
                     >
-                      {Icon && <Icon size={12} className={cn("shrink-0", iconConfig.className)} />}
+                      {/* Icon is decorative — text label carries the meaning */}
+                      {Icon && <Icon size={12} aria-hidden="true" className={cn("shrink-0", iconConfig.className)} />}
                       {k}
                     </span>
                   );

@@ -10,7 +10,7 @@ export function SectionCard({
   children,
 }: {
   title: string;
-  icon: LucideIcon;
+  icon?: LucideIcon;
   iconBg?: string;
   iconColor?: string;
   children: ReactNode;
@@ -18,10 +18,12 @@ export function SectionCard({
   return (
     <div className="hr-glass-card p-6">
       <div className="flex items-center gap-2.5 mb-5">
-        <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center shrink-0", iconBg)}>
-          <Icon size={15} className={iconColor} />
-        </div>
-        <h3 className="text-[15px] font-[700] text-[#111827] dark:text-gray-100">{title}</h3>
+        {Icon && (
+          <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center shrink-0", iconBg)}>
+            <Icon size={15} className={iconColor} />
+          </div>
+        )}
+        <h3 className="text-[15px] font-bold text-[#111827] dark:text-gray-100">{title}</h3>
       </div>
       {children}
     </div>
@@ -30,16 +32,20 @@ export function SectionCard({
 
 export function Field({
   label,
+  labelIcon,
   full,
   children,
 }: {
   label: string;
+  /** Optional icon/logo rendered before the label text */
+  labelIcon?: ReactNode;
   full?: boolean;
   children: ReactNode;
 }) {
   return (
     <div className={full ? "sm:col-span-2" : ""}>
-      <label className="block text-[11px] font-[700] text-[#9CA3AF] dark:text-gray-500 uppercase tracking-wider mb-1.5">
+      <label className="flex items-center gap-1.5 text-[11px] font-bold text-[#9CA3AF] dark:text-gray-500 uppercase tracking-wider mb-1.5">
+        {labelIcon}
         {label}
       </label>
       {children}

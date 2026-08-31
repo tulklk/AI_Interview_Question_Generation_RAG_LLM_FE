@@ -1,6 +1,9 @@
 ﻿"use client";
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import Link from "next/link";
+import { Trophy } from "lucide-react";
+import { ScrollToTopButton } from "@/shared/components/ui/scroll-to-top-button";
 import { cn } from "@/lib/cn";
 import { usePathname } from "next/navigation";
 import { JobseekerSidebar } from "./jobseeker-sidebar";
@@ -25,6 +28,7 @@ import {
   CandidateSubscriptionProvider,
   useCandidateSubscription,
 } from "@/features/candidate/context/candidate-subscription-context";
+import { useUserProgress } from "@/features/gamification/hooks/use-user-progress";
 import { UpgradeModal } from "@/features/candidate/components/billing/upgrade-modal";
 import { PremiumCelebrationDialog } from "@/shared/components/ui/premium-celebration-dialog";
 import { PremiumRevokedDialog } from "@/shared/components/ui/premium-revoked-dialog";
@@ -49,12 +53,25 @@ function JobseekerAppShellInner({
   const { addToast } = useToast();
   const { user, loading } = useUser();
   const { planType, refreshSubscription } = useCandidateSubscription();
+  const { progress: gamificationProgress } = useUserProgress();
   const welcomedRef = useRef(false);
   const prevPlanTypeRef = useRef<string | null>(null);
+  const mainRef = useRef<HTMLElement>(null);
+
+  // Native scroll listener — more reliable than React's synthetic onScroll
+  useEffect(() => {
+    const el = mainRef.current;
+    if (!el) return;
+    const handler = () => setScrolledDown(el.scrollTop > 200);
+    el.addEventListener("scroll", handler, { passive: true });
+    return () => el.removeEventListener("scroll", handler);
+  }, []);
+
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
   const [showRevoked, setShowRevoked] = useState(false);
+  const [scrolledDown, setScrolledDown] = useState(false);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
 
   // Show Premium celebration once per plan period (payment OR admin grant).
@@ -148,8 +165,12 @@ function JobseekerAppShellInner({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Close sidebar on route change
-  useEffect(() => { setSidebarOpen(false); }, [pathname]);
+  // Close sidebar + reset scroll on route change
+  useEffect(() => {
+    setSidebarOpen(false);
+    setScrolledDown(false);
+    if (mainRef.current) mainRef.current.scrollTop = 0;
+  }, [pathname]);
 
   useEffect(() => {
     if (loading || welcomedRef.current || !hasLoginWelcomePending("jobseeker")) return;
@@ -202,11 +223,29 @@ function JobseekerAppShellInner({
           user={{
             initials: user?.fullName ? getInitials(user.fullName) : loading ? "..." : "??",
             name: user?.fullName ?? (loading ? "..." : "User"),
-            plan: planType === "PREMIUM" ? "Premium" : "Free",
+            plan: `Level ${gamificationProgress?.level ?? "…"}`,
             avatarUrl: resolveAvatarUrl(user),
           }}
+          extraActions={
+            <Link
+              href="/candidate/leaderboard"
+              aria-label="Bảng xếp hạng"
+              title="Bảng xếp hạng"
+              className={cn(
+                "w-9 h-9 flex items-center justify-center rounded-xl transition-colors",
+                pathname.startsWith("/candidate/leaderboard")
+                  ? "bg-primary/10 dark:bg-primary/20 text-primary dark:text-[#a78bff]"
+                  : "text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-200"
+              )}
+            >
+              <Trophy size={18} />
+            </Link>
+          }
         />
-        <main className="flex-1 overflow-y-auto overflow-x-hidden hr-main-bg scrollbar-hide">
+        <main
+          ref={mainRef}
+          className="flex-1 overflow-y-auto overflow-x-hidden hr-main-bg scrollbar-hide"
+        >
           {/* Aurora orbs — visible in dark mode only */}
           <div className="hr-aurora-orb hr-aurora-orb--purple w-130 h-130 -top-20 -left-15" aria-hidden="true" />
           <div className="hr-aurora-orb hr-aurora-orb--cyan w-100 h-100 bottom-[10%] -right-10" aria-hidden="true" />
@@ -217,9 +256,14 @@ function JobseekerAppShellInner({
           )}>{children}</div>
         </main>
       </div>
-      {/* Shared floating badge stack — bottom-right, same position as HR GenerationProgressBadge.
-          Each child badge component manages its own visibility and label. */}
+      {/* Shared floating badge stack — bottom-right.
+          ScrollToTopButton sits at the top of the stack (above badges). */}
       <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-2 items-end">
+        <ScrollToTopButton
+          visible={scrolledDown}
+          onClick={() => mainRef.current?.scrollTo({ top: 0, behavior: "smooth" })}
+          positionClassName=""
+        />
         <CoachGenerationBadge />
         <ScoringProgressBadge />
       </div>

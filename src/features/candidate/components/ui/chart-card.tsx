@@ -57,17 +57,10 @@ export function ChartCard({
       viewport={{ once: true, margin: "-40px" }}
       transition={{ duration: 0.45, ease: "easeOut" }}
     >
-      <div className="flex items-center justify-between gap-3 mb-4">
-        <div className="flex items-center gap-2.5 min-w-0">
-          {Icon && (
-            <div className={cn("w-8 h-8 rounded-xl flex items-center justify-center shrink-0", iconBg)}>
-              <Icon size={15} className={iconColor} />
-            </div>
-          )}
-          <div className="min-w-0">
-            <h2 className={cn("text-[15px] font-bold leading-tight truncate", portalHeadingAlt)}>{title}</h2>
-            {subtitle && <p className={cn("text-[11px] mt-0.5", portalSubtextAlt)}>{subtitle}</p>}
-          </div>
+      <div className="flex items-start justify-between gap-3 mb-4">
+        <div className="min-w-0">
+          <h2 className={cn("text-[15px] font-bold leading-tight", portalHeadingAlt)}>{title}</h2>
+          {subtitle && <p className={cn("text-[11px] mt-0.5", portalSubtextAlt)}>{subtitle}</p>}
         </div>
         {actions && <div className="shrink-0">{actions}</div>}
       </div>

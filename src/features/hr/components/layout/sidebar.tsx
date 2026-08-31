@@ -448,7 +448,7 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
       <div
         className={cn(
           "hidden lg:flex shrink-0 h-screen transition-[width] duration-200 ease-out",
-          isCollapsed ? "w-16" : "w-62.5"
+          isCollapsed ? "w-16" : "w-68"
         )}
       >
         {sidebarContent(true)}

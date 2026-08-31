@@ -7,6 +7,7 @@ import { useState } from "react";
 import { useLanguage } from "@/shared/providers/language-context";
 import type { XpReward, XpRewardType } from "@/features/gamification/types/gamification.types";
 import { XpProgressBar } from "@/features/gamification/components/xp-progress-bar";
+import { xpRewardTypeLabel } from "@/features/gamification/utils/gamification-formatters";
 import { portalHeadingAlt, portalSubtextAlt } from "@/shared/utils/portal-ui";
 
 const REWARD_TYPE_ICONS: Record<XpRewardType, string> = {
@@ -24,8 +25,9 @@ interface SessionXpSummaryProps {
 }
 
 export function SessionXpSummary({ xpReward, className }: SessionXpSummaryProps) {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const g = t.gamification;
+  const locale = lang === "vi" ? "vi" : "en";
   const [expanded, setExpanded] = useState(false);
 
   if (xpReward.totalEarned === 0) {
@@ -108,7 +110,9 @@ export function SessionXpSummary({ xpReward, className }: SessionXpSummaryProps)
               {xpReward.rewards.map((r, i) => (
                 <div key={i} className="flex items-center gap-2">
                   <span className="text-base shrink-0">{REWARD_TYPE_ICONS[r.type]}</span>
-                  <span className={cn("flex-1 text-[12px]", portalSubtextAlt)}>{r.label}</span>
+                  <span className={cn("flex-1 text-[12px]", portalSubtextAlt)}>
+                    {r.label || xpRewardTypeLabel(r.type, locale)}
+                  </span>
                   <span className={cn("text-[12px] font-[700] tabular-nums text-violet-600 dark:text-violet-400")}>
                     +{r.xp} XP
                   </span>

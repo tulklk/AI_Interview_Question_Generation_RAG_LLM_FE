@@ -24,6 +24,12 @@ export function SidebarUserFooter({
 
   const displayName = user?.fullName || (loading ? "..." : "User");
   const displayEmail = user?.email || (loading ? "..." : "");
+
+  /** Lấy 2 từ cuối của tên đầy đủ để hiển thị trong sidebar */
+  const shortName = (() => {
+    const words = displayName.trim().split(/\s+/);
+    return words.length <= 2 ? displayName : words.slice(-2).join(" ");
+  })();
   const avatarUrl = resolveAvatarUrl(user);
 
   if (collapsed) {
@@ -56,8 +62,8 @@ export function SidebarUserFooter({
           <AvatarCircle avatarUrl={avatarUrl} fullName={displayName} size="sm" />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-gray-800 dark:text-gray-100 text-sm font-semibold leading-tight truncate">
-            {displayName}
+          <p className="text-gray-800 dark:text-gray-100 text-sm font-semibold leading-tight truncate" title={displayName}>
+            {shortName}
           </p>
           {displayEmail ? (
             <p className="text-gray-400 dark:text-gray-500 text-[11px] leading-tight truncate">

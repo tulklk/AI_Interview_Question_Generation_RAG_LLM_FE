@@ -33,9 +33,9 @@ export function GuestFooter() {
           </div>
 
           <div>
-            <h4 className="text-xs font-bold text-gray-900 dark:text-gray-100 uppercase tracking-widest mb-4">
+            <p className="text-xs font-bold text-gray-900 dark:text-gray-100 uppercase tracking-widest mb-4">
               {f.quickLinks}
-            </h4>
+            </p>
             <ul className="space-y-2.5">
               {quickLinks.map((link) => (
                 <li key={link.label}>
@@ -54,9 +54,9 @@ export function GuestFooter() {
           </div>
 
           <div>
-            <h4 className="text-xs font-bold text-gray-900 dark:text-gray-100 uppercase tracking-widest mb-4">
+            <p className="text-xs font-bold text-gray-900 dark:text-gray-100 uppercase tracking-widest mb-4">
               {f.legal}
-            </h4>
+            </p>
             <ul className="space-y-2.5">
               {legalLinks.map((link) => (
                 <li key={link.label}>

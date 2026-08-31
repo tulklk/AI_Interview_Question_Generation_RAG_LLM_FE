@@ -100,7 +100,7 @@ export function SectionCarousel() {
           type="button"
           onClick={prev}
           aria-label="Previous section"
-          className="absolute left-3 md:left-6 top-1/2 -translate-y-1/2 z-20 w-9 h-9 rounded-full bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border border-gray-200 dark:border-gray-700 shadow-md flex items-center justify-center text-gray-500 dark:text-gray-400 hover:bg-white dark:hover:bg-gray-800 hover:text-primary dark:hover:text-[#a78bff] transition-all duration-200"
+          className="absolute left-3 md:left-6 top-1/2 -translate-y-1/2 z-20 w-9 h-9 rounded-full bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border border-gray-200 dark:border-gray-700 shadow-md flex items-center justify-center text-gray-500 dark:text-gray-400 hover:bg-white dark:hover:bg-gray-800 hover:text-primary dark:hover:text-[#a78bff] transition-colors duration-200"
         >
           <ChevronLeft size={16} />
         </button>
@@ -110,25 +110,30 @@ export function SectionCarousel() {
           type="button"
           onClick={next}
           aria-label="Next section"
-          className="absolute right-3 md:right-6 top-1/2 -translate-y-1/2 z-20 w-9 h-9 rounded-full bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border border-gray-200 dark:border-gray-700 shadow-md flex items-center justify-center text-gray-500 dark:text-gray-400 hover:bg-white dark:hover:bg-gray-800 hover:text-primary dark:hover:text-[#a78bff] transition-all duration-200"
+          className="absolute right-3 md:right-6 top-1/2 -translate-y-1/2 z-20 w-9 h-9 rounded-full bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border border-gray-200 dark:border-gray-700 shadow-md flex items-center justify-center text-gray-500 dark:text-gray-400 hover:bg-white dark:hover:bg-gray-800 hover:text-primary dark:hover:text-[#a78bff] transition-colors duration-200"
         >
           <ChevronRight size={16} />
         </button>
 
-        {/* Dot indicator */}
-        <div className="absolute bottom-6 left-0 right-0 z-20 flex justify-center gap-2">
+        {/* Dot indicator — invisible hit-area ≥ 24px; visual dot stays 8px */}
+        <div className="absolute bottom-3 left-0 right-0 z-20 flex justify-center gap-1">
           {SLIDES.map((slide, i) => (
             <button
               key={slide.id}
               type="button"
               onClick={() => goTo(i)}
               aria-label={`Go to slide ${i + 1}`}
-              className={`rounded-full transition-all duration-300 ${
-                i === current
-                  ? "w-7 h-2 bg-primary"
-                  : "w-2 h-2 bg-gray-300 dark:bg-gray-600 hover:bg-primary/60"
-              }`}
-            />
+              aria-current={i === current ? "true" : undefined}
+              className="flex items-center justify-center w-6 h-6 rounded-full focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1"
+            >
+              <span
+                className={`block rounded-full transition-[width,background-color] duration-300 h-2 ${
+                  i === current
+                    ? "w-7 bg-primary"
+                    : "w-2 bg-gray-300 dark:bg-gray-600 hover:bg-primary/60"
+                }`}
+              />
+            </button>
           ))}
         </div>
 

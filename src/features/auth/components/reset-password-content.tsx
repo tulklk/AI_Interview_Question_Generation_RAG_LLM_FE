@@ -53,7 +53,16 @@ export function ResetPasswordContent() {
 
   function validate(): boolean {
     const errors: { newPassword?: string; confirmPassword?: string } = {};
-    if (newPassword.length < 8) errors.newPassword = rp.passwordTooShort;
+    if (newPassword.length < 8) {
+      errors.newPassword = rp.passwordTooShort;
+    } else if (
+      !/[A-Z]/.test(newPassword) ||
+      !/[a-z]/.test(newPassword) ||
+      !/[0-9]/.test(newPassword) ||
+      !/[^A-Za-z0-9]/.test(newPassword)
+    ) {
+      errors.newPassword = rp.passwordComplexity;
+    }
     if (confirmPassword !== newPassword) errors.confirmPassword = rp.passwordMismatch;
     if (Object.keys(errors).length > 0) {
       setFieldErrors(errors);
