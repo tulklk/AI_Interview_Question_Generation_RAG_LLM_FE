@@ -26,6 +26,7 @@ export function recommendation(overrides: Partial<CandidateRecommendation> = {})
     completedAt: new Date().toISOString(),
     status: "NEW",
     recommendationReason: null,
+    invitationStatus: null,
     invitationResponseMessage: null,
     invitationSharedPhoneNumber: null,
     latestOfferStatus: null,
