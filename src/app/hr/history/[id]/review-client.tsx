@@ -97,13 +97,13 @@ export function HrReviewPageClient() {
   const session: GenerationSession = {
     id: draft.id,
     jobTitle: draft.jobTitle,
+    jdContent: draft.jobDescription,
     hrOwner: "",
     status: "COMPLETED",
     createdAt: draft.generatedAt || new Date().toISOString(),
     updatedAt: draft.generatedAt || new Date().toISOString(),
     generatedQuestions: draft.questions,
     questionSetId: draft.id,
-    hasDraft: true,
     isFromStudio: true,
   };
 
@@ -113,9 +113,30 @@ export function HrReviewPageClient() {
         session={session}
         draftQuestions={draft.questions}
         questionSetId={draft.id}
+        jobDescription={draft.jobDescription}
+        jdSourceType={draft.jdSourceType}
+        jdOriginalFileName={draft.jdOriginalFileName}
+        sourceProjectId={draft.sourceProjectId}
+        onJobDescriptionChange={(next) => {
+          setDraft((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  jobDescription: next.content ?? undefined,
+                  jdSourceType: next.sourceType ?? prev.jdSourceType,
+                  jdOriginalFileName:
+                    next.sourceType === "UploadedFile"
+                      ? next.fileName ?? prev.jdOriginalFileName
+                      : null,
+                }
+              : prev
+          );
+        }}
         publishStatus={publishStatus}
         onPublishStatusChange={setPublishStatus}
         initialTimeLimitMinutes={draft.timeLimitMinutes}
+        initialAutoRecommendEnabled={draft.autoRecommendEnabled ?? true}
+        initialRecommendationMinScore={draft.recommendationMinScore ?? 70}
         onRenameTitle={async (title) => {
           try {
             const savedTitle = await renameQuestionSetTitle(draft.id, title);

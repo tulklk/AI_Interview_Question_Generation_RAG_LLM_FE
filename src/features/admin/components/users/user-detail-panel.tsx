@@ -28,12 +28,15 @@ import type { AdminUserDetail, AdminUserRoleKey, AdminUserStatusKey } from "@/fe
 import { portalHeadingAlt, portalSubtextAlt } from "@/shared/utils/portal-ui";
 import {
   adminGetUserSubscription,
+  adminGetUserUsage,
   adminGrantUserPremium,
   adminRevokeUserPremium,
   adminUpdateUserSubscription,
   isPremiumPlanCode,
   type AdminUserSubscriptionDetail,
   type AdminUserSubscriptionHistoryItem,
+  type AdminUserUsageSummary,
+  type UsageCounterRow,
 } from "@/features/subscription/services/subscription.service";
 
 interface UserDetailPanelProps {
@@ -118,6 +121,28 @@ function historyTypeLabel(
   if (t.includes("cancel")) return labels.cancel;
   if (t.includes("askai") || t.includes("pack")) return labels.pack;
   return type || labels.other;
+}
+
+function usageTypeLabel(
+  row: UsageCounterRow,
+  labels: {
+    generateWindow: string;
+    generatePeriod: string;
+    questionRegen: string;
+    askAi: string;
+    planRegenerate: string;
+  }
+): string {
+  const type = row.usageType || "";
+  const scope = (row.scopeKey || "").trim().toLowerCase();
+  if (type === "HrGenerateSet") {
+    if (scope === "window") return labels.generateWindow;
+    return labels.generatePeriod;
+  }
+  if (type === "HrQuestionRegen") return labels.questionRegen;
+  if (type === "HrAskAi") return labels.askAi;
+  if (type === "HrPlanRegenerate") return labels.planRegenerate;
+  return type || "—";
 }
 
 function MetaItem({
@@ -236,27 +261,53 @@ export function UserDetailPanel({
   const [periodMonths, setPeriodMonths] = useState<PeriodMonths>(1);
   const [note, setNote] = useState("");
   const [grantFormOpen, setGrantFormOpen] = useState(false);
+  const [usage, setUsage] = useState<AdminUserUsageSummary | null>(null);
+  const [usageLoading, setUsageLoading] = useState(false);
+  const [usageError, setUsageError] = useState<string | null>(null);
 
   const canManageSub = !!user && user.roleKey !== "ADMIN";
   const sub = detail?.subscription ?? null;
   const history = detail?.history ?? [];
   const isPremium = sub ? isPremiumPlanCode(sub.planCode) : false;
 
+  const usageLabels = {
+    generateWindow: subT.usageHrGenerateWindow ?? "Tạo bộ / JD-fit (cửa sổ)",
+    generatePeriod: subT.usageHrGeneratePeriod ?? "Tạo bộ (tổng kỳ)",
+    questionRegen: subT.usageHrQuestionRegen ?? "Regen câu / plan",
+    askAi: subT.usageHrAskAi ?? "Ask-AI",
+    planRegenerate: subT.usageHrPlanRegenerate ?? "Refine plan / draft",
+  };
+
   const loadSubscription = useCallback(
     async (userId: string) => {
       setSubLoading(true);
       setSubError(null);
-      try {
-        const data = await adminGetUserSubscription(userId);
-        setDetail(data);
-      } catch (err) {
+      setUsageLoading(true);
+      setUsageError(null);
+
+      const [subResult, usageResult] = await Promise.allSettled([
+        adminGetUserSubscription(userId),
+        adminGetUserUsage(userId),
+      ]);
+
+      if (subResult.status === "fulfilled") {
+        setDetail(subResult.value);
+      } else {
         setDetail(null);
-        setSubError(extractErrorMessage(err, subT.loadError));
-      } finally {
-        setSubLoading(false);
+        setSubError(extractErrorMessage(subResult.reason, subT.loadError));
       }
+
+      if (usageResult.status === "fulfilled") {
+        setUsage(usageResult.value);
+      } else {
+        setUsage(null);
+        setUsageError(extractErrorMessage(usageResult.reason, subT.usageLoadError ?? subT.loadError));
+      }
+
+      setSubLoading(false);
+      setUsageLoading(false);
     },
-    [subT.loadError]
+    [subT.loadError, subT.usageLoadError]
   );
 
   useEffect(() => {
@@ -265,6 +316,8 @@ export function UserDetailPanel({
       setRevokeOpen(false);
       setDetail(null);
       setSubError(null);
+      setUsage(null);
+      setUsageError(null);
       setNote("");
       setPeriodMonths(1);
       setGrantFormOpen(false);
@@ -275,6 +328,8 @@ export function UserDetailPanel({
     } else {
       setDetail(null);
       setSubError(null);
+      setUsage(null);
+      setUsageError(null);
     }
   }, [open, user?.id, canManageSub, loadSubscription, user]);
 
@@ -669,6 +724,77 @@ export function UserDetailPanel({
                     </div>
                   )}
                 </section>
+
+                {/* Lượt đã dùng — read-only */}
+                {canManageSub && (
+                  <section className="mb-6">
+                    <h4 className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-400">
+                      {subT.usageTitle ?? (lang === "vi" ? "Lượt đã dùng (kỳ hiện tại)" : "Usage this period")}
+                    </h4>
+
+                    {usageLoading && (
+                      <div className="flex justify-center py-4">
+                        <Loader2 size={18} className="animate-spin text-[#7C3AED]" />
+                      </div>
+                    )}
+
+                    {usageError && !usageLoading && (
+                      <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-3 text-center dark:border-red-900 dark:bg-red-950/30">
+                        <p className="text-sm text-red-700 dark:text-red-400">{usageError}</p>
+                        <button
+                          type="button"
+                          onClick={() => void loadSubscription(user.id)}
+                          className="mt-1 text-sm font-semibold text-[#7C3AED] hover:underline"
+                        >
+                          {u.retry}
+                        </button>
+                      </div>
+                    )}
+
+                    {!usageLoading && !usageError && usage && (
+                      <div className="rounded-xl bg-slate-50/80 px-3.5 py-3 dark:bg-slate-800/40">
+                        <p className={cn("mb-2 text-[11px]", portalSubtextAlt)}>
+                          {usage.planCode || "—"}
+                          {" · "}
+                          {formatDateCompact(usage.periodStart)}
+                          {" → "}
+                          {formatDateCompact(usage.periodEnd)}
+                        </p>
+                        {usage.usage.length === 0 ? (
+                          <p className={cn("text-center text-sm py-3", portalSubtextAlt)}>
+                            {subT.usageEmpty ?? "—"}
+                          </p>
+                        ) : (
+                          <ul className="divide-y divide-slate-200/80 dark:divide-slate-700/60">
+                            {usage.usage.map((row, idx) => (
+                              <li
+                                key={`${row.usageType}-${row.scopeKey ?? ""}-${idx}`}
+                                className="flex items-center justify-between gap-3 py-2 first:pt-0 last:pb-0"
+                              >
+                                <div className="min-w-0">
+                                  <p className={cn("text-sm font-medium truncate", portalHeadingAlt)}>
+                                    {usageTypeLabel(row, usageLabels)}
+                                  </p>
+                                  {row.scopeKey && row.scopeKey !== "window" && (
+                                    <p className="text-[10px] text-slate-400 truncate">{row.scopeKey}</p>
+                                  )}
+                                </div>
+                                <div className="shrink-0 text-right text-sm">
+                                  <span className="font-semibold tabular-nums">{row.usedCount}</span>
+                                  {row.extraFromPack > 0 && (
+                                    <span className="ml-1 text-[10px] text-slate-400">
+                                      +{row.extraFromPack} {subT.usageColExtra ?? "pack"}
+                                    </span>
+                                  )}
+                                </div>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                    )}
+                  </section>
+                )}
 
                 {/* Lịch sử gói — phụ, gọn */}
                 {canManageSub && (

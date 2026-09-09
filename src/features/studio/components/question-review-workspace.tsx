@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
+import { createPortal } from "react-dom";
 import {
   AlertTriangle,
   Check,
@@ -10,23 +11,28 @@ import {
   FileText,
   Globe,
   ImagePlus,
+  Lightbulb,
   List,
   Loader2,
   MoreHorizontal,
   Pencil,
   RefreshCw,
   Save,
+  Sparkles,
   Trash2,
   X,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { useLanguage } from "@/shared/providers/language-context";
+import { useOverlayTransition } from "@/shared/hooks/use-overlay-transition";
 import {
-  citationDisplayName,
-  citationsForDisplay,
-  formatCitationExcerpt,
-  isJdCitation,
+  groupQuestionSources,
 } from "@/features/studio/utils/citation-display";
+import {
+  QuestionSourcesGroupedPanel,
+  QuestionSourcesSummaryChips,
+  type QuestionSourcesLabels,
+} from "@/features/studio/components/question-sources-panel";
 import { STUDIO_QUESTION_TEMPLATES } from "@/features/studio/constants/question-templates";
 import { inferStudioTemplate } from "@/features/studio/utils/question-template-infer";
 import { isConceptualTheoryQuestion } from "@/features/studio/utils/question-content-match";
@@ -39,6 +45,14 @@ import type {
   StudioQuestionDifficulty,
   StudioQuestionType,
 } from "@/features/studio/types/studio.types";
+import {
+  isPublishReady,
+  normalizeFromJson,
+  normalizeFromUnknown,
+  prepareRubricForSave,
+  RubricEditor,
+  type RubricV1,
+} from "@/shared/rubric";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -59,8 +73,15 @@ function typeBadge(t: string) {
   return "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300";
 }
 
+function resolveQuestionRubric(q: StudioQuestion): RubricV1 {
+  if (q.rubricJson?.trim()) return normalizeFromJson(q.rubricJson);
+  if (q.scoringRubric?.trim()) return normalizeFromUnknown(q.scoringRubric);
+  return normalizeFromJson(null);
+}
+
 function questionIsReady(q: StudioQuestion) {
-  return Boolean(q.expectedAnswer?.trim() && q.scoringRubric?.trim());
+  const rubric = resolveQuestionRubric(q);
+  return Boolean(q.expectedAnswer?.trim() && isPublishReady(rubric));
 }
 
 function displayAnswerMethod(q: StudioQuestion): string | null {
@@ -87,9 +108,11 @@ export type QuestionReviewWorkspaceProps = {
   questions: StudioQuestion[];
   onUpdateQuestion?: (q: StudioQuestion) => Promise<void> | void;
   onDeleteQuestion?: (id: string) => Promise<void> | void;
-  onRegenerateQuestion?: (id: string) => Promise<void> | void;
+  onRegenerateQuestion?: (id: string, instruction?: string) => Promise<void> | void;
   onUploadQuestionImage?: (questionId: string, file: File) => Promise<void> | void;
   onDeleteQuestionImage?: (questionId: string) => Promise<void> | void;
+  /** SCRUM-429 */
+  regeneratingQuestionIds?: string[];
   onSaveDraft?: () => void;
   onPublish?: () => void;
   onPublishBlocked?: () => void;
@@ -108,14 +131,16 @@ function QuestionDetail({
   onRegenerate,
   onUploadImage,
   onDeleteImage,
+  isRegenerating = false,
 }: {
   question: StudioQuestion;
   displayNumber: number;
   onUpdate?: (q: StudioQuestion) => Promise<void> | void;
   onDelete?: (id: string) => Promise<void> | void;
-  onRegenerate?: (id: string) => Promise<void> | void;
+  onRegenerate?: (id: string, instruction?: string) => Promise<void> | void;
   onUploadImage?: (questionId: string, file: File) => Promise<void> | void;
   onDeleteImage?: (questionId: string) => Promise<void> | void;
+  isRegenerating?: boolean;
 }) {
   const { t, lang } = useLanguage();
   const c = t.studioPage.chat;
@@ -123,11 +148,15 @@ function QuestionDetail({
   const [sourcesOpen, setSourcesOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [regenOpen, setRegenOpen] = useState(false);
+  const [regenNote, setRegenNote] = useState("");
+  const [regenStep, setRegenStep] = useState(0);
+  const [regenError, setRegenError] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [draftContent, setDraftContent] = useState(question.content);
   const [draftAnswer, setDraftAnswer] = useState(question.expectedAnswer ?? "");
-  const [draftRubric, setDraftRubric] = useState(question.scoringRubric ?? "");
+  const [draftRubricDoc, setDraftRubricDoc] = useState<RubricV1>(() => resolveQuestionRubric(question));
   const fileInputRef = useRef<HTMLInputElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -137,9 +166,46 @@ function QuestionDetail({
     : null;
 
   const missingSample = !question.expectedAnswer?.trim();
-  const missingRubric = !question.scoringRubric?.trim();
-  const sourceRows = useMemo(() => citationsForDisplay(question.citations), [question.citations]);
-  const sourceCount = Math.max(sourceRows.length, question.citations?.length ?? 0);
+  const rubricDoc = useMemo(() => resolveQuestionRubric(question), [question]);
+  const missingRubric = !isPublishReady(rubricDoc);
+  const sourceCount = useMemo(() => {
+    const g = groupQuestionSources(question);
+    return g.jd.length + g.admin.length + g.llm.length;
+  }, [question]);
+  const sourceLabels: QuestionSourcesLabels = useMemo(
+    () => ({
+      sourceRoleJd: c.sourceRoleJd,
+      sourceRoleAdmin: c.sourceRoleAdmin,
+      sourceRoleLlm: c.sourceRoleLlm,
+      sourceWhyAsked: c.sourceWhyAsked,
+      sourceTechnicalBody: c.sourceTechnicalBody,
+      sourcePrimary: c.sourcePrimary,
+      sourceSecondary: c.sourceSecondary,
+      jobDescription: c.sourceJobDescription,
+      sourcesPanelTitle: c.sourcesPanelTitle,
+      sourcesEmptyLegacy: c.sourcesEmptyLegacy,
+      missingAdminWarning: c.missingAdminWarning,
+      sourceChunk: c.sourceChunk,
+    }),
+    [c]
+  );
+
+  const { mounted: regenMounted, exiting: regenExiting } = useOverlayTransition(regenOpen);
+  const regenSteps = useMemo(
+    () => [c.regenStep1, c.regenStep2, c.regenStep3, c.regenStepWait],
+    [c.regenStep1, c.regenStep2, c.regenStep3, c.regenStepWait]
+  );
+
+  useEffect(() => {
+    if (!busy || !regenOpen) {
+      setRegenStep(0);
+      return;
+    }
+    const id = window.setInterval(() => {
+      setRegenStep((s) => (s + 1) % regenSteps.length);
+    }, 2200);
+    return () => window.clearInterval(id);
+  }, [busy, regenOpen, regenSteps.length]);
 
   const answerMethodLabel = displayAnswerMethod(question);
 
@@ -152,8 +218,8 @@ function QuestionDetail({
     setMenuOpen(false);
     setDraftContent(question.content);
     setDraftAnswer(question.expectedAnswer ?? "");
-    setDraftRubric(question.scoringRubric ?? "");
-  }, [question.id, question.content, question.expectedAnswer, question.scoringRubric]);
+    setDraftRubricDoc(resolveQuestionRubric(question));
+  }, [question.id, question.content, question.expectedAnswer, question.scoringRubric, question.rubricJson]);
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -167,7 +233,7 @@ function QuestionDetail({
   const startEdit = () => {
     setDraftContent(question.content);
     setDraftAnswer(question.expectedAnswer ?? "");
-    setDraftRubric(question.scoringRubric ?? "");
+    setDraftRubricDoc(resolveQuestionRubric(question));
     setEditing(true);
     setDetailsOpen(true);
   };
@@ -176,11 +242,13 @@ function QuestionDetail({
     if (!onUpdate || !draftContent.trim()) return;
     setBusy(true);
     try {
+      const rubricPayload = prepareRubricForSave(draftRubricDoc);
       await onUpdate({
         ...question,
         content: draftContent.trim(),
         expectedAnswer: draftAnswer.trim() || null,
-        scoringRubric: draftRubric.trim() || null,
+        scoringRubric: rubricPayload.displayText || null,
+        rubricJson: rubricPayload.rubricJson,
         difficulty: question.difficulty as StudioQuestionDifficulty,
         type: question.type as StudioQuestionType,
       });
@@ -226,12 +294,35 @@ function QuestionDetail({
           <span className="inline-flex h-6 min-w-6 shrink-0 items-center justify-center rounded-md bg-primary/10 px-1.5 text-[11px] font-semibold text-primary">
             #{displayNumber}
           </span>
+          {isRegenerating && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-800 dark:bg-amber-950/50 dark:text-amber-300">
+              <Loader2 className="h-3 w-3 animate-spin" strokeWidth={2.5} />
+              {c.regeneratingBadge ?? "Đang regen…"}
+            </span>
+          )}
           <span className={cn("inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold", typeBadge(question.type))}>
             {typeLabel}
           </span>
           <span className={cn("inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold", difficultyBadge(question.difficulty))}>
             {question.difficulty}
           </span>
+          {question.skill?.trim() ? (
+            <span
+              title={question.skill.trim()}
+              className="inline-flex max-w-[160px] truncate rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-semibold text-sky-800 dark:bg-sky-950/50 dark:text-sky-300"
+            >
+              {question.skill.trim()}
+            </span>
+          ) : null}
+          {question.focusArea?.trim() &&
+          question.focusArea.trim().toLowerCase() !== (question.skill?.trim().toLowerCase() ?? "") ? (
+            <span
+              title={question.focusArea.trim()}
+              className="inline-flex max-w-[160px] truncate rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-800 dark:bg-amber-950/40 dark:text-amber-300"
+            >
+              {question.focusArea.trim()}
+            </span>
+          ) : null}
           {templateLabel && (
             <span className="inline-flex rounded-full bg-indigo-100 px-2 py-0.5 text-[10px] font-semibold text-indigo-800 dark:bg-indigo-950/50 dark:text-indigo-300">
               {templateLabel}
@@ -261,20 +352,18 @@ function QuestionDetail({
             {onRegenerate && (
               <button
                 type="button"
-                onClick={async () => {
-                  setBusy(true);
-                  try {
-                    await onRegenerate(question.id);
-                  } finally {
-                    setBusy(false);
-                  }
+                onClick={() => {
+                  setRegenNote("");
+                  setRegenError(null);
+                  setRegenStep(0);
+                  setRegenOpen(true);
                 }}
-                disabled={busy}
+                disabled={busy || isRegenerating}
                 className="inline-flex h-7 w-7 items-center justify-center border-l border-gray-200 text-gray-500 transition-colors hover:bg-white hover:text-amber-600 disabled:opacity-40 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-800"
                 title={c.regenerate}
                 aria-label={c.regenerate}
               >
-                <RefreshCw className={cn("h-3.5 w-3.5", busy && "animate-spin")} strokeWidth={2} />
+                <RefreshCw className={cn("h-3.5 w-3.5", (busy || isRegenerating) && "animate-spin")} strokeWidth={2} />
               </button>
             )}
             {onDelete && (
@@ -369,12 +458,12 @@ function QuestionDetail({
             className="w-full rounded-lg border border-emerald-200 p-2 text-xs text-gray-800 placeholder:text-gray-400 focus:border-emerald-400 focus:outline-none dark:border-emerald-900 dark:bg-gray-950 dark:text-gray-100 dark:placeholder:text-gray-500"
             placeholder={c.editAnswerPlaceholder}
           />
-          <textarea
-            value={draftRubric}
-            onChange={(e) => setDraftRubric(e.target.value)}
-            rows={2}
-            className="w-full rounded-lg border border-amber-200 p-2 text-xs text-gray-800 placeholder:text-gray-400 focus:border-amber-400 focus:outline-none dark:border-amber-900 dark:bg-gray-950 dark:text-gray-100 dark:placeholder:text-gray-500"
-            placeholder={c.editRubricPlaceholder}
+          <RubricEditor
+            value={draftRubricDoc}
+            onChange={setDraftRubricDoc}
+            questionType={question.type}
+            disabled={busy}
+            compact={false}
           />
           <div className="flex justify-end gap-2">
             <button
@@ -409,6 +498,22 @@ function QuestionDetail({
           ) : null}
 
           <p className="text-sm leading-relaxed text-gray-800 dark:text-gray-100">{question.content}</p>
+
+          {question.rationale?.trim() ? (
+            <div className="mt-2.5 flex gap-2 rounded-lg border border-violet-200/90 bg-violet-50/90 px-2.5 py-2 dark:border-violet-800/60 dark:bg-violet-950/40">
+              <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-violet-600 text-white dark:bg-violet-500">
+                <Lightbulb className="h-3.5 w-3.5" strokeWidth={2.25} />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="text-[10px] font-bold uppercase tracking-wide text-violet-700 dark:text-violet-300">
+                  {c.rationaleLabel}
+                </p>
+                <p className="mt-0.5 text-[12px] font-medium leading-snug text-violet-950 dark:text-violet-50">
+                  {question.rationale.trim()}
+                </p>
+              </div>
+            </div>
+          ) : null}
 
           {templateView.snippet ? (
             <CodeSnippetBlock
@@ -472,45 +577,17 @@ function QuestionDetail({
                 {c.missingRubricShort}
               </span>
             )}
+            {!sourcesOpen && (
+              <QuestionSourcesSummaryChips question={question} labels={sourceLabels} />
+            )}
           </div>
 
           {sourcesOpen && (
-            <div className="mt-1.5 rounded-lg border border-sky-200/70 bg-sky-50/70 px-3 py-2 dark:border-sky-900 dark:bg-sky-950/40">
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-sky-800 dark:text-sky-300">
-                {c.sourcesPanelTitle}
-              </p>
-              {sourceRows.length > 0 ? (
-                <ul className="mt-1 space-y-1">
-                  {sourceRows.map((cit, i) => {
-                    const primary = isJdCitation(cit.sourceFile);
-                    const excerpt = formatCitationExcerpt(cit.excerpt);
-                    const label = citationDisplayName(cit.sourceFile, {
-                      jobDescription: c.sourceJobDescription,
-                    });
-                    return (
-                      <li key={`${cit.sourceFile}-${i}`} className="text-xs text-gray-700 dark:text-gray-200">
-                        <span
-                          className={cn(
-                            "mr-1.5 inline-flex rounded px-1 py-px text-[9px] font-bold uppercase tracking-wide",
-                            primary
-                              ? "bg-sky-200/80 text-sky-900 dark:bg-sky-800 dark:text-sky-100"
-                              : "bg-gray-200/80 text-gray-600 dark:bg-gray-700 dark:text-gray-300"
-                          )}
-                        >
-                          {primary ? c.sourcePrimary : c.sourceSecondary}
-                        </span>
-                        <span className="font-medium">{label}</span>
-                        {excerpt ? (
-                          <span className="text-gray-500 dark:text-gray-300">{` — “${excerpt}”`}</span>
-                        ) : null}
-                      </li>
-                    );
-                  })}
-                </ul>
-              ) : (
-                <p className="mt-0.5 text-[11px] italic text-gray-500 dark:text-gray-300">{c.sourcesEmptyLegacy}</p>
-              )}
-            </div>
+            <QuestionSourcesGroupedPanel
+              question={question}
+              labels={sourceLabels}
+              className="mt-1.5"
+            />
           )}
 
           {detailsOpen && (
@@ -530,12 +607,18 @@ function QuestionDetail({
               ) : (
                 <p className="text-[11px] text-gray-400">{c.noAnswer}</p>
               )}
-              {question.scoringRubric?.trim() ? (
+              {rubricDoc.criteria.length > 0 ? (
                 <div className="rounded-lg border border-amber-200/70 bg-amber-50/80 px-3 py-2 dark:border-amber-900 dark:bg-amber-950/40">
                   <p className="text-[10px] font-semibold uppercase tracking-wide text-amber-900 dark:text-amber-200">
                     {c.scoringRubric}
                   </p>
-                  <p className="mt-0.5 text-xs text-gray-700 dark:text-gray-200">{question.scoringRubric}</p>
+                  <ul className="mt-1 space-y-1 text-xs text-gray-700 dark:text-gray-200">
+                    {rubricDoc.criteria.map((crit) => (
+                      <li key={crit.id}>
+                        <span className="font-medium">[{crit.weight}%]</span> {crit.label}
+                      </li>
+                    ))}
+                  </ul>
                 </div>
               ) : (
                 <p className="text-[11px] text-gray-400">{c.noRubric}</p>
@@ -556,6 +639,216 @@ function QuestionDetail({
         onConfirm={() => void confirmDelete()}
         onCancel={() => setDeleteConfirmOpen(false)}
       />
+
+      {regenMounted && typeof document !== "undefined"
+        ? createPortal(
+            <div
+              className={cn(
+                "fixed inset-0 z-[80] flex items-center justify-center p-4",
+                "transition-opacity duration-300",
+                regenExiting || !regenOpen ? "opacity-0" : "opacity-100"
+              )}
+              onClick={() => {
+                if (!busy) setRegenOpen(false);
+              }}
+            >
+              <div className="absolute inset-0 bg-slate-950/55 backdrop-blur-[3px]" />
+              <div
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="studio-regen-title"
+                aria-busy={busy}
+                onClick={(e) => e.stopPropagation()}
+                className={cn(
+                  "relative w-full max-w-[420px] overflow-hidden rounded-2xl border border-white/20",
+                  "bg-gradient-to-b from-white to-amber-50/40 shadow-[0_24px_64px_-16px_rgba(15,23,42,0.45)]",
+                  "dark:border-gray-700 dark:from-gray-900 dark:to-amber-950/20",
+                  "transition-all duration-300",
+                  regenExiting || !regenOpen ? "translate-y-2 scale-[0.98] opacity-0" : "translate-y-0 scale-100 opacity-100"
+                )}
+              >
+                {/* Top accent */}
+                <div className="h-1 w-full bg-gradient-to-r from-amber-400 via-orange-500 to-amber-600" />
+
+                {busy ? (
+                  <div className="px-5 pb-5 pt-6">
+                    <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-100 shadow-inner dark:bg-amber-900/50">
+                      <RefreshCw className="h-7 w-7 animate-spin text-amber-600 dark:text-amber-300" strokeWidth={2.25} />
+                    </div>
+                    <h3
+                      id="studio-regen-title"
+                      className="mt-4 text-center text-base font-semibold tracking-tight text-gray-900 dark:text-gray-50"
+                    >
+                      {c.regenGeneratingTitle}
+                    </h3>
+                    <p className="mt-1 text-center text-[12px] text-gray-500 dark:text-gray-400">
+                      {c.regenGeneratingHint}
+                    </p>
+
+                    {/* Indeterminate progress */}
+                    <div className="mt-5 h-1.5 overflow-hidden rounded-full bg-amber-100 dark:bg-amber-950/60">
+                      <div
+                        className="h-full w-2/5 rounded-full bg-gradient-to-r from-amber-400 to-orange-500"
+                        style={{
+                          animation: "studioRegenSlide 1.35s ease-in-out infinite",
+                        }}
+                      />
+                    </div>
+
+                    <div className="mt-4 flex items-start gap-2.5 rounded-xl border border-amber-200/80 bg-white/80 px-3 py-2.5 dark:border-amber-800/50 dark:bg-gray-950/50">
+                      <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" strokeWidth={2} />
+                      <p
+                        key={regenStep}
+                        className="text-[12px] font-medium leading-snug text-amber-950 dark:text-amber-100"
+                        style={{ animation: "studioRegenFade 0.35s ease-out" }}
+                      >
+                        {regenSteps[regenStep] ?? c.regenStepWait}
+                      </p>
+                    </div>
+
+                    <div className="mt-4 flex justify-center gap-1.5">
+                      {[0, 1, 2].map((i) => (
+                        <span
+                          key={i}
+                          className="h-1.5 w-1.5 animate-bounce rounded-full bg-amber-400 dark:bg-amber-500"
+                          style={{ animationDelay: `${i * 160}ms` }}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="px-5 pb-5 pt-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-start gap-3">
+                        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-200">
+                          <Sparkles className="h-5 w-5" strokeWidth={2} />
+                        </span>
+                        <div>
+                          <h3
+                            id="studio-regen-title"
+                            className="text-[15px] font-semibold tracking-tight text-gray-900 dark:text-gray-50"
+                          >
+                            {c.regenNoteTitle}
+                          </h3>
+                          <p className="mt-0.5 text-[11px] leading-snug text-gray-500 dark:text-gray-400">
+                            {c.regenNoteHint}
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setRegenOpen(false)}
+                        className="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-800 dark:hover:text-gray-200"
+                        aria-label={c.regenCancel}
+                      >
+                        <X className="h-4 w-4" strokeWidth={2} />
+                      </button>
+                    </div>
+
+                    <div className="mt-3 flex flex-wrap gap-1.5">
+                      {[
+                        c.regenChipHarder,
+                        c.regenChipMoreCode,
+                        c.regenChipShorter,
+                        c.regenChipJd,
+                        c.regenChipClarify,
+                      ].map((chip) => {
+                        const active = regenNote.includes(chip);
+                        return (
+                          <button
+                            key={chip}
+                            type="button"
+                            onClick={() =>
+                              setRegenNote((prev) =>
+                                prev.includes(chip)
+                                  ? prev
+                                      .replace(chip, "")
+                                      .replace(/\s{2,}/g, " ")
+                                      .trim()
+                                  : prev.trim()
+                                    ? `${prev.trim()} ${chip}`
+                                    : chip
+                              )
+                            }
+                            className={cn(
+                              "rounded-full border px-2.5 py-1 text-[11px] font-medium transition-all",
+                              active
+                                ? "border-amber-400 bg-amber-100 text-amber-900 shadow-sm dark:border-amber-600 dark:bg-amber-900/40 dark:text-amber-100"
+                                : "border-gray-200 bg-white text-gray-600 hover:border-amber-300 hover:text-amber-800 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-300 dark:hover:border-amber-700"
+                            )}
+                          >
+                            {chip}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    <textarea
+                      value={regenNote}
+                      onChange={(e) => setRegenNote(e.target.value)}
+                      rows={3}
+                      maxLength={1000}
+                      placeholder={c.regenNotePlaceholder}
+                      className="mt-3 w-full resize-y rounded-xl border border-gray-200 bg-white/90 px-3 py-2.5 text-sm leading-relaxed text-gray-900 shadow-sm placeholder:text-gray-400 focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-400/25 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
+                    />
+                    <p className="mt-1 text-right text-[10px] text-gray-400">{regenNote.length}/1000</p>
+
+                    {regenError ? (
+                      <p className="mt-2 rounded-lg border border-red-200 bg-red-50 px-2.5 py-1.5 text-[11px] text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200">
+                        {regenError}
+                      </p>
+                    ) : null}
+
+                    <div className="mt-4 flex justify-end gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setRegenOpen(false)}
+                        className="rounded-xl border border-gray-200 px-3.5 py-2 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
+                      >
+                        {c.regenCancel}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          if (!onRegenerate) return;
+                          setRegenError(null);
+                          setBusy(true);
+                          try {
+                            await onRegenerate(question.id, regenNote.trim() || undefined);
+                            setRegenOpen(false);
+                          } catch (err) {
+                            const msg =
+                              err instanceof Error && err.message
+                                ? err.message
+                                : "Regen failed";
+                            setRegenError(msg);
+                          } finally {
+                            setBusy(false);
+                          }
+                        }}
+                        className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 px-3.5 py-2 text-xs font-semibold text-white shadow-md shadow-amber-500/25 transition hover:from-amber-400 hover:to-orange-400"
+                      >
+                        <RefreshCw className="h-3.5 w-3.5" strokeWidth={2.25} />
+                        {c.regenConfirm}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+              <style>{`
+                @keyframes studioRegenSlide {
+                  0% { transform: translateX(-120%); }
+                  100% { transform: translateX(320%); }
+                }
+                @keyframes studioRegenFade {
+                  from { opacity: 0; transform: translateY(4px); }
+                  to { opacity: 1; transform: translateY(0); }
+                }
+              `}</style>
+            </div>,
+            document.body
+          )
+        : null}
     </div>
   );
 }
@@ -569,6 +862,7 @@ export function QuestionReviewWorkspace({
   onRegenerateQuestion,
   onUploadQuestionImage,
   onDeleteQuestionImage,
+  regeneratingQuestionIds = [],
   onSaveDraft,
   onPublish,
   onPublishBlocked,
@@ -683,10 +977,7 @@ export function QuestionReviewWorkspace({
       onPublish?.();
       return;
     }
-    if (readyCount !== total) {
-      onPublishBlocked?.();
-      return;
-    }
+    // SCRUM-439: dialog chọn subset — chỉ cần đủ min ready, không bắt buộc all ready
     onPublish?.();
   };
 
@@ -744,6 +1035,7 @@ export function QuestionReviewWorkspace({
             {filtered.map((q) => {
               const ready = questionIsReady(q);
               const isSelected = q.id === selectedId;
+              const isRegen = regeneratingQuestionIds.includes(q.id);
               return (
                 <li key={q.id}>
                   <button
@@ -767,7 +1059,9 @@ export function QuestionReviewWorkspace({
                     <span className="min-w-0 flex-1 truncate text-xs font-medium text-gray-800 dark:text-gray-100">
                       {formatStudioQuestionTypeLabel(q.type, typeLang)}
                     </span>
-                    {ready ? (
+                    {isRegen ? (
+                      <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-amber-500" strokeWidth={2.5} aria-label="regenerating" />
+                    ) : ready ? (
                       <Check className="h-3.5 w-3.5 shrink-0 text-emerald-500" strokeWidth={2.5} aria-label="ready" />
                     ) : (
                       <span className="h-3.5 w-3.5 shrink-0" aria-hidden />
@@ -927,6 +1221,7 @@ export function QuestionReviewWorkspace({
                 onRegenerate={onRegenerateQuestion}
                 onUploadImage={onUploadQuestionImage}
                 onDeleteImage={onDeleteQuestionImage}
+                isRegenerating={regeneratingQuestionIds.includes(selected.id)}
               />
               <div className="mt-3 flex items-center justify-between gap-2">
                 <button

@@ -12,7 +12,9 @@ import {
   FileText,
   Globe,
   Layers,
+  BarChart3,
   UserSearch,
+  Users,
   X,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
@@ -29,6 +31,8 @@ import { useQuestionSetNavCounts } from "@/features/hr/hooks/use-question-set-na
 
 const COLLAPSE_KEY = "hr-sidebar-collapsed";
 const HISTORY_HREF = "/hr/history";
+const PUBLISHED_INSIGHTS_HREF = "/hr/published";
+const CANDIDATES_HREF = "/hr/candidate-recommendations";
 
 interface SidebarProps {
   open?: boolean;
@@ -36,15 +40,39 @@ interface SidebarProps {
 }
 
 const QUESTION_SET_SUB: {
-  filter: QuestionSetsFilterKey;
+  filter: QuestionSetsFilterKey | "insights";
   href: string;
   icon: typeof Layers;
-  labelKey: "all" | "draft" | "published" | "bookmarked";
+  labelKey: "all" | "draft" | "published" | "bookmarked" | "insights";
 }[] = [
   { filter: "all", href: "/hr/history", icon: Layers, labelKey: "all" },
   { filter: "DRAFT", href: "/hr/history?filter=DRAFT", icon: FileText, labelKey: "draft" },
   { filter: "PUBLISHED", href: "/hr/history?filter=PUBLISHED", icon: Globe, labelKey: "published" },
   { filter: "bookmarked", href: "/hr/history?filter=bookmarked", icon: Bookmark, labelKey: "bookmarked" },
+  { filter: "insights", href: PUBLISHED_INSIGHTS_HREF, icon: BarChart3, labelKey: "insights" },
+];
+
+const CANDIDATES_SUB: {
+  href: string;
+  icon: typeof Users;
+  labelKey: "recommendations" | "talentPool";
+  match: (pathname: string) => boolean;
+}[] = [
+  {
+    href: CANDIDATES_HREF,
+    icon: Users,
+    labelKey: "recommendations",
+    match: (p) =>
+      p === CANDIDATES_HREF ||
+      p.startsWith(`${CANDIDATES_HREF}/`) ||
+      p.startsWith("/hr/candidates/"),
+  },
+  {
+    href: "/hr/talent",
+    icon: UserSearch,
+    labelKey: "talentPool",
+    match: (p) => p === "/hr/talent" || p.startsWith("/hr/talent/"),
+  },
 ];
 
 function parseFilter(raw: string | null): QuestionSetsFilterKey {
@@ -71,21 +99,18 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
   const [hydrated, setHydrated] = useState(false);
 
-  // Derived route flags — computed BEFORE useState(onHistoryRoute) so the initializer can use them
-  const isTalentRoute = pathname === "/hr/talent";
   const onHistoryRoute =
-    pathname === HISTORY_HREF ||
-    pathname.startsWith(`${HISTORY_HREF}/`) ||
-    isTalentRoute;
-  // Only parse the filter param when actually on a /hr/history* route, not on /hr/talent
-  const activeFilter =
-    !isTalentRoute && onHistoryRoute
-      ? parseFilter(searchParams.get("filter"))
-      : null;
+    pathname === HISTORY_HREF || pathname.startsWith(`${HISTORY_HREF}/`);
+  const onPublishedInsightsRoute =
+    pathname === PUBLISHED_INSIGHTS_HREF || pathname.startsWith(`${PUBLISHED_INSIGHTS_HREF}/`);
+  const activeFilter = onHistoryRoute ? parseFilter(searchParams.get("filter")) : null;
 
-  // Initialize to true when already on a history/talent route → no collapsed flash on mount
-  const [historyOpen, setHistoryOpen] = useState(onHistoryRoute);
-  const navCounts = useQuestionSetNavCounts(historyOpen || onHistoryRoute);
+  const onCandidatesRoute = CANDIDATES_SUB.some((sub) => sub.match(pathname));
+
+  // Initialize open when already on that route → no collapsed flash on mount
+  const [historyOpen, setHistoryOpen] = useState(onHistoryRoute || onPublishedInsightsRoute);
+  const [candidatesOpen, setCandidatesOpen] = useState(onCandidatesRoute);
+  const navCounts = useQuestionSetNavCounts(historyOpen || onHistoryRoute || onPublishedInsightsRoute);
 
   useEffect(() => {
     const stored = localStorage.getItem(SEEN_KEY);
@@ -119,10 +144,14 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
     });
   }, [pathname, newBadgeReady]);
 
-  // Mở submenu Bộ câu hỏi khi đang ở route history
+  // Mở submenu khi đang ở route tương ứng
   useEffect(() => {
-    if (onHistoryRoute) setHistoryOpen(true);
-  }, [onHistoryRoute]);
+    if (onHistoryRoute || onPublishedInsightsRoute) setHistoryOpen(true);
+  }, [onHistoryRoute, onPublishedInsightsRoute]);
+
+  useEffect(() => {
+    if (onCandidatesRoute) setCandidatesOpen(true);
+  }, [onCandidatesRoute]);
 
   function markSeen(href: string) {
     setSeenTabs((prev) => {
@@ -203,10 +232,10 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
           <ul className="space-y-0.5">
             {navItems.map((item) => {
               const isHistory = item.href === HISTORY_HREF;
-              // Also treat /hr/talent as "active" for the Bộ câu hỏi parent nav item
-              const isActive =
-                isHrNavActive(item.href, pathname) ||
-                (isHistory && isTalentRoute);
+              const isCandidates = item.href === CANDIDATES_HREF;
+              const isActive = isHistory
+                ? isHrNavActive(item.href, pathname) || onPublishedInsightsRoute
+                : isHrNavActive(item.href, pathname);
               const label = s.nav[item.href as keyof typeof s.nav] ?? item.label;
               const isNew = newBadgeReady && !seenTabs.has(item.href);
               const badgeLabel = isNew ? "New" : typeof item.badge === "number" ? String(item.badge) : null;
@@ -277,21 +306,30 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
                     {historyOpen && (
                       <ul className="mt-0.5 mb-1 ml-4 space-y-0.5 border-l border-[rgba(124,58,237,0.12)] dark:border-[rgba(124,58,237,0.2)] pl-2">
                         {QUESTION_SET_SUB.map((sub) => {
-                          const subActive = onHistoryRoute && activeFilter === sub.filter;
+                          const subActive =
+                            sub.filter === "insights"
+                              ? onPublishedInsightsRoute
+                              : onHistoryRoute && activeFilter === sub.filter;
                           const SubIcon = sub.icon;
                           const count =
-                            sub.filter === "all"
-                              ? navCounts.all
-                              : sub.filter === "DRAFT"
-                                ? navCounts.draft
-                                : sub.filter === "PUBLISHED"
-                                  ? navCounts.published
-                                  : navCounts.bookmarked;
+                            sub.filter === "insights"
+                              ? null
+                              : sub.filter === "all"
+                                ? navCounts.all
+                                : sub.filter === "DRAFT"
+                                  ? navCounts.draft
+                                  : sub.filter === "PUBLISHED"
+                                    ? navCounts.published
+                                    : navCounts.bookmarked;
                           return (
                             <li key={sub.filter}>
                               <Link
                                 href={sub.href}
-                                onClick={() => handleNavClick(HISTORY_HREF)}
+                                onClick={() =>
+                                  handleNavClick(
+                                    sub.filter === "insights" ? PUBLISHED_INSIGHTS_HREF : HISTORY_HREF
+                                  )
+                                }
                                 className={cn(
                                   "flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-[13px] font-medium transition-colors",
                                   subActive
@@ -303,36 +341,117 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
                                 <span className="min-w-0 flex-1 truncate">
                                   {s.questionSetsSub[sub.labelKey]}
                                 </span>
-                                <span
-                                  className={cn(
-                                    "shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-semibold tabular-nums",
-                                    subActive
-                                      ? "bg-[rgba(124,58,237,0.15)] text-[#7C3AED] dark:bg-[rgba(124,58,237,0.25)] dark:text-[#a78bff]"
-                                      : "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400"
-                                  )}
-                                >
-                                  {count}
+                                {count != null && (
+                                  <span
+                                    className={cn(
+                                      "shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-semibold tabular-nums",
+                                      subActive
+                                        ? "bg-[rgba(124,58,237,0.15)] text-[#7C3AED] dark:bg-[rgba(124,58,237,0.25)] dark:text-[#a78bff]"
+                                        : "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400"
+                                    )}
+                                  >
+                                    {count}
+                                  </span>
+                                )}
+                              </Link>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    )}
+                  </li>
+                );
+              }
+
+              // Dropdown Ứng viên — cùng pattern với Bộ câu hỏi
+              if (isCandidates && !rail) {
+                return (
+                  <li key={item.href}>
+                    <div
+                      className={cn(
+                        "flex items-center gap-1 rounded-xl transition-all duration-200",
+                        isActive
+                          ? "hr-nav-active text-[#7C3AED] dark:text-[#a78bff] font-semibold"
+                          : "text-[#6b7280] dark:text-gray-400"
+                      )}
+                    >
+                      <Link
+                        href={item.href}
+                        onClick={() => {
+                          setCandidatesOpen(true);
+                          handleNavClick(item.href);
+                        }}
+                        className={cn(
+                          "flex flex-1 items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 text-base font-normal min-w-0",
+                          !isActive &&
+                            "hover:bg-[rgba(124,58,237,0.06)] dark:hover:bg-[rgba(124,58,237,0.08)] hover:text-charcoal dark:hover:text-gray-100"
+                        )}
+                      >
+                        <div
+                          className={cn(
+                            "w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-all duration-200",
+                            isActive ? "hr-icon-box" : "bg-gray-100 dark:bg-gray-800"
+                          )}
+                        >
+                          <item.icon
+                            size={15}
+                            className={cn(
+                              isActive ? "text-[#7C3AED] dark:text-[#a78bff]" : "text-[#9ca3af] dark:text-gray-500"
+                            )}
+                          />
+                        </div>
+                        <span className="text-sm font-medium flex-1 truncate">{label}</span>
+                        {badgeLabel && (
+                          <span
+                            className={cn(
+                              "text-[10px] font-semibold px-1.5 py-0.5 rounded-md leading-none",
+                              isActive
+                                ? "bg-[rgba(124,58,237,0.12)] dark:bg-[rgba(124,58,237,0.2)] text-[#7C3AED] dark:text-[#a78bff]"
+                                : "bg-page-bg dark:bg-gray-800 text-[#6b7280] dark:text-gray-400"
+                            )}
+                          >
+                            {badgeLabel}
+                          </span>
+                        )}
+                      </Link>
+                      <button
+                        type="button"
+                        onClick={() => setCandidatesOpen((v) => !v)}
+                        className="mr-1.5 w-7 h-7 flex items-center justify-center rounded-lg hover:bg-[rgba(124,58,237,0.08)] transition-colors shrink-0"
+                        aria-expanded={candidatesOpen}
+                        aria-label={candidatesOpen ? s.collapse : s.expand}
+                      >
+                        <ChevronDown
+                          size={14}
+                          className={cn("transition-transform duration-200", candidatesOpen && "rotate-180")}
+                        />
+                      </button>
+                    </div>
+                    {candidatesOpen && (
+                      <ul className="mt-0.5 mb-1 ml-4 space-y-0.5 border-l border-[rgba(124,58,237,0.12)] dark:border-[rgba(124,58,237,0.2)] pl-2">
+                        {CANDIDATES_SUB.map((sub) => {
+                          const subActive = sub.match(pathname);
+                          const SubIcon = sub.icon;
+                          return (
+                            <li key={sub.href}>
+                              <Link
+                                href={sub.href}
+                                onClick={() => handleNavClick(sub.href)}
+                                className={cn(
+                                  "flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-[13px] font-medium transition-colors",
+                                  subActive
+                                    ? "bg-[rgba(124,58,237,0.1)] text-[#7C3AED] dark:bg-[rgba(124,58,237,0.18)] dark:text-[#a78bff]"
+                                    : "text-gray-500 hover:bg-gray-50 hover:text-gray-800 dark:text-gray-400 dark:hover:bg-gray-900 dark:hover:text-gray-100"
+                                )}
+                              >
+                                <SubIcon size={13} className="shrink-0 opacity-70" />
+                                <span className="min-w-0 flex-1 truncate">
+                                  {s.candidatesSub[sub.labelKey]}
                                 </span>
                               </Link>
                             </li>
                           );
                         })}
-                        {/* Kho ứng viên — sub-item under Bộ câu hỏi */}
-                        <li>
-                          <Link
-                            href="/hr/talent"
-                            onClick={() => handleNavClick("/hr/talent")}
-                            className={cn(
-                              "flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-[13px] font-medium transition-colors",
-                              pathname === "/hr/talent"
-                                ? "bg-[rgba(124,58,237,0.1)] text-[#7C3AED] dark:bg-[rgba(124,58,237,0.18)] dark:text-[#a78bff]"
-                                : "text-gray-500 hover:bg-gray-50 hover:text-gray-800 dark:text-gray-400 dark:hover:bg-gray-900 dark:hover:text-gray-100"
-                            )}
-                          >
-                            <UserSearch size={13} className="shrink-0 opacity-70" />
-                            <span className="truncate">{s.questionSetsSub.talentPool}</span>
-                          </Link>
-                        </li>
                       </ul>
                     )}
                   </li>

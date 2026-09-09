@@ -61,8 +61,8 @@ function cleanExtractedRole(raw: string): string {
 }
 
 /**
- * Prefer a concrete role from SAMPLE_JDS / JD opening when BE returns a generic
- * detectedRole (e.g. "Software Engineer" for a Mobile Developer JD).
+ * Chỉ tinh chỉnh khi khớp SAMPLE_JDS (người dùng chọn mẫu).
+ * SCRUM-416: không bịa Software Engineer/Mid — field null giữ nguyên để FE hiện "Không xác định".
  */
 export function refineJdSummary(
   content: string,
@@ -70,14 +70,26 @@ export function refineJdSummary(
   locale: "vi" | "en"
 ): AnalyzeJobDescriptionResponse {
   const fromSample = matchSampleJdTitle(content, locale);
-  const fromOpening = fromSample ? null : extractRoleFromJdOpening(content);
-  const concrete = fromSample ?? fromOpening;
 
-  if (!concrete) return summary;
-  if (!isGenericRole(summary.detectedRole)) return summary;
+  // Position: ưu tiên BE; thiếu thì lấy role RAG (không invent).
+  const withPosition: AnalyzeJobDescriptionResponse = {
+    ...summary,
+    position:
+      summary.position?.trim() ||
+      summary.detectedRole?.trim() ||
+      null,
+  };
+
+  if (!fromSample) return withPosition;
+
+  // Sample catalog: chỉ override role generic / trống bằng title mẫu đã chọn.
+  if (!isGenericRole(withPosition.detectedRole)) {
+    return withPosition;
+  }
 
   return {
-    ...summary,
-    detectedRole: concrete,
+    ...withPosition,
+    detectedRole: fromSample,
+    position: withPosition.position?.trim() || fromSample,
   };
 }

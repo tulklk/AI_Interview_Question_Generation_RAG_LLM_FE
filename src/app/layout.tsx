@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { Be_Vietnam_Pro } from "next/font/google";
+import Script from "next/script";
 import "./globals.css";
 import { Providers } from "./providers";
 
@@ -42,18 +43,12 @@ export default async function RootLayout({
     >
       <body>
         {/*
-          True inline <script> — the browser executes this synchronously
-          while parsing the opening <body> tag, before scroll restoration
-          and before any React/Next.js JavaScript is fetched or run.
-          This is the only reliable way to prevent browser scroll restoration.
+          Next.js 16 / React 19: thẻ <script> thô trong body component gây console error
+          và không chạy khi hydrate. Dùng next/script beforeInteractive — inject sớm từ HTML SSR.
         */}
-        {/* eslint-disable-next-line @next/next/no-sync-scripts */}
-        <script
-          dangerouslySetInnerHTML={{
-            __html:
-              "(function(){try{history.scrollRestoration='manual';}catch(e){}try{window.scrollTo(0,0);}catch(e){}})();",
-          }}
-        />
+        <Script id="hiregen-scroll-restore" strategy="beforeInteractive">
+          {`(function(){try{history.scrollRestoration='manual';}catch(e){}try{window.scrollTo(0,0);}catch(e){}})();`}
+        </Script>
         <Providers>{children}</Providers>
       </body>
     </html>

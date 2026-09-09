@@ -20,9 +20,11 @@ import { cn } from "@/lib/cn";
 import { portalHeading, portalSubtext, portalInput } from "@/shared/utils/portal-ui";
 import { useCountUp } from "@/shared/hooks/use-count-up";
 import { useInView } from "framer-motion";
-import type { KnowledgeDocument, DocumentStatus } from "@/features/knowledge/types/knowledge";
+import type { KnowledgeDocument, DocumentStatus, KnowledgeDocumentType, KnowledgeChunkPreview } from "@/features/knowledge/types/knowledge";
+import { HR_DOCUMENT_TYPES } from "@/features/knowledge/types/knowledge";
 import { useLanguage } from "@/shared/providers/language-context";
 import { useToast } from "@/shared/providers/toast-context";
+import { extractErrorMessage } from "@/core/interceptors/error.interceptor";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -31,10 +33,13 @@ import { useToast } from "@/shared/providers/toast-context";
 interface KnowledgePageContentProps {
   variant: "hr" | "admin";
   onFetchDocs: () => Promise<KnowledgeDocument[]>;
-  onUpload: (file: File) => Promise<KnowledgeDocument | null>;
+  /** SCRUM-442: HR truyền documentType; Admin bỏ qua. */
+  onUpload: (file: File, documentType?: KnowledgeDocumentType) => Promise<KnowledgeDocument | null>;
   onDelete: (id: string) => Promise<boolean>;
   onReingest: (id: string) => Promise<boolean>;
   onRefreshDoc?: (id: string) => Promise<KnowledgeDocument | null>;
+  onUpdateType?: (id: string, documentType: KnowledgeDocumentType) => Promise<KnowledgeDocument | null>;
+  onFetchChunks?: (id: string) => Promise<KnowledgeChunkPreview[]>;
 }
 
 // ---------------------------------------------------------------------------
@@ -67,6 +72,85 @@ function formatBytes(bytes?: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+/** Chuẩn hóa text chunk để preview dễ đọc — không đổi dữ liệu lưu DB. */
+function formatChunkForDisplay(raw: string): string {
+  let t = (raw ?? "").replace(/\r\n?/g, "\n").replace(/\u00a0/g, " ").trim();
+  if (!t) return "";
+
+  if (t.includes("\n")) {
+    return t
+      .split("\n")
+      .map((line) => line.replace(/[ \t]+/g, " ").trimEnd())
+      .join("\n")
+      .replace(/\n{3,}/g, "\n\n");
+  }
+
+  // PDF/DOCX thường 1 dòng: tách heading "1. Title" và ngắt câu
+  t = t.replace(/[ \t]+/g, " ");
+  t = t.replace(/\s+(\d+\.\s+[A-ZÀ-Ỹ])/g, "\n\n$1");
+  t = t.replace(/([.!?…])\s+(?=[A-ZÀ-Ỹ0-9“"'])/g, "$1\n");
+  return t.replace(/^\n+/, "").replace(/\n{3,}/g, "\n\n").trim();
+}
+
+function ChunkPreviewCard({
+  chunk,
+  total,
+}: {
+  chunk: KnowledgeChunkPreview;
+  total: number;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const formatted = formatChunkForDisplay(chunk.content);
+  const lines = formatted.split("\n").filter((l) => l.trim().length > 0);
+  const isLong = formatted.length > 420 || lines.length > 8;
+  const previewLines = expanded || !isLong ? lines : lines.slice(0, 6);
+
+  return (
+    <li className="rounded-xl border border-gray-200/80 dark:border-gray-700/80 bg-gray-50/80 dark:bg-gray-950/50 overflow-hidden">
+      <div className="flex items-center justify-between gap-2 px-3 py-2 border-b border-gray-100 dark:border-gray-800 bg-white/60 dark:bg-gray-900/40">
+        <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-violet-600 dark:text-violet-400">
+          <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-md bg-violet-100 dark:bg-violet-950/60 px-1.5 tabular-nums">
+            #{chunk.chunkIndex}
+          </span>
+          <span className={cn("font-medium", portalSubtext)}>
+            {chunk.chunkIndex + 1}/{total}
+          </span>
+        </span>
+        <span className={cn("text-[10px] tabular-nums", portalSubtext)}>
+          {chunk.content.length.toLocaleString()} ký tự
+        </span>
+      </div>
+      <div className="px-3 py-2.5 space-y-1.5">
+        {previewLines.map((line, i) => {
+          const isHeading = /^\d+\.\s+\S/.test(line.trim());
+          return (
+            <p
+              key={`${chunk.chunkId}-${i}`}
+              className={cn(
+                "text-[12px] leading-relaxed break-words",
+                isHeading
+                  ? cn("font-semibold pt-1 first:pt-0", portalHeading)
+                  : portalSubtext
+              )}
+            >
+              {line}
+            </p>
+          );
+        })}
+        {isLong && (
+          <button
+            type="button"
+            onClick={() => setExpanded((v) => !v)}
+            className="mt-1 text-[11px] font-semibold text-violet-600 dark:text-violet-400 hover:underline"
+          >
+            {expanded ? "Thu gọn" : "Xem thêm"}
+          </button>
+        )}
+      </div>
+    </li>
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -181,12 +265,14 @@ function DocumentCard({
   doc,
   onDelete,
   onReingest,
+  onOpen,
   deleting,
   reingesting,
 }: {
   doc: KnowledgeDocument;
   onDelete: (id: string) => void;
   onReingest: (id: string) => void;
+  onOpen?: (doc: KnowledgeDocument) => void;
   deleting: boolean;
   reingesting: boolean;
 }) {
@@ -198,6 +284,9 @@ function DocumentCard({
   const dropRef = useRef<HTMLDivElement>(null);
 
   const isProcessing = doc.status === "INGESTING" || doc.status === "PROCESSING" || doc.status === "PENDING";
+  const typeLabel = (kb.documentTypes as Record<string, string> | undefined)?.[doc.documentType ?? "Unclassified"]
+    ?? doc.documentType
+    ?? "Unclassified";
 
   // Close on outside click or scroll
   useEffect(() => {
@@ -240,20 +329,38 @@ function DocumentCard({
   }
 
   return (
-    <div className={cn(
-      "group flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors",
-      "hover:bg-gray-50 dark:hover:bg-gray-800/60",
-    )}>
-      {/* File type icon */}
+    <div
+      role={onOpen ? "button" : undefined}
+      tabIndex={onOpen ? 0 : undefined}
+      onClick={() => onOpen?.(doc)}
+      onKeyDown={(e) => { if (onOpen && (e.key === "Enter" || e.key === " ")) onOpen(doc); }}
+      className={cn(
+        "group flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors",
+        "hover:bg-gray-50 dark:hover:bg-gray-800/60",
+        onOpen && "cursor-pointer",
+      )}
+    >
       <FileTypeIcon fileName={doc.fileName} mimeType={doc.mimeType} />
 
-      {/* Info */}
       <div className="flex-1 min-w-0">
         <p className={cn("text-sm font-medium leading-snug truncate", portalHeading)} title={doc.fileName}>
           {doc.fileName}
         </p>
         <div className="flex items-center gap-2 mt-0.5 flex-wrap">
           <StatusBadge status={doc.status} />
+          <span className="inline-flex items-center rounded-full bg-violet-50 dark:bg-violet-950/40 px-1.5 py-0.5 text-[10px] font-semibold text-violet-700 dark:text-violet-300">
+            {typeLabel}
+          </span>
+          {typeof doc.studioProjectCount === "number" && doc.studioProjectCount > 0 && (
+            <span className={cn("text-[11px]", portalSubtext)}>
+              {(kb.inProjects ?? "{{n}} project").replace("{{n}}", String(doc.studioProjectCount))}
+            </span>
+          )}
+          {typeof doc.citationCount === "number" && doc.citationCount > 0 && (
+            <span className={cn("text-[11px]", portalSubtext)}>
+              {(kb.citedTimes ?? "{{n}} cite").replace("{{n}}", String(doc.citationCount))}
+            </span>
+          )}
           {doc.fileSize && (
             <span className={cn("text-[11px]", portalSubtext)}>{formatBytes(doc.fileSize)}</span>
           )}
@@ -266,7 +373,6 @@ function DocumentCard({
         )}
       </div>
 
-      {/* Three-dot button */}
       <button
         ref={btnRef}
         type="button"
@@ -286,10 +392,12 @@ function DocumentCard({
         }
       </button>
 
-      {/* Dropdown — rendered via portal so it escapes overflow container */}
       {menuOpen && createPortal(
         <div
           ref={dropRef}
+          // Portal bubble theo React tree → phải chặn kẻo mở luôn drawer (onOpen của card).
+          onClick={(e) => e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
           style={{ position: "fixed", top: menuPos.top, right: menuPos.right, zIndex: 9999 }}
           className="w-48 rounded-xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-2xl py-1 animate-in fade-in slide-in-from-top-1 duration-150"
         >
@@ -297,7 +405,11 @@ function DocumentCard({
             <button
               type="button"
               disabled={reingesting}
-              onClick={() => { onReingest(doc.id); setMenuOpen(false); }}
+              onClick={(e) => {
+                e.stopPropagation();
+                onReingest(doc.id);
+                setMenuOpen(false);
+              }}
               className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors disabled:opacity-50"
             >
               <RotateCcw size={13} className="text-gray-400" />
@@ -307,7 +419,11 @@ function DocumentCard({
           <button
             type="button"
             disabled={deleting}
-            onClick={() => { onDelete(doc.id); setMenuOpen(false); }}
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete(doc.id);
+              setMenuOpen(false);
+            }}
             className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors disabled:opacity-50"
           >
             <Trash2 size={13} className="text-red-400" />
@@ -461,13 +577,16 @@ function DeleteModal({
 // ---------------------------------------------------------------------------
 
 export function KnowledgePageContent({
+  variant,
   onFetchDocs,
   onUpload,
   onDelete,
   onReingest,
   onRefreshDoc,
+  onUpdateType,
+  onFetchChunks,
 }: KnowledgePageContentProps) {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const kb = t.knowledgePage;
   const { addToast } = useToast();
 
@@ -479,14 +598,29 @@ export function KnowledgePageContent({
   const [reingestingId, setReingestingId] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<KnowledgeDocument | null>(null);
   const [search, setSearch] = useState("");
+  const [typeFilter, setTypeFilter] = useState<string>("all");
+  const [uploadType, setUploadType] = useState<KnowledgeDocumentType>("InternalStack");
+  const [drawerDoc, setDrawerDoc] = useState<KnowledgeDocument | null>(null);
+  const [drawerChunks, setDrawerChunks] = useState<KnowledgeChunkPreview[]>([]);
+  const [drawerLoading, setDrawerLoading] = useState(false);
 
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const loadDocs = useCallback(async () => {
-    const result = await onFetchDocs();
-    setDocs(result);
-    setLoading(false);
-  }, [onFetchDocs]);
+    try {
+      const result = await onFetchDocs();
+      setDocs(result);
+    } catch (error) {
+      setDocs([]);
+      addToast(
+        "error",
+        extractErrorMessage(error, lang === "vi" ? "vi" : "en") ||
+          (lang === "vi" ? "Không tải được danh sách tài liệu." : "Failed to load documents.")
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, [onFetchDocs, addToast, lang]);
 
   useEffect(() => {
     loadDocs();
@@ -523,18 +657,64 @@ export function KnowledgePageContent({
       addToast("error", kb.fileTooLarge.replace("{{name}}", tooBig.name).replace("{{n}}", String(MAX_FILE_MB)));
       return;
     }
+    if (variant === "hr" && !uploadType) {
+      addToast("error", kb.typeRequired ?? "Chọn loại tài liệu trước khi upload.");
+      return;
+    }
     for (const file of files) {
       setUploading(true);
       setUploadingFileName(file.name);
-      const result = await onUpload(file);
-      if (result) {
-        setDocs((prev) => [result, ...prev]);
-        addToast("success", kb.uploadSuccess.replace("{{name}}", file.name));
-      } else {
-        addToast("error", kb.uploadFailed.replace("{{name}}", file.name));
+      try {
+        const result = await onUpload(file, variant === "hr" ? uploadType : undefined);
+        if (result) {
+          setDocs((prev) => [result, ...prev.filter((d) => d.id !== result.id)]);
+          addToast("success", kb.uploadSuccess.replace("{{name}}", file.name));
+          // Đồng bộ lại từ server (status/chunkCount đầy đủ).
+          void loadDocs();
+        } else {
+          addToast("error", kb.uploadFailed.replace("{{name}}", file.name));
+        }
+      } catch (error) {
+        addToast(
+          "error",
+          extractErrorMessage(error, lang === "vi" ? "vi" : "en") ||
+            kb.uploadFailed.replace("{{name}}", file.name)
+        );
       }
       setUploading(false);
       setUploadingFileName("");
+    }
+  }
+
+  async function openDrawer(doc: KnowledgeDocument) {
+    setDrawerDoc(doc);
+    setDrawerChunks([]);
+    if (!onFetchChunks) return;
+    setDrawerLoading(true);
+    try {
+      const chunks = await onFetchChunks(doc.id);
+      setDrawerChunks(chunks);
+    } catch (error) {
+      setDrawerChunks([]);
+      addToast(
+        "error",
+        extractErrorMessage(error, lang === "vi" ? "vi" : "en") ||
+          (lang === "vi" ? "Không tải được preview chunk." : "Failed to load chunk preview.")
+      );
+    } finally {
+      setDrawerLoading(false);
+    }
+  }
+
+  async function handleChangeType(id: string, documentType: KnowledgeDocumentType) {
+    if (!onUpdateType) return;
+    const updated = await onUpdateType(id, documentType);
+    if (updated) {
+      setDocs((prev) => prev.map((d) => (d.id === id ? { ...d, ...updated } : d)));
+      if (drawerDoc?.id === id) setDrawerDoc({ ...drawerDoc, ...updated });
+      addToast("success", kb.typeUpdated ?? "Đã cập nhật loại tài liệu.");
+    } else {
+      addToast("error", kb.typeUpdateFailed ?? "Không thể đổi loại tài liệu.");
     }
   }
 
@@ -543,6 +723,10 @@ export function KnowledgePageContent({
     const ok = await onDelete(id);
     if (ok) {
       setDocs((prev) => prev.filter((d) => d.id !== id));
+      if (drawerDoc?.id === id) {
+        setDrawerDoc(null);
+        setDrawerChunks([]);
+      }
       addToast("success", kb.deleteSuccess);
     } else {
       addToast("error", kb.deleteFailed);
@@ -565,9 +749,13 @@ export function KnowledgePageContent({
     setReingestingId(null);
   }
 
-  const filtered = docs.filter((d) =>
-    !search || d.fileName.toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = docs.filter((d) => {
+    const matchSearch = !search || d.fileName.toLowerCase().includes(search.toLowerCase());
+    const matchType =
+      typeFilter === "all" ||
+      (d.documentType ?? "Unclassified") === typeFilter;
+    return matchSearch && matchType;
+  });
 
   const readyCount = docs.filter((d) => d.status === "READY").length;
   const processingCount = docs.filter(
@@ -595,19 +783,38 @@ export function KnowledgePageContent({
             <DocStatTile value={failedCount} label={kb.statsFailed} color="text-red-500 dark:text-red-400" bg="bg-red-50 dark:bg-red-950/30" />
           </div>
 
-          {/* Search */}
-          <div className="relative">
-            <FileText size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-            <input
-              type="text"
-              placeholder={kb.searchPlaceholder}
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className={cn(
-                "w-full pl-9 pr-4 py-2 text-sm rounded-xl border focus:outline-none focus:ring-2 focus:ring-violet-400/30",
-                portalInput
-              )}
-            />
+          {/* Search + type filter */}
+          <div className="space-y-2">
+            <div className="relative">
+              <FileText size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input
+                type="text"
+                placeholder={kb.searchPlaceholder}
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className={cn(
+                  "w-full pl-9 pr-4 py-2 text-sm rounded-xl border focus:outline-none focus:ring-2 focus:ring-violet-400/30",
+                  portalInput
+                )}
+              />
+            </div>
+            {variant === "hr" && (
+              <select
+                value={typeFilter}
+                onChange={(e) => setTypeFilter(e.target.value)}
+                className={cn("w-full px-3 py-2 text-sm rounded-xl border", portalInput)}
+              >
+                <option value="all">{kb.filterAllTypes ?? "Tất cả loại"}</option>
+                {HR_DOCUMENT_TYPES.map((t) => (
+                  <option key={t} value={t}>
+                    {(kb.documentTypes as Record<string, string> | undefined)?.[t] ?? t}
+                  </option>
+                ))}
+                <option value="Unclassified">
+                  {(kb.documentTypes as Record<string, string> | undefined)?.Unclassified ?? "Chưa phân loại"}
+                </option>
+              </select>
+            )}
           </div>
 
           {/* Document list */}
@@ -631,8 +838,14 @@ export function KnowledgePageContent({
                   onDelete={(id) => {
                     const d = docs.find((x) => x.id === id);
                     if (d) setConfirmDelete(d);
+                    // Đóng drawer nếu đang xem đúng file sắp xóa — tránh chồng modal + detail.
+                    if (drawerDoc?.id === id) {
+                      setDrawerDoc(null);
+                      setDrawerChunks([]);
+                    }
                   }}
                   onReingest={handleReingest}
+                  onOpen={openDrawer}
                   deleting={deletingId === doc.id}
                   reingesting={reingestingId === doc.id}
                 />
@@ -649,6 +862,25 @@ export function KnowledgePageContent({
               <FilePlus2 size={18} className="text-violet-500" />
               <h3 className={cn("text-sm font-semibold", portalHeading)}>{kb.uploadSection}</h3>
             </div>
+
+            {variant === "hr" && (
+              <div className="mb-3 space-y-1.5">
+                <label className={cn("text-xs font-medium", portalSubtext)}>
+                  {kb.documentTypeLabel ?? "Loại tài liệu"}
+                </label>
+                <select
+                  value={uploadType}
+                  onChange={(e) => setUploadType(e.target.value as KnowledgeDocumentType)}
+                  className={cn("w-full px-3 py-2 text-sm rounded-xl border", portalInput)}
+                >
+                  {HR_DOCUMENT_TYPES.map((t) => (
+                    <option key={t} value={t}>
+                      {(kb.documentTypes as Record<string, string> | undefined)?.[t] ?? t}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
 
             <UploadZone
               onFiles={handleFiles}
@@ -692,6 +924,74 @@ export function KnowledgePageContent({
           </div>
         </div>
       </div>
+
+      {drawerDoc && createPortal(
+        <div className="fixed inset-0 z-9999 flex justify-end">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setDrawerDoc(null)} />
+          <div className="relative h-full w-full max-w-md bg-white dark:bg-gray-900 shadow-2xl border-l border-gray-200 dark:border-gray-800 p-5 overflow-y-auto animate-in slide-in-from-right duration-200">
+            <div className="flex items-start justify-between gap-3 mb-4">
+              <div className="min-w-0">
+                <p className={cn("text-sm font-semibold truncate", portalHeading)}>{drawerDoc.fileName}</p>
+                <p className={cn("text-xs mt-1", portalSubtext)}>
+                  {(kb.documentTypes as Record<string, string> | undefined)?.[drawerDoc.documentType ?? "Unclassified"]
+                    ?? drawerDoc.documentType}
+                  {" · "}
+                  {(kb.citedTimes ?? "{{n}} cite").replace("{{n}}", String(drawerDoc.citationCount ?? 0))}
+                  {" · "}
+                  {(kb.inProjects ?? "{{n}} project").replace("{{n}}", String(drawerDoc.studioProjectCount ?? 0))}
+                </p>
+              </div>
+              <button type="button" onClick={() => setDrawerDoc(null)} className="p-1 text-gray-400 hover:text-gray-600">
+                <X size={16} />
+              </button>
+            </div>
+
+            {variant === "hr" && onUpdateType && (
+              <div className="mb-4 space-y-1.5">
+                <label className={cn("text-xs font-medium", portalSubtext)}>
+                  {kb.changeType ?? "Đổi loại"}
+                </label>
+                <select
+                  value={drawerDoc.documentType && drawerDoc.documentType !== "Unclassified"
+                    ? drawerDoc.documentType
+                    : "InternalStack"}
+                  onChange={(e) => handleChangeType(drawerDoc.id, e.target.value as KnowledgeDocumentType)}
+                  className={cn("w-full px-3 py-2 text-sm rounded-xl border", portalInput)}
+                >
+                  {HR_DOCUMENT_TYPES.map((t) => (
+                    <option key={t} value={t}>
+                      {(kb.documentTypes as Record<string, string> | undefined)?.[t] ?? t}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            <p className={cn("text-xs font-semibold mb-2", portalHeading)}>
+              {kb.chunksPreview ?? "Xem trước chunk"}
+              {drawerDoc.chunkCount != null ? ` (${drawerDoc.chunkCount})` : ""}
+            </p>
+            {drawerLoading ? (
+              <div className="flex justify-center py-8">
+                <Loader2 size={20} className="animate-spin text-violet-500" />
+              </div>
+            ) : drawerChunks.length === 0 ? (
+              <p className={cn("text-xs", portalSubtext)}>{kb.noChunks ?? "Chưa có chunk hoặc chưa ingest xong."}</p>
+            ) : (
+              <ul className="space-y-3">
+                {drawerChunks.map((c) => (
+                  <ChunkPreviewCard
+                    key={c.chunkId || String(c.chunkIndex)}
+                    chunk={c}
+                    total={drawerDoc.chunkCount ?? drawerChunks.length}
+                  />
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>,
+        document.body
+      )}
     </>
   );
 }

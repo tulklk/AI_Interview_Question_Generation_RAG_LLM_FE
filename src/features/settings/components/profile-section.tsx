@@ -27,6 +27,10 @@ interface HrProfileForm {
   bio: string;
   inviteMessageTemplate: string;
   companyId?: string;
+  recDefaultMinScore: string;
+  recDefaultSortBy: string;
+  recDefaultSortDir: string;
+  recHideDismissed: boolean;
 }
 
 const EMPTY: HrProfileForm = {
@@ -40,6 +44,10 @@ const EMPTY: HrProfileForm = {
   avatarUrl: "",
   bio: "",
   inviteMessageTemplate: "",
+  recDefaultMinScore: "",
+  recDefaultSortBy: "score",
+  recDefaultSortDir: "desc",
+  recHideDismissed: false,
 };
 
 function ViewField({ label, value }: { label: string; value: string }) {
@@ -111,6 +119,13 @@ export function ProfileSection() {
         bio: hp?.bio ?? "",
         inviteMessageTemplate: hp?.inviteMessageTemplate ?? "",
         companyId: hp?.companyId,
+        recDefaultMinScore:
+          hp?.recDefaultMinScore != null && !Number.isNaN(hp.recDefaultMinScore)
+            ? String(hp.recDefaultMinScore)
+            : "",
+        recDefaultSortBy: hp?.recDefaultSortBy === "date" ? "date" : "score",
+        recDefaultSortDir: hp?.recDefaultSortDir === "asc" ? "asc" : "desc",
+        recHideDismissed: Boolean(hp?.recHideDismissed),
       };
       setForm(next);
       setSnapshot(next);
@@ -163,6 +178,12 @@ export function ProfileSection() {
         avatarUrl: form.avatarUrl.trim() || undefined,
         bio: form.bio.trim() || undefined,
         inviteMessageTemplate: form.inviteMessageTemplate.trim() || null,
+        recDefaultMinScore: form.recDefaultMinScore.trim()
+          ? Number(form.recDefaultMinScore)
+          : null,
+        recDefaultSortBy: form.recDefaultSortBy,
+        recDefaultSortDir: form.recDefaultSortDir,
+        recHideDismissed: form.recHideDismissed,
       });
       await refreshUser();
       await loadProfile();
@@ -256,6 +277,12 @@ export function ProfileSection() {
                 avatarUrl: url,
                 bio: snapshot.bio.trim() || undefined,
                 inviteMessageTemplate: snapshot.inviteMessageTemplate.trim() || null,
+                recDefaultMinScore: snapshot.recDefaultMinScore.trim()
+                  ? Number(snapshot.recDefaultMinScore)
+                  : null,
+                recDefaultSortBy: snapshot.recDefaultSortBy,
+                recDefaultSortDir: snapshot.recDefaultSortDir,
+                recHideDismissed: snapshot.recHideDismissed,
               });
               setSnapshot((prev) => ({ ...prev, avatarUrl: url }));
               await refreshUser();
@@ -297,6 +324,18 @@ export function ProfileSection() {
           <ViewUrlField label={sp.githubUrl} url={form.githubUrl} />
           <ViewField label={sp.bio} value={form.bio} />
           <ViewField label={sp.inviteTemplate} value={form.inviteMessageTemplate} />
+          <ViewField
+            label={sp.recDefaultMinScore}
+            value={form.recDefaultMinScore ? `≥ ${form.recDefaultMinScore}` : sp.recNoMinScore}
+          />
+          <ViewField
+            label={sp.recDefaultSort}
+            value={`${form.recDefaultSortBy === "date" ? sp.recSortDate : sp.recSortScore} (${form.recDefaultSortDir === "asc" ? sp.recSortAsc : sp.recSortDesc})`}
+          />
+          <ViewField
+            label={sp.recHideDismissed}
+            value={form.recHideDismissed ? sp.recYes : sp.recNo}
+          />
         </div>
       ) : (
         <div className="space-y-4">
@@ -403,6 +442,61 @@ export function ProfileSection() {
             />
             <p className={cn("text-xs mt-1", portalSubtext)}>{sp.inviteTemplateHint}</p>
           </FormField>
+
+          <div className={cn("border-t pt-4 space-y-4", portalDivider)}>
+            <p className={cn("text-sm font-semibold", portalHeading)}>{sp.recPrefsTitle}</p>
+            <p className={cn("text-xs", portalSubtext)}>{sp.recPrefsHint}</p>
+            <FormField label={sp.recDefaultMinScore} htmlFor="rec-min-score">
+              <select
+                id="rec-min-score"
+                value={form.recDefaultMinScore}
+                onChange={(e) => setForm((prev) => ({ ...prev, recDefaultMinScore: e.target.value }))}
+                disabled={saving || uploadingAvatar}
+                className={inputCls}
+              >
+                <option value="">{sp.recNoMinScore}</option>
+                <option value="70">≥ 70</option>
+                <option value="80">≥ 80</option>
+                <option value="90">≥ 90</option>
+              </select>
+            </FormField>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <FormField label={sp.recDefaultSort} htmlFor="rec-sort-by">
+                <select
+                  id="rec-sort-by"
+                  value={form.recDefaultSortBy}
+                  onChange={(e) => setForm((prev) => ({ ...prev, recDefaultSortBy: e.target.value }))}
+                  disabled={saving || uploadingAvatar}
+                  className={inputCls}
+                >
+                  <option value="score">{sp.recSortScore}</option>
+                  <option value="date">{sp.recSortDate}</option>
+                </select>
+              </FormField>
+              <FormField label={sp.recDefaultSortDir} htmlFor="rec-sort-dir">
+                <select
+                  id="rec-sort-dir"
+                  value={form.recDefaultSortDir}
+                  onChange={(e) => setForm((prev) => ({ ...prev, recDefaultSortDir: e.target.value }))}
+                  disabled={saving || uploadingAvatar}
+                  className={inputCls}
+                >
+                  <option value="desc">{sp.recSortDesc}</option>
+                  <option value="asc">{sp.recSortAsc}</option>
+                </select>
+              </FormField>
+            </div>
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={form.recHideDismissed}
+                onChange={(e) => setForm((prev) => ({ ...prev, recHideDismissed: e.target.checked }))}
+                disabled={saving || uploadingAvatar}
+                className="rounded border-gray-300"
+              />
+              <span className={portalHeading}>{sp.recHideDismissed}</span>
+            </label>
+          </div>
         </div>
       )}
     </div>

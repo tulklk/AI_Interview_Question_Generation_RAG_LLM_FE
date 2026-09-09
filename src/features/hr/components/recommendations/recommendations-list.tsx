@@ -8,7 +8,7 @@ import { motion } from "framer-motion";
 import {
   Users, RefreshCw, AlertCircle, Search,
   ChevronLeft, ChevronRight, Star, X as XIcon,
-  Mail, CheckCircle2, Loader2, Send, SlidersHorizontal, Phone, RotateCcw,
+  Mail, CheckCircle2, Loader2, Send, SlidersHorizontal, Phone, RotateCcw, Settings2, Check,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { useLanguage, type Lang } from "@/shared/providers/language-context";
@@ -27,7 +27,8 @@ import {
   type RecommendationSortBy,
   type RecommendationSortDir,
 } from "@/features/hr/services/recommendation.service";
-import { getCurrentUser } from "@/features/auth/services/user.service";
+import { getCurrentUser, updateHrProfile } from "@/features/auth/services/user.service";
+import type { CurrentUser } from "@/shared/types/user";
 import { getSkillIcon } from "@/features/candidate/utils/skill-icons";
 import { InviteScheduleFields, defaultInviteSchedule, toInvitePayload } from "./invite-schedule-fields";
 import {
@@ -620,8 +621,18 @@ function CandidateRow({ rec, lang, labels, index, selected, onToggleSelect, onSt
               </span>
             )}
             {typeof rec.fitPercent === "number" && (
-              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-cyan-50 text-cyan-700 dark:bg-cyan-950/40 dark:text-cyan-400">
-                {c.fitPercent} {rec.fitPercent}%
+              <span className="inline-flex max-w-full items-center gap-1.5 flex-wrap">
+                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-cyan-50 text-cyan-700 dark:bg-cyan-950/40 dark:text-cyan-400 whitespace-nowrap">
+                  {c.fitPercent} {rec.fitPercent}%
+                </span>
+                {rec.questionSetTitle && (
+                  <span
+                    title={rec.questionSetTitle}
+                    className="text-[10px] font-medium text-cyan-700/90 dark:text-cyan-400/90 truncate max-w-[14rem]"
+                  >
+                    {(c.fitAgainst ?? "Khớp với: {{title}}").replace("{{title}}", rec.questionSetTitle)}
+                  </span>
+                )}
               </span>
             )}
             {hasContact && (
@@ -649,13 +660,26 @@ function CandidateRow({ rec, lang, labels, index, selected, onToggleSelect, onSt
             )}
           </p>
 
-          {/* Row 3: question set title · time */}
-          <p className={cn("text-[11px] truncate mt-0.5", portalSubtextAlt)}>
-            <span className="font-medium text-gray-600 dark:text-gray-300">{rec.questionSetTitle || "—"}</span>
-            {rec.completedAt && (
-              <span className="text-gray-400 dark:text-gray-500"> · {formatRelativeTime(rec.completedAt, lang)}</span>
-            )}
-          </p>
+          {/* Row 3: title nếu chưa hiện cạnh Fit · time */}
+          {(() => {
+            const fitShowsTitle = typeof rec.fitPercent === "number" && Boolean(rec.questionSetTitle);
+            if (fitShowsTitle && !rec.completedAt) return null;
+            return (
+              <p className={cn("text-[11px] truncate mt-0.5", portalSubtextAlt)}>
+                {!fitShowsTitle && (
+                  <span className="font-medium text-gray-600 dark:text-gray-300">
+                    {rec.questionSetTitle || "—"}
+                  </span>
+                )}
+                {rec.completedAt && (
+                  <span className="text-gray-400 dark:text-gray-500">
+                    {!fitShowsTitle ? " · " : ""}
+                    {formatRelativeTime(rec.completedAt, lang)}
+                  </span>
+                )}
+              </p>
+            );
+          })()}
 
           {/* Row 4: skill tags */}
           {rec.techStack.length > 0 && (
@@ -856,6 +880,11 @@ export function RecommendationsList() {
   const [statusFilter, setStatusFilter] = useState(searchParams.get("status") ?? "");
   const [minScore, setMinScore] = useState<number | undefined>(undefined);
   const [sortKey, setSortKey] = useState("sortScoreDesc");
+  const [hideDismissed, setHideDismissed] = useState(false);
+  const [prefsReady, setPrefsReady] = useState(false);
+  const [showDisplayPrefs, setShowDisplayPrefs] = useState(false);
+  const [savingPrefs, setSavingPrefs] = useState(false);
+  const [profileSnapshot, setProfileSnapshot] = useState<CurrentUser | null>(null);
   const [searchSet, setSearchSet] = useState("");
   const [selected, setSelected] = useState<CandidateRecommendation[]>([]);
   const { addToast } = useToast();
@@ -866,6 +895,70 @@ export function RecommendationsList() {
     if (st) setStatusFilter(st);
   }, [searchParams]);
 
+  // SCRUM-424: khởi tạo filter/sort từ HRProfile (URL status/unviewed vẫn ưu tiên)
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const user = await getCurrentUser();
+        if (cancelled) return;
+        setProfileSnapshot(user);
+        const hp = user?.hrProfile;
+        if (hp) {
+          if (hp.recDefaultMinScore != null && !Number.isNaN(Number(hp.recDefaultMinScore))) {
+            setMinScore(Number(hp.recDefaultMinScore));
+          }
+          const by = hp.recDefaultSortBy === "date" ? "date" : "score";
+          const dir = hp.recDefaultSortDir === "asc" ? "asc" : "desc";
+          const key =
+            SORT_OPTIONS.find((o) => o.sortBy === by && o.sortDir === dir)?.key ?? "sortScoreDesc";
+          setSortKey(key);
+          setHideDismissed(Boolean(hp.recHideDismissed));
+        }
+      } catch {
+        /* prefs optional — list vẫn load được */
+      } finally {
+        if (!cancelled) setPrefsReady(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  async function handleSaveDisplayPrefs() {
+    if (!profileSnapshot) {
+      addToast("error", p.displayPrefsSaveFailed);
+      return;
+    }
+    const opt = SORT_OPTIONS.find((o) => o.key === sortKey) ?? SORT_OPTIONS[0];
+    const hp = profileSnapshot.hrProfile;
+    setSavingPrefs(true);
+    try {
+      await updateHrProfile({
+        fullName: profileSnapshot.fullName.trim() || "User",
+        companyId: hp?.companyId,
+        companyName: hp?.companyName,
+        jobTitle: hp?.jobTitle,
+        phoneNumber: hp?.phoneNumber,
+        linkedInUrl: hp?.linkedInUrl,
+        githubUrl: hp?.githubUrl,
+        bio: hp?.bio,
+        inviteMessageTemplate: hp?.inviteMessageTemplate ?? null,
+        avatarUrl: (hp?.avatarUrl ?? profileSnapshot.avatarUrl) || undefined,
+        recDefaultMinScore: minScore ?? null,
+        recDefaultSortBy: opt.sortBy,
+        recDefaultSortDir: opt.sortDir,
+        recHideDismissed: hideDismissed,
+      });
+      addToast("success", p.displayPrefsSaveSuccess);
+      setShowDisplayPrefs(false);
+    } catch {
+      addToast("error", p.displayPrefsSaveFailed);
+    } finally {
+      setSavingPrefs(false);
+    }
+  }
   const sortOption = SORT_OPTIONS.find((o) => o.key === sortKey) ?? SORT_OPTIONS[0];
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
 
@@ -888,7 +981,10 @@ export function RecommendationsList() {
     finally { setLoading(false); }
   }, [page, statusFilter, minScore, sortOption.sortBy, sortOption.sortDir]);
 
-  useEffect(() => { void fetchData(); }, [fetchData]);
+  useEffect(() => {
+    if (!prefsReady) return;
+    void fetchData();
+  }, [fetchData, prefsReady]);
   useEffect(() => { setPage(1); }, [statusFilter, minScore, sortKey]);
 
   function handleStatusChange(id: string, status: RecommendationStatus) {
@@ -912,11 +1008,13 @@ export function RecommendationsList() {
   }
 
   // Search title vẫn client-side (BE SCRUM-328 chưa hỗ trợ search title).
-  const displayed = items.filter((r) =>
-    searchSet.trim()
-      ? r.questionSetTitle.toLowerCase().includes(searchSet.toLowerCase())
-      : true
-  );
+  // SCRUM-424: RecHideDismissed — ẩn DISMISSED khi đang ở tab Tất cả.
+  const displayed = items.filter((r) => {
+    if (hideDismissed && !statusFilter && r.status === "DISMISSED") return false;
+    if (searchSet.trim() && !r.questionSetTitle.toLowerCase().includes(searchSet.toLowerCase()))
+      return false;
+    return true;
+  });
 
   return (
     <div>
@@ -925,11 +1023,77 @@ export function RecommendationsList() {
         initial={{ opacity: 0, y: -8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.38, ease: "easeOut" }}
-        className="mb-6"
+        className="mb-6 flex items-start justify-between gap-3"
       >
-        <h2 className={cn("text-[17px] font-bold leading-tight tracking-tight", portalHeadingAlt)}>{p.heading}</h2>
-        <p className={cn("text-[11px] mt-0.5", portalSubtextAlt)}>{p.subtext}</p>
+        <div>
+          <h2 className={cn("text-[17px] font-bold leading-tight tracking-tight", portalHeadingAlt)}>{p.heading}</h2>
+          <p className={cn("text-[11px] mt-0.5", portalSubtextAlt)}>{p.subtext}</p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setShowDisplayPrefs((v) => !v)}
+          className={cn(
+            "h-9 px-3 inline-flex items-center gap-1.5 rounded-lg text-[12px] font-semibold border transition-colors shrink-0",
+            showDisplayPrefs
+              ? "bg-primary/10 border-primary/30 text-primary"
+              : "bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
+          )}
+        >
+          <Settings2 size={14} />
+          {p.displayPrefsBtn}
+        </button>
       </motion.div>
+
+      {showDisplayPrefs && (
+        <div className="hr-glass-card px-4 py-4 mb-5 space-y-3">
+          <p className={cn("text-[13px] font-semibold", portalHeadingAlt)}>{p.displayPrefsTitle}</p>
+          <p className={cn("text-[11px]", portalSubtextAlt)}>{p.displayPrefsHint}</p>
+          <div className="flex flex-wrap items-end gap-3">
+            <label className={cn("flex flex-col gap-1 text-[11px]", portalSubtextAlt)}>
+              {p.displayPrefsMinScore}
+              <select
+                value={minScore ?? ""}
+                onChange={(e) => setMinScore(e.target.value ? Number(e.target.value) : undefined)}
+                className="h-8 px-3 text-[12px] font-medium bg-gray-100 dark:bg-gray-800 border-0 rounded-lg text-gray-700 dark:text-gray-300 outline-none"
+              >
+                {SCORE_FILTERS.map((f) => (
+                  <option key={f.key} value={f.min ?? ""}>{p.filters[f.key as keyof typeof p.filters]}</option>
+                ))}
+              </select>
+            </label>
+            <label className={cn("flex flex-col gap-1 text-[11px]", portalSubtextAlt)}>
+              {p.displayPrefsSort}
+              <select
+                value={sortKey}
+                onChange={(e) => setSortKey(e.target.value)}
+                className="h-8 px-3 text-[12px] font-medium bg-gray-100 dark:bg-gray-800 border-0 rounded-lg text-gray-700 dark:text-gray-300 outline-none"
+              >
+                {SORT_OPTIONS.map((o) => (
+                  <option key={o.key} value={o.key}>{p.filters[o.key as keyof typeof p.filters]}</option>
+                ))}
+              </select>
+            </label>
+            <label className="flex items-center gap-2 h-8 text-[12px] font-medium text-gray-700 dark:text-gray-300">
+              <input
+                type="checkbox"
+                checked={hideDismissed}
+                onChange={(e) => setHideDismissed(e.target.checked)}
+                className="rounded border-gray-300"
+              />
+              {p.displayPrefsHideDismissed}
+            </label>
+            <button
+              type="button"
+              disabled={savingPrefs || !profileSnapshot}
+              onClick={() => void handleSaveDisplayPrefs()}
+              className="h-8 px-3 inline-flex items-center gap-1.5 rounded-lg text-[12px] font-semibold bg-primary text-white hover:bg-primary-hover disabled:opacity-60"
+            >
+              {savingPrefs ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}
+              {p.displayPrefsSave}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Filter bar */}
       <div className="hr-glass-card px-4 py-3 mb-5 flex flex-wrap items-center gap-3">
@@ -1059,6 +1223,12 @@ export function RecommendationsList() {
         <div className="flex items-center justify-between mt-5">
           <p className={cn("text-[12px]", portalSubtextAlt)}>
             {p.page} {page} / {totalPages} · {totalCount} {p.card.candidate}
+            {/* hideDismissed filters client-side over a server-paginated page — totalCount/totalPages
+                still reflect the unfiltered server response, so be explicit when this page hides some rows,
+                instead of silently showing an empty/short page with a mismatched count. */}
+            {hideDismissed && !statusFilter && items.length !== displayed.length && (
+              <> · {items.length - displayed.length} {p.hiddenDismissedSuffix}</>
+            )}
           </p>
           <div className="flex items-center gap-2">
             <button type="button" onClick={() => setPage((n) => Math.max(1, n - 1))} disabled={page === 1}

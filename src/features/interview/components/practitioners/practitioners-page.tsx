@@ -24,7 +24,9 @@ import { InviteCandidateModal } from "@/features/hr/components/recommendations/i
 import { invitePractitioner } from "@/features/hr/services/hr-talent.service";
 import { AiLoadingSpinner } from "@/shared/components/common/ai-loading-spinner";
 import { ConfirmDialog } from "@/shared/components/ui/confirm-dialog";
+import { PublishDialog, type PublishDialogConfirmPayload } from "@/features/question/components/publish-dialog";
 import { portalHeading, portalSubtext } from "@/shared/utils/portal-ui";
+import { MIN_QUESTIONS_TO_PUBLISH } from "@/features/interview/components/generate/question-builder-set-panel";
 
 function getInitials(name: string): string {
   return name.trim().split(/\s+/).map((w) => w[0]?.toUpperCase() ?? "").slice(0, 2).join("");
@@ -112,7 +114,8 @@ export function PractitionersPage({ questionSetId }: { questionSetId: string }) 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [publishing, setPublishing] = useState(false);
-  const [confirmingPublishToggle, setConfirmingPublishToggle] = useState(false);
+  const [confirmingUnpublish, setConfirmingUnpublish] = useState(false);
+  const [showPublishDialog, setShowPublishDialog] = useState(false);
   const [page, setPage] = useState(1);
   const [inviteTarget, setInviteTarget] = useState<Practitioner | null>(null);
 
@@ -143,25 +146,68 @@ export function PractitionersPage({ questionSetId }: { questionSetId: string }) 
   const safePage = Math.min(page, totalPages);
   const paginated = items.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
-  async function handlePublishToggle() {
+  async function handleUnpublish() {
     if (!set || publishing) return;
     setPublishing(true);
     try {
-      if (set.status === "PUBLISHED") {
-        const abandoned = await unpublishQuestionSet(questionSetId);
-        setSet((s) => (s ? { ...s, status: "DRAFT" } : s));
-        addToast("success", withAbandonedToast(rp.unpublishSuccess, abandoned));
-      } else {
-        await publishQuestionSet(questionSetId);
-        setSet((s) => (s ? { ...s, status: "PUBLISHED" } : s));
-        addToast("success", rp.publishSuccess);
-      }
+      const abandoned = await unpublishQuestionSet(questionSetId);
+      setSet((s) => (s ? { ...s, status: "DRAFT" } : s));
+      addToast("success", withAbandonedToast(rp.unpublishSuccess, abandoned));
+    } catch (err) {
+      addToast("error", err instanceof Error && err.message ? err.message : rp.unpublishFailed);
+    } finally {
+      setPublishing(false);
+      setConfirmingUnpublish(false);
+    }
+  }
+
+  async function handleSelectivePublish(payload: PublishDialogConfirmPayload) {
+    if (!set || publishing) return;
+    setPublishing(true);
+    try {
+      await publishQuestionSet(questionSetId, {
+        questionIds: payload.questionIds,
+        timeLimitMinutes: payload.timeLimitMinutes,
+        autoRecommendEnabled: payload.autoRecommendEnabled,
+        recommendationMinScore: payload.recommendationMinScore,
+      });
+      setSet((s) =>
+        s
+          ? {
+              ...s,
+              status: "PUBLISHED",
+              autoRecommendEnabled: payload.autoRecommendEnabled,
+              recommendationMinScore: payload.recommendationMinScore,
+              timeLimitMinutes: payload.timeLimitMinutes,
+            }
+          : s
+      );
+      addToast("success", rp.publishSuccess);
+      setShowPublishDialog(false);
     } catch (err) {
       addToast("error", err instanceof Error && err.message ? err.message : rp.publishFailed);
     } finally {
       setPublishing(false);
-      setConfirmingPublishToggle(false);
     }
+  }
+
+  function onPublishButtonClick() {
+    if (!set) return;
+    if (set.status === "PUBLISHED") {
+      setConfirmingUnpublish(true);
+      return;
+    }
+    const readyN = set.questions.filter((q) => q.isReady).length;
+    if (readyN < MIN_QUESTIONS_TO_PUBLISH) {
+      addToast(
+        "error",
+        rp.publishMinHint
+          .replace("{{min}}", String(MIN_QUESTIONS_TO_PUBLISH))
+          .replace("{{count}}", String(readyN))
+      );
+      return;
+    }
+    setShowPublishDialog(true);
   }
 
   if (loading) {
@@ -203,7 +249,7 @@ export function PractitionersPage({ questionSetId }: { questionSetId: string }) 
         </div>
         <button
           type="button"
-          onClick={() => setConfirmingPublishToggle(true)}
+          onClick={() => onPublishButtonClick()}
           disabled={publishing}
           className={cn(
             "flex items-center gap-2 h-9 px-4 rounded-lg text-sm font-semibold transition-colors disabled:opacity-60",
@@ -409,16 +455,36 @@ export function PractitionersPage({ questionSetId }: { questionSetId: string }) 
       )}
 
       <ConfirmDialog
-        open={confirmingPublishToggle}
-        title={set.status === "PUBLISHED" ? rp.unpublishConfirmTitle : rp.publishConfirmTitle}
-        message={set.status === "PUBLISHED" ? rp.unpublishConfirmMessage : rp.publishConfirmMessage}
-        confirmLabel={set.status === "PUBLISHED" ? rp.unpublish : rp.publish}
+        open={confirmingUnpublish}
+        title={rp.unpublishConfirmTitle}
+        message={rp.unpublishConfirmMessage}
+        confirmLabel={rp.unpublish}
         cancelLabel={rp.cancelBtn}
-        variant={set.status === "PUBLISHED" ? "danger" : "primary"}
+        variant="danger"
         loading={publishing}
-        onConfirm={() => void handlePublishToggle()}
-        onCancel={() => setConfirmingPublishToggle(false)}
+        onConfirm={() => void handleUnpublish()}
+        onCancel={() => setConfirmingUnpublish(false)}
       />
+
+      {showPublishDialog && set && (
+        <PublishDialog
+          questions={set.questions.map((q) => ({
+            id: q.id,
+            preview: q.question,
+            ready: Boolean(q.isReady),
+            defaultSelected: Boolean(q.isReady && q.isActive !== false),
+          }))}
+          minQuestions={MIN_QUESTIONS_TO_PUBLISH}
+          currentTimeLimitMinutes={set.timeLimitMinutes ?? null}
+          initialAutoRecommendEnabled={set.autoRecommendEnabled ?? true}
+          initialRecommendationMinScore={set.recommendationMinScore ?? 70}
+          saving={publishing}
+          onConfirm={(payload) => void handleSelectivePublish(payload)}
+          onClose={() => {
+            if (!publishing) setShowPublishDialog(false);
+          }}
+        />
+      )}
 
       {inviteTarget && (
         <InviteCandidateModal
