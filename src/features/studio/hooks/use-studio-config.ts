@@ -146,16 +146,26 @@ export function useStudioConfig({ settings, currentPlan }: UseStudioConfigOption
   }, []);
 
   const resetDraftFromApplied = useCallback(() => {
+    // Same stale-ref risk as acceptServerSettings() above — currently unused,
+    // but defend it too so a future caller doesn't reintroduce the bug.
     userEditedRef.current = false;
-    setDraft(appliedDraftRef.current);
+    setTimeout(() => setDraft(appliedDraftRef.current), 0);
   }, []);
 
   /**
    * SCRUM-422: Sau generate/apply — ép draft = settings server (dùng ref tránh stale closure).
+   *
+   * BUG FIX: callers await an apply function (which calls setSettings() upstream)
+   * then invoke this synchronously right after. setSettings() only *schedules* a
+   * re-render — appliedDraftRef only gets refreshed during that render (see the
+   * plain assignment above) — so reading it in the very next synchronous tick can
+   * still see the PRE-apply value, silently reverting whatever field was just
+   * changed (e.g. difficulty "Hard" bouncing back to "Medium" right after Apply).
+   * Deferring one macrotask lets React finish the pending re-render first.
    */
   const acceptServerSettings = useCallback(() => {
     userEditedRef.current = false;
-    setDraft(appliedDraftRef.current);
+    setTimeout(() => setDraft(appliedDraftRef.current), 0);
   }, []);
 
   // Khi server vừa seed distribution/focus (sau tạo plan) mà draft local còn trống — sync ngay.
@@ -168,8 +178,18 @@ export function useStudioConfig({ settings, currentPlan }: UseStudioConfigOption
       (draft.questionDistribution?.length ?? 0) === 0 ||
       (draft.focusAreas?.length ?? 0) === 0;
     if (serverHasConfig && draftMissingConfig) {
-      userEditedRef.current = false;
-      setDraft(appliedDraft);
+      // Only backfill the two fields this effect actually checked — replacing the
+      // whole draft here would also clobber any other field (e.g. difficulty) the
+      // user is mid-editing, even though this effect never looked at those fields.
+      setDraft((prev) =>
+        prev
+          ? {
+              ...prev,
+              questionDistribution: appliedDraft.questionDistribution,
+              focusAreas: appliedDraft.focusAreas,
+            }
+          : appliedDraft
+      );
     }
   }, [appliedDraft, draft]);
 
