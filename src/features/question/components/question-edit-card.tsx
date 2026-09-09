@@ -14,6 +14,7 @@ import {
   Loader2,
   Lock,
   ImagePlus,
+  Lightbulb,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { QuestionContent } from "@/shared/components/ui/question-content";
@@ -26,7 +27,7 @@ import {
   portalMutedBg,
   portalSubtext,
 } from "@/shared/utils/portal-ui";
-import type { GeneratedQuestion, DifficultyLevel, QuestionType, QuestionSuggestion } from "@/features/interview/types/generation-session";
+import type { GeneratedQuestion, DifficultyLevel, QuestionType, QuestionSuggestion, Citation } from "@/features/interview/types/generation-session";
 import { QuestionTemplateCard } from "@/features/interview/components/generate/question-template-card";
 import { STUDIO_QUESTION_TEMPLATES } from "@/features/studio/constants/question-templates";
 import { inferGeneratedQuestionTemplate } from "@/features/studio/utils/question-template-infer";
@@ -34,9 +35,43 @@ import {
   deleteQuestionSetQuestionImage,
   uploadQuestionSetQuestionImage,
 } from "@/features/interview/services/interview.service";
+import { ASK_AI_ENABLED } from "@/features/question/constants/question-ui-flags";
+import {
+  QuestionSourcesGroupedPanel,
+  type QuestionSourcesLabels,
+} from "@/features/studio/components/question-sources-panel";
+import type { PlanSourceScope, StudioQuestion } from "@/features/studio/types/studio.types";
 
 const QUESTION_TYPES: QuestionType[] = ["Technical", "Behavioral", "Situational", "System-design", "Problem-solving"];
 const DIFFICULTIES: DifficultyLevel[] = ["Easy", "Medium", "Hard"];
+
+/** Adapter Citation History → StudioQuestion tối thiểu cho panel nguồn. */
+function toStudioQuestionForSources(q: GeneratedQuestion): StudioQuestion {
+  const citations = (q.citations ?? []).map((c: Citation) => {
+    const originRaw = (c.origin ?? "").toUpperCase();
+    const origin: PlanSourceScope | null =
+      originRaw === "JD" || originRaw === "HR" || originRaw === "SYSTEM" || originRaw === "LLM"
+        ? (originRaw as PlanSourceScope)
+        : null;
+    return {
+      sourceFile: c.sourceFile || c.source || "unknown",
+      chunkIndex: c.chunkIndex ?? null,
+      excerpt: c.excerpt ?? null,
+      knowledgeBase: c.knowledgeBase ?? null,
+      origin,
+      usedFor: c.usedFor ?? null,
+      reason: c.reason ?? null,
+    };
+  });
+  return {
+    id: q.id,
+    content: q.question,
+    difficulty: q.difficulty,
+    type: "Technical",
+    orderIndex: q.orderIndex,
+    citations,
+  };
+}
 
 const difficultyStyles: Record<DifficultyLevel, string> = {
   Easy: "bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400",
@@ -99,6 +134,7 @@ export function QuestionEditCard({
 }: QuestionEditCardProps) {
   const { t } = useLanguage();
   const rp = t.reviewPage;
+  const sc = t.studioPage.chat;
   const { addToast } = useToast();
   const [isAnswerOpen, setIsAnswerOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -106,6 +142,29 @@ export function QuestionEditCard({
   const [imageBusy, setImageBusy] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const sourceLabels: QuestionSourcesLabels = useMemo(
+    () => ({
+      sourceRoleJd: sc.sourceRoleJd,
+      sourceRoleAdmin: sc.sourceRoleAdmin,
+      sourceRoleLlm: sc.sourceRoleLlm,
+      sourceWhyAsked: sc.sourceWhyAsked,
+      sourceTechnicalBody: sc.sourceTechnicalBody,
+      sourcePrimary: sc.sourcePrimary,
+      sourceSecondary: sc.sourceSecondary,
+      jobDescription: sc.sourceJobDescription,
+      sourcesPanelTitle: sc.sourcesPanelTitle,
+      sourcesEmptyLegacy: sc.sourcesEmptyLegacy,
+      missingAdminWarning: sc.missingAdminWarning,
+      sourceChunk: sc.sourceChunk,
+    }),
+    [sc]
+  );
+
+  const studioQuestionForSources = useMemo(
+    () => toStudioQuestionForSources(question),
+    [question]
+  );
 
   // SCRUM-397: form History luôn đủ field như Builder (sample + rubric + rationale + skill)
   // (giữ prop studioFormat để tương thích caller cũ)
@@ -139,6 +198,15 @@ export function QuestionEditCard({
   }, [question.rationale]);
 
   const canEditImage = !!questionSetId && !locked;
+
+  const skillTrimmed = question.skill?.trim() || "";
+  const focusTrimmed = question.focusArea?.trim() || "";
+  const showFocusBadge =
+    !!focusTrimmed && focusTrimmed.toLowerCase() !== skillTrimmed.toLowerCase();
+
+  const hasDetailContent =
+    !!sampleAnswerDisplay || !!question.scoringRubric?.trim()
+    || !!(question.citations && question.citations.length > 0);
 
   async function handleUploadImage(file: File | undefined) {
     if (!file || !questionSetId) return;
@@ -287,23 +355,34 @@ export function QuestionEditCard({
 
           {/* Content */}
           <div className="flex-1 min-w-0">
-            {/* Badges */}
+            {/* Badges — một hàng, không lặp skill/focus/difficulty */}
             {!isEditing && (
-              <div className="flex items-center gap-2 flex-wrap mb-2">
+              <div className="flex items-center gap-1.5 flex-wrap mb-2">
                 <span className={cn("text-xs font-semibold px-2 py-0.5 rounded-full", difficultyStyles[question.difficulty])}>
                   {rp.difficulty[question.difficulty]}
                 </span>
                 <span className={cn("text-xs font-semibold px-2 py-0.5 rounded-full", typeStyles[question.questionType])}>
                   {rp.questionType[question.questionType]}
                 </span>
-                {question.skill?.trim() ? (
-                  <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-sky-100 text-sky-800 dark:bg-sky-950/50 dark:text-sky-300">
-                    {question.skill.trim()}
+                {templateLabel ? (
+                  <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800 dark:bg-indigo-950/50 dark:text-indigo-300">
+                    {templateLabel}
                   </span>
                 ) : null}
-                {question.focusArea?.trim() ? (
-                  <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
-                    {question.focusArea.trim()}
+                {skillTrimmed ? (
+                  <span
+                    title={skillTrimmed}
+                    className="text-xs font-semibold px-2 py-0.5 rounded-full bg-sky-100 text-sky-800 dark:bg-sky-950/50 dark:text-sky-300 max-w-[200px] truncate"
+                  >
+                    {skillTrimmed}
+                  </span>
+                ) : null}
+                {showFocusBadge ? (
+                  <span
+                    title={focusTrimmed}
+                    className="text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300 max-w-[200px] truncate"
+                  >
+                    {focusTrimmed}
                   </span>
                 ) : null}
                 {question.isEdited && (
@@ -317,7 +396,8 @@ export function QuestionEditCard({
             {/* Question text or Edit form */}
             {isEditing ? (
               <div className="space-y-3">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {/* Meta: loại · độ khó · phương thức */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div>
                     <label className={cn("text-xs font-medium mb-1 block", portalHeading)}>
                       {rp.questionFields.questionType}
@@ -352,21 +432,24 @@ export function QuestionEditCard({
                       ))}
                     </select>
                   </div>
+                  <div>
+                    <label className={cn("text-xs font-medium mb-1 block", portalHeading)}>
+                      Phương thức trả lời
+                    </label>
+                    <select
+                      value={editAnswerMethod}
+                      onChange={(e) => setEditAnswerMethod(e.target.value as "Text" | "Code")}
+                      className={cn(
+                        "w-full rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary",
+                        portalInput
+                      )}
+                    >
+                      <option value="Text">Text — văn xuôi</option>
+                      <option value="Code">Code — nhập code</option>
+                    </select>
+                  </div>
                 </div>
-                <div>
-                  <label className={cn("text-xs font-medium mb-1 block", portalHeading)}>
-                    {rp.questionFields.question}
-                  </label>
-                  <textarea
-                    value={editQuestion}
-                    onChange={(e) => setEditQuestion(e.target.value)}
-                    rows={3}
-                    className={cn(
-                      "w-full resize-none rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary",
-                      portalInput
-                    )}
-                  />
-                </div>
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className={cn("text-xs font-medium mb-1 block", portalHeading)}>
@@ -397,65 +480,101 @@ export function QuestionEditCard({
                     />
                   </div>
                 </div>
-                <div>
-                  <label className={cn("text-xs font-medium mb-1 block", portalHeading)}>
-                    Phương thức trả lời (Candidate)
-                  </label>
-                  <select
-                    value={editAnswerMethod}
-                    onChange={(e) => setEditAnswerMethod(e.target.value as "Text" | "Code")}
+
+                {/* Đề + Đáp án/Code — tách khung, cạnh nhau trên desktop */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 items-stretch">
+                  <div className="rounded-xl border border-sky-200/80 bg-sky-50/40 p-3 dark:border-sky-900/50 dark:bg-sky-950/20 flex flex-col min-h-0">
+                    <div className="flex items-center justify-between gap-2 mb-2">
+                      <label className={cn("text-xs font-semibold", portalHeading)}>
+                        {rp.questionFields.question}
+                      </label>
+                      <span className="text-[10px] font-bold uppercase tracking-wide text-sky-700 dark:text-sky-400">
+                        Đề bài
+                      </span>
+                    </div>
+                    <textarea
+                      value={editQuestion}
+                      onChange={(e) => setEditQuestion(e.target.value)}
+                      rows={12}
+                      className={cn(
+                        "w-full flex-1 min-h-[220px] resize-y rounded-lg px-3 py-2.5 text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500",
+                        portalInput
+                      )}
+                    />
+                  </div>
+
+                  <div
                     className={cn(
-                      "w-full rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary",
-                      portalInput
+                      "rounded-xl border p-3 flex flex-col min-h-0",
+                      editAnswerMethod === "Code"
+                        ? "border-violet-200/80 bg-violet-50/40 dark:border-violet-900/50 dark:bg-violet-950/20"
+                        : "border-emerald-200/80 bg-emerald-50/40 dark:border-emerald-900/50 dark:bg-emerald-950/20"
                     )}
                   >
-                    <option value="Text">Text — văn xuôi</option>
-                    <option value="Code">Code — nhập code</option>
-                  </select>
+                    <div className="flex items-center justify-between gap-2 mb-2">
+                      <label className={cn("text-xs font-semibold", portalHeading)}>
+                        {rp.questionFields.sampleAnswer}
+                      </label>
+                      <span
+                        className={cn(
+                          "text-[10px] font-bold uppercase tracking-wide",
+                          editAnswerMethod === "Code"
+                            ? "text-violet-700 dark:text-violet-400"
+                            : "text-emerald-700 dark:text-emerald-400"
+                        )}
+                      >
+                        {editAnswerMethod === "Code" ? "Code / đáp án" : "Đáp án mẫu"}
+                      </span>
+                    </div>
+                    <textarea
+                      value={editSampleAnswer}
+                      onChange={(e) => setEditSampleAnswer(e.target.value)}
+                      rows={12}
+                      spellCheck={editAnswerMethod !== "Code"}
+                      className={cn(
+                        "w-full flex-1 min-h-[220px] resize-y rounded-lg px-3 py-2.5 text-sm leading-relaxed focus:outline-none focus:ring-2",
+                        editAnswerMethod === "Code"
+                          ? "font-mono text-[12px] focus:ring-violet-500/20 focus:border-violet-500"
+                          : "focus:ring-emerald-500/20 focus:border-emerald-500",
+                        portalInput
+                      )}
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label className={cn("text-xs font-medium mb-1 block", portalHeading)}>
-                    {rp.questionFields.rationale} (lý do hỏi)
-                  </label>
-                  <textarea
-                    value={editRationale}
-                    onChange={(e) => setEditRationale(e.target.value)}
-                    rows={2}
-                    placeholder="Lý do hỏi câu này (không gồm template/snippet meta)"
-                    className={cn(
-                      "w-full resize-none rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary",
-                      portalInput
-                    )}
-                  />
+
+                {/* Meta phụ: rationale + rubric */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                  <div>
+                    <label className={cn("text-xs font-medium mb-1 block", portalHeading)}>
+                      {rp.questionFields.rationale} (lý do hỏi)
+                    </label>
+                    <textarea
+                      value={editRationale}
+                      onChange={(e) => setEditRationale(e.target.value)}
+                      rows={3}
+                      placeholder="Lý do hỏi câu này (không gồm template/snippet meta)"
+                      className={cn(
+                        "w-full resize-y rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary",
+                        portalInput
+                      )}
+                    />
+                  </div>
+                  <div>
+                    <label className={cn("text-xs font-medium mb-1 block", portalHeading)}>
+                      Scoring rubric / tiêu chí (mỗi dòng 1 tiêu chí)
+                    </label>
+                    <textarea
+                      value={editScoringRubric}
+                      onChange={(e) => setEditScoringRubric(e.target.value)}
+                      rows={3}
+                      className={cn(
+                        "w-full resize-y rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary",
+                        portalInput
+                      )}
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label className={cn("text-xs font-medium mb-1 block", portalHeading)}>
-                    Scoring rubric / tiêu chí (mỗi dòng 1 tiêu chí)
-                  </label>
-                  <textarea
-                    value={editScoringRubric}
-                    onChange={(e) => setEditScoringRubric(e.target.value)}
-                    rows={3}
-                    className={cn(
-                      "w-full resize-none rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary",
-                      portalInput
-                    )}
-                  />
-                </div>
-                <div>
-                  <label className={cn("text-xs font-medium mb-1 block", portalHeading)}>
-                    {rp.questionFields.sampleAnswer}
-                  </label>
-                  <textarea
-                    value={editSampleAnswer}
-                    onChange={(e) => setEditSampleAnswer(e.target.value)}
-                    rows={4}
-                    className={cn(
-                      "w-full resize-none rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary",
-                      portalInput
-                    )}
-                  />
-                </div>
+
                 <div className="flex gap-2">
                   <button
                     type="button"
@@ -492,150 +611,131 @@ export function QuestionEditCard({
             ) : (
               <>
                 {hasTemplateVisual ? (
-                  <div className="space-y-2">
-                    {templateLabel && (
-                      <span className="inline-flex rounded-full bg-indigo-100 px-2 py-0.5 text-[10px] font-semibold text-indigo-800 dark:bg-indigo-950/50 dark:text-indigo-300">
-                        {templateLabel}
-                      </span>
-                    )}
-                    <QuestionTemplateCard
-                      title={`#${index + 1}`}
-                      difficulty={question.difficulty}
-                      prompt={question.question}
-                      snippet={templateVm.snippet}
-                      snippetLanguage={templateVm.snippetLanguage}
-                      templateId={templateVm.templateId}
-                      diagramDescription={templateVm.diagramDescription}
-                      attachedImageUrl={templateVm.attachedImageUrl || question.attachedImageUrl || undefined}
-                    />
-                    {canEditImage && (
-                      <div className="flex flex-wrap items-center gap-1.5">
-                        <input
-                          ref={fileInputRef}
-                          type="file"
-                          accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"
-                          className="hidden"
-                          onChange={(e) => void handleUploadImage(e.target.files?.[0])}
-                        />
-                        <button
-                          type="button"
-                          disabled={imageBusy}
-                          onClick={() => fileInputRef.current?.click()}
-                          className="inline-flex items-center gap-1 rounded-md border border-gray-200 bg-gray-50 px-2 py-1 text-[10px] font-medium text-gray-600 hover:border-primary/40 hover:text-primary disabled:opacity-40 dark:border-gray-700 dark:bg-gray-950/40 dark:text-gray-300"
-                        >
-                          {imageBusy ? <Loader2 className="h-3 w-3 animate-spin" /> : <ImagePlus className="h-3 w-3" strokeWidth={2} />}
-                          {templateVm.attachedImageUrl ? "Đổi ảnh" : "Thêm ảnh"}
-                        </button>
-                        {templateVm.attachedImageUrl && (
-                          <button
-                            type="button"
-                            disabled={imageBusy}
-                            onClick={() => void handleDeleteImage()}
-                            className="inline-flex items-center gap-1 rounded-md border border-red-200 bg-red-50 px-2 py-1 text-[10px] font-medium text-red-600 hover:bg-red-100 disabled:opacity-40 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300"
-                          >
-                            Xóa ảnh
-                          </button>
-                        )}
-                      </div>
-                    )}
-                  </div>
+                  <QuestionTemplateCard
+                    bare
+                    title={`#${index}`}
+                    difficulty={question.difficulty}
+                    prompt={question.question}
+                    snippet={templateVm.snippet}
+                    snippetLanguage={templateVm.snippetLanguage}
+                    templateId={templateVm.templateId}
+                    diagramDescription={templateVm.diagramDescription}
+                    attachedImageUrl={templateVm.attachedImageUrl || question.attachedImageUrl || undefined}
+                  />
                 ) : (
                   <QuestionContent text={question.question} className={cn("text-sm leading-relaxed font-medium", portalHeading)} />
                 )}
 
-                {/* Khi chưa có template visual nhưng vẫn cho upload ảnh */}
-                {!hasTemplateVisual && canEditImage && (
-                  <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"
-                      className="hidden"
-                      onChange={(e) => void handleUploadImage(e.target.files?.[0])}
-                    />
-                    <button
-                      type="button"
-                      disabled={imageBusy}
-                      onClick={() => fileInputRef.current?.click()}
-                      className="inline-flex items-center gap-1 rounded-md border border-gray-200 bg-gray-50 px-2 py-1 text-[10px] font-medium text-gray-600 hover:border-primary/40 hover:text-primary disabled:opacity-40 dark:border-gray-700 dark:bg-gray-950/40 dark:text-gray-300"
-                    >
-                      {imageBusy ? <Loader2 className="h-3 w-3 animate-spin" /> : <ImagePlus className="h-3 w-3" strokeWidth={2} />}
-                      Thêm ảnh
-                    </button>
+                {/* Lý do hỏi — luôn hiện để HR chú ý (không cần mở chi tiết) */}
+                {rationaleDisplay ? (
+                  <div
+                    className={cn(
+                      "mt-3 flex gap-2.5 rounded-xl border border-violet-200/90 bg-violet-50/90 px-3 py-2.5",
+                      "shadow-[inset_0_0_0_1px_rgba(139,92,246,0.08)]",
+                      "dark:border-violet-800/60 dark:bg-violet-950/40"
+                    )}
+                  >
+                    <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-violet-600 text-white shadow-sm dark:bg-violet-500">
+                      <Lightbulb size={14} strokeWidth={2.25} />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-violet-700 dark:text-violet-300">
+                        Lý do hỏi
+                      </p>
+                      <p className="mt-1 text-[13px] font-medium leading-relaxed text-violet-950 dark:text-violet-50">
+                        {rationaleDisplay}
+                      </p>
+                    </div>
                   </div>
-                )}
+                ) : null}
 
-                {/* Toggle sample / rubric / rationale */}
-                <button
-                  onClick={() => setIsAnswerOpen(!isAnswerOpen)}
-                  className="flex items-center gap-1 mt-3 text-xs font-semibold text-primary hover:text-[#5535dd] transition-colors"
-                >
-                  {isAnswerOpen ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
-                  {isAnswerOpen ? "Thu gọn chi tiết" : "Sample answer, rubric & rationale"}
-                </button>
+                {/* Hàng công cụ: mở chi tiết + ảnh */}
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsAnswerOpen(!isAnswerOpen)}
+                    className={cn(
+                      "inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[11px] font-semibold transition-colors",
+                      isAnswerOpen
+                        ? "border-primary/30 bg-primary/5 text-primary"
+                        : "border-gray-200 bg-gray-50 text-gray-600 hover:border-primary/40 hover:text-primary dark:border-gray-700 dark:bg-gray-950/40 dark:text-gray-300"
+                    )}
+                  >
+                    {isAnswerOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+                    {isAnswerOpen ? "Thu gọn chi tiết" : "Sample answer & rubric"}
+                  </button>
+
+                  {canEditImage && (
+                    <>
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"
+                        className="hidden"
+                        onChange={(e) => void handleUploadImage(e.target.files?.[0])}
+                      />
+                      <button
+                        type="button"
+                        disabled={imageBusy}
+                        onClick={() => fileInputRef.current?.click()}
+                        className="inline-flex items-center gap-1 rounded-md border border-gray-200 bg-gray-50 px-2 py-1 text-[11px] font-medium text-gray-600 hover:border-primary/40 hover:text-primary disabled:opacity-40 dark:border-gray-700 dark:bg-gray-950/40 dark:text-gray-300"
+                      >
+                        {imageBusy ? <Loader2 className="h-3 w-3 animate-spin" /> : <ImagePlus className="h-3 w-3" strokeWidth={2} />}
+                        {(templateVm.attachedImageUrl || question.attachedImageUrl) ? "Đổi ảnh" : "Thêm ảnh"}
+                      </button>
+                      {(templateVm.attachedImageUrl || question.attachedImageUrl) && (
+                        <button
+                          type="button"
+                          disabled={imageBusy}
+                          onClick={() => void handleDeleteImage()}
+                          className="inline-flex items-center gap-1 rounded-md border border-red-200 bg-red-50 px-2 py-1 text-[11px] font-medium text-red-600 hover:bg-red-100 disabled:opacity-40 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300"
+                        >
+                          Xóa ảnh
+                        </button>
+                      )}
+                    </>
+                  )}
+                </div>
 
                 {isAnswerOpen && (
-                    <div className="mt-3 space-y-1.5 animate-fade-up">
-                      {(question.skill?.trim() || question.focusArea?.trim()) ? (
-                        <div className="flex flex-wrap gap-1.5">
-                          {question.skill?.trim() ? (
-                            <span className="rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-semibold text-sky-800 dark:bg-sky-950/50 dark:text-sky-300">
-                              Skill: {question.skill.trim()}
-                            </span>
-                          ) : null}
-                          {question.focusArea?.trim() ? (
-                            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
-                              Focus: {question.focusArea.trim()}
-                            </span>
-                          ) : null}
-                        </div>
-                      ) : null}
-                      {sampleAnswerDisplay ? (
-                        <div className="rounded-md border border-emerald-200/70 bg-emerald-50/80 px-3 py-2 dark:border-emerald-900 dark:bg-emerald-950/40">
-                          <p className="text-[10px] font-semibold uppercase tracking-wide text-emerald-800 dark:text-emerald-300">
-                            Đáp án mẫu
-                          </p>
-                          <QuestionContent
-                            text={sampleAnswerDisplay}
-                            stripMatchingSnippet={templateVm.snippet}
-                            codeVariant="answer"
-                            className={cn("mt-1.5 text-sm leading-relaxed", portalHeading)}
-                          />
-                        </div>
-                      ) : (
-                        <p className={cn("text-[11px]", portalSubtext)}>Chưa có sample answer.</p>
-                      )}
-                      {question.scoringRubric?.trim() ? (
-                        <div className="rounded-md border border-amber-200/70 bg-amber-50/80 px-3 py-2 dark:border-amber-900 dark:bg-amber-950/40">
-                          <p className="text-[10px] font-semibold uppercase tracking-wide text-amber-900 dark:text-amber-200">
-                            Scoring rubric
-                          </p>
-                          <p className={cn("mt-0.5 text-sm whitespace-pre-wrap leading-relaxed", portalHeading)}>
-                            {question.scoringRubric}
-                          </p>
-                        </div>
-                      ) : (
-                        <p className={cn("text-[11px]", portalSubtext)}>Chưa có scoring rubric.</p>
-                      )}
-                      {rationaleDisplay ? (
-                        <div className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 dark:border-gray-700 dark:bg-gray-800/50">
-                          <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-600 dark:text-gray-300">
-                            Rationale
-                          </p>
-                          <p className={cn("mt-0.5 text-sm leading-relaxed", portalHeading)}>{rationaleDisplay}</p>
-                        </div>
-                      ) : null}
-                      {question.citations && question.citations.length > 0 && (
-                        <div className="mt-2 space-y-1">
-                          {question.citations.map((cit, i) => (
-                            <p key={i} className={cn("text-xs", portalSubtext)}>
-                              📎 {cit.source}
-                              {cit.excerpt && ` — "${cit.excerpt}"`}
+                  <div className="mt-3 space-y-2 animate-fade-up">
+                    {!hasDetailContent ? (
+                      <p className={cn("text-[11px]", portalSubtext)}>Chưa có chi tiết bổ sung.</p>
+                    ) : (
+                      <>
+                        {sampleAnswerDisplay ? (
+                          <div className="rounded-lg border border-gray-100 border-l-2 border-l-emerald-500 bg-emerald-50/40 px-3 py-2 dark:border-gray-800 dark:border-l-emerald-500 dark:bg-emerald-950/20">
+                            <p className="text-[10px] font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-400">
+                              Đáp án mẫu
                             </p>
-                          ))}
-                        </div>
-                      )}
-                    </div>
+                            <QuestionContent
+                              text={sampleAnswerDisplay}
+                              stripMatchingSnippet={templateVm.snippet}
+                              codeVariant="answer"
+                              className={cn("mt-1.5 text-sm leading-relaxed", portalHeading)}
+                            />
+                          </div>
+                        ) : null}
+                        {question.scoringRubric?.trim() ? (
+                          <div className="rounded-lg border border-gray-100 border-l-2 border-l-amber-500 bg-amber-50/40 px-3 py-2 dark:border-gray-800 dark:border-l-amber-500 dark:bg-amber-950/20">
+                            <p className="text-[10px] font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-400">
+                              Scoring rubric
+                            </p>
+                            <p className={cn("mt-0.5 text-sm whitespace-pre-wrap leading-relaxed", portalHeading)}>
+                              {question.scoringRubric}
+                            </p>
+                          </div>
+                        ) : null}
+                        {question.citations && question.citations.length > 0 ? (
+                          <QuestionSourcesGroupedPanel
+                            question={studioQuestionForSources}
+                            labels={sourceLabels}
+                            className="mt-0.5"
+                          />
+                        ) : null}
+                      </>
+                    )}
+                  </div>
                 )}
               </>
             )}
@@ -644,19 +744,21 @@ export function QuestionEditCard({
           {/* Action buttons — vertical on desktop, hidden here on mobile (shown below) */}
           {!isEditing && (
             <div className="hidden sm:flex flex-col items-center gap-1 shrink-0">
-              <button
-                type="button"
-                onClick={() => onAskAI?.(handleApplyAISuggestion)}
-                title={rp.questionActions.askAI}
-                className={cn(
-                  "w-7 h-7 flex items-center justify-center rounded-lg transition-colors",
-                  isAskAIActive
-                    ? "bg-primary/10 text-primary"
-                    : "text-gray-400 dark:text-gray-500 hover:text-primary hover:bg-primary/10"
-                )}
-              >
-                <Sparkles size={13} />
-              </button>
+              {ASK_AI_ENABLED && (
+                <button
+                  type="button"
+                  onClick={() => onAskAI?.(handleApplyAISuggestion)}
+                  title={rp.questionActions.askAI}
+                  className={cn(
+                    "w-7 h-7 flex items-center justify-center rounded-lg transition-colors",
+                    isAskAIActive
+                      ? "bg-primary/10 text-primary"
+                      : "text-gray-400 dark:text-gray-500 hover:text-primary hover:bg-primary/10"
+                  )}
+                >
+                  <Sparkles size={13} />
+                </button>
+              )}
               {locked ? (
                 <div
                   title={rp.editLockedHint}
@@ -709,20 +811,22 @@ export function QuestionEditCard({
         {/* Mobile action bar — horizontal row, hidden on sm+ (handled by vertical column above) */}
         {!isEditing && (
           <div className="sm:hidden flex items-center gap-1 mt-3 pt-2.5 border-t border-gray-100 dark:border-gray-800">
-            <button
-              type="button"
-              onClick={() => onAskAI?.(handleApplyAISuggestion)}
-              title={rp.questionActions.askAI}
-              className={cn(
-                "flex-1 flex items-center justify-center gap-1.5 py-1.5 text-xs rounded-lg transition-colors",
-                isAskAIActive
-                  ? "bg-primary/10 text-primary"
-                  : "text-gray-500 dark:text-gray-400 hover:text-primary hover:bg-primary/10"
-              )}
-            >
-              <Sparkles size={12} />
-              <span>{rp.questionActions.askAI}</span>
-            </button>
+            {ASK_AI_ENABLED && (
+              <button
+                type="button"
+                onClick={() => onAskAI?.(handleApplyAISuggestion)}
+                title={rp.questionActions.askAI}
+                className={cn(
+                  "flex-1 flex items-center justify-center gap-1.5 py-1.5 text-xs rounded-lg transition-colors",
+                  isAskAIActive
+                    ? "bg-primary/10 text-primary"
+                    : "text-gray-500 dark:text-gray-400 hover:text-primary hover:bg-primary/10"
+                )}
+              >
+                <Sparkles size={12} />
+                <span>{rp.questionActions.askAI}</span>
+              </button>
+            )}
             {locked ? (
               <div className="flex-1 flex items-center justify-center gap-1.5 py-1.5 text-xs text-amber-500 dark:text-amber-400">
                 <Lock size={12} />

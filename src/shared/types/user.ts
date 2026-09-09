@@ -22,6 +22,11 @@ export interface HrProfileData {
   githubUrl?: string;
   bio?: string;
   inviteMessageTemplate?: string | null;
+  /** SCRUM-424 view prefs */
+  recDefaultMinScore?: number | null;
+  recDefaultSortBy?: string;
+  recDefaultSortDir?: string;
+  recHideDismissed?: boolean;
 }
 
 export interface CurrentUser {
@@ -50,6 +55,10 @@ export interface UpdateHrProfileRequest {
   githubUrl?: string;
   bio?: string;
   inviteMessageTemplate?: string | null;
+  recDefaultMinScore?: number | null;
+  recDefaultSortBy?: string;
+  recDefaultSortDir?: string;
+  recHideDismissed?: boolean;
 }
 
 export interface ChangePasswordRequest {

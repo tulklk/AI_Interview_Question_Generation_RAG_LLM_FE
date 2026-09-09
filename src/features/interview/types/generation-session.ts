@@ -1,11 +1,7 @@
 export type GenerationStatus =
-  | "DRAFT"
-  | "PLAN_QUEUED"
   | "PLAN_PROPOSED"
   | "CONFIRMED"
   | "QUEUED"
-  | "QUESTION_QUEUED"
-  | "QUESTION_PROCESSING"
   | "PROCESSING"
   | "COMPLETED"
   | "FAILED";
@@ -37,8 +33,8 @@ export interface GenerationNote {
 
 export interface PlanDraft {
   role: string;
-  level: string;       // Experience level: Intern, Junior, Mid-level, Senior, Lead, Manager
-  difficulty?: string; // Plan difficulty: Easy, Medium, Hard
+  level: string;
+  difficulty?: string;
   questionCount: number;
   questionTypes: QuestionType[];
   topics: string[];
@@ -46,16 +42,18 @@ export interface PlanDraft {
   summary?: string;
 }
 
-export interface ClarifyMessage {
-  id: string;
-  role: "ai" | "hr";
-  content: string;
-  timestamp: string;
-}
-
+/** Nguồn RAG gắn câu hỏi — shape khớp Studio (`StudioQuestionCitation`). */
 export interface Citation {
-  source: string;
-  excerpt?: string;
+  sourceFile: string;
+  /** Legacy alias — một số UI cũ đọc `source`. */
+  source?: string;
+  chunkIndex?: number | null;
+  excerpt?: string | null;
+  knowledgeBase?: string | null;
+  /** HR | SYSTEM | LLM */
+  origin?: string | null;
+  usedFor?: string[] | null;
+  reason?: string | null;
   url?: string;
 }
 
@@ -79,6 +77,10 @@ export interface GeneratedQuestion {
   citations?: Citation[];
   orderIndex: number;
   isEdited?: boolean;
+  /** SCRUM-439: soft-active — câu không chọn lúc publish vẫn còn trong DRAFT. */
+  isActive?: boolean;
+  /** SCRUM-439: đủ sample + rubric để publish. */
+  isReady?: boolean;
 }
 
 export interface QuestionAIChat {
@@ -93,29 +95,16 @@ export interface GenerationSession {
   id: string;
   jobTitle: string;
   jdContent?: string;
-  jdFilePath?: string;
   note?: GenerationNote;
   hrOwner: string;
   status: GenerationStatus;
   planDraft?: PlanDraft;
-  clarifyHistory?: ClarifyMessage[];
   generatedQuestions?: GeneratedQuestion[];
-  failureCode?: string;
   failureMessage?: string;
   createdAt: string;
   updatedAt: string;
-  // BE-driven UI guidance fields
-  suggestedAction?: string;
-  isPolling?: boolean;
-  statusLabel?: string;
-  hasDraft?: boolean;
   questionSetId?: string;
-  canRetryPlan?: boolean;
-  canRetryQuestions?: boolean;
-  canEditInput?: boolean;
-  canEditPlan?: boolean;
-  canApprovePlan?: boolean;
-  /** SCRUM-374: job mirror từ Studio v2 — History dùng format câu hỏi Studio. */
+  /** SCRUM-374: bộ từ Studio — History hiển thị badge Studio. */
   isFromStudio?: boolean;
 }
 
@@ -123,12 +112,23 @@ export interface DraftQuestionSet {
   id: string;
   sessionId: string;
   jobTitle: string;
-  jdReference?: string;
+  /** JD đã lưu trên question set (Studio Save / JdFit attach). */
+  jobDescription?: string;
+  /** PastedText | UploadedFile */
+  jdSourceType?: "PastedText" | "UploadedFile";
+  /** Tên file gốc khi JD upload. */
+  jdOriginalFileName?: string | null;
+  /** Studio project nguồn — fallback đọc meta file nếu thiếu trên set cũ. */
+  sourceProjectId?: string | null;
   note?: GenerationNote;
   confirmedPlan?: PlanDraft;
   generatedAt: string;
   status: "DRAFT" | "PUBLISHED";
-  /** Candidate practice time limit in minutes (1–480); null = untimed. Set via PUT .../time-limit. */
+  /** Candidate practice time limit in minutes (1–480); null = untimed. */
   timeLimitMinutes?: number | null;
+  /** SCRUM-424: HR auto-recommend toggle on this set. */
+  autoRecommendEnabled?: boolean;
+  /** SCRUM-424: min OverallScore (50–95) to create recommendation. */
+  recommendationMinScore?: number;
   questions: GeneratedQuestion[];
 }

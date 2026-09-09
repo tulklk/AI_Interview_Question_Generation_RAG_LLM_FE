@@ -5,6 +5,8 @@ export interface SubscriptionLimits {
   generateCooldownHours: number;
   generateUnlimited: boolean;
   generatePerWindow: number;
+  /** Regen câu tối đa / plan; 0 = không giới hạn. */
+  questionRegenPerPlan: number;
   planRegeneratePerDraft: number;
   canExport: boolean;
   askAiPerMonth: number;
@@ -118,7 +120,13 @@ function normalizeLimits(raw: unknown): SubscriptionLimits {
   return {
     generateCooldownHours: pickNumber(o, "generateCooldownHours", "GenerateCooldownHours"),
     generateUnlimited: pickBool(o, "generateUnlimited", "GenerateUnlimited"),
-    generatePerWindow: pickNumber(o, "generatePerWindow", "GeneratePerWindow") || 4,
+    // Free mặc định 1 / cửa sổ; không dùng || vì 0 hợp lệ khi kèm generateUnlimited
+    generatePerWindow:
+      "generatePerWindow" in o || "GeneratePerWindow" in o
+        ? pickNumber(o, "generatePerWindow", "GeneratePerWindow")
+        : 1,
+    // 0 = unlimited regen — không fallback bằng ||
+    questionRegenPerPlan: pickNumber(o, "questionRegenPerPlan", "QuestionRegenPerPlan"),
     planRegeneratePerDraft: pickNumber(o, "planRegeneratePerDraft", "PlanRegeneratePerDraft"),
     canExport: pickBool(o, "canExport", "CanExport"),
     askAiPerMonth: pickNumber(o, "askAiPerMonth", "AskAiPerMonth"),
@@ -298,6 +306,43 @@ export async function adminUpdatePlan(
     plan,
     message: pickString(root, "message", "Message") || "Updated",
   };
+}
+
+/** Admin usage summary cho 1 user (kỳ hiện tại). */
+export interface AdminUserUsageSummary {
+  userId: string;
+  planCode: string;
+  periodStart: string;
+  periodEnd: string;
+  usage: UsageCounterRow[];
+}
+
+function normalizeAdminUserUsage(raw: unknown): AdminUserUsageSummary {
+  const src = unwrapData(raw);
+  const listRaw = src.usage ?? src.Usage;
+  const list = Array.isArray(listRaw) ? listRaw : [];
+  return {
+    userId: pickString(src, "userId", "UserId"),
+    planCode: pickString(src, "planCode", "PlanCode"),
+    periodStart: pickString(src, "periodStart", "PeriodStart"),
+    periodEnd: pickString(src, "periodEnd", "PeriodEnd"),
+    usage: list.map((row) => {
+      const o = asRecord(row) ?? {};
+      return {
+        usageType: pickString(o, "usageType", "UsageType"),
+        scopeKey: pickString(o, "scopeKey", "ScopeKey") || undefined,
+        usedCount: pickNumber(o, "usedCount", "UsedCount"),
+        extraFromPack: pickNumber(o, "extraFromPack", "ExtraFromPack"),
+        periodStart: pickString(o, "periodStart", "PeriodStart"),
+      };
+    }),
+  };
+}
+
+/** GET /api/admin/users/{userId}/usage */
+export async function adminGetUserUsage(userId: string): Promise<AdminUserUsageSummary> {
+  const res = await apiClient.get(`/api/admin/users/${userId}/usage`);
+  return normalizeAdminUserUsage(res.data);
 }
 
 /** SCRUM-385: admin subscription payment KPI */

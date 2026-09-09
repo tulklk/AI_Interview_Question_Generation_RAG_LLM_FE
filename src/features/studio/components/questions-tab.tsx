@@ -8,11 +8,9 @@ import type {
   StudioQuestionType,
 } from "@/features/studio/types/studio.types";
 import {
-  citationDisplayName,
-  citationsForDisplay,
-  formatCitationExcerpt,
-  isJdCitation,
-} from "@/features/studio/utils/citation-display";
+  QuestionSourcesCompactGrouped,
+  type QuestionSourcesLabels,
+} from "@/features/studio/components/question-sources-panel";
 import { inferStudioTemplate } from "@/features/studio/utils/question-template-infer";
 import { formatStudioQuestionTypeLabel } from "@/features/studio/utils/format-question-type-label";
 import { cn } from "@/lib/cn";
@@ -27,7 +25,7 @@ interface Props {
   onRefreshStatus?: () => void | Promise<void>;
   onUpdateQuestion: (question: StudioQuestion) => Promise<void> | void;
   onDeleteQuestion: (questionId: string) => Promise<void> | void;
-  onRegenerateQuestion: (questionId: string) => Promise<void> | void;
+  onRegenerateQuestion: (questionId: string, instruction?: string) => Promise<void> | void;
 }
 
 function statusBannerClass(status?: string) {
@@ -58,6 +56,23 @@ export function QuestionsTab({
 }: Props) {
   const { t, lang } = useLanguage();
   const c = t.studioPage.chat;
+  const sourceLabels: QuestionSourcesLabels = useMemo(
+    () => ({
+      sourceRoleJd: c.sourceRoleJd,
+      sourceRoleAdmin: c.sourceRoleAdmin,
+      sourceRoleLlm: c.sourceRoleLlm,
+      sourceWhyAsked: c.sourceWhyAsked,
+      sourceTechnicalBody: c.sourceTechnicalBody,
+      sourcePrimary: c.sourcePrimary,
+      sourceSecondary: c.sourceSecondary,
+      jobDescription: c.sourceJobDescription,
+      sourcesPanelTitle: c.sourcesPanelTitle,
+      sourcesEmptyLegacy: c.sourcesEmptyLegacy,
+      missingAdminWarning: c.missingAdminWarning,
+      sourceChunk: c.sourceChunk,
+    }),
+    [c]
+  );
   const typeLang = lang === "vi" ? "vi" : "en";
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draftText, setDraftText] = useState("");
@@ -122,6 +137,7 @@ export function QuestionsTab({
             <div className="mb-2 flex items-center justify-between gap-2">
               <span className={cn("text-xs", portalSubtext)}>
                 #{displayNo} • {typeLabel} • {question.difficulty}
+                {question.skill?.trim() ? ` • ${question.skill.trim()}` : ""}
               </span>
               <div className="flex items-center gap-2">
                 <button
@@ -187,43 +203,16 @@ export function QuestionsTab({
                     />
                   );
                 })()}
-                {/* SCRUM-392: JD chính + KB phụ */}
-                <div className="mt-2 space-y-1">
+                {/* SCRUM-421: 3 khối JD / Admin / LLM */}
+                <div className="mt-2">
                   <p className={cn("text-[10px] font-semibold uppercase tracking-widest", portalSubtext)}>
                     Nguồn
                   </p>
-                  {(() => {
-                    const rows = citationsForDisplay(question.citations);
-                    return rows.length > 0 ? (
-                    rows.map((cit, i) => {
-                      const primary = isJdCitation(cit.sourceFile);
-                      const excerpt = formatCitationExcerpt(cit.excerpt);
-                      const label = citationDisplayName(cit.sourceFile, {
-                        jobDescription: c.sourceJobDescription,
-                      });
-                      return (
-                        <p key={`${cit.sourceFile}-${i}`} className={cn("text-xs", portalSubtext)}>
-                          <span
-                            className={cn(
-                              "mr-1.5 inline-flex rounded px-1 py-px text-[9px] font-bold uppercase tracking-wide",
-                              primary
-                                ? "bg-sky-200/80 text-sky-900 dark:bg-sky-800 dark:text-sky-100"
-                                : "bg-gray-200/80 text-gray-600 dark:bg-gray-700 dark:text-gray-300"
-                            )}
-                          >
-                            {primary ? c.sourcePrimary : c.sourceSecondary}
-                          </span>
-                          {label}
-                          {excerpt ? ` — “${excerpt}”` : ""}
-                        </p>
-                      );
-                    })
-                    ) : (
-                    <p className={cn("text-xs italic", portalSubtext)}>
-                      {c.sourcesEmptyLegacy}
-                    </p>
-                    );
-                  })()}
+                  <QuestionSourcesCompactGrouped
+                    question={question}
+                    labels={sourceLabels}
+                    className="mt-1"
+                  />
                 </div>
               </>
             )}

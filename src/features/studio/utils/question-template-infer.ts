@@ -143,9 +143,9 @@ export function peekQuestionSnippet(question: StudioQuestion): string | undefine
 
 /**
  * Suy ra template + snippet + image hint để render UI.
- * Câu lý thuyết thuần vẫn có imageHint; templateId có thể null.
  * Behavioral / Situational: mặc định không render code snippet.
- * Conceptual theory + code-heavy/wrong snippet: ẩn ĐỀ BÀI code (BE data lệch).
+ * Template code-heavy + có codeSnippet đề → luôn hiện (kể cả câu hỏi mang tính “giải thích”).
+ * Chỉ ẩn khi noCodeType hoặc languageMismatch rõ.
  */
 export function inferStudioTemplate(question: StudioQuestion): StudioTemplateViewModel {
   const explicit = normalizeTemplateId(question.codeTemplateType);
@@ -163,10 +163,15 @@ export function inferStudioTemplate(question: StudioQuestion): StudioTemplateVie
     ?? (question.type === "SystemDesign" ? "SYSTEM_DESIGN" : null)
     ?? (!noCodeType && !conceptualTheory && !languageMismatch && rawSnippet ? "CODE_COMPLETION" : null);
 
+  const codeHeavyStem =
+    Boolean(rawSnippet?.trim())
+    && (isCodeHeavyTemplate(explicit) || isCodeHeavyTemplate(inferred));
+
+  // Có đề code-heavy → không suppress vì conceptualTheory (Bug detection Answer=Text vẫn hiện đề)
   const suppressCodeBlock =
     noCodeType
     || languageMismatch
-    || (conceptualTheory && Boolean(rawSnippet || isCodeHeavyTemplate(inferred)));
+    || (!codeHeavyStem && conceptualTheory && Boolean(rawSnippet || isCodeHeavyTemplate(inferred)));
 
   const snippet = suppressCodeBlock ? undefined : rawSnippet;
   const clearTemplateBadge = suppressCodeBlock && (conceptualTheory || languageMismatch || noCodeType);
@@ -183,7 +188,7 @@ export function inferStudioTemplate(question: StudioQuestion): StudioTemplateVie
       ? langFromMeta.trim().toLowerCase()
       : undefined;
 
-  if (noCodeType || (suppressCodeBlock && (conceptualTheory || languageMismatch))) {
+  if (noCodeType || (suppressCodeBlock && (conceptualTheory || languageMismatch) && !codeHeavyStem)) {
     return {
       templateId: null,
       imageHint,

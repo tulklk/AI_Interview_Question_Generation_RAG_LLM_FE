@@ -8,6 +8,8 @@ import {
   deleteHrKnowledgeDoc,
   reingestHrKnowledgeDoc,
   getHrKnowledgeDoc,
+  updateHrKnowledgeDocType,
+  getHrKnowledgeChunks,
 } from "@/features/knowledge/services/knowledge.service";
 import { cn } from "@/lib/cn";
 import { portalHeading, portalSubtext } from "@/shared/utils/portal-ui";
@@ -34,10 +36,14 @@ export default function HrKnowledgePage() {
         <KnowledgePageContent
           variant="hr"
           onFetchDocs={getHrKnowledgeDocs}
-          onUpload={uploadHrKnowledgeDoc}
+          onUpload={(file, documentType) =>
+            uploadHrKnowledgeDoc(file, documentType ?? "InternalStack")
+          }
           onDelete={deleteHrKnowledgeDoc}
           onReingest={reingestHrKnowledgeDoc}
           onRefreshDoc={getHrKnowledgeDoc}
+          onUpdateType={updateHrKnowledgeDocType}
+          onFetchChunks={(id) => getHrKnowledgeChunks(id, 20)}
         />
       </div>
     </AppShell>

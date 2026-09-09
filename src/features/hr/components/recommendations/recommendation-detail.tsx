@@ -594,7 +594,7 @@ export function RecommendationDetail({ id }: { id: string }) {
                     <span className="text-[13px] font-bold text-cyan-400/80 dark:text-cyan-500/70">%</span>
                   </span>
                   <span className={cn("text-[9px] font-bold uppercase tracking-wide mt-0.5 whitespace-nowrap", portalSubtextAlt)}>
-                    Khớp CV–JD
+                    {p.fit.title}
                   </span>
                 </div>
               </>
@@ -696,11 +696,24 @@ export function RecommendationDetail({ id }: { id: string }) {
           {/* CV-JD Analysis */}
           {(typeof rec.fitPercent === "number" || rec.jdSkills.length > 0) && (
             <div className="hr-glass-card p-3.5">
-              <div className="flex items-center gap-2 mb-2.5">
-                <div className="w-6 h-6 rounded-lg bg-cyan-50 dark:bg-cyan-950/40 flex items-center justify-center shrink-0">
+              <div className="flex items-start gap-2 mb-2.5 min-w-0">
+                <div className="w-6 h-6 rounded-lg bg-cyan-50 dark:bg-cyan-950/40 flex items-center justify-center shrink-0 mt-0.5">
                   <Target size={13} className="text-cyan-600 dark:text-cyan-400" />
                 </div>
-                <h3 className={cn("text-[14px] font-semibold", portalHeadingAlt)}>{p.fit.title}</h3>
+                <div className="min-w-0 flex-1">
+                  <h3 className={cn("text-[14px] font-semibold", portalHeadingAlt)}>{p.fit.title}</h3>
+                  {rec.questionSetTitle && (
+                    <p
+                      title={rec.questionSetTitle}
+                      className={cn("text-[11px] mt-0.5 truncate", portalSubtextAlt)}
+                    >
+                      {(p.fit.fitAgainstSet ?? "Theo bộ câu hỏi: {{title}}").replace(
+                        "{{title}}",
+                        rec.questionSetTitle
+                      )}
+                    </p>
+                  )}
+                </div>
               </div>
 
               {typeof rec.fitPercent === "number" && (

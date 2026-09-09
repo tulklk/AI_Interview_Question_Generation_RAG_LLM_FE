@@ -106,7 +106,7 @@ export function HrSubscriptionProvider({ children }: { children: ReactNode }) {
     let cooldownEndsAt: Date | null = null;
     const generateWindowUsed = subscription?.generateWindowUsed ?? 0;
     const generateWindowLimit =
-      subscription?.generateWindowLimit || limits?.generatePerWindow || 4;
+      subscription?.generateWindowLimit || limits?.generatePerWindow || 1;
 
     if (limits?.generateUnlimited) {
       canGenerateNow = true;
@@ -119,7 +119,13 @@ export function HrSubscriptionProvider({ children }: { children: ReactNode }) {
       if (endsAt.getTime() > Date.now()) {
         canGenerateNow = false;
         cooldownEndsAt = endsAt;
+      } else {
+        // Cửa sổ đã hết hạn — cho phép (BE sẽ reset used khi MarkGenerateSuccess).
+        canGenerateNow = true;
       }
+    } else {
+      // used >= limit nhưng thiếu Last — vẫn khóa (khớp BE SCRUM-445).
+      canGenerateNow = false;
     }
 
     return {

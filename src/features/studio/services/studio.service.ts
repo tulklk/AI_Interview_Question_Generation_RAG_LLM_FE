@@ -12,11 +12,14 @@ import type {
   PlanSummary,
   ShareLink,
   StudioDocument,
+  StudioKnowledgeSuggestion,
   StudioLibraryDocument,
   StudioProject,
   StudioProjectDetail,
   StudioQuestion,
   StudioQuestionListResponse,
+  RecommendInterviewConfigurationResponse,
+  StudioRetrievePreview,
   StudioSettings,
   UploadJobDescriptionResponse,
 } from "@/features/studio/types/studio.types";
@@ -80,12 +83,69 @@ function mapProjectDetail(raw: Record<string, unknown>): StudioProjectDetail {
   };
 }
 
-export async function upsertJobDescription(projectId: string, content: string, sourceType: "PastedText" | "UploadedFile"): Promise<void> {
-  await apiClient.put(`/api/studio/projects/${projectId}/job-description`, { content, sourceType });
+export async function upsertJobDescription(
+  projectId: string,
+  content: string,
+  sourceType: "PastedText" | "UploadedFile"
+): Promise<AnalyzeJobDescriptionResponse> {
+  // SCRUM-432: PUT validate + classify + lưu + trả summary (không cần POST analyze lần 2)
+  const { data } = await apiClient.put<AnalyzeJobDescriptionResponse>(
+    `/api/studio/projects/${projectId}/job-description`,
+    { content, sourceType },
+    { timeout: 180_000 }
+  );
+  return data;
 }
 
 export async function analyzeJobDescription(projectId: string): Promise<AnalyzeJobDescriptionResponse> {
   const { data } = await apiClient.post<AnalyzeJobDescriptionResponse>(`/api/studio/projects/${projectId}/job-description/analyze`);
+  return data;
+}
+
+/** Phase 2: AI đề xuất cấu hình phỏng vấn — lưu draft trên BE, không ghi đè settings HR. */
+export async function recommendInterviewConfiguration(
+  projectId: string,
+  payload?: { numberOfQuestions?: number }
+): Promise<RecommendInterviewConfigurationResponse> {
+  const { data } = await apiClient.post<RecommendInterviewConfigurationResponse>(
+    `/api/studio/projects/${projectId}/job-description/recommend-configuration`,
+    payload ?? {},
+    { timeout: 180_000 }
+  );
+  return data;
+}
+
+/** SCRUM-416: HR xác nhận / sửa vị trí đã extract từ JD. */
+export async function updateJobDescriptionPosition(
+  projectId: string,
+  position: string
+): Promise<AnalyzeJobDescriptionResponse> {
+  const { data } = await apiClient.patch<AnalyzeJobDescriptionResponse>(
+    `/api/studio/projects/${projectId}/job-description/position`,
+    { position }
+  );
+  return data;
+}
+
+/** SCRUM-417: HR xác nhận Position + Level (+ Role / Skills) trước generate plan. */
+export async function updateJobDescriptionMetadata(
+  projectId: string,
+  payload: {
+    position: string;
+    detectedSeniority: string;
+    detectedRole?: string | null;
+    skills?: string[];
+  }
+): Promise<AnalyzeJobDescriptionResponse> {
+  const { data } = await apiClient.patch<AnalyzeJobDescriptionResponse>(
+    `/api/studio/projects/${projectId}/job-description/metadata`,
+    {
+      position: payload.position,
+      detectedSeniority: payload.detectedSeniority,
+      detectedRole: payload.detectedRole?.trim() || null,
+      skills: payload.skills ?? undefined,
+    }
+  );
   return data;
 }
 
@@ -116,10 +176,16 @@ export async function listDocuments(projectId: string): Promise<StudioDocument[]
   return data;
 }
 
-export async function uploadDocument(projectId: string, file: File, isSelected = true): Promise<StudioDocument> {
+export async function uploadDocument(
+  projectId: string,
+  file: File,
+  isSelected = true,
+  documentType?: string
+): Promise<StudioDocument> {
   const form = new FormData();
   form.append("file", file);
   form.append("isSelected", String(isSelected));
+  if (documentType) form.append("documentType", documentType);
   // apiClient mặc định application/json — phải override multipart (giống upload JD / HR knowledge)
   const { data } = await apiClient.post<StudioDocument>(
     `/api/studio/projects/${projectId}/knowledge-documents`,
@@ -165,6 +231,26 @@ export async function attachLibraryDocuments(
   const { data } = await apiClient.post<StudioDocument[]>(
     `/api/studio/projects/${projectId}/knowledge-documents/attach`,
     { knowledgeDocumentIds, isSelected }
+  );
+  return data;
+}
+
+/** SCRUM-443: gợi ý gắn theo JD */
+export async function suggestKnowledgeDocuments(projectId: string): Promise<StudioKnowledgeSuggestion[]> {
+  const { data } = await apiClient.post<StudioKnowledgeSuggestion[]>(
+    `/api/studio/projects/${projectId}/knowledge-documents/suggestions`
+  );
+  return Array.isArray(data) ? data : [];
+}
+
+/** SCRUM-444: preview retrieve 1 doc với JD */
+export async function retrieveKnowledgePreview(
+  projectId: string,
+  knowledgeDocumentId: string
+): Promise<StudioRetrievePreview> {
+  const { data } = await apiClient.post<StudioRetrievePreview>(
+    `/api/studio/projects/${projectId}/knowledge-documents/retrieve-preview`,
+    { knowledgeDocumentId }
   );
   return data;
 }
@@ -299,7 +385,13 @@ export async function getGenerationRun(projectId: string, runId: string): Promis
   const { data } = await apiClient.get<GenerationRun>(
     `/api/studio/projects/${projectId}/question-generation-runs/${runId}`
   );
-  return data;
+  return {
+    ...data,
+    targetQuestionId:
+      data.targetQuestionId ??
+      (data as { TargetQuestionId?: string | null }).TargetQuestionId ??
+      null,
+  };
 }
 
 export async function listQuestions(projectId: string, query: {
@@ -325,11 +417,14 @@ export async function listQuestions(projectId: string, query: {
       image_hint?: string | null;
       attached_image_url?: string | null;
       answer_method?: string | null;
+      RubricJson?: string | null;
+      rubric_json?: string | null;
     };
     const amRaw = (q.answerMethod ?? raw.AnswerMethod ?? raw.answer_method ?? "").toString().trim().toLowerCase();
     const answerMethod = amRaw === "code" ? "Code" : amRaw === "text" ? "Text" : (q.answerMethod ?? null);
     return {
       ...q,
+      rubricJson: (q.rubricJson ?? raw.RubricJson ?? raw.rubric_json ?? null) as StudioQuestion["rubricJson"],
       codeTemplateType: (q.codeTemplateType ?? raw.CodeTemplateType ?? raw.code_template_type ?? null) as StudioQuestion["codeTemplateType"],
       codeSnippet: (q.codeSnippet ?? raw.CodeSnippet ?? raw.code_snippet ?? null) as StudioQuestion["codeSnippet"],
       imageHint: (q.imageHint ?? raw.ImageHint ?? raw.image_hint ?? null) as StudioQuestion["imageHint"],
@@ -347,6 +442,7 @@ export async function updateQuestion(projectId: string, questionId: string, payl
   estimatedMinutes: number;
   expectedAnswer?: string;
   scoringRubric?: string;
+  rubricJson?: string;
 }): Promise<void> {
   await apiClient.put(`/api/studio/projects/${projectId}/questions/${questionId}`, payload);
 }
@@ -387,11 +483,28 @@ export async function deleteQuestionImage(projectId: string, questionId: string)
   };
 }
 
+/** SCRUM-429: enqueue regen nền — trả GenerationRun để poll. */
 export async function regenerateQuestion(projectId: string, questionId: string, payload: {
   includeSampleAnswers: boolean;
   includeScoringRubric: boolean;
-}): Promise<void> {
-  await apiClient.post(`/api/studio/projects/${projectId}/questions/${questionId}/regenerate`, payload);
+  /** SCRUM-428: lưu ý HR khi regen */
+  instruction?: string | null;
+}): Promise<GenerationRun> {
+  const { data } = await apiClient.post<GenerationRun>(
+    `/api/studio/projects/${projectId}/questions/${questionId}/regenerate`,
+    {
+      includeSampleAnswers: payload.includeSampleAnswers,
+      includeScoringRubric: payload.includeScoringRubric,
+      instruction: payload.instruction?.trim() || null,
+    }
+  );
+  return {
+    ...data,
+    targetQuestionId:
+      data.targetQuestionId ??
+      (data as { TargetQuestionId?: string | null }).TargetQuestionId ??
+      null,
+  };
 }
 
 export async function listGenerationRuns(projectId: string): Promise<GenerationRun[]> {
@@ -399,8 +512,22 @@ export async function listGenerationRuns(projectId: string): Promise<GenerationR
   return data;
 }
 
-export async function publishProject(projectId: string): Promise<void> {
-  await apiClient.post(`/api/studio/projects/${projectId}/publish`);
+/** SCRUM-439: publish từ Studio — chọn interview question ids + time limit + recommend. */
+export async function publishProject(
+  projectId: string,
+  body?: {
+    interviewQuestionIds?: string[];
+    timeLimitMinutes?: number | null;
+    autoRecommendEnabled?: boolean;
+    recommendationMinScore?: number;
+  }
+): Promise<void> {
+  await apiClient.post(`/api/studio/projects/${projectId}/publish`, {
+    interviewQuestionIds: body?.interviewQuestionIds ?? null,
+    timeLimitMinutes: body?.timeLimitMinutes ?? null,
+    autoRecommendEnabled: body?.autoRecommendEnabled ?? null,
+    recommendationMinScore: body?.recommendationMinScore ?? null,
+  });
 }
 
 export async function unpublishProject(projectId: string): Promise<number> {
