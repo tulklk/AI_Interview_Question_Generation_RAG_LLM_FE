@@ -1,4 +1,5 @@
 import { vi } from "vitest";
+import { isCandidateAccepted } from "@/features/hr/services/recommendation.service";
 import type { CandidateRecommendation } from "@/features/hr/services/recommendation.service";
 
 export function recommendationServiceMockFactory() {
@@ -9,6 +10,10 @@ export function recommendationServiceMockFactory() {
     inviteRecommendation: vi.fn(),
     sendOffer: vi.fn(),
     restoreRecommendation: vi.fn(),
+    // Pure business logic (no API call) — keep the real implementation instead
+    // of stubbing it, since recommendations-list.tsx calls it directly to
+    // decide whether to show the "accepted" badge.
+    isCandidateAccepted,
   };
 }
 

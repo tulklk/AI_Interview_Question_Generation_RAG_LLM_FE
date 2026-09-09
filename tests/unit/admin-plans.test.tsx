@@ -50,6 +50,7 @@ function plan(overrides: Partial<SubscriptionPlan> = {}): SubscriptionPlan {
       generateCooldownHours: 0,
       generateUnlimited: true,
       generatePerWindow: 4,
+      questionRegenPerPlan: 2,
       planRegeneratePerDraft: 5,
       canExport: true,
       askAiPerMonth: 999,

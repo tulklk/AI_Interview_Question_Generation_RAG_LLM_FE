@@ -38,6 +38,31 @@ vi.mock("@/features/hr/components/layout/app-shell", () => ({
   AppShell: ({ children }: { children: React.ReactNode }) => children,
 }));
 
+// JdFitReviewPanel (rendered inside the question review UI) reads
+// useHrSubscription() for the generate-cooldown state. The real provider
+// makes a live getMySubscription() call + opens a SignalR connection —
+// stub the hook directly instead, matching how studio-page-heavy tests
+// mock this module themselves (see app-shell-test-utils.tsx).
+vi.mock("@/features/hr/context/hr-subscription-context", () => ({
+  useHrSubscription: () => ({
+    planId: "HR_FREE",
+    loading: false,
+    subscription: null,
+    isPremium: false,
+    limits: null,
+    canGenerateNow: true,
+    cooldownEndsAt: null,
+    generateWindowUsed: 0,
+    generateWindowLimit: 4,
+    hasFeature: () => false,
+    cancelPremium: vi.fn(),
+    purchaseAskAiPack: vi.fn(),
+    refresh: vi.fn(),
+    lastErrorCode: null,
+  }),
+  HrSubscriptionProvider: ({ children }: { children: React.ReactNode }) => children,
+}));
+
 vi.mock("@/features/interview/services/interview.service", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/features/interview/services/interview.service")>();
   return {
