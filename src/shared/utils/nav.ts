@@ -27,6 +27,16 @@ export function isHrNavActive(itemHref: string, pathname: string): boolean {
   if (h === "/hr/history") {
     return p === "/hr/history" || p.startsWith(`${h}/`);
   }
+  // Nhóm Ứng viên: parent active khi ở đề xuất hoặc kho ứng viên
+  if (h === "/hr/candidate-recommendations") {
+    return (
+      p === "/hr/candidate-recommendations" ||
+      p.startsWith("/hr/candidate-recommendations/") ||
+      p === "/hr/talent" ||
+      p.startsWith("/hr/talent/") ||
+      p.startsWith("/hr/candidates/")
+    );
+  }
   if (h === "/hr/generate-question") {
     return p === "/hr/generate-question" || p.startsWith(`${h}/`);
   }

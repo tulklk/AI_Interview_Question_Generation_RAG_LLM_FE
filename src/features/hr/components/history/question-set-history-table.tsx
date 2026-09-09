@@ -40,6 +40,7 @@ import {
   listHistoryQuestionSets,
 } from "@/features/hr/services/hr-history.service";
 import {
+  getDraft,
   publishQuestionSet,
   renameQuestionSetTitle,
   toggleHrBookmark,
@@ -48,6 +49,12 @@ import {
 } from "@/features/interview/services/interview.service";
 import { useHrSubscription } from "@/features/hr/context/hr-subscription-context";
 import { QuestionSetFeedbackPanel } from "./question-set-feedback-panel";
+import {
+  PublishDialog,
+  type PublishDialogConfirmPayload,
+  type PublishDialogQuestion,
+} from "@/features/question/components/publish-dialog";
+import { MIN_QUESTIONS_TO_PUBLISH } from "@/features/interview/components/generate/question-builder-set-panel";
 
 function formatDate(iso: string, lang: "en" | "vi"): string {
   const d = new Date(iso);
@@ -119,6 +126,12 @@ export function QuestionSetHistoryTable({ filter = "all" }: QuestionSetHistoryTa
   const [savingTitle, setSavingTitle] = useState(false);
   const [page, setPage] = useState(1);
   const [feedbackTarget, setFeedbackTarget] = useState<{ id: string; title: string } | null>(null);
+  const [publishTarget, setPublishTarget] = useState<HistoryQuestionSetItem | null>(null);
+  const [publishQuestions, setPublishQuestions] = useState<PublishDialogQuestion[]>([]);
+  const [publishTimeLimit, setPublishTimeLimit] = useState<number | null>(null);
+  const [publishAutoRecommend, setPublishAutoRecommend] = useState(true);
+  const [publishMinScore, setPublishMinScore] = useState(70);
+  const [publishing, setPublishing] = useState(false);
   const [sourceFilter, setSourceFilter] = useState<"all" | "studio" | "legacy">("all");
   const [questionFilter, setQuestionFilter] = useState<"all" | "1-5" | "6-10" | "11-20" | "21+">("all");
   const [dateSort, setDateSort] = useState<"newest" | "oldest">("newest");
@@ -245,9 +258,9 @@ export function QuestionSetHistoryTable({ filter = "all" }: QuestionSetHistoryTa
   }
 
   async function handlePublishToggle(item: HistoryQuestionSetItem) {
-    setBusyId(item.questionSetId);
-    try {
-      if (item.status === "PUBLISHED") {
+    if (item.status === "PUBLISHED") {
+      setBusyId(item.questionSetId);
+      try {
         const abandoned = await unpublishQuestionSet(item.questionSetId);
         setItems((prev) =>
           prev.map((x) =>
@@ -255,21 +268,77 @@ export function QuestionSetHistoryTable({ filter = "all" }: QuestionSetHistoryTa
           )
         );
         addToast("success", withAbandonedToast(t.historyPage.unpublishSuccess, abandoned));
-      } else {
-        await publishQuestionSet(item.questionSetId);
-        setItems((prev) =>
-          prev.map((x) =>
-            x.questionSetId === item.questionSetId
-              ? { ...x, status: "PUBLISHED", publishedAt: new Date().toISOString() }
-              : x
-          )
-        );
-        addToast("success", t.historyPage.publishSuccess);
+      } catch (err) {
+        addToast("error", err instanceof Error && err.message ? err.message : t.historyPage.actionFailed);
+      } finally {
+        setBusyId(null);
       }
+      return;
+    }
+
+    setBusyId(item.questionSetId);
+    try {
+      const draft = await getDraft(item.questionSetId);
+      if (!draft) {
+        addToast("error", t.historyPage.actionFailed);
+        return;
+      }
+      const qs: PublishDialogQuestion[] = draft.questions.map((q) => ({
+        id: q.id,
+        preview: q.question,
+        ready: Boolean(q.isReady),
+        defaultSelected: Boolean(q.isReady && q.isActive !== false),
+      }));
+      const readyN = qs.filter((q) => q.ready).length;
+      if (readyN < MIN_QUESTIONS_TO_PUBLISH) {
+        addToast(
+          "error",
+          t.reviewPage.publishMinHint
+            .replace("{{min}}", String(MIN_QUESTIONS_TO_PUBLISH))
+            .replace("{{count}}", String(readyN))
+        );
+        return;
+      }
+      setPublishQuestions(qs);
+      setPublishTimeLimit(draft.timeLimitMinutes ?? null);
+      setPublishAutoRecommend(draft.autoRecommendEnabled ?? true);
+      setPublishMinScore(draft.recommendationMinScore ?? 70);
+      setPublishTarget(item);
     } catch (err) {
       addToast("error", err instanceof Error && err.message ? err.message : t.historyPage.actionFailed);
     } finally {
       setBusyId(null);
+    }
+  }
+
+  async function confirmHistoryPublish(payload: PublishDialogConfirmPayload) {
+    if (!publishTarget) return;
+    setPublishing(true);
+    try {
+      await publishQuestionSet(publishTarget.questionSetId, {
+        questionIds: payload.questionIds,
+        timeLimitMinutes: payload.timeLimitMinutes,
+        autoRecommendEnabled: payload.autoRecommendEnabled,
+        recommendationMinScore: payload.recommendationMinScore,
+      });
+      setItems((prev) =>
+        prev.map((x) =>
+          x.questionSetId === publishTarget.questionSetId
+            ? {
+                ...x,
+                status: "PUBLISHED",
+                publishedAt: new Date().toISOString(),
+                questionCount: payload.questionIds.length,
+              }
+            : x
+        )
+      );
+      addToast("success", t.historyPage.publishSuccess);
+      setPublishTarget(null);
+    } catch (err) {
+      addToast("error", err instanceof Error && err.message ? err.message : t.historyPage.actionFailed);
+    } finally {
+      setPublishing(false);
     }
   }
 
@@ -611,6 +680,36 @@ export function QuestionSetHistoryTable({ filter = "all" }: QuestionSetHistoryTa
                         >
                           <Bookmark size={14} fill={item.isBookmarked ? "currentColor" : "none"} />
                         </button>
+                        {/* SCRUM-437: Publish/Unpublish ngoài menu … — tab Tất cả & mọi filter */}
+                        <button
+                          type="button"
+                          disabled={busy}
+                          onClick={() => void handlePublishToggle(item)}
+                          className={cn(
+                            iconBtn,
+                            item.status === "PUBLISHED"
+                              ? "text-primary hover:text-primary/80"
+                              : "hover:text-primary"
+                          )}
+                          title={
+                            item.status === "PUBLISHED"
+                              ? t.historyPage.unpublishTitle
+                              : t.historyPage.publishTitle
+                          }
+                          aria-label={
+                            item.status === "PUBLISHED"
+                              ? t.historyPage.unpublishTitle
+                              : t.historyPage.publishTitle
+                          }
+                        >
+                          {busy ? (
+                            <Loader2 size={14} className="animate-spin" />
+                          ) : item.status === "PUBLISHED" ? (
+                            <GlobeOff size={14} />
+                          ) : (
+                            <Globe size={14} />
+                          )}
+                        </button>
                         <div className="relative">
                           <button
                             ref={openMenuId === item.questionSetId ? menuBtnRef : undefined}
@@ -751,32 +850,6 @@ export function QuestionSetHistoryTable({ filter = "all" }: QuestionSetHistoryTa
               <MessageSquare size={14} className="shrink-0 opacity-70" />
               <span className="truncate">{t.historyPage.feedbackTitle}</span>
             </button>
-            <button
-              type="button"
-              role="menuitem"
-              disabled={busyId === openMenuItem.questionSetId}
-              className={menuItemCls}
-              title={
-                openMenuItem.status === "PUBLISHED"
-                  ? t.historyPage.unpublishTitle
-                  : t.historyPage.publishTitle
-              }
-              onClick={() => {
-                setOpenMenuId(null);
-                void handlePublishToggle(openMenuItem);
-              }}
-            >
-              {openMenuItem.status === "PUBLISHED" ? (
-                <GlobeOff size={14} className="shrink-0 opacity-70" />
-              ) : (
-                <Globe size={14} className="shrink-0 opacity-70" />
-              )}
-              <span className="truncate">
-                {openMenuItem.status === "PUBLISHED"
-                  ? t.historyPage.unpublishTitle
-                  : t.historyPage.publishTitle}
-              </span>
-            </button>
             {isPremium && (
               <button
                 type="button"
@@ -826,6 +899,21 @@ export function QuestionSetHistoryTable({ filter = "all" }: QuestionSetHistoryTa
         questionSetTitle={feedbackTarget?.title}
         onClose={() => setFeedbackTarget(null)}
       />
+
+      {publishTarget && (
+        <PublishDialog
+          questions={publishQuestions}
+          minQuestions={MIN_QUESTIONS_TO_PUBLISH}
+          currentTimeLimitMinutes={publishTimeLimit}
+          initialAutoRecommendEnabled={publishAutoRecommend}
+          initialRecommendationMinScore={publishMinScore}
+          saving={publishing}
+          onConfirm={(payload) => void confirmHistoryPublish(payload)}
+          onClose={() => {
+            if (!publishing) setPublishTarget(null);
+          }}
+        />
+      )}
 
       {deleteTarget && (
         <div className="fixed inset-0 z-9999 flex items-center justify-center p-4">
