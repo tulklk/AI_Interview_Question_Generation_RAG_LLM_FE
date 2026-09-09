@@ -36,11 +36,18 @@ export function KbDocPicker({ selectedDocId, onSelect }: KbDocPickerProps) {
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    getHrKnowledgeDocs().then((all) => {
-      if (cancelled) return;
-      setDocs(all.filter((d) => d.status === "READY"));
-      setLoading(false);
-    });
+    getHrKnowledgeDocs()
+      .then((all) => {
+        if (cancelled) return;
+        setDocs(all.filter((d) => d.status === "READY"));
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setDocs([]);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
     return () => { cancelled = true; };
   }, []);
 

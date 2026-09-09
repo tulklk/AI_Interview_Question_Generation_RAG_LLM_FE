@@ -29,6 +29,11 @@ interface Props {
   imageHint?: string;
   /** SAS / public URL ảnh HR đã đính kèm — hiển thị trên nội dung câu hỏi. */
   attachedImageUrl?: string;
+  /**
+   * Khi true: bỏ header strip + viền + padding outer — dùng khi nhúng trong card cha
+   * (History review) để tránh khung lồng khung và badge trùng.
+   */
+  bare?: boolean;
 }
 
 export function QuestionTemplateCard({
@@ -40,9 +45,51 @@ export function QuestionTemplateCard({
   templateId,
   diagramDescription,
   attachedImageUrl,
+  bare = false,
 }: Props) {
   const { t } = useLanguage();
   const templateLabel = templateId ? (TEMPLATE_LABELS[templateId] ?? templateId) : null;
+
+  const body = (
+    <>
+      {attachedImageUrl ? (
+        <div className="mb-3 overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700">
+          {/* eslint-disable-next-line @next/next/no-img-element -- SAS Azure Blob URL động */}
+          <img
+            src={attachedImageUrl}
+            alt="Ảnh đính kèm câu hỏi"
+            className="max-h-72 w-full object-contain bg-gray-50 dark:bg-gray-950"
+          />
+        </div>
+      ) : null}
+
+      <p className="text-sm leading-relaxed text-gray-800 dark:text-gray-200">{prompt}</p>
+
+      {snippet ? (
+        <CodeSnippetBlock
+          code={snippet}
+          language={snippetLanguage || undefined}
+          variant="question"
+        />
+      ) : null}
+
+      {diagramDescription ? (
+        <div className="mt-3 rounded-lg border border-sky-200 bg-sky-50/60 p-2.5 dark:border-sky-900/50 dark:bg-sky-950/30">
+          <p className="text-[10px] font-bold uppercase tracking-wide text-sky-700 dark:text-sky-400">
+            {t.questionBuilder.diagramHintTitle}
+          </p>
+          <p className="mt-0.5 text-[10px] text-sky-500 dark:text-sky-500">
+            {t.questionBuilder.diagramHintNote}
+          </p>
+          <p className="mt-1.5 text-xs text-sky-800 dark:text-sky-200">{diagramDescription}</p>
+        </div>
+      ) : null}
+    </>
+  );
+
+  if (bare) {
+    return <div className="min-w-0">{body}</div>;
+  }
 
   return (
     <article className="overflow-hidden rounded-xl border border-sky-200/80 bg-white dark:border-sky-900/60 dark:bg-gray-900">
@@ -76,40 +123,7 @@ export function QuestionTemplateCard({
       </div>
 
       {/* ── Body ── */}
-      <div className="p-3.5">
-        {attachedImageUrl ? (
-          <div className="mb-3 overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700">
-            {/* eslint-disable-next-line @next/next/no-img-element -- SAS Azure Blob URL động */}
-            <img
-              src={attachedImageUrl}
-              alt="Ảnh đính kèm câu hỏi"
-              className="max-h-72 w-full object-contain bg-gray-50 dark:bg-gray-950"
-            />
-          </div>
-        ) : null}
-
-        <p className="text-sm leading-relaxed text-gray-800 dark:text-gray-200">{prompt}</p>
-
-        {snippet ? (
-          <CodeSnippetBlock
-            code={snippet}
-            language={snippetLanguage || undefined}
-            variant="question"
-          />
-        ) : null}
-
-        {diagramDescription ? (
-          <div className="mt-3 rounded-lg border border-sky-200 bg-sky-50/60 p-2.5 dark:border-sky-900/50 dark:bg-sky-950/30">
-            <p className="text-[10px] font-bold uppercase tracking-wide text-sky-700 dark:text-sky-400">
-              {t.questionBuilder.diagramHintTitle}
-            </p>
-            <p className="mt-0.5 text-[10px] text-sky-500 dark:text-sky-500">
-              {t.questionBuilder.diagramHintNote}
-            </p>
-            <p className="mt-1.5 text-xs text-sky-800 dark:text-sky-200">{diagramDescription}</p>
-          </div>
-        ) : null}
-      </div>
+      <div className="p-3.5">{body}</div>
     </article>
   );
 }

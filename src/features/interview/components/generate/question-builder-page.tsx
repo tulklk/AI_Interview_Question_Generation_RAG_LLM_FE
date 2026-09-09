@@ -29,6 +29,13 @@ import {
   type ContentMode,
 } from "@/features/interview/components/generate/question-builder-composer";
 import { QuestionBuilderPreview } from "@/features/interview/components/generate/question-builder-preview";
+import {
+  buildPresetCriteria,
+  emptyRubric,
+  getPresetKey,
+  rubricToApiPayload,
+  type RubricV1,
+} from "@/shared/rubric";
 
 const DEFAULT_SNIPPETS: Record<Exclude<StudioCodeTemplateId, "SYSTEM_DESIGN">, string> = {
   CODE_COMPLETION: "function twoSum(nums, target) {\n  // TODO\n}",
@@ -49,13 +56,6 @@ function flattenSnippetForRationale(snippet: string): string {
     .replace(/\r\n/g, "\n")
     .replace(/\n/g, "\\n")
     .replace(/;/g, ",");
-}
-
-function parseRubricLines(text: string): string[] {
-  return text
-    .split(/\n+/)
-    .map((s) => s.trim())
-    .filter(Boolean);
 }
 
 function defaultQuestionType(mode: ContentMode): QuestionType {
@@ -113,7 +113,7 @@ export function QuestionBuilderPage() {
   const [skill, setSkill] = useState("");
   const [focusArea, setFocusArea] = useState("");
   const [sampleAnswer, setSampleAnswer] = useState("");
-  const [rubricText, setRubricText] = useState("");
+  const [rubricDoc, setRubricDoc] = useState<RubricV1>(() => emptyRubric());
   const [rationale, setRationale] = useState("");
   const [imageHint, setImageHint] = useState("");
   const [imageFile, setImageFile] = useState<File | null>(null);
@@ -126,6 +126,14 @@ export function QuestionBuilderPage() {
     [drafts, selectedSetId]
   );
 
+  // code template → Code; theory / SYSTEM_DESIGN → Text (giống Studio). Computed
+  // once and reused by both the save payload and the preview badge, instead of
+  // repeating the same condition in two places that could drift apart.
+  const answerMethod: "Text" | "Code" = useMemo(
+    () => (contentMode === "code" && selectedTemplate !== "SYSTEM_DESIGN" ? "Code" : "Text"),
+    [contentMode, selectedTemplate]
+  );
+
   const effectiveSnippet = useMemo(() => {
     if (contentMode !== "code") return "";
     if (codeSnippet.trim()) return codeSnippet;
@@ -133,7 +141,10 @@ export function QuestionBuilderPage() {
     return DEFAULT_SNIPPETS[selectedTemplate as Exclude<StudioCodeTemplateId, "SYSTEM_DESIGN">] ?? "";
   }, [contentMode, codeSnippet, selectedTemplate]);
 
-  const rubricLines = useMemo(() => parseRubricLines(rubricText), [rubricText]);
+  const rubricLines = useMemo(
+    () => rubricDoc.criteria.map((c) => `[${c.weight}%] ${c.label}`),
+    [rubricDoc]
+  );
 
   const imageHintKey: StudioCodeTemplateId | "THEORY" =
     contentMode === "theory"
@@ -203,7 +214,7 @@ export function QuestionBuilderPage() {
     setSnippetLanguage("auto");
     setDiagramDescription("");
     setSampleAnswer("");
-    setRubricText("");
+    setRubricDoc(emptyRubric());
     setRationale("");
     setImageHint("");
     setSkill("");
@@ -218,6 +229,12 @@ export function QuestionBuilderPage() {
     if (localPreviewUrl) URL.revokeObjectURL(localPreviewUrl);
     setLocalPreviewUrl(URL.createObjectURL(file));
     setImageFile(file);
+  };
+
+  const onRemoveImage = () => {
+    if (localPreviewUrl) URL.revokeObjectURL(localPreviewUrl);
+    setLocalPreviewUrl(null);
+    setImageFile(null);
   };
 
   const onCreateSet = async () => {
@@ -284,18 +301,27 @@ export function QuestionBuilderPage() {
     }
     setSaving(true);
     try {
+      let doc = rubricDoc;
+      if (doc.criteria.length === 0) {
+        doc = {
+          ...emptyRubric(),
+          criteria: buildPresetCriteria(getPresetKey(questionType, contentMode)),
+        };
+      }
+      // rubricToApiPayload() is the same normalization prepareRubricForSave() uses
+      // internally before JSON.stringify — call it directly instead of stringifying
+      // then immediately re-parsing data that's already in memory.
+      const parsed: RubricV1 = rubricToApiPayload(doc);
       const created = await addQuestionSetQuestion(selectedSetId, {
         question: question.trim(),
         questionType,
         difficulty,
         skill: skill.trim() || undefined,
         focusArea: focusArea.trim() || undefined,
-        // Sample answer = đáp án thật — KHÔNG nhét snippet (parity Studio Save)
         sampleAnswer: sampleAnswer.trim() || undefined,
-        evaluationCriteria: rubricLines,
+        evaluationCriteria: parsed.criteria as unknown[],
         rationale: buildRationaleMeta(),
-        // SCRUM-400: contentMode code → Code; theory/system_design → Text
-        answerMethod: contentMode === "code" ? "Code" : "Text",
+        answerMethod,
         citations: [],
       });
       if (!created) {
@@ -515,8 +541,8 @@ export function QuestionBuilderPage() {
             onFocusAreaChange={setFocusArea}
             sampleAnswer={sampleAnswer}
             onSampleAnswerChange={setSampleAnswer}
-            rubricText={rubricText}
-            onRubricTextChange={setRubricText}
+            rubricDoc={rubricDoc}
+            onRubricDocChange={setRubricDoc}
             rationale={rationale}
             onRationaleChange={setRationale}
             imageHint={imageHint}
@@ -524,6 +550,8 @@ export function QuestionBuilderPage() {
             imageHintPlaceholder={DEFAULT_IMAGE_HINTS[imageHintKey]}
             imageFileName={imageFile?.name ?? null}
             onPickImage={onPickImage}
+            imagePreviewUrl={localPreviewUrl}
+            onRemoveImage={onRemoveImage}
             saving={saving}
             onSave={() => void onSave()}
           />
@@ -546,6 +574,8 @@ export function QuestionBuilderPage() {
             focusArea={focusArea}
             sampleAnswer={sampleAnswer}
             rubricLines={rubricLines}
+            rubricDoc={rubricDoc}
+            answerMethod={answerMethod}
             selectedSetTitle={selectedSet?.title ?? null}
           />
         </div>
