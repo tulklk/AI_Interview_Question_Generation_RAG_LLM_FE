@@ -4,6 +4,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useToast } from "@/shared/providers/toast-context";
 import { useLanguage } from "@/shared/providers/language-context";
 import { extractErrorMessage } from "@/core/interceptors/error.interceptor";
+import { isJdInputRejectError } from "@/features/studio/utils/jd-input-error";
+import { pollGenerationRun } from "@/features/studio/utils/poll-generation-run";
 import * as studioApi from "@/features/studio/services/studio.service";
 import type {
   AnalyzeJobDescriptionResponse,
@@ -24,6 +26,8 @@ import {
   type StudioCodeTemplateId,
 } from "@/features/studio/constants/question-templates";
 import { refineJdSummary } from "@/features/studio/utils/refine-jd-summary";
+import { buildApplyRecommendationPatch } from "@/features/studio/utils/ai-config-helpers";
+import { normalizeStudioSettings } from "@/features/studio/utils/normalize-studio-settings";
 
 const STUDIO_TASK_KEY = "studio_active_task";
 const STUDIO_ACTIVE_PROJECT_KEY = "studio_active_project_id";
@@ -66,9 +70,16 @@ export function useStudio() {
   const tx = t.studioPage.toasts;
   const [loading, setLoading] = useState(true);
   const [project, setProject] = useState<StudioProject | null>(null);
-  const [jdContent, setJdContent] = useState("");
+  const [jdContent, setJdContentState] = useState("");
   const [jdFileName, setJdFileName] = useState<string | null>(null);
+  /** SCRUM-432: cảnh báo vàng dưới paste/upload khi JD bị reject — không toast popup */
+  const [jdInputWarning, setJdInputWarning] = useState<string | null>(null);
   const [jdSummary, setJdSummary] = useState<AnalyzeJobDescriptionResponse | null>(null);
+
+  const setJdContent = useCallback((value: string) => {
+    setJdContentState(value);
+    setJdInputWarning(null);
+  }, []);
   const [documents, setDocuments] = useState<StudioDocument[]>([]);
   const [plans, setPlans] = useState<PlanSummary[]>([]);
   const [currentPlan, setCurrentPlan] = useState<PlanDetail | null>(null);
@@ -77,6 +88,9 @@ export function useStudio() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
   const [isApplyingSettings, setIsApplyingSettings] = useState(false);
+  const [isRecommendingConfig, setIsRecommendingConfig] = useState(false);
+  const [isApplyingRecommendation, setIsApplyingRecommendation] = useState(false);
+  const [isApplyingConfig, setIsApplyingConfig] = useState(false);
   const [generationRun, setGenerationRun] = useState<GenerationRun | null>(null);
   const [isGeneratingQuestions, setIsGeneratingQuestions] = useState(false);
   const [isSavingDraft, setIsSavingDraft] = useState(false);
@@ -127,43 +141,10 @@ export function useStudio() {
     else broadcastStudioTask(null);
   }, [isStreaming, isGeneratingQuestions, generationRun?.status, project?.id]);
 
-  const normalizeSettings = useCallback((s: StudioSettings | null): StudioSettings | null => {
-    if (!s) return null;
-    const minutes = Number(s.interviewLengthMinutes);
-    const questions = Number(s.numberOfQuestions);
-    // BE trả `language`; FE dùng `outputLanguage` — map cả hai
-    const rawLang =
-      (s as StudioSettings & { language?: string }).language
-      ?? s.outputLanguage
-      ?? "Vietnamese";
-    const outputLanguage =
-      /en(glish)?/i.test(String(rawLang)) && !/viet/i.test(String(rawLang))
-        ? "English"
-        : "Vietnamese";
-    const contentMode = (s.contentMode ?? "Mixed") as StudioContentMode;
-    const enabledCodeTemplates = Array.isArray(s.enabledCodeTemplates) && s.enabledCodeTemplates.length > 0
-      ? s.enabledCodeTemplates as StudioCodeTemplateId[]
-      : DEFAULT_ENABLED_CODE_TEMPLATES;
-    return {
-      ...s,
-      interviewLengthMinutes: Number.isFinite(minutes) && minutes >= 15 && minutes <= 180 ? minutes : 60,
-      numberOfQuestions: Number.isFinite(questions)
-        ? Math.min(50, Math.max(5, questions))
-        : 15,
-      difficulty: s.difficulty ?? "Medium",
-      questionTone: s.questionTone ?? "Professional",
-      includeSampleAnswers: s.includeSampleAnswers ?? true,
-      includeScoringRubric: s.includeScoringRubric ?? true,
-      outputFormat: s.outputFormat ?? "StructuredInterviewKit",
-      outputLanguage,
-      questionTypes:
-        Array.isArray(s.questionTypes) && s.questionTypes.length > 0
-          ? s.questionTypes
-          : ["technical", "system_design", "problem_solving", "behavioral"],
-      contentMode,
-      enabledCodeTemplates,
-    };
-  }, []);
+  const normalizeSettings = useCallback(
+    (s: StudioSettings | null) => normalizeStudioSettings(s),
+    []
+  );
 
   const bootstrap = useCallback(async () => {
     try {
@@ -226,9 +207,15 @@ export function useStudio() {
           detectedSeniority: null,
           detectedLanguage: null,
           skills: [],
+          position: null,
+        };
+        // SCRUM-416: ưu tiên position top-level từ GET, rồi summary.position
+        const withPosition: AnalyzeJobDescriptionResponse = {
+          ...baseSummary,
+          position: summary.position?.trim() || baseSummary.position || baseSummary.detectedRole || null,
         };
         const locale = lang === "en" ? "en" : "vi";
-        setJdSummary(refineJdSummary(summary.content ?? "", baseSummary, locale));
+        setJdSummary(refineJdSummary(summary.content ?? "", withPosition, locale));
       } else {
         setJdFileName(null);
         setJdSummary(null);
@@ -324,47 +311,132 @@ export function useStudio() {
 
   const saveJobDescription = useCallback(async () => {
     if (!project || !jdContent.trim()) return;
-    // P1b fix: wrap in try/catch so API errors produce an error toast instead of silence.
     try {
-      await studioApi.upsertJobDescription(project.id, jdContent, "PastedText");
-      const summary = await studioApi.analyzeJobDescription(project.id);
+      // SCRUM-432: PUT đã classify + extract — không gọi analyze lần 2
+      const summary = await studioApi.upsertJobDescription(project.id, jdContent, "PastedText");
       setJdFileName(null);
+      setJdInputWarning(null);
       const locale = lang === "en" ? "en" : "vi";
       setJdSummary(refineJdSummary(jdContent, summary, locale));
       addToast("success", tx.jdSaved);
       await refreshPlanAndSettings();
     } catch (error) {
-      addToast("error", extractErrorMessage(error, lang) || tx.jdSaveFailed);
+      const message = extractErrorMessage(error, lang) || tx.jdSaveFailed;
+      // Không phải JD / không phải IT → chữ vàng dưới ô nhập, không popup
+      if (isJdInputRejectError(error)) {
+        setJdInputWarning(message);
+        return;
+      }
+      setJdInputWarning(null);
+      addToast("error", message);
     }
   }, [addToast, jdContent, lang, project, refreshPlanAndSettings, tx.jdSaved, tx.jdSaveFailed]);
 
   const uploadJobDescription = useCallback(async (file: File): Promise<boolean> => {
     if (!project) return false;
-    // P1b fix: wrap in try/catch so upload errors produce an error toast instead
-    // of throwing. Returns a boolean (rather than rethrowing) so callers like
-    // sources-panel.tsx's handleJdFile can still tell success from failure.
     try {
       const result = await studioApi.uploadJobDescriptionFile(project.id, file);
-      setJdContent(result.content);
+      setJdContentState(result.content);
       setJdFileName(result.originalFileName ?? file.name);
+      setJdInputWarning(null);
       const locale = lang === "en" ? "en" : "vi";
       setJdSummary(refineJdSummary(result.content, result.summary, locale));
       addToast("success", tx.jdUploaded.replace("{{name}}", result.originalFileName ?? file.name));
       await refreshPlanAndSettings();
       return true;
     } catch (error) {
-      addToast("error", extractErrorMessage(error, lang) || tx.jdUploadFailed);
+      const message = extractErrorMessage(error, lang) || tx.jdUploadFailed;
+      if (isJdInputRejectError(error)) {
+        setJdInputWarning(message);
+        return false;
+      }
+      setJdInputWarning(null);
+      addToast("error", message);
       return false;
     }
   }, [addToast, lang, project, refreshPlanAndSettings, tx.jdUploadFailed, tx.jdUploaded]);
 
-  const uploadDocument = useCallback(async (file: File) => {
+  /** SCRUM-416: lưu vị trí HR sửa (PATCH Title trên BE). */
+  const saveJobDescriptionPosition = useCallback(async (position: string) => {
     if (!project) return;
-    const uploaded = await studioApi.uploadDocument(project.id, file, true);
+    const trimmed = position.trim();
+    if (!trimmed) {
+      addToast("error", tx.positionRequired);
+      return;
+    }
+    try {
+      const result = await studioApi.updateJobDescriptionPosition(project.id, trimmed);
+      setJdSummary((prev) => ({
+        detectedRole: result.detectedRole ?? prev?.detectedRole ?? null,
+        detectedSeniority: result.detectedSeniority ?? prev?.detectedSeniority ?? null,
+        detectedLanguage: result.detectedLanguage ?? prev?.detectedLanguage ?? null,
+        skills: result.skills?.length ? result.skills : (prev?.skills ?? []),
+        position: result.position?.trim() || trimmed,
+      }));
+      addToast("success", tx.positionSaved);
+    } catch (error) {
+      addToast("error", extractErrorMessage(error, lang) || tx.positionSaveFailed);
+    }
+  }, [addToast, lang, project, tx.positionRequired, tx.positionSaveFailed, tx.positionSaved]);
+
+  /** SCRUM-417: xác nhận Position + Level (+ Role / Skills) trước generate. */
+  const saveJobDescriptionMetadata = useCallback(async (payload: {
+    position: string;
+    detectedSeniority: string;
+    detectedRole?: string | null;
+    skills?: string[];
+  }) => {
+    if (!project) return;
+    const position = payload.position.trim();
+    const seniority = payload.detectedSeniority.trim();
+    if (!position) {
+      addToast("error", tx.positionRequired);
+      return;
+    }
+    if (!seniority) {
+      addToast("error", tx.seniorityRequiredForPlan);
+      return;
+    }
+    try {
+      const result = await studioApi.updateJobDescriptionMetadata(project.id, {
+        position,
+        detectedSeniority: seniority,
+        detectedRole: payload.detectedRole,
+        skills: payload.skills,
+      });
+      setJdSummary((prev) => ({
+        detectedRole: result.detectedRole ?? payload.detectedRole ?? prev?.detectedRole ?? null,
+        detectedSeniority: result.detectedSeniority ?? seniority,
+        // Metadata PATCH isn't responsible for language detection — keep whatever
+        // was previously detected instead of nulling it out when the response omits it.
+        detectedLanguage: result.detectedLanguage ?? prev?.detectedLanguage ?? null,
+        skills: result.skills ?? payload.skills ?? prev?.skills ?? [],
+        position: result.position?.trim() || position,
+        experienceLevel: result.experienceLevel ?? prev?.experienceLevel,
+        responsibilities: result.responsibilities ?? prev?.responsibilities,
+        summary: result.summary ?? prev?.summary,
+      }));
+      addToast("success", tx.metadataSaved);
+    } catch (error) {
+      addToast("error", extractErrorMessage(error, lang) || tx.metadataSaveFailed);
+    }
+  }, [
+    addToast,
+    lang,
+    project,
+    tx.metadataSaveFailed,
+    tx.metadataSaved,
+    tx.positionRequired,
+    tx.seniorityRequiredForPlan,
+  ]);
+
+  const uploadDocument = useCallback(async (file: File, documentType?: string) => {
+    if (!project) return;
+    const uploaded = await studioApi.uploadDocument(project.id, file, true, documentType);
     setDocuments((prev) => [uploaded, ...prev.filter((d) => d.id !== uploaded.id)]);
     await refreshPlanAndSettings();
     addToast("success", tx.docUploaded);
-  }, [addToast, project, refreshPlanAndSettings]);
+  }, [addToast, project, refreshPlanAndSettings, tx.docUploaded]);
 
   /** SCRUM-373: gắn doc từ Knowledge Documents đã upload */
   const attachLibraryDocuments = useCallback(async (knowledgeDocumentIds: string[]) => {
@@ -382,7 +454,27 @@ export function useStudio() {
       addToast("error", message);
       throw error;
     }
-  }, [addToast, project, refreshPlanAndSettings]);
+  }, [addToast, project, refreshPlanAndSettings, tx.kbAttachFailed, tx.kbAttached]);
+
+  /** SCRUM-443 */
+  const fetchKnowledgeSuggestions = useCallback(async () => {
+    if (!project) return [] as Awaited<ReturnType<typeof studioApi.suggestKnowledgeDocuments>>;
+    try {
+      return await studioApi.suggestKnowledgeDocuments(project.id);
+    } catch {
+      return [];
+    }
+  }, [project]);
+
+  /** SCRUM-444 */
+  const fetchRetrievePreview = useCallback(async (knowledgeDocumentId: string) => {
+    if (!project) return null;
+    try {
+      return await studioApi.retrieveKnowledgePreview(project.id, knowledgeDocumentId);
+    } catch {
+      return null;
+    }
+  }, [project]);
 
   const toggleDocument = useCallback(async (documentId: string, isSelected: boolean) => {
     if (!project) return;
@@ -398,6 +490,15 @@ export function useStudio() {
 
   const generateInitialPlan = useCallback(async () => {
     if (!project) return;
+    // SCRUM-416/417: chặn sớm nếu thiếu Position hoặc Level.
+    if (!jdSummary?.position?.trim()) {
+      addToast("error", tx.positionRequiredForPlan);
+      return;
+    }
+    if (!jdSummary?.detectedSeniority?.trim()) {
+      addToast("error", tx.seniorityRequiredForPlan);
+      return;
+    }
     setIsStreaming(true);
     try {
       setMessages((prev) => [
@@ -433,7 +534,17 @@ export function useStudio() {
     } finally {
       setIsStreaming(false);
     }
-  }, [addToast, project, refreshStudioState, lang, tx.planCreated]);
+  }, [
+    addToast,
+    jdSummary?.detectedSeniority,
+    jdSummary?.position,
+    project,
+    refreshStudioState,
+    lang,
+    tx.planCreated,
+    tx.positionRequiredForPlan,
+    tx.seniorityRequiredForPlan,
+  ]);
 
   const sendMessage = useCallback(async (message: string) => {
     // SCRUM-368: chat chỉ refine plan qua RAG — không SSE mock
@@ -619,21 +730,16 @@ export function useStudio() {
       setGenerationRun(run);
 
       // SCRUM-371: poll generation run tới Completed/Failed (RAG callback)
-      // P2a fix: check generateCancelledRef before each await so the loop exits
+      // P2a fix: cancellation is checked before each await so the loop exits
       // immediately when the user navigates away instead of running for 5 minutes.
-      const deadline = Date.now() + 5 * 60_000;
-      let latest = run;
-      while (Date.now() < deadline) {
-        if (latest.status === "Completed" || latest.status === "Failed" || latest.status === "Cancelled") break;
-        if (generateCancelledRef.current) return; // component unmounted — stop all state updates
-        await new Promise((r) => setTimeout(r, 2500));
-        if (generateCancelledRef.current) return;
-        latest = await studioApi.getGenerationRun(project.id, run.id);
-        if (generateCancelledRef.current) return;
-        setGenerationRun(latest);
-      }
-
-      if (generateCancelledRef.current) return;
+      const pollResult = await pollGenerationRun({
+        initialRun: run,
+        getGenerationRun: () => studioApi.getGenerationRun(project.id, run.id),
+        isCancelled: () => generateCancelledRef.current,
+        onTick: setGenerationRun,
+      });
+      if (pollResult.cancelled) return; // component unmounted — stop all state updates
+      const latest = pollResult.latest;
 
       if (latest.status === "Failed") {
         throw new Error(
@@ -692,14 +798,18 @@ export function useStudio() {
       interviewLengthMinutes: Number.isFinite(rawMinutes) ? Math.min(180, Math.max(15, rawMinutes)) : 60,
       numberOfQuestions: Number.isFinite(rawQuestions) ? Math.min(50, Math.max(5, rawQuestions)) : 15,
       difficulty: patch.difficulty ?? base.difficulty ?? "Medium",
-      questionTone: patch.questionTone ?? base.questionTone ?? "Professional",
+      // Tone/format đã bỏ khỏi UI — luôn gửi default cố định
+      questionTone: "Professional",
       includeSampleAnswers: patch.includeSampleAnswers ?? base.includeSampleAnswers ?? true,
       includeScoringRubric: patch.includeScoringRubric ?? base.includeScoringRubric ?? true,
-      outputFormat: patch.outputFormat ?? base.outputFormat ?? "StructuredInterviewKit",
+      outputFormat: "StructuredInterviewKit",
       outputLanguage: patch.outputLanguage ?? base.outputLanguage ?? "Vietnamese",
       questionTypes: patch.questionTypes ?? base.questionTypes ?? ["technical", "system_design", "problem_solving", "behavioral"],
       contentMode: patch.contentMode ?? base.contentMode ?? "Mixed",
       enabledCodeTemplates: patch.enabledCodeTemplates ?? base.enabledCodeTemplates ?? DEFAULT_ENABLED_CODE_TEMPLATES,
+      focusAreas: patch.focusAreas ?? base.focusAreas ?? [],
+      questionDistribution: patch.questionDistribution ?? base.questionDistribution ?? [],
+      questionStyles: patch.questionStyles ?? base.questionStyles ?? [],
     };
     // Optimistic update — reflect changes immediately in UI without waiting for API.
     // P2c fix: capture a version number so a slow first request's error rollback
@@ -728,8 +838,128 @@ export function useStudio() {
     }
   }, [addToast, lang, normalizeSettings, project, settings]);
 
-  const applySettingsToPlan = useCallback(async () => {
-    if (!project || !currentPlan || !settings) return;
+  const recommendConfiguration = useCallback(async () => {
+    if (!project) return null;
+    setIsRecommendingConfig(true);
+    try {
+      await studioApi.recommendInterviewConfiguration(project.id, {
+        numberOfQuestions: settingsRef.current?.numberOfQuestions ?? settings?.numberOfQuestions,
+      });
+      const updated = await studioApi.getSettings(project.id);
+      const normalized = normalizeSettings(updated);
+      settingsRef.current = normalized;
+      setSettings(normalized);
+      addToast("success", tx.recommendConfigDone);
+      return normalized?.recommendedConfiguration ?? null;
+    } catch (error) {
+      addToast("error", extractErrorMessage(error, lang));
+      return null;
+    } finally {
+      setIsRecommendingConfig(false);
+    }
+  }, [addToast, lang, normalizeSettings, project, settings?.numberOfQuestions, tx.recommendConfigDone]);
+
+
+  const applyConfiguration = useCallback(async (
+    patch: Partial<StudioSettings>,
+    successMessage?: string | false
+  ): Promise<boolean> => {
+    const base = settingsRef.current ?? settings;
+    if (!project || !base) return false;
+    setIsApplyingConfig(true);
+    try {
+      const payload = {
+        interviewLengthMinutes: patch.interviewLengthMinutes ?? base.interviewLengthMinutes,
+        numberOfQuestions: patch.numberOfQuestions ?? base.numberOfQuestions,
+        difficulty: patch.difficulty ?? base.difficulty,
+        questionTone: "Professional",
+        includeSampleAnswers: patch.includeSampleAnswers ?? base.includeSampleAnswers,
+        includeScoringRubric: patch.includeScoringRubric ?? base.includeScoringRubric,
+        outputFormat: "StructuredInterviewKit",
+        outputLanguage: patch.outputLanguage ?? base.outputLanguage,
+        questionTypes: patch.questionTypes ?? base.questionTypes,
+        contentMode: patch.contentMode ?? base.contentMode,
+        enabledCodeTemplates: patch.enabledCodeTemplates ?? base.enabledCodeTemplates,
+        focusAreas: patch.focusAreas ?? base.focusAreas ?? [],
+        questionDistribution: patch.questionDistribution ?? base.questionDistribution ?? [],
+        questionStyles: patch.questionStyles ?? base.questionStyles ?? [],
+      };
+      // Optimistic sync panel cơ bản (số câu / độ khó) ngay khi apply
+      const optimistic = { ...base, ...payload } as StudioSettings;
+      const optimisticNorm = normalizeSettings(optimistic) ?? optimistic;
+      settingsRef.current = optimisticNorm;
+      setSettings(optimisticNorm);
+
+      const updated = await studioApi.updateSettings(project.id, payload);
+      const normalized = normalizeSettings(updated);
+      if (normalized) {
+        settingsRef.current = normalized;
+        setSettings(normalized);
+      }
+      // successMessage === false → silent (flush trước tạo/duyệt plan)
+      if (successMessage !== false) {
+        addToast(
+          "success",
+          successMessage ?? t.studioPage.settings.config.configAppliedSuccess
+        );
+      }
+      return true;
+    } catch (error) {
+      settingsRef.current = base;
+      setSettings(base);
+      addToast("error", extractErrorMessage(error, lang));
+      return false;
+    } finally {
+      setIsApplyingConfig(false);
+    }
+  }, [addToast, lang, normalizeSettings, project, settings, t.studioPage.settings.config.configAppliedSuccess]);
+
+  const applyRecommendation = useCallback(async (): Promise<boolean> => {
+    const rec = settingsRef.current?.recommendedConfiguration ?? settings?.recommendedConfiguration;
+    if (!rec || !project) {
+      addToast("error", tx.recommendConfigMissing);
+      return false;
+    }
+    const base = settingsRef.current ?? settings;
+    if (!base) return false;
+
+    setIsApplyingRecommendation(true);
+    try {
+      const patch = buildApplyRecommendationPatch(rec);
+      return await applyConfiguration(
+        {
+          interviewLengthMinutes: base.interviewLengthMinutes,
+          numberOfQuestions: patch.numberOfQuestions ?? base.numberOfQuestions,
+          difficulty: patch.difficulty ?? base.difficulty,
+          questionTone: "Professional",
+          includeSampleAnswers: base.includeSampleAnswers,
+          includeScoringRubric: base.includeScoringRubric,
+          outputFormat: "StructuredInterviewKit",
+          outputLanguage: base.outputLanguage,
+          contentMode: base.contentMode,
+          questionTypes: patch.questionTypes ?? base.questionTypes,
+          enabledCodeTemplates: patch.enabledCodeTemplates ?? base.enabledCodeTemplates,
+          focusAreas: patch.focusAreas ?? [],
+          questionDistribution: patch.questionDistribution ?? [],
+          questionStyles: patch.questionStyles ?? [],
+        },
+        tx.recommendConfigApplied
+      );
+    } finally {
+      setIsApplyingRecommendation(false);
+    }
+  }, [
+    addToast,
+    applyConfiguration,
+    project,
+    settings,
+    tx.recommendConfigApplied,
+    tx.recommendConfigMissing,
+  ]);
+
+  const applySettingsToPlan = useCallback(async (outlineItems?: ApplyPlanSettingsPayload["outlineItems"]) => {
+    const live = settingsRef.current ?? settings;
+    if (!project || !currentPlan || !live) return;
     if (currentPlan.status === "Approved") {
       addToast("error", tx.planApprovedNoSettings);
       return;
@@ -738,13 +968,20 @@ export function useStudio() {
     setIsStreaming(true);
     try {
       const payload: ApplyPlanSettingsPayload = {
-        numberOfQuestions: settings.numberOfQuestions || 15,
-        difficulty: settings.difficulty || "Medium",
-        interviewLengthMinutes: settings.interviewLengthMinutes || 60,
+        numberOfQuestions: outlineItems?.length
+          ? outlineItems.length
+          : live.numberOfQuestions || 15,
+        difficulty: live.difficulty || "Medium",
+        interviewLengthMinutes: live.interviewLengthMinutes || 60,
         questionTypes:
-          settings.questionTypes?.length > 0
-            ? settings.questionTypes
+          live.questionTypes?.length > 0
+            ? live.questionTypes
             : ["technical", "system_design", "problem_solving", "behavioral"],
+        questionDistribution: live.questionDistribution,
+        focusAreas: live.focusAreas,
+        questionStyles: live.questionStyles,
+        codingTaskTypes: (live.enabledCodeTemplates ?? []).filter((t) => t !== "SYSTEM_DESIGN"),
+        outlineItems: outlineItems?.length ? outlineItems : undefined,
       };
       addToast("success", tx.applyingSettings);
       await studioApi.applyPlanSettings(project.id, currentPlan.id, payload);
@@ -756,7 +993,7 @@ export function useStudio() {
       setIsApplyingSettings(false);
       setIsStreaming(false);
     }
-  }, [addToast, currentPlan, project, refreshStudioState, settings]);
+  }, [addToast, currentPlan, lang, project, refreshStudioState, settings, tx.applyingSettings, tx.planApprovedNoSettings, tx.settingsApplied]);
 
   const saveDraftAction = useCallback(async () => {
     if (!project || isSavingDraft) return;
@@ -777,8 +1014,13 @@ export function useStudio() {
     }
   }, [addToast, isSavingDraft, project, lang, tx.draftSaveFailed, tx.draftSaved, tx.saved]);
 
-  const togglePublish = useCallback(async () => {
-    if (!project) return;
+  const togglePublish = useCallback(async (opts?: {
+    interviewQuestionIds?: string[];
+    timeLimitMinutes?: number | null;
+    autoRecommendEnabled?: boolean;
+    recommendationMinScore?: number;
+  }): Promise<boolean> => {
+    if (!project) return false;
     try {
       if (project.isPublished) {
         const abandoned = await studioApi.unpublishProject(project.id);
@@ -789,14 +1031,21 @@ export function useStudio() {
           abandoned > 0 ? `${tx.unpublished} Đã hủy ${abandoned} phiên đang làm.` : tx.unpublished
         );
       } else {
-        // BE auto-Save nếu chưa có set, rồi Publish
-        await studioApi.publishProject(project.id);
+        // SCRUM-439: BE Save subset + Publish + time limit + recommend
+        await studioApi.publishProject(project.id, {
+          interviewQuestionIds: opts?.interviewQuestionIds,
+          timeLimitMinutes: opts?.timeLimitMinutes ?? null,
+          autoRecommendEnabled: opts?.autoRecommendEnabled,
+          recommendationMinScore: opts?.recommendationMinScore,
+        });
         const updated = await studioApi.getProject(project.id);
         setProject(updated);
         addToast("success", tx.published);
       }
+      return true;
     } catch (error) {
       addToast("error", extractErrorMessage(error, lang));
+      return false;
     }
   }, [addToast, project, lang, tx.published, tx.unpublished]);
 
@@ -859,6 +1108,7 @@ export function useStudio() {
       jdContent,
       setJdContent,
       jdFileName,
+      jdInputWarning,
       jdSummary,
       documents,
       plans,
@@ -868,6 +1118,9 @@ export function useStudio() {
       messages,
       isStreaming,
       isApplyingSettings,
+      isRecommendingConfig,
+      isApplyingRecommendation,
+      isApplyingConfig,
       generationRun,
       isGeneratingQuestions,
       quotaExceeded,
@@ -875,9 +1128,13 @@ export function useStudio() {
       isSavingDraft,
       isDraftSaved,
       saveJobDescription,
+      saveJobDescriptionPosition,
+      saveJobDescriptionMetadata,
       uploadJobDescription,
       uploadDocument,
       attachLibraryDocuments,
+      fetchKnowledgeSuggestions,
+      fetchRetrievePreview,
       toggleDocument,
       generateInitialPlan,
       sendMessage,
@@ -885,6 +1142,9 @@ export function useStudio() {
       renameCurrentPlanTitle,
       refineCurrentPlan,
       applySettingsToPlan,
+      recommendConfiguration,
+      applyRecommendation,
+      applyConfiguration,
       generateQuestions,
       confirmReplaceQuestions,
       refreshGenerationStatus,
@@ -916,6 +1176,7 @@ export function useStudio() {
       isStreaming,
       jdContent,
       jdFileName,
+      jdInputWarning,
       jdSummary,
       loading,
       messages,
@@ -926,15 +1187,25 @@ export function useStudio() {
       refreshPlanAndSettings,
       refineCurrentPlan,
       applySettingsToPlan,
+      applyRecommendation,
+      applyConfiguration,
+      recommendConfiguration,
+      isApplyingRecommendation,
+      isApplyingConfig,
+      isRecommendingConfig,
       saveDraftAction,
       togglePublish,
       saveJobDescription,
+      saveJobDescriptionPosition,
+      saveJobDescriptionMetadata,
       sendMessage,
       settings,
       toggleDocument,
       updateSettingField,
       uploadDocument,
       attachLibraryDocuments,
+      fetchKnowledgeSuggestions,
+      fetchRetrievePreview,
       uploadJobDescription,
     ]
   );

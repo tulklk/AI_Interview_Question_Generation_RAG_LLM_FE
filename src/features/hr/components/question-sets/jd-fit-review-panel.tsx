@@ -6,6 +6,8 @@ import { cn } from "@/lib/cn";
 import { useLanguage } from "@/shared/providers/language-context";
 import { useToast } from "@/shared/providers/toast-context";
 import { portalHeading, portalInput, portalSubtext } from "@/shared/utils/portal-ui";
+import { useHrSubscription } from "@/features/hr/context/hr-subscription-context";
+import { getSubscriptionErrorCode } from "@/features/subscription/services/subscription.service";
 import {
   getQuestionSetJdFit,
   reviewQuestionSetJdFit,
@@ -34,12 +36,24 @@ const FLAG_CLASS: Record<JdFitFlag, string> = {
 interface JdFitReviewPanelProps {
   questionSetId: string;
   autoRun?: boolean;
+  /** Gọi sau khi gắn/thay JD thành công — parent cập nhật viewer. */
+  onJobDescriptionSaved?: (meta: {
+    content?: string | null;
+    sourceType?: "PastedText" | "UploadedFile";
+    fileName?: string | null;
+  }) => void;
 }
 
-export function JdFitReviewPanel({ questionSetId, autoRun = false }: JdFitReviewPanelProps) {
+export function JdFitReviewPanel({
+  questionSetId,
+  autoRun = false,
+  onJobDescriptionSaved,
+}: JdFitReviewPanelProps) {
   const { t, lang } = useLanguage();
   const p = t.reviewPage.jdFit;
+  const hs = t.hrSubscription;
   const { addToast } = useToast();
+  const { canGenerateNow, cooldownEndsAt, refresh: refreshSubscription } = useHrSubscription();
   const [open, setOpen] = useState(autoRun);
   const [loadingCache, setLoadingCache] = useState(true);
   const [running, setRunning] = useState(false);
@@ -79,19 +93,44 @@ export function JdFitReviewPanel({ questionSetId, autoRun = false }: JdFitReview
   }, [questionSetId, autoRun, applyEnvelope, p.failed]);
 
   const run = useCallback(async () => {
+    // SCRUM-445: đánh giá JD = 1 lượt HrGenerateSet (cùng túi tạo plan / regen).
+    if (!canGenerateNow) {
+      const timeStr = cooldownEndsAt
+        ? cooldownEndsAt.toLocaleString(lang === "vi" ? "vi-VN" : "en-US")
+        : "";
+      const body = hs.quotaExceededBody.replace("{{time}}", timeStr).replace(/<\/?strong>/g, "");
+      addToast("error", `${hs.quotaExceededTitle}. ${body}`);
+      return;
+    }
     setRunning(true);
     setError(null);
     try {
       const env = await reviewQuestionSetJdFit(questionSetId);
       applyEnvelope(env, true);
+      void refreshSubscription();
     } catch (e) {
+      const code = getSubscriptionErrorCode(e);
+      if (code === "COOLDOWN_ACTIVE" || code === "QUOTA_EXCEEDED") {
+        void refreshSubscription();
+      }
       const msg = e instanceof Error && e.message ? e.message : p.failed;
       setError(msg);
       addToast("error", msg);
     } finally {
       setRunning(false);
     }
-  }, [questionSetId, addToast, p.failed, applyEnvelope]);
+  }, [
+    questionSetId,
+    addToast,
+    p.failed,
+    applyEnvelope,
+    canGenerateNow,
+    cooldownEndsAt,
+    hs.quotaExceededBody,
+    hs.quotaExceededTitle,
+    lang,
+    refreshSubscription,
+  ]);
 
   const saveJd = useCallback(async () => {
     const text = jdText.trim();
@@ -106,6 +145,7 @@ export function JdFitReviewPanel({ questionSetId, autoRun = false }: JdFitReview
       setHasJobDescription(true);
       setShowJdForm(false);
       addToast("success", p.jdSaved);
+      onJobDescriptionSaved?.({ content: text, sourceType: "PastedText", fileName: null });
     } catch (e) {
       const msg = e instanceof Error && e.message ? e.message : p.jdSaveFailed;
       setError(msg);
@@ -113,7 +153,7 @@ export function JdFitReviewPanel({ questionSetId, autoRun = false }: JdFitReview
     } finally {
       setSavingJd(false);
     }
-  }, [jdText, questionSetId, addToast, p.jdRequired, p.jdSaved, p.jdSaveFailed]);
+  }, [jdText, questionSetId, addToast, p.jdRequired, p.jdSaved, p.jdSaveFailed, onJobDescriptionSaved]);
 
   async function onPickFile(file: File | undefined) {
     if (!file) return;
@@ -124,6 +164,8 @@ export function JdFitReviewPanel({ questionSetId, autoRun = false }: JdFitReview
       setHasJobDescription(true);
       setShowJdForm(false);
       addToast("success", p.jdSaved);
+      // Upload: refetch draft để lấy text + meta file từ BE
+      onJobDescriptionSaved?.({ content: null, sourceType: "UploadedFile", fileName: file.name });
     } catch (e) {
       const msg = e instanceof Error && e.message ? e.message : p.jdSaveFailed;
       setError(msg);
@@ -150,17 +192,18 @@ export function JdFitReviewPanel({ questionSetId, autoRun = false }: JdFitReview
     : null;
 
   return (
-    <div className="rounded-xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 p-5">
-      <div className="flex items-center justify-between gap-3">
-        <div>
+    <div className="rounded-xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 p-4 sm:p-5 lg:max-h-[calc(100vh-5.5rem)] lg:overflow-y-auto lg:overscroll-contain shadow-sm">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
           <p className={cn("text-sm font-semibold", portalHeading)}>{p.title}</p>
-          <p className={cn("text-xs mt-0.5", portalSubtext)}>{p.subtitle}</p>
+          <p className={cn("text-xs mt-0.5 leading-snug", portalSubtext)}>{p.subtitle}</p>
         </div>
         <button
           type="button"
           onClick={() => void run()}
-          disabled={running || loadingCache || savingJd || !hasJobDescription}
-          className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg text-[13px] font-semibold text-white hr-cta-btn disabled:opacity-50"
+          disabled={running || loadingCache || savingJd || !hasJobDescription || !canGenerateNow}
+          title={!canGenerateNow ? hs.quotaExceededTitle : undefined}
+          className="inline-flex items-center justify-center gap-1.5 h-9 px-3 rounded-lg text-[13px] font-semibold text-white hr-cta-btn disabled:opacity-50 shrink-0 w-full sm:w-auto"
         >
           {running ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
           {running ? p.running : review ? p.rerun : p.run}
@@ -173,9 +216,9 @@ export function JdFitReviewPanel({ questionSetId, autoRun = false }: JdFitReview
           <textarea
             value={jdText}
             onChange={(e) => setJdText(e.target.value)}
-            rows={6}
+            rows={5}
             placeholder={p.jdPastePlaceholder}
-            className={cn("w-full text-[13px] rounded-lg px-3 py-2", portalInput)}
+            className={cn("w-full text-[13px] rounded-lg px-3 py-2 resize-y min-h-[100px]", portalInput)}
             disabled={savingJd}
           />
           <div className="flex flex-wrap items-center gap-2">

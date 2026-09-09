@@ -27,6 +27,7 @@ import {
   type UpgradePaymentIntent,
 } from "@/features/subscription/services/subscription.service";
 import { getHrPaymentHistory } from "@/features/hr/services/hr-billing.service";
+import { HrUsagePanel } from "@/features/settings/components/hr-usage-panel";
 import type { PaymentHistoryItem } from "@/features/candidate/types/billing";
 import {
   portalCard,
@@ -321,7 +322,7 @@ export function HrBillingSubscription() {
             <div className="mb-3">
               <div className="flex items-center justify-between mb-1.5">
                 <p className="text-white/90 text-xs">
-                  {lang === "vi" ? "Lượt tạo bộ câu hỏi hôm nay" : "Question set generations today"}
+                  {lang === "vi" ? "Lượt tạo bộ / đánh giá JD (24h)" : "Create set / JD review (24h)"}
                 </p>
                 <p className="text-white text-sm font-bold tabular-nums">
                   {generateWindowUsed}
@@ -352,7 +353,7 @@ export function HrBillingSubscription() {
               )}
               {canGenerateNow && (
                 <p className="text-emerald-200 text-[11px] mt-1">
-                  {lang === "vi" ? "✓ Sẵn sàng tạo bộ câu hỏi" : "✓ Ready to generate"}
+                  {lang === "vi" ? "✓ Sẵn sàng dùng AI" : "✓ Ready for AI uses"}
                 </p>
               )}
             </div>
@@ -382,6 +383,8 @@ export function HrBillingSubscription() {
           </button>
         </div>
       </div>
+
+      <HrUsagePanel />
 
       {!canGenerateNow && cooldownEndsAt && (
         <div className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40 px-4 py-3 text-sm text-amber-950 dark:text-amber-200">
