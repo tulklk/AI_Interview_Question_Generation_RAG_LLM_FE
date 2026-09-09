@@ -53,13 +53,19 @@ describe("MQ — Question Builder", () => {
     expect(screen.getByRole("button", { name: "Save & add next" })).toBeInTheDocument();
   });
 
-  test("MQ002: with no DRAFT sets, the create-set form opens automatically and the composer is disabled", async () => {
+  test("MQ002: with no DRAFT sets, the create-set form opens automatically and the composer shows its no-set empty state", async () => {
+    // question-builder-composer.tsx no longer renders a disabled textarea
+    // when no set is selected — its `disabled` prop now short-circuits to a
+    // whole empty-state card instead ("Chưa chọn bộ → hiện empty state thay
+    // vì hàng loạt input bị mờ").
     mockQuestionSets([]);
     renderWithProviders(<QuestionBuilderPage />);
 
     expect(await screen.findByText("No DRAFT sets yet. Create one above to start.", {}, { timeout: 10000 })).toBeInTheDocument();
     expect(screen.getByPlaceholderText("Set name (e.g. Backend Mid-level)")).toBeInTheDocument();
-    expect(screen.getByPlaceholderText("Select or create a question set before composing...")).toBeDisabled();
+    expect(screen.getByText("No question set selected")).toBeInTheDocument();
+    expect(screen.getByText("Pick a DRAFT set on the left, or create a new one to start composing.")).toBeInTheDocument();
+    expect(screen.queryByPlaceholderText("Enter question content...")).not.toBeInTheDocument();
   });
 
   test("MQ003: creating a new set posts the trimmed title/description and selects it", async () => {
@@ -93,14 +99,20 @@ describe("MQ — Question Builder", () => {
     expect(interviewApi.createManualDraftQuestionSet).not.toHaveBeenCalled();
   });
 
-  test("MQ005: saving with an empty question is rejected with no request sent", async () => {
+  test("MQ005: the Save button stays disabled for an empty question, so no request is ever sent", async () => {
+    // question-builder-composer.tsx now proactively disables "Save & add
+    // next" via `disabled={saving || !hasQuestion}` — onSave's own
+    // toastQuestionRequired guard (question-builder-page.tsx) is unreachable
+    // through a real click since userEvent no-ops on a disabled button.
     mockQuestionSets();
     const user = userEvent.setup();
     renderWithProviders(<QuestionBuilderPage />);
 
-    await user.click(await screen.findByRole("button", { name: "Save & add next" }, { timeout: 10000 }));
+    const saveBtn = await screen.findByRole("button", { name: "Save & add next" }, { timeout: 10000 });
+    expect(saveBtn).toBeDisabled();
+    await user.click(saveBtn);
 
-    expect(await screen.findByText("Please enter the question content.", {}, { timeout: 10000 })).toBeInTheDocument();
+    expect(screen.queryByText("Please enter the question content.")).not.toBeInTheDocument();
     expect(interviewApi.addQuestionSetQuestion).not.toHaveBeenCalled();
   });
 
@@ -123,7 +135,12 @@ describe("MQ — Question Builder", () => {
     await user.type(screen.getByPlaceholderText("e.g. React, SQL, Redis"), "JavaScript");
     await user.type(screen.getByPlaceholderText("e.g. Frontend, Database"), "Frontend");
     await user.type(screen.getByPlaceholderText(/Sample answer for HR/), "A closure is a function bundled with its lexical scope.");
-    await user.type(screen.getByPlaceholderText(/One criterion per line/), "Mentions lexical scope\nGives a concrete example");
+    // Rubric editing is now the shared RubricEditor (criteria + weight +
+    // anchors, shared/rubric/components/rubric-editor.tsx) rather than a
+    // raw "one criterion per line" textarea — left untouched here, since
+    // question-builder-page.tsx's onSave auto-fills a preset rubric
+    // (buildPresetCriteria) whenever rubricDoc.criteria is still empty at
+    // save time.
 
     await user.click(screen.getByRole("button", { name: "Save & add next" }));
 
@@ -135,9 +152,13 @@ describe("MQ — Question Builder", () => {
       skill: "JavaScript",
       focusArea: "Frontend",
       sampleAnswer: "A closure is a function bundled with its lexical scope.",
-      evaluationCriteria: ["Mentions lexical scope", "Gives a concrete example"],
       answerMethod: "Code",
     });
+    // The auto-filled preset rubric — assert its shape (a valid, weight-summing
+    // criteria list) rather than its exact (Vietnamese, preset-defined) label text.
+    const criteria = (saveBody as unknown as { evaluationCriteria: { label: string; weight: number }[] }).evaluationCriteria;
+    expect(criteria.length).toBeGreaterThan(0);
+    expect(criteria.reduce((sum, c) => sum + c.weight, 0)).toBe(100);
 
     expect(screen.getByPlaceholderText("Enter question content...")).toHaveValue("");
     expect(screen.getByText("Added this session", { exact: true })).toBeInTheDocument();

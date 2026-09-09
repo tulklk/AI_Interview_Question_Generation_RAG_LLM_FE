@@ -123,7 +123,9 @@ describe("citation-display.ts", () => {
 
   test("citationsForDisplay injects a synthetic JD row (empty excerpt) when none is present", () => {
     const result = citationsForDisplay([{ sourceFile: "handbook.pdf", chunkIndex: 0, excerpt: "a" }]);
-    expect(result[0]).toEqual({ sourceFile: "job-description", chunkIndex: 0, excerpt: null });
+    // The synthetic JD row is now tagged with its origin ("HR") — an addition
+    // alongside citation-source labeling elsewhere in the Studio UI.
+    expect(result[0]).toEqual({ sourceFile: "job-description", chunkIndex: 0, excerpt: null, origin: "HR" });
     expect(result).toHaveLength(2);
   });
 

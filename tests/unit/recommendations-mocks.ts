@@ -1,8 +1,17 @@
 import { vi } from "vitest";
-import { isCandidateAccepted } from "@/features/hr/services/recommendation.service";
 import type { CandidateRecommendation } from "@/features/hr/services/recommendation.service";
 
-export function recommendationServiceMockFactory() {
+// NO static import of anything from recommendation.service here — see
+// candidate-service-mocks.ts's header comment: a vi.mock() factory does
+// `await import(this file)`, so a top-level import back into the very module
+// being mocked resolves circularly and hangs vitest (this file did exactly
+// that with `isCandidateAccepted` before). Use vi.importActual inside the
+// factory instead, which explicitly bypasses the mock registry.
+
+export async function recommendationServiceMockFactory() {
+  const actual = await vi.importActual<typeof import("@/features/hr/services/recommendation.service")>(
+    "@/features/hr/services/recommendation.service"
+  );
   return {
     listRecommendations: vi.fn(),
     shortlistRecommendation: vi.fn(),
@@ -13,7 +22,7 @@ export function recommendationServiceMockFactory() {
     // Pure business logic (no API call) — keep the real implementation instead
     // of stubbing it, since recommendations-list.tsx calls it directly to
     // decide whether to show the "accepted" badge.
-    isCandidateAccepted,
+    isCandidateAccepted: actual.isCandidateAccepted,
   };
 }
 

@@ -137,7 +137,7 @@ describe("HR Dashboard — KPIs and sections", () => {
       } as never);
       renderStudio(<HrDashboard />);
 
-      expect(await findFirstText("Failed to load dashboard data.")).toBeInTheDocument();
+      expect(await findFirstText("Failed to load data.")).toBeInTheDocument();
       expect(await findFirstText("Fallback Candidate")).toBeInTheDocument();
     },
     15000

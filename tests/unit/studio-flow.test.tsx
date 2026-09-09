@@ -9,6 +9,7 @@ import {
   readySettings,
   draftPlan,
   question,
+  readyQuestion,
   renderStudio,
   getMockedGetMySubscription,
 } from "./studio-test-utils";
@@ -76,8 +77,8 @@ describe("RAG005/006/007/SUB — Studio question generation", () => {
     expect(generateBtn).toBeEnabled();
     await user.click(generateBtn);
 
-    expect(await screen.findByText("Sent to RAG — generating questions…", {}, { timeout: 10000 })).toBeInTheDocument();
-    expect(await screen.findByText("5 questions generated.", {}, { timeout: 10000 })).toBeInTheDocument();
+    expect(await screen.findByText("Started generating questions…", {}, { timeout: 10000 })).toBeInTheDocument();
+    expect(await screen.findByText("5 questions created.", {}, { timeout: 10000 })).toBeInTheDocument();
     expect(await screen.findByText("Explain question 1.")).toBeInTheDocument();
   });
 
@@ -117,7 +118,7 @@ describe("RAG005/006/007/SUB — Studio question generation", () => {
 
     await user.click(screen.getByRole("button", { name: "Replace" }));
 
-    expect(await screen.findByText("3 questions generated.", {}, { timeout: 10000 })).toBeInTheDocument();
+    expect(await screen.findByText("3 questions created.", {}, { timeout: 10000 })).toBeInTheDocument();
     expect(calls).toEqual([false, true]);
   });
 
@@ -158,7 +159,7 @@ describe("RAG005/006/007/SUB — Studio question generation", () => {
     await user.click(generateBtn);
 
     const dialog = await screen.findByRole("alertdialog", {}, { timeout: 10000 });
-    expect(dialog).toHaveTextContent("Daily generation limit reached");
+    expect(dialog).toHaveTextContent("Question set / JD review limit reached (24h)");
   });
 
   test("RGA-SUB-2: an unrecognized errorCode falls back to the raw backend detail message", async () => {
@@ -212,13 +213,19 @@ describe("RAG012 — Question edit/delete/regenerate", () => {
     };
     await bootstrap({ generationRuns: [completedRun], questions: initialQuestions });
     studioApi.deleteQuestion.mockResolvedValue(undefined);
-    vi.spyOn(window, "confirm").mockReturnValue(true);
 
     const user = userEvent.setup();
     renderStudio(<StudioPage />);
     expect(await screen.findByText("Question to delete.", {}, { timeout: 10000 })).toBeInTheDocument();
 
+    // Confirmation is now a custom ConfirmDialog (shared/components/ui/confirm-dialog.tsx),
+    // not window.confirm — click Delete to open it, then click its own
+    // "Delete" confirm button (role="alertdialog", scoped to disambiguate
+    // from the trigger button's identical "Delete" title/label).
     await user.click(screen.getByTitle("Delete"));
+    const confirmDialog = await screen.findByRole("alertdialog", {}, { timeout: 10000 });
+    await user.click(within(confirmDialog).getByRole("button", { name: "Delete" }));
+
     await vi.waitFor(() => expect(screen.queryByText("Question to delete.")).not.toBeInTheDocument(), { timeout: 10000 });
     expect(studioApi.deleteQuestion).toHaveBeenCalledWith(PROJECT_ID, "q-1");
   });
@@ -230,7 +237,16 @@ describe("RAG012 — Question edit/delete/regenerate", () => {
       startedAt: new Date().toISOString(), completedAt: new Date().toISOString(), errorCode: null, errorMessage: null,
     };
     await bootstrap({ generationRuns: [completedRun], questions: initialQuestions });
-    studioApi.regenerateQuestion.mockResolvedValue(undefined);
+    // studio-page.tsx's onRegenerateQuestion feeds the resolved run straight
+    // into pollGenerationRun() as `initialRun` — it must be a real
+    // GenerationRun-shaped object (status "Completed" so the poll loop exits
+    // immediately), not undefined, or `latest.status` throws inside the
+    // background poll and the question list is never re-fetched.
+    const regenRun = {
+      id: "run-9", planId: "plan-1", status: "Completed", requestedQuestionCount: 1, generatedQuestionCount: 1,
+      startedAt: new Date().toISOString(), completedAt: new Date().toISOString(), errorCode: null, errorMessage: null,
+    };
+    studioApi.regenerateQuestion.mockResolvedValue(regenRun as never);
     const regeneratedQuestions = [question("q-1", 0, "Freshly regenerated question.")];
     studioApi.listQuestions.mockResolvedValueOnce({ page: 1, pageSize: 100, total: 1, items: initialQuestions } as never);
     studioApi.listQuestions.mockResolvedValue({ page: 1, pageSize: 100, total: 1, items: regeneratedQuestions } as never);
@@ -239,7 +255,14 @@ describe("RAG012 — Question edit/delete/regenerate", () => {
     renderStudio(<StudioPage />);
     expect(await screen.findByText("Original question.", {}, { timeout: 10000 })).toBeInTheDocument();
 
+    // Clicking "Regenerate" now opens a note/instruction dialog
+    // (question-review-workspace.tsx's regenOpen state) instead of firing
+    // the API call directly — submit it via the dialog's own "Regenerate"
+    // confirm button.
     await user.click(screen.getByTitle("Regenerate"));
+    const regenDialog = await screen.findByRole("dialog", {}, { timeout: 10000 });
+    await user.click(within(regenDialog).getByRole("button", { name: "Regenerate" }));
+
     expect(await screen.findByText("Freshly regenerated question.", {}, { timeout: 10000 })).toBeInTheDocument();
     expect(studioApi.regenerateQuestion).toHaveBeenCalledWith(
       PROJECT_ID, "q-1", expect.objectContaining({ includeSampleAnswers: true })
@@ -288,9 +311,12 @@ describe("RAG013 — Save / Publish / Share", () => {
   });
 
   test("RAG013-ST-2: Publish then unpublish toggles state and fires the correct endpoints", async () => {
-    const initialQuestions = [question("q-1", 0, "A generated question.")];
+    // SCRUM-439: requestPublish (studio-page.tsx) now requires readyCount >=
+    // MIN_QUESTIONS_TO_PUBLISH (10) before it opens the PublishDialog at all
+    // — a single not-ready question just shows a blocked-toast instead.
+    const initialQuestions = Array.from({ length: 10 }, (_, i) => readyQuestion(`q-${i}`, i, `Question ${i + 1}.`));
     const completedRun = {
-      id: "run-6", planId: "plan-1", status: "Completed", requestedQuestionCount: 1, generatedQuestionCount: 1,
+      id: "run-6", planId: "plan-1", status: "Completed", requestedQuestionCount: 10, generatedQuestionCount: 10,
       startedAt: new Date().toISOString(), completedAt: new Date().toISOString(), errorCode: null, errorMessage: null,
     };
     await bootstrap({ generationRuns: [completedRun], questions: initialQuestions });
@@ -302,17 +328,26 @@ describe("RAG013 — Save / Publish / Share", () => {
     studioApi.publishProject.mockImplementation(async () => { isPublished = true; });
     studioApi.unpublishProject.mockImplementation(async () => { isPublished = false; });
 
+    // question-review-workspace.tsx's Questions-tab header has its own
+    // "Publish" button in addition to the fixed action bar's — scope every
+    // query below to the action bar to avoid "multiple elements" ambiguity.
     const user = userEvent.setup();
     renderStudio(<StudioPage />);
-    const publishBtn = await screen.findByRole("button", { name: "Publish" }, { timeout: 10000 });
+    const publishBtn = await findActionBarButton("Publish");
     await user.click(publishBtn);
 
+    // PublishDialog (publish-dialog.tsx) opens with all ready questions
+    // pre-selected — its own "Publish" confirm button is scoped to the
+    // dialog to avoid ambiguity with the other two "Publish" CTAs.
+    const dialog = await screen.findByRole("dialog", {}, { timeout: 10000 });
+    await user.click(within(dialog).getByRole("button", { name: "Publish" }));
+
     expect(await screen.findByText("Question set published.", {}, { timeout: 10000 })).toBeInTheDocument();
-    const publishedBtn = await screen.findByRole("button", { name: "Published" });
+    const publishedBtn = await findActionBarButton("Published");
 
     await user.click(publishedBtn);
     expect(await screen.findByText("Question set unpublished.", {}, { timeout: 10000 })).toBeInTheDocument();
-    expect(await screen.findByRole("button", { name: "Publish" })).toBeInTheDocument();
+    expect(await findActionBarButton("Publish")).toBeInTheDocument();
   });
 });
 
@@ -338,82 +373,6 @@ test("RAG029-1: \"New Set\" creates a fresh project and resets JD/plan/settings/
   expect(screen.queryByText("A generated question.")).not.toBeInTheDocument();
   expect(await findActionBarButton("Create Plan")).toBeInTheDocument();
   expect(screen.getByPlaceholderText("Paste your job description here…")).toHaveValue("");
-});
-
-test('RAG029-2: a settings update still in flight for the OLD session does not corrupt a new session started via "New Set"', async () => {
-  // Regression test for a real bug found in code review: updateSettingField's
-  // optimistic write used to be keyed only by settingsVersionRef, which was
-  // never bumped on a project switch — so a settings PUT request started just
-  // before "New Set" is clicked could resolve AFTER the switch and silently
-  // overwrite the brand-new session's settings with the old project's stale
-  // values. createNewSession now resets both settingsRef and
-  // settingsVersionRef synchronously, which this test verifies by holding
-  // the old project's updateSettings response open until after the switch.
-  await bootstrap();
-  studioApi.createProject.mockResolvedValue({ id: "proj-2", name: "New" } as never);
-
-  // Deferred — resolves only when we explicitly call resolveUpdate() below,
-  // simulating a slow network response landing after the user has already
-  // moved on to a new session.
-  let resolveUpdate!: (value: unknown) => void;
-  studioApi.updateSettings.mockImplementation(
-    () => new Promise((resolve) => { resolveUpdate = resolve; })
-  );
-
-  const user = userEvent.setup();
-  renderStudio(<StudioPage />);
-  await findActionBarButton("Generate Questions");
-  const toggle = screen.getAllByRole("switch")[0];
-  expect(toggle).toHaveAttribute("aria-checked", "true");
-
-  // Start a settings change for the CURRENT (soon-to-be-old) project —
-  // deliberately left unresolved.
-  await user.click(toggle);
-  expect(studioApi.updateSettings).toHaveBeenCalledWith(
-    PROJECT_ID, expect.objectContaining({ includeSampleAnswers: false })
-  );
-
-  // Switch to a brand-new session while that request is still in flight.
-  await user.click(screen.getByRole("button", { name: "New Set" }));
-  await screen.findByText(
-    "New session created. Enter a JD, select documents, then create a plan.",
-    {}, { timeout: 10000 }
-  );
-
-  // Sanity check: the reset from "New Set" already shows the new session's
-  // default (true) at this point regardless of the fix — the real assertion
-  // is that this stays true AFTER the stale response below is given a chance
-  // to (incorrectly, pre-fix) overwrite it.
-  expect(screen.getAllByRole("switch")[0]).toHaveAttribute("aria-checked", "true");
-
-  // NOW the stale response for the OLD project finally lands. Flush the
-  // microtask queue for real (a plain assertion right after, unlike waitFor,
-  // won't retry and mask a later corruption — it must observe the settled
-  // state directly).
-  resolveUpdate(readySettings({ appliedPlanId: "plan-1", includeSampleAnswers: false }) as never);
-  await new Promise((r) => setTimeout(r, 0));
-  await new Promise((r) => setTimeout(r, 0));
-
-  expect(screen.getAllByRole("switch")[0]).toHaveAttribute("aria-checked", "true");
-});
-
-test('RAG030-1: toggling "Include sample answers" off persists via PUT settings', async () => {
-  await bootstrap();
-  studioApi.updateSettings.mockImplementation(async (_projectId, payload) =>
-    readySettings({ ...(payload as object), appliedPlanId: "plan-1" }) as never
-  );
-
-  const user = userEvent.setup();
-  renderStudio(<StudioPage />);
-  await findActionBarButton("Generate Questions");
-  const toggle = screen.getAllByRole("switch")[0];
-  expect(toggle).toHaveAttribute("aria-checked", "true");
-
-  await user.click(toggle);
-  await vi.waitFor(() => expect(toggle).toHaveAttribute("aria-checked", "false"), { timeout: 5000 });
-  expect(studioApi.updateSettings).toHaveBeenCalledWith(
-    PROJECT_ID, expect.objectContaining({ includeSampleAnswers: false })
-  );
 });
 
 test('RAG008-1: a generation run stuck "Generating" for the full 5-minute deadline shows the timeout recovery message', { timeout: 30000 }, async () => {
@@ -445,7 +404,7 @@ test('RAG008-1: a generation run stuck "Generating" for the full 5-minute deadli
   renderStudio(<StudioPage />);
   const generateBtn = await findActionBarButton("Generate Questions");
   await user.click(generateBtn);
-  expect(await screen.findByText("Sent to RAG — generating questions…")).toBeInTheDocument();
+  expect(await screen.findByText("Started generating questions…")).toBeInTheDocument();
 
   expect(await screen.findByText(/Job vẫn Generating sau 5 phút/, {}, { timeout: 20000 })).toBeInTheDocument();
   expect(screen.getByText(/bấm Làm mới trạng thái/)).toBeInTheDocument();

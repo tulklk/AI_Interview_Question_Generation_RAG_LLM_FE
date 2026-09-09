@@ -70,12 +70,18 @@ describe("RAG003/RAG004/RAG034 — Studio Sources panel", () => {
       questions: [{ id: "q-1", content: "Explain REST vs GraphQL.", difficulty: "Medium", type: "Technical", orderIndex: 0, expectedAnswer: null, scoringRubric: null }],
       generationRuns: [{ id: "run-1", planId: "plan-1", status: "Completed", requestedQuestionCount: 1, generatedQuestionCount: 1, startedAt: new Date().toISOString(), completedAt: new Date().toISOString(), errorCode: null, errorMessage: null }],
     });
+    const user = userEvent.setup();
     renderStudio(<StudioPage />);
     expect(await screen.findByText("Explain REST vs GraphQL.", {}, { timeout: 10000 })).toBeInTheDocument();
 
-    const jdTextarea = screen.getByPlaceholderText("Paste your job description here…");
+    // SCRUM-431: once a plan exists, the Sources (and Inspector) column
+    // auto-collapses to a thin sidebar button on mount (studio-page.tsx's
+    // planCollapseDoneRef effect) — expand it first to reach the JD field.
+    await user.click(screen.getByRole("button", { name: "View input sources" }));
+
+    const jdTextarea = await screen.findByPlaceholderText("Paste your job description here…");
     expect(jdTextarea).toBeDisabled();
-    expect(document.querySelector("div[title='Locked — click New Set to edit Sources']")).toBeInTheDocument();
+    expect(document.querySelector("div[title='Locked — a plan exists. Click New Set to edit Sources']")).toBeInTheDocument();
   });
 
   test("RAG004-2: before any questions exist, the Sources panel is fully editable (no lock overlay)", async () => {
@@ -168,16 +174,15 @@ describe("RAG003/RAG004/RAG034 — Studio Sources panel", () => {
       expect(studioApi.uploadJobDescriptionFile).toHaveBeenCalledWith(expect.any(String), file);
     });
 
-    test('RAG002-2 (finding): the .pdf/.docx/.txt/.jpg/.jpeg/.png restriction is only the file input\'s "accept" attribute — nothing in the app rejects a disallowed file type before forwarding it to the upload service', async () => {
-      // userEvent.upload() itself respects the input's accept attribute and
-      // silently no-ops for a mismatched type, so a fireEvent.change bypass
-      // (exactly what a raw drag-and-drop drop event would also do — drops
-      // are never filtered by `accept`) is needed to prove there's no
-      // additional client-side type check backing the accept attribute.
+    test('RAG002-2: a disallowed file extension is now rejected client-side (sources-panel.tsx\'s JD_VALID_EXTS check) before ever reaching the upload service', async () => {
+      // Previously (this test's original premise) the .pdf/.docx/.txt/.jpg/
+      // .jpeg/.png restriction was only the file input's "accept" attribute,
+      // with nothing backing it — handleJdFile() now runs JD_VALID_EXTS.test()
+      // first and shows an error toast instead of uploading. A fireEvent.change
+      // bypass (exactly what a raw drag-and-drop drop event would also do —
+      // drops are never filtered by `accept`) is still used to prove the
+      // rejection is a real content check, not just the input's accept filter.
       bootstrapStudio(studioApi, { hasJd: false });
-      studioApi.uploadJobDescriptionFile.mockResolvedValue({
-        content: "whatever", originalFileName: "malware.exe", summary: { detectedRole: null, skills: [] },
-      } as never);
       const user = userEvent.setup();
       renderStudio(<StudioPage />);
       await screen.findByPlaceholderText("Paste your job description here…", {}, { timeout: 10000 });
@@ -187,7 +192,8 @@ describe("RAG003/RAG004/RAG034 — Studio Sources panel", () => {
       const disallowedFile = new File(["MZ\x90\x00"], "malware.exe", { type: "application/x-msdownload" });
       fireEvent.change(fileInput, { target: { files: [disallowedFile] } });
 
-      await vi.waitFor(() => expect(studioApi.uploadJobDescriptionFile).toHaveBeenCalledWith(expect.any(String), disallowedFile));
+      expect(await screen.findByText("Only PDF, DOCX, TXT, JPG and PNG files are supported.")).toBeInTheDocument();
+      expect(studioApi.uploadJobDescriptionFile).not.toHaveBeenCalled();
     });
 
     test(

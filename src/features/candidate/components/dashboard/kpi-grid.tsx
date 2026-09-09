@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import { BarChart2, Clock, Flame, TrendingUp } from "lucide-react";
 import { motion } from "framer-motion";
 import { KpiCard } from "@/features/candidate/components/dashboard/kpi-card";
@@ -29,65 +30,87 @@ export function KpiGrid({ loading, filteredStats, streakDays, sessionsLast7Days,
       ? undefined
       : fillTemplate(scoreTrend.direction === "down" ? k.trendDown : k.trendUp, { pct: String(Math.abs(scoreTrend.deltaPct)) });
 
-  const kpiCards = [
-    {
-      loading,
-      icon: BarChart2,
-      iconBg: "bg-emerald-100 dark:bg-emerald-950/50",
-      iconColor: "text-emerald-600 dark:text-emerald-400",
-      label: k.sessions.label,
-      tooltip: k.sessions.tooltip,
-      value: filteredStats.totalSessions.toString(),
-      countUp: { value: filteredStats.totalSessions },
-      sparklineData: sessionCountSparkline,
-      sparklineColor: "#10B981",
-      trendLabel: sessionsLast7Days > 0 ? fillTemplate(k.weeklyTrend, { count: String(sessionsLast7Days) }) : undefined,
-      trendDirection: (sessionsLast7Days > 0 ? "up" : "flat") as "up" | "flat",
-    },
-    {
-      loading,
-      icon: TrendingUp,
-      iconBg: "bg-violet-100 dark:bg-violet-950/50",
-      iconColor: "text-violet-600 dark:text-violet-400",
-      label: k.averageScore.label,
-      tooltip: k.averageScore.tooltip,
-      value: filteredStats.averageScore !== null ? `${filteredStats.averageScore}%` : "—",
-      countUp: filteredStats.averageScore !== null
-        ? { value: filteredStats.averageScore, suffix: "%" as const, decimals: 1 }
-        : undefined,
-      sparklineData: sessionsSparkline,
-      sparklineColor: "#7C3AED",
-      trendLabel,
-      trendDirection: scoreTrend.direction,
-    },
-    {
-      loading,
-      icon: Flame,
-      iconBg: "bg-amber-100 dark:bg-amber-950/50",
-      iconColor: "text-amber-600 dark:text-amber-400",
-      label: k.streak.label,
-      tooltip: k.streak.tooltip,
-      value: `${streakDays}`,
-      countUp: { value: streakDays },
-      sparklineData: streakSparkline,
-      sparklineColor: "#F59E0B",
-    },
-    {
-      loading,
-      icon: Clock,
-      iconBg: "bg-blue-100 dark:bg-blue-950/50",
-      iconColor: "text-blue-600 dark:text-blue-400",
-      label: k.totalDuration.label,
-      tooltip: k.totalDuration.tooltip,
-      value: formatDuration(filteredStats.totalDurationMinutes, lang),
-      countUp: {
-        value: filteredStats.totalDurationMinutes,
-        formatter: (v: number) => formatDuration(Math.round(v), lang),
+  // Memoized so `countUp` object references stay stable across re-renders
+  // that don't actually change the underlying numbers (e.g. an unrelated
+  // sibling section's async data landing later) — KpiCard's useCountUp
+  // effect restarts its 1.1s count-up animation from 0 whenever `countUp`'s
+  // reference changes, so a fresh object literal every render here would
+  // reset the counter each time anything else on the page re-renders.
+  const kpiCards = useMemo(
+    () => [
+      {
+        loading,
+        icon: BarChart2,
+        iconBg: "bg-emerald-100 dark:bg-emerald-950/50",
+        iconColor: "text-emerald-600 dark:text-emerald-400",
+        label: k.sessions.label,
+        tooltip: k.sessions.tooltip,
+        value: filteredStats.totalSessions.toString(),
+        countUp: { value: filteredStats.totalSessions },
+        sparklineData: sessionCountSparkline,
+        sparklineColor: "#10B981",
+        trendLabel: sessionsLast7Days > 0 ? fillTemplate(k.weeklyTrend, { count: String(sessionsLast7Days) }) : undefined,
+        trendDirection: (sessionsLast7Days > 0 ? "up" : "flat") as "up" | "flat",
       },
-      sparklineData: durationSparkline,
-      sparklineColor: "#3B82F6",
-    },
-  ];
+      {
+        loading,
+        icon: TrendingUp,
+        iconBg: "bg-violet-100 dark:bg-violet-950/50",
+        iconColor: "text-violet-600 dark:text-violet-400",
+        label: k.averageScore.label,
+        tooltip: k.averageScore.tooltip,
+        value: filteredStats.averageScore !== null ? `${filteredStats.averageScore}%` : "—",
+        countUp: filteredStats.averageScore !== null
+          ? { value: filteredStats.averageScore, suffix: "%" as const, decimals: 1 }
+          : undefined,
+        sparklineData: sessionsSparkline,
+        sparklineColor: "#7C3AED",
+        trendLabel,
+        trendDirection: scoreTrend.direction,
+      },
+      {
+        loading,
+        icon: Flame,
+        iconBg: "bg-amber-100 dark:bg-amber-950/50",
+        iconColor: "text-amber-600 dark:text-amber-400",
+        label: k.streak.label,
+        tooltip: k.streak.tooltip,
+        value: `${streakDays}`,
+        countUp: { value: streakDays },
+        sparklineData: streakSparkline,
+        sparklineColor: "#F59E0B",
+      },
+      {
+        loading,
+        icon: Clock,
+        iconBg: "bg-blue-100 dark:bg-blue-950/50",
+        iconColor: "text-blue-600 dark:text-blue-400",
+        label: k.totalDuration.label,
+        tooltip: k.totalDuration.tooltip,
+        value: formatDuration(filteredStats.totalDurationMinutes, lang),
+        countUp: {
+          value: filteredStats.totalDurationMinutes,
+          formatter: (v: number) => formatDuration(Math.round(v), lang),
+        },
+        sparklineData: durationSparkline,
+        sparklineColor: "#3B82F6",
+      },
+    ],
+    [
+      loading,
+      k,
+      filteredStats,
+      sessionCountSparkline,
+      sessionsLast7Days,
+      sessionsSparkline,
+      trendLabel,
+      scoreTrend,
+      streakDays,
+      streakSparkline,
+      lang,
+      durationSparkline,
+    ]
+  );
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-4 mb-6">

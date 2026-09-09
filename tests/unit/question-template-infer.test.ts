@@ -30,7 +30,15 @@ describe("inferStudioTemplate — template detection", () => {
   });
 
   test("normalizes a loosely-cased/spaced explicit template id", () => {
-    const vm = inferStudioTemplate(baseQuestion({ codeTemplateType: "  refactoring  " as StudioQuestion["codeTemplateType"] }));
+    // Neutral (non-theoretical) content — the default fixture's "Explain the
+    // difference between..." phrasing reads as conceptual-theory, which
+    // clears an explicit code-heavy template badge (REFACTORING) when
+    // there's no snippet backing it up (see suppressCodeBlock/clearTemplateBadge
+    // in question-template-infer.ts).
+    const vm = inferStudioTemplate(baseQuestion({
+      content: "Neutral prompt.",
+      codeTemplateType: "  refactoring  " as StudioQuestion["codeTemplateType"],
+    }));
     expect(vm.templateId).toBe("REFACTORING");
   });
 
@@ -74,14 +82,30 @@ describe("inferStudioTemplate — template detection", () => {
 });
 
 describe("inferStudioTemplate — snippet extraction", () => {
+  // resolveProblemSnippet() in question-template-infer.ts only ever reads
+  // `codeSnippet` or a fenced ``` block in `content` — its own header comment
+  // is explicit: "Never use expectedAnswer (sample SQL/code ending in `;`
+  // caused false mismatch warnings)". The two expectedAnswer-based tests
+  // below were testing that removed behavior; they now assert the opposite
+  // (expectedAnswer is ignored) instead of being deleted, so a future
+  // regression that resurrects reading from expectedAnswer gets caught.
+  //
+  // All cases here use a neutral `content` override — the fixture's default
+  // "Explain the difference between..." phrasing reads as conceptual-theory
+  // and suppresses the snippet even when one is present (see
+  // suppressCodeBlock in question-template-infer.ts).
+
   test("prefers question.codeSnippet directly", () => {
-    const vm = inferStudioTemplate(baseQuestion({ codeSnippet: "const x = 1;" }));
+    const vm = inferStudioTemplate(baseQuestion({ content: "Neutral prompt.", codeSnippet: "const x = 1;" }));
     expect(vm.snippet).toBe("const x = 1;");
   });
 
-  test('extracts from an expectedAnswer "Code snippet:" marker', () => {
-    const vm = inferStudioTemplate(baseQuestion({ expectedAnswer: "Explanation.\nCode snippet:\nconst x = 1;" }));
-    expect(vm.snippet).toBe("const x = 1;");
+  test('a "Code snippet:" marker in expectedAnswer is ignored — expectedAnswer is never used as a snippet source', () => {
+    const vm = inferStudioTemplate(baseQuestion({
+      content: "Neutral prompt.",
+      expectedAnswer: "Explanation.\nCode snippet:\nconst x = 1;",
+    }));
+    expect(vm.snippet).toBeUndefined();
   });
 
   test("extracts from a fenced code block in content", () => {
@@ -89,10 +113,10 @@ describe("inferStudioTemplate — snippet extraction", () => {
     expect(vm.snippet).toBe("const x = 1;");
   });
 
-  test("heuristically detects raw code in expectedAnswer even without a marker", () => {
+  test("raw code-shaped text in expectedAnswer is ignored — expectedAnswer is never used as a snippet source", () => {
     const code = "public class Foo {\n  void bar() { return; }\n}";
-    const vm = inferStudioTemplate(baseQuestion({ expectedAnswer: code }));
-    expect(vm.snippet).toBe(code);
+    const vm = inferStudioTemplate(baseQuestion({ content: "Neutral prompt.", expectedAnswer: code }));
+    expect(vm.snippet).toBeUndefined();
   });
 
   test("does not mistake plain prose for a code snippet", () => {
@@ -101,7 +125,7 @@ describe("inferStudioTemplate — snippet extraction", () => {
   });
 
   test("normalizes literal \\n / \\t escape sequences into real newlines", () => {
-    const vm = inferStudioTemplate(baseQuestion({ codeSnippet: "function foo() {\\n  return 1;\\n}" }));
+    const vm = inferStudioTemplate(baseQuestion({ content: "Neutral prompt.", codeSnippet: "function foo() {\\n  return 1;\\n}" }));
     expect(vm.snippet).toBe("function foo() {\n  return 1;\n}");
   });
 });

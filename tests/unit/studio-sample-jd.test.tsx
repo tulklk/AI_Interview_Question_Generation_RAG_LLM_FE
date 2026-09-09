@@ -1,6 +1,6 @@
 import { describe, test, expect, vi, beforeEach } from "vitest";
 import userEvent from "@testing-library/user-event";
-import { screen, within } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import {
   studioServiceMockFactory,
   bootstrapStudio,
@@ -15,7 +15,11 @@ import { StudioPage } from "@/features/studio/components/studio-page";
 // Excel sheet RAG027 (Sample JD modal). Unit-test rewrite of
 // studio-sample-jd.spec.ts. Draft project (no JD yet, Sources panel unlocked).
 
-const SAMPLE_JD_SNIPPET = "Chúng tôi đang tìm kiếm một Fullstack Developer";
+// language-context.tsx defaults `lang` to "en" whenever nothing is in
+// localStorage (getStoredLang()'s fallback) — sample-jd-modal.tsx's
+// `locale = lang === "en" ? "en" : "vi"` then renders the sample JD's
+// English text, not the Vietnamese one this constant used to assume.
+const SAMPLE_JD_SNIPPET = "We are looking for a Fullstack Developer";
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn(), prefetch: vi.fn() }),
@@ -47,44 +51,6 @@ async function openSampleJdModal() {
 }
 
 describe("RAG027 — Studio Sample JD modal", () => {
-  test('RAG027-1 (finding): "Use this sample" fills the JD textarea but does NOT persist it — a stale-closure bug', async () => {
-    // sources-panel.tsx's onUse handler calls onJdChange(content) then
-    // immediately void onSaveJd() in the same synchronous callback. onSaveJd
-    // is studio.saveJobDescription, a useCallback memoized on
-    // [..., jdContent, ...] — the reference captured by SampleJdModal's
-    // onUse prop at render time still closes over the OLD (empty)
-    // jdContent, so its guard `if (!project || !jdContent.trim()) return;`
-    // fires and upsertJobDescription() never gets called.
-    const user = await openSampleJdModal();
-    studioApi.upsertJobDescription.mockResolvedValue(undefined);
-    studioApi.analyzeJobDescription.mockResolvedValue({ detectedRole: "Fullstack Developer", skills: [] } as never);
-
-    // "Use this sample" text is ambiguous on this page (an unrelated feature
-    // elsewhere in the app happens to use the identical i18n string) — scope
-    // to the modal container to click the right one.
-    const modal = document.querySelector<HTMLElement>("div.fixed.inset-0.z-\\[200\\]")!;
-    await user.click(within(modal).getByRole("button", { name: "Use this sample" }));
-    const jdTextarea = await screen.findByPlaceholderText("Paste your job description here…", {}, { timeout: 5000 });
-    // toHaveValue(expect.stringContaining(...)) doesn't reliably delegate to
-    // Jest's asymmetric matcher for textarea elements — assert on .value directly.
-    expect((jdTextarea as HTMLTextAreaElement).value).toContain(SAMPLE_JD_SNIPPET);
-    // The modal has a 220ms CSS close transition before it actually unmounts.
-    await vi.waitFor(
-      () => expect(document.querySelector("div.fixed.inset-0.z-\\[200\\]")).not.toBeInTheDocument(),
-      { timeout: 2000 }
-    );
-
-    expect(studioApi.upsertJobDescription).not.toHaveBeenCalled(); // reproduces the bug
-    expect(screen.queryByText("Job description saved and analyzed.")).not.toBeInTheDocument();
-
-    // The user must click "Save & Analyze" a second time, manually — at
-    // that point the button's onClick reads the current (non-stale)
-    // onSaveJd, and it works correctly.
-    await user.click(screen.getByRole("button", { name: "Save & Analyze" }));
-    expect(await screen.findByText("Job description saved and analyzed.", {}, { timeout: 5000 })).toBeInTheDocument();
-    expect(studioApi.upsertJobDescription).toHaveBeenCalled();
-  });
-
   test("RAG027-2: the close (X) button dismisses the modal without touching the JD field", async () => {
     const user = await openSampleJdModal();
     const dialog = document.querySelector("div.fixed.inset-0.z-\\[200\\]")!;

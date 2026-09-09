@@ -21,7 +21,7 @@ vi.mock("@/features/hr/services/recommendation.service", async () => {
 });
 
 import * as recommendationApiTyped from "@/features/hr/services/recommendation.service";
-const recommendationApi = recommendationApiTyped as unknown as ReturnType<typeof recommendationServiceMockFactory>;
+const recommendationApi = recommendationApiTyped as unknown as Awaited<ReturnType<typeof recommendationServiceMockFactory>>;
 
 beforeEach(() => {
   Object.values(recommendationApi).forEach((fn) => {

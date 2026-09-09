@@ -90,7 +90,7 @@ describe("Invitations — listing and filtering", () => {
 
     expect(
       await screen.findByText(
-        "No invitations yet. Keep practicing — recruiters may invite you to interview based on your results.",
+        "No invitations yet. Keep practicing — recruiters may reach out.",
         {}, { timeout: 10000 }
       )
     ).toBeInTheDocument();

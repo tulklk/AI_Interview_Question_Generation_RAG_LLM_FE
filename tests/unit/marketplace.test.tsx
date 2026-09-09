@@ -165,7 +165,10 @@ describe("Marketplace — bookmarking", () => {
     await user.click(saveButtons[0]);
 
     await waitFor(() => expect(questionSetApi.toggleBookmark).toHaveBeenCalled());
-    expect(await screen.findByRole("button", { name: "Remove from saved" })).toBeInTheDocument();
+    // The same set can render twice (a promoted "featured" hero card plus its
+    // regular grid card, both reading shared bookmarkedIds state) — hence
+    // getAllByRole here too, matching the getAllByRole("Save for later") above.
+    await waitFor(() => expect(screen.getAllByRole("button", { name: "Remove from saved" }).length).toBeGreaterThan(0));
   });
 });
 

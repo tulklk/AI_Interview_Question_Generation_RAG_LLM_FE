@@ -54,8 +54,8 @@ describe("RAG010 — Studio quota gate", () => {
     renderStudio(<StudioPage />);
 
     const dialog = await screen.findByRole("alertdialog", {}, { timeout: 10000 });
-    expect(await screen.findByText("Daily generation limit reached")).toBeInTheDocument();
-    expect(dialog).toHaveTextContent("Daily generation limit reached");
+    expect(await screen.findByText("Question set / JD review limit reached (24h)")).toBeInTheDocument();
+    expect(dialog).toHaveTextContent("Question set / JD review limit reached (24h)");
     expect(await screen.findByRole("button", { name: "View plans & billing" })).toBeInTheDocument();
     // "Create manually" also exists as a standalone header button outside the
     // dialog — scope to the dialog to avoid a strict-mode-style ambiguity.

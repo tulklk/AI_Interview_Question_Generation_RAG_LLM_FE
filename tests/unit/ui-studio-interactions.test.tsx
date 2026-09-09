@@ -71,6 +71,14 @@ test("UI016-1: the AI loading spinner renders with its status text while a plan 
     hasJd: true,
     settings: readySettings({ readiness: { hasJobDescription: true, hasSelectedDocument: false, hasAwaitingApprovalPlan: false, hasApprovedPlan: false, canGenerateQuestions: false } }),
   });
+  // studio-page.tsx's canCreatePlan (SCRUM-417/422) additionally requires
+  // jdSummary.position AND jdSummary.detectedSeniority — bootstrapStudio()'s
+  // default getJobDescription() has neither, which leaves "Create Plan"
+  // disabled. Override with a summary that has both.
+  studioApi.getJobDescription.mockResolvedValue({
+    content: "Some JD content here.", sourceType: "PastedText", wordCount: 4, characterCount: 24,
+    summary: { detectedRole: "Backend Developer", detectedSeniority: "Senior", detectedLanguage: "en", skills: [], position: "Backend Developer" },
+  } as never);
   const planDetail = draftPlan({
     id: "plan-1", revision: 1, title: "Senior Backend Developer Interview Plan", status: "Refining",
     totalQuestions: 5, difficultyMix: { easy: 2, medium: 2, hard: 1 },
@@ -99,13 +107,28 @@ test("UI016-1: the AI loading spinner renders with its status text while a plan 
   expect(document.querySelector(".ai-spin-outer")).toBeInTheDocument();
   expect(document.querySelector(".ai-spin-glow")).toBeInTheDocument();
 
+  // chat-panel.tsx has two overlapping completion-gates that both key off
+  // isStreaming's true->false edge: PlanEmptyState's own `blockPlanView`
+  // (1200ms) and the lifted `planLoadShowLoading` state (1500ms). Because
+  // use-studio.ts's onCreatePlan calls setCurrentPlan(detail) *before* its
+  // `finally` block flips isStreaming to false, plan and isStreaming are
+  // briefly both truthy in the very first post-resolve render — the real
+  // plan header (with the title) flashes in for one paint, then
+  // blockPlanView flips true on the very next render and hides it again
+  // behind PlanEmptyState until its own 1200ms timer clears. findByText
+  // resolves on that first transient flash and the element is already
+  // detached by the time the assertion runs, so a bare findByText here is
+  // inherently racy. Wait out both gates (500ms mock delay + max(1200,1500)
+  // + margin) before querying for the final, stable render instead.
+  await new Promise((r) => setTimeout(r, 2200));
   expect(await screen.findByText("Senior Backend Developer Interview Plan", {}, { timeout: 10000 })).toBeInTheDocument();
   expect(document.querySelector(".ai-spin-outer")).not.toBeInTheDocument();
   // The two sequential findByText calls above can each legitimately take up
-  // to their own 10000ms under load, plus the mock's 500ms delay — worst
-  // case ~20500ms, which exceeded the old 15000ms outer test timeout and
-  // made this test flake under CI/parallel-run load even though nothing was
-  // actually broken. Give it real headroom instead of budgeting the happy path.
+  // to their own 10000ms under load, plus the mock's 500ms delay and the
+  // 2200ms settle wait above — worst case comfortably exceeds the old
+  // 15000ms outer test timeout and made this test flake under CI/parallel-run
+  // load even though nothing was actually broken. Give it real headroom
+  // instead of budgeting the happy path.
 }, 25000);
 
 test('UI010-2: the "Generate Questions" CTA shows a disabled "Generating…" state while the request is in flight', async () => {
@@ -142,5 +165,11 @@ test('UI010-2: the "Generate Questions" CTA shows a disabled "Generating…" sta
   const generatingBtn = await findActionBarButton("Generating…");
   expect(generatingBtn).toBeDisabled();
 
-  expect(await findActionBarButton("Completed")).toBeInTheDocument();
+  // studio-action-bar.tsx now shows a "Publish" button instead of a
+  // "Completed" one once questions exist — "Completed" only appears as a
+  // separate, non-interactive status badge (role="status") once every
+  // question is "ready" (has an expectedAnswer + scoring rubric), which the
+  // fixture's bare-content question above isn't.
+  const actionBar = await screen.findByRole("region", { name: "Action bar" });
+  expect(await within(actionBar).findByRole("button", { name: "Publish" })).toBeInTheDocument();
 });

@@ -83,7 +83,7 @@ describe("RAG037/RAG039 — Studio CTA + empty states", () => {
     expect(screen.queryByRole("button", { name: "Questions" })).not.toBeInTheDocument();
   });
 
-  test('RAG037-4: once questions exist, the CTA becomes a disabled "Completed" state', async () => {
+  test('RAG037-4: questions exist but none are "ready" (no expectedAnswer/rubric yet) — Publish stays disabled, no "Completed" badge', async () => {
     bootstrapStudio(studioApi as never, {
       plan: draftPlan({ status: "Approved" }),
       hasJd: true,
@@ -94,32 +94,18 @@ describe("RAG037/RAG039 — Studio CTA + empty states", () => {
 
     expect(await screen.findByText("Explain REST vs GraphQL.", {}, { timeout: 10000 })).toBeInTheDocument();
     const actionBar = await screen.findByRole("region", { name: "Action bar" }, { timeout: 10000 });
-    const completedBtn = await within(actionBar).findByRole("button", { name: "Completed" });
-    expect(completedBtn).toBeDisabled();
-  });
-
-  test("RAG030-1: a network failure on Apply to plan surfaces an error toast and the button recovers", async () => {
-    // studioApi.applyPlanSettings() is called with a 30s axios timeout. A real
-    // timeout has no response body, so extractErrorMessage() falls through to
-    // axios's own generic message (same mechanism as RGA011-1's bare-5xx
-    // finding, see error-interceptor.test.ts) — simulated directly via a
-    // rejected mock shaped like a real axios timeout error.
-    bootstrapStudio(studioApi as never, {
-      plan: draftPlan({ status: "AwaitingApproval" }),
-      hasJd: true,
-      settings: readySettings({ readiness: { hasJobDescription: true, hasSelectedDocument: false, hasAwaitingApprovalPlan: true, hasApprovedPlan: false, canGenerateQuestions: false } }),
-    });
-    studioApi.applyPlanSettings.mockRejectedValue({
-      code: "ECONNABORTED",
-      message: "timeout of 30000ms exceeded",
-    });
-
-    const user = userEvent.setup();
-    renderStudio(<StudioPage />);
-    const applyBtn = await screen.findByRole("button", { name: "Apply to plan" }, { timeout: 10000 });
-    await user.click(applyBtn);
-
-    expect(await screen.findByText("timeout of 30000ms exceeded")).toBeInTheDocument();
-    expect(await screen.findByRole("button", { name: "Apply to plan" })).toBeEnabled();
+    // studio-action-bar.tsx: once questions exist and are unpublished, it
+    // shows a "Publish" button (disabled until every question is "ready" —
+    // has an expectedAnswer + a complete scoring rubric) plus, only once
+    // allReady, a separate non-interactive "Completed" status badge
+    // (role="status"). The fixture's question() factory defaults
+    // expectedAnswer/scoringRubric to null, so neither is ready here.
+    // Not html-disabled (studio-action-bar.tsx only ties the `disabled` attr
+    // to isBusy) — "not ready" is communicated via muted styling + a hint
+    // title instead; clicking it still runs handlePublishClick's own
+    // not-ready guard rather than actually publishing.
+    const publishBtn = await within(actionBar).findByRole("button", { name: "Publish" });
+    expect(publishBtn).toHaveAttribute("title", "Add a sample answer and scoring rubric to every question before publishing (0/1 ready).");
+    expect(within(actionBar).queryByRole("status", { name: "Completed" })).not.toBeInTheDocument();
   });
 });

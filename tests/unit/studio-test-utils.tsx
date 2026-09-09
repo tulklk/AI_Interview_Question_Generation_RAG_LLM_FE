@@ -108,7 +108,14 @@ export function freeSubscriptionInCooldown() {
     planCode: "FREE",
     planName: "Free",
     lastSuccessfulGenerateAt: new Date().toISOString(),
-    limits: { ...sub.limits, generateUnlimited: false, generateCooldownHours: 24 },
+    // hr-subscription-context.tsx's canGenerateNow check looks at the
+    // window-based usage (generateWindowUsed/generateWindowLimit) BEFORE
+    // ever falling through to the lastSuccessfulGenerateAt/cooldown check —
+    // if window usage still has room, cooldown is never consulted at all.
+    // Must be exhausted here so the cooldown branch actually runs.
+    generateWindowUsed: 1,
+    generateWindowLimit: 1,
+    limits: { ...sub.limits, generateUnlimited: false, generateCooldownHours: 24, generatePerWindow: 1 },
     entitlements: { ...sub.entitlements, generateUnlimited: false },
   };
 }
@@ -120,7 +127,9 @@ export function freeSubscriptionReady() {
     planCode: "FREE",
     planName: "Free",
     lastSuccessfulGenerateAt: null,
-    limits: { ...sub.limits, generateUnlimited: false, generateCooldownHours: 24 },
+    generateWindowUsed: 0,
+    generateWindowLimit: 1,
+    limits: { ...sub.limits, generateUnlimited: false, generateCooldownHours: 24, generatePerWindow: 1 },
     entitlements: { ...sub.entitlements, generateUnlimited: false },
   };
 }
@@ -163,6 +172,23 @@ export function question(id: string, orderIndex: number, content = `Question ${o
   return {
     id, content, difficulty: "Medium", type: "Technical", orderIndex,
     expectedAnswer: null, scoringRubric: null,
+  };
+}
+
+/**
+ * A question that satisfies src/shared/rubric/validators.ts's isPublishReady
+ * (a rubric with >=1 criterion, weights summing to 100, a non-empty label,
+ * and >=2 non-empty anchors) plus a non-empty expectedAnswer — the two
+ * conditions studio-page.tsx's studioQuestionRubricReady()/readyCount check
+ * before a question counts toward MIN_QUESTIONS_TO_PUBLISH.
+ */
+export function readyQuestion(id: string, orderIndex: number, content = `Question ${orderIndex}`) {
+  return {
+    ...question(id, orderIndex, content),
+    expectedAnswer: "A solid answer.",
+    scoringRubric: JSON.stringify({
+      criteria: [{ label: "Correctness", weight: 100, anchors: { low: "Poor", high: "Excellent" } }],
+    }),
   };
 }
 

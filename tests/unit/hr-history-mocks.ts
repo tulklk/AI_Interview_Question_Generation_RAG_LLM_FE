@@ -21,6 +21,31 @@ export function interviewServiceMockFactory() {
     unpublishQuestionSet: vi.fn(),
     toggleHrBookmark: vi.fn(),
     renameQuestionSetTitle: vi.fn(),
+    // Added for SCRUM-437's PublishDialog flow: clicking "Publish to
+    // marketplace" now calls getDraft() first to build the dialog's
+    // question-selection list (question-set-history-table.tsx's
+    // handlePublishToggle), before the dialog's own confirm button is what
+    // actually calls publishQuestionSet(id, payload).
+    getDraft: vi.fn(),
+  };
+}
+
+// >= MIN_QUESTIONS_TO_PUBLISH (10, question-builder-set-panel.tsx) ready+active
+// questions, matching PublishDialog's default-selection shape.
+export function publishableDraft(questionCount = 10) {
+  return {
+    questionSetId: "qs-1",
+    title: "Backend Developer Set",
+    status: "DRAFT",
+    timeLimitMinutes: null,
+    autoRecommendEnabled: true,
+    recommendationMinScore: 70,
+    questions: Array.from({ length: questionCount }, (_, i) => ({
+      id: `q-${i + 1}`,
+      question: `Question ${i + 1}`,
+      isReady: true,
+      isActive: true,
+    })),
   };
 }
 

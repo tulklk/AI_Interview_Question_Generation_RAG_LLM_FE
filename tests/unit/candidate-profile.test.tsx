@@ -256,6 +256,12 @@ describe("Candidate Profile — CV management", () => {
     async () => {
       cvApi.getCv.mockResolvedValue(cvInfo({ fileName: "handbook-cv.pdf" }));
       cvApi.deleteCv.mockResolvedValue(undefined);
+      // handleCvDelete's success path also fires a background
+      // updateCandidateProfile(...) to persist the cleared CV-derived skills
+      // (candidate-profile.tsx:280-290) — beforeEach's mockReset() leaves it
+      // returning undefined, so the un-mocked call's chained .catch()
+      // throws synchronously and the success toast below never runs.
+      userApi.updateCandidateProfile.mockResolvedValue(undefined);
       const user = userEvent.setup();
       renderCandidate(<CandidateProfile />);
       await findFirstText("handbook-cv.pdf");

@@ -40,6 +40,15 @@ const practiceApi = practiceApiTyped as unknown as {
 };
 const questionSetApi = questionSetApiTyped as unknown as ReturnType<typeof questionSetServiceMockFactory>;
 
+// use-candidate-dashboard.ts's default KpiGrid numbers are filtered to the
+// last 30 days (filterSessionsByRange, real Date.now() — not mocked here),
+// so a session fixture pinned to a hardcoded past date silently ages out of
+// that window and starts failing CDASH-1's "6" assertion once enough real
+// time passes. Anchor it a few days before "now" instead so the fixture
+// never rots.
+const RECENT_COMPLETED_AT = new Date(Date.now() - 3 * 86400000).toISOString();
+const RECENT_STARTED_AT = new Date(Date.now() - 3 * 86400000 - 24 * 60000).toISOString();
+
 function session(overrides: Partial<CompletedSessionSummary> = {}): CompletedSessionSummary {
   return {
     id: "sess-1",
@@ -48,8 +57,8 @@ function session(overrides: Partial<CompletedSessionSummary> = {}): CompletedSes
     company: "Acme Corp",
     score: 82,
     durationMinutes: 24,
-    startedAt: "2026-08-01T09:00:00Z",
-    completedAt: "2026-08-01T09:24:00Z",
+    startedAt: RECENT_STARTED_AT,
+    completedAt: RECENT_COMPLETED_AT,
     ...overrides,
   };
 }
@@ -82,7 +91,16 @@ describe("Candidate Dashboard — KPIs and recent sessions", () => {
   test(
     "CDASH-1: renders the total-sessions KPI from real practice stats",
     async () => {
-      practiceApi.listCompletedSessions.mockResolvedValue({ items: [session()], totalCount: 1 });
+      // dashboard-analytics.ts's computeFilteredStats derives totalSessions/
+      // averageScore purely from the listCompletedSessions items actually
+      // rendered (sessions.length / average of sessions' own scores) —
+      // getPracticeStats()'s response isn't consulted for these two KPIs at
+      // all, so the fixture must supply 6 sessions averaging 78, not lean on
+      // the (unused-here) stats() mock.
+      practiceApi.listCompletedSessions.mockResolvedValue({
+        items: Array.from({ length: 6 }, (_, i) => session({ id: `sess-${i + 1}`, score: 78 })),
+        totalCount: 6,
+      });
       practiceApi.getPracticeStats.mockResolvedValue(stats());
       renderCandidate(<CandidateDashboard />);
 

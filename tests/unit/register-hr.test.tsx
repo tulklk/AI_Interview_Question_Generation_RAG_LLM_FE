@@ -51,7 +51,7 @@ describe("AUTH001 — Register HR, step 1", () => {
     await user.type(screen.getByPlaceholderText("Min. 8 characters"), "Password1!");
     await user.type(screen.getByPlaceholderText("Repeat your password"), "Password1!");
     await user.click(screen.getByRole("button", { name: "Continue" }));
-    expect(await screen.findByText("Full name is required")).toBeInTheDocument();
+    expect(await screen.findByText("Full name is required.")).toBeInTheDocument();
   });
 
   test("AUTH001-2: blocks Continue when password is under 8 characters", async () => {
@@ -117,8 +117,8 @@ describe("AUTH001 — Register HR, step 2", () => {
     await goToStep2(user);
     await user.click(document.querySelector("button.auth-checkbox")!);
     await user.click(screen.getByRole("button", { name: "Create Account" }));
-    expect(await screen.findByText("Company name is required")).toBeInTheDocument();
-    expect(screen.getByText("Job title is required")).toBeInTheDocument();
+    expect(await screen.findByText("Company name is required.")).toBeInTheDocument();
+    expect(screen.getByText("Job title is required.")).toBeInTheDocument();
   });
 
   test("AUTH001-8: valid submit redirects to /verify-email", async () => {

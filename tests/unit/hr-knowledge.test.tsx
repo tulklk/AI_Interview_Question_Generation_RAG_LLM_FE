@@ -72,9 +72,18 @@ describe("HR Knowledge Documents — listing", () => {
 
 describe("HR Knowledge Documents — upload", () => {
   test("KB-4: uploading a valid file calls onUpload and the new document appears in the list", async () => {
+    const newDoc = doc({ id: "doc-new", fileName: "resume-guide.pdf" });
+    // knowledge-page-content.tsx's success path optimistically adds the
+    // returned doc via setDocs(), then fires a background void loadDocs()
+    // to resync from the server (line 673) — a single always-[] mock here
+    // makes that resync immediately wipe the optimistic add back out, so
+    // onFetchDocs needs to reflect the post-upload state on its later calls.
+    const onFetchDocs = vi.fn()
+      .mockResolvedValueOnce([])
+      .mockResolvedValue([newDoc]);
     const { onUpload } = setup({
-      onFetchDocs: vi.fn().mockResolvedValue([]),
-      onUpload: vi.fn().mockResolvedValue(doc({ id: "doc-new", fileName: "resume-guide.pdf" })),
+      onFetchDocs,
+      onUpload: vi.fn().mockResolvedValue(newDoc),
     });
     await screen.findByText("No documents yet.", {}, { timeout: 10000 });
 
@@ -83,7 +92,10 @@ describe("HR Knowledge Documents — upload", () => {
     const user = userEvent.setup();
     await user.upload(fileInput, file);
 
-    await waitFor(() => expect(onUpload).toHaveBeenCalledWith(file));
+    // knowledge-page-content.tsx passes the selected document category as a
+    // 2nd arg for the "hr" variant (defaults to "InternalStack") — added
+    // alongside the upload-type selector UI.
+    await waitFor(() => expect(onUpload).toHaveBeenCalledWith(file, "InternalStack"));
     expect(await screen.findByText("resume-guide.pdf", {}, { timeout: 10000 })).toBeInTheDocument();
   });
 
