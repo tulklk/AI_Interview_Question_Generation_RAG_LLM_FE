@@ -27,7 +27,21 @@ import { AvatarCircle } from "@/shared/components/common/avatar-circle";
 import { getCachedUserProfile } from "@/core/storage/user-profile-cache";
 import { portalCard, portalHeading, portalSubtext } from "@/shared/utils/portal-ui";
 import { QuestionReviewWorkspace } from "@/features/studio/components/question-review-workspace";
+import {
+  planSourceDisplayName,
+  ProvenanceOriginBadge,
+  resolvePlanSourceRows,
+  SourceOriginBadge,
+  useSourceOriginLabels,
+  type SourceOriginLabels,
+} from "@/features/studio/components/source-origin-badge";
+import { PlanReviewItBlock } from "@/features/studio/components/plan-review-it-block";
+import {
+  PlanOutlinePreviewBlock,
+  shouldShowOutlinePreview,
+} from "@/features/studio/components/plan-outline-preview-block";
 import { formatDifficultyMixLabel } from "@/features/studio/utils/difficulty-mix";
+import type { StudioConfigDraft } from "@/features/studio/hooks/use-studio-config";
 import type {
   ChatMessage,
   GenerationRun,
@@ -35,6 +49,7 @@ import type {
   PlanFocusAreaItem,
   PlanSectionItem,
   StudioQuestion,
+  StudioSettings,
 } from "@/features/studio/types/studio.types";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
@@ -121,12 +136,41 @@ function PlanSectionCard({ section, index }: { section: PlanSectionItem; index: 
 
 // ── Focus area row ────────────────────────────────────────────────────────────
 
-function FocusAreaRow({ area, index }: { area: PlanFocusAreaItem; index: number }) {
-  const pct = Math.min(100, Math.max(2, Math.round(Number(area.weight ?? 0) * 100)));
+/**
+ * BE sometimes sends weights as fractions (sum ≈ 1) and sometimes as percents
+ * (sum ≈ 100) — deciding per-item via `weight <= 1` misreads a legitimate small
+ * percentage (e.g. weight=1 meaning 1%) as a fraction (100%). Deciding once from
+ * the group's total is a far more reliable signal than any single item's magnitude.
+ */
+function normalizeFocusAreaPercents(areas: PlanFocusAreaItem[]): number[] {
+  const raw = areas.map((a) => Number(a.weight ?? 0));
+  const sum = raw.reduce((a, b) => a + b, 0);
+  const isFraction = sum > 0 && sum <= 1.5;
+  return raw.map((w) => Math.min(100, Math.max(2, Math.round(isFraction ? w * 100 : w))));
+}
+
+function FocusAreaRow({
+  area,
+  pct,
+  index,
+  originLabels,
+}: {
+  area: PlanFocusAreaItem;
+  pct: number;
+  index: number;
+  originLabels: SourceOriginLabels;
+}) {
   return (
     <div className="space-y-1">
       <div className="flex items-center justify-between gap-2">
-        <p className="text-xs font-medium text-gray-900 dark:text-gray-50 leading-none">{area.name}</p>
+        <div className="flex min-w-0 items-center gap-1.5">
+          <p className="text-xs font-medium text-gray-900 dark:text-gray-50 leading-none truncate">{area.name}</p>
+          <ProvenanceOriginBadge
+            primaryOrigin={area.primaryOrigin}
+            provenance={area.provenance}
+            labels={originLabels}
+          />
+        </div>
         {pct > 0 && (
           <span className="shrink-0 text-[10px] font-bold text-primary tabular-nums">{pct}%</span>
         )}
@@ -500,7 +544,11 @@ function PlanEmptyState({
           <p className="mt-1 text-sm text-primary">{c.skillsDetected.replace("{{count}}", String(skillCount))}</p>
         )}
         <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-          {jdAnalyzed ? c.jdAnalyzedSub : c.jdNotAnalyzedSub}
+          {jdAnalyzed
+            ? c.jdAnalyzedSub
+            : hasJd
+              ? (c.positionMissingHint ?? c.jdNotAnalyzedSub)
+              : c.jdNotAnalyzedSub}
         </p>
       </div>
       <button
@@ -527,11 +575,23 @@ function PlanWorkspace({
   isStreaming,
   hasJd,
   skillCount,
+  hrSkills = [],
   canCreatePlan,
   isGeneratingQuestions,
   canGenerateQuestions,
   generationRun,
   questions,
+  settings,
+  configDraft,
+  configDirty,
+  isConfigValidForPlan,
+  canApplyConfig,
+  isApplyingPlanConfig,
+  onConfigDraftChange,
+  onApplyPlanConfig,
+  onApplyOutline,
+  planConfigAppliedOnce = false,
+  outlineDirty = false,
   onCreatePlan,
   onApprovePlan,
   onGenerateQuestions,
@@ -545,11 +605,23 @@ function PlanWorkspace({
   isStreaming: boolean;
   hasJd: boolean;
   skillCount: number;
+  hrSkills?: string[];
   canCreatePlan: boolean;
   isGeneratingQuestions: boolean;
   canGenerateQuestions: boolean;
   generationRun: GenerationRun | null | undefined;
   questions: StudioQuestion[];
+  settings: StudioSettings | null;
+  configDraft: StudioConfigDraft | null;
+  configDirty: boolean;
+  isConfigValidForPlan: boolean;
+  canApplyConfig: boolean;
+  isApplyingPlanConfig: boolean;
+  onConfigDraftChange: (patch: Partial<StudioConfigDraft>) => void;
+  onApplyPlanConfig: () => Promise<void> | void;
+  onApplyOutline?: () => Promise<void> | void;
+  planConfigAppliedOnce?: boolean;
+  outlineDirty?: boolean;
   onCreatePlan: () => void;
   onApprovePlan: () => void;
   onGenerateQuestions: () => void;
@@ -562,15 +634,26 @@ function PlanWorkspace({
   const { t } = useLanguage();
   const c = t.studioPage.chat;
   const st = t.studioPage;
+  const srcLabels = t.studioPage.sources;
+  const originLabels = useSourceOriginLabels();
   const planApproved = plan?.status === "Approved";
   const hasQuestions = questions.length > 0;
   const planSections = useMemo(() => asArray<PlanSectionItem>(plan?.sections ?? plan?.estimatedSections), [plan]);
   const focusAreas = useMemo(() => asArray<PlanFocusAreaItem>(plan?.focusAreas), [plan]);
-  const sources = useMemo(() => asArray<string>(plan?.sourcesUsed), [plan]);
+  const coverageItems = useMemo(() => asArray(plan?.coverage), [plan?.coverage]);
+  const sourceRows = useMemo(
+    () => resolvePlanSourceRows(plan?.sourcesUsed, plan?.sourceDetails),
+    [plan?.sourcesUsed, plan?.sourceDetails]
+  );
   const mixLabel = useMemo(
     () => formatDifficultyMixLabel(plan?.difficultyMix, plan?.totalQuestions ?? 0, "·"),
     [plan]
   );
+
+  const previewOpen = shouldShowOutlinePreview(plan, {
+    hasQuestions,
+    planConfigAppliedOnce,
+  });
 
   const displayTitle = useMemo(() => {
     if (!plan) return "";
@@ -766,6 +849,40 @@ function PlanWorkspace({
         />
       )}
 
+      {/* Bước 1: Focus / độ khó / phân bổ / styles / coding */}
+      {!hasQuestions && (
+        <PlanReviewItBlock
+          plan={plan}
+          settings={settings}
+          draft={configDraft}
+          allowedSkillNames={hrSkills}
+          locked={isGeneratingQuestions}
+          isDirty={configDirty}
+          isConfigValidForPlan={isConfigValidForPlan}
+          canApplyConfig={canApplyConfig}
+          isApplying={isApplyingPlanConfig}
+          previewOpen={previewOpen}
+          onDraftChange={onConfigDraftChange}
+          onApplyToPlan={onApplyPlanConfig}
+        />
+      )}
+
+      {/* Bước 2: Live Preview — chỉ sau Apply bước 1 */}
+      {!hasQuestions && previewOpen && (
+          <PlanOutlinePreviewBlock
+            plan={plan}
+            draft={configDraft}
+            settings={settings}
+            allowedSkillNames={hrSkills}
+            locked={isGeneratingQuestions}
+            isApplying={isApplyingPlanConfig}
+            outlineDirty={outlineDirty}
+            settingsDirty={configDirty}
+            onDraftChange={onConfigDraftChange}
+            onApplyOutline={onApplyOutline ?? onApplyPlanConfig}
+          />
+        )}
+
       {/* Plan sections */}
       {planSections.length > 0 && (
         <div className="space-y-1.5">
@@ -787,27 +904,65 @@ function PlanWorkspace({
         </div>
       )}
 
-      {/* Focus areas */}
-      {focusAreas.length > 0 && (
+      {/* Focus areas từ plan (read-only sau khi đã sinh câu) */}
+      {hasQuestions && focusAreas.length > 0 && (
         <div className="space-y-2.5 rounded-xl border border-gray-200 p-3 dark:border-gray-700">
           <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">{c.focusAreas}</p>
           <div className="space-y-2.5">
-            {focusAreas.slice(0, 6).map((area, idx) => (
-              <FocusAreaRow key={`${area.name}-${idx}`} area={area} index={idx} />
+            {(() => {
+              // Normalize against the FULL set (not just the visible slice below) so the
+              // fraction-vs-percent signal isn't skewed when there are more than 6 areas.
+              const pctsAll = normalizeFocusAreaPercents(focusAreas);
+              const shown = focusAreas.slice(0, 6);
+              const pcts = pctsAll.slice(0, 6);
+              return shown.map((area, idx) => (
+                <FocusAreaRow
+                  key={`${area.name}-${idx}`}
+                  area={area}
+                  pct={pcts[idx]}
+                  index={idx}
+                  originLabels={originLabels}
+                />
+              ));
+            })()}
+          </div>
+        </div>
+      )}
+
+      {/* Coverage + provenance (SCRUM-420) */}
+      {coverageItems.length > 0 && (
+        <div className="space-y-2 rounded-xl border border-gray-200 p-3 dark:border-gray-700">
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">Coverage</p>
+          <div className="space-y-2">
+            {coverageItems.slice(0, 6).map((item, idx) => (
+              <div key={`${item.skill}-${idx}`} className="flex items-start justify-between gap-2 text-xs">
+                <div className="min-w-0">
+                  <span className="font-medium text-gray-900 dark:text-gray-50">{item.skill}</span>
+                  <span className="ml-1 text-gray-400">({item.questionCount})</span>
+                </div>
+                <ProvenanceOriginBadge
+                  primaryOrigin={item.provenance?.primaryOrigin}
+                  provenance={item.provenance}
+                  labels={originLabels}
+                />
+              </div>
             ))}
           </div>
         </div>
       )}
 
       {/* Sources */}
-      {sources.length > 0 && (
+      {sourceRows.length > 0 && (
         <div className="space-y-1.5">
           <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">{c.sourcesUsed}</p>
           <div className="flex flex-wrap gap-1.5">
-            {sources.map((src, idx) => (
-              <span key={`${src}-${idx}`}
-                className="rounded-full border border-gray-200 bg-white px-2 py-0.5 text-[11px] text-gray-600 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300">
-                {src}
+            {sourceRows.map((row, idx) => (
+              <span
+                key={`${row.name}-${idx}`}
+                className="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-white px-2 py-0.5 text-[11px] text-gray-600 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300"
+              >
+                <SourceOriginBadge scopeOrKb={row.scope} sourceFile={row.name} labels={originLabels} />
+                {planSourceDisplayName(row.name, srcLabels.sourceOriginJd)}
               </span>
             ))}
           </div>
@@ -1001,6 +1156,19 @@ interface Props {
   canGenerateQuestions?: boolean;
   hasJd?: boolean;
   skillCount?: number;
+  hrSkills?: string[];
+  /** SCRUM-422: draft cấu hình tương tác trên plan */
+  settings?: StudioSettings | null;
+  configDraft?: StudioConfigDraft | null;
+  configDirty?: boolean;
+  isConfigValidForPlan?: boolean;
+  canApplyConfig?: boolean;
+  isApplyingPlanConfig?: boolean;
+  onConfigDraftChange?: (patch: Partial<StudioConfigDraft>) => void;
+  onApplyPlanConfig?: () => Promise<void> | void;
+  onApplyOutline?: () => Promise<void> | void;
+  planConfigAppliedOnce?: boolean;
+  outlineDirty?: boolean;
   onRefreshGenerationStatus?: () => void | Promise<void>;
   onCreatePlan: () => Promise<void> | void;
   onSendMessage: (message: string) => Promise<void> | void;
@@ -1010,9 +1178,11 @@ interface Props {
   onGenerateQuestions?: () => Promise<void> | void;
   onUpdateQuestion?: (question: StudioQuestion) => Promise<void> | void;
   onDeleteQuestion?: (questionId: string) => Promise<void> | void;
-  onRegenerateQuestion?: (questionId: string) => Promise<void> | void;
+  onRegenerateQuestion?: (questionId: string, instruction?: string) => Promise<void> | void;
   onUploadQuestionImage?: (questionId: string, file: File) => Promise<void> | void;
   onDeleteQuestionImage?: (questionId: string) => Promise<void> | void;
+  /** SCRUM-429: ids câu đang regen nền */
+  regeneratingQuestionIds?: string[];
   onSaveDraft?: () => void;
   onPublish?: () => void;
   onPublishBlocked?: () => void;
@@ -1035,6 +1205,18 @@ export function ChatPanel({
   canGenerateQuestions = false,
   hasJd = false,
   skillCount = 0,
+  hrSkills = [],
+  settings = null,
+  configDraft = null,
+  configDirty = false,
+  isConfigValidForPlan = false,
+  canApplyConfig = false,
+  isApplyingPlanConfig = false,
+  onConfigDraftChange,
+  onApplyPlanConfig,
+  onApplyOutline,
+  planConfigAppliedOnce = false,
+  outlineDirty = false,
   onRefreshGenerationStatus,
   onCreatePlan,
   onSendMessage,
@@ -1047,6 +1229,7 @@ export function ChatPanel({
   onRegenerateQuestion,
   onUploadQuestionImage,
   onDeleteQuestionImage,
+  regeneratingQuestionIds = [],
   onSaveDraft,
   onPublish,
   onPublishBlocked,
@@ -1126,7 +1309,8 @@ export function ChatPanel({
 
   const tabs: { id: TabId; label: string; count?: number; hidden?: boolean }[] = [
     { id: "plan", label: c.tabPlan },
-    { id: "ai", label: c.tabAi, count: messages.filter(m => m.role !== "System").length || undefined },
+    // Tạm ẩn Trợ lý AI — bật lại: đổi hidden thành false
+    { id: "ai", label: c.tabAi, count: messages.filter(m => m.role !== "System").length || undefined, hidden: true },
     { id: "questions", label: c.tabQuestions, count: hasQuestions ? questions.length : undefined, hidden: !hasQuestions },
   ];
 
@@ -1177,11 +1361,23 @@ export function ChatPanel({
             isStreaming={isStreaming}
             hasJd={hasJd}
             skillCount={skillCount}
+            hrSkills={hrSkills}
             canCreatePlan={canCreatePlan}
             isGeneratingQuestions={isGeneratingQuestions}
             canGenerateQuestions={canGenerateQuestions}
             generationRun={generationRun}
             questions={questions}
+            settings={settings}
+            configDraft={configDraft}
+            configDirty={configDirty}
+            isConfigValidForPlan={isConfigValidForPlan}
+            canApplyConfig={canApplyConfig}
+            isApplyingPlanConfig={isApplyingPlanConfig}
+            onConfigDraftChange={onConfigDraftChange ?? (() => undefined)}
+            onApplyPlanConfig={onApplyPlanConfig ?? (() => undefined)}
+            onApplyOutline={onApplyOutline}
+            planConfigAppliedOnce={planConfigAppliedOnce}
+            outlineDirty={outlineDirty}
             onCreatePlan={() => void onCreatePlan()}
             onApprovePlan={() => void onApprovePlan()}
             onGenerateQuestions={() => void onGenerateQuestions?.()}
@@ -1214,6 +1410,7 @@ export function ChatPanel({
             onRegenerateQuestion={onRegenerateQuestion}
             onUploadQuestionImage={onUploadQuestionImage}
             onDeleteQuestionImage={onDeleteQuestionImage}
+            regeneratingQuestionIds={regeneratingQuestionIds}
             onSaveDraft={onSaveDraft}
             onPublish={onPublish}
             onPublishBlocked={onPublishBlocked}

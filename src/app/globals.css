@@ -876,6 +876,69 @@ body.lang-switching {
   animation: ctaRingPulse 1.6s ease-out infinite;
 }
 
+/* SCRUM-431: viền vàng chạy quanh cột Studio (hướng dẫn lần đầu) */
+@property --studio-guide-ba {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+
+@keyframes studioGuideBorderRun {
+  to { --studio-guide-ba: 360deg; }
+}
+
+.studio-guide-border-run {
+  position: relative;
+  border-radius: 0.75rem;
+  /* padding nhẹ để ::after không bị clip bởi panel con overflow */
+  isolation: isolate;
+}
+
+.studio-guide-border-run::after {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  padding: 2px;
+  border-radius: calc(0.75rem + 2px);
+  background: conic-gradient(
+    from var(--studio-guide-ba),
+    transparent 0%,
+    transparent 52%,
+    rgba(251, 191, 36, 0) 58%,
+    rgba(251, 191, 36, 0.95) 68%,
+    rgba(245, 158, 11, 1) 76%,
+    rgba(251, 191, 36, 0.95) 84%,
+    rgba(251, 191, 36, 0) 92%,
+    transparent 100%
+  );
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  pointer-events: none;
+  z-index: 20;
+  animation: studioGuideBorderRun 2s linear infinite;
+  display: none;
+}
+
+@media (min-width: 1024px) {
+  .studio-guide-border-run::after {
+    display: block;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .studio-guide-border-run::after {
+    animation: none;
+    background: rgba(251, 191, 36, 0.95);
+    padding: 2px;
+  }
+}
+
 /* ── Input border travel: rotating light goes around once, then shows normal ring ── */
 @property --ba {
   syntax: '<angle>';

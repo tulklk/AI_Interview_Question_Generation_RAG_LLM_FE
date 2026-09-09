@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
-import { Plus, BookMarked, CheckCircle2, Loader2, AlertCircle, RefreshCw, ChevronLeft, ChevronRight, X, Check, Rocket, Undo2, Globe, PenLine, Lock, Clock, Pencil } from "lucide-react";
+import { Plus, BookMarked, Loader2, AlertCircle, RefreshCw, ChevronLeft, ChevronRight, X, Check, Rocket, Undo2, Globe, PenLine, Lock, Clock, Pencil, UserCheck } from "lucide-react";
 import { AiLoadingSpinner } from "@/shared/components/common/ai-loading-spinner";
 import {
   DndContext,
@@ -34,13 +34,7 @@ import {
   portalMutedBg,
 } from "@/shared/utils/portal-ui";
 import type { GeneratedQuestion, GenerationStatus, QuestionSuggestion } from "@/features/interview/types/generation-session";
-import { updateLocalSessionQuestions } from "@/features/interview/utils/local-history";
 import {
-  updateJobQuestion,
-  deleteJobQuestion,
-  addJobQuestion,
-  saveJobDraft,
-  reorderJobQuestions,
   publishQuestionSet,
   unpublishQuestionSet,
   withAbandonedToast,
@@ -49,14 +43,18 @@ import {
   addQuestionSetQuestion,
   reorderQuestionSetQuestions,
   setQuestionSetTimeLimit,
+  setQuestionSetRecommendationSettings,
   getDraft,
 } from "@/features/interview/services/interview.service";
 import { QuestionEditCard } from "./question-edit-card";
 import { AskAIPanel } from "./ask-ai-panel";
+import { PublishDialog, type PublishDialogConfirmPayload } from "./publish-dialog";
 import { AddQuestionDialog } from "./add-question-dialog";
 import { TimeLimitDialog } from "./time-limit-dialog";
 import { ConfirmDialog } from "@/shared/components/ui/confirm-dialog";
 import { useToast } from "@/shared/providers/toast-context";
+import { ASK_AI_ENABLED } from "@/features/question/constants/question-ui-flags";
+import { MIN_QUESTIONS_TO_PUBLISH } from "@/features/interview/components/generate/question-builder-set-panel";
 
 // ── Sortable wrapper ──────────────────────────────────────────────────────────
 
@@ -152,16 +150,16 @@ interface ReviewQuestionsSectionProps {
   onPublishStatusChange?: (status: "DRAFT" | "PUBLISHED") => void;
   onDraftSaved?: (questionSetId: string) => void;
   initialTimeLimitMinutes?: number | null;
+  /** SCRUM-424 */
+  initialAutoRecommendEnabled?: boolean;
+  initialRecommendationMinScore?: number;
   /** SCRUM-374: job từ Studio — card dùng format sample + rubric. */
   isFromStudio?: boolean;
 }
 
-type SaveState = "idle" | "saving" | "saved" | "error";
 type PublishAction = "publish" | "unpublish" | null;
 
 const PAGE_SIZE = 5;
-// BE enforces this minimum on POST /api/hr/question-sets/{id}/publish.
-const MIN_QUESTIONS_TO_PUBLISH = 10;
 
 export function ReviewQuestionsSection({
   sessionId,
@@ -174,25 +172,37 @@ export function ReviewQuestionsSection({
   onPublishStatusChange,
   onDraftSaved,
   initialTimeLimitMinutes,
+  initialAutoRecommendEnabled = true,
+  initialRecommendationMinScore = 70,
   isFromStudio = false,
 }: ReviewQuestionsSectionProps) {
   const { t } = useLanguage();
   const rp = t.reviewPage;
   const { addToast } = useToast();
+
+  /** Shared message builder for the 6 mutation-handler guards below — was a
+   * hand-varied, hardcoded (non-i18n) Vietnamese string at each call site.
+   * Kept as a plain string builder (not a `return`-hiding helper) so TS can
+   * still narrow `questionSetId` after each inline `if (!questionSetId)` guard. */
+  function missingQuestionSetIdMessage(action: string): string {
+    return rp.missingQuestionSetId.replace("{{action}}", action);
+  }
   const [questions, setQuestions] = useState<GeneratedQuestion[]>(initialQuestions);
-  const [deletedIds, setDeletedIds] = useState<string[]>([]);
   const [editingIds, setEditingIds] = useState<string[]>([]);
   const [showAddDialog, setShowAddDialog] = useState(false);
-  const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [showNavWarning, setShowNavWarning] = useState(false);
-  const [saveState, setSaveState] = useState<SaveState>("idle");
   const [timeLimitMinutes, setTimeLimitMinutes] = useState<number | null>(initialTimeLimitMinutes ?? null);
   const [showTimeLimitDialog, setShowTimeLimitDialog] = useState(false);
   const [savingTimeLimit, setSavingTimeLimit] = useState(false);
-  const timeLimitDirtyRef = useRef(false);
+  const [autoRecommendEnabled, setAutoRecommendEnabled] = useState(initialAutoRecommendEnabled);
+  const [recommendationMinScore, setRecommendationMinScore] = useState(initialRecommendationMinScore);
+  const [showRecSettings, setShowRecSettings] = useState(false);
+  const [savingRecSettings, setSavingRecSettings] = useState(false);
   const [page, setPage] = useState(1);
   const [publishConfirmAction, setPublishConfirmAction] = useState<PublishAction>(null);
+  const [showPublishDialog, setShowPublishDialog] = useState(false);
   const [publishing, setPublishing] = useState(false);
+  const [liveFilter, setLiveFilter] = useState<"all" | "live" | "hidden">("all");
   const [askAIState, setAskAIState] = useState<{ question: GeneratedQuestion; onApply: (s: QuestionSuggestion) => void } | null>(null);
 
   const router = useRouter();
@@ -201,6 +211,21 @@ export function ReviewQuestionsSection({
   const isLocked = publishStatus === "PUBLISHED";
   const bypassGuardRef = useRef(false);
   const [pendingHref, setPendingHref] = useState<string | null>(null);
+
+  const liveQuestionCount = useMemo(
+    () => questions.filter((q) => q.isActive !== false).length,
+    [questions]
+  );
+
+  const filteredQuestions = useMemo(() => {
+    if (publishStatus !== "PUBLISHED" || liveFilter === "all") return questions;
+    if (liveFilter === "live") return questions.filter((q) => q.isActive !== false);
+    return questions.filter((q) => q.isActive === false);
+  }, [questions, publishStatus, liveFilter]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [liveFilter]);
 
   const hasOpenEdits = isEditable && editingIds.length > 0;
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -296,21 +321,18 @@ export function ReviewQuestionsSection({
   }
 
   function persistReorder(next: GeneratedQuestion[]) {
-    if (sessionId.startsWith("local-")) return;
+    if (!questionSetId) {
+      addToast("error", missingQuestionSetIdMessage(rp.actionSaveOrder));
+      return;
+    }
     const items = buildReorderPayload(next);
     if (items.length === 0) {
       console.warn("[persistReorder] no valid question IDs — reorder skipped. IDs:", next.map(q => q.id));
       return;
     }
-    // Once a question set exists, reordering must go straight to it — reordering
-    // the job's own (disconnected) copy has no effect on the saved/published set.
-    if (questionSetId) {
-      void reorderQuestionSetQuestions(questionSetId, items).then((ok) => {
-        if (!ok) addToast("error", "Không thể lưu thứ tự câu hỏi. Vui lòng thử lại.");
-      });
-      return;
-    }
-    void reorderJobQuestions(sessionId, items);
+    void reorderQuestionSetQuestions(questionSetId, items).then((ok) => {
+      if (!ok) addToast("error", "Không thể lưu thứ tự câu hỏi. Vui lòng thử lại.");
+    });
   }
 
   function handleDragEnd(event: DragEndEvent) {
@@ -327,12 +349,9 @@ export function ReviewQuestionsSection({
   }
 
   async function handleSaveQuestion(id: string, changes: Partial<GeneratedQuestion>): Promise<boolean> {
-    const isSynthetic = id.startsWith("manual-") || id.startsWith("q-") || id.startsWith("stub-");
-    const isLocalSession = sessionId.startsWith("local-");
-
-    if (isLocalSession || isSynthetic) {
-      setQuestions((prev) => prev.map((q) => (q.id === id ? { ...q, ...changes } : q)));
-      return true;
+    if (!questionSetId) {
+      addToast("error", missingQuestionSetIdMessage(rp.actionSaveEdit));
+      return false;
     }
 
     const payload = {
@@ -347,11 +366,7 @@ export function ReviewQuestionsSection({
       answerMethod: changes.answerMethod ?? "Text",
     };
 
-    // Once a question set exists, edits must go straight to it — editing the
-    // job's own (disconnected) copy has no effect on the saved/published set.
-    const ok = questionSetId
-      ? await updateQuestionSetQuestion(questionSetId, id, payload)
-      : await updateJobQuestion(sessionId, id, payload);
+    const ok = await updateQuestionSetQuestion(questionSetId, id, payload);
 
     if (ok) {
       setQuestions((prev) => prev.map((q) => (q.id === id ? { ...q, ...changes } : q)));
@@ -376,26 +391,18 @@ export function ReviewQuestionsSection({
   }
 
   function handleDelete(id: string) {
-    // Once a question set exists, deleting must go straight to it — deleting
-    // from the job's own (disconnected) copy has no effect on the saved/published
-    // set, so the question would silently reappear on the next real fetch.
-    if (questionSetId) {
-      deleteQuestionSetQuestion(questionSetId, id).then((ok) => {
-        if (ok) {
-          removeQuestionFromState(id);
-          addToast("success", "Đã xóa câu hỏi");
-        } else {
-          addToast("error", "Không thể xóa câu hỏi. Vui lòng thử lại.");
-        }
-      });
+    if (!questionSetId) {
+      addToast("error", missingQuestionSetIdMessage(rp.actionDelete));
       return;
     }
-
-    removeQuestionFromState(id);
-    if (!id.startsWith("manual-")) {
-      setDeletedIds((prev) => [...prev, id]);
-    }
-    addToast("success", "Đã xóa câu hỏi");
+    deleteQuestionSetQuestion(questionSetId, id).then((ok) => {
+      if (ok) {
+        removeQuestionFromState(id);
+        addToast("success", "Đã xóa câu hỏi");
+      } else {
+        addToast("error", "Không thể xóa câu hỏi. Vui lòng thử lại.");
+      }
+    });
   }
 
   function handleMoveUp(index: number) {
@@ -417,120 +424,46 @@ export function ReviewQuestionsSection({
   }
 
   async function handleAdd(newQ: Omit<GeneratedQuestion, "id" | "orderIndex">) {
-    // Once a question set exists, adding must go straight to it — adding to the
-    // job's own (disconnected) copy has no effect on the saved/published set.
-    if (questionSetId) {
-      const created = await addQuestionSetQuestion(questionSetId, {
-        question: newQ.question,
-        questionType: newQ.questionType,
-        difficulty: newQ.difficulty,
-        rationale: newQ.rationale,
-        sampleAnswer: newQ.sampleAnswer,
-        answerMethod: newQ.answerMethod ?? "Text",
-        order: questions.length + 1,
-      });
-      if (!created) {
-        addToast("error", "Không thể thêm câu hỏi. Vui lòng thử lại.");
-        return;
-      }
-      // Refetch để đồng bộ order/id từ BE
-      const refreshed = await getDraft(questionSetId);
-      if (refreshed) {
-        setQuestions(refreshed.questions);
-        setPage(Math.ceil(refreshed.questions.length / PAGE_SIZE));
-      }
-      addToast("success", "Thêm câu hỏi thành công");
+    if (!questionSetId) {
+      addToast("error", missingQuestionSetIdMessage(rp.actionAddQuestion));
       return;
     }
-
-    const question: GeneratedQuestion = {
-      ...newQ,
-      id: `manual-${Date.now()}`,
-      orderIndex: questions.length,
-      isEdited: true,
-    };
-    setQuestions((prev) => {
-      const next = [...prev, question];
-      setPage(Math.ceil(next.length / PAGE_SIZE));
-      return next;
+    const created = await addQuestionSetQuestion(questionSetId, {
+      question: newQ.question,
+      questionType: newQ.questionType,
+      difficulty: newQ.difficulty,
+      rationale: newQ.rationale,
+      sampleAnswer: newQ.sampleAnswer,
+      answerMethod: newQ.answerMethod ?? "Text",
+      order: questions.length + 1,
     });
-    addToast("success", "Thêm câu hỏi thành công");
-  }
-
-  async function handleSaveDraft() {
-    setSaveState("saving");
-    try {
-      const isLocal = sessionId.startsWith("local-");
-
-      if (isLocal) {
-        updateLocalSessionQuestions(sessionId, questions);
-      } else {
-        // 1. DELETE questions removed by user (backend IDs only)
-        await Promise.all(
-          deletedIds.map((id) => deleteJobQuestion(sessionId, id).catch(() => {}))
-        );
-
-        // 2. POST manually-added questions (id starts with "manual-")
-        const newQuestions = questions.filter((q) => q.id.startsWith("manual-"));
-        await Promise.all(
-          newQuestions.map((q) =>
-            addJobQuestion(sessionId, {
-              question: q.question,
-              questionType: q.questionType,
-              difficulty: q.difficulty,
-              rationale: q.rationale,
-              sampleAnswer: q.sampleAnswer,
-              order: q.orderIndex,
-            })
-          )
-        );
-
-        // 3. Persist current question order
-        const reorderItems = buildReorderPayload(questions);
-        if (reorderItems.length > 0) {
-          await reorderJobQuestions(sessionId, reorderItems);
-        }
-
-        // 5. Mark as saved draft
-        const savedQuestionSetId = await saveJobDraft(sessionId);
-        if (savedQuestionSetId) {
-          onDraftSaved?.(savedQuestionSetId);
-          // Apply time limit if user set one before draft was saved
-          if (timeLimitDirtyRef.current) {
-            timeLimitDirtyRef.current = false;
-            await setQuestionSetTimeLimit(savedQuestionSetId, timeLimitMinutes).catch(() => {});
-          }
-        }
-      }
-
-      setDeletedIds([]);
-      setQuestions((prev) => prev.map((q) => ({ ...q, isEdited: false })));
-      setSaveState("saved");
-      setTimeout(() => setSaveState("idle"), 3000);
-    } catch {
-      setSaveState("error");
-      setTimeout(() => setSaveState("idle"), 3000);
+    if (!created) {
+      addToast("error", "Không thể thêm câu hỏi. Vui lòng thử lại.");
+      return;
     }
+    const refreshed = await getDraft(questionSetId);
+    if (refreshed) {
+      setQuestions(refreshed.questions);
+      setPage(Math.ceil(refreshed.questions.length / PAGE_SIZE));
+    }
+    addToast("success", "Thêm câu hỏi thành công");
   }
 
   async function handleConfirmPublishAction() {
     if (!questionSetId || !publishConfirmAction) return;
     const action = publishConfirmAction;
+    if (action === "publish") {
+      setPublishConfirmAction(null);
+      setShowPublishDialog(true);
+      return;
+    }
     setPublishing(true);
     try {
-      if (action === "publish") {
-        await publishQuestionSet(questionSetId);
-        onPublishStatusChange?.("PUBLISHED");
-        addToast("success", rp.publishSuccess);
-      } else {
-        const abandoned = await unpublishQuestionSet(questionSetId);
-        onPublishStatusChange?.("DRAFT");
-        addToast("success", withAbandonedToast(rp.unpublishSuccess, abandoned));
-      }
+      const abandoned = await unpublishQuestionSet(questionSetId);
+      onPublishStatusChange?.("DRAFT");
+      addToast("success", withAbandonedToast(rp.unpublishSuccess, abandoned));
     } catch (err) {
-      const message = err instanceof Error && err.message
-        ? err.message
-        : action === "publish" ? rp.publishFailed : rp.unpublishFailed;
+      const message = err instanceof Error && err.message ? err.message : rp.unpublishFailed;
       addToast("error", message);
     } finally {
       setPublishing(false);
@@ -538,19 +471,40 @@ export function ReviewQuestionsSection({
     }
   }
 
+  async function handleSelectivePublish(payload: PublishDialogConfirmPayload) {
+    if (!questionSetId) return;
+    setPublishing(true);
+    try {
+      await publishQuestionSet(questionSetId, {
+        questionIds: payload.questionIds,
+        timeLimitMinutes: payload.timeLimitMinutes,
+        autoRecommendEnabled: payload.autoRecommendEnabled,
+        recommendationMinScore: payload.recommendationMinScore,
+      });
+      if (payload.timeLimitMinutes !== timeLimitMinutes) {
+        setTimeLimitMinutes(payload.timeLimitMinutes);
+      }
+      setAutoRecommendEnabled(payload.autoRecommendEnabled);
+      setRecommendationMinScore(payload.recommendationMinScore);
+      onPublishStatusChange?.("PUBLISHED");
+      addToast("success", rp.publishSuccess);
+      setShowPublishDialog(false);
+    } catch (err) {
+      const message = err instanceof Error && err.message ? err.message : rp.publishFailed;
+      addToast("error", message);
+    } finally {
+      setPublishing(false);
+    }
+  }
+
   async function handleSaveTimeLimit(minutes: number | null) {
     if (!questionSetId) {
-      // Draft not saved yet — store locally; will be pushed to BE on save draft
-      timeLimitDirtyRef.current = true;
-      setTimeLimitMinutes(minutes);
-      setShowTimeLimitDialog(false);
-      addToast("success", rp.timeLimitSaveSuccess);
+      addToast("error", missingQuestionSetIdMessage(rp.actionSaveTimeLimit));
       return;
     }
     setSavingTimeLimit(true);
     try {
       await setQuestionSetTimeLimit(questionSetId, minutes);
-      timeLimitDirtyRef.current = false;
       setTimeLimitMinutes(minutes);
       setShowTimeLimitDialog(false);
       addToast("success", rp.timeLimitSaveSuccess);
@@ -558,6 +512,26 @@ export function ReviewQuestionsSection({
       addToast("error", err instanceof Error && err.message ? err.message : rp.timeLimitSaveFailed);
     } finally {
       setSavingTimeLimit(false);
+    }
+  }
+
+  async function handleSaveRecSettings() {
+    if (!questionSetId) {
+      addToast("error", missingQuestionSetIdMessage(rp.actionSaveRecSettings));
+      return;
+    }
+    const score = Math.min(95, Math.max(50, Math.round(Number(recommendationMinScore) || 70)));
+    setSavingRecSettings(true);
+    try {
+      const saved = await setQuestionSetRecommendationSettings(questionSetId, autoRecommendEnabled, score);
+      setAutoRecommendEnabled(saved.autoRecommendEnabled);
+      setRecommendationMinScore(saved.recommendationMinScore);
+      setShowRecSettings(false);
+      addToast("success", rp.recSettingsSaveSuccess);
+    } catch (err) {
+      addToast("error", err instanceof Error && err.message ? err.message : rp.recSettingsSaveFailed);
+    } finally {
+      setSavingRecSettings(false);
     }
   }
 
@@ -608,7 +582,11 @@ export function ReviewQuestionsSection({
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div className="flex items-center gap-2">
           <p className={cn("text-sm", portalSubtext)}>
-            {rp.questionCount.replace("{{count}}", String(questions.length))}
+            {publishStatus === "PUBLISHED"
+              ? rp.liveCountLabel
+                  .replace("{{live}}", String(liveQuestionCount))
+                  .replace("{{total}}", String(questions.length))
+              : rp.questionCount.replace("{{count}}", String(questions.length))}
           </p>
           {publishStatus && (
             <span className={cn(
@@ -638,6 +616,23 @@ export function ReviewQuestionsSection({
               {!isLocked && <Pencil size={9} />}
             </button>
           )}
+          {!readOnly && questionSetId && (
+            <button
+              type="button"
+              onClick={() => setShowRecSettings((v) => !v)}
+              title={rp.recSettingsHint}
+              className={cn(
+                "inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-md transition-colors cursor-pointer",
+                "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
+              )}
+            >
+              <UserCheck size={11} />
+              {autoRecommendEnabled
+                ? rp.recSettingsLabelOn.replace("{{score}}", String(recommendationMinScore))
+                : rp.recSettingsLabelOff}
+              <Pencil size={9} />
+            </button>
+          )}
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {!readOnly && !isLocked && (
@@ -654,50 +649,6 @@ export function ReviewQuestionsSection({
               <Plus size={14} />
               {rp.addQuestion}
             </button>
-          )}
-
-          {!readOnly && !questionSetId && (
-            <button
-              type="button"
-              onClick={() => saveState === "idle" && setShowSaveDialog(true)}
-              disabled={saveState === "saving"}
-              className={cn(
-                "relative flex-1 sm:flex-none flex items-center justify-center gap-2 text-sm font-semibold px-4 py-2 rounded-lg transition-colors",
-                saveState === "saved"
-                  ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800"
-                  : saveState === "error"
-                    ? "bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800"
-                    : "bg-primary text-white hover:bg-[#5535dd] disabled:opacity-70"
-              )}
-            >
-              {saveState === "saving" ? (
-                <>
-                  <Loader2 size={14} className="animate-spin" />
-                  {rp.saving}
-                </>
-              ) : saveState === "saved" ? (
-                <>
-                  <CheckCircle2 size={14} />
-                  {rp.savedSuccess}
-                </>
-              ) : saveState === "error" ? (
-                <>
-                  <AlertCircle size={14} />
-                  {rp.savedFailed}
-                </>
-              ) : (
-                <>
-                  <BookMarked size={14} />
-                  {rp.saveDraft}
-                </>
-              )}
-            </button>
-          )}
-
-          {!readOnly && !questionSetId && (
-            <span className={cn("text-xs italic", portalSubtext)}>
-              {rp.saveDraftFirstHint}
-            </span>
           )}
 
           {!readOnly && isLocked && (
@@ -726,7 +677,7 @@ export function ReviewQuestionsSection({
             ) : (
               <button
                 type="button"
-                onClick={() => setPublishConfirmAction("publish")}
+                onClick={() => setShowPublishDialog(true)}
                 disabled={publishing}
                 className="flex-1 sm:flex-none flex items-center justify-center gap-2 text-sm font-semibold px-4 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60 transition-colors"
               >
@@ -739,16 +690,36 @@ export function ReviewQuestionsSection({
       </div>
 
       <ConfirmDialog
-        open={publishConfirmAction !== null}
-        title={publishConfirmAction === "unpublish" ? rp.unpublishConfirmTitle : rp.publishConfirmTitle}
-        message={publishConfirmAction === "unpublish" ? rp.unpublishConfirmMessage : rp.publishConfirmMessage}
-        confirmLabel={publishConfirmAction === "unpublish" ? rp.unpublish : rp.publish}
+        open={publishConfirmAction === "unpublish"}
+        title={rp.unpublishConfirmTitle}
+        message={rp.unpublishConfirmMessage}
+        confirmLabel={rp.unpublish}
         cancelLabel={rp.cancelBtn}
-        variant={publishConfirmAction === "unpublish" ? "danger" : "primary"}
+        variant="danger"
         loading={publishing}
         onConfirm={handleConfirmPublishAction}
         onCancel={() => setPublishConfirmAction(null)}
       />
+
+      {showPublishDialog && (
+        <PublishDialog
+          questions={questions.map((q) => ({
+            id: q.id,
+            preview: q.question,
+            ready: Boolean(q.isReady),
+            defaultSelected: Boolean(q.isReady && q.isActive !== false),
+          }))}
+          minQuestions={MIN_QUESTIONS_TO_PUBLISH}
+          currentTimeLimitMinutes={timeLimitMinutes}
+          initialAutoRecommendEnabled={autoRecommendEnabled}
+          initialRecommendationMinScore={recommendationMinScore}
+          saving={publishing}
+          onConfirm={(payload) => void handleSelectivePublish(payload)}
+          onClose={() => {
+            if (!publishing) setShowPublishDialog(false);
+          }}
+        />
+      )}
 
       {showTimeLimitDialog && (
         <TimeLimitDialog
@@ -757,6 +728,54 @@ export function ReviewQuestionsSection({
           onSave={handleSaveTimeLimit}
           onClose={() => setShowTimeLimitDialog(false)}
         />
+      )}
+
+      {showRecSettings && (
+        <div className={cn(portalCard, "p-4 space-y-3")}>
+          <p className={cn("text-sm font-semibold", portalHeading)}>{rp.recSettingsTitle}</p>
+          <p className={cn("text-xs", portalSubtext)}>{rp.recSettingsHint}</p>
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={autoRecommendEnabled}
+              onChange={(e) => setAutoRecommendEnabled(e.target.checked)}
+              className="rounded border-gray-300"
+            />
+            <span className={portalHeading}>{rp.recSettingsEnable}</span>
+          </label>
+          <label className={cn("flex flex-col gap-1 text-xs", portalSubtext)}>
+            {rp.recSettingsMinScore}
+            <input
+              type="number"
+              min={50}
+              max={95}
+              step={1}
+              disabled={!autoRecommendEnabled}
+              value={recommendationMinScore}
+              onChange={(e) => setRecommendationMinScore(Number(e.target.value))}
+              className="h-9 w-28 px-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm"
+            />
+          </label>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              disabled={savingRecSettings}
+              onClick={() => void handleSaveRecSettings()}
+              className="inline-flex items-center gap-1.5 text-sm font-semibold px-3 py-1.5 rounded-lg bg-primary text-white hover:bg-primary-hover disabled:opacity-60"
+            >
+              {savingRecSettings ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
+              {rp.recSettingsSave}
+            </button>
+            <button
+              type="button"
+              disabled={savingRecSettings}
+              onClick={() => setShowRecSettings(false)}
+              className={cn("text-sm font-medium px-3 py-1.5 rounded-lg border", portalCard, portalHeading)}
+            >
+              {rp.cancelBtn}
+            </button>
+          </div>
+        </div>
       )}
 
       {/* Questions List */}
@@ -776,13 +795,42 @@ export function ReviewQuestionsSection({
           </button>
         </div>
       ) : (() => {
-        const totalPages = Math.max(1, Math.ceil(questions.length / PAGE_SIZE));
+        const totalPages = Math.max(1, Math.ceil(filteredQuestions.length / PAGE_SIZE));
         const safePage = Math.min(page, totalPages);
         const startIdx = (safePage - 1) * PAGE_SIZE;
-        const paginated = questions.slice(startIdx, startIdx + PAGE_SIZE);
+        const paginated = filteredQuestions.slice(startIdx, startIdx + PAGE_SIZE);
 
         return (
           <>
+            {publishStatus === "PUBLISHED" && (
+              <div className="flex flex-wrap items-center gap-1.5">
+                {(
+                  [
+                    ["all", rp.liveFilterAll],
+                    ["live", rp.liveFilterLive],
+                    ["hidden", rp.liveFilterHidden],
+                  ] as const
+                ).map(([key, label]) => (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => setLiveFilter(key)}
+                    className={cn(
+                      "rounded-full px-2.5 py-1 text-[11px] font-semibold transition-colors",
+                      liveFilter === key
+                        ? "bg-primary text-white"
+                        : "bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300"
+                    )}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {filteredQuestions.length === 0 ? (
+              <p className={cn("py-10 text-center text-sm", portalSubtext)}>{rp.emptyState}</p>
+            ) : (
             <DndContext
               sensors={sensors}
               collisionDetection={closestCenter}
@@ -795,12 +843,32 @@ export function ReviewQuestionsSection({
               >
                 <div className="flex flex-col gap-3">
                   {paginated.map((q, idx) => {
-                    const globalIdx = startIdx + idx;
+                    const globalIdx = questions.findIndex((x) => x.id === q.id);
+                    const displayIdx = globalIdx >= 0 ? globalIdx + 1 : startIdx + idx + 1;
+                    const live = q.isActive !== false;
                     return (
-                      <div key={q.id} className="animate-fade-up" style={{ animationDelay: `${idx * 40}ms` }}>
+                      <div key={q.id} className="animate-fade-up space-y-1.5" style={{ animationDelay: `${idx * 40}ms` }}>
+                        {publishStatus === "PUBLISHED" && (
+                          <span
+                            className={cn(
+                              "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold",
+                              live
+                                ? "bg-emerald-100/80 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300"
+                                : "bg-gray-200 text-gray-600 dark:bg-gray-800 dark:text-gray-400"
+                            )}
+                          >
+                            {live ? (
+                              <>
+                                <Globe size={10} /> {rp.badgeLive}
+                              </>
+                            ) : (
+                              rp.badgeHidden
+                            )}
+                          </span>
+                        )}
                         <SortableCard
                           q={q}
-                          index={globalIdx + 1}
+                          index={displayIdx}
                           sessionId={sessionId}
                           questionSetId={questionSetId}
                           isFirst={globalIdx === 0}
@@ -813,7 +881,7 @@ export function ReviewQuestionsSection({
                           onDelete={() => handleDelete(q.id)}
                           onMoveUp={() => handleMoveUp(globalIdx)}
                           onMoveDown={() => handleMoveDown(globalIdx)}
-                          onAskAI={(applyFn) => handleOpenAskAI(q, applyFn)}
+                          onAskAI={ASK_AI_ENABLED ? (applyFn) => handleOpenAskAI(q, applyFn) : undefined}
                           onImageUpdated={(updated) => {
                             setQuestions((prev) =>
                               prev.map((item) =>
@@ -856,12 +924,13 @@ export function ReviewQuestionsSection({
                 })() : null}
               </DragOverlay>
             </DndContext>
+            )}
 
             {/* Pagination */}
-            {totalPages > 1 && (
+            {filteredQuestions.length > 0 && totalPages > 1 && (
               <div className="flex items-center justify-between gap-4 pt-2">
                 <p className={cn("text-xs", portalSubtext)}>
-                  Câu {startIdx + 1}–{Math.min(safePage * PAGE_SIZE, questions.length)} / {questions.length} câu hỏi
+                  Câu {startIdx + 1}–{Math.min(safePage * PAGE_SIZE, filteredQuestions.length)} / {filteredQuestions.length} câu hỏi
                 </p>
                 <div className="flex items-center gap-1">
                   <button
@@ -926,7 +995,7 @@ export function ReviewQuestionsSection({
 
       {/* Shared AskAI bottom sheet — one panel for all question cards */}
       <AnimatePresence>
-        {askAIState && (
+        {ASK_AI_ENABLED && askAIState && (
           <AskAIPanel
             question={askAIState.question}
             sessionId={sessionId}
@@ -993,80 +1062,6 @@ export function ReviewQuestionsSection({
                   >
                     <Check size={14} />
                     Ở lại để lưu
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
-
-
-      {/* Save Draft Confirmation Dialog — rendered via portal to escape ancestor transforms */}
-      {showSaveDialog && createPortal(
-        <div
-          className="fixed inset-0 z-9999 flex items-center justify-center p-4"
-          onClick={(e) => { if (e.target === e.currentTarget) setShowSaveDialog(false); }}
-        >
-          {/* Backdrop */}
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowSaveDialog(false)} />
-
-          {/* Dialog */}
-          <div className="relative z-10 w-full max-w-sm animate-fade-up">
-            <div className="hr-glass-card overflow-hidden">
-              {/* Gradient stripe */}
-              <div className="h-0.5 bg-linear-to-r from-violet-500 via-purple-500 to-cyan-500" />
-
-              <div className="p-6">
-                {/* Header */}
-                <div className="flex items-start justify-between gap-3 mb-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-violet-50 dark:bg-violet-950/40 border border-violet-100 dark:border-violet-900/40 flex items-center justify-center shrink-0">
-                      <BookMarked size={18} className="text-violet-600 dark:text-violet-400" />
-                    </div>
-                    <div>
-                      <h3 className={cn("text-sm font-semibold", portalHeading)}>Lưu bản nháp</h3>
-                      <p className={cn("text-xs mt-0.5", portalSubtext)}>Xác nhận lưu câu hỏi</p>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setShowSaveDialog(false)}
-                    className={cn("p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors shrink-0", portalSubtext)}
-                  >
-                    <X size={15} />
-                  </button>
-                </div>
-
-                {/* Body */}
-                <div className="rounded-xl bg-violet-50/60 dark:bg-violet-950/20 border border-violet-100 dark:border-violet-900/30 px-4 py-3 mb-5">
-                  <p className={cn("text-sm leading-relaxed", portalHeading)}>
-                    Bộ câu hỏi gồm{" "}
-                    <span className="font-bold text-violet-600 dark:text-violet-400">{questions.length} câu</span>{" "}
-                    sẽ được lưu vào lịch sử. Bạn vẫn có thể chỉnh sửa sau.
-                  </p>
-                </div>
-
-                {/* Actions */}
-                <div className="flex gap-2.5">
-                  <button
-                    type="button"
-                    onClick={() => setShowSaveDialog(false)}
-                    className={cn(
-                      "flex-1 py-2.5 text-sm font-semibold rounded-xl border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors",
-                      portalHeading
-                    )}
-                  >
-                    Hủy
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => { setShowSaveDialog(false); handleSaveDraft(); }}
-                    className="flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-semibold rounded-xl shimmer-button hr-cta-btn text-white"
-                  >
-                    <BookMarked size={14} />
-                    Lưu ngay
                   </button>
                 </div>
               </div>

@@ -8,8 +8,8 @@ const SUBSCRIPTION_ERROR_MESSAGES: Record<string, Record<"en" | "vi", string>> =
     vi: "Bạn đã hết hạn mức trong kỳ hiện tại. Nâng Premium hoặc mua thêm pack Ask-AI.",
   },
   COOLDOWN_ACTIVE: {
-    en: "Free plan allows 4 question sets per 24 hours. Please wait or upgrade to Premium.",
-    vi: "Gói Free chỉ tạo bộ câu hỏi 4 lần / 24 giờ. Vui lòng đợi hoặc nâng Premium.",
+    en: "Free plan allows 1 completed question set or JD review per 24 hours. Please wait or upgrade to Premium.",
+    vi: "Gói Free chỉ hoàn thành tạo bộ / đánh giá JD 1 lần / 24 giờ. Vui lòng đợi hoặc nâng Premium.",
   },
   FEATURE_REQUIRES_PREMIUM: {
     en: "This feature requires the Premium plan.",
@@ -18,6 +18,10 @@ const SUBSCRIPTION_ERROR_MESSAGES: Record<string, Record<"en" | "vi", string>> =
   PLAN_REGENERATE_LIMIT: {
     en: "You've used all plan regenerations for this draft (max 5).",
     vi: "Đã hết lượt regenerate plan cho bản nháp này (tối đa 5 lần).",
+  },
+  QUESTION_REGEN_LIMIT: {
+    en: "Free plan allows regenerating questions up to 2 times per set. Upgrade to Premium for unlimited regen.",
+    vi: "Gói Free chỉ regen câu hỏi tối đa 2 lần trên mỗi bộ. Nâng Premium để regen không giới hạn.",
   },
 };
 
@@ -45,10 +49,10 @@ export function extractErrorMessage(error: unknown, lang: "en" | "vi" = "en"): s
   }> | undefined;
   const data = axiosErr?.response?.data;
   const code = pickErrorCode(data);
-  if (data && typeof data === "object") {
-    if (typeof data.detail === "string" && data.detail) return data.detail;
-    if (typeof data.error === "string" && data.error) return data.error;
-  }
+  // Check the known-errorCode localized message BEFORE the generic detail/error
+  // fields — ASP.NET ProblemDetails (problem+json) responses from SubscriptionGate
+  // populate `detail` alongside `errorCode`, so checking detail first meant these
+  // localized messages were never shown.
   if (code && SUBSCRIPTION_ERROR_MESSAGES[code]) {
     return SUBSCRIPTION_ERROR_MESSAGES[code][lang];
   }

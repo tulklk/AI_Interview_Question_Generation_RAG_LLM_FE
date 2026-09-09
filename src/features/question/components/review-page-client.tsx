@@ -2,8 +2,8 @@
 
 import { useEffect, useState, Suspense } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeft, AlertCircle, Sparkles, ArrowRight, Pencil, Check, X, Loader2, Bookmark, Users } from "lucide-react";
+import { useSearchParams } from "next/navigation";
+import { ArrowLeft, AlertCircle, Sparkles, Pencil, Check, X, Loader2, Bookmark, Users } from "lucide-react";
 import { AiLoadingSpinner } from "@/shared/components/common/ai-loading-spinner";
 import { SessionStatusBadge } from "@/features/interview/components/history/session-status-badge";
 import { ReviewQuestionsSection } from "@/features/question/components/review-questions-section.lazy";
@@ -11,9 +11,17 @@ import { useLanguage } from "@/shared/providers/language-context";
 import { useToast } from "@/shared/providers/toast-context";
 import { cn } from "@/lib/cn";
 import { portalHeading, portalInput, portalSubtext } from "@/shared/utils/portal-ui";
-import { getHrBookmarkedSetIds, toggleHrBookmark } from "@/features/interview/services/interview.service";
+import { getHrBookmarkedSetIds, toggleHrBookmark, getDraft } from "@/features/interview/services/interview.service";
+import { getJobDescription } from "@/features/studio/services/studio.service";
 import { JdFitReviewPanel } from "@/features/hr/components/question-sets/jd-fit-review-panel";
+import { JobDescriptionViewer } from "@/features/question/components/job-description-viewer";
 import type { GenerationSession, GeneratedQuestion } from "@/features/interview/types/generation-session";
+
+export type JdMetaUpdate = {
+  content?: string | null;
+  sourceType?: "PastedText" | "UploadedFile";
+  fileName?: string | null;
+};
 
 interface ReviewPageClientProps {
   session: GenerationSession;
@@ -21,10 +29,18 @@ interface ReviewPageClientProps {
   isGenerating?: boolean;
   isRetrying?: boolean;
   questionSetId?: string;
+  /** JD đã lưu trên bộ — viewer cột trái. */
+  jobDescription?: string | null;
+  jdSourceType?: "PastedText" | "UploadedFile" | null;
+  jdOriginalFileName?: string | null;
+  sourceProjectId?: string | null;
+  onJobDescriptionChange?: (next: JdMetaUpdate) => void;
   publishStatus?: "DRAFT" | "PUBLISHED" | null;
   onPublishStatusChange?: (status: "DRAFT" | "PUBLISHED") => void;
   onDraftSaved?: (questionSetId: string) => void;
   initialTimeLimitMinutes?: number | null;
+  initialAutoRecommendEnabled?: boolean;
+  initialRecommendationMinScore?: number;
   onRenameTitle?: (title: string) => Promise<boolean>;
 }
 
@@ -34,24 +50,70 @@ export function ReviewPageClient({
   isGenerating = false,
   isRetrying = false,
   questionSetId,
+  jobDescription: jobDescriptionProp,
+  jdSourceType: jdSourceTypeProp,
+  jdOriginalFileName: jdFileNameProp,
+  sourceProjectId,
+  onJobDescriptionChange,
   publishStatus,
   onPublishStatusChange,
   onDraftSaved,
   initialTimeLimitMinutes,
+  initialAutoRecommendEnabled,
+  initialRecommendationMinScore,
   onRenameTitle,
 }: ReviewPageClientProps) {
   const { t } = useLanguage();
   const rp = t.reviewPage;
   const gsp = t.generationSessionPage;
-  const router = useRouter();
   const { addToast } = useToast();
 
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleValue, setTitleValue] = useState(session.jobTitle);
   const [savingTitle, setSavingTitle] = useState(false);
+  const [jobDescription, setJobDescription] = useState<string | null | undefined>(
+    jobDescriptionProp ?? session.jdContent
+  );
+  const [jdSourceType, setJdSourceType] = useState<"PastedText" | "UploadedFile">(
+    jdSourceTypeProp === "UploadedFile" ? "UploadedFile" : "PastedText"
+  );
+  const [jdOriginalFileName, setJdOriginalFileName] = useState<string | null>(
+    jdFileNameProp ?? null
+  );
 
   const [bookmarked, setBookmarked] = useState(false);
   const [bookmarkBusy, setBookmarkBusy] = useState(false);
+
+  useEffect(() => {
+    setJobDescription(jobDescriptionProp ?? session.jdContent);
+    setJdSourceType(jdSourceTypeProp === "UploadedFile" ? "UploadedFile" : "PastedText");
+    setJdOriginalFileName(jdFileNameProp ?? null);
+  }, [jobDescriptionProp, session.jdContent, jdSourceTypeProp, jdFileNameProp]);
+
+  // Bộ Save cũ thiếu meta file → fallback đọc Studio project
+  useEffect(() => {
+    if (!sourceProjectId) return;
+    if (jdSourceTypeProp === "UploadedFile" && jdFileNameProp) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const studioJd = await getJobDescription(sourceProjectId);
+        if (cancelled || !studioJd) return;
+        if (studioJd.sourceType === "UploadedFile" && studioJd.originalFileName) {
+          setJdSourceType("UploadedFile");
+          setJdOriginalFileName(studioJd.originalFileName);
+          if (!jobDescription && studioJd.content?.trim()) {
+            setJobDescription(studioJd.content.trim());
+          }
+        }
+      } catch {
+        // Không chặn History nếu Studio JD không đọc được
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [sourceProjectId, jdSourceTypeProp, jdFileNameProp, jobDescription]);
 
   useEffect(() => {
     if (!questionSetId) return;
@@ -61,6 +123,41 @@ export function ReviewPageClient({
     });
     return () => { cancelled = true; };
   }, [questionSetId]);
+
+  async function handleJdSaved(meta: JdMetaUpdate) {
+    if (meta.content != null) {
+      setJobDescription(meta.content);
+      setJdSourceType(meta.sourceType === "UploadedFile" ? "UploadedFile" : "PastedText");
+      setJdOriginalFileName(
+        meta.sourceType === "UploadedFile" ? meta.fileName ?? null : null
+      );
+      onJobDescriptionChange?.(meta);
+      return;
+    }
+    // Upload: giữ tên file ngay; refetch text + meta từ BE
+    if (meta.sourceType === "UploadedFile" && meta.fileName) {
+      setJdSourceType("UploadedFile");
+      setJdOriginalFileName(meta.fileName);
+    }
+    if (!questionSetId) return;
+    const refreshed = await getDraft(questionSetId);
+    const nextContent = refreshed?.jobDescription ?? null;
+    const nextType =
+      refreshed?.jdSourceType === "UploadedFile" || meta.sourceType === "UploadedFile"
+        ? "UploadedFile"
+        : "PastedText";
+    const nextFile =
+      refreshed?.jdOriginalFileName ??
+      (nextType === "UploadedFile" ? meta.fileName ?? null : null);
+    setJobDescription(nextContent);
+    setJdSourceType(nextType);
+    setJdOriginalFileName(nextFile);
+    onJobDescriptionChange?.({
+      content: nextContent,
+      sourceType: nextType,
+      fileName: nextFile,
+    });
+  }
 
   async function handleToggleBookmark() {
     if (!questionSetId || bookmarkBusy) return;
@@ -96,15 +193,6 @@ export function ReviewPageClient({
     const ok = await onRenameTitle(next);
     setSavingTitle(false);
     if (ok) setEditingTitle(false);
-  }
-
-  function continueToGenerate() {
-    localStorage.setItem("hr_gen_job", session.id);
-    localStorage.setItem("hr_gen_view", "plan_review");
-    if (session.planDraft) {
-      localStorage.setItem("hr_gen_plan", JSON.stringify(session.planDraft));
-    }
-    router.push("/hr/generate-question");
   }
 
   return (
@@ -255,110 +343,127 @@ export function ReviewPageClient({
         </div>
       )}
 
-      {questionSetId && (
-        <div id="jd-fit-review" className="animate-fade-up" style={{ animationDelay: "70ms" }}>
-          <Suspense fallback={null}>
-            <JdFitSection questionSetId={questionSetId} />
-          </Suspense>
-        </div>
-      )}
-
-      {/* Plan proposed CTA */}
-      {session.status === "PLAN_PROPOSED" && (
-        <div
-          className="animate-fade-up rounded-xl border border-violet-200 dark:border-violet-800 bg-violet-50 dark:bg-violet-950/30 px-4 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
-          style={{ animationDelay: "80ms" }}
-        >
-          <div className="flex items-start gap-3">
-            <div className="w-8 h-8 rounded-lg bg-violet-600 flex items-center justify-center shrink-0 mt-0.5">
-              <Sparkles size={14} className="text-white" />
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-violet-800 dark:text-violet-300">
-                {rp.planReadyTitle}
-              </p>
-              <p className="text-xs text-violet-600 dark:text-violet-400 mt-0.5">
-                {rp.planReadySubtext}
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={continueToGenerate}
-            className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-700 text-white text-xs font-semibold transition-colors w-full sm:w-auto sm:shrink-0"
+      {/* Desktop: JD Fit sticky trái · câu hỏi phải. Mobile: JD trên, câu hỏi dưới */}
+      <div
+        className={cn(
+          "gap-6",
+          questionSetId
+            ? "flex flex-col lg:grid lg:grid-cols-[minmax(260px,340px)_minmax(0,1fr)] lg:items-start"
+            : "space-y-6"
+        )}
+      >
+        {questionSetId && (
+          <aside
+            id="jd-fit-review"
+            className="animate-fade-up order-first w-full space-y-4 lg:sticky lg:top-4 lg:z-10 lg:self-start lg:max-h-[calc(100vh-5.5rem)] lg:overflow-y-auto lg:overscroll-contain"
+            style={{ animationDelay: "70ms" }}
           >
-            {rp.continuePlanReview}
-            <ArrowRight size={13} />
-          </button>
-        </div>
-      )}
+            <JobDescriptionViewer
+              jobDescription={jobDescription}
+              sourceType={jdSourceType}
+              originalFileName={jdOriginalFileName}
+              title={rp.jdViewer.title}
+              emptyLabel={rp.jdViewer.empty}
+              collapseLabel={rp.jdViewer.collapse}
+              expandLabel={rp.jdViewer.expand}
+              missingBadge={rp.jdViewer.missingBadge}
+              statsTemplate={rp.jdViewer.stats}
+              fromFileLabel={rp.jdViewer.fromFile}
+              viewParsedLabel={rp.jdViewer.viewParsed}
+            />
+            <Suspense fallback={null}>
+              <JdFitSection
+                questionSetId={questionSetId}
+                onJobDescriptionSaved={(meta) => void handleJdSaved(meta)}
+              />
+            </Suspense>
+          </aside>
+        )}
 
-      {/* Error banner for failed sessions */}
-      {session.status === "FAILED" && session.failureMessage && (
-        <div
-          className="animate-fade-up flex items-center gap-3 rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/30 px-4 py-3"
-          style={{ animationDelay: "80ms" }}
-        >
-          <AlertCircle size={16} className="text-red-500 shrink-0" />
-          <div>
-            <p className="text-sm font-semibold text-red-700 dark:text-red-400">
-              {gsp.errors.generationFailed}
-            </p>
-            <p className="text-xs text-red-600 dark:text-red-400 mt-0.5">
-              {session.failureMessage}
-            </p>
-          </div>
-        </div>
-      )}
+        <div className="min-w-0 space-y-6">
+          {/* Error banner for failed sessions */}
+          {session.status === "FAILED" && session.failureMessage && (
+            <div
+              className="animate-fade-up flex items-center gap-3 rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/30 px-4 py-3"
+              style={{ animationDelay: "80ms" }}
+            >
+              <AlertCircle size={16} className="text-red-500 shrink-0" />
+              <div>
+                <p className="text-sm font-semibold text-red-700 dark:text-red-400">
+                  {gsp.errors.generationFailed}
+                </p>
+                <p className="text-xs text-red-600 dark:text-red-400 mt-0.5">
+                  {session.failureMessage}
+                </p>
+              </div>
+            </div>
+          )}
 
-      {/* Loading animation while generating questions */}
-      {isGenerating && (
-        <div
-          className="animate-fade-up rounded-2xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 p-10"
-          style={{ animationDelay: "120ms" }}
-        >
-          <AiLoadingSpinner
-            text="AI đang tạo câu hỏi phỏng vấn..."
-            subtext="Câu hỏi sẽ tự động hiển thị khi hoàn thành. Vui lòng chờ."
-          />
-        </div>
-      )}
+          {/* Loading animation while generating questions */}
+          {isGenerating && (
+            <div
+              className="animate-fade-up rounded-2xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 p-10"
+              style={{ animationDelay: "120ms" }}
+            >
+              <AiLoadingSpinner
+                text="AI đang tạo câu hỏi phỏng vấn..."
+                subtext="Câu hỏi sẽ tự động hiển thị khi hoàn thành. Vui lòng chờ."
+              />
+            </div>
+          )}
 
-      {/* Retrying: COMPLETED but 0 questions — show brief spinner */}
-      {isRetrying && !isGenerating && session.status !== "PLAN_PROPOSED" && (
-        <div
-          className="animate-fade-up rounded-2xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 p-8"
-          style={{ animationDelay: "120ms" }}
-        >
-          <AiLoadingSpinner
-            text={rp.loadingQuestionsTitle}
-            subtext={rp.loadingQuestionsSubtext}
-          />
-        </div>
-      )}
+          {/* Retrying: COMPLETED but 0 questions — show brief spinner */}
+          {isRetrying && !isGenerating && session.status !== "PLAN_PROPOSED" && (
+            <div
+              className="animate-fade-up rounded-2xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 p-8"
+              style={{ animationDelay: "120ms" }}
+            >
+              <AiLoadingSpinner
+                text={rp.loadingQuestionsTitle}
+                subtext={rp.loadingQuestionsSubtext}
+              />
+            </div>
+          )}
 
-      {/* Review questions section — hidden when plan pending or actively generating or retrying */}
-      {!isGenerating && !isRetrying && session.status !== "PLAN_PROPOSED" && (
-        <div className="animate-fade-up" style={{ animationDelay: "120ms" }}>
-          <ReviewQuestionsSection
-            sessionId={session.id}
-            initialQuestions={draftQuestions ?? session.generatedQuestions ?? []}
-            status={session.status}
-            failureMessage={session.failureMessage}
-            questionSetId={questionSetId}
-            publishStatus={publishStatus}
-            onPublishStatusChange={onPublishStatusChange}
-            onDraftSaved={onDraftSaved}
-            initialTimeLimitMinutes={initialTimeLimitMinutes}
-            isFromStudio={session.isFromStudio}
-          />
+          {/* Review questions section — hidden when plan pending or actively generating or retrying */}
+          {!isGenerating && !isRetrying && session.status !== "PLAN_PROPOSED" && (
+            <div className="animate-fade-up" style={{ animationDelay: "120ms" }}>
+              <ReviewQuestionsSection
+                sessionId={session.id}
+                initialQuestions={draftQuestions ?? session.generatedQuestions ?? []}
+                status={session.status}
+                failureMessage={session.failureMessage}
+                questionSetId={questionSetId}
+                publishStatus={publishStatus}
+                onPublishStatusChange={onPublishStatusChange}
+                onDraftSaved={onDraftSaved}
+                initialTimeLimitMinutes={initialTimeLimitMinutes}
+                initialAutoRecommendEnabled={initialAutoRecommendEnabled}
+                initialRecommendationMinScore={initialRecommendationMinScore}
+                isFromStudio={session.isFromStudio}
+              />
+            </div>
+          )}
         </div>
-      )}
+      </div>
     </div>
   );
 }
 
-function JdFitSection({ questionSetId }: { questionSetId: string }) {
+function JdFitSection({
+  questionSetId,
+  onJobDescriptionSaved,
+}: {
+  questionSetId: string;
+  onJobDescriptionSaved?: (meta: JdMetaUpdate) => void;
+}) {
   const searchParams = useSearchParams();
   const autoRun = searchParams.get("jdFit") === "1";
-  return <JdFitReviewPanel questionSetId={questionSetId} autoRun={autoRun} />;
+  return (
+    <JdFitReviewPanel
+      questionSetId={questionSetId}
+      autoRun={autoRun}
+      onJobDescriptionSaved={onJobDescriptionSaved}
+    />
+  );
 }
