@@ -6,7 +6,6 @@ import { ScrollToTopButton } from "@/shared/components/ui/scroll-to-top-button";
 import { usePathname } from "next/navigation";
 import { Sidebar } from "./sidebar";
 import { TopHeader } from "./top-header";
-import { GenerationProgressBadge } from "@/features/interview/components/generate/generation-progress-badge";
 import { StudioProgressBadge } from "@/features/studio/components/studio-progress-badge";
 import { useLanguage } from "@/shared/providers/language-context";
 import { useDocumentTitle } from "@/shared/hooks/use-document-title";
@@ -215,7 +214,6 @@ export function AppShell({ children, breadcrumb, pageTitle, fullWidth = false }:
               {children}
             </div>
           </main>
-          <GenerationProgressBadge />
           <StudioProgressBadge />
         </div>
       </div>

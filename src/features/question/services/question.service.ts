@@ -1,19 +1,13 @@
 /**
- * Question feature service. Question management lives in the same generation
- * engine as the interview feature; this module exposes the question-specific
- * operations as the question feature's public service entry point.
+ * Question feature service — Question Set CRUD + Ask AI (flag tạm tắt).
  */
 export {
-  getJobQuestions,
-  updateJobQuestion,
-  deleteJobQuestion,
-  addJobQuestion,
-  reorderJobQuestions,
-  saveJobDraft,
   getDraft,
   getDrafts,
-  saveGenerationResult,
-  exportPlanQuestions,
+  updateQuestionSetQuestion,
+  deleteQuestionSetQuestion,
+  addQuestionSetQuestion,
+  reorderQuestionSetQuestions,
   askAIAboutQuestion,
   getQuestionAIChat,
 } from "@/features/interview/services/interview.service";

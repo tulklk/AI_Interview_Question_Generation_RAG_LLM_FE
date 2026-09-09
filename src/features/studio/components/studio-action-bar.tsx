@@ -27,6 +27,8 @@ interface StudioActionBarProps {
   isGeneratingQuestions: boolean;
   canCreatePlan: boolean;
   canGenerate: boolean;
+  /** When false, block Create Plan CTA due to invalid/unapplied HR config (không dùng cho Sinh câu hỏi) */
+  configValid?: boolean;
   skillCount?: number;
   isPublished?: boolean;
   questionSetId?: string | null;
@@ -50,6 +52,7 @@ export function StudioActionBar({
   isGeneratingQuestions,
   canCreatePlan,
   canGenerate,
+  configValid = true,
   skillCount = 0,
   isPublished = false,
   questionSetId = null,
@@ -120,6 +123,7 @@ export function StudioActionBar({
     if (isGeneratingQuestions) {
       preQuestionCta = { label: s.cta.generating, disabled: true };
     } else if (planApproved) {
+      // Plan đã duyệt — sinh câu hỏi theo plan đã chốt; không khóa vì draft config dirty
       preQuestionCta = { label: s.cta.generateQuestions, action: onGenerateQuestions, disabled: !canGenerate };
     } else if (isStreaming) {
       preQuestionCta = { label: s.cta.processing, disabled: true };
@@ -135,10 +139,7 @@ export function StudioActionBar({
       onTogglePublish();
       return;
     }
-    if (!allReady) {
-      onPublishBlocked?.();
-      return;
-    }
+    // SCRUM-439: dialog chọn subset — không bắt buộc all ready
     onTogglePublish();
   };
 

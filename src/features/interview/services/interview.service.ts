@@ -1,137 +1,17 @@
 import { apiClient } from "@/core/api/http-client";
 import type {
-  GenerationSession,
-  GenerationStatus,
   GeneratedQuestion,
   QuestionType,
   DifficultyLevel,
-  PlanDraft,
   DraftQuestionSet,
   QuestionAIChat,
   QuestionSuggestion,
+  Citation,
 } from "@/features/interview/types/generation-session";
+import { normalizeFromJson, normalizeFromUnknown, toDisplayText, isPublishReady } from "@/shared/rubric";
 
 // ---------------------------------------------------------------------------
-// Backend API types
-// ---------------------------------------------------------------------------
-
-interface CreateJobResponseData {
-  id?: string;
-  jobId?: string;
-  data?: { id?: string; jobId?: string };
-  code?: number;
-}
-
-interface BackendJobQuestion {
-  id?: string;
-  questionId?: string;  // some BE responses use this instead of id
-  question: string;
-  questionType?: string;
-  difficulty?: string;
-  rationale?: string;
-  sampleAnswer?: string;
-  evaluationCriteria?: unknown;
-  order?: number;
-  orderIndex?: number;
-}
-
-interface BackendJobSummary {
-  role?: string;
-  level?: string;
-  experience_level?: string;
-  numberOfQuestions?: number;
-  questionTypes?: string[];
-  skills?: string[];
-}
-
-interface BackendJobPlan {
-  roleTitle?: string;
-  summary?: string;
-  difficulty?: string;
-  level?: string;
-  experienceLevel?: string;
-  totalQuestions?: number;
-  skills?: string[];
-}
-
-interface BackendJobUI {
-  isPolling?: boolean;
-  statusLabel?: string;
-  suggestedAction?: string;
-  actions?: {
-    canPoll?: boolean;
-    canEditInput?: boolean;
-    canRetryPlan?: boolean;
-    canRetryQuestions?: boolean;
-    canEditPlan?: boolean;
-    canApprovePlan?: boolean;
-    canEditQuestions?: boolean;
-    canSaveDraft?: boolean;
-    canViewDraft?: boolean;
-  };
-}
-
-interface BackendJobMeta {
-  hasDraft?: boolean;
-  questionSetId?: string;
-  questionCount?: number;
-  isFromStudio?: boolean;
-}
-
-interface BackendJobFailure {
-  reason?: string;
-  stage?: string;
-  detail?: string;
-}
-
-interface BackendJob {
-  id?: string;
-  jobId?: string;
-  title?: string;
-  jobTitle?: string;
-  jobDescription?: string;
-  jobDescriptionPreview?: string;
-  hrNote?: string;
-  numberOfQuestions?: number;
-  difficulty?: string;
-  questionTypes?: string[];
-  skills?: string[];
-  phase?: string;
-  status?: string;
-  summary?: BackendJobSummary;
-  plan?: BackendJobPlan;
-  questions?: BackendJobQuestion[];
-  questionCount?: number;
-  createdAt: string;
-  updatedAt?: string;
-  completedAt?: string | null;
-  hasDraft?: boolean;
-  isFromStudio?: boolean;
-  ui?: BackendJobUI;
-  meta?: BackendJobMeta;
-  failure?: BackendJobFailure;
-  input?: Record<string, unknown>;
-}
-
-interface BackendJobListResponse {
-  data?: { items?: BackendJob[]; totalCount?: number } | BackendJob[];
-  items?: BackendJob[];
-  code?: number;
-}
-
-interface BackendQuestionsResponse {
-  data?: BackendJobQuestion[] | { items?: BackendJobQuestion[] };
-  items?: BackendJobQuestion[];
-  code?: number;
-}
-
-interface SaveDraftResponse {
-  data?: { questionSetId?: string };
-  code?: number;
-}
-
-// ---------------------------------------------------------------------------
-// Normalizers
+// Normalizers (Question Set / History)
 // ---------------------------------------------------------------------------
 
 const ALLOWED_QUESTION_TYPES: QuestionType[] = [
@@ -144,7 +24,6 @@ const ALLOWED_QUESTION_TYPES: QuestionType[] = [
 
 function normalizeQuestionType(raw?: string): QuestionType {
   if (!raw) return "Technical";
-  // Handle kebab → Title-case variants the BE might send
   const map: Record<string, QuestionType> = {
     technical: "Technical",
     behavioral: "Behavioral",
@@ -155,7 +34,6 @@ function normalizeQuestionType(raw?: string): QuestionType {
     "problem-solving": "Problem-solving",
     problemsolving: "Problem-solving",
     "problem solving": "Problem-solving",
-    // Legacy FE value — keep mapping so old DB rows still show
     "competency-based": "Technical",
     competency: "Technical",
   };
@@ -163,23 +41,6 @@ function normalizeQuestionType(raw?: string): QuestionType {
   if (map[key]) return map[key];
   const titled = (raw.charAt(0).toUpperCase() + raw.slice(1)) as QuestionType;
   return ALLOWED_QUESTION_TYPES.includes(titled) ? titled : "Technical";
-}
-
-function normalizeLevel(raw?: string): string {
-  if (!raw) return "";
-  const map: Record<string, string> = {
-    intern: "Intern",
-    junior: "Junior",
-    mid: "Mid-level",
-    medium: "Mid-level",
-    "mid-level": "Mid-level",
-    "mid level": "Mid-level",
-    senior: "Senior",
-    lead: "Lead",
-    manager: "Manager",
-  };
-  const key = raw.toLowerCase().trim();
-  return map[key] ?? (raw.charAt(0).toUpperCase() + raw.slice(1));
 }
 
 function normalizeDifficulty(raw?: string): DifficultyLevel {
@@ -190,589 +51,23 @@ function normalizeDifficulty(raw?: string): DifficultyLevel {
   return allowed.includes(normalized) ? normalized : "Medium";
 }
 
-/** SCRUM-374: evaluationCriteria (string[] | object[]) → text rubric như Studio. */
+/** SCRUM-374 / SCRUM-418: evaluationCriteria → text rubric hoặc RubricV1. */
 function formatScoringRubric(raw?: unknown): string | undefined {
   if (raw == null) return undefined;
   if (typeof raw === "string") {
     const t = raw.trim();
-    return t || undefined;
-  }
-  if (Array.isArray(raw)) {
-    const lines = raw
-      .map((item) => {
-        if (typeof item === "string") return item.trim();
-        if (item && typeof item === "object") {
-          const o = item as Record<string, unknown>;
-          if (typeof o.text === "string") return o.text.trim();
-          if (typeof o.criterion === "string") return o.criterion.trim();
-          if (typeof o.name === "string") return o.name.trim();
-        }
-        return "";
-      })
-      .filter(Boolean);
-    return lines.length > 0 ? lines.join("\n") : undefined;
-  }
-  return undefined;
-}
-
-function isStudioMirrorNote(hrNote?: string | null): boolean {
-  return !!hrNote && hrNote.trim().toUpperCase().startsWith("STUDIO_MIRROR");
-}
-
-function mapBackendQuestion(q: BackendJobQuestion, i: number): GeneratedQuestion {
-  return {
-    id: q.id ?? q.questionId ?? `q-${i}`,
-    question: q.question,
-    questionType: normalizeQuestionType(q.questionType),
-    difficulty: normalizeDifficulty(q.difficulty),
-    rationale: q.rationale,
-    sampleAnswer: q.sampleAnswer,
-    scoringRubric: formatScoringRubric(q.evaluationCriteria),
-    citations: [],
-    orderIndex: q.order ?? q.orderIndex ?? i,
-  };
-}
-
-function mapJobPhaseToStatus(phase: string): GenerationStatus {
-  const p = phase.toUpperCase();
-  if (p === "COMPLETED") return "COMPLETED";
-  if (p === "FAILED") return "FAILED";
-  if (p === "PLAN_QUEUED") return "PLAN_QUEUED";
-  if (p === "PLAN_PROCESSING") return "PLAN_PROPOSED";
-  if (p === "WAITING_HR_APPROVAL") return "PLAN_PROPOSED";
-  if (p === "QUESTION_QUEUED") return "QUESTION_QUEUED";
-  if (p === "QUESTION_PROCESSING") return "QUESTION_PROCESSING";
-  if (p === "PROCESSING") return "PROCESSING";
-  if (p === "QUEUED") return "QUEUED";
-  if (p === "CONFIRMED") return "CONFIRMED";
-  if (p.includes("PLAN")) return "PLAN_PROPOSED";
-  return "COMPLETED";
-}
-
-function mapJobToSession(job: BackendJob): GenerationSession {
-  const summ = job.summary;
-  const role = job.title ?? job.jobTitle ?? job.plan?.roleTitle ?? summ?.role ?? "";
-  const id = job.jobId ?? job.id ?? "";
-  const ui = job.ui;
-  const meta = job.meta;
-
-  return {
-    id,
-    jobTitle: role || "Interview Questions",
-    jdContent:
-      job.jobDescription ??
-      job.jobDescriptionPreview ??
-      (job.input as { jobDescription?: string; jobDescriptionPreview?: string } | undefined)?.jobDescription ??
-      (job.input as { jobDescription?: string; jobDescriptionPreview?: string } | undefined)?.jobDescriptionPreview,
-    hrOwner: "",
-    status: mapJobPhaseToStatus(job.phase ?? job.status ?? "COMPLETED"),
-    planDraft: {
-      role,
-      level: normalizeLevel(
-        job.plan?.experienceLevel ??
-        summ?.experience_level
-      ),
-      difficulty: normalizeDifficulty(
-        job.plan?.difficulty ??
-        job.plan?.level ??
-        summ?.level
-      ),
-      questionCount:
-        job.numberOfQuestions ??
-        summ?.numberOfQuestions ??
-        job.plan?.totalQuestions ??
-        job.questionCount ??
-        (job.questions?.length ?? 0),
-      questionTypes: (job.questionTypes ?? summ?.questionTypes ?? ["Technical"]).map(normalizeQuestionType),
-      topics: job.plan?.skills ?? summ?.skills ?? job.skills ?? [],
-      summary: job.plan?.summary,
-    },
-    generatedQuestions: job.questions?.length
-      ? job.questions.map((q, i) => mapBackendQuestion(q, i))
-      // Use actual generated count from BE (meta or top-level) for the list count display
-      : Array.from({ length: meta?.questionCount ?? job.questionCount ?? 0 }, (_, i) => ({
-          id: `stub-${id}-${i}`,
-          question: "",
-          questionType: "Technical" as QuestionType,
-          difficulty: "Medium" as DifficultyLevel,
-          citations: [],
-          orderIndex: i,
-        })),
-    createdAt: job.createdAt,
-    updatedAt: job.updatedAt ?? job.completedAt ?? job.createdAt,
-    // BE-driven UI guidance
-    suggestedAction: ui?.suggestedAction,
-    isPolling: ui?.isPolling ?? false,
-    statusLabel: ui?.statusLabel,
-    hasDraft: meta?.hasDraft ?? job.hasDraft ?? false,
-    questionSetId: meta?.questionSetId,
-    canRetryPlan: ui?.actions?.canRetryPlan ?? false,
-    canRetryQuestions: ui?.actions?.canRetryQuestions ?? false,
-    canEditInput: ui?.actions?.canEditInput ?? false,
-    canEditPlan: ui?.actions?.canEditPlan ?? false,
-    canApprovePlan: ui?.actions?.canApprovePlan ?? false,
-    failureMessage: job.failure?.reason ?? job.failure?.detail,
-    isFromStudio:
-      meta?.isFromStudio ??
-      job.isFromStudio ??
-      isStudioMirrorNote(
-        job.hrNote ??
-          (typeof job.input?.hrNote === "string" ? job.input.hrNote : undefined)
-      ),
-  };
-}
-
-// ---------------------------------------------------------------------------
-// Job CRUD
-// ---------------------------------------------------------------------------
-
-export async function createGenerationJob(payload: {
-  jobDescription?: string;
-  hrNote?: string;
-  numberOfQuestions?: number;
-  difficulty?: string;
-  questionTypes?: string[];
-  skills?: string[];
-  knowledgeDocumentId?: string;
-}): Promise<string | null> {
-  try {
-    const { data } = await apiClient.post<CreateJobResponseData>(
-      "/api/hr/question-generation-jobs/plan",
-      payload
-    );
-    const id = data?.data?.jobId ?? data?.data?.id ?? data?.jobId ?? data?.id;
-    return id ?? null;
-  } catch (err) {
-    const respData = (err as { response?: { data?: { detail?: string; error?: string; errors?: string[] } } })?.response?.data;
-    const detail = respData?.detail ?? respData?.errors?.[0] ?? respData?.error;
-    if (detail) throw new Error(detail);
-    return null;
-  }
-}
-
-function buildJobInputFormData(payload: {
-  jobDescription?: string;
-  hrNote?: string;
-  numberOfQuestions?: number;
-  difficulty?: string;
-  questionTypes?: string[];
-  skills?: string[];
-  file: File;
-}): FormData {
-  const form = new FormData();
-  if (payload.jobDescription) form.append("JobDescription", payload.jobDescription);
-  if (payload.hrNote) form.append("HrNote", payload.hrNote);
-  if (payload.numberOfQuestions !== undefined) form.append("NumberOfQuestions", String(payload.numberOfQuestions));
-  if (payload.difficulty) form.append("Difficulty", payload.difficulty);
-  if (payload.questionTypes?.length) form.append("QuestionTypes", payload.questionTypes.join(","));
-  if (payload.skills?.length) form.append("Skills", payload.skills.join(","));
-  form.append("File", payload.file);
-  return form;
-}
-
-/** Same as createGenerationJob, but lets the HR attach a JD file (PDF/DOC/DOCX) instead of/alongside pasted text. */
-export async function createGenerationJobFromFile(payload: {
-  jobDescription?: string;
-  hrNote?: string;
-  numberOfQuestions?: number;
-  difficulty?: string;
-  questionTypes?: string[];
-  skills?: string[];
-  file: File;
-}): Promise<string | null> {
-  try {
-    const { data } = await apiClient.post<CreateJobResponseData>(
-      "/api/hr/question-generation-jobs/plan/upload",
-      buildJobInputFormData(payload),
-      { headers: { "Content-Type": "multipart/form-data" } }
-    );
-    const id = data?.data?.jobId ?? data?.data?.id ?? data?.jobId ?? data?.id;
-    return id ?? null;
-  } catch (err) {
-    const respData = (err as { response?: { data?: { detail?: string; error?: string; errors?: string[] } } })?.response?.data;
-    const detail = respData?.detail ?? respData?.errors?.[0] ?? respData?.error;
-    if (detail) throw new Error(detail);
-    return null;
-  }
-}
-
-export async function getGenerationJob(id: string): Promise<GenerationSession | null> {
-  try {
-    const { data } = await apiClient.get<BackendJob | { data?: BackendJob }>(
-      `/api/hr/question-generation-jobs/${id}`
-    );
-    const job = (data as { data?: BackendJob }).data ?? (data as BackendJob);
-    return mapJobToSession(job);
-  } catch {
-    return null;
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Plans API — richer metadata (jobTitle, role, level, questionCount)
-// ---------------------------------------------------------------------------
-
-interface BackendPlanItem {
-  jobId: string;
-  jobTitle?: string;
-  role?: string;
-  level?: string;
-  question?: number;        // actual generated count
-  createdAt: string;
-  status?: string;
-  isPlanApproved?: boolean;
-}
-
-function mapPlanToSession(p: BackendPlanItem): GenerationSession {
-  const status = mapJobPhaseToStatus(p.status ?? "");
-  const count = p.question ?? 0;
-  return {
-    id: p.jobId,
-    jobTitle: p.jobTitle || "Interview Questions",
-    hrOwner: "",
-    status,
-    planDraft: {
-      role: p.jobTitle ?? "",
-      level: normalizeLevel(p.level),
-      questionCount: count,
-      questionTypes: ["Technical"],
-      topics: [],
-    },
-    generatedQuestions: Array.from({ length: count }, (_, i) => ({
-      id: `stub-${p.jobId}-${i}`,
-      question: "",
-      questionType: "Technical" as QuestionType,
-      difficulty: "Medium" as DifficultyLevel,
-      citations: [],
-      orderIndex: i,
-    })),
-    createdAt: p.createdAt,
-    updatedAt: p.createdAt,
-    isPolling: false,
-  };
-}
-
-export async function getGenerationPlans(): Promise<GenerationSession[]> {
-  try {
-    const { data } = await apiClient.get<{ data?: { items?: BackendPlanItem[] } }>(
-      "/api/hr/question-generation-plans"
-    );
-    const items = (data as { data?: { items?: BackendPlanItem[] } })?.data?.items ?? [];
-    return items.map(mapPlanToSession);
-  } catch {
-    return [];
-  }
-}
-
-// Several pages (AppShell notifications, History table/stats, HR dashboard)
-// independently call getGenerationJobs() and often mount within moments of
-// each other during navigation — cache briefly and de-dupe concurrent calls
-// so they share one network round-trip instead of firing one each.
-const GENERATION_JOBS_TTL_MS = 15000;
-let generationJobsCache: { data: GenerationSession[]; ts: number } | null = null;
-let generationJobsInFlight: Promise<GenerationSession[]> | null = null;
-
-export function invalidateGenerationJobsCache(): void {
-  generationJobsCache = null;
-}
-
-if (typeof window !== "undefined") {
-  window.addEventListener("hr:bg-job-updated", invalidateGenerationJobsCache);
-  window.addEventListener("hr:job-status-changed", invalidateGenerationJobsCache);
-}
-
-export async function getGenerationJobs(): Promise<GenerationSession[]> {
-  if (generationJobsCache && Date.now() - generationJobsCache.ts < GENERATION_JOBS_TTL_MS) {
-    return generationJobsCache.data;
-  }
-  if (generationJobsInFlight) return generationJobsInFlight;
-
-  generationJobsInFlight = fetchGenerationJobs().finally(() => {
-    generationJobsInFlight = null;
-  });
-  return generationJobsInFlight;
-}
-
-async function fetchGenerationJobs(): Promise<GenerationSession[]> {
-  try {
-    // BE defaults to PageSize=20 if unspecified — this table paginates/filters
-    // client-side over the full list, so a small default would silently hide
-    // older jobs. Request a generous page size instead of paging server-side.
-    const { data } = await apiClient.get<BackendJobListResponse>(
-      "/api/hr/question-generation-jobs",
-      { params: { PageSize: 200 } }
-    );
-    let jobs: BackendJob[] = [];
-    if (Array.isArray(data)) {
-      jobs = data as unknown as BackendJob[];
-    } else if (data?.data) {
-      const inner = data.data;
-      if (Array.isArray(inner)) {
-        jobs = inner as unknown as BackendJob[];
-      } else if (inner && typeof inner === "object" && "items" in inner) {
-        jobs = (inner as { items?: BackendJob[] }).items ?? [];
-      }
-    } else if (data?.items) {
-      jobs = data.items;
+    if (!t) return undefined;
+    if (t.startsWith("{")) {
+      const doc = normalizeFromJson(t);
+      return toDisplayText(doc) || undefined;
     }
-    const sessions = jobs.map(mapJobToSession);
-    generationJobsCache = { data: sessions, ts: Date.now() };
-    return sessions;
-  } catch {
-    return [];
+    return t;
   }
+  const doc = normalizeFromUnknown(raw);
+  const text = toDisplayText(doc);
+  return text || undefined;
 }
 
-// ---------------------------------------------------------------------------
-// Plan management
-// ---------------------------------------------------------------------------
-
-export async function updateJobPlan(
-  jobId: string,
-  plan: Partial<PlanDraft> & { roleTitle?: string; totalQuestions?: number; skills?: string[]; notes?: string; level?: string; experienceLevel?: string }
-): Promise<boolean> {
-  try {
-    await apiClient.put(`/api/hr/question-generation-jobs/${jobId}/plan`, plan);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-export async function approvePlan(jobId: string): Promise<boolean> {
-  try {
-    await apiClient.post(`/api/hr/question-generation-jobs/${jobId}/approve-plan`);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-export async function retryPlan(jobId: string): Promise<boolean> {
-  try {
-    await apiClient.post(`/api/hr/question-generation-jobs/${jobId}/retry-plan`);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-export async function retryQuestions(jobId: string): Promise<boolean> {
-  try {
-    await apiClient.post(`/api/hr/question-generation-jobs/${jobId}/retry-questions`);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-export async function updateJobInput(
-  jobId: string,
-  payload: {
-    jobDescription?: string;
-    hrNote?: string;
-    numberOfQuestions?: number;
-    difficulty?: string;
-    questionTypes?: string[];
-    skills?: string[];
-  }
-): Promise<boolean> {
-  try {
-    await apiClient.put(`/api/hr/question-generation-jobs/${jobId}/input`, payload);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-/** Same as updateJobInput, but lets the HR attach a replacement JD file instead of/alongside pasted text. */
-export async function updateJobInputFromFile(
-  jobId: string,
-  payload: {
-    jobDescription?: string;
-    hrNote?: string;
-    numberOfQuestions?: number;
-    difficulty?: string;
-    questionTypes?: string[];
-    skills?: string[];
-    file: File;
-  }
-): Promise<boolean> {
-  try {
-    await apiClient.put(
-      `/api/hr/question-generation-jobs/${jobId}/input/upload`,
-      buildJobInputFormData(payload),
-      { headers: { "Content-Type": "multipart/form-data" } }
-    );
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Questions
-// ---------------------------------------------------------------------------
-
-export async function getJobQuestions(jobId: string): Promise<GeneratedQuestion[]> {
-  try {
-    const { data } = await apiClient.get<BackendQuestionsResponse>(
-      `/api/hr/question-generation-jobs/${jobId}/questions`
-    );
-    let items: BackendJobQuestion[] = [];
-    if (Array.isArray(data)) {
-      items = data as unknown as BackendJobQuestion[];
-    } else if (data?.data) {
-      const inner = data.data;
-      if (Array.isArray(inner)) {
-        items = inner as unknown as BackendJobQuestion[];
-      } else if (inner && typeof inner === "object") {
-        // BE returns { data: { jobId, status, questions: [...] } } or { data: { items: [...] } }
-        if ("questions" in inner) {
-          items = (inner as { questions?: BackendJobQuestion[] }).questions ?? [];
-        } else if ("items" in inner) {
-          items = (inner as { items?: BackendJobQuestion[] }).items ?? [];
-        }
-      }
-    } else if (data?.items) {
-      items = data.items;
-    }
-    return items
-      .map((q, i) => mapBackendQuestion(q, i))
-      .sort((a, b) => a.orderIndex - b.orderIndex);
-  } catch {
-    return [];
-  }
-}
-
-export async function updateJobQuestion(
-  jobId: string,
-  questionId: string,
-  payload: {
-    question?: string;
-    questionType?: string;
-    difficulty?: string;
-    rationale?: string | null;
-    sampleAnswer?: string | null;
-    scoringRubric?: string | null;
-  }
-): Promise<boolean> {
-  try {
-    const body: Record<string, unknown> = { ...payload };
-    if ("scoringRubric" in payload) {
-      const rubric = payload.scoringRubric?.trim();
-      body.evaluationCriteria = rubric
-        ? rubric.split(/\n+/).map((s) => s.trim()).filter(Boolean)
-        : [];
-      delete body.scoringRubric;
-    }
-    await apiClient.put(
-      `/api/hr/question-generation-jobs/${jobId}/questions/${questionId}`,
-      body
-    );
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-export async function deleteJobQuestion(jobId: string, questionId: string): Promise<boolean> {
-  try {
-    await apiClient.delete(
-      `/api/hr/question-generation-jobs/${jobId}/questions/${questionId}`
-    );
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-export async function addJobQuestion(
-  jobId: string,
-  payload: {
-    question: string;
-    questionType?: string;
-    difficulty?: string;
-    rationale?: string;
-    sampleAnswer?: string;
-    order?: number;
-  }
-): Promise<boolean> {
-  try {
-    await apiClient.post(`/api/hr/question-generation-jobs/${jobId}/questions`, payload);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-export async function reorderJobQuestions(
-  jobId: string,
-  order: { id: string; order: number }[]
-): Promise<boolean> {
-  try {
-    await apiClient.put(`/api/hr/question-generation-jobs/${jobId}/questions/reorder`, {
-      items: order.map((o) => ({ questionId: o.id, order: o.order })),
-    });
-    return true;
-  } catch (err) {
-    const status = (err as { response?: { status?: number } })?.response?.status;
-    if (status === 409) return false; // job already in a state that prevents reorder — not an error
-    console.warn("[reorderJobQuestions] failed:", err);
-    return false;
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Draft
-// ---------------------------------------------------------------------------
-
-export async function saveJobDraft(jobId: string): Promise<string | null> {
-  try {
-    const { data } = await apiClient.post<SaveDraftResponse>(
-      `/api/hr/question-generation-jobs/${jobId}/save-draft`
-    );
-    return data?.data?.questionSetId ?? null;
-  } catch (err) {
-    // 409 means already saved — not an error
-    const status = (err as { response?: { status?: number } })?.response?.status;
-    if (status === 409) return null;
-    throw err;
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Delete & Export (plans API)
-// ---------------------------------------------------------------------------
-
-export async function deleteGenerationPlan(jobId: string): Promise<boolean> {
-  try {
-    await apiClient.delete(`/api/hr/question-generation-plans/${jobId}`);
-    invalidateGenerationJobsCache();
-    return true;
-  } catch (err) {
-    // BE rejects (409) once the session has been saved as a draft/question-set —
-    // there is currently no API to delete a question-set, so this is permanent
-    // for any job with hasDraft=true, not a transient failure.
-    throw new Error(extractBeErrorMessage(err));
-  }
-}
-
-export async function exportPlanQuestions(jobId: string, fileName: string): Promise<void> {
-  const { data } = await apiClient.get(
-    `/api/hr/question-generation-plans/${jobId}/questions/export`,
-    { responseType: "arraybuffer" }
-  );
-  const blob = new Blob([data as ArrayBuffer], {
-    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-  });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `${fileName.replace(/[^a-z0-9_\- ]/gi, "_")}.xlsx`;
-  a.click();
-  URL.revokeObjectURL(url);
-}
 
 // BE's single-question-set GET uses its own field names (questionSetId, title,
 // sourceJobId, lowercase questionType/difficulty, "order") rather than the
@@ -785,23 +80,107 @@ function normalizeAnswerMethod(raw: unknown): "Text" | "Code" | undefined {
   return undefined;
 }
 
+/** Map citations BE/Studio → Citation (sourceFile + origin/usedFor…). */
+function normalizeCitation(raw: unknown): Citation | null {
+  if (!raw || typeof raw !== "object") return null;
+  const src = raw as Record<string, unknown>;
+  // pickStr (defined below, near asRecord) returns "" on no match — fine here
+  // since sourceFile already falls back to "" either way.
+  const sourceFile = pickStr(src, "sourceFile", "SourceFile", "source", "Source");
+  if (!sourceFile && !src.reason && !src.excerpt) return null;
+
+  const usedForRaw = src.usedFor ?? src.UsedFor;
+  const usedFor = Array.isArray(usedForRaw)
+    ? usedForRaw.filter((x): x is string => typeof x === "string" && x.trim() !== "")
+    : null;
+
+  const chunkRaw = src.chunkIndex ?? src.ChunkIndex;
+  const chunkIndex =
+    typeof chunkRaw === "number" && Number.isFinite(chunkRaw) ? chunkRaw : null;
+
+  const originRaw = src.origin ?? src.Origin;
+  const origin = typeof originRaw === "string" && originRaw.trim() ? originRaw.trim() : null;
+
+  const excerptRaw = src.excerpt ?? src.Excerpt;
+  const excerpt = typeof excerptRaw === "string" ? excerptRaw : null;
+
+  const kbRaw = src.knowledgeBase ?? src.KnowledgeBase;
+  const knowledgeBase = typeof kbRaw === "string" ? kbRaw : null;
+
+  const reasonRaw = src.reason ?? src.Reason;
+  const reason = typeof reasonRaw === "string" ? reasonRaw : null;
+
+  const urlRaw = src.url ?? src.Url;
+  const url = typeof urlRaw === "string" ? urlRaw : undefined;
+
+  return {
+    sourceFile: sourceFile || "unknown",
+    source: sourceFile || "unknown",
+    chunkIndex,
+    excerpt,
+    knowledgeBase,
+    origin,
+    usedFor,
+    reason,
+    url,
+  };
+}
+
+function normalizeCitations(raw: unknown): Citation[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.map(normalizeCitation).filter((c): c is Citation => c !== null);
+}
+
 function normalizeDraftQuestion(raw: unknown, index: number): GeneratedQuestion | null {
   const src = raw as Record<string, unknown> | null;
   if (!src || typeof src !== "object") return null;
-  const question = typeof src.question === "string" ? src.question : "";
+  const question =
+    (typeof src.question === "string" && src.question) ||
+    (typeof src.Question === "string" && src.Question) ||
+    (typeof src.content === "string" && src.content) ||
+    "";
   if (!question) return null;
   const skillRaw = src.skill ?? src.Skill;
   const focusRaw = src.focusArea ?? src.FocusArea;
+  const evalRaw = src.evaluationCriteria ?? src.EvaluationCriteria;
+  const sampleAnswer =
+    typeof src.sampleAnswer === "string"
+      ? src.sampleAnswer
+      : typeof src.SampleAnswer === "string"
+        ? src.SampleAnswer
+        : undefined;
+  const rubricDoc =
+    typeof evalRaw === "string" && evalRaw.trim().startsWith("{")
+      ? normalizeFromJson(evalRaw)
+      : normalizeFromUnknown(evalRaw);
+  const isActiveRaw = src.isActive ?? src.IsActive;
   return {
-    id: (typeof src.id === "string" && src.id) || `q-${index}`,
+    id: (typeof src.id === "string" && src.id) || (typeof src.Id === "string" && src.Id) || `q-${index}`,
     question,
-    questionType: normalizeQuestionType(typeof src.questionType === "string" ? src.questionType : undefined),
-    difficulty: normalizeDifficulty(typeof src.difficulty === "string" ? src.difficulty : undefined),
+    questionType: normalizeQuestionType(
+      typeof src.questionType === "string"
+        ? src.questionType
+        : typeof src.QuestionType === "string"
+          ? src.QuestionType
+          : undefined
+    ),
+    difficulty: normalizeDifficulty(
+      typeof src.difficulty === "string"
+        ? src.difficulty
+        : typeof src.Difficulty === "string"
+          ? src.Difficulty
+          : undefined
+    ),
     skill: typeof skillRaw === "string" && skillRaw.trim() ? skillRaw.trim() : undefined,
     focusArea: typeof focusRaw === "string" && focusRaw.trim() ? focusRaw.trim() : undefined,
-    rationale: typeof src.rationale === "string" ? src.rationale : undefined,
-    sampleAnswer: typeof src.sampleAnswer === "string" ? src.sampleAnswer : undefined,
-    scoringRubric: formatScoringRubric(src.evaluationCriteria),
+    rationale:
+      typeof src.rationale === "string"
+        ? src.rationale
+        : typeof src.Rationale === "string"
+          ? src.Rationale
+          : undefined,
+    sampleAnswer,
+    scoringRubric: formatScoringRubric(evalRaw),
     attachedImageUrl:
       (typeof src.attachedImageUrl === "string" && src.attachedImageUrl.trim())
         ? src.attachedImageUrl.trim()
@@ -809,29 +188,75 @@ function normalizeDraftQuestion(raw: unknown, index: number): GeneratedQuestion 
           ? src.AttachedImageUrl.trim()
           : null,
     answerMethod: normalizeAnswerMethod(src.answerMethod ?? src.AnswerMethod),
-    citations: [],
-    orderIndex: typeof src.order === "number" ? src.order : typeof src.orderIndex === "number" ? src.orderIndex : index,
+    citations: normalizeCitations(src.citations ?? src.Citations),
+    orderIndex:
+      typeof src.order === "number"
+        ? src.order
+        : typeof src.Order === "number"
+          ? src.Order
+          : typeof src.orderIndex === "number"
+            ? src.orderIndex
+            : index,
+    isActive: typeof isActiveRaw === "boolean" ? isActiveRaw : true,
+    isReady: Boolean(sampleAnswer?.trim() && isPublishReady(rubricDoc)),
   };
 }
 
 function normalizeDraft(raw: unknown): DraftQuestionSet | null {
   const src = raw as Record<string, unknown> | null;
   if (!src || typeof src !== "object") return null;
-  const id = [src.questionSetId, src.id].find((v): v is string => typeof v === "string" && v.trim() !== "");
+  const id = pickStr(src, "questionSetId", "QuestionSetId", "id", "Id");
   if (!id) return null;
-  const sessionId = [src.sourceJobId, src.jobId, src.sessionId].find((v): v is string => typeof v === "string" && v.trim() !== "");
-  const jobTitle = [src.title, src.jobTitle].find((v): v is string => typeof v === "string" && v.trim() !== "");
-  const status = src.status === "PUBLISHED" ? "PUBLISHED" : "DRAFT";
-  const questions = Array.isArray(src.questions)
-    ? src.questions.map((q, i) => normalizeDraftQuestion(q, i)).filter((q): q is GeneratedQuestion => q !== null)
+  const sessionId = pickStr(src, "sourceJobId", "SourceJobId", "jobId", "JobId", "sessionId");
+  const jobTitle = pickStr(src, "title", "Title", "jobTitle", "JobTitle");
+  const jdRaw = [src.jobDescription, src.JobDescription].find(
+    (v): v is string => typeof v === "string"
+  );
+  const jobDescription = jdRaw?.trim() ? jdRaw.trim() : undefined;
+  const jdSourceRaw = String(src.jdSourceType ?? src.JdSourceType ?? "").trim();
+  const jdSourceType: "PastedText" | "UploadedFile" =
+    jdSourceRaw.toLowerCase() === "uploadedfile" ? "UploadedFile" : "PastedText";
+  const jdFileRaw = pickStr(src, "jdOriginalFileName", "JdOriginalFileName");
+  const sourceProjectRaw = pickStr(src, "sourceProjectId", "SourceProjectId");
+  const statusRaw = String(src.status ?? src.Status ?? "").toUpperCase();
+  const status = statusRaw === "PUBLISHED" ? "PUBLISHED" : "DRAFT";
+  const questionsRaw = src.questions ?? src.Questions;
+  const questions = Array.isArray(questionsRaw)
+    ? questionsRaw.map((q, i) => normalizeDraftQuestion(q, i)).filter((q): q is GeneratedQuestion => q !== null)
     : [];
   return {
     id,
-    sessionId: sessionId ?? "",
-    jobTitle: jobTitle ?? "Untitled",
-    generatedAt: typeof src.generatedAt === "string" ? src.generatedAt : "",
+    sessionId,
+    jobTitle: jobTitle || "Untitled",
+    jobDescription,
+    jdSourceType,
+    jdOriginalFileName: jdFileRaw || null,
+    sourceProjectId: sourceProjectRaw || null,
+    generatedAt:
+      typeof src.generatedAt === "string"
+        ? src.generatedAt
+        : typeof src.GeneratedAt === "string"
+          ? src.GeneratedAt
+          : "",
     status,
-    timeLimitMinutes: typeof src.timeLimitMinutes === "number" ? src.timeLimitMinutes : null,
+    timeLimitMinutes:
+      typeof src.timeLimitMinutes === "number"
+        ? src.timeLimitMinutes
+        : typeof src.TimeLimitMinutes === "number"
+          ? src.TimeLimitMinutes
+          : null,
+    autoRecommendEnabled:
+      typeof src.autoRecommendEnabled === "boolean"
+        ? src.autoRecommendEnabled
+        : typeof src.AutoRecommendEnabled === "boolean"
+          ? src.AutoRecommendEnabled
+          : true,
+    recommendationMinScore:
+      typeof src.recommendationMinScore === "number"
+        ? src.recommendationMinScore
+        : typeof src.RecommendationMinScore === "number"
+          ? src.RecommendationMinScore
+          : 70,
     questions,
   };
 }
@@ -843,7 +268,12 @@ export async function getDraft(questionSetId: string): Promise<DraftQuestionSet 
     );
     const root = (data as { data?: unknown })?.data ?? data;
     return normalizeDraft(root);
-  } catch {
+  } catch (err) {
+    // Giữ null để UI hiện not-found; log để phân biệt 404 vs 500 (rubric parse…)
+    if (typeof console !== "undefined") {
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      console.warn("[getDraft] failed", questionSetId, status ?? err);
+    }
     return null;
   }
 }
@@ -867,10 +297,7 @@ export async function getDrafts(): Promise<DraftQuestionSet[]> {
 }
 
 // ---------------------------------------------------------------------------
-// Question-set question CRUD — direct, immediate edits on an already-saved
-// question set (as opposed to the job-scoped CRUD above, which only edits the
-// generation job's own copy and never touches the saved/published set at all).
-// BE rejects all four while the set is PUBLISHED — unpublish first.
+// Question-set question CRUD. BE rejects edits while the set is PUBLISHED — unpublish first.
 // ---------------------------------------------------------------------------
 
 export async function updateQuestionSetQuestion(
@@ -902,9 +329,10 @@ export async function updateQuestionSetQuestion(
     };
     if ("scoringRubric" in payload) {
       const rubric = payload.scoringRubric?.trim();
-      body.evaluationCriteria = rubric
-        ? rubric.split(/\n+/).map((s) => s.trim()).filter(Boolean)
-        : [];
+      // Reuse the same parser as the create path (addQuestionSetQuestion) instead
+      // of naively splitting lines — that dropped the "[NN%] " weight prefix into
+      // the label text, corrupting the rubric further on every subsequent edit.
+      body.evaluationCriteria = rubric ? normalizeFromUnknown(rubric).criteria : [];
     }
     await apiClient.put(`/api/hr/question-sets/${questionSetId}/questions/${questionId}`, body);
     return true;
@@ -1027,7 +455,7 @@ export async function addQuestionSetQuestion(
     /** SCRUM-400: bắt buộc Text | Code. */
     answerMethod: "Text" | "Code";
     /** Rubric — mỗi phần tử 1 tiêu chí (BE serialize EvaluationCriteriaJson). */
-    evaluationCriteria?: string[];
+    evaluationCriteria?: unknown[];
     citations?: unknown[];
     order?: number;
   }
@@ -1075,77 +503,94 @@ export async function reorderQuestionSetQuestions(
 // Publish / Unpublish
 // ---------------------------------------------------------------------------
 
-export interface HrQuestionSetSummary {
-  questionSetId: string;
-  jobId?: string;
-  status: "DRAFT" | "PUBLISHED";
-}
-
-function normalizeQuestionSetSummary(raw: unknown): HrQuestionSetSummary | null {
-  if (!raw || typeof raw !== "object") return null;
-  const src = raw as Record<string, unknown>;
-  const questionSetId = [src.questionSetId, src.id, src.QuestionSetId, src.Id]
-    .find((v): v is string => typeof v === "string" && v.trim() !== "");
-  if (!questionSetId) return null;
-  const jobId = [src.jobId, src.sessionId, src.JobId, src.SessionId]
-    .find((v): v is string => typeof v === "string" && v.trim() !== "");
-  const rawStatus = [src.status, src.Status].find((v): v is string => typeof v === "string");
-  return { questionSetId, jobId, status: rawStatus === "PUBLISHED" ? "PUBLISHED" : "DRAFT" };
-}
-
-// The job-detail endpoint doesn't expose a questionSetId even when a draft was
-// saved (meta.hasDraft is the only signal) — the id only lives in this list,
-// keyed by jobId, so publish/unpublish has to cross-reference it here.
-export async function findQuestionSetForJob(jobId: string): Promise<HrQuestionSetSummary | null> {
-  try {
-    const { data } = await apiClient.get<{ data?: unknown } | unknown[]>("/api/hr/question-sets");
-    const items = Array.isArray(data) ? data : Array.isArray((data as { data?: unknown })?.data) ? (data as { data: unknown[] }).data : [];
-    const normalized = items.map(normalizeQuestionSetSummary).filter((s): s is HrQuestionSetSummary => s !== null);
-    return normalized.find((s) => s.jobId === jobId) ?? null;
-  } catch {
-    return null;
-  }
-}
-
-/** All jobs' question-set summary (id + publish status) in one call, keyed by
- * jobId — the job list endpoint never includes questionSetId (only the
- * single-job GET does), so list views (e.g. HR History) that need it for
- * every row — to link/bookmark, or show publish status — cross-reference here
- * instead of doing an N+1 fetch, or worse, two separate full-list fetches. */
-export async function getQuestionSetSummariesByJob(): Promise<Map<string, HrQuestionSetSummary>> {
-  try {
-    const { data } = await apiClient.get<{ data?: unknown } | unknown[]>("/api/hr/question-sets");
-    const items = Array.isArray(data) ? data : Array.isArray((data as { data?: unknown })?.data) ? (data as { data: unknown[] }).data : [];
-    const normalized = items.map(normalizeQuestionSetSummary).filter((s): s is HrQuestionSetSummary => s !== null);
-    const map = new Map<string, HrQuestionSetSummary>();
-    for (const s of normalized) {
-      if (s.jobId) map.set(s.jobId, s);
-    }
-    return map;
-  } catch {
-    return new Map();
-  }
-}
-
-// BE error responses actually come back as { code, error: "..." } — not the
-// { detail }/{ message } shape ASP.NET's default ProblemDetails uses. Reading
-// only detail/message meant every real BE rejection (min-questions, ownership,
-// "already saved as draft", ...) surfaced as a blank message and silently fell
-// back to a generic "failed" toast instead of the actual reason.
 function extractBeErrorMessage(err: unknown): string {
   const data = (err as { response?: { data?: { error?: string; detail?: string; message?: string } } })
     ?.response?.data;
   return data?.error ?? data?.detail ?? data?.message ?? "";
 }
 
-export async function publishQuestionSet(questionSetId: string): Promise<boolean> {
+export type PublishQuestionSetPayload = {
+  questionIds?: string[];
+  timeLimitMinutes?: number | null;
+  autoRecommendEnabled?: boolean;
+  recommendationMinScore?: number;
+};
+
+/** SCRUM-439: publish selective + time limit + recommend settings. */
+export async function publishQuestionSet(
+  questionSetId: string,
+  payload?: PublishQuestionSetPayload
+): Promise<boolean> {
   try {
-    await apiClient.post(`/api/hr/question-sets/${questionSetId}/publish`);
+    await apiClient.post(`/api/hr/question-sets/${questionSetId}/publish`, {
+      questionIds: payload?.questionIds ?? null,
+      timeLimitMinutes: payload?.timeLimitMinutes ?? null,
+      autoRecommendEnabled: payload?.autoRecommendEnabled ?? null,
+      recommendationMinScore: payload?.recommendationMinScore ?? null,
+    });
     return true;
   } catch (err) {
     // Only surface a BE-provided message; never the raw axios/HTTP error text.
     throw new Error(extractBeErrorMessage(err));
   }
+}
+
+/** SCRUM-438: tổng hợp set PUBLISHED (practice + rating). */
+export type PublishedOverviewItem = {
+  questionSetId: string;
+  title: string;
+  publishedAt: string | null;
+  questionCount: number;
+  timeLimitMinutes: number | null;
+  attemptCount: number;
+  completedCount: number;
+  inProgressCount: number;
+  averageScore: number | null;
+  averageRating: number | null;
+  feedbackCount: number;
+};
+
+export async function getPublishedOverview(): Promise<PublishedOverviewItem[]> {
+  const { data } = await apiClient.get<{ data?: unknown } | unknown>(
+    "/api/hr/question-sets/published-overview"
+  );
+  const root = (data as { data?: unknown })?.data ?? data;
+  const arr = Array.isArray(root) ? root : [];
+  return arr
+    .map((raw) => {
+      if (!raw || typeof raw !== "object") return null;
+      const src = raw as Record<string, unknown>;
+      const id =
+        (typeof src.questionSetId === "string" && src.questionSetId) ||
+        (typeof src.QuestionSetId === "string" && src.QuestionSetId) ||
+        "";
+      if (!id) return null;
+      const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : null);
+      const int = (v: unknown) => {
+        const n = typeof v === "number" ? v : Number(v);
+        return Number.isFinite(n) ? Math.max(0, Math.trunc(n)) : 0;
+      };
+      return {
+        questionSetId: id,
+        title:
+          (typeof src.title === "string" && src.title) ||
+          (typeof src.Title === "string" && src.Title) ||
+          "Untitled",
+        publishedAt:
+          (typeof src.publishedAt === "string" && src.publishedAt) ||
+          (typeof src.PublishedAt === "string" && src.PublishedAt) ||
+          null,
+        questionCount: int(src.questionCount ?? src.QuestionCount),
+        timeLimitMinutes: num(src.timeLimitMinutes ?? src.TimeLimitMinutes),
+        attemptCount: int(src.attemptCount ?? src.AttemptCount),
+        completedCount: int(src.completedCount ?? src.CompletedCount),
+        inProgressCount: int(src.inProgressCount ?? src.InProgressCount),
+        averageScore: num(src.averageScore ?? src.AverageScore),
+        averageRating: num(src.averageRating ?? src.AverageRating),
+        feedbackCount: int(src.feedbackCount ?? src.FeedbackCount),
+      } satisfies PublishedOverviewItem;
+    })
+    .filter((x): x is PublishedOverviewItem => x !== null);
 }
 
 export async function unpublishQuestionSet(questionSetId: string): Promise<number> {
@@ -1181,6 +626,42 @@ export async function setQuestionSetTimeLimit(
   try {
     await apiClient.put(`/api/hr/question-sets/${questionSetId}/time-limit`, { timeLimitMinutes });
     return true;
+  } catch (err) {
+    throw new Error(extractBeErrorMessage(err));
+  }
+}
+
+/** SCRUM-424: intake prefs — cho phép sửa khi PUBLISHED. */
+export async function setQuestionSetRecommendationSettings(
+  questionSetId: string,
+  autoRecommendEnabled: boolean,
+  recommendationMinScore: number
+): Promise<{ autoRecommendEnabled: boolean; recommendationMinScore: number }> {
+  try {
+    const { data } = await apiClient.put<{
+      data?: { autoRecommendEnabled?: boolean; recommendationMinScore?: number };
+      autoRecommendEnabled?: boolean;
+      recommendationMinScore?: number;
+    }>(`/api/hr/question-sets/${questionSetId}/recommendation-settings`, {
+      autoRecommendEnabled,
+      recommendationMinScore,
+    });
+    const root = (data as { data?: Record<string, unknown> })?.data ?? data;
+    const rec = root && typeof root === "object" ? (root as Record<string, unknown>) : {};
+    return {
+      autoRecommendEnabled:
+        typeof rec.autoRecommendEnabled === "boolean"
+          ? rec.autoRecommendEnabled
+          : typeof rec.AutoRecommendEnabled === "boolean"
+            ? (rec.AutoRecommendEnabled as boolean)
+            : autoRecommendEnabled,
+      recommendationMinScore:
+        typeof rec.recommendationMinScore === "number"
+          ? rec.recommendationMinScore
+          : typeof rec.RecommendationMinScore === "number"
+            ? (rec.RecommendationMinScore as number)
+            : recommendationMinScore,
+    };
   } catch (err) {
     throw new Error(extractBeErrorMessage(err));
   }
@@ -1350,11 +831,7 @@ export async function getPractitioners(questionSetId: string): Promise<Practitio
 }
 
 // ---------------------------------------------------------------------------
-// Legacy helpers (used by history detail page / results section)
-// ---------------------------------------------------------------------------
-
-// ---------------------------------------------------------------------------
-// Question-level Ask AI
+// Question-level Ask AI (endpoint V1 đã 410 — giữ code khi ASK_AI_ENABLED)
 // ---------------------------------------------------------------------------
 
 export async function askAIAboutQuestion(
@@ -1436,42 +913,4 @@ export async function getQuestionAIChat(
     content: String(item.content ?? item.message ?? item.response ?? ""),
     timestamp: String(item.timestamp ?? item.createdAt ?? new Date().toISOString()),
   }));
-}
-
-// ---------------------------------------------------------------------------
-// Legacy helpers (used by history detail page / results section)
-// ---------------------------------------------------------------------------
-
-export async function saveGenerationResult(
-  jobId: string,
-  questions: GeneratedQuestion[],
-  roleTitle?: string
-): Promise<boolean> {
-  try {
-    if (roleTitle) {
-      await apiClient
-        .put(`/api/hr/question-generation-jobs/${jobId}/plan`, {
-          roleTitle,
-          totalQuestions: questions.length,
-        })
-        .catch(() => {});
-    }
-    for (let i = 0; i < questions.length; i++) {
-      const q = questions[i];
-      await apiClient
-        .post(`/api/hr/question-generation-jobs/${jobId}/questions`, {
-          question: q.question,
-          questionType: q.questionType,
-          difficulty: q.difficulty,
-          rationale: q.rationale ?? null,
-          sampleAnswer: q.sampleAnswer ?? null,
-          order: i,
-        })
-        .catch(() => {});
-    }
-    await apiClient.post(`/api/hr/question-generation-jobs/${jobId}/save-draft`);
-    return true;
-  } catch {
-    return false;
-  }
 }

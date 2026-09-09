@@ -11,17 +11,19 @@ import {
   FileText,
   FolderOpen,
   Loader2,
-  Lock,
   Upload,
   X,
 } from "lucide-react";
-import type { AnalyzeJobDescriptionResponse, StudioDocument, StudioLibraryDocument } from "@/features/studio/types/studio.types";
+import type { AnalyzeJobDescriptionResponse, StudioDocument, StudioLibraryDocument, StudioKnowledgeSuggestion } from "@/features/studio/types/studio.types";
 import * as studioApi from "@/features/studio/services/studio.service";
 import { SampleJdModal } from "@/features/studio/components/sample-jd-modal";
+import { SourceOriginBadge, useSourceOriginLabels } from "@/features/studio/components/source-origin-badge";
+import { formatDetectedLanguage } from "@/features/studio/utils/format-detected-language";
 import { cn } from "@/lib/cn";
 import { useLanguage } from "@/shared/providers/language-context";
 import { useToast } from "@/shared/providers/toast-context";
-import { portalCard, portalHeading, portalSubtext } from "@/shared/utils/portal-ui";
+import { portalCard, portalHeading, portalInput, portalSubtext } from "@/shared/utils/portal-ui";
+import { HR_DOCUMENT_TYPES } from "@/features/knowledge/types/knowledge";
 
 const JD_MAX_BYTES = 20 * 1024 * 1024; // 20 MB
 const DOC_MAX_BYTES = 20 * 1024 * 1024; // 20 MB
@@ -33,11 +35,23 @@ interface Props {
   onJdChange: (value: string) => void;
   onSaveJd: () => Promise<void> | void;
   onUploadJd: (file: File) => Promise<boolean> | boolean | void;
+  /** SCRUM-432: cảnh báo vàng dưới paste/upload khi JD bị reject */
+  jdInputWarning?: string | null;
+  /** SCRUM-417: lưu Position + Level (+ Role / Skills) HR xác nhận */
+  onSaveMetadata?: (payload: {
+    position: string;
+    detectedSeniority: string;
+    detectedRole?: string | null;
+    skills?: string[];
+  }) => Promise<void> | void;
+  /** @deprecated dùng onSaveMetadata */
+  onSavePosition?: (position: string) => Promise<void> | void;
   jdFileName?: string | null;
   summary: AnalyzeJobDescriptionResponse | null;
   documents: StudioDocument[];
-  onUploadDocument: (file: File) => Promise<void> | void;
-  onAttachFromLibrary?: (knowledgeDocumentIds: string[]) => Promise<void> | void;
+  onUploadDocument: (file: File, documentType?: string) => Promise<void> | void;
+  onAttachFromLibrary?: (knowledgeDocumentIds: string[]) => Promise<void>;
+  onFetchSuggestions?: () => Promise<StudioKnowledgeSuggestion[]>;
   onToggleDocument: (documentId: string, isSelected: boolean) => Promise<void> | void;
   projectId?: string;
   locked?: boolean;
@@ -126,24 +140,35 @@ function SectionLabel({ text, required }: { text: string; required?: boolean }) 
   );
 }
 
+const SENIORITY_OPTIONS = ["Intern", "Junior", "Mid", "Senior", "Lead"] as const;
+
 export function SourcesPanel({
   jdContent,
   onJdChange,
   onSaveJd,
   onUploadJd,
+  jdInputWarning = null,
+  onSaveMetadata,
+  onSavePosition,
   jdFileName = null,
   summary,
   documents,
   onUploadDocument,
   onAttachFromLibrary,
+  onFetchSuggestions,
   onToggleDocument,
   projectId,
   locked = false,
   jdLocked = false,
   jdLockedTitle,
 }: Props) {
+  // Derived once — reused everywhere a metadata-edit control needs to know
+  // whether ANY save handler was provided, instead of repeating the disjunction.
+  const hasMetadataSaveHandler = Boolean(onSaveMetadata || onSavePosition);
   const { t } = useLanguage();
   const src = t.studioPage.sources;
+  const kbTypes = t.knowledgePage.documentTypes;
+  const originLabels = useSourceOriginLabels();
   const { addToast } = useToast();
   const jdBlocked = locked || jdLocked;
   const [jdMode, setJdMode] = useState<JdMode>(jdFileName ? "upload" : "paste");
@@ -152,6 +177,17 @@ export function SourcesPanel({
   const [uploading, setUploading] = useState(false);
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [libraryLoading, setLibraryLoading] = useState(false);
+  const [uploadDocType, setUploadDocType] = useState<string>("InternalStack");
+  const [suggestions, setSuggestions] = useState<StudioKnowledgeSuggestion[]>([]);
+  const [suggestionsLoading, setSuggestionsLoading] = useState(false);
+  const [positionDraft, setPositionDraft] = useState("");
+  const [roleDraft, setRoleDraft] = useState("");
+  const [levelDraft, setLevelDraft] = useState("");
+  const [skillsDraft, setSkillsDraft] = useState<string[]>([]);
+  const [skillInput, setSkillInput] = useState("");
+  const [editingSkillIndex, setEditingSkillIndex] = useState<number | null>(null);
+  const [respExpanded, setRespExpanded] = useState(false);
+  const [savingMetadata, setSavingMetadata] = useState(false);
   const [libraryDocs, setLibraryDocs] = useState<StudioLibraryDocument[]>([]);
   const [pickedIds, setPickedIds] = useState<Set<string>>(new Set());
   const [attaching, setAttaching] = useState(false);
@@ -161,13 +197,130 @@ export function SourcesPanel({
     if (jdFileName) setJdMode("upload");
   }, [jdFileName]);
 
+  // SCRUM-417: sync draft từ analyze/upload/GET
+  useEffect(() => {
+    setPositionDraft(summary?.position?.trim() || "");
+    setRoleDraft(summary?.detectedRole?.trim() || "");
+    setLevelDraft(summary?.detectedSeniority?.trim() || "");
+    setSkillsDraft(Array.isArray(summary?.skills) ? [...summary.skills] : []);
+    setSkillInput("");
+    setEditingSkillIndex(null);
+  }, [summary?.position, summary?.detectedRole, summary?.detectedSeniority, summary?.skills]);
+
+  const skillsEqual = useCallback((a: string[], b: string[]) => {
+    if (a.length !== b.length) return false;
+    return a.every((s, i) => s === b[i]);
+  }, []);
+
+  const metadataDirty = useMemo(() => {
+    const savedPos = summary?.position?.trim() || "";
+    const savedRole = summary?.detectedRole?.trim() || "";
+    const savedLevel = summary?.detectedSeniority?.trim() || "";
+    const savedSkills = summary?.skills ?? [];
+    return (
+      positionDraft.trim() !== savedPos ||
+      roleDraft.trim() !== savedRole ||
+      levelDraft.trim() !== savedLevel ||
+      !skillsEqual(skillsDraft, savedSkills)
+    );
+  }, [
+    positionDraft,
+    roleDraft,
+    levelDraft,
+    skillsDraft,
+    skillsEqual,
+    summary?.position,
+    summary?.detectedRole,
+    summary?.detectedSeniority,
+    summary?.skills,
+  ]);
+
+  const canSaveMetadata = Boolean(
+    hasMetadataSaveHandler &&
+      positionDraft.trim() &&
+      levelDraft.trim() &&
+      metadataDirty
+  );
+
+  const addSkill = useCallback(() => {
+    const next = skillInput.trim();
+    if (!next) return;
+    const exists = skillsDraft.some((s) => s.toLowerCase() === next.toLowerCase());
+    if (exists) {
+      setSkillInput("");
+      return;
+    }
+    if (skillsDraft.length >= 20) {
+      addToast("error", src.skillsMaxHint ?? "Tối đa 20 kỹ năng.");
+      return;
+    }
+    setSkillsDraft((prev) => [...prev, next]);
+    setSkillInput("");
+  }, [addToast, skillInput, skillsDraft, src.skillsMaxHint]);
+
+  const removeSkill = useCallback((index: number) => {
+    setSkillsDraft((prev) => prev.filter((_, i) => i !== index));
+    if (editingSkillIndex === index) setEditingSkillIndex(null);
+  }, [editingSkillIndex]);
+
+  const commitEditSkill = useCallback((index: number, value: string) => {
+    const trimmed = value.trim();
+    setEditingSkillIndex(null);
+    if (!trimmed) {
+      removeSkill(index);
+      return;
+    }
+    setSkillsDraft((prev) => {
+      const dup = prev.some((s, i) => i !== index && s.toLowerCase() === trimmed.toLowerCase());
+      if (dup) return prev;
+      return prev.map((s, i) => (i === index ? trimmed : s));
+    });
+  }, [removeSkill]);
+
+  const handleSaveMetadata = useCallback(async () => {
+    const position = positionDraft.trim();
+    const seniority = levelDraft.trim();
+    if (!position) {
+      addToast("error", src.positionRequiredHint);
+      return;
+    }
+    if (!seniority) {
+      addToast("error", src.levelRequiredHint);
+      return;
+    }
+    setSavingMetadata(true);
+    try {
+      if (onSaveMetadata) {
+        await onSaveMetadata({
+          position,
+          detectedSeniority: seniority,
+          detectedRole: roleDraft.trim() || null,
+          skills: skillsDraft,
+        });
+      } else if (onSavePosition) {
+        await onSavePosition(position);
+      }
+    } finally {
+      setSavingMetadata(false);
+    }
+  }, [
+    addToast,
+    levelDraft,
+    onSaveMetadata,
+    onSavePosition,
+    positionDraft,
+    roleDraft,
+    skillsDraft,
+    src.levelRequiredHint,
+    src.positionRequiredHint,
+  ]);
+
   const counts = useMemo(() => {
     const words = jdContent.trim() ? jdContent.trim().split(/\s+/).length : 0;
     return { words, chars: jdContent.length };
   }, [jdContent]);
 
   const hasJd = Boolean(jdContent.trim()) || Boolean(jdFileName);
-  const skills = summary?.skills ?? [];
   const selectedDocCount = documents.filter((d) => d.isSelected).length;
 
   const loadLibrary = useCallback(async () => {
@@ -186,6 +339,30 @@ export function SourcesPanel({
     if (!libraryOpen) return;
     void loadLibrary();
   }, [libraryOpen, loadLibrary]);
+
+  // SCRUM-443: gợi ý gắn sau khi có JD phân tích
+  useEffect(() => {
+    if (!onFetchSuggestions || !projectId || !summary || !jdContent.trim()) {
+      setSuggestions([]);
+      return;
+    }
+    let cancelled = false;
+    setSuggestionsLoading(true);
+    // Debounce — jdContent changes on every keystroke while the HR keeps editing
+    // the JD post-analyze; without this, each keystroke fired its own request.
+    const timer = setTimeout(() => {
+      void onFetchSuggestions().then((list) => {
+        if (!cancelled) {
+          setSuggestions(list);
+          setSuggestionsLoading(false);
+        }
+      });
+    }, 500);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [onFetchSuggestions, projectId, summary, jdContent]);
 
   async function handleJdFile(file: File | undefined | null) {
     if (!file) return;
@@ -247,18 +424,10 @@ export function SourcesPanel({
         disabled={locked}
         className={cn(
           "min-w-0 space-y-4 border-0 p-0",
+          locked && "pointer-events-none opacity-50",
           "disabled:[&_input]:opacity-60 disabled:[&_select]:opacity-60 disabled:[&_button]:opacity-60 disabled:[&_textarea]:opacity-60"
         )}
       >
-        {locked && (
-          <div className="flex items-center gap-1.5 rounded-lg border border-amber-200/80 bg-amber-50/90 px-2.5 py-1.5 dark:border-amber-900/50 dark:bg-amber-950/40">
-            <Lock className="h-3.5 w-3.5 shrink-0 text-amber-700 dark:text-amber-300" strokeWidth={2.5} />
-            <p className="text-[11px] font-semibold text-amber-900 dark:text-amber-200" title={src.lockedTitle}>
-              {src.locked}
-            </p>
-          </div>
-        )}
-
         {/* ── JD section ── */}
         <section className={cn("relative space-y-2.5", jdBlocked && !locked && "opacity-70")}>
           {jdLocked && !locked && (
@@ -338,6 +507,12 @@ export function SourcesPanel({
                   {src.saveAndAnalyze}
                 </button>
               </div>
+              {jdInputWarning && (
+                <p className="flex items-start gap-1 text-[10px] font-medium leading-snug text-amber-700 dark:text-amber-300">
+                  <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" aria-hidden />
+                  <span>{jdInputWarning}</span>
+                </p>
+              )}
             </div>
           ) : jdFileName && !uploading ? (
             <div className="space-y-2">
@@ -371,8 +546,15 @@ export function SourcesPanel({
               >
                 {src.dropToReplace}
               </div>
+              {jdInputWarning && (
+                <p className="flex items-start gap-1 text-[10px] font-medium leading-snug text-amber-700 dark:text-amber-300">
+                  <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" aria-hidden />
+                  <span>{jdInputWarning}</span>
+                </p>
+              )}
             </div>
           ) : (
+            <div className="space-y-2">
             <div
               onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
               onDragLeave={() => setDragging(false)}
@@ -394,45 +576,244 @@ export function SourcesPanel({
               <p className={cn("text-xs", portalSubtext)}>PDF · DOCX · TXT · JPG · PNG · max 20 MB</p>
               <input ref={fileRef} type="file" className="hidden" accept={JD_ACCEPT} onChange={(e) => void handleJdFile(e.target.files?.[0])} />
             </div>
+              {jdInputWarning && (
+                <p className="flex items-start gap-1 text-[10px] font-medium leading-snug text-amber-700 dark:text-amber-300">
+                  <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" aria-hidden />
+                  <span>{jdInputWarning}</span>
+                </p>
+              )}
+            </div>
           )}
           </div>
           </fieldset>
         </section>
 
-        {/* ── Auto-detected summary ── */}
+        {/* ── Auto-detected summary + confirm Position/Level/Role (SCRUM-417) ── */}
         {summary && (
           <section className="space-y-1.5">
             <SectionLabel text={src.autoDetect} />
-            <div className="rounded-xl border border-gray-100 bg-gray-50/60 p-2.5 dark:border-gray-800 dark:bg-gray-950/40">
-              {/* Role / seniority / language */}
+            <div className="space-y-2 rounded-xl border border-gray-100 bg-gray-50/60 p-2.5 dark:border-gray-800 dark:bg-gray-950/40">
+              <div className="space-y-1">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-[9px] uppercase tracking-wide text-gray-400">{src.positionLabel}</p>
+                  <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[9px] font-semibold text-primary">{src.required}</span>
+                </div>
+                <input
+                  type="text"
+                  value={positionDraft}
+                  maxLength={150}
+                  disabled={jdBlocked || !hasMetadataSaveHandler}
+                  onChange={(e) => setPositionDraft(e.target.value)}
+                  placeholder={src.positionPlaceholder}
+                  className="w-full rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-[11px] font-semibold text-gray-900 placeholder:font-normal placeholder:text-gray-400 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/20 disabled:opacity-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-[9px] uppercase tracking-wide text-gray-400">{src.roleLabel}</p>
+                  <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[9px] font-medium text-gray-500 dark:bg-gray-800 dark:text-gray-400">{src.optional}</span>
+                </div>
+                <input
+                  type="text"
+                  value={roleDraft}
+                  maxLength={150}
+                  disabled={jdBlocked || !hasMetadataSaveHandler}
+                  onChange={(e) => setRoleDraft(e.target.value)}
+                  placeholder={src.rolePlaceholder}
+                  className="w-full rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-[11px] font-semibold text-gray-900 placeholder:font-normal placeholder:text-gray-400 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/20 disabled:opacity-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-[9px] uppercase tracking-wide text-gray-400">{src.levelLabel}</p>
+                  <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[9px] font-semibold text-primary">{src.required}</span>
+                </div>
+                <div className="flex flex-wrap gap-1">
+                  {SENIORITY_OPTIONS.map((opt) => {
+                    const active = levelDraft === opt;
+                    const aiHint = summary?.detectedSeniority?.trim() === opt;
+                    return (
+                      <button
+                        key={opt}
+                        type="button"
+                        disabled={jdBlocked || !hasMetadataSaveHandler}
+                        onClick={() => setLevelDraft(opt)}
+                        className={cn(
+                          "rounded-full border px-2.5 py-1 text-[10px] font-semibold transition-colors disabled:opacity-40",
+                          active
+                            ? "border-primary bg-primary text-white"
+                            : "border-gray-200 bg-white text-gray-600 hover:border-primary/40 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300"
+                        )}
+                        title={aiHint ? src.aiSuggestedLevel : undefined}
+                      >
+                        {opt}
+                        {aiHint && !active ? (
+                          <span className="ml-1 text-[8px] font-medium text-primary">AI</span>
+                        ) : null}
+                      </button>
+                    );
+                  })}
+                </div>
+                {summary?.detectedSeniority?.trim() && levelDraft !== summary.detectedSeniority.trim() && (
+                  <p className={cn("text-[10px]", portalSubtext)}>
+                    {src.aiSuggestedLevelHint?.replace("{{level}}", summary.detectedSeniority.trim())
+                      ?? `AI gợi ý: ${summary.detectedSeniority.trim()}`}
+                  </p>
+                )}
+              </div>
+
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-[9px] uppercase tracking-wide text-gray-400">
+                    {src.colSkills} · {skillsDraft.length}
+                  </p>
+                  <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[9px] font-medium text-gray-500 dark:bg-gray-800 dark:text-gray-400">
+                    {src.optional}
+                  </span>
+                </div>
+                <p className={cn("text-[10px] leading-snug", portalSubtext)}>{src.skillsEditHint}</p>
+                <div className="flex flex-wrap gap-1">
+                  {skillsDraft.map((skill, idx) => (
+                    <span
+                      key={`${skill}-${idx}`}
+                      className="inline-flex max-w-full items-center gap-0.5 rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary"
+                    >
+                      {editingSkillIndex === idx ? (
+                        <input
+                          autoFocus
+                          defaultValue={skill}
+                          maxLength={80}
+                          disabled={jdBlocked}
+                          className="w-24 min-w-0 rounded bg-white px-1 py-0 text-[10px] text-gray-900 outline-none dark:bg-gray-900 dark:text-gray-100"
+                          onBlur={(e) => commitEditSkill(idx, e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              commitEditSkill(idx, (e.target as HTMLInputElement).value);
+                            }
+                            if (e.key === "Escape") setEditingSkillIndex(null);
+                          }}
+                        />
+                      ) : (
+                        <button
+                          type="button"
+                          disabled={jdBlocked}
+                          className="truncate max-w-36 text-left disabled:opacity-50"
+                          onClick={() => setEditingSkillIndex(idx)}
+                          title={src.skillsEditTag}
+                        >
+                          {skill}
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        disabled={jdBlocked}
+                        onClick={() => removeSkill(idx)}
+                        className="rounded-full p-0.5 text-primary/70 hover:bg-primary/20 hover:text-primary disabled:opacity-40"
+                        aria-label={src.skillsRemove}
+                      >
+                        <X className="h-2.5 w-2.5" strokeWidth={3} />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+                <div className="flex gap-1.5">
+                  <input
+                    type="text"
+                    value={skillInput}
+                    maxLength={80}
+                    disabled={jdBlocked || !hasMetadataSaveHandler}
+                    onChange={(e) => setSkillInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        addSkill();
+                      }
+                    }}
+                    placeholder={src.skillsAddPlaceholder}
+                    className="min-w-0 flex-1 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-[11px] text-gray-900 placeholder:text-gray-400 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/20 disabled:opacity-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+                  />
+                  <button
+                    type="button"
+                    disabled={jdBlocked || !skillInput.trim() || !hasMetadataSaveHandler}
+                    onClick={addSkill}
+                    className="shrink-0 rounded-lg border border-primary/30 bg-primary/10 px-2.5 py-1.5 text-[11px] font-medium text-primary disabled:opacity-40 hover:bg-primary/15"
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between gap-2 pt-0.5">
+                <p className={cn("min-w-0 flex-1 text-[10px]", portalSubtext)}>
+                  {!positionDraft.trim()
+                    ? src.positionRequiredHint
+                    : !levelDraft.trim()
+                      ? src.levelRequiredHint
+                      : metadataDirty
+                        ? src.metadataDirtyHint
+                        : src.metadataHint}
+                </p>
+                <button
+                  type="button"
+                  disabled={jdBlocked || !canSaveMetadata || savingMetadata}
+                  onClick={() => void handleSaveMetadata()}
+                  className="shrink-0 rounded-lg bg-primary px-2.5 py-1.5 text-[11px] font-medium text-white disabled:opacity-40 hover:bg-primary-hover transition-colors"
+                >
+                  {savingMetadata ? <Loader2 size={12} className="animate-spin" /> : src.metadataSave}
+                </button>
+              </div>
+
               <div className="grid grid-cols-2 gap-x-3 gap-y-1">
                 {[
-                  { label: src.colRole, value: summary.detectedRole },
-                  { label: src.colLevel, value: summary.detectedSeniority },
-                  { label: src.colLang, value: summary.detectedLanguage },
-                ].filter(({ value }) => Boolean(value)).map(({ label, value }) => (
+                  {
+                    label: src.colLang,
+                    value: formatDetectedLanguage(summary.detectedLanguage, {
+                      vietnamese: src.langVietnamese,
+                      english: src.langEnglish,
+                      unknown: src.unknownValue,
+                    }),
+                    hasValue: Boolean(summary.detectedLanguage?.trim()),
+                  },
+                ].map(({ label, value, hasValue }) => (
                   <div key={label} className="min-w-0">
                     <p className="text-[9px] uppercase tracking-wide text-gray-400">{label}</p>
-                    <p className={cn("truncate text-[11px] font-semibold", portalHeading)}>{value}</p>
+                    <p
+                      className={cn(
+                        "truncate text-[11px] font-semibold",
+                        hasValue ? portalHeading : "text-gray-400 italic font-normal"
+                      )}
+                    >
+                      {value}
+                    </p>
                   </div>
                 ))}
               </div>
-              {/* Skills */}
-              {skills.length > 0 && (
+              {summary.summary?.trim() && (
                 <div className="mt-2 space-y-1">
-                  <p className="text-[9px] uppercase tracking-wide text-gray-400">{src.colSkills} · {skills.length}</p>
-                  <div className="flex flex-wrap gap-1">
-                    {skills.slice(0, 8).map((skill) => (
-                      <span key={skill} className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">
-                        {skill}
-                      </span>
+                  <p className="text-[9px] uppercase tracking-wide text-gray-400">{src.colSummary}</p>
+                  <p className={cn("text-[11px] leading-snug", portalSubtext)}>{summary.summary}</p>
+                </div>
+              )}
+              {(summary.responsibilities?.length ?? 0) > 0 && (
+                <div className="mt-2 space-y-1">
+                  <p className="text-[9px] uppercase tracking-wide text-gray-400">{src.colResponsibilities}</p>
+                  <ul className={cn("list-disc space-y-0.5 pl-4 text-[10px] leading-snug", portalSubtext)}>
+                    {(respExpanded ? summary.responsibilities! : summary.responsibilities!.slice(0, 3)).map((item) => (
+                      <li key={item}>{item}</li>
                     ))}
-                    {skills.length > 8 && (
-                      <span className="rounded-full bg-gray-100 px-1.5 py-0.5 text-[10px] text-gray-500 dark:bg-gray-800 dark:text-gray-400">
-                        +{skills.length - 8}
-                      </span>
-                    )}
-                  </div>
+                  </ul>
+                  {summary.responsibilities!.length > 3 && (
+                    <button
+                      type="button"
+                      onClick={() => setRespExpanded((v) => !v)}
+                      className="text-[10px] font-medium text-primary hover:underline"
+                    >
+                      {respExpanded ? src.viewLess : src.viewMore}
+                    </button>
+                  )}
                 </div>
               )}
             </div>
@@ -449,6 +830,72 @@ export function SourcesPanel({
               </span>
             )}
           </div>
+          <p className={cn("text-[10px] leading-snug", portalSubtext)}>{src.sourcesAdminAutoHint}</p>
+
+          {suggestionsLoading && (
+            <p className={cn("text-[10px] flex items-center gap-1", portalSubtext)}>
+              <Loader2 size={12} className="animate-spin" />
+              {src.suggestionsLoading ?? "Đang gợi ý tài liệu khớp JD…"}
+            </p>
+          )}
+          {!suggestionsLoading && suggestions.length > 0 && onAttachFromLibrary && (
+            <div className="rounded-xl border border-violet-200 dark:border-violet-800 bg-violet-50/60 dark:bg-violet-950/20 p-2.5 space-y-2">
+              <p className="text-[11px] font-semibold text-violet-800 dark:text-violet-200">
+                {(src.suggestionsTitle ?? "{{count}} tài liệu khớp JD").replace("{{count}}", String(suggestions.length))}
+              </p>
+              <ul className="space-y-1">
+                {suggestions.slice(0, 5).map((s) => (
+                  <li key={s.knowledgeDocumentId} className="flex items-center justify-between gap-2 text-[10px]">
+                    <span className={cn("truncate", portalHeading)} title={s.fileName}>
+                      {s.fileName}
+                      <span className="ml-1 text-violet-600">
+                        ({(kbTypes as Record<string, string> | undefined)?.[s.documentType] ?? s.documentType})
+                      </span>
+                    </span>
+                    <button
+                      type="button"
+                      className="shrink-0 rounded-md bg-primary px-2 py-0.5 text-[10px] font-semibold text-white"
+                      onClick={() => void onAttachFromLibrary([s.knowledgeDocumentId]).then(() => {
+                        setSuggestions((prev) => prev.filter((x) => x.knowledgeDocumentId !== s.knowledgeDocumentId));
+                      })}
+                    >
+                      {src.attachOne ?? "Gắn"}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+              {suggestions.length > 1 && (
+                <button
+                  type="button"
+                  className="text-[10px] font-medium text-primary hover:underline"
+                  onClick={() => {
+                    const ids = suggestions.map((s) => s.knowledgeDocumentId);
+                    void onAttachFromLibrary(ids).then(() => setSuggestions([]));
+                  }}
+                >
+                  {(src.attachAllSuggestions ?? "Gắn tất cả ({{count}})").replace("{{count}}", String(suggestions.length))}
+                </button>
+              )}
+            </div>
+          )}
+
+          <div className="space-y-1.5">
+            <label className={cn("text-[10px] font-medium", portalSubtext)}>
+              {src.uploadDocType ?? "Loại khi upload"}
+            </label>
+            <select
+              value={uploadDocType}
+              onChange={(e) => setUploadDocType(e.target.value)}
+              className={cn("w-full rounded-lg border px-2 py-1.5 text-[11px]", portalInput)}
+            >
+              {HR_DOCUMENT_TYPES.map((t) => (
+                <option key={t} value={t}>
+                  {(kbTypes as Record<string, string> | undefined)?.[t] ?? t}
+                </option>
+              ))}
+            </select>
+          </div>
+
           <div className="flex gap-1.5">
             {onAttachFromLibrary && projectId && (
               <button
@@ -473,7 +920,7 @@ export function SourcesPanel({
                   if (!f) return;
                   if (!DOC_VALID_EXTS.test(f.name)) { addToast("error", src.docInvalidType); return; }
                   if (f.size > DOC_MAX_BYTES) { addToast("error", src.docFileTooLarge); return; }
-                  void onUploadDocument(f);
+                  void onUploadDocument(f, uploadDocType);
                 }}
               />
             </label>
@@ -518,6 +965,7 @@ export function SourcesPanel({
                           <span className={cn("min-w-0 flex-1 truncate text-[11px] font-medium", portalHeading)} title={doc.fileName}>
                             {doc.fileName}
                           </span>
+                          <SourceOriginBadge scopeOrKb={doc.scope ?? "HR"} labels={originLabels} />
                           <span className={cn("shrink-0 text-[10px]", portalSubtext)}>
                             {doc.alreadyAttached ? src.alreadyAttached : ready ? `${doc.chunkCount ?? 0} chunks` : doc.status}
                           </span>
@@ -582,6 +1030,7 @@ export function SourcesPanel({
                         <p className={cn("truncate text-[11px] font-medium", portalHeading)}>
                           {doc.fileName}
                         </p>
+                        <SourceOriginBadge scopeOrKb={doc.scope ?? "HR"} labels={originLabels} />
                         {doc.isLibraryLink && (
                           <span className="shrink-0 rounded-full bg-primary/10 px-1.5 py-0.5 text-[9px] font-semibold text-primary">KB</span>
                         )}

@@ -4,7 +4,7 @@
  * SCRUM-397 v3: cột trái — chọn/tạo bộ DRAFT + progress publish + câu vừa thêm.
  */
 import Link from "next/link";
-import { ExternalLink, Layers, Loader2, Plus, Sparkles } from "lucide-react";
+import { Check, ExternalLink, Layers, Loader2, Plus, Sparkles } from "lucide-react";
 import { cn } from "@/lib/cn";
 import type { HistoryQuestionSetItem } from "@/features/hr/types/history-question-set";
 import {
@@ -132,14 +132,24 @@ export function QuestionBuilderSetPanel({
           {qb.loadingDrafts}
         </div>
       ) : drafts.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-gray-200 bg-gray-50/60 px-3 py-5 text-center dark:border-gray-700 dark:bg-gray-800/30">
-          <Layers size={20} className="mx-auto mb-2 text-gray-300 dark:text-gray-600" />
+        <div className="rounded-xl border border-dashed border-gray-200 bg-gray-50/60 px-3 py-6 text-center dark:border-gray-700 dark:bg-gray-800/30">
+          <Layers size={22} className="mx-auto mb-2 text-gray-300 dark:text-gray-600" />
           <p className={cn(portalSubtext, "text-xs leading-relaxed")}>
             {qb.emptyDrafts}
           </p>
+          {!showCreateForm && (
+            <button
+              type="button"
+              onClick={onToggleCreateForm}
+              className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-[11px] font-semibold text-white"
+            >
+              <Plus size={12} />
+              {qb.createDraftBtn}
+            </button>
+          )}
         </div>
       ) : (
-        <ul className="max-h-56 space-y-1 overflow-y-auto">
+        <ul className="max-h-64 space-y-1.5 overflow-y-auto pr-0.5">
           {drafts.map((d, i) => {
             const active = d.questionSetId === selectedSetId;
             return (
@@ -152,27 +162,42 @@ export function QuestionBuilderSetPanel({
                 <button
                   type="button"
                   onClick={() => onSelectSet(d.questionSetId)}
+                  aria-pressed={active}
                   className={cn(
-                    "w-full rounded-xl border px-3 py-2.5 text-left transition-all",
+                    "flex w-full items-start gap-2.5 rounded-xl border px-3 py-2.5 text-left transition-all",
                     active
-                      ? "border-primary/40 bg-primary/5 shadow-sm"
-                      : "border-transparent hover:border-gray-100 hover:bg-gray-50 dark:hover:border-gray-800 dark:hover:bg-gray-800/50"
+                      ? "border-primary/50 bg-primary/5 shadow-sm ring-1 ring-primary/20"
+                      : "border-gray-100 hover:border-primary/25 hover:bg-gray-50 dark:border-gray-800 dark:hover:border-gray-700 dark:hover:bg-gray-800/50"
                   )}
                 >
-                  <p className={cn(portalHeading, "truncate text-xs font-semibold")}>{d.title}</p>
-                  <div className="mt-1 flex items-center gap-2">
-                    <span
-                      className={cn(
-                        "rounded-full px-1.5 py-0.5 text-[10px] font-semibold",
-                        active
-                          ? "bg-primary/10 text-primary"
-                          : "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400"
-                      )}
-                    >
-                      {qb.questionCount.replace("{{n}}", String(d.questionCount))}
+                  <span
+                    className={cn(
+                      "mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full transition-colors",
+                      active
+                        ? "bg-primary text-white"
+                        : "border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900"
+                    )}
+                  >
+                    {active && <Check size={11} strokeWidth={3} />}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className={cn(portalHeading, "block truncate text-xs font-semibold")}>
+                      {d.title}
                     </span>
-                    <span className={cn(portalSubtext, "text-[10px]")}>DRAFT</span>
-                  </div>
+                    <span className="mt-1 flex items-center gap-2">
+                      <span
+                        className={cn(
+                          "rounded-full px-1.5 py-0.5 text-[10px] font-semibold",
+                          active
+                            ? "bg-primary/10 text-primary"
+                            : "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400"
+                        )}
+                      >
+                        {qb.questionCount.replace("{{n}}", String(d.questionCount))}
+                      </span>
+                      <span className={cn(portalSubtext, "text-[10px] font-semibold")}>DRAFT</span>
+                    </span>
+                  </span>
                 </button>
               </li>
             );

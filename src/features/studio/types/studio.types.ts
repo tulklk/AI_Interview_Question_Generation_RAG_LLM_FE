@@ -43,6 +43,49 @@ export interface AnalyzeJobDescriptionResponse {
   detectedSeniority?: string | null;
   detectedLanguage?: string | null;
   skills: string[];
+  /** SCRUM-416: vị trí extract từ JD (JobDescription.Title) — HR sửa qua PATCH */
+  position?: string | null;
+  jobTitle?: string | null;
+  experienceLevel?: string | null;
+  responsibilities?: string[];
+  summary?: string | null;
+}
+
+export interface QuestionDistributionItem {
+  category: "technical" | "behavioral" | "situational" | string;
+  percentage: number;
+  questionCount: number;
+}
+
+export interface StudioFocusAreaItem {
+  name: string;
+  weight: number;
+  orderIndex: number;
+  description?: string | null;
+  sourceReason?: string | null;
+}
+
+export interface RecommendedConfiguration {
+  numberOfQuestions: number;
+  difficulty: "easy" | "medium" | "hard" | string;
+  questionDistribution: QuestionDistributionItem[];
+  focusAreas: StudioFocusAreaItem[];
+  questionStyles: string[];
+  codingTaskTypes: string[];
+  codingTasksRecommended: boolean;
+}
+
+export interface RecommendInterviewConfigurationResponse {
+  jobProfile: {
+    jobTitle?: string | null;
+    experienceLevel?: string | null;
+    detectedRole?: string | null;
+    detectedLanguage?: string | null;
+    skills: string[];
+    responsibilities: string[];
+    summary?: string | null;
+  };
+  recommendedConfiguration: RecommendedConfiguration;
 }
 
 export interface JobDescriptionContent {
@@ -52,6 +95,8 @@ export interface JobDescriptionContent {
   wordCount: number;
   characterCount: number;
   summary?: AnalyzeJobDescriptionResponse | null;
+  /** SCRUM-416: top-level position (đồng bộ Title trên BE) */
+  position?: string | null;
 }
 
 export interface UploadJobDescriptionResponse {
@@ -79,6 +124,10 @@ export interface StudioDocument {
   processingError?: string | null;
   /** SCRUM-373: gắn từ Knowledge Documents (không upload mới) */
   isLibraryLink?: boolean;
+  /** SCRUM-419: HR | SYSTEM */
+  scope?: "HR" | "SYSTEM";
+  /** SCRUM-442 */
+  documentType?: string;
 }
 
 /** SCRUM-373: doc trong KB HR để chọn gắn vào Studio */
@@ -89,6 +138,33 @@ export interface StudioLibraryDocument {
   chunkCount?: number | null;
   createdAt: string;
   alreadyAttached: boolean;
+  /** SCRUM-419: HR | SYSTEM */
+  scope?: "HR" | "SYSTEM";
+  /** SCRUM-442 */
+  documentType?: string;
+}
+
+/** SCRUM-443 */
+export interface StudioKnowledgeSuggestion {
+  knowledgeDocumentId: string;
+  fileName: string;
+  documentType: string;
+  maxScore: number;
+  hitCount: number;
+  topExcerpt?: string | null;
+}
+
+/** SCRUM-444 */
+export interface StudioRetrievePreviewChunk {
+  chunkIndex: number;
+  content: string;
+  score: number;
+  fileName?: string | null;
+}
+
+export interface StudioRetrievePreview {
+  knowledgeDocumentId: string;
+  chunks: StudioRetrievePreviewChunk[];
 }
 
 export interface PlanSummary {
@@ -109,12 +185,59 @@ export interface PlanSectionItem {
   estimatedMinutes: number;
 }
 
+/** Slot preview / chỉnh trước Generate — map recommendedQuestionOutline. */
+export interface PlanOutlineItem {
+  order: number;
+  type: string;
+  difficulty: string;
+  skill: string;
+  focusArea: string;
+  goal: string;
+  /** Text = lý thuyết | Code = coding */
+  answerMethod: "Text" | "Code";
+  /** SCRUM-426: nguồn JD + Admin đã khóa trên slot */
+  citations?: StudioQuestionCitation[];
+}
+
+/** SCRUM-419 / SCRUM-420: nguồn plan kèm scope */
+export type PlanSourceScope = "JD" | "HR" | "SYSTEM" | "LLM";
+
+export interface PlanProvenanceItem {
+  origin: PlanSourceScope;
+  sourceFile?: string | null;
+  chunkIndex?: number | null;
+  excerpt?: string | null;
+  usedFor?: string[];
+  reason?: string | null;
+}
+
+export interface PlanProvenanceBlock {
+  primaryOrigin: PlanSourceScope;
+  items: PlanProvenanceItem[];
+}
+
+export interface PlanCoverageItem {
+  skill: string;
+  questionCount: number;
+  focusAreas: string[];
+  sourceFiles: string[];
+  provenance?: PlanProvenanceBlock | null;
+}
+
 export interface PlanFocusAreaItem {
   name: string;
   weight: number;
   orderIndex: number;
   /** SCRUM-369: tên file RAG (source_file) gắn focus */
   sourceFiles?: string[];
+  /** SCRUM-420: HR | SYSTEM | LLM */
+  primaryOrigin?: PlanSourceScope | null;
+  provenance?: PlanProvenanceBlock | null;
+}
+
+export interface PlanSourceUsed {
+  name: string;
+  scope?: PlanSourceScope | null;
 }
 
 export interface PlanDetail {
@@ -128,7 +251,17 @@ export interface PlanDetail {
   difficulty: StudioQuestionDifficulty;
   difficultyMix: { easy: number; medium: number; hard: number };
   focusAreas: PlanFocusAreaItem[];
+  /** BE: HR settings changed after plan snapshot — regenerate required */
+  isSettingsStale?: boolean;
   sourcesUsed: string[];
+  /** SCRUM-419: sourcesUsed kèm scope HR/Admin/JD/LLM */
+  sourceDetails?: PlanSourceUsed[];
+  /** SCRUM-420: coverage kèm provenance */
+  coverage?: PlanCoverageItem[];
+  /** Live preview slots từ recommendedQuestionOutline */
+  outlineItems?: PlanOutlineItem[];
+  /** RAG | StudioSettingsPatch — gate bước 2 preview sau Apply */
+  generatedByModelName?: string | null;
   estimatedSections: PlanSectionItem[];
   sections: PlanSectionItem[];
   concurrencyVersion: string;
@@ -167,6 +300,13 @@ export interface StudioSettings {
   questionTypes: string[];
   contentMode?: StudioContentMode;
   enabledCodeTemplates?: StudioCodeTemplateId[];
+  /** HR-approved focus areas (Phase 1 AI config) */
+  focusAreas?: StudioFocusAreaItem[];
+  questionDistribution?: QuestionDistributionItem[];
+  questionStyles?: string[];
+  /** AI draft snapshot — read-only from GET */
+  recommendedConfiguration?: RecommendedConfiguration | null;
+  recommendedGeneratedAt?: string | null;
   readiness: StudioReadiness;
 }
 
@@ -183,12 +323,23 @@ export interface ApplyPlanSettingsPayload {
   difficulty: StudioQuestionDifficulty;
   interviewLengthMinutes: number;
   questionTypes: string[];
+  questionDistribution?: QuestionDistributionItem[];
+  focusAreas?: StudioFocusAreaItem[];
+  questionStyles?: string[];
+  codingTaskTypes?: string[];
+  outlineItems?: PlanOutlineItem[];
 }
 
 export interface StudioQuestionCitation {
   sourceFile: string;
   chunkIndex?: number | null;
   excerpt?: string | null;
+  /** SCRUM-419: hr | system từ RAG */
+  knowledgeBase?: string | null;
+  /** SCRUM-421: HR | SYSTEM | LLM */
+  origin?: PlanSourceScope | null;
+  usedFor?: string[] | null;
+  reason?: string | null;
 }
 
 export interface StudioQuestion {
@@ -199,6 +350,8 @@ export interface StudioQuestion {
   orderIndex: number;
   expectedAnswer?: string | null;
   scoringRubric?: string | null;
+  /** SCRUM-418: RubricV1 JSON từ BE */
+  rubricJson?: string | null;
   /** SCRUM-390: nguồn tài liệu RAG gắn câu hỏi */
   citations?: StudioQuestionCitation[];
   codeTemplateType?: StudioCodeTemplateId | null;
@@ -209,6 +362,15 @@ export interface StudioQuestion {
   attachedImageUrl?: string | null;
   /** SCRUM-400: Text | Code */
   answerMethod?: "Text" | "Code" | null;
+  /** SCRUM-421: provenance tóm tắt */
+  sourceProvenance?: PlanProvenanceBlock | null;
+  /** SCRUM-421: cảnh báo thiếu tài liệu Admin */
+  missingAdminWarning?: boolean;
+  /** SCRUM-427: lý do hỏi (khóa từ outline.goal) */
+  rationale?: string | null;
+  /** SCRUM-436: skill/tech từ outline TagsJson — badge UI */
+  skill?: string | null;
+  focusArea?: string | null;
 }
 
 export interface StudioQuestionListResponse {
@@ -228,6 +390,8 @@ export interface GenerationRun {
   completedAt?: string | null;
   errorCode?: string | null;
   errorMessage?: string | null;
+  /** SCRUM-429: regen nền — id câu đang regen (null = generate full) */
+  targetQuestionId?: string | null;
 }
 
 export interface ShareLink {

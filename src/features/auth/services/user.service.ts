@@ -32,6 +32,15 @@ function pickBoolean(obj: Record<string, unknown>, ...keys: string[]): boolean |
   return undefined;
 }
 
+function pickNullableNumber(obj: Record<string, unknown>, ...keys: string[]): number | null | undefined {
+  for (const key of keys) {
+    const val = obj[key];
+    if (val === null) return null;
+    if (typeof val === "number" && !Number.isNaN(val)) return val;
+  }
+  return undefined;
+}
+
 function pickStringArray(obj: Record<string, unknown>, ...keys: string[]): string[] {
   for (const key of keys) {
     const val = obj[key];
@@ -121,6 +130,10 @@ function normalizeHrProfile(
     bio: pickOptionalString(profile, "bio", "Bio") || undefined,
     inviteMessageTemplate:
       pickOptionalString(profile, "inviteMessageTemplate", "InviteMessageTemplate") || undefined,
+    recDefaultMinScore: pickNullableNumber(profile, "recDefaultMinScore", "RecDefaultMinScore") ?? null,
+    recDefaultSortBy: pickOptionalString(profile, "recDefaultSortBy", "RecDefaultSortBy") || "score",
+    recDefaultSortDir: pickOptionalString(profile, "recDefaultSortDir", "RecDefaultSortDir") || "desc",
+    recHideDismissed: pickBoolean(profile, "recHideDismissed", "RecHideDismissed") ?? false,
   };
 }
 

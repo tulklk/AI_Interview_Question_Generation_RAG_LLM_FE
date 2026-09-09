@@ -1,5 +1,10 @@
 import { apiClient } from "@/core/api/http-client";
-import type { KnowledgeDocument, DocumentStatus } from "@/features/knowledge/types/knowledge";
+import type {
+  KnowledgeChunkPreview,
+  KnowledgeDocument,
+  KnowledgeDocumentType,
+  DocumentStatus,
+} from "@/features/knowledge/types/knowledge";
 
 // ---------------------------------------------------------------------------
 // RAG Status
@@ -58,6 +63,10 @@ interface BackendDoc {
   updatedAt?: string;
   errorMessage?: string;
   pageCount?: number;
+  chunkCount?: number;
+  documentType?: string;
+  citationCount?: number;
+  studioProjectCount?: number;
 }
 
 interface BackendListResponse {
@@ -78,6 +87,12 @@ function normalizeStatus(raw?: string): DocumentStatus {
   return "PENDING";
 }
 
+function normalizeDocumentType(raw?: string): KnowledgeDocumentType {
+  const s = (raw ?? "").trim();
+  if (s === "Policy" || s === "InternalStack" || s === "Rubric" || s === "RolePack") return s;
+  return "Unclassified";
+}
+
 function mapDoc(d: BackendDoc): KnowledgeDocument {
   return {
     id: d.id ?? d.documentId ?? "",
@@ -90,6 +105,10 @@ function mapDoc(d: BackendDoc): KnowledgeDocument {
     updatedAt: d.updatedAt,
     errorMessage: d.errorMessage,
     pageCount: d.pageCount,
+    chunkCount: d.chunkCount,
+    documentType: normalizeDocumentType(d.documentType),
+    citationCount: d.citationCount ?? 0,
+    studioProjectCount: d.studioProjectCount ?? 0,
   };
 }
 
@@ -115,30 +134,61 @@ function extractList(data: unknown): KnowledgeDocument[] {
 // ---------------------------------------------------------------------------
 
 export async function getHrKnowledgeDocs(): Promise<KnowledgeDocument[]> {
-  try {
-    // BE defaults to PageSize=20 — this page has no pagination UI yet, so
-    // request a generous page size rather than silently truncating the list.
-    const { data } = await apiClient.get("/api/hr/knowledge-documents", { params: { PageSize: 200 } });
-    return extractList(data);
-  } catch {
-    return [];
-  }
+  // Không nuốt lỗi — UI toast + tránh hiểu nhầm "không có file" khi API 401/500.
+  const { data } = await apiClient.get("/api/hr/knowledge-documents", { params: { PageSize: 200 } });
+  return extractList(data);
 }
 
-export async function uploadHrKnowledgeDoc(file: File): Promise<KnowledgeDocument | null> {
+export async function uploadHrKnowledgeDoc(
+  file: File,
+  documentType: KnowledgeDocumentType
+): Promise<KnowledgeDocument | null> {
+  const form = new FormData();
+  form.append("File", file);
+  form.append("DocumentType", documentType);
+  const { data } = await apiClient.post<BackendDoc | { data?: BackendDoc }>(
+    "/api/hr/knowledge-documents",
+    form,
+    { headers: { "Content-Type": "multipart/form-data" } }
+  );
+  const doc = (data as { data?: BackendDoc }).data ?? (data as BackendDoc);
+  if (!doc) return null;
+  // Upload response có thể thiếu originalFileName — fallback tên file local.
+  return mapDoc({
+    ...doc,
+    fileName: doc.fileName ?? doc.originalFileName ?? file.name,
+    originalFileName: doc.originalFileName ?? file.name,
+  });
+}
+
+export async function updateHrKnowledgeDocType(
+  id: string,
+  documentType: KnowledgeDocumentType
+): Promise<KnowledgeDocument | null> {
   try {
-    const form = new FormData();
-    form.append("File", file);
-    const { data } = await apiClient.post<BackendDoc | { data?: BackendDoc }>(
-      "/api/hr/knowledge-documents",
-      form,
-      { headers: { "Content-Type": "multipart/form-data" } }
+    const { data } = await apiClient.patch<BackendDoc | { data?: BackendDoc }>(
+      `/api/hr/knowledge-documents/${id}`,
+      { documentType }
     );
     const doc = (data as { data?: BackendDoc }).data ?? (data as BackendDoc);
     return doc ? mapDoc(doc) : null;
   } catch {
     return null;
   }
+}
+
+export async function getHrKnowledgeChunks(id: string, take = 20): Promise<KnowledgeChunkPreview[]> {
+  // Không nuốt lỗi — drawer cần biết API fail vs thật sự chưa có chunk.
+  const { data } = await apiClient.get(`/api/hr/knowledge-documents/${id}/chunks`, {
+    params: { take },
+  });
+  const raw = (data as { data?: unknown })?.data ?? data;
+  const items = Array.isArray(raw) ? raw : (raw as { items?: unknown[] })?.items ?? [];
+  return (items as Array<Record<string, unknown>>).map((c) => ({
+    chunkId: String(c.chunkId ?? c.id ?? ""),
+    chunkIndex: Number(c.chunkIndex ?? 0),
+    content: String(c.content ?? ""),
+  }));
 }
 
 export async function deleteHrKnowledgeDoc(id: string): Promise<boolean> {
@@ -176,28 +226,25 @@ export async function getHrKnowledgeDoc(id: string): Promise<KnowledgeDocument |
 // ---------------------------------------------------------------------------
 
 export async function getAdminKnowledgeDocs(): Promise<KnowledgeDocument[]> {
-  try {
-    const { data } = await apiClient.get("/api/admin/knowledge-documents");
-    return extractList(data);
-  } catch {
-    return [];
-  }
+  const { data } = await apiClient.get("/api/admin/knowledge-documents");
+  return extractList(data);
 }
 
 export async function uploadAdminKnowledgeDoc(file: File): Promise<KnowledgeDocument | null> {
-  try {
-    const form = new FormData();
-    form.append("File", file);
-    const { data } = await apiClient.post<BackendDoc | { data?: BackendDoc }>(
-      "/api/admin/knowledge-documents",
-      form,
-      { headers: { "Content-Type": "multipart/form-data" } }
-    );
-    const doc = (data as { data?: BackendDoc }).data ?? (data as BackendDoc);
-    return doc ? mapDoc(doc) : null;
-  } catch {
-    return null;
-  }
+  const form = new FormData();
+  form.append("File", file);
+  const { data } = await apiClient.post<BackendDoc | { data?: BackendDoc }>(
+    "/api/admin/knowledge-documents",
+    form,
+    { headers: { "Content-Type": "multipart/form-data" } }
+  );
+  const doc = (data as { data?: BackendDoc }).data ?? (data as BackendDoc);
+  if (!doc) return null;
+  return mapDoc({
+    ...doc,
+    fileName: doc.fileName ?? doc.originalFileName ?? file.name,
+    originalFileName: doc.originalFileName ?? file.name,
+  });
 }
 
 export async function deleteAdminKnowledgeDoc(id: string): Promise<boolean> {
