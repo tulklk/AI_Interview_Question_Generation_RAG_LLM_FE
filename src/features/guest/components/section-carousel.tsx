@@ -9,6 +9,7 @@ import { WorkflowSection } from "./workflow-section";
 
 const SLIDE_COUNT = 3;
 const AUTO_PLAY_MS = 6500;
+const SWIPE_THRESHOLD = 50;
 
 const SLIDES = [
   { id: "benefits", Component: BenefitsSection },
@@ -20,6 +21,7 @@ export function SectionCarousel() {
   const { t } = useLanguage();
   const [current, setCurrent] = useState(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const touchStartX = useRef<number | null>(null);
 
   const labels = [
     t.benefits.sectionLabel,
@@ -32,6 +34,13 @@ export function SectionCarousel() {
     timerRef.current = setInterval(() => {
       setCurrent((c) => (c + 1) % SLIDE_COUNT);
     }, AUTO_PLAY_MS);
+  }, []);
+
+  const pauseTimer = useCallback(() => {
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
   }, []);
 
   useEffect(() => {
@@ -56,10 +65,32 @@ export function SectionCarousel() {
     startTimer();
   };
 
+  const onTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0]?.clientX ?? null;
+    pauseTimer();
+  };
+
+  const onTouchEnd = (e: React.TouchEvent) => {
+    const start = touchStartX.current;
+    touchStartX.current = null;
+    if (start == null) {
+      startTimer();
+      return;
+    }
+    const end = e.changedTouches[0]?.clientX ?? start;
+    const delta = end - start;
+    if (Math.abs(delta) >= SWIPE_THRESHOLD) {
+      if (delta < 0) next();
+      else prev();
+    } else {
+      startTimer();
+    }
+  };
+
   return (
     <div>
       {/* Tab navigation strip — sits ABOVE slides, no overlap */}
-      <div className="relative z-10 flex justify-center gap-2 py-5 bg-white/70 dark:bg-gray-950/70 backdrop-blur-md border-b border-gray-100 dark:border-gray-800">
+      <div className="relative z-10 flex justify-center gap-2 py-3 sm:py-5 bg-white/70 dark:bg-gray-950/70 backdrop-blur-md border-b border-gray-100 dark:border-gray-800">
         {labels.map((label, i) => (
           <button
             key={label}
@@ -67,7 +98,7 @@ export function SectionCarousel() {
             onClick={() => goTo(i)}
             className={`px-5 py-2 rounded-full text-[11px] font-semibold uppercase tracking-widest transition-all duration-300 ${
               i === current
-                ? "bg-primary text-white shadow-lg shadow-primary/30 scale-105"
+                ? "bg-primary text-white shadow-lg shadow-primary/30 scale-100 sm:scale-105"
                 : "bg-transparent text-gray-400 dark:text-gray-500 hover:text-primary dark:hover:text-[#a78bff]"
             }`}
           >
@@ -79,7 +110,11 @@ export function SectionCarousel() {
       </div>
 
       {/* Slides area */}
-      <div className="relative overflow-hidden">
+      <div
+        className="relative overflow-hidden touch-pan-y"
+        onTouchStart={onTouchStart}
+        onTouchEnd={onTouchEnd}
+      >
         {/* Track */}
         <div
           className="flex transition-transform duration-700 ease-in-out will-change-transform"
@@ -88,29 +123,29 @@ export function SectionCarousel() {
           {SLIDES.map(({ id, Component }) => (
             <div
               key={id}
-              className="min-w-full flex flex-col [&>section]:flex-1 [&>section]:flex [&>section]:flex-col [&>section]:justify-center"
+              className="min-w-full flex flex-col pb-12 sm:pb-14 [&>section]:flex-1 [&>section]:flex [&>section]:flex-col [&>section]:justify-center"
             >
               <Component />
             </div>
           ))}
         </div>
 
-        {/* Prev arrow */}
+        {/* Prev arrow — desktop/tablet only */}
         <button
           type="button"
           onClick={prev}
           aria-label="Previous section"
-          className="absolute left-3 md:left-6 top-1/2 -translate-y-1/2 z-20 w-9 h-9 rounded-full bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border border-gray-200 dark:border-gray-700 shadow-md flex items-center justify-center text-gray-500 dark:text-gray-400 hover:bg-white dark:hover:bg-gray-800 hover:text-primary dark:hover:text-[#a78bff] transition-colors duration-200"
+          className="hidden sm:flex absolute left-3 md:left-6 top-1/2 -translate-y-1/2 z-20 w-9 h-9 rounded-full bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border border-gray-200 dark:border-gray-700 shadow-md items-center justify-center text-gray-500 dark:text-gray-400 hover:bg-white dark:hover:bg-gray-800 hover:text-primary dark:hover:text-[#a78bff] transition-colors duration-200"
         >
           <ChevronLeft size={16} />
         </button>
 
-        {/* Next arrow */}
+        {/* Next arrow — desktop/tablet only */}
         <button
           type="button"
           onClick={next}
           aria-label="Next section"
-          className="absolute right-3 md:right-6 top-1/2 -translate-y-1/2 z-20 w-9 h-9 rounded-full bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border border-gray-200 dark:border-gray-700 shadow-md flex items-center justify-center text-gray-500 dark:text-gray-400 hover:bg-white dark:hover:bg-gray-800 hover:text-primary dark:hover:text-[#a78bff] transition-colors duration-200"
+          className="hidden sm:flex absolute right-3 md:right-6 top-1/2 -translate-y-1/2 z-20 w-9 h-9 rounded-full bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border border-gray-200 dark:border-gray-700 shadow-md items-center justify-center text-gray-500 dark:text-gray-400 hover:bg-white dark:hover:bg-gray-800 hover:text-primary dark:hover:text-[#a78bff] transition-colors duration-200"
         >
           <ChevronRight size={16} />
         </button>

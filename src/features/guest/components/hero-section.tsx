@@ -14,8 +14,7 @@ const MockupCard3D = dynamic(
     ssr: false,
     loading: () => (
       <div
-        className="w-full rounded-2xl bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-900 animate-pulse"
-        style={{ height: "44rem" }}
+        className="w-full aspect-[480/610] max-h-[23rem] lg:max-h-[44rem] rounded-2xl bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-900 animate-pulse"
         aria-hidden="true"
       />
     ),
@@ -40,12 +39,7 @@ export function HeroSection() {
   return (
     <section
       id="home"
-      className="relative px-6 overflow-hidden bg-white/92 dark:bg-gray-950/85"
-      style={{
-        minHeight: "calc(100dvh - 4rem)", /* fill remaining viewport after sticky navbar */
-        paddingTop: "0",
-        paddingBottom: "clamp(0.5rem, 2vh, 1.5rem)",
-      }}
+      className="relative px-4 sm:px-6 pt-8 sm:pt-10 lg:pt-12 pb-[clamp(0.5rem,2vh,1.5rem)] lg:pb-10 overflow-hidden bg-white/92 dark:bg-gray-950/85 min-h-0 lg:min-h-[calc(100dvh-4rem)]"
     >
       {/* ── Hero holographic accents: grid, aurora beams, glows, stars ── */}
       <div className="light-hero-bg absolute inset-0 pointer-events-none" aria-hidden="true">
@@ -53,16 +47,8 @@ export function HeroSection() {
         <div className="dot-pattern hidden md:block" />
         <div className="bg-grid-pattern" />
         <div
-          className="holo-orb holo-orb--hero holo-orb--violet"
+          className="holo-orb holo-orb--hero holo-orb--violet max-md:!w-[260px] max-md:!h-[260px]"
           style={{ width: 560, height: 560, top: "-22%", left: "-12%" }}
-        />
-        <div
-          className="holo-orb holo-orb--hero holo-orb--cyan"
-          style={{ width: 420, height: 420, bottom: "-15%", right: "-8%" }}
-        />
-        <div
-          className="holo-orb holo-orb--hero holo-orb--pink"
-          style={{ width: 280, height: 280, top: "22%", right: "22%" }}
         />
 
         {/* Light-theme particles: soft drifting purple/cyan/blue dots */}
@@ -88,19 +74,19 @@ export function HeroSection() {
         <CosmicField variant="full" />
       </div>
 
-      <div className="relative z-10 max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+      <div className="relative z-10 max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-16 items-center">
 
         {/* Left column — staggered per-element */}
         <div>
           <div
-            className="inline-flex items-center gap-2 bg-[#7C3AED]/8 border border-[#7C3AED]/15 text-[#7C3AED] text-xs font-semibold px-3.5 py-1.5 rounded-full mb-6 animate-fade-up-scale"
+            className="inline-flex items-center gap-2 bg-[#7C3AED]/8 border border-[#7C3AED]/15 text-[#7C3AED] text-xs font-semibold px-3.5 py-1.5 rounded-full mb-4 sm:mb-6 animate-fade-up-scale"
             style={{ animationDelay: "0ms" }}
           >
             <Sparkles size={13} className="badge-icon-pulse" />
             {h.badge}
           </div>
 
-          <h1 className="text-4xl sm:text-[2.5rem] lg:text-[2.75rem] font-extrabold text-gray-900 dark:text-gray-50 leading-[1.1] tracking-tight mb-5">
+          <h1 className="text-3xl sm:text-4xl lg:text-[2.75rem] font-extrabold text-gray-900 dark:text-gray-50 leading-[1.15] sm:leading-[1.1] tracking-tight mb-4 sm:mb-5">
             {/* animate-hero-fade-up: slides up without ever hiding text (no opacity:0 start) */}
             <span className="block animate-hero-fade-up" style={{ animationDelay: "80ms" }}>
               {h.headline1}
@@ -117,11 +103,11 @@ export function HeroSection() {
           </h1>
 
           {/* No animation on subtext — it is the LCP element; must be visible at first paint */}
-          <p className="text-lg text-gray-500 dark:text-gray-400 leading-relaxed mb-8 max-w-md">
+          <p className="text-base sm:text-lg text-gray-500 dark:text-gray-400 leading-relaxed mb-6 sm:mb-8 max-w-md">
             {h.subtext}
           </p>
 
-          <div className="flex flex-wrap items-center gap-y-1.5 gap-x-3 mb-10">
+          <div className="flex flex-wrap items-center gap-y-1.5 gap-x-3 mb-8 sm:mb-10">
             {/* Point 1 — same line */}
             <span
               className="checklist-item flex items-center gap-1.5 text-sm text-gray-600 dark:text-gray-300"
@@ -151,19 +137,19 @@ export function HeroSection() {
           </div>
 
           <div
-            className="flex items-center gap-3 animate-scale-in"
+            className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 animate-scale-in"
             style={{ animationDelay: "620ms" }}
           >
             <Link
               href="/register"
-              className="btn-cta-primary shimmer-button inline-flex items-center gap-2 text-white font-semibold text-sm px-6 py-3 rounded-lg"
+              className="btn-cta-primary shimmer-button inline-flex w-full sm:w-auto justify-center items-center gap-2 text-white font-semibold text-sm px-6 py-3 rounded-lg"
             >
               <Sparkles size={15} />
               {h.ctaPrimary}
             </Link>
             <Link
               href="/login"
-              className="btn-glass group inline-flex items-center gap-2 text-sm font-semibold text-gray-700 border border-gray-200 hover:bg-gray-50 dark:text-gray-200 dark:border-gray-700 px-6 py-3 rounded-lg transition-colors"
+              className="btn-glass group inline-flex w-full sm:w-auto justify-center items-center gap-2 text-sm font-semibold text-gray-700 border border-gray-200 hover:bg-gray-50 dark:text-gray-200 dark:border-gray-700 px-6 py-3 rounded-lg transition-colors"
             >
               {h.ctaSecondary}
               <ArrowRight size={15} className="transition-transform group-hover:translate-x-1" />
@@ -171,10 +157,9 @@ export function HeroSection() {
           </div>
         </div>
 
-        {/* Right column — slide-in wrapper + idle 3D tilt/float */}
         {/* Right column — interactive 3D card (drag to rotate 360°) */}
         <div
-          className="hero-card-enter w-full flex items-center justify-center"
+          className="hero-card-enter mt-2 w-full max-w-full overflow-visible py-4 sm:py-6 lg:py-8 flex items-center justify-center lg:mt-0"
           style={{ animationDelay: "200ms" }}
         >
           <MockupCard3D
@@ -185,7 +170,7 @@ export function HeroSection() {
             question={h.mockupQuestion}
             aiLabel={h.mockupAiLabel}
             aiAnswer={h.mockupAnswer}
-            className="w-full h-175"
+            className="max-w-full"
           />
         </div>
       </div>

@@ -20,6 +20,7 @@ import { SampleJdModal } from "@/features/studio/components/sample-jd-modal";
 import { SourceOriginBadge, useSourceOriginLabels } from "@/features/studio/components/source-origin-badge";
 import { formatDetectedLanguage } from "@/features/studio/utils/format-detected-language";
 import { cn } from "@/lib/cn";
+import { getSkillIcon } from "@/features/candidate/utils/skill-icons";
 import { useLanguage } from "@/shared/providers/language-context";
 import { useToast } from "@/shared/providers/toast-context";
 import { portalCard, portalHeading, portalInput, portalSubtext } from "@/shared/utils/portal-ui";
@@ -674,11 +675,14 @@ export function SourcesPanel({
                   </span>
                 </div>
                 <p className={cn("text-[10px] leading-snug", portalSubtext)}>{src.skillsEditHint}</p>
-                <div className="flex flex-wrap gap-1">
-                  {skillsDraft.map((skill, idx) => (
+                <div className="grid grid-cols-2 gap-1.5">
+                  {skillsDraft.map((skill, idx) => {
+                    const skillIcon = editingSkillIndex === idx ? null : getSkillIcon(skill);
+                    const SIcon = skillIcon?.icon;
+                    return (
                     <span
                       key={`${skill}-${idx}`}
-                      className="inline-flex max-w-full items-center gap-0.5 rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary"
+                      className="inline-flex min-w-0 w-full items-center gap-0.5 rounded-full bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-900 dark:bg-gray-800 dark:text-gray-100"
                     >
                       {editingSkillIndex === idx ? (
                         <input
@@ -686,7 +690,7 @@ export function SourcesPanel({
                           defaultValue={skill}
                           maxLength={80}
                           disabled={jdBlocked}
-                          className="w-24 min-w-0 rounded bg-white px-1 py-0 text-[10px] text-gray-900 outline-none dark:bg-gray-900 dark:text-gray-100"
+                          className="min-w-0 flex-1 rounded bg-white px-1 py-0 text-[10px] text-gray-900 outline-none dark:bg-gray-900 dark:text-gray-100"
                           onBlur={(e) => commitEditSkill(idx, e.target.value)}
                           onKeyDown={(e) => {
                             if (e.key === "Enter") {
@@ -700,24 +704,32 @@ export function SourcesPanel({
                         <button
                           type="button"
                           disabled={jdBlocked}
-                          className="truncate max-w-36 text-left disabled:opacity-50"
+                          className="inline-flex min-w-0 flex-1 items-center gap-1 truncate text-left disabled:opacity-50"
                           onClick={() => setEditingSkillIndex(idx)}
                           title={src.skillsEditTag}
                         >
-                          {skill}
+                          {SIcon ? (
+                            <SIcon
+                              aria-hidden
+                              size={11}
+                              className={cn("shrink-0", skillIcon!.className)}
+                            />
+                          ) : null}
+                          <span className="truncate">{skill}</span>
                         </button>
                       )}
                       <button
                         type="button"
                         disabled={jdBlocked}
                         onClick={() => removeSkill(idx)}
-                        className="rounded-full p-0.5 text-primary/70 hover:bg-primary/20 hover:text-primary disabled:opacity-40"
+                        className="shrink-0 rounded-full p-0.5 text-gray-500 hover:bg-gray-200 hover:text-gray-900 disabled:opacity-40 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-gray-100"
                         aria-label={src.skillsRemove}
                       >
                         <X className="h-2.5 w-2.5" strokeWidth={3} />
                       </button>
                     </span>
-                  ))}
+                    );
+                  })}
                 </div>
                 <div className="flex gap-1.5">
                   <input

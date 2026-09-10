@@ -1,7 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
-import { createPortal } from "react-dom";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import {
   Clock, Users, Star, ChevronRight, BarChart2,
@@ -11,6 +10,7 @@ import { cn } from "@/lib/cn";
 import { useLanguage } from "@/shared/providers/language-context";
 import type { QuestionSet } from "@/features/candidate/types/jobseeker";
 import { DifficultyPill } from "@/features/candidate/components/ui/pill";
+import { SkillsOverflowChip } from "@/features/candidate/components/ui/skills-overflow-popover";
 import { toggleBookmark } from "@/features/candidate/services/question-set.service";
 import { useToast } from "@/shared/providers/toast-context";
 import { getSkillIcon } from "@/features/candidate/utils/skill-icons";
@@ -122,89 +122,6 @@ function fmtDuration(
 }
 
 // ── Skills popover portal ─────────────────────────────────────────────────────
-function SkillsPopover({
-  skills,
-  anchorRef,
-  onClose,
-}: {
-  skills: string[];
-  anchorRef: React.RefObject<HTMLButtonElement | null>;
-  onClose: () => void;
-}) {
-  const [pos, setPos] = useState<{ top: number; left: number; above: boolean } | null>(null);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    function measure() {
-      const r = anchorRef.current?.getBoundingClientRect();
-      if (!r) return;
-      const above = window.innerHeight - r.bottom < 260 && r.top > 260;
-      setPos({
-        top: above ? r.top - 6 : r.bottom + 6,
-        left: Math.min(r.left, window.innerWidth - 244 - 8),
-        above,
-      });
-    }
-    measure();
-    window.addEventListener("scroll", measure, { passive: true, capture: true });
-    window.addEventListener("resize", measure);
-    return () => {
-      window.removeEventListener("scroll", measure, { capture: true });
-      window.removeEventListener("resize", measure);
-    };
-  }, [anchorRef]);
-
-  useEffect(() => {
-    function outside(e: MouseEvent) {
-      if (
-        ref.current?.contains(e.target as Node) ||
-        anchorRef.current?.contains(e.target as Node)
-      )
-        return;
-      onClose();
-    }
-    function key(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
-    }
-    document.addEventListener("mousedown", outside);
-    document.addEventListener("keydown", key);
-    return () => {
-      document.removeEventListener("mousedown", outside);
-      document.removeEventListener("keydown", key);
-    };
-  }, [anchorRef, onClose]);
-
-  if (!pos) return null;
-  return createPortal(
-    <div
-      ref={ref}
-      style={{
-        position: "fixed",
-        top: pos.top,
-        left: pos.left,
-        transform: pos.above ? "translateY(-100%)" : undefined,
-        zIndex: 9999,
-      }}
-      className="w-60 max-h-72 overflow-y-auto rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-xl p-3 flex flex-col gap-1.5"
-    >
-      {skills.map((skill) => {
-        const si = getSkillIcon(skill);
-        const SIcon = si?.icon;
-        return (
-          <span
-            key={skill}
-            className="inline-flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1.5 rounded-md bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300"
-          >
-            {SIcon && <SIcon size={11} className={cn("shrink-0", si.className)} />}
-            <span className="truncate">{skill}</span>
-          </span>
-        );
-      })}
-    </div>,
-    document.body,
-  );
-}
-
 // ── Props ─────────────────────────────────────────────────────────────────────
 export interface QuestionSetCardProps {
   set: QuestionSet;
@@ -234,8 +151,6 @@ export function QuestionSetCard({
   const [logoError, setLogoError] = useState(false);
   const [bookmarked, setBookmarked] = useState(initialBookmarked);
   const [bookmarking, setBookmarking] = useState(false);
-  const [showSkills, setShowSkills] = useState(false);
-  const skillsBtnRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => setBookmarked(initialBookmarked), [initialBookmarked]);
 
@@ -261,7 +176,7 @@ export function QuestionSetCard({
     hoursUnit: p.hoursUnit,
   });
   const visSkills = set.skills.slice(0, SKILLS_SHOWN);
-  const extraSkills = set.skills.length - SKILLS_SHOWN;
+  const hiddenSkills = set.skills.slice(SKILLS_SHOWN);
   const hasMatch = set.matchPercent != null;
 
   // ── Shared pieces ────────────────────────────────────────────────────────────
@@ -335,25 +250,10 @@ export function QuestionSetCard({
           </span>
         );
       })}
-      {extraSkills > 0 && (
-        <button
-          ref={skillsBtnRef}
-          type="button"
-          onClick={() => setShowSkills((v) => !v)}
-          className={cn(
-            "text-[10.5px] font-semibold px-2 py-0.5 rounded-md border transition-colors",
-            "bg-primary/10 dark:bg-primary/15 border-primary/20 text-primary",
-            "hover:bg-primary/15 dark:hover:bg-primary/20",
-          )}
-        >
-          +{extraSkills}
-        </button>
-      )}
-      {showSkills && (
-        <SkillsPopover
-          skills={set.skills}
-          anchorRef={skillsBtnRef}
-          onClose={() => setShowSkills(false)}
+      {hiddenSkills.length > 0 && (
+        <SkillsOverflowChip
+          skills={hiddenSkills}
+          className="text-[10.5px] font-semibold px-2 py-0.5 rounded-md border bg-primary/10 dark:bg-primary/15 border-primary/20 text-primary hover:bg-primary/15 dark:hover:bg-primary/20"
         />
       )}
     </div>

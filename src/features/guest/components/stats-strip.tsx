@@ -73,16 +73,16 @@ export function StatsStrip() {
 
   return (
     <div ref={ref} className="relative z-10 bg-white/70 dark:bg-gray-900/60 border-y border-gray-100 dark:border-gray-800 backdrop-blur-sm">
-      <div className="max-w-6xl mx-auto px-6 py-6 grid grid-cols-2 sm:grid-cols-4 gap-0 divide-x divide-gray-100 dark:divide-gray-800">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 grid grid-cols-2 sm:grid-cols-4 gap-y-4 sm:gap-y-0 divide-x divide-gray-100 dark:divide-gray-800">
         {stats.map((stat, i) => {
           const Icon = stat.icon;
           return (
             <div
               key={i}
-              className="flex flex-col items-center gap-1.5 px-4 py-2"
+              className="flex flex-col items-center gap-1.5 px-2 sm:px-4 py-2"
             >
               <Icon size={18} className={stat.iconColor} />
-              <span className="text-[26px] sm:text-[30px] font-black tabular-nums leading-none text-gray-900 dark:text-gray-50 tracking-tight">
+              <span className="text-xl sm:text-[30px] font-black tabular-nums leading-none text-gray-900 dark:text-gray-50 tracking-tight">
                 {displayValues[i]}
               </span>
               <span className="text-[11px] font-medium text-gray-500 dark:text-gray-400 text-center leading-tight">

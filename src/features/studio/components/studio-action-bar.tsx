@@ -149,21 +149,21 @@ export function StudioActionBar({
     <div
       role="region"
       aria-label={s.aria.actionBar}
-      className="fixed bottom-0 left-0 right-0 z-20 border-t border-gray-200 bg-white/95 backdrop-blur-sm dark:border-gray-800 dark:bg-gray-950/95 lg:left-62.5"
+      className="fixed bottom-0 left-0 right-0 z-20 border-t border-gray-200 bg-white/95 shadow-[0_-4px_12px_rgba(15,23,42,0.04)] backdrop-blur-sm dark:border-gray-800 dark:bg-gray-950/95 lg:left-62.5"
     >
       <div className="flex items-center gap-2 px-3 py-2.5 sm:gap-3 sm:px-4">
         <div className="flex min-w-0 flex-1 items-center gap-2.5">
           <span className={cn("h-2 w-2 shrink-0 rounded-full transition-colors", statusDot)} aria-hidden />
-          <p className="truncate text-xs text-gray-700 dark:text-gray-200">
-            <span className="font-semibold text-gray-900 dark:text-gray-50">
+          <div className="min-w-0">
+            <p className="truncate text-xs font-semibold text-gray-900 dark:text-gray-50">
               {isPublished ? s.published : statusLabel}
-            </span>
-            {isPublished ? (
-              <span className="text-gray-400 dark:text-gray-500"> · {s.publishedReadyHint}</span>
-            ) : statsLabel ? (
-              <span className="text-gray-400 dark:text-gray-500"> · {statsLabel}</span>
-            ) : null}
-          </p>
+            </p>
+            {(isPublished || statsLabel) && (
+              <p className="truncate text-[11px] text-gray-500 dark:text-gray-400">
+                {isPublished ? s.publishedReadyHint : statsLabel}
+              </p>
+            )}
+          </div>
         </div>
 
         {plan && !hasQuestions && (

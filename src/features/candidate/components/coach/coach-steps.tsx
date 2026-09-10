@@ -57,8 +57,8 @@ export function CoachSteps({ activeStep }: CoachStepsProps) {
           {p.howTitle}
         </p>
 
-        {/* Horizontal stepper */}
-        <div className="flex items-start">
+        {/* Stacked on mobile; horizontal stepper from md+ */}
+        <div className="flex flex-col gap-4 md:flex-row md:items-start md:gap-0">
           {steps.map((step, i) => {
             const n = (i + 1) as CoachStepIndex;
             const isLast = i === steps.length - 1;
@@ -69,7 +69,7 @@ export function CoachSteps({ activeStep }: CoachStepsProps) {
                 key={n}
                 className={cn(
                   "flex items-start gap-3",
-                  isLast ? "shrink-0" : "flex-1 min-w-0"
+                  isLast ? "md:shrink-0" : "md:flex-1 md:min-w-0"
                 )}
               >
                 {/* Circle indicator — uniform neutral color; progress bar shows state */}
@@ -78,14 +78,14 @@ export function CoachSteps({ activeStep }: CoachStepsProps) {
                 </div>
 
                 {/* Step text */}
-                <div className="min-w-0 pt-0.5">
+                <div className="min-w-0 flex-1 pt-0.5 break-words">
                   <p className={cn("text-[13px] font-semibold leading-tight", portalHeadingAlt)}>
                     {step.title}
                   </p>
                   <p
                     className={cn(
                       "text-[11px] mt-0.5 leading-4",
-                      !isLast && "pr-5",
+                      !isLast && "md:pr-5",
                       portalSubtextAlt
                     )}
                   >

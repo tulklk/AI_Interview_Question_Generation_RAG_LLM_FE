@@ -5,7 +5,6 @@ import { createPortal } from "react-dom";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
-  Check,
   Bookmark,
   ChevronLeft,
   ChevronRight,
@@ -18,7 +17,7 @@ import {
   Loader2,
   MessageSquare,
   MoreHorizontal,
-  Pencil,
+  PenLine,
   SearchX,
   Sparkles,
   Trash2,
@@ -42,7 +41,6 @@ import {
 import {
   getDraft,
   publishQuestionSet,
-  renameQuestionSetTitle,
   toggleHrBookmark,
   unpublishQuestionSet,
   withAbandonedToast,
@@ -82,7 +80,7 @@ function PublishBadge({
           : "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400"
       )}
     >
-      {status === "PUBLISHED" ? <Globe size={10} className="shrink-0" /> : <Pencil size={10} className="shrink-0" />}
+      {status === "PUBLISHED" ? <Globe size={10} className="shrink-0" /> : <PenLine size={10} className="shrink-0" />}
       <span className="truncate">{status === "PUBLISHED" ? labels.published : labels.draft}</span>
     </span>
   );
@@ -121,9 +119,6 @@ export function QuestionSetHistoryTable({ filter = "all" }: QuestionSetHistoryTa
   const [search, setSearch] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<HistoryQuestionSetItem | null>(null);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editTitle, setEditTitle] = useState("");
-  const [savingTitle, setSavingTitle] = useState(false);
   const [page, setPage] = useState(1);
   const [feedbackTarget, setFeedbackTarget] = useState<{ id: string; title: string } | null>(null);
   const [publishTarget, setPublishTarget] = useState<HistoryQuestionSetItem | null>(null);
@@ -374,40 +369,6 @@ export function QuestionSetHistoryTable({ filter = "all" }: QuestionSetHistoryTa
     }
   }
 
-  function startEditTitle(item: HistoryQuestionSetItem) {
-    setEditingId(item.questionSetId);
-    setEditTitle(item.title);
-  }
-
-  function cancelEditTitle() {
-    setEditingId(null);
-    setEditTitle("");
-    setSavingTitle(false);
-  }
-
-  async function saveEditTitle(item: HistoryQuestionSetItem) {
-    const next = editTitle.trim();
-    if (!next || next === item.title) {
-      cancelEditTitle();
-      return;
-    }
-    setSavingTitle(true);
-    try {
-      // PUT /api/hr/question-sets/{id}/title — BE SaveChanges, UI chỉ cập nhật sau khi OK
-      const savedTitle = await renameQuestionSetTitle(item.questionSetId, next);
-      setItems((prev) =>
-        prev.map((x) =>
-          x.questionSetId === item.questionSetId ? { ...x, title: savedTitle } : x
-        )
-      );
-      addToast("success", t.reviewPage.renameSuccess);
-      cancelEditTitle();
-    } catch (err) {
-      addToast("error", err instanceof Error && err.message ? err.message : t.reviewPage.renameFailed);
-      setSavingTitle(false);
-    }
-  }
-
   if (loading) {
     return (
       <div className="flex justify-center py-14">
@@ -581,58 +542,12 @@ export function QuestionSetHistoryTable({ filter = "all" }: QuestionSetHistoryTa
                     style={{ animation: `fadeIn 0.28s ease-out both ${rowIdx * 0.04}s` }}
                   >
                     <td className={cn(tdCls, "overflow-hidden")}>
-                      {editingId === item.questionSetId ? (
-                        <div className="flex min-w-0 items-center gap-1">
-                          <input
-                            autoFocus
-                            value={editTitle}
-                            disabled={savingTitle}
-                            maxLength={500}
-                            onChange={(e) => setEditTitle(e.target.value)}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter") void saveEditTitle(item);
-                              if (e.key === "Escape") cancelEditTitle();
-                            }}
-                            className="h-7 min-w-0 flex-1 rounded-md border border-gray-200 bg-white px-2 text-[13px] font-medium outline-none focus:border-primary dark:border-gray-700 dark:bg-gray-950"
-                          />
-                          <button
-                            type="button"
-                            disabled={savingTitle || !editTitle.trim()}
-                            onClick={() => void saveEditTitle(item)}
-                            className={cn(iconBtn, "text-primary hover:text-primary")}
-                            title={t.reviewPage.questionActions.save}
-                          >
-                            {savingTitle ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
-                          </button>
-                          <button
-                            type="button"
-                            disabled={savingTitle}
-                            onClick={cancelEditTitle}
-                            className={iconBtn}
-                            title={t.reviewPage.questionActions.cancel}
-                          >
-                            <X size={14} />
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="group flex min-w-0 items-center gap-1.5">
-                          <FileText className="h-3.5 w-3.5 shrink-0 text-gray-400" />
-                          <span className={cn("min-w-0 flex-1 truncate font-medium", portalHeading)} title={item.title}>
-                            {item.title}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => startEditTitle(item)}
-                            className={cn(
-                              iconBtn,
-                              "shrink-0 opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
-                            )}
-                            title={t.reviewPage.renameTitleBtn}
-                          >
-                            <Pencil size={13} />
-                          </button>
-                        </div>
-                      )}
+                      <div className="flex min-w-0 items-center gap-1.5">
+                        <FileText className="h-3.5 w-3.5 shrink-0 text-gray-400" />
+                        <span className={cn("min-w-0 flex-1 truncate font-medium", portalHeading)} title={item.title}>
+                          {item.title}
+                        </span>
+                      </div>
                     </td>
                     <td className={cn(tdCls, "overflow-hidden")}>
                       <PublishBadge

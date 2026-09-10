@@ -76,7 +76,7 @@ function SettingsLayoutInner() {
   return (
     <div className="flex flex-col md:grid md:grid-cols-[220px_1fr] gap-4 md:gap-6 items-start">
       {/* Tab nav */}
-      <nav className="w-full hr-glass-card p-1.5 md:p-2 md:sticky md:top-4 animate-slide-left">
+      <nav className="w-full hr-glass-card hr-settings-nav p-1.5 md:sticky md:top-4 animate-slide-left">
 
         {/* Mobile: 5 equal-width icon tabs */}
         <ul className="flex md:hidden">
@@ -126,7 +126,7 @@ function SettingsLayoutInner() {
                   type="button"
                   onClick={() => handleTabClick(id)}
                   className={cn(
-                    "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border border-transparent text-sm font-medium transition-colors duration-200 text-left outline-none focus-visible:outline-none",
+                    "w-full flex items-center gap-3 min-h-10 px-3 py-2 rounded-xl border border-transparent text-sm font-medium transition-colors duration-200 text-left outline-none focus-visible:outline-none",
                     isActive
                       ? "hr-settings-tab-active text-[#7C3AED] dark:text-[#a78bff] font-semibold"
                       : cn(portalHeading, "hover:bg-[rgba(124,58,237,0.05)] dark:hover:bg-[rgba(124,58,237,0.08)] opacity-80 hover:opacity-100")
@@ -149,8 +149,14 @@ function SettingsLayoutInner() {
         </ul>
       </nav>
 
-      {/* Content panel */}
-      <div key={activeTab} className="hr-glass-card p-4 md:p-6 animate-scale-in min-w-0 w-full">
+      {/* Content panel — profile renders its own cards, so it skips the glass wrapper */}
+      <div
+        key={activeTab}
+        className={cn(
+          "animate-scale-in min-w-0 w-full",
+          activeTab !== "profile" && "hr-glass-card p-4 md:p-6"
+        )}
+      >
         <TabContent tab={activeTab} />
       </div>
     </div>
