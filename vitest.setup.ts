@@ -2,6 +2,23 @@ import "@testing-library/jest-dom/vitest";
 import { cleanup } from "@testing-library/react";
 import { afterEach, vi } from "vitest";
 
+// Count-up KPI numbers (admin/candidate/HR dashboards, feedback score,
+// leaderboard, roadmap, stat cards — 9 call sites, all `animate(0, target,
+// { duration, ease, onUpdate })`) drive a real ~1.2s requestAnimationFrame
+// loop via framer-motion. Under the full suite's CPU contention that can
+// occasionally outrun a test's waitFor timeout — flaky, not a real bug.
+// Jump straight to the target value instead of animating for real.
+vi.mock("framer-motion", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("framer-motion")>();
+  return {
+    ...actual,
+    animate: (_from: number, to: number, options?: { onUpdate?: (v: number) => void }) => {
+      options?.onUpdate?.(to);
+      return { stop: () => {} };
+    },
+  };
+});
+
 afterEach(() => {
   cleanup();
   localStorage.clear();
