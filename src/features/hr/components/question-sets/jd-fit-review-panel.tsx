@@ -192,8 +192,8 @@ export function JdFitReviewPanel({
     : null;
 
   return (
-    <div className="rounded-xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 p-4 sm:p-5 lg:max-h-[calc(100vh-5.5rem)] lg:overflow-y-auto lg:overscroll-contain shadow-sm">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+    <div className="rounded-xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 p-4 shadow-sm xl:max-h-[min(70vh,560px)] xl:overflow-y-auto xl:overscroll-contain">
+      <div className="flex flex-col gap-3">
         <div className="min-w-0">
           <p className={cn("text-sm font-semibold", portalHeading)}>{p.title}</p>
           <p className={cn("text-xs mt-0.5 leading-snug", portalSubtext)}>{p.subtitle}</p>

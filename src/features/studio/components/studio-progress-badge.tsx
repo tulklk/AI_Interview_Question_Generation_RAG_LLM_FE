@@ -15,16 +15,22 @@ const STUDIO_ACTIVE_PROJECT_KEY = "studio_active_project_id";
 type StudioTaskPayload = {
   task: StudioTask;
   projectId: string | null;
+  /** Extra fields (startedAt, kind) are ignored — tolerate for LS forward-compat */
 };
 
-/** SCRUM-402: đọc JSON { task, projectId } hoặc legacy string "generating"|"streaming" */
+/** SCRUM-402: đọc JSON { task, projectId, ... } hoặc legacy string "generating"|"streaming" */
 function parseTaskPayload(raw: string | null): StudioTaskPayload {
   if (!raw) return { task: null, projectId: null };
   if (raw === "streaming" || raw === "generating") {
     return { task: raw, projectId: null };
   }
   try {
-    const parsed = JSON.parse(raw) as { task?: StudioTask; projectId?: string | null };
+    const parsed = JSON.parse(raw) as {
+      task?: StudioTask;
+      projectId?: string | null;
+      startedAt?: string;
+      kind?: string;
+    };
     if (parsed.task === "streaming" || parsed.task === "generating") {
       return { task: parsed.task, projectId: parsed.projectId ?? null };
     }

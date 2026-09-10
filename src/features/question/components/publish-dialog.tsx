@@ -1,8 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { Check, Clock, Globe, Loader2, Rocket, UserCheck, X } from "lucide-react";
+import { AlertTriangle, Check, Clock, Globe, Loader2, Rocket, UserCheck, X } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { useLanguage } from "@/shared/providers/language-context";
 import {
@@ -92,9 +92,11 @@ export function PublishDialog({
   const allReadySelected =
     readyIds.length > 0 && readyIds.every((id) => selected.has(id));
 
+  const meetsMin = selectedReadyCount >= minQuestions;
+
   const canConfirm =
     !saving &&
-    selectedReadyCount >= minQuestions &&
+    meetsMin &&
     !hasSelectedNotReady &&
     selected.size > 0;
 
@@ -155,9 +157,20 @@ export function PublishDialog({
     onClose();
   }
 
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape" && !saving) onClose();
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [saving, onClose]);
+
+  const footerReadyText = d.footerReady.replace("{{count}}", String(selectedReadyCount));
+  const confirmLabel = d.confirmWithCount.replace("{{count}}", String(selectedReadyCount));
+
   return createPortal(
     <div
-      className="fixed inset-0 z-200 flex items-center justify-center p-3 sm:p-6 bg-black/45 backdrop-blur-[6px] animate-fade-up"
+      className="fixed inset-0 z-200 flex items-center justify-center p-3 sm:p-5 bg-black/45 backdrop-blur-[6px] animate-fade-up"
       onClick={(e) => {
         if (e.target === e.currentTarget) handleClose();
       }}
@@ -165,35 +178,42 @@ export function PublishDialog({
       <div
         className={cn(
           portalCard,
-          "flex w-full max-w-5xl max-h-[min(92vh,880px)] flex-col overflow-hidden shadow-2xl ring-1 ring-black/5 dark:ring-white/10 animate-scale-in"
+          "flex w-full max-w-5xl max-h-[min(90vh,860px)] flex-col overflow-hidden shadow-xl ring-1 ring-black/5 dark:ring-white/10 animate-scale-in"
         )}
         role="dialog"
         aria-modal="true"
         aria-labelledby="publish-dialog-title"
       >
         {/* Header */}
-        <div className="relative shrink-0 overflow-hidden border-b border-gray-100 dark:border-gray-800">
-          <div
-            className="pointer-events-none absolute inset-0 opacity-90"
-            style={{
-              background:
-                "linear-gradient(115deg, rgba(16,185,129,0.10) 0%, rgba(108,71,255,0.08) 45%, transparent 75%)",
-            }}
-          />
-          <div className="relative flex items-start justify-between gap-4 px-5 py-4 sm:px-7 sm:py-5">
-            <div className="flex min-w-0 items-start gap-3.5">
-              <div className="mt-0.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-emerald-600 text-white shadow-lg shadow-emerald-600/25">
-                <Globe size={20} strokeWidth={2.2} />
+        <div className="shrink-0 border-b border-gray-100 px-5 py-4 dark:border-gray-800 sm:px-6">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex min-w-0 items-start gap-3">
+              <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-600/10 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">
+                <Globe size={18} strokeWidth={2.2} />
               </div>
               <div className="min-w-0">
                 <h2
                   id="publish-dialog-title"
-                  className={cn("text-lg font-bold tracking-tight sm:text-xl", portalHeading)}
+                  className={cn("text-lg font-semibold tracking-tight sm:text-xl", portalHeading)}
                 >
                   {d.title}
                 </h2>
-                <p className={cn("mt-1 max-w-2xl text-sm leading-relaxed", portalSubtext)}>
-                  {d.description}
+                <p className={cn("mt-0.5 text-sm leading-snug", portalSubtext)}>
+                  {d.descriptionShort}
+                </p>
+                <p className="mt-2 text-[11px] font-medium tabular-nums text-gray-500 dark:text-gray-400">
+                  <span
+                    className={cn(
+                      "font-semibold",
+                      meetsMin
+                        ? "text-emerald-700 dark:text-emerald-300"
+                        : "text-amber-700 dark:text-amber-300"
+                    )}
+                  >
+                    {selectedReadyCount}/{readyIds.length || questions.length}
+                  </span>
+                  {" · "}
+                  {d.minLabel.replace("{{min}}", String(minQuestions))}
                 </p>
               </div>
             </div>
@@ -202,7 +222,7 @@ export function PublishDialog({
               onClick={handleClose}
               disabled={saving}
               className={cn(
-                "shrink-0 rounded-xl p-2 transition-colors hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-50",
+                "shrink-0 rounded-lg p-1.5 transition-colors hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-50",
                 portalSubtext
               )}
               aria-label={d.cancelBtn}
@@ -212,49 +232,57 @@ export function PublishDialog({
           </div>
         </div>
 
-        {/* Body: 2 cột trên desktop */}
-        <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[minmax(0,1.35fr)_minmax(300px,0.9fr)]">
-          {/* Cột trái — danh sách câu */}
+        {/* Body */}
+        <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[minmax(0,1.6fr)_minmax(300px,0.85fr)]">
+          {/* Questions */}
           <div className="flex min-h-0 flex-col border-b border-gray-100 lg:border-b-0 lg:border-r dark:border-gray-800">
-            <div className="flex shrink-0 items-center justify-between gap-3 px-5 py-3 sm:px-6">
-              <div className="flex items-center gap-2.5 min-w-0">
+            <div className="flex shrink-0 items-center justify-between gap-2 px-4 py-2.5 sm:px-5">
+              <div className="flex min-w-0 flex-wrap items-center gap-2">
                 <p className={cn("text-sm font-semibold", portalHeading)}>{d.questionsLabel}</p>
                 <span
                   className={cn(
                     "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold tabular-nums",
-                    selectedReadyCount >= minQuestions
+                    meetsMin
                       ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300"
                       : "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300"
                   )}
                 >
-                  {d.selectedCount
-                    .replace("{{selected}}", String(selectedReadyCount))
-                    .replace("{{min}}", String(minQuestions))}
+                  {d.selectedOnlyBadge.replace("{{selected}}", String(selectedReadyCount))}
                 </span>
               </div>
               <button
                 type="button"
                 disabled={saving || readyIds.length === 0}
                 onClick={toggleSelectAllReady}
-                className="shrink-0 rounded-lg px-2.5 py-1 text-xs font-semibold text-[#6c47ff] transition-colors hover:bg-[#6c47ff]/8 disabled:opacity-50"
+                className="shrink-0 rounded-lg px-2 py-1 text-xs font-medium text-text-muted transition-colors hover:bg-primary/5 hover:text-primary focus-visible:text-primary focus-visible:outline-none disabled:opacity-50"
               >
                 {allReadySelected ? d.deselectAll : d.selectAll}
               </button>
             </div>
 
-            <ul className="min-h-0 flex-1 overflow-y-auto px-3 pb-4 sm:px-4 max-h-[42vh] lg:max-h-none">
+            {!meetsMin && (
+              <p className="shrink-0 px-4 pb-2 text-xs font-medium text-amber-700 dark:text-amber-300 sm:px-5">
+                <AlertTriangle className="mr-1 inline h-3 w-3" />
+                {d.minHint
+                  .replace("{{min}}", String(minQuestions))
+                  .replace("{{count}}", String(selectedReadyCount))}
+              </p>
+            )}
+
+            <ul className="min-h-0 flex-1 space-y-1 overflow-y-auto px-3 pb-4 sm:px-4 max-h-[38vh] lg:max-h-none [scrollbar-width:thin] [scrollbar-color:rgba(156,163,175,0.35)_transparent] [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-gray-300/50 dark:[&::-webkit-scrollbar-thumb]:bg-gray-600/45">
               {questions.map((q, index) => {
                 const checked = selected.has(q.id);
-                const stt = index + 1;
+                const stt = String(index + 1).padStart(2, "0");
                 return (
-                  <li key={q.id} className="mb-1.5">
+                  <li key={q.id}>
                     <label
                       className={cn(
-                        "group flex cursor-pointer items-start gap-3 rounded-xl px-3 py-3 text-sm transition-all",
+                        "group flex cursor-pointer items-start gap-2.5 rounded-xl border px-2.5 py-2 text-sm transition-colors",
                         checked
-                          ? "bg-emerald-50/80 ring-1 ring-emerald-200/80 dark:bg-emerald-950/30 dark:ring-emerald-800/60"
-                          : "hover:bg-gray-50 dark:hover:bg-gray-800/60",
-                        !q.ready && "cursor-not-allowed opacity-55 hover:bg-transparent dark:hover:bg-transparent"
+                          ? "border-emerald-200/90 border-l-[3px] border-l-emerald-500 bg-white dark:border-emerald-800/70 dark:border-l-emerald-500 dark:bg-gray-900/40"
+                          : "border-transparent hover:bg-gray-50 dark:hover:bg-gray-800/50",
+                        !q.ready &&
+                          "cursor-not-allowed opacity-55 hover:bg-transparent dark:hover:bg-transparent"
                       )}
                     >
                       <input
@@ -266,25 +294,25 @@ export function PublishDialog({
                       />
                       <span
                         className={cn(
-                          "mt-0.5 inline-flex h-6 min-w-6 shrink-0 items-center justify-center rounded-lg px-1.5 text-[11px] font-bold tabular-nums",
+                          "mt-0.5 inline-flex h-5 w-6 shrink-0 items-center justify-center rounded-md text-[10px] font-bold tabular-nums",
                           checked
-                            ? "bg-emerald-600 text-white"
-                            : "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300"
+                            ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300"
+                            : "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400"
                         )}
                         aria-hidden
                       >
                         {stt}
                       </span>
-                      <span className="min-w-0 flex-1">
-                        <span className={cn("line-clamp-2 leading-snug", portalHeading)}>
+                      <span className="flex min-w-0 flex-1 items-start gap-2">
+                        <span className={cn("min-w-0 flex-1 line-clamp-2 text-[13px] font-medium leading-snug", portalHeading)}>
                           {q.preview}
                         </span>
                         <span
                           className={cn(
-                            "mt-1.5 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
+                            "mt-0.5 inline-flex shrink-0 items-center gap-0.5 text-[10px] font-semibold whitespace-nowrap",
                             q.ready
-                              ? "bg-emerald-100/80 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300"
-                              : "bg-amber-100/80 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
+                              ? "text-emerald-600 dark:text-emerald-400"
+                              : "text-amber-600 dark:text-amber-400"
                           )}
                         >
                           {q.ready ? (
@@ -301,33 +329,27 @@ export function PublishDialog({
                 );
               })}
             </ul>
-
-            {selectedReadyCount < minQuestions && (
-              <p className="shrink-0 px-5 pb-3 text-xs text-amber-600 dark:text-amber-400 sm:px-6">
-                {d.minHint
-                  .replace("{{min}}", String(minQuestions))
-                  .replace("{{count}}", String(selectedReadyCount))}
-              </p>
-            )}
           </div>
 
-          {/* Cột phải — cấu hình */}
-          <div className="flex min-h-0 flex-col gap-4 overflow-y-auto bg-gray-50/60 px-5 py-4 dark:bg-gray-950/40 sm:px-6 sm:py-5">
-            {/* Time limit */}
-            <section className="rounded-2xl border border-gray-200/80 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-              <div className="flex items-start gap-3">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#6c47ff]/10 text-[#6c47ff]">
-                  <Clock size={16} />
-                </div>
-                <div className="min-w-0 flex-1">
+          {/* Settings */}
+          <div className="flex min-h-0 flex-col overflow-y-auto px-5 py-4 dark:bg-gray-950/20 sm:px-5 sm:py-4">
+            <p className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-gray-400">
+              {d.settingsTitle}
+            </p>
+
+            {/* Time */}
+            <section className="space-y-2.5">
+              <div className="flex items-start gap-2">
+                <Clock size={14} className="mt-0.5 shrink-0 text-primary" />
+                <div className="min-w-0">
                   <p className={cn("text-sm font-semibold", portalHeading)}>{d.timeLimitTitle}</p>
-                  <p className={cn("mt-0.5 text-xs leading-relaxed", portalSubtext)}>
+                  <p className={cn("mt-0.5 text-xs leading-snug", portalSubtext)}>
                     {d.timeLimitDescription}
                   </p>
                 </div>
               </div>
 
-              <div className="mt-4 grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 gap-1.5">
                 <button
                   type="button"
                   disabled={saving}
@@ -336,9 +358,9 @@ export function PublishDialog({
                     setTimeError(false);
                   }}
                   className={cn(
-                    "rounded-xl border px-3 py-2.5 text-left text-xs font-semibold transition-all",
+                    "rounded-lg border px-2.5 py-2 text-left text-[11px] font-semibold transition-colors",
                     noLimit
-                      ? "border-[#6c47ff] bg-[#6c47ff]/8 text-[#6c47ff] ring-1 ring-[#6c47ff]/30"
+                      ? "border-primary bg-primary/8 text-primary"
                       : "border-gray-200 text-gray-600 hover:border-gray-300 dark:border-gray-700 dark:text-gray-300"
                   )}
                 >
@@ -352,19 +374,19 @@ export function PublishDialog({
                     setTimeError(false);
                   }}
                   className={cn(
-                    "rounded-xl border px-3 py-2.5 text-left text-xs font-semibold transition-all",
+                    "rounded-lg border px-2.5 py-2 text-left text-[11px] font-semibold transition-colors",
                     !noLimit
-                      ? "border-[#6c47ff] bg-[#6c47ff]/8 text-[#6c47ff] ring-1 ring-[#6c47ff]/30"
+                      ? "border-primary bg-primary/8 text-primary"
                       : "border-gray-200 text-gray-600 hover:border-gray-300 dark:border-gray-700 dark:text-gray-300"
                   )}
                 >
-                  {d.minutesLabel}
+                  {d.limitModeLabel}
                 </button>
               </div>
 
               {!noLimit && (
-                <div className="mt-3 space-y-1.5">
-                  <div className="relative">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
                     <input
                       type="number"
                       min={1}
@@ -376,20 +398,15 @@ export function PublishDialog({
                         setTimeError(false);
                       }}
                       className={cn(
-                        "w-full rounded-xl px-4 py-2.5 pr-14 text-sm focus:outline-none focus:ring-2 transition-colors",
+                        "w-24 rounded-lg px-3 py-1.5 text-sm tabular-nums focus:outline-none focus:ring-2 transition-colors",
                         portalInput,
                         timeError
                           ? "border-red-300 dark:border-red-700 focus:ring-red-200"
-                          : "focus:ring-[#6c47ff]/20 focus:border-[#6c47ff]"
+                          : "focus:ring-primary/20 focus:border-primary"
                       )}
                     />
-                    <span
-                      className={cn(
-                        "pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium",
-                        portalSubtext
-                      )}
-                    >
-                      min
+                    <span className={cn("text-xs font-medium", portalSubtext)}>
+                      {d.minutesUnit}
                     </span>
                   </div>
                   {timeError && (
@@ -399,51 +416,71 @@ export function PublishDialog({
               )}
             </section>
 
+            <div className="my-4 border-t border-gray-100 dark:border-gray-800" />
+
             {/* Recommend */}
-            <section className="rounded-2xl border border-gray-200/80 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-              <div className="flex items-start gap-3">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-                  <UserCheck size={16} />
-                </div>
+            <section className="space-y-2.5">
+              <div className="flex items-start gap-2">
+                <UserCheck size={14} className="mt-0.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
                 <div className="min-w-0 flex-1">
-                  <p className={cn("text-sm font-semibold", portalHeading)}>{d.recommendTitle}</p>
-                  <p className={cn("mt-0.5 text-xs leading-relaxed", portalSubtext)}>
-                    {d.recommendDescription}
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className={cn("text-sm font-semibold", portalHeading)}>{d.recommendTitle}</p>
+                      <p className={cn("mt-0.5 text-xs leading-snug", portalSubtext)}>
+                        {d.recommendDescription}
+                      </p>
+                    </div>
+                    <label className="relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center">
+                      <input
+                        type="checkbox"
+                        className="peer sr-only"
+                        checked={autoRecommendEnabled}
+                        disabled={saving}
+                        onChange={(e) => {
+                          setAutoRecommendEnabled(e.target.checked);
+                          setScoreError(false);
+                        }}
+                        aria-label={d.recommendEnable}
+                      />
+                      <span className="absolute inset-0 rounded-full bg-gray-300 transition peer-checked:bg-emerald-500 peer-disabled:opacity-50 dark:bg-gray-700" />
+                      <span className="absolute left-0.5 h-5 w-5 rounded-full bg-white shadow transition peer-checked:translate-x-5" />
+                    </label>
+                  </div>
+                  <p className={cn("mt-1.5 text-[11px] font-medium", portalHeading)}>
+                    {d.recommendEnable}
                   </p>
                 </div>
               </div>
 
-              <label className="mt-4 flex cursor-pointer items-center justify-between gap-3 rounded-xl border border-gray-100 bg-gray-50/80 px-3.5 py-3 dark:border-gray-800 dark:bg-gray-950/50">
-                <span className={cn("text-sm font-medium", portalHeading)}>{d.recommendEnable}</span>
-                <span className="relative inline-flex h-6 w-11 shrink-0 items-center">
-                  <input
-                    type="checkbox"
-                    className="peer sr-only"
-                    checked={autoRecommendEnabled}
-                    disabled={saving}
-                    onChange={(e) => {
-                      setAutoRecommendEnabled(e.target.checked);
-                      setScoreError(false);
-                    }}
-                  />
-                  <span className="absolute inset-0 rounded-full bg-gray-300 transition peer-checked:bg-emerald-500 peer-disabled:opacity-50 dark:bg-gray-700" />
-                  <span className="absolute left-0.5 h-5 w-5 rounded-full bg-white shadow transition peer-checked:translate-x-5" />
-                </span>
-              </label>
-
               <div
                 className={cn(
-                  "mt-3 space-y-2 transition-opacity",
-                  !autoRecommendEnabled && "opacity-45 pointer-events-none"
+                  "space-y-2 transition-opacity",
+                  !autoRecommendEnabled && "pointer-events-none opacity-35"
                 )}
               >
                 <div className="flex items-center justify-between gap-2">
                   <label className={cn("text-xs font-semibold", portalHeading)}>
                     {d.recommendMinScore}
                   </label>
-                  <span className="rounded-lg bg-emerald-50 px-2 py-0.5 text-sm font-bold tabular-nums text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300">
-                    {recommendationMinScore || "—"}
-                  </span>
+                  <input
+                    type="number"
+                    min={50}
+                    max={95}
+                    step={1}
+                    value={recommendationMinScore}
+                    disabled={saving || !autoRecommendEnabled}
+                    onChange={(e) => {
+                      setRecommendationMinScore(e.target.value);
+                      setScoreError(false);
+                    }}
+                    className={cn(
+                      "w-16 rounded-lg px-2 py-1 text-center text-sm font-semibold tabular-nums focus:outline-none focus:ring-2 disabled:opacity-50",
+                      portalInput,
+                      scoreError
+                        ? "border-red-300 dark:border-red-700 focus:ring-red-200"
+                        : "focus:ring-emerald-500/20 focus:border-emerald-500"
+                    )}
+                  />
                 </div>
                 <input
                   type="range"
@@ -467,48 +504,62 @@ export function PublishDialog({
                 />
                 <div className="flex justify-between text-[10px] font-medium text-gray-400">
                   <span>50</span>
-                  <span>70</span>
                   <span>95</span>
                 </div>
-                <input
-                  type="number"
-                  min={50}
-                  max={95}
-                  step={1}
-                  value={recommendationMinScore}
-                  disabled={saving || !autoRecommendEnabled}
-                  onChange={(e) => {
-                    setRecommendationMinScore(e.target.value);
-                    setScoreError(false);
-                  }}
-                  className={cn(
-                    "w-full rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 transition-colors disabled:opacity-50",
-                    portalInput,
-                    scoreError
-                      ? "border-red-300 dark:border-red-700 focus:ring-red-200"
-                      : "focus:ring-emerald-500/20 focus:border-emerald-500"
-                  )}
-                />
                 {scoreError && (
                   <p className="text-xs text-red-600 dark:text-red-400">{d.recommendScoreError}</p>
                 )}
               </div>
+              {!autoRecommendEnabled && (
+                <p className={cn("text-[11px] leading-snug", portalSubtext)}>
+                  {d.recommendScoreDisabledHint}
+                </p>
+              )}
             </section>
+
+            {/* Compact summary */}
+            <div className="mt-5 space-y-1 rounded-lg border border-gray-100 bg-gray-50/70 px-3 py-2.5 text-[11px] text-gray-500 dark:border-gray-800 dark:bg-gray-900/40 dark:text-gray-400">
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">
+                {d.summaryTitle}
+              </p>
+              <p>
+                {selectedReadyCount} {d.questionsLabel.toLowerCase()}
+              </p>
+              <p>{noLimit ? d.noLimitLabel : `${minutes || "—"} ${d.minutesUnit}`}</p>
+              <p>
+                {d.recommendTitle}:{" "}
+                {autoRecommendEnabled
+                  ? `${d.recommendOn} · ${recommendationMinScore || "—"}`
+                  : d.recommendOff}
+              </p>
+            </div>
           </div>
         </div>
 
         {/* Footer */}
-        <div className="flex shrink-0 flex-col-reverse gap-2 border-t border-gray-100 bg-white px-5 py-4 dark:border-gray-800 dark:bg-gray-900 sm:flex-row sm:items-center sm:justify-between sm:px-7">
-          <p className={cn("hidden text-xs sm:block", portalSubtext)}>
-            {selectedReadyCount}/{questions.length} · min {minQuestions}
-          </p>
-          <div className="flex w-full gap-3 sm:w-auto sm:min-w-[320px]">
+        <div className="flex shrink-0 flex-col gap-3 border-t border-gray-100 bg-white px-5 py-3.5 dark:border-gray-800 dark:bg-gray-900 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+          <div className="min-w-0 text-xs">
+            {meetsMin ? (
+              <p className="flex items-center gap-1.5 font-medium text-emerald-700 dark:text-emerald-300">
+                <Check size={14} strokeWidth={2.5} />
+                {footerReadyText}
+              </p>
+            ) : (
+              <p className="flex items-center gap-1.5 font-medium text-amber-700 dark:text-amber-300">
+                <AlertTriangle size={14} />
+                {d.minHint
+                  .replace("{{min}}", String(minQuestions))
+                  .replace("{{count}}", String(selectedReadyCount))}
+              </p>
+            )}
+          </div>
+          <div className="flex w-full gap-2.5 sm:w-auto sm:min-w-[340px]">
             <button
               type="button"
               onClick={handleClose}
               disabled={saving}
               className={cn(
-                "flex-1 px-4 py-2.5 text-sm font-semibold rounded-xl border transition-colors disabled:opacity-50",
+                "flex-1 rounded-xl border px-4 py-2.5 text-sm font-semibold transition-colors disabled:opacity-50",
                 portalHeading,
                 "hover:bg-gray-50 dark:hover:bg-gray-800"
               )}
@@ -519,14 +570,14 @@ export function PublishDialog({
               type="button"
               onClick={handleConfirm}
               disabled={!canConfirm}
-              className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-emerald-600/20 transition-colors hover:bg-emerald-700 disabled:opacity-60 disabled:shadow-none"
+              className="flex flex-1 items-center justify-center gap-2 whitespace-nowrap rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-emerald-700 disabled:opacity-60"
             >
               {saving ? (
                 <Loader2 size={15} className="animate-spin" />
               ) : (
                 <Rocket size={15} />
               )}
-              {saving ? d.publishing : d.confirmBtn}
+              {saving ? d.publishing : confirmLabel}
             </button>
           </div>
         </div>

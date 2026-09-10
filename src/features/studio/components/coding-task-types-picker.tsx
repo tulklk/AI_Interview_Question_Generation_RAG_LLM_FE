@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { CheckCircle2 } from "lucide-react";
+import { CheckCircle2, Info } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { useLanguage } from "@/shared/providers/language-context";
 import { portalSubtext } from "@/shared/utils/portal-ui";
@@ -34,7 +34,10 @@ export function CodingTaskTypesPicker({
 
   if (!showCoding) {
     return (
-      <p className={cn("text-[10px] italic", portalSubtext)}>{cfg.codingNotRequired}</p>
+      <div className="flex items-start gap-2 rounded-lg border border-gray-100 bg-gray-50 px-2.5 py-2 dark:border-gray-800 dark:bg-gray-900/40">
+        <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-gray-400" />
+        <p className={cn("text-[11px] leading-snug", portalSubtext)}>{cfg.codingNotRequired}</p>
+      </div>
     );
   }
 
@@ -53,7 +56,7 @@ export function CodingTaskTypesPicker({
   return (
     <div className="space-y-1.5">
       <p className={cn("text-[10px]", portalSubtext)}>{cfg.codingHint}</p>
-      <div className="flex flex-wrap gap-1.5">
+      <div className="flex flex-wrap gap-1">
         {templates.map((tpl) => {
           const active = selected.includes(tpl.id);
           return (
@@ -63,10 +66,10 @@ export function CodingTaskTypesPicker({
               disabled={disabled}
               onClick={() => toggle(tpl.id)}
               className={cn(
-                "flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors disabled:opacity-50",
+                "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium transition-colors disabled:opacity-50",
                 active
-                  ? "border-primary bg-primary/10 text-primary"
-                  : "border-gray-200 text-gray-600 hover:border-gray-300 dark:border-gray-700 dark:text-gray-300"
+                  ? "border-primary/40 bg-primary/10 text-primary"
+                  : "border-gray-200 bg-white text-gray-600 hover:border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300"
               )}
             >
               {active && <CheckCircle2 className="h-3 w-3" />}
@@ -78,4 +81,3 @@ export function CodingTaskTypesPicker({
     </div>
   );
 }
-

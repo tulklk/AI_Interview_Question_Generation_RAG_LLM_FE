@@ -14,6 +14,7 @@ import { cn } from "@/lib/cn";
 import { useLanguage } from "@/shared/providers/language-context";
 import type { QuestionSet } from "@/features/candidate/types/jobseeker";
 import { DifficultyPill } from "@/features/candidate/components/ui/pill";
+import { SkillsOverflowChip } from "@/features/candidate/components/ui/skills-overflow-popover";
 import { CompanyInfoCard } from "./company-info-card";
 import {
   findInProgressSession,
@@ -518,9 +519,11 @@ export function SetDetail({ set }: SetDetailProps) {
               </span>
             ))}
             {heroSkillsMore > 0 && (
-              <span className="text-[11px] font-medium px-2 py-0.5 rounded-full border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/60 text-gray-500 dark:text-gray-400">
-                +{heroSkillsMore}
-              </span>
+              <SkillsOverflowChip
+                skills={set.skills.slice(heroSkillsMax)}
+                formatSkill={normalizeSkillName}
+                className="rounded-full border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/60 text-gray-500 dark:text-gray-400 text-[11px] font-medium px-2 py-0.5"
+              />
             )}
           </div>
 
@@ -743,12 +746,11 @@ export function SetDetail({ set }: SetDetailProps) {
                         );
                       })}
                       {extra > 0 && (
-                        <span className={cn(
-                          "inline-flex items-center text-[11px] font-semibold h-7 px-2.5 rounded-md shrink-0",
-                          "bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400",
-                        )}>
-                          +{extra}
-                        </span>
+                        <SkillsOverflowChip
+                          skills={set.skills.slice(MAX)}
+                          formatSkill={normalizeSkillName}
+                          className="h-7 px-2.5 rounded-md bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 border-0"
+                        />
                       )}
                     </>
                   );

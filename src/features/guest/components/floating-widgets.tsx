@@ -124,13 +124,13 @@ function ChatPanel({
   return (
     <div
       className={cn(
-        "absolute bottom-16 right-0 w-80 sm:w-96 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 overflow-hidden",
+        "absolute bottom-16 right-0 w-[min(20rem,calc(100vw-2rem))] sm:w-96 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 overflow-hidden",
         "transition-all duration-300 origin-bottom-right",
         isOpen
           ? "opacity-100 translate-y-0 scale-100 pointer-events-auto"
           : "opacity-0 translate-y-4 scale-95 pointer-events-none"
       )}
-      style={{ maxHeight: "calc(100vh - 120px)" }}
+      style={{ maxHeight: "min(calc(100vh - 120px), calc(100dvh - 7.5rem))" }}
     >
       {/* ── Header ── */}
       <div className="bg-[#6c47ff] px-4 py-3 flex items-center gap-3">
@@ -162,7 +162,7 @@ function ChatPanel({
       </div>
 
       {/* ── Messages ── */}
-      <div className="overflow-y-auto p-4 space-y-4" style={{ maxHeight: 460 }}>
+      <div className="overflow-y-auto p-4 space-y-4" style={{ maxHeight: "min(460px, calc(100dvh - 12rem))" }}>
         {/* Welcome card */}
         <div className="flex items-start gap-2.5">
           <BotAvatar size={28} />
@@ -293,13 +293,13 @@ export function FloatingWidgets() {
   if (!mounted) return null;
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-3">
+    <div className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-50 flex flex-col items-end gap-3">
       {/* Chat panel */}
       <div className="relative">
         <ChatPanel isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} />
 
         {/* FAB area */}
-        <div className="relative w-14 h-14">
+        <div className="relative w-12 h-12 sm:w-14 sm:h-14">
 
           {/* Glow wrapper */}
           <div className={cn("rounded-full", !isChatOpen && botReady && "animate-bot-glow")}>
@@ -307,7 +307,7 @@ export function FloatingWidgets() {
             <button
               onClick={() => setIsChatOpen((v) => !v)}
               className={cn(
-                "w-14 h-14 rounded-full bg-primary hover:bg-[#5535dd] text-white shadow-xl",
+                "w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-primary hover:bg-[#5535dd] text-white shadow-xl",
                 "flex items-center justify-center transition-all duration-200 relative overflow-hidden",
                 "hover:scale-105 active:scale-95",
                 mounted ? "animate-scale-in" : "opacity-0"

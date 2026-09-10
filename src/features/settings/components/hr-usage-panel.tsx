@@ -5,11 +5,7 @@ import {
   Clock,
   Infinity as InfinityIcon,
   Loader2,
-  MessageCircle,
   RefreshCw,
-  RotateCcw,
-  Undo2,
-  Wand2,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { useLanguage } from "@/shared/providers/language-context";
@@ -64,7 +60,6 @@ function barTone(pct: number) {
 }
 
 function MetricCard({
-  icon: Icon,
   title,
   scope,
   used,
@@ -73,7 +68,6 @@ function MetricCard({
   caption,
   text,
 }: {
-  icon: React.ComponentType<{ size?: number; className?: string }>;
   title: string;
   scope: string;
   used: number;
@@ -88,21 +82,15 @@ function MetricCard({
 
   return (
     <div className={cn(portalCard, "flex flex-col gap-3 p-4")}>
-      <div className="flex items-start gap-2.5">
-        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#6c47ff]/10 text-[#6c47ff]">
-          <Icon size={15} />
-        </span>
-        <div className="min-w-0">
-          <p className={cn("text-sm font-semibold leading-snug", portalHeading)}>{title}</p>
-          <p className={cn("mt-0.5 text-[11px] leading-snug", portalSubtext)}>{scope}</p>
-        </div>
+      <div className="min-w-0">
+        <p className={cn("text-sm font-semibold leading-snug", portalHeading)}>{title}</p>
+        <p className={cn("mt-0.5 text-[11px] leading-snug", portalSubtext)}>{scope}</p>
       </div>
 
       {unlimited ? (
         <div className="flex items-center gap-2">
           <span className={cn("text-3xl font-extrabold leading-none", portalHeading)}>∞</span>
-          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
-            <InfinityIcon size={10} />
+          <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
             {text.unlimited}
           </span>
         </div>
@@ -250,7 +238,6 @@ export function HrUsagePanel() {
         <>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <MetricCard
-              icon={Wand2}
               title={text.generateTitle}
               scope={fill(text.generateScope, { h: cooldownHours })}
               used={generateWindowUsed}
@@ -260,7 +247,6 @@ export function HrUsagePanel() {
               text={text}
             />
             <MetricCard
-              icon={RotateCcw}
               title={text.regenTitle}
               scope={text.regenScope}
               used={regen.max}
@@ -274,7 +260,6 @@ export function HrUsagePanel() {
               text={text}
             />
             <MetricCard
-              icon={MessageCircle}
               title={text.askAiTitle}
               scope={text.askAiScope}
               used={askAiUsed}
@@ -283,7 +268,6 @@ export function HrUsagePanel() {
               text={text}
             />
             <MetricCard
-              icon={Undo2}
               title={text.refineTitle}
               scope={text.refineScope}
               used={refine.max}

@@ -178,7 +178,7 @@ function PricingPlanCard({
         <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 z-20">
           <span
             className={cn(
-              "text-xs font-bold px-3.5 py-1.5 rounded-full shadow-md border whitespace-nowrap flex items-center gap-1.5",
+              "text-xs font-bold px-3.5 py-1.5 rounded-full shadow-md border text-center flex items-center gap-1.5",
               isCurrentPlan
                 ? "bg-emerald-500 text-white border-emerald-400/30"
                 : "bg-white text-primary border-primary/15"
@@ -432,9 +432,9 @@ export function PricingSection() {
         </ScrollReveal>
 
         {/* ── Tab switcher ── */}
-        <ScrollReveal animation="fade-up" delay={60} className="flex justify-center mb-10 sm:mb-12">
+        <ScrollReveal animation="fade-up" delay={60} className="flex justify-center mb-10 sm:mb-12 px-1">
           {/* role="tablist" wrapper */}
-          <div role="tablist" className="relative inline-flex p-1 rounded-2xl bg-gray-100 dark:bg-gray-800/80 border border-gray-200/80 dark:border-gray-700/60 shadow-sm">
+          <div role="tablist" className="relative flex w-full sm:inline-flex sm:w-auto p-1 rounded-2xl bg-gray-100 dark:bg-gray-800/80 border border-gray-200/80 dark:border-gray-700/60 shadow-sm">
             {/* Sliding highlight pill — absolutely positioned, slides between tabs */}
             <span
               aria-hidden="true"
@@ -456,7 +456,7 @@ export function PricingSection() {
                   aria-selected={isActive}
                   role="tab"
                   className={cn(
-                    "relative z-10 flex items-center gap-2.5 px-5 py-2.5 rounded-xl text-sm font-semibold outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1",
+                    "relative z-10 flex flex-1 sm:flex-none items-center justify-center gap-2 sm:gap-2.5 px-3 sm:px-5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1",
                     "transition-colors duration-200",
                     isActive
                       ? "text-primary"
@@ -603,7 +603,7 @@ export function PricingSection() {
                     <p className="text-base sm:text-lg font-bold text-gray-900 dark:text-gray-50 text-center tracking-tight mb-6">
                       {p.recruiter.upgradeWhy.title}
                     </p>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+                    <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
                       {p.recruiter.upgradeWhy.points.map((pt, pi) => {
                         const Icon = UPGRADE_WHY_ICONS[pi] ?? Zap;
                         const colorClass = UPGRADE_WHY_COLORS[pi] ?? UPGRADE_WHY_COLORS[0];
