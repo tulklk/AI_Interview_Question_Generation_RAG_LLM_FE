@@ -14,6 +14,7 @@ import { useToast } from "@/shared/providers/toast-context";
 import type { QuestionSet } from "@/features/candidate/types/jobseeker";
 import { EmptyState } from "@/features/candidate/components/ui/empty-state";
 import { DifficultyPill } from "@/features/candidate/components/ui/pill";
+import { SkillsOverflowChip } from "@/features/candidate/components/ui/skills-overflow-popover";
 import { portalHeadingAlt, portalSubtextAlt } from "@/shared/utils/portal-ui";
 import { cleanTitle } from "@/features/candidate/utils/clean-title";
 
@@ -118,9 +119,10 @@ function SavedRow({
           </span>
         ))}
         {extra > 0 && (
-          <span className="shrink-0 text-[10px] font-semibold text-gray-400 bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 px-1.5 py-0.5 rounded-md">
-            +{extra}
-          </span>
+          <SkillsOverflowChip
+            skills={set.skills.slice(MAX_SKILLS)}
+            className="shrink-0 text-[10px] font-semibold text-gray-400 bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 px-1.5 py-0.5 rounded-md"
+          />
         )}
       </div>
 

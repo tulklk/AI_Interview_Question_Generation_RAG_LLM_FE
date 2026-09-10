@@ -512,6 +512,98 @@ function SkeletonRows() {
   );
 }
 
+function MobileSkeletonCards() {
+  return (
+    <div className="flex flex-col gap-3">
+      {Array.from({ length: 4 }).map((_, i) => (
+        <div key={i} className="hr-glass-card animate-pulse p-4 flex flex-col gap-3">
+          <div className="flex items-start gap-3">
+            <div className="h-9 w-9 shrink-0 rounded-xl bg-gray-200 dark:bg-gray-700" />
+            <div className="flex-1 space-y-2">
+              <div className="h-3.5 w-36 rounded-lg bg-gray-200 dark:bg-gray-700" />
+              <div className="h-2.5 w-24 rounded-lg bg-gray-200 dark:bg-gray-700" />
+              <div className="h-2.5 w-20 rounded-lg bg-gray-200 dark:bg-gray-700" />
+            </div>
+          </div>
+          <div className="h-8.5 w-full rounded-lg bg-gray-200 dark:bg-gray-700" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function InvitationsPagination({
+  safePage,
+  totalPages,
+  pageSize,
+  filteredLength,
+  onPageChange,
+}: {
+  safePage: number;
+  totalPages: number;
+  pageSize: number;
+  filteredLength: number;
+  onPageChange: (page: number) => void;
+}) {
+  if (totalPages <= 1) return null;
+
+  return (
+    <div className="flex items-center justify-between gap-2 border-t border-gray-100 px-4 py-3 dark:border-gray-800 sm:px-6">
+      <p className={cn("text-xs tabular-nums shrink-0", portalSubtextAlt)}>
+        {(safePage - 1) * pageSize + 1}–{Math.min(safePage * pageSize, filteredLength)} / {filteredLength}
+      </p>
+      <div className="flex flex-wrap items-center justify-end gap-1">
+        <button
+          type="button"
+          onClick={() => onPageChange(Math.max(1, safePage - 1))}
+          disabled={safePage === 1}
+          className="flex h-7 w-7 items-center justify-center rounded-lg border border-gray-200 text-gray-500 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-30 dark:border-gray-700 dark:hover:bg-gray-800"
+        >
+          <ChevronLeft size={13} />
+        </button>
+        {Array.from({ length: totalPages }, (_, i) => i + 1).map((pg) => {
+          const nearCurrent = Math.abs(pg - safePage) <= 1;
+          const isFirst = pg === 1;
+          const isLast = pg === totalPages;
+          if (!isFirst && !isLast && !nearCurrent) {
+            if (pg === 2 || pg === totalPages - 1) {
+              return (
+                <span key={pg} className={cn("px-0.5 text-xs", portalSubtextAlt)}>
+                  …
+                </span>
+              );
+            }
+            return null;
+          }
+          return (
+            <button
+              key={pg}
+              type="button"
+              onClick={() => onPageChange(pg)}
+              className={cn(
+                "inline-flex h-7 min-w-7 items-center justify-center rounded-lg px-1.5 text-xs font-medium transition-colors",
+                pg === safePage
+                  ? "bg-primary text-white shadow-sm"
+                  : "border border-gray-200 text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
+              )}
+            >
+              {pg}
+            </button>
+          );
+        })}
+        <button
+          type="button"
+          onClick={() => onPageChange(Math.min(totalPages, safePage + 1))}
+          disabled={safePage === totalPages}
+          className="flex h-7 w-7 items-center justify-center rounded-lg border border-gray-200 text-gray-500 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-30 dark:border-gray-700 dark:hover:bg-gray-800"
+        >
+          <ChevronRight size={13} />
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
 
 export function InvitationsList() {
@@ -562,49 +654,53 @@ export function InvitationsList() {
     <div>
       {/* Filter tabs */}
       {!loading && !error && invitations.length > 0 && (
-        <div className="flex items-center gap-1 p-1 bg-gray-100 dark:bg-gray-800/80 rounded-xl mb-5 w-fit">
-          {STATUS_TABS.map((tab) => {
-            const active = statusFilter === tab.value;
-            const count = counts[tab.value];
-            return (
-              <button
-                key={tab.key}
-                type="button"
-                onClick={() => handleFilterChange(tab.value)}
-                className={cn(
-                  "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium transition-all",
-                  active
-                    ? tab.activeColor
-                    : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
-                )}
-              >
-                {p[tab.key]}
-                {count > 0 && (
-                  <span className={cn(
-                    "text-[10px] font-bold px-1.5 py-0 rounded-full min-w-4.5 text-center",
+        <div className="mb-5 max-w-full overflow-x-auto scrollbar-hide">
+          <div className="inline-flex w-max min-w-0 items-center gap-1 rounded-xl bg-gray-100 p-1 dark:bg-gray-800/80">
+            {STATUS_TABS.map((tab) => {
+              const active = statusFilter === tab.value;
+              const count = counts[tab.value];
+              return (
+                <button
+                  key={tab.key}
+                  type="button"
+                  onClick={() => handleFilterChange(tab.value)}
+                  className={cn(
+                    "flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-[12px] font-medium transition-all",
                     active
-                      ? "bg-current/10 text-current"
-                      : "bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400"
-                  )}>
-                    {count}
-                  </span>
-                )}
-              </button>
-            );
-          })}
+                      ? tab.activeColor
+                      : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+                  )}
+                >
+                  {p[tab.key]}
+                  {count > 0 && (
+                    <span
+                      className={cn(
+                        "min-w-4.5 rounded-full px-1.5 py-0 text-center text-[10px] font-bold",
+                        active
+                          ? "bg-current/10 text-current"
+                          : "bg-gray-200 text-gray-500 dark:bg-gray-700 dark:text-gray-400"
+                      )}
+                    >
+                      {count}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
         </div>
       )}
 
-      {/* ── Table ─────────────────────────────────────────────────────────── */}
+      {/* ── Desktop table (md+) ───────────────────────────────────────────── */}
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
-        className="hr-glass-card overflow-hidden"
+        className="hr-glass-card hidden overflow-hidden md:block"
       >
         {/* Table header */}
         {(!loading || invitations.length > 0) && (
-          <div className="grid grid-cols-[2.5fr_1fr_1fr_140px] gap-4 px-6 py-3 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/60">
+          <div className="grid grid-cols-[2.5fr_1fr_1fr_140px] gap-4 border-b border-gray-200 bg-gray-50 px-6 py-3 dark:border-gray-800 dark:bg-gray-800/60">
             {[p.table.company, p.table.status, p.table.sentAt, p.table.actions].map((col) => (
               <span key={col} className={cn("text-[11px] font-bold uppercase tracking-wide", portalSubtextAlt)}>
                 {col}
@@ -627,9 +723,13 @@ export function InvitationsList() {
               <div className="flex flex-col items-center gap-3 py-16 text-center">
                 <AlertCircle size={28} className="text-red-500" />
                 <p className={cn("text-[14px]", portalSubtextAlt)}>{p.loadFailed}</p>
-                <button type="button" onClick={() => setReloadKey((k) => k + 1)}
-                  className="flex items-center gap-2 text-[13px] font-semibold text-primary hover:underline">
-                  <RefreshCw size={13} />{p.retryBtn}
+                <button
+                  type="button"
+                  onClick={() => setReloadKey((k) => k + 1)}
+                  className="flex items-center gap-2 text-[13px] font-semibold text-primary hover:underline"
+                >
+                  <RefreshCw size={13} />
+                  {p.retryBtn}
                 </button>
               </div>
             ) : filtered.length === 0 ? (
@@ -645,40 +745,36 @@ export function InvitationsList() {
                     key={inv.id}
                     whileHover={{ scale: 1.002 }}
                     className={cn(
-                      "hr-table-row grid grid-cols-[2.5fr_1fr_1fr_140px] gap-4 px-6 py-4 items-center",
+                      "hr-table-row grid grid-cols-[2.5fr_1fr_1fr_140px] items-center gap-4 px-6 py-4",
                       inv.status === "REJECTED" && "opacity-55"
                     )}
                   >
-                    {/* Company + question set */}
-                    <div className="flex items-center gap-3 min-w-0">
+                    <div className="flex min-w-0 items-center gap-3">
                       <CompanyAvatar logoUrl={inv.companyLogoUrl} name={inv.companyName} size="sm" />
                       <div className="min-w-0">
-                        <p className={cn("text-[13px] font-semibold truncate", portalHeadingAlt)}>
+                        <p className={cn("truncate text-[13px] font-semibold", portalHeadingAlt)}>
                           {inv.companyName || "—"}
                         </p>
-                        <p className={cn("text-[11px] truncate", portalSubtextAlt)}>
+                        <p className={cn("truncate text-[11px]", portalSubtextAlt)}>
                           {inv.questionSetTitle || "—"}
                         </p>
                       </div>
                     </div>
 
-                    {/* Status badge */}
                     <StatusBadge status={inv.status} labels={p} />
 
-                    {/* Sent at */}
-                    <p className={cn("text-[12px] flex items-center gap-1", portalSubtextAlt)}>
+                    <p className={cn("flex items-center gap-1 text-[12px]", portalSubtextAlt)}>
                       <Clock size={11} className="shrink-0" />
                       {inv.createdAt ? formatRelativeTime(inv.createdAt, lang) : "—"}
                     </p>
 
-                    {/* Actions */}
                     <div className="flex items-center gap-1">
                       <button
                         type="button"
                         onClick={() => setDetailTarget(inv)}
                         className={cn(
-                          "flex items-center gap-1.5 h-7.5 px-3 text-[11px] font-semibold rounded-lg transition-colors",
-                          "hover:text-primary hover:bg-[#F5F3FF] dark:hover:bg-purple-950/30",
+                          "flex h-7.5 items-center gap-1.5 rounded-lg px-3 text-[11px] font-semibold transition-colors",
+                          "hover:bg-[#F5F3FF] hover:text-primary dark:hover:bg-purple-950/30",
                           portalSubtextAlt
                         )}
                       >
@@ -693,78 +789,95 @@ export function InvitationsList() {
           </motion.div>
         </AnimatePresence>
 
-        {/* Pagination footer */}
-        {!loading && !error && totalPages > 1 && (
-          <div className="flex items-center justify-between px-6 py-3 border-t border-gray-100 dark:border-gray-800">
-            <p className={cn("text-xs tabular-nums", portalSubtextAlt)}>
-              {(safePage - 1) * PAGE_SIZE + 1}–{Math.min(safePage * PAGE_SIZE, filtered.length)} / {filtered.length}
-            </p>
-            <div className="flex items-center gap-1">
-              <button type="button" onClick={() => setPage((v) => Math.max(1, v - 1))} disabled={safePage === 1}
-                className="w-7 h-7 flex items-center justify-center rounded-lg border border-gray-200 dark:border-gray-700 text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors">
-                <ChevronLeft size={13} />
-              </button>
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map((pg) => {
-                const nearCurrent = Math.abs(pg - safePage) <= 1;
-                const isFirst = pg === 1;
-                const isLast = pg === totalPages;
-                if (!isFirst && !isLast && !nearCurrent) {
-                  if (pg === 2 || pg === totalPages - 1) {
-                    return <span key={pg} className={cn("text-xs px-0.5", portalSubtextAlt)}>…</span>;
-                  }
-                  return null;
-                }
-                return (
-                  <button key={pg} type="button" onClick={() => setPage(pg)}
-                    className={cn(
-                      "inline-flex h-7 min-w-7 px-1.5 items-center justify-center rounded-lg text-xs font-medium transition-colors",
-                      pg === safePage
-                        ? "bg-primary text-white shadow-sm"
-                        : "border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
-                    )}>
-                    {pg}
-                  </button>
-                );
-              })}
-              <button type="button" onClick={() => setPage((v) => Math.min(totalPages, v + 1))} disabled={safePage === totalPages}
-                className="w-7 h-7 flex items-center justify-center rounded-lg border border-gray-200 dark:border-gray-700 text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors">
-                <ChevronRight size={13} />
-              </button>
-            </div>
-          </div>
+        {!loading && !error && (
+          <InvitationsPagination
+            safePage={safePage}
+            totalPages={totalPages}
+            pageSize={PAGE_SIZE}
+            filteredLength={filtered.length}
+            onPageChange={setPage}
+          />
         )}
       </motion.div>
 
-      {/* Mobile card list */}
-      <div className="md:hidden mt-4 flex flex-col gap-3">
-        {!loading && !error && paginated.map((inv) => (
-          <div
-            key={inv.id}
-            className={cn("hr-glass-card p-4 flex flex-col gap-3", inv.status === "REJECTED" && "opacity-55")}
-          >
-            <div className="flex items-start gap-3">
-              <CompanyAvatar logoUrl={inv.companyLogoUrl} name={inv.companyName} size="sm" />
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <p className={cn("text-[13px] font-semibold", portalHeadingAlt)}>{inv.companyName || "—"}</p>
-                  <StatusBadge status={inv.status} labels={p} />
-                </div>
-                <p className={cn("text-[11px] truncate mt-0.5", portalSubtextAlt)}>{inv.questionSetTitle || "—"}</p>
-                {inv.createdAt && (
-                  <p className={cn("text-[11px] mt-1 flex items-center gap-1", portalSubtextAlt)}>
-                    <Clock size={10} />
-                    {formatRelativeTime(inv.createdAt, lang)}
-                  </p>
-                )}
-              </div>
-            </div>
-            <button type="button" onClick={() => setDetailTarget(inv)}
-              className="flex items-center justify-center gap-1.5 h-8.5 text-[12px] font-semibold rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:text-primary hover:border-violet-200 dark:hover:border-violet-800 hover:bg-violet-50 dark:hover:bg-violet-950/30 transition-colors">
-              <Eye size={13} />
-              {p.viewDetailBtn}
+      {/* ── Mobile cards (below md) ───────────────────────────────────────── */}
+      <div className="md:hidden">
+        {loading ? (
+          <MobileSkeletonCards />
+        ) : error ? (
+          <div className="hr-glass-card flex flex-col items-center gap-3 px-4 py-12 text-center">
+            <AlertCircle size={28} className="text-red-500" />
+            <p className={cn("text-[14px]", portalSubtextAlt)}>{p.loadFailed}</p>
+            <button
+              type="button"
+              onClick={() => setReloadKey((k) => k + 1)}
+              className="flex items-center gap-2 text-[13px] font-semibold text-primary hover:underline"
+            >
+              <RefreshCw size={13} />
+              {p.retryBtn}
             </button>
           </div>
-        ))}
+        ) : filtered.length === 0 ? (
+          <div className="hr-glass-card overflow-hidden">
+            <EmptyState
+              icon={Mail}
+              title={invitations.length === 0 ? p.emptyState : p.noMatchingInvitations}
+              className="py-12"
+            />
+          </div>
+        ) : (
+          <div className="flex flex-col gap-3">
+            {paginated.map((inv) => (
+              <div
+                key={inv.id}
+                className={cn(
+                  "hr-glass-card flex flex-col gap-3 p-4",
+                  inv.status === "REJECTED" && "opacity-55"
+                )}
+              >
+                <div className="flex items-start gap-3">
+                  <CompanyAvatar logoUrl={inv.companyLogoUrl} name={inv.companyName} size="sm" />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className={cn("text-[13px] font-semibold", portalHeadingAlt)}>
+                        {inv.companyName || "—"}
+                      </p>
+                      <StatusBadge status={inv.status} labels={p} />
+                    </div>
+                    <p className={cn("mt-0.5 truncate text-[11px]", portalSubtextAlt)}>
+                      {inv.questionSetTitle || "—"}
+                    </p>
+                    {inv.createdAt && (
+                      <p className={cn("mt-1 flex items-center gap-1 text-[11px]", portalSubtextAlt)}>
+                        <Clock size={10} />
+                        {formatRelativeTime(inv.createdAt, lang)}
+                      </p>
+                    )}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setDetailTarget(inv)}
+                  className="flex h-8.5 items-center justify-center gap-1.5 rounded-lg border border-gray-200 text-[12px] font-semibold text-gray-600 transition-colors hover:border-violet-200 hover:bg-violet-50 hover:text-primary dark:border-gray-700 dark:text-gray-300 dark:hover:border-violet-800 dark:hover:bg-violet-950/30"
+                >
+                  <Eye size={13} />
+                  {p.viewDetailBtn}
+                </button>
+              </div>
+            ))}
+            {totalPages > 1 && (
+              <div className="hr-glass-card overflow-hidden">
+                <InvitationsPagination
+                  safePage={safePage}
+                  totalPages={totalPages}
+                  pageSize={PAGE_SIZE}
+                  filteredLength={filtered.length}
+                  onPageChange={setPage}
+                />
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Detail dialog */}

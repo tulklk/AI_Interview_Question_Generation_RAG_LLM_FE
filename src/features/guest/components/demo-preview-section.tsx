@@ -97,16 +97,16 @@ export function DemoPreviewSection() {
   const filtered = demoQuestions.filter((q) => q.category === activeTab);
 
   return (
-    <section className="relative bg-white/92 dark:bg-gray-950/85 py-20 px-6">
+    <section className="relative bg-white/92 dark:bg-gray-950/85 py-12 sm:py-20 px-4 sm:px-6">
       <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
         <CosmicField variant="compact" />
       </div>
       <div className="relative z-10 max-w-4xl mx-auto">
-        <ScrollReveal animation="fade-up" className="text-center mb-12">
+        <ScrollReveal animation="fade-up" className="text-center mb-8 sm:mb-12">
           <p className="text-sm font-semibold text-[#6c47ff] uppercase tracking-widest mb-3">
             {d.sectionLabel}
           </p>
-          <h2 className="text-3xl font-bold text-gray-900 dark:text-gray-50">{d.headline}</h2>
+          <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-50">{d.headline}</h2>
           <p className="text-gray-500 dark:text-gray-400 mt-3 max-w-lg mx-auto text-base leading-relaxed">
             {d.subtext}
           </p>
@@ -155,7 +155,7 @@ export function DemoPreviewSection() {
             </div>
 
             <div className="p-3 sm:p-4 border-b border-gray-100 dark:border-gray-800">
-              <div className="flex bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-1 gap-1">
+              <div className="flex overflow-x-auto bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-1 gap-1">
                 {CATEGORIES.map((cat) => {
                   const count = demoQuestions.filter((q) => q.category === cat).length;
                   const isActive = activeTab === cat;
@@ -164,7 +164,7 @@ export function DemoPreviewSection() {
                       key={cat}
                       onClick={() => setActiveTab(cat)}
                       className={cn(
-                        "flex-1 flex items-center justify-center gap-1 sm:gap-2 py-2 px-1.5 sm:px-3 text-xs sm:text-sm font-semibold rounded-lg transition-all duration-200",
+                        "shrink-0 flex-1 sm:flex-none flex items-center justify-center gap-1 sm:gap-2 py-2 px-2.5 sm:px-3 text-xs sm:text-sm font-semibold rounded-lg transition-all duration-200 whitespace-nowrap",
                         isActive
                           ? "bg-[#6c47ff] text-white shadow-sm"
                           : "text-gray-500 dark:text-gray-400 hover:text-[#6c47ff] dark:hover:text-[#a78bff] hover:bg-white dark:hover:bg-gray-700"

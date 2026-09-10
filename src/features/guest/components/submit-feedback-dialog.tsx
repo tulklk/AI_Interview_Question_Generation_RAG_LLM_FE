@@ -226,7 +226,7 @@ export function SubmitFeedbackDialog({ open, onClose }: SubmitFeedbackDialogProp
       {/* Panel — spring enter/exit */}
       <div
         className={cn(
-          "relative bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden",
+          "relative bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-md max-h-[90dvh] overflow-y-auto overscroll-contain",
           "border border-gray-100 dark:border-gray-800",
           "transition-all",
           visible
@@ -369,15 +369,15 @@ export function SubmitFeedbackDialog({ open, onClose }: SubmitFeedbackDialogProp
               {/* Error with slide-down */}
               <div className={cn(
                 "overflow-hidden transition-all duration-200",
-                errors.content ? "max-h-8 opacity-100 mt-1.5" : "max-h-0 opacity-0"
+                errors.content ? "max-h-16 opacity-100 mt-1.5" : "max-h-0 opacity-0"
               )}>
-                <p className="text-xs text-red-500">{errors.content}</p>
+                <p className="text-xs text-red-500 break-words">{errors.content}</p>
               </div>
             </div>
 
             {/* Footer */}
             <div
-              className="px-6 py-4 border-t border-gray-100 dark:border-gray-800 flex items-center justify-end gap-3 feedback-section"
+              className="px-6 py-4 border-t border-gray-100 dark:border-gray-800 flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2 sm:gap-3 feedback-section"
               style={{ animationDelay: "140ms" }}
             >
               <button
@@ -385,7 +385,7 @@ export function SubmitFeedbackDialog({ open, onClose }: SubmitFeedbackDialogProp
                 onClick={onClose}
                 disabled={submitting}
                 className={cn(
-                  "px-4 py-2 text-sm font-semibold rounded-lg transition-all duration-150",
+                  "w-full sm:w-auto px-4 py-2 text-sm font-semibold rounded-lg transition-all duration-150",
                   "text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-100",
                   "hover:bg-gray-100 dark:hover:bg-gray-800 active:scale-95",
                   "disabled:opacity-50 disabled:cursor-not-allowed"
@@ -397,7 +397,7 @@ export function SubmitFeedbackDialog({ open, onClose }: SubmitFeedbackDialogProp
                 type="submit"
                 disabled={submitting}
                 className={cn(
-                  "relative flex items-center gap-2 px-5 py-2 text-sm font-semibold rounded-xl text-white",
+                  "relative flex w-full sm:w-auto items-center justify-center gap-2 px-5 py-2 text-sm font-semibold rounded-xl text-white",
                   "bg-primary hover:bg-primary/90 transition-all duration-150",
                   "active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed",
                   "overflow-hidden"

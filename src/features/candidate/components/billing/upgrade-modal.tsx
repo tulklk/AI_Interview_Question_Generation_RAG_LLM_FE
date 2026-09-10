@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Crown, Check, Copy, X, Clock } from "lucide-react";
+import { Check, Copy, X, Clock } from "lucide-react";
 import type { HubConnection } from "@microsoft/signalr";
 import { cn } from "@/lib/cn";
 import { useLanguage } from "@/shared/providers/language-context";
@@ -373,10 +373,7 @@ export function UpgradeModal({ onClose, onDone }: UpgradeModalProps) {
             )}
           >
             <div className="relative px-6 pt-6 pb-5 border-b border-gray-200 dark:border-gray-800">
-              <div className="flex items-center gap-3 mb-1">
-                <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center">
-                  <Crown size={18} className="text-primary" />
-                </div>
+              <div className="mb-1 pr-8">
                 <h2 className={cn("text-[17px] font-bold", portalHeading)}>{b.upgradeModalTitle}</h2>
               </div>
               <p className={cn("text-sm", portalSubtext)}>{b.upgradeModalDesc}</p>

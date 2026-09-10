@@ -15,6 +15,8 @@ import {
   Lock,
   ImagePlus,
   Lightbulb,
+  MoreHorizontal,
+  Globe,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { QuestionContent } from "@/shared/components/ui/question-content";
@@ -98,6 +100,8 @@ interface QuestionEditCardProps {
   isDragging?: boolean;
   /** Set is PUBLISHED — BE rejects add/edit/delete/reorder, so hide those affordances. */
   locked?: boolean;
+  /** Marketplace visibility when the set is published. */
+  liveStatus?: "live" | "hidden" | null;
   isAskAIActive?: boolean;
   /** SCRUM-374: hiển thị sample + scoring rubric như Studio v2. */
   studioFormat?: boolean;
@@ -121,6 +125,7 @@ export function QuestionEditCard({
   isLast = false,
   isDragging = false,
   locked = false,
+  liveStatus = null,
   isAskAIActive = false,
   studioFormat: _studioFormat = false,
   dragHandleListeners,
@@ -141,7 +146,9 @@ export function QuestionEditCard({
   const [isSaving, setIsSaving] = useState(false);
   const [imageBusy, setImageBusy] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const indexLabel = String(index).padStart(2, "0");
 
   const sourceLabels: QuestionSourcesLabels = useMemo(
     () => ({
@@ -335,21 +342,30 @@ export function QuestionEditCard({
           ? "border-primary/50 shadow-sm"
           : "border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900"
     )}>
-      <div className="p-4 sm:p-5">
-        <div className="flex items-start gap-3">
+      <div className="p-3.5 sm:p-4">
+        <div className="flex items-start gap-2.5">
           {/* Drag handle + index */}
           <div className="flex flex-col items-center gap-1 shrink-0 mt-0.5">
             <div
               className={cn(
-                "text-gray-300 dark:text-gray-600 select-none touch-none",
+                "select-none touch-none",
+                locked
+                  ? "text-gray-200 dark:text-gray-700 opacity-40 pointer-events-none"
+                  : "text-gray-300 dark:text-gray-600",
                 dragHandleListeners ? "cursor-grab active:cursor-grabbing" : "pointer-events-none"
               )}
               {...(dragHandleListeners ?? {})}
             >
               <GripVertical size={14} />
             </div>
-            <div className={cn("flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-bold", portalMutedBg, portalHeading)}>
-              {index}
+            <div
+              className={cn(
+                "flex items-center justify-center w-7 h-7 rounded-lg text-[11px] font-bold tabular-nums",
+                portalMutedBg,
+                portalHeading
+              )}
+            >
+              {indexLabel}
             </div>
           </div>
 
@@ -358,21 +374,21 @@ export function QuestionEditCard({
             {/* Badges — một hàng, không lặp skill/focus/difficulty */}
             {!isEditing && (
               <div className="flex items-center gap-1.5 flex-wrap mb-2">
-                <span className={cn("text-xs font-semibold px-2 py-0.5 rounded-full", difficultyStyles[question.difficulty])}>
+                <span className={cn("text-[10px] font-semibold px-1.5 py-0.5 rounded-full", difficultyStyles[question.difficulty])}>
                   {rp.difficulty[question.difficulty]}
                 </span>
-                <span className={cn("text-xs font-semibold px-2 py-0.5 rounded-full", typeStyles[question.questionType])}>
+                <span className={cn("text-[10px] font-semibold px-1.5 py-0.5 rounded-full", typeStyles[question.questionType])}>
                   {rp.questionType[question.questionType]}
                 </span>
                 {templateLabel ? (
-                  <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800 dark:bg-indigo-950/50 dark:text-indigo-300">
+                  <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-indigo-100 text-indigo-800 dark:bg-indigo-950/50 dark:text-indigo-300">
                     {templateLabel}
                   </span>
                 ) : null}
                 {skillTrimmed ? (
                   <span
                     title={skillTrimmed}
-                    className="text-xs font-semibold px-2 py-0.5 rounded-full bg-sky-100 text-sky-800 dark:bg-sky-950/50 dark:text-sky-300 max-w-[200px] truncate"
+                    className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-sky-100 text-sky-800 dark:bg-sky-950/50 dark:text-sky-300 max-w-[180px] truncate"
                   >
                     {skillTrimmed}
                   </span>
@@ -380,16 +396,26 @@ export function QuestionEditCard({
                 {showFocusBadge ? (
                   <span
                     title={focusTrimmed}
-                    className="text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300 max-w-[200px] truncate"
+                    className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300 max-w-[180px] truncate"
                   >
                     {focusTrimmed}
                   </span>
                 ) : null}
                 {question.isEdited && (
-                  <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-orange-50 dark:bg-orange-950/30 text-orange-600 dark:text-orange-400">
+                  <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-orange-50 dark:bg-orange-950/30 text-orange-600 dark:text-orange-400">
                     Edited
                   </span>
                 )}
+                {liveStatus === "live" ? (
+                  <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-emerald-100/80 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">
+                    <Globe size={10} aria-hidden />
+                    {rp.marketplaceShort}
+                  </span>
+                ) : liveStatus === "hidden" ? (
+                  <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-gray-200 text-gray-600 dark:bg-gray-800 dark:text-gray-400">
+                    {rp.badgeHidden}
+                  </span>
+                ) : null}
               </div>
             )}
 
@@ -626,31 +652,21 @@ export function QuestionEditCard({
                   <QuestionContent text={question.question} className={cn("text-sm leading-relaxed font-medium", portalHeading)} />
                 )}
 
-                {/* Lý do hỏi — luôn hiện để HR chú ý (không cần mở chi tiết) */}
+                {/* Lý do hỏi — compact inline */}
                 {rationaleDisplay ? (
-                  <div
-                    className={cn(
-                      "mt-3 flex gap-2.5 rounded-xl border border-violet-200/90 bg-violet-50/90 px-3 py-2.5",
-                      "shadow-[inset_0_0_0_1px_rgba(139,92,246,0.08)]",
-                      "dark:border-violet-800/60 dark:bg-violet-950/40"
-                    )}
-                  >
-                    <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-violet-600 text-white shadow-sm dark:bg-violet-500">
-                      <Lightbulb size={14} strokeWidth={2.25} />
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-violet-700 dark:text-violet-300">
-                        Lý do hỏi
-                      </p>
-                      <p className="mt-1 text-[13px] font-medium leading-relaxed text-violet-950 dark:text-violet-50">
-                        {rationaleDisplay}
-                      </p>
-                    </div>
+                  <div className="mt-2.5 flex items-start gap-1.5 rounded-lg bg-violet-50/80 px-2.5 py-1.5 dark:bg-violet-950/35">
+                    <Lightbulb size={12} className="mt-0.5 shrink-0 text-violet-600 dark:text-violet-300" strokeWidth={2.25} />
+                    <p className="min-w-0 text-xs leading-snug text-violet-950 dark:text-violet-100">
+                      <span className="font-semibold text-violet-800 dark:text-violet-200">
+                        {rp.questionFields.rationale}:{" "}
+                      </span>
+                      {rationaleDisplay}
+                    </p>
                   </div>
                 ) : null}
 
                 {/* Hàng công cụ: mở chi tiết + ảnh */}
-                <div className="mt-3 flex flex-wrap items-center gap-2">
+                <div className="mt-2.5 flex flex-wrap items-center gap-2">
                   <button
                     type="button"
                     onClick={() => setIsAnswerOpen(!isAnswerOpen)}
@@ -741,9 +757,9 @@ export function QuestionEditCard({
             )}
           </div>
 
-          {/* Action buttons — vertical on desktop, hidden here on mobile (shown below) */}
+          {/* Action buttons — Ask AI + Edit nổi; Move/Delete trong menu ••• */}
           {!isEditing && (
-            <div className="hidden sm:flex flex-col items-center gap-1 shrink-0">
+            <div className="hidden sm:flex flex-col items-center gap-1 shrink-0 relative">
               {ASK_AI_ENABLED && (
                 <button
                   type="button"
@@ -776,32 +792,64 @@ export function QuestionEditCard({
                   >
                     <Pencil size={13} />
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => !isFirst && onMoveUp()}
-                    disabled={isFirst}
-                    title={rp.questionActions.moveUp}
-                    className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                  >
-                    <ChevronUp size={13} />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => !isLast && onMoveDown()}
-                    disabled={isLast}
-                    title={rp.questionActions.moveDown}
-                    className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                  >
-                    <ChevronDown size={13} />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setShowDeleteConfirm(true)}
-                    title={rp.questionActions.delete}
-                    className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 dark:text-gray-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
-                  >
-                    <Trash2 size={13} />
-                  </button>
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => setMoreOpen((v) => !v)}
+                      title="More"
+                      aria-expanded={moreOpen}
+                      className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                    >
+                      <MoreHorizontal size={13} />
+                    </button>
+                    {moreOpen && (
+                      <>
+                        <button
+                          type="button"
+                          aria-label="Close menu"
+                          className="fixed inset-0 z-10 cursor-default"
+                          onClick={() => setMoreOpen(false)}
+                        />
+                        <div className="absolute right-0 top-8 z-20 min-w-[140px] rounded-lg border border-gray-200 bg-white py-1 shadow-lg dark:border-gray-700 dark:bg-gray-900">
+                          <button
+                            type="button"
+                            disabled={isFirst}
+                            onClick={() => {
+                              setMoreOpen(false);
+                              if (!isFirst) onMoveUp();
+                            }}
+                            className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-40 dark:text-gray-200 dark:hover:bg-gray-800"
+                          >
+                            <ChevronUp size={12} />
+                            {rp.questionActions.moveUp}
+                          </button>
+                          <button
+                            type="button"
+                            disabled={isLast}
+                            onClick={() => {
+                              setMoreOpen(false);
+                              if (!isLast) onMoveDown();
+                            }}
+                            className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-40 dark:text-gray-200 dark:hover:bg-gray-800"
+                          >
+                            <ChevronDown size={12} />
+                            {rp.questionActions.moveDown}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setMoreOpen(false);
+                              setShowDeleteConfirm(true);
+                            }}
+                            className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs font-medium text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/30"
+                          >
+                            <Trash2 size={12} />
+                            {rp.questionActions.delete}
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
                 </>
               )}
             </div>

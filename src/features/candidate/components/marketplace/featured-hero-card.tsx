@@ -8,6 +8,7 @@ import { cn } from "@/lib/cn";
 import { useLanguage } from "@/shared/providers/language-context";
 import type { QuestionSet } from "@/features/candidate/types/jobseeker";
 import { DifficultyPill } from "@/features/candidate/components/ui/pill";
+import { SkillsOverflowChip } from "@/features/candidate/components/ui/skills-overflow-popover";
 import { toggleBookmark } from "@/features/candidate/services/question-set.service";
 import { useToast } from "@/shared/providers/toast-context";
 import { getSkillIcon } from "@/features/candidate/utils/skill-icons";
@@ -239,9 +240,10 @@ export function FeaturedHeroCard({ set, isBookmarked, onBookmarkChange }: Featur
                     );
                   })}
                   {extraSkills > 0 && (
-                    <span className="text-[11px] font-semibold text-primary/70 dark:text-violet-400">
-                      +{extraSkills}
-                    </span>
+                    <SkillsOverflowChip
+                      skills={set.skills.slice(HERO_SKILLS_MAX)}
+                      className="text-[11px] font-semibold text-primary/70 dark:text-violet-400 border-0 bg-transparent px-1.5 py-0.5 hover:bg-primary/10"
+                    />
                   )}
                 </div>
               )}

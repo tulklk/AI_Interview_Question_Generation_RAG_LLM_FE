@@ -4,8 +4,9 @@ import { useState, useEffect, useRef, useMemo } from "react";
 import { AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
-import { Plus, BookMarked, Loader2, AlertCircle, RefreshCw, ChevronLeft, ChevronRight, X, Check, Rocket, Undo2, Globe, PenLine, Lock, Clock, Pencil, UserCheck } from "lucide-react";
+import { Plus, BookMarked, Loader2, AlertCircle, RefreshCw, ChevronLeft, ChevronRight, X, Check, Rocket, Undo2, Clock, Pencil, UserCheck } from "lucide-react";
 import { AiLoadingSpinner } from "@/shared/components/common/ai-loading-spinner";
+import { QuestionSetStatusBanner } from "@/features/question/components/question-set-status-banner";
 import {
   DndContext,
   closestCenter,
@@ -68,6 +69,7 @@ interface SortableCardProps {
   locked?: boolean;
   isAskAIActive?: boolean;
   studioFormat?: boolean;
+  liveStatus?: "live" | "hidden" | null;
   onSave: (changes: Partial<GeneratedQuestion>) => Promise<boolean>;
   onEditingChange: (editing: boolean) => void;
   onDelete: () => void;
@@ -87,6 +89,7 @@ function SortableCard({
   locked,
   isAskAIActive,
   studioFormat,
+  liveStatus,
   onSave,
   onEditingChange,
   onDelete,
@@ -126,6 +129,7 @@ function SortableCard({
         locked={locked}
         isAskAIActive={isAskAIActive}
         studioFormat={studioFormat}
+        liveStatus={liveStatus}
         dragHandleListeners={locked ? undefined : listeners}
         onSave={onSave}
         onEditingChange={onEditingChange}
@@ -216,6 +220,7 @@ export function ReviewQuestionsSection({
     () => questions.filter((q) => q.isActive !== false).length,
     [questions]
   );
+  const hiddenQuestionCount = questions.length - liveQuestionCount;
 
   const filteredQuestions = useMemo(() => {
     if (publishStatus !== "PUBLISHED" || liveFilter === "all") return questions;
@@ -577,28 +582,50 @@ export function ReviewQuestionsSection({
   }
 
   return (
-    <div className="space-y-4">
-      {/* Toolbar */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <p className={cn("text-sm", portalSubtext)}>
-            {publishStatus === "PUBLISHED"
-              ? rp.liveCountLabel
-                  .replace("{{live}}", String(liveQuestionCount))
-                  .replace("{{total}}", String(questions.length))
-              : rp.questionCount.replace("{{count}}", String(questions.length))}
-          </p>
-          {publishStatus && (
-            <span className={cn(
-              "inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-md",
-              publishStatus === "PUBLISHED"
-                ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400"
-                : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400"
-            )}>
-              {publishStatus === "PUBLISHED" ? <Globe size={11} /> : <PenLine size={11} />}
-              {publishStatus === "PUBLISHED" ? rp.statusPublished : rp.statusDraft}
-            </span>
+    <div className="space-y-3">
+      {!readOnly && isLocked && (
+        <QuestionSetStatusBanner
+          title={rp.editLockedTitle}
+          body={rp.editLockedBody}
+          unpublishLabel={rp.unpublish}
+          publishing={publishing}
+          onUnpublish={() => setPublishConfirmAction("unpublish")}
+        />
+      )}
+
+      {/* Compact toolbar: tabs + add + publish */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+          {publishStatus === "PUBLISHED" ? (
+            <div className="inline-flex max-w-full overflow-x-auto rounded-lg border border-gray-200 bg-gray-50 p-0.5 dark:border-gray-700 dark:bg-gray-800/80">
+              {(
+                [
+                  ["all", rp.liveFilterAll, questions.length],
+                  ["live", rp.liveFilterLive, liveQuestionCount],
+                  ["hidden", rp.liveFilterHidden, hiddenQuestionCount],
+                ] as const
+              ).map(([key, label, count]) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setLiveFilter(key)}
+                  className={cn(
+                    "shrink-0 rounded-md px-2.5 py-1.5 text-[11px] font-semibold transition-colors whitespace-nowrap",
+                    liveFilter === key
+                      ? "bg-[#7C3AED] text-white shadow-sm"
+                      : "text-gray-600 hover:bg-white dark:text-gray-300 dark:hover:bg-gray-900"
+                  )}
+                >
+                  {label} {count}
+                </button>
+              ))}
+            </div>
+          ) : (
+            <p className={cn("text-sm", portalSubtext)}>
+              {rp.questionCount.replace("{{count}}", String(questions.length))}
+            </p>
           )}
+
           {!readOnly && isEditable && (
             <button
               type="button"
@@ -606,7 +633,7 @@ export function ReviewQuestionsSection({
               disabled={isLocked}
               title={isLocked ? rp.editLockedHint : rp.timeLimitEditHint}
               className={cn(
-                "inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-md transition-colors",
+                "inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-1 rounded-md transition-colors",
                 "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400",
                 isLocked ? "opacity-60 cursor-not-allowed" : "hover:bg-gray-200 dark:hover:bg-gray-700 cursor-pointer"
               )}
@@ -622,7 +649,7 @@ export function ReviewQuestionsSection({
               onClick={() => setShowRecSettings((v) => !v)}
               title={rp.recSettingsHint}
               className={cn(
-                "inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-md transition-colors cursor-pointer",
+                "inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-1 rounded-md transition-colors cursor-pointer",
                 "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
               )}
             >
@@ -634,13 +661,14 @@ export function ReviewQuestionsSection({
             </button>
           )}
         </div>
+
         <div className="flex flex-wrap items-center gap-2">
           {!readOnly && !isLocked && (
             <button
               type="button"
               onClick={() => setShowAddDialog(true)}
               className={cn(
-                "flex-1 sm:flex-none flex items-center justify-center gap-2 text-sm font-semibold px-4 py-2 rounded-lg border transition-colors",
+                "flex-1 sm:flex-none flex items-center justify-center gap-2 text-sm font-semibold px-3.5 py-2 rounded-lg border transition-colors",
                 portalCard,
                 portalHeading,
                 "hover:bg-gray-50 dark:hover:bg-gray-800"
@@ -651,13 +679,6 @@ export function ReviewQuestionsSection({
             </button>
           )}
 
-          {!readOnly && isLocked && (
-            <span className="inline-flex items-center gap-1.5 text-xs italic text-amber-600 dark:text-amber-400">
-              <Lock size={12} />
-              {rp.editLockedHint}
-            </span>
-          )}
-
           {questionSetId && (
             publishStatus === "PUBLISHED" ? (
               <button
@@ -665,7 +686,7 @@ export function ReviewQuestionsSection({
                 onClick={() => setPublishConfirmAction("unpublish")}
                 disabled={publishing}
                 className={cn(
-                  "flex-1 sm:flex-none flex items-center justify-center gap-2 text-sm font-semibold px-4 py-2 rounded-lg border transition-colors disabled:opacity-60",
+                  "flex-1 sm:flex-none flex items-center justify-center gap-2 text-sm font-semibold px-3.5 py-2 rounded-lg border transition-colors disabled:opacity-60",
                   portalCard,
                   portalHeading,
                   "hover:bg-gray-50 dark:hover:bg-gray-800"
@@ -679,7 +700,7 @@ export function ReviewQuestionsSection({
                 type="button"
                 onClick={() => setShowPublishDialog(true)}
                 disabled={publishing}
-                className="flex-1 sm:flex-none flex items-center justify-center gap-2 text-sm font-semibold px-4 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60 transition-colors"
+                className="flex-1 sm:flex-none flex items-center justify-center gap-2 text-sm font-semibold px-3.5 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60 transition-colors"
               >
                 {publishing ? <Loader2 size={14} className="animate-spin" /> : <Rocket size={14} />}
                 {rp.publish}
@@ -802,32 +823,6 @@ export function ReviewQuestionsSection({
 
         return (
           <>
-            {publishStatus === "PUBLISHED" && (
-              <div className="flex flex-wrap items-center gap-1.5">
-                {(
-                  [
-                    ["all", rp.liveFilterAll],
-                    ["live", rp.liveFilterLive],
-                    ["hidden", rp.liveFilterHidden],
-                  ] as const
-                ).map(([key, label]) => (
-                  <button
-                    key={key}
-                    type="button"
-                    onClick={() => setLiveFilter(key)}
-                    className={cn(
-                      "rounded-full px-2.5 py-1 text-[11px] font-semibold transition-colors",
-                      liveFilter === key
-                        ? "bg-primary text-white"
-                        : "bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300"
-                    )}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-            )}
-
             {filteredQuestions.length === 0 ? (
               <p className={cn("py-10 text-center text-sm", portalSubtext)}>{rp.emptyState}</p>
             ) : (
@@ -841,31 +836,13 @@ export function ReviewQuestionsSection({
                 items={paginated.map((q) => q.id)}
                 strategy={verticalListSortingStrategy}
               >
-                <div className="flex flex-col gap-3">
+                <div className="flex flex-col gap-2.5">
                   {paginated.map((q, idx) => {
                     const globalIdx = questions.findIndex((x) => x.id === q.id);
                     const displayIdx = globalIdx >= 0 ? globalIdx + 1 : startIdx + idx + 1;
                     const live = q.isActive !== false;
                     return (
-                      <div key={q.id} className="animate-fade-up space-y-1.5" style={{ animationDelay: `${idx * 40}ms` }}>
-                        {publishStatus === "PUBLISHED" && (
-                          <span
-                            className={cn(
-                              "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold",
-                              live
-                                ? "bg-emerald-100/80 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300"
-                                : "bg-gray-200 text-gray-600 dark:bg-gray-800 dark:text-gray-400"
-                            )}
-                          >
-                            {live ? (
-                              <>
-                                <Globe size={10} /> {rp.badgeLive}
-                              </>
-                            ) : (
-                              rp.badgeHidden
-                            )}
-                          </span>
-                        )}
+                      <div key={q.id} className="animate-fade-up" style={{ animationDelay: `${idx * 40}ms` }}>
                         <SortableCard
                           q={q}
                           index={displayIdx}
@@ -874,6 +851,9 @@ export function ReviewQuestionsSection({
                           isFirst={globalIdx === 0}
                           isLast={globalIdx === questions.length - 1}
                           locked={isLocked}
+                          liveStatus={
+                            publishStatus === "PUBLISHED" ? (live ? "live" : "hidden") : null
+                          }
                           isAskAIActive={askAIState?.question.id === q.id}
                           studioFormat={isFromStudio || !!q.scoringRubric?.trim()}
                           onSave={(changes) => handleSaveQuestion(q.id, changes)}

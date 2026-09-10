@@ -32,6 +32,9 @@ import { normalizeStudioSettings } from "@/features/studio/utils/normalize-studi
 const STUDIO_TASK_KEY = "studio_active_task";
 const STUDIO_ACTIVE_PROJECT_KEY = "studio_active_project_id";
 
+const PLAN_CREATE_POLL_MS = 2500;
+const PLAN_CREATE_TIMEOUT_MS = 180_000;
+
 /** SCRUM-402: ghi project đang làm để bootstrap không restore phiên cũ */
 function persistActiveProjectId(id: string) {
   try {
@@ -43,22 +46,68 @@ function persistActiveProjectId(id: string) {
 
 type StudioTaskKind = "streaming" | "generating";
 
-/** SCRUM-402: payload JSON { task, projectId }; legacy string vẫn đọc được ở badge */
-function broadcastStudioTask(task: StudioTaskKind | null, projectId?: string | null) {
+type StudioTaskPayload = {
+  task: StudioTaskKind;
+  projectId: string | null;
+  startedAt?: string;
+  kind?: "create_plan";
+};
+
+type BroadcastExtras = {
+  startedAt?: string;
+  kind?: "create_plan";
+};
+
+function readStudioTaskPayload(): (StudioTaskPayload & { task: StudioTaskKind | null }) | null {
+  try {
+    const raw = localStorage.getItem(STUDIO_TASK_KEY);
+    if (!raw) return null;
+    if (raw === "streaming" || raw === "generating") {
+      return { task: raw, projectId: null };
+    }
+    const parsed = JSON.parse(raw) as StudioTaskPayload;
+    if (parsed.task === "streaming" || parsed.task === "generating") {
+      return {
+        task: parsed.task,
+        projectId: parsed.projectId ?? null,
+        startedAt: parsed.startedAt,
+        kind: parsed.kind === "create_plan" ? "create_plan" : undefined,
+      };
+    }
+  } catch {
+    /* ignore */
+  }
+  return null;
+}
+
+/** SCRUM-402: payload JSON { task, projectId, startedAt?, kind? }; legacy string vẫn đọc được ở badge */
+function broadcastStudioTask(
+  task: StudioTaskKind | null,
+  projectId?: string | null,
+  extras?: BroadcastExtras
+) {
   try {
     if (task) {
-      localStorage.setItem(
-        STUDIO_TASK_KEY,
-        JSON.stringify({ task, projectId: projectId ?? null })
+      const payload: StudioTaskPayload = {
+        task,
+        projectId: projectId ?? null,
+        ...(extras?.startedAt ? { startedAt: extras.startedAt } : {}),
+        ...(extras?.kind ? { kind: extras.kind } : {}),
+      };
+      localStorage.setItem(STUDIO_TASK_KEY, JSON.stringify(payload));
+      window.dispatchEvent(
+        new CustomEvent("studio:task-changed", {
+          detail: payload,
+        })
       );
     } else {
       localStorage.removeItem(STUDIO_TASK_KEY);
+      window.dispatchEvent(
+        new CustomEvent("studio:task-changed", {
+          detail: { task: null, projectId: projectId ?? null },
+        })
+      );
     }
-    window.dispatchEvent(
-      new CustomEvent("studio:task-changed", {
-        detail: { task, projectId: projectId ?? null },
-      })
-    );
   } catch {
     /* ignore */
   }
@@ -87,6 +136,8 @@ export function useStudio() {
   const [questions, setQuestions] = useState<StudioQuestion[]>([]);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
+  /** ISO timestamp when create-plan stream started — used to seed loading steps on remount. */
+  const [planStreamStartedAt, setPlanStreamStartedAt] = useState<string | null>(null);
   const [isApplyingSettings, setIsApplyingSettings] = useState(false);
   const [isRecommendingConfig, setIsRecommendingConfig] = useState(false);
   const [isApplyingRecommendation, setIsApplyingRecommendation] = useState(false);
@@ -107,9 +158,14 @@ export function useStudio() {
    *  Prevents the generateQuestions poll loop from calling setState after unmount
    *  and from making unnecessary API calls for up to 5 minutes after navigation. */
   const generateCancelledRef = useRef(false);
+  /** True while remount is polling for an in-flight create-plan (not a live generateInitialPlan call). */
+  const planCreateRestoreRef = useRef(false);
   useEffect(() => {
     generateCancelledRef.current = false;
-    return () => { generateCancelledRef.current = true; };
+    return () => {
+      generateCancelledRef.current = true;
+      planCreateRestoreRef.current = false;
+    };
   }, []);
 
   /** P2c: Monotonic version counter for updateSettingField.
@@ -132,14 +188,35 @@ export function useStudio() {
     setIsDraftSaved(false);
   }, [questions, project?.id]);
 
-  // SCRUM-402: badge theo streaming / generate loop / run Pending|Generating sau remount
+  // SCRUM-402: badge theo streaming / generate loop / run Pending|Generating sau remount.
+  // While `loading`, do not clear create_plan from LS (bootstrap may still restore it).
+  // Never strip kind/startedAt from a live create_plan session (bare "streaming" breaks remount restore).
   useEffect(() => {
     const runBusy =
       generationRun?.status === "Generating" || generationRun?.status === "Pending";
-    if (isStreaming) broadcastStudioTask("streaming", project?.id);
-    else if (isGeneratingQuestions || runBusy) broadcastStudioTask("generating", project?.id);
-    else broadcastStudioTask(null);
-  }, [isStreaming, isGeneratingQuestions, generationRun?.status, project?.id]);
+    if (isStreaming) {
+      const existing = readStudioTaskPayload();
+      const isCreatePlanSession =
+        Boolean(planStreamStartedAt) ||
+        (existing?.kind === "create_plan" &&
+          (!existing.projectId || existing.projectId === project?.id));
+
+      if (isCreatePlanSession) {
+        broadcastStudioTask("streaming", project?.id, {
+          kind: "create_plan",
+          startedAt: planStreamStartedAt ?? existing?.startedAt,
+        });
+      } else {
+        broadcastStudioTask("streaming", project?.id);
+      }
+    } else if (isGeneratingQuestions || runBusy) {
+      broadcastStudioTask("generating", project?.id);
+    } else if (loading) {
+      return;
+    } else {
+      broadcastStudioTask(null);
+    }
+  }, [isStreaming, isGeneratingQuestions, generationRun?.status, project?.id, planStreamStartedAt, loading]);
 
   const normalizeSettings = useCallback(
     (s: StudioSettings | null) => normalizeStudioSettings(s),
@@ -230,6 +307,27 @@ export function useStudio() {
       if (plan) {
         const qs = await studioApi.listQuestions(detail.id, { page: 1, pageSize: 100, planId: plan.id }).catch(() => null);
         if (qs) setQuestions(qs.items);
+        // Plan already exists — clear any stale create-plan session
+        const stored = readStudioTaskPayload();
+        if (stored?.kind === "create_plan" && stored.projectId === detail.id) {
+          planCreateRestoreRef.current = false;
+          setPlanStreamStartedAt(null);
+          setIsStreaming(false);
+          broadcastStudioTask(null);
+        }
+      } else {
+        // No plan yet — restore in-flight create-plan overlay if LS says so
+        const stored = readStudioTaskPayload();
+        if (
+          stored?.task === "streaming" &&
+          stored.kind === "create_plan" &&
+          stored.projectId === detail.id
+        ) {
+          const startedAt = stored.startedAt ?? new Date().toISOString();
+          planCreateRestoreRef.current = true;
+          setPlanStreamStartedAt(startedAt);
+          setIsStreaming(true);
+        }
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : tx.loadFailed;
@@ -279,10 +377,63 @@ export function useStudio() {
     }, 3000);
 
     return () => window.clearInterval(timer);
-  // Depend on id+status so the timer restarts whenever the run progresses; isGeneratingQuestions
-  // ensures we don't double-poll while the generateQuestions while-loop is also running.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [project?.id, isGeneratingQuestions, generationRun?.id, generationRun?.status, currentPlan?.id]);
+
+  // Restore in-flight create-plan after remount: poll until plan appears (original POST may still finish on BE).
+  useEffect(() => {
+    if (!project || currentPlan) return;
+    if (!isStreaming || !planCreateRestoreRef.current) return;
+
+    const projectId = project.id;
+    const startedMs = planStreamStartedAt
+      ? new Date(planStreamStartedAt).getTime()
+      : Date.now();
+
+    const pollOnce = async () => {
+      if (generateCancelledRef.current || !planCreateRestoreRef.current) return;
+
+      if (Date.now() - startedMs > PLAN_CREATE_TIMEOUT_MS) {
+        planCreateRestoreRef.current = false;
+        setIsStreaming(false);
+        setPlanStreamStartedAt(null);
+        broadcastStudioTask(null);
+        addToast("error", tx.loadFailed);
+        return;
+      }
+
+      const plan = await studioApi.getCurrentPlan(projectId).catch(() => null);
+      if (!plan || generateCancelledRef.current) return;
+
+      try {
+        const detail = await studioApi.getPlanDetail(projectId, plan.id);
+        if (generateCancelledRef.current) return;
+        setCurrentPlan(detail);
+        const planList = await studioApi.listPlans(projectId).catch(() => []);
+        if (!generateCancelledRef.current) setPlans(planList);
+        planCreateRestoreRef.current = false;
+        setIsStreaming(false);
+        setPlanStreamStartedAt(null);
+        addToast("success", tx.planCreated);
+      } catch {
+        /* keep polling */
+      }
+    };
+
+    void pollOnce();
+    const timer = window.setInterval(() => {
+      void pollOnce();
+    }, PLAN_CREATE_POLL_MS);
+
+    return () => window.clearInterval(timer);
+  }, [
+    project?.id,
+    currentPlan,
+    isStreaming,
+    planStreamStartedAt,
+    addToast,
+    tx.loadFailed,
+    tx.planCreated,
+  ]);
 
   const refreshPlanAndSettings = useCallback(async () => {
     if (!project) return;
@@ -321,16 +472,14 @@ export function useStudio() {
       addToast("success", tx.jdSaved);
       await refreshPlanAndSettings();
     } catch (error) {
-      const message = extractErrorMessage(error, lang) || tx.jdSaveFailed;
-      // Không phải JD / không phải IT → chữ vàng dưới ô nhập, không popup
-      if (isJdInputRejectError(error)) {
-        setJdInputWarning(message);
-        return;
-      }
-      setJdInputWarning(null);
+      const message = extractErrorMessage(error, lang) || tx.jdAnalyzeServerError || tx.jdSaveFailed;
+      // Luôn hiện lý do dưới ô JD — user biết vì sao chưa phân tích được
+      setJdInputWarning(message);
+      // Từ chối nội dung JD (không phải tin tuyển / không IT) → chỉ inline, không toast
+      if (isJdInputRejectError(error)) return;
       addToast("error", message);
     }
-  }, [addToast, jdContent, lang, project, refreshPlanAndSettings, tx.jdSaved, tx.jdSaveFailed]);
+  }, [addToast, jdContent, lang, project, refreshPlanAndSettings, tx.jdAnalyzeServerError, tx.jdSaved, tx.jdSaveFailed]);
 
   const uploadJobDescription = useCallback(async (file: File): Promise<boolean> => {
     if (!project) return false;
@@ -345,16 +494,13 @@ export function useStudio() {
       await refreshPlanAndSettings();
       return true;
     } catch (error) {
-      const message = extractErrorMessage(error, lang) || tx.jdUploadFailed;
-      if (isJdInputRejectError(error)) {
-        setJdInputWarning(message);
-        return false;
-      }
-      setJdInputWarning(null);
+      const message = extractErrorMessage(error, lang) || tx.jdAnalyzeServerError || tx.jdUploadFailed;
+      setJdInputWarning(message);
+      if (isJdInputRejectError(error)) return false;
       addToast("error", message);
       return false;
     }
-  }, [addToast, lang, project, refreshPlanAndSettings, tx.jdUploadFailed, tx.jdUploaded]);
+  }, [addToast, lang, project, refreshPlanAndSettings, tx.jdAnalyzeServerError, tx.jdUploadFailed, tx.jdUploaded]);
 
   /** SCRUM-416: lưu vị trí HR sửa (PATCH Title trên BE). */
   const saveJobDescriptionPosition = useCallback(async (position: string) => {
@@ -499,7 +645,14 @@ export function useStudio() {
       addToast("error", tx.seniorityRequiredForPlan);
       return;
     }
+    const startedAt = new Date().toISOString();
+    planCreateRestoreRef.current = false;
+    setPlanStreamStartedAt(startedAt);
     setIsStreaming(true);
+    broadcastStudioTask("streaming", project.id, {
+      kind: "create_plan",
+      startedAt,
+    });
     try {
       setMessages((prev) => [
         ...prev.filter((m) => !m.content.startsWith("Refined message:")),
@@ -533,6 +686,7 @@ export function useStudio() {
       ]);
     } finally {
       setIsStreaming(false);
+      setPlanStreamStartedAt(null);
     }
   }, [
     addToast,
@@ -1117,6 +1271,7 @@ export function useStudio() {
       questions,
       messages,
       isStreaming,
+      planStreamStartedAt,
       isApplyingSettings,
       isRecommendingConfig,
       isApplyingRecommendation,
@@ -1174,6 +1329,7 @@ export function useStudio() {
       isSavingDraft,
       isDraftSaved,
       isStreaming,
+      planStreamStartedAt,
       jdContent,
       jdFileName,
       jdInputWarning,

@@ -41,7 +41,7 @@ export function QuestionStylesPicker({ selected, disabled, onChange }: Props) {
   return (
     <div className="space-y-1.5">
       <p className={cn("text-[10px]", portalSubtext)}>{cfg.stylesHint}</p>
-      <div className="flex flex-wrap gap-1.5">
+      <div className="flex flex-wrap gap-1">
         {CANONICAL_QUESTION_STYLES.map((style) => {
           const active = selected.includes(style);
           return (
@@ -51,10 +51,10 @@ export function QuestionStylesPicker({ selected, disabled, onChange }: Props) {
               disabled={disabled}
               onClick={() => toggle(style)}
               className={cn(
-                "flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50",
+                "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50",
                 active
-                  ? "border-primary bg-primary/10 text-primary"
-                  : "border-gray-200 text-gray-600 hover:border-gray-300 dark:border-gray-700 dark:text-gray-300"
+                  ? "border-primary/40 bg-primary/10 text-primary"
+                  : "border-gray-200 bg-white text-gray-600 hover:border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300"
               )}
             >
               {active && <Check className="h-2.5 w-2.5" strokeWidth={3} />}
@@ -63,6 +63,11 @@ export function QuestionStylesPicker({ selected, disabled, onChange }: Props) {
           );
         })}
       </div>
+      {selected.length === 0 && (
+        <p className="text-[10px] text-amber-700 dark:text-amber-300">
+          {cfg.stylesMinOne ?? "Select at least 1 style."}
+        </p>
+      )}
     </div>
   );
 }

@@ -22,6 +22,8 @@ type Props = {
   statsTemplate?: string;
   fromFileLabel?: string;
   viewParsedLabel?: string;
+  /** Sidebar mode: clamp JD text and use Xem đầy đủ / Thu gọn. */
+  compactPreview?: boolean;
 };
 
 function previewSnippet(text: string, max = 140): string {
@@ -47,6 +49,7 @@ export function JobDescriptionViewer({
   statsTemplate = "{{words}} · {{lines}}",
   fromFileLabel = "Từ file",
   viewParsedLabel = "Xem nội dung đã trích",
+  compactPreview = false,
 }: Props) {
   const text = jobDescription?.trim() ?? "";
   const hasJd = text.length > 0;
@@ -55,16 +58,19 @@ export function JobDescriptionViewer({
     (!!originalFileName && originalFileName.trim().length > 0);
   const fileName = originalFileName?.trim() || null;
 
-  // File: mặc định thu (nhìn card file); paste: mở text
-  const [open, setOpen] = useState(hasJd && !isFromFile);
+  // Compact sidebar: start collapsed. File: mặc định thu; paste (full mode): mở text.
+  const [open, setOpen] = useState(() => hasJd && !isFromFile && !compactPreview);
+  const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
-    if (!hasJd) {
-      setOpen(false);
+    if (!hydrated) {
+      setHydrated(true);
       return;
     }
-    setOpen(!isFromFile);
-  }, [hasJd, isFromFile, text, fileName]);
+    if (!hasJd) {
+      setOpen(false);
+    }
+  }, [hasJd, hydrated]);
 
   const statsLabel = useMemo(() => {
     if (!hasJd) return null;
@@ -74,6 +80,8 @@ export function JobDescriptionViewer({
       .replace("{{words}}", String(words))
       .replace("{{lines}}", String(lines));
   }, [hasJd, text, statsTemplate]);
+
+  const showBody = hasJd && (compactPreview || open);
 
   return (
     <section
@@ -142,6 +150,10 @@ export function JobDescriptionViewer({
 
           {!hasJd ? (
             <p className={cn("mt-1 text-[11px] leading-snug", portalSubtext)}>{emptyLabel}</p>
+          ) : compactPreview ? (
+            <p className={cn("mt-0.5 text-[11px]", portalSubtext)}>
+              {open ? collapseLabel : expandLabel}
+            </p>
           ) : isFromFile && fileName && !open ? (
             <p className={cn("mt-1 truncate text-[12px] font-medium", portalHeading)} title={fileName}>
               {fileName}
@@ -194,21 +206,22 @@ export function JobDescriptionViewer({
         </div>
       ) : null}
 
-      {hasJd && open ? (
+      {showBody ? (
         <div
           className={cn(
             "px-4 pb-4",
             isFromFile && fileName ? "pt-0" : "border-t border-sky-100 pt-3 dark:border-sky-900/40"
           )}
         >
-          {isFromFile ? (
+          {isFromFile && open ? (
             <p className={cn("mb-2 text-[10px] font-semibold uppercase tracking-wide", portalSubtext)}>
               {viewParsedLabel}
             </p>
           ) : null}
           <div
             className={cn(
-              "max-h-[min(48vh,380px)] overflow-y-auto overscroll-contain rounded-lg border px-3.5 py-3",
+              "overflow-y-auto overscroll-contain rounded-lg border px-3.5 py-3",
+              compactPreview && !open ? "max-h-36" : compactPreview ? "max-h-64" : "max-h-[min(48vh,380px)]",
               isFromFile
                 ? "border-indigo-100/80 bg-linear-to-b from-indigo-50/50 to-white dark:border-indigo-900/40 dark:from-indigo-950/20 dark:to-gray-900/80"
                 : "border-sky-100/80 bg-linear-to-b from-sky-50/80 to-white dark:border-sky-900/40 dark:from-sky-950/25 dark:to-gray-900/80"
@@ -218,6 +231,7 @@ export function JobDescriptionViewer({
               className={cn(
                 "pl-3.5 text-[13px] leading-[1.7] tracking-[0.01em]",
                 "whitespace-pre-wrap break-words text-gray-800 dark:text-gray-100",
+                compactPreview && !open ? "line-clamp-6" : "",
                 isFromFile
                   ? "border-l-[3px] border-indigo-400 dark:border-indigo-500"
                   : "border-l-[3px] border-sky-400 dark:border-sky-500"
@@ -226,6 +240,15 @@ export function JobDescriptionViewer({
               {text}
             </div>
           </div>
+          {compactPreview ? (
+            <button
+              type="button"
+              onClick={() => setOpen((v) => !v)}
+              className="mt-2 text-xs font-semibold text-primary hover:underline"
+            >
+              {open ? collapseLabel : expandLabel}
+            </button>
+          ) : null}
         </div>
       ) : null}
     </section>

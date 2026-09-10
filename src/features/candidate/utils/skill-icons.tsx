@@ -31,6 +31,8 @@ import {
   SiJenkins,
   SiGraphql,
   SiTailwindcss,
+  SiHtml5,
+  SiCss,
   SiLinux, SiNginx, SiUbuntu,
   SiScrumalliance,
   SiUnity,
@@ -91,6 +93,8 @@ const SKILL_RULES: Array<{ test: RegExp; config: SkillIconConfig }> = [
   { test: /vue/i,                 config: { icon: SiVuedotjs,      className: "text-[#4FC08D]" } },
   { test: /angular/i,             config: { icon: SiAngular,       className: "text-[#DD0031]" } },
   { test: /tailwind/i,            config: { icon: SiTailwindcss,   className: "text-[#06B6D4]" } },
+  { test: /html5?|\.html\b/i,     config: { icon: SiHtml5,         className: "text-[#E34F26]" } },
+  { test: /\bcss3?\b|\.css\b/i,   config: { icon: SiCss,           className: "text-[#1572B6]" } },
 
   // ── Languages ─────────────────────────────────────────────────────
   { test: /typescript|\.ts\b/i,   config: { icon: SiTypescript,    className: "text-[#3178C6]" } },

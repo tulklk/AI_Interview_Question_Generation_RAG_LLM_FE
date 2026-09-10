@@ -27,6 +27,9 @@ import {
 import { SessionXpSummary } from "@/features/gamification/components/session-xp-summary";
 import { XpGainNotification } from "@/features/gamification/components/xp-gain-notification";
 import type { XpReward } from "@/features/gamification/types/gamification.types";
+import { EventTracker } from "@/features/candidate/anti-cheat/EventTracker";
+import { AntiCheatReport } from "@/features/candidate/components/anti-cheat/AntiCheatReport";
+import type { AntiCheatPersistedPayload } from "@/features/candidate/anti-cheat/types";
 
 const CELEBRATION_THRESHOLD = 80;
 const Q_PAGE_SIZE = 5;
@@ -253,6 +256,7 @@ export function FeedbackPage({
   const { addToast } = useToast();
   const isFreeTeaser = accessLevel === "FreeTeaser";
   const [upgradeOpen, setUpgradeOpen] = useState(false);
+  const [integrityReport, setIntegrityReport] = useState<AntiCheatPersistedPayload | null>(null);
   const hasScore = session.overallScore !== null;
   const score = session.overallScore ?? 0;
   const { label: scoreLevelLabel, badgeClass: scoreLevelBadgeClass } = getScoreLevel(score, p.scoreLevels);
@@ -271,6 +275,10 @@ export function FeedbackPage({
   const [qPage, setQPage] = useState(1);
   const totalQPages = Math.max(1, Math.ceil(reviewQuestions.length / Q_PAGE_SIZE));
   const pageQuestions = reviewQuestions.slice((qPage - 1) * Q_PAGE_SIZE, qPage * Q_PAGE_SIZE);
+
+  useEffect(() => {
+    setIntegrityReport(EventTracker.restore(session.id));
+  }, [session.id]);
 
   async function handleShare() {
     const url = window.location.href;
@@ -508,6 +516,12 @@ export function FeedbackPage({
            XP is awarded (normalizeXpReward returns null when totalEarned ≤ 0). */}
       {xpReward && (
         <SessionXpSummary xpReward={xpReward} className="mb-6" />
+      )}
+
+      {integrityReport && (
+        <div className="mb-6">
+          <AntiCheatReport payload={integrityReport} />
+        </div>
       )}
 
       {/* ── Skill Breakdown (radar) — only when at least one question has dimension scores ── */}

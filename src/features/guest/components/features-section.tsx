@@ -11,16 +11,16 @@ export function FeaturesSection() {
   const f = t.features;
 
   return (
-    <section id="features" className="relative bg-white/92 dark:bg-gray-950/85 py-20 px-6">
+    <section id="features" className="relative bg-white/92 dark:bg-gray-950/85 py-12 sm:py-20 px-4 sm:px-6">
       <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
         <CosmicField variant="compact" />
       </div>
       <div className="relative z-10 max-w-6xl mx-auto">
-        <ScrollReveal animation="fade-up" className="text-center mb-14">
+        <ScrollReveal animation="fade-up" className="text-center mb-8 sm:mb-14">
           <p className="text-sm font-semibold text-[#6c47ff] uppercase tracking-widest mb-3">
             {f.sectionLabel}
           </p>
-          <h2 className="text-3xl font-bold text-gray-900 dark:text-gray-50">{f.headline}</h2>
+          <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-50">{f.headline}</h2>
           <p className="text-gray-500 dark:text-gray-400 mt-3 max-w-xl mx-auto text-base leading-relaxed">
             {f.subtext}
           </p>
