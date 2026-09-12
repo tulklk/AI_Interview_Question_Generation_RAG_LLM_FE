@@ -14,6 +14,8 @@ import { StudioTopBar } from "@/features/studio/components/studio-top-bar";
 import { StudioProgressBar } from "@/features/studio/components/studio-progress";
 import { SourcesPanel } from "@/features/studio/components/sources-panel";
 import { ChatPanel } from "@/features/studio/components/chat-panel";
+import { PlanCreatingLoading } from "@/features/studio/components/plan-creating-loading";
+import { portalCard } from "@/shared/utils/portal-ui";
 import { StudioSettingsPanel } from "@/features/studio/components/studio-settings-panel";
 import { useStudioConfig } from "@/features/studio/hooks/use-studio-config";
 import { StudioActionBar } from "@/features/studio/components/studio-action-bar";
@@ -27,6 +29,8 @@ import { pollGenerationRun } from "@/features/studio/utils/poll-generation-run";
 
 /** SCRUM-431: đã xem hướng dẫn viền vàng 2 cột (bỏ qua lần sau). */
 const STUDIO_CONFIG_GUIDE_SEEN_KEY = "studio_config_guide_seen";
+const STUDIO_SOURCES_COLLAPSED_KEY = "studio_sources_collapsed";
+const STUDIO_INSPECTOR_COLLAPSED_KEY = "studio_inspector_collapsed";
 
 // localStorage can throw (private mode, quota, disabled storage) — one place to
 // swallow that instead of three separate try/catch blocks with drifting fallbacks.
@@ -40,6 +44,24 @@ function isConfigGuideSeen(): boolean {
 function setConfigGuideSeen(): void {
   try {
     localStorage.setItem(STUDIO_CONFIG_GUIDE_SEEN_KEY, "1");
+  } catch {
+    /* ignore */
+  }
+}
+
+function readCollapsed(key: string, fallback = false): boolean {
+  try {
+    const raw = localStorage.getItem(key);
+    if (raw === null) return fallback;
+    return raw === "1";
+  } catch {
+    return fallback;
+  }
+}
+
+function writeCollapsed(key: string, value: boolean): void {
+  try {
+    localStorage.setItem(key, value ? "1" : "0");
   } catch {
     /* ignore */
   }
@@ -105,8 +127,22 @@ export function StudioPage() {
   /** SCRUM-429: câu đang regen nền (badge + chặn double-click) */
   const [regeneratingQuestionIds, setRegeneratingQuestionIds] = useState<string[]>([]);
   const regenCancelledRef = useRef(false);
-  const [sourcesCollapsed, setSourcesCollapsed] = useState(false);
-  const [inspectorCollapsed, setInspectorCollapsed] = useState(false);
+  const [sourcesCollapsed, setSourcesCollapsed] = useState(() =>
+    readCollapsed(STUDIO_SOURCES_COLLAPSED_KEY)
+  );
+  const [inspectorCollapsed, setInspectorCollapsed] = useState(() =>
+    readCollapsed(STUDIO_INSPECTOR_COLLAPSED_KEY)
+  );
+
+  const collapseSources = useCallback((value: boolean) => {
+    writeCollapsed(STUDIO_SOURCES_COLLAPSED_KEY, value);
+    setSourcesCollapsed(value);
+  }, []);
+  const collapseInspector = useCallback((value: boolean) => {
+    writeCollapsed(STUDIO_INSPECTOR_COLLAPSED_KEY, value);
+    setInspectorCollapsed(value);
+  }, []);
+
   /** SCRUM-431: viền vàng hướng dẫn lần đầu — false sau khi dismiss / tạo plan / đã quen. */
   const [showConfigGuide, setShowConfigGuide] = useState(false);
   const planCollapseDoneRef = useRef(false);
@@ -148,10 +184,10 @@ export function StudioPage() {
     }
     if (planCollapseDoneRef.current) return;
     planCollapseDoneRef.current = true;
-    setSourcesCollapsed(true);
-    setInspectorCollapsed(true);
+    collapseSources(true);
+    collapseInspector(true);
     setShowConfigGuide(false);
-  }, [studio.currentPlan]);
+  }, [studio.currentPlan, collapseSources, collapseInspector]);
 
   // quotaBlocked gates canGenerate / canCreatePlan AND drives the dialog. canGenerateNow defaults
   // to true before any data arrives, so key off `subscription` rather than the context's `loading`
@@ -331,8 +367,8 @@ export function StudioPage() {
     // question list with the old project's data.
     regenCancelledRef.current = true;
     // SCRUM-431: mở lại 2 cột để cấu hình phiên mới
-    setSourcesCollapsed(false);
-    setInspectorCollapsed(false);
+    collapseSources(false);
+    collapseInspector(false);
     planCollapseDoneRef.current = false;
     if (!isConfigGuideSeen()) setShowConfigGuide(true);
     void studio.createNewSession().then(() => {
@@ -340,7 +376,7 @@ export function StudioPage() {
       regenCancelledRef.current = false;
       if (quotaBlocked) setQuotaDialogOpen(true);
     });
-  }, [quotaBlocked, studio]);
+  }, [collapseInspector, collapseSources, quotaBlocked, studio]);
 
   /** Lưu draft settings (ngôn ngữ / advanced / …) lên BE — silent. Tránh lệch UI sau duyệt. */
   const flushConfigDraftSilent = useCallback(async (): Promise<boolean> => {
@@ -364,8 +400,8 @@ export function StudioPage() {
       return;
     }
     // SCRUM-431: thu gọn 2 cột + đánh dấu đã xem hướng dẫn
-    setSourcesCollapsed(true);
-    setInspectorCollapsed(true);
+    collapseSources(true);
+    collapseInspector(true);
     planCollapseDoneRef.current = true;
     markConfigGuideSeen();
     switchMobileTab("main");
@@ -377,7 +413,7 @@ export function StudioPage() {
       studioConfig.acceptServerSettings();
       void refreshSubscription();
     })();
-  }, [flushConfigDraftSilent, markConfigGuideSeen, quotaBlocked, studio, switchMobileTab, studioConfig, refreshSubscription]);
+  }, [collapseInspector, collapseSources, flushConfigDraftSilent, markConfigGuideSeen, quotaBlocked, studio, switchMobileTab, studioConfig, refreshSubscription]);
 
   const handleApprovePlan = useCallback(() => {
     void (async () => {
@@ -507,6 +543,35 @@ export function StudioPage() {
       studio.jdSummary,
     ]
   );
+
+  // Plan-creation panel is rendered here, not inside ChatPanel: this column keeps
+  // painting correctly after a remount (badge return), so the overlay never lands
+  // in a collapsed or transparent wrapper.
+  const planCreating = studio.isStreaming && !studio.currentPlan;
+  // Hold the panel briefly once the plan lands so the last step can tick to 4/4.
+  const [planCreateFinishing, setPlanCreateFinishing] = useState(false);
+  const planCreatingPrevRef = useRef(planCreating);
+  useEffect(() => {
+    const wasCreating = planCreatingPrevRef.current;
+    planCreatingPrevRef.current = planCreating;
+    if (planCreating) {
+      setPlanCreateFinishing(false);
+      return;
+    }
+    if (!wasCreating) return;
+    setPlanCreateFinishing(true);
+    const timer = setTimeout(() => setPlanCreateFinishing(false), 1200);
+    return () => clearTimeout(timer);
+  }, [planCreating]);
+
+  // Remount giữa lúc đang tạo plan: thu gọn 2 cột (storage có thể còn false từ phiên cũ).
+  useEffect(() => {
+    if (!planCreating) return;
+    collapseSources(true);
+    collapseInspector(true);
+  }, [planCreating, collapseSources, collapseInspector]);
+
+  const showPlanCreating = planCreating || planCreateFinishing;
 
   // Viền chạy theo từng bước — tắt khi bước đó xong (không vàng cả 2 cột hoài)
   const guideBase = showConfigGuide && !studio.currentPlan && !studio.isStreaming;
@@ -743,7 +808,7 @@ export function StudioPage() {
           {sourcesCollapsed ? (
             <button
               type="button"
-              onClick={() => setSourcesCollapsed(false)}
+              onClick={() => collapseSources(false)}
               title={s.aria.viewSources ?? s.aria.expandSource}
               aria-label={s.aria.viewSources ?? s.aria.expandSource}
               className="flex w-full flex-col items-center gap-2 rounded-xl border border-gray-200 bg-white px-1 py-4 text-gray-400 transition-colors hover:border-primary/30 hover:text-primary dark:border-gray-800 dark:bg-gray-900 dark:hover:border-primary/40 dark:hover:text-primary"
@@ -782,7 +847,7 @@ export function StudioPage() {
                 </span>
                 <button
                   type="button"
-                  onClick={() => setSourcesCollapsed(true)}
+                  onClick={() => collapseSources(true)}
                   className="rounded-lg p-1 text-gray-400 hover:bg-gray-50 hover:text-gray-600 dark:hover:bg-gray-800 dark:hover:text-gray-200"
                   aria-label={s.aria.collapseSource}
                 >
@@ -825,9 +890,18 @@ export function StudioPage() {
           )}
           style={{ animation: "slideUpFade 0.42s cubic-bezier(0.25,0.46,0.45,0.94) 0.14s both" }}
         >
+          {showPlanCreating ? (
+            <div className={cn(portalCard, "flex flex-1 flex-col overflow-hidden")}>
+              <PlanCreatingLoading
+                startedAt={studio.planStreamStartedAt}
+                forceAllDone={planCreateFinishing}
+              />
+            </div>
+          ) : (
           <ChatPanel
             messages={studio.messages}
             isStreaming={studio.isStreaming}
+            planStreamStartedAt={studio.planStreamStartedAt}
             plan={studio.currentPlan}
             canCreatePlan={canCreatePlan && !sideColumnsLocked}
             questions={studio.questions}
@@ -1026,6 +1100,7 @@ export function StudioPage() {
             isDraftSaved={studio.isDraftSaved}
             isPublished={studio.project?.isPublished ?? false}
           />
+          )}
         </div>
 
         {/* Inspector / Settings panel */}
@@ -1045,7 +1120,7 @@ export function StudioPage() {
           {inspectorCollapsed ? (
             <button
               type="button"
-              onClick={() => setInspectorCollapsed(false)}
+              onClick={() => collapseInspector(false)}
               title={s.aria.viewConfig ?? s.aria.expandSetting}
               aria-label={s.aria.viewConfig ?? s.aria.expandSetting}
               className="flex w-full flex-col items-center gap-2 rounded-xl border border-gray-200 bg-white px-1 py-4 text-gray-400 transition-colors hover:border-primary/30 hover:text-primary dark:border-gray-800 dark:bg-gray-900 dark:hover:border-primary/40 dark:hover:text-primary"
@@ -1084,7 +1159,7 @@ export function StudioPage() {
                 </span>
                 <button
                   type="button"
-                  onClick={() => setInspectorCollapsed(true)}
+                  onClick={() => collapseInspector(true)}
                   className="rounded-lg p-1 text-gray-400 hover:bg-gray-50 hover:text-gray-600 dark:hover:bg-gray-800 dark:hover:text-gray-200"
                   aria-label={s.aria.collapseSetting}
                 >

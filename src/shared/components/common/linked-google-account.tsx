@@ -28,7 +28,8 @@ function GoogleIcon({ size = 20 }: { size?: number }) {
 export interface LinkedGoogleAccountLabels {
   title?: string;
   linkedBadge: string;
-  hint: string;
+  /** Bỏ trống để ẩn dòng giải thích (layout compact). */
+  hint?: string;
 }
 
 interface LinkedGoogleAccountProps {
@@ -54,7 +55,9 @@ export function LinkedGoogleAccount({ linked, email, labels, className }: Linked
         <div className="min-w-0 flex-1">
           <p className={cn("text-sm font-semibold", portalHeading)}>Google</p>
           <p className={cn("text-xs mt-0.5 truncate", portalSubtext)}>{email}</p>
-          <p className={cn("text-[11px] mt-0.5", portalSubtext)}>{labels.hint}</p>
+          {labels.hint ? (
+            <p className={cn("text-[11px] mt-0.5", portalSubtext)}>{labels.hint}</p>
+          ) : null}
         </div>
         {/* Badge — large, pinned to the right, vertically centred by parent items-center */}
         <span className="shrink-0 inline-flex items-center gap-1.5 rounded-full border border-emerald-200 dark:border-emerald-800/50 bg-emerald-50 dark:bg-emerald-950/40 px-3 py-1.5 text-[13px] font-semibold text-emerald-700 dark:text-emerald-400">

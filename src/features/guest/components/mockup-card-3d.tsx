@@ -16,7 +16,7 @@ const CHIPS = ["React", "TypeScript", "Next.js", "SSR", "REST API"] as const;
 
 const CW    = 480;
 const CH    = 610;
-const T     = 14;
+const T     = 10;
 const R     = 20;
 const R_OUT = R + 4;
 
@@ -37,6 +37,7 @@ interface MockupCard3DProps {
 export function MockupCard3D({
   title, jdLabel, jdText, kwLabel, question, aiLabel, aiAnswer, className = "",
 }: MockupCard3DProps) {
+  const boxRef        = useRef<HTMLDivElement>(null);
   const wrapperRef    = useRef<HTMLDivElement>(null);
   const sceneRef      = useRef<HTMLDivElement>(null);
   const canvasFRef    = useRef<HTMLCanvasElement>(null); // front
@@ -114,25 +115,47 @@ export function MockupCard3D({
       cx.arcTo(_x0, _y0, _x0 + R_OUT, _y0, R_OUT);
       cx.closePath();
       cx.globalAlpha = 1;
-      cx.strokeStyle = darkMode ? "rgba(139,92,246,0.22)" : "rgba(109,40,217,0.5)";
-      cx.lineWidth   = darkMode ? 1.2 : 1.5;
+      // Light: hairline edge to match soft floating card; dark: soft neon ring
+      cx.strokeStyle = darkMode ? "rgba(139,92,246,0.22)" : "rgba(148,163,184,0.45)";
+      cx.lineWidth   = darkMode ? 1.2 : 1;
       cx.stroke();
     }
 
     // ── Card-rotation state ───────────────────────────────────────────────
-    let rx = 8, ry = -18, s = 1;
+    const isMobile = window.innerWidth < 1024;
+    /** Mức zoom mặc định: mobile thu nhỏ theo bề rộng viewport. */
+    const fitScale = () =>
+      window.innerWidth >= 1024
+        ? 1
+        : Math.max(0.55, Math.min(1, (window.innerWidth - 32) / 620));
+
+    // Desktop + mobile: mild float like reference (less extreme yaw than -18)
+    let rx = 4;
+    let ry = isMobile ? -8 : -8;
+    let s = fitScale();
+    let userZoomed = false;
     let velX = 0, velY = 0;
     let dragging = false, hovering = false;
     let lastX = 0, lastY = 0;
-    let tgtRx = 8, tgtRy = -18;
+    let tgtRx = rx, tgtRy = ry;
     let autoIdle = true, lastInteraction = 0;
     let energyOffset = 0;
     const IDLE_RESUME = 3000;
     const TAIL_LEN    = 720;
+    const IDLE_RX     = isMobile ? 4 : 4;
 
     const apply = () => {
       scene.style.transform = `rotateX(${rx}deg) rotateY(${ry}deg) scale(${s})`;
     };
+    /** Box giữ chỗ cao đúng bằng card đã thu nhỏ -> card không lệch xuống. */
+    let lastSyncedScale = -1;
+    const syncBoxScale = () => {
+      if (!boxRef.current || s === lastSyncedScale) return;
+      lastSyncedScale = s;
+      boxRef.current.style.setProperty("--mockup-scale", String(s));
+    };
+    apply();
+    syncBoxScale();
 
     // ── RAF ───────────────────────────────────────────────────────────────
     let rafId = 0;
@@ -155,26 +178,26 @@ export function MockupCard3D({
       }
 
       // Theme-aware energy colours:
-      // • Light: darker/more-saturated strokes so trail pops against white card
-      // • Dark : original neon-glow look (bright core vs dark bg)
+      // • Light: thin soft accent (match floating UI card reference)
+      // • Dark : neon-glow look (bright core vs dark bg)
       const dark = document.documentElement.classList.contains("dark");
 
       // Layer 1 — outer halo (widest, most transparent)
-      offCtx.globalAlpha = dark ? 0.55 : 0.42;
-      offCtx.strokeStyle = dark ? "rgba(109,40,217,1)" : "rgba(76,29,149,1)";
-      offCtx.lineWidth   = dark ? 11 : 13;
+      offCtx.globalAlpha = dark ? 0.55 : 0.22;
+      offCtx.strokeStyle = dark ? "rgba(109,40,217,1)" : "rgba(124,58,237,0.85)";
+      offCtx.lineWidth   = dark ? 11 : 4.5;
       offCtx.stroke();
 
       // Layer 2 — main glow body
-      offCtx.globalAlpha = dark ? 0.82 : 1;
-      offCtx.strokeStyle = dark ? "rgba(139,92,246,1)" : "rgba(109,40,217,1)";
-      offCtx.lineWidth   = dark ? 4 : 5;
+      offCtx.globalAlpha = dark ? 0.82 : 0.7;
+      offCtx.strokeStyle = dark ? "rgba(139,92,246,1)" : "rgba(139,92,246,0.9)";
+      offCtx.lineWidth   = dark ? 4 : 2.25;
       offCtx.stroke();
 
       // Layer 3 — hot core (must be visible on both white and dark bg)
       offCtx.globalAlpha = 1;
-      offCtx.strokeStyle = dark ? "rgba(216,180,254,1)" : "rgba(167,139,250,1)";
-      offCtx.lineWidth   = dark ? 1.5 : 2;
+      offCtx.strokeStyle = dark ? "rgba(216,180,254,1)" : "rgba(167,139,250,0.95)";
+      offCtx.lineWidth   = dark ? 1.5 : 1.15;
       offCtx.stroke();
 
       // Radial gradient mask (destination-in) — smooth fade, zero banding
@@ -205,7 +228,9 @@ export function MockupCard3D({
       if (dragging) {
         // handled in onMove
       } else if (autoIdle) {
-        ry += 0.12; rx += (5 - rx) * 0.015;
+        // Slow gentle yaw; keep pitch near mild idle (no strong 3D swing)
+        ry += isMobile ? 0.12 : 0.045;
+        rx += (IDLE_RX - rx) * 0.02;
       } else {
         // Hovering: gently follow cursor target position
         if (hovering) {
@@ -233,8 +258,8 @@ export function MockupCard3D({
         lastX = e.clientX; lastY = e.clientY;
       } else if (hovering && !autoIdle) {
         const rect = wrapper.getBoundingClientRect();
-        tgtRx = ((e.clientY - rect.top  - rect.height / 2) / (rect.height / 2)) * -10;
-        tgtRy = ((e.clientX - rect.left - rect.width  / 2) / (rect.width  / 2)) *  16;
+        tgtRx = ((e.clientY - rect.top  - rect.height / 2) / (rect.height / 2)) * -6;
+        tgtRy = ((e.clientX - rect.left - rect.width  / 2) / (rect.width  / 2)) *  10;
       }
     };
     const onUp = () => {
@@ -259,8 +284,17 @@ export function MockupCard3D({
     };
     const onWheel = (e: WheelEvent) => {
       e.preventDefault();
-      s = Math.max(0.55, Math.min(1.75, s - e.deltaY * 0.0007));
+      const maxS = window.innerWidth < 640 ? 1 : 1.75;
+      s = Math.max(0.55, Math.min(maxS, s - e.deltaY * 0.0007));
+      userZoomed = true;
+      syncBoxScale();
       lastInteraction = performance.now(); autoIdle = false;
+    };
+    const onResize = () => {
+      if (userZoomed) return;
+      s = fitScale();
+      apply();
+      syncBoxScale();
     };
 
     wrapper.addEventListener("pointerdown",   onDown);
@@ -270,6 +304,7 @@ export function MockupCard3D({
     wrapper.addEventListener("mouseenter",    onEnter);
     wrapper.addEventListener("mouseleave",    onLeave);
     wrapper.addEventListener("wheel",         onWheel, { passive: false });
+    window.addEventListener("resize",         onResize);
     return () => {
       cancelAnimationFrame(rafId);
       wrapper.removeEventListener("pointerdown",   onDown);
@@ -279,6 +314,7 @@ export function MockupCard3D({
       wrapper.removeEventListener("mouseenter",    onEnter);
       wrapper.removeEventListener("mouseleave",    onLeave);
       wrapper.removeEventListener("wheel",         onWheel);
+      window.removeEventListener("resize",         onResize);
     };
   }, []);
 
@@ -306,19 +342,20 @@ export function MockupCard3D({
   });
 
   return (
-    <div
-      ref={wrapperRef}
-      className={`flex items-center justify-center select-none touch-none ${className}`}
-      style={{ perspective: "1400px", cursor: "grab" }}
-      aria-label="Kéo để xoay 360°, cuộn để zoom"
-    >
+    <div ref={boxRef} className={`mockup-3d-box ${className}`}>
+      <div
+        ref={wrapperRef}
+        className="mockup-3d-fit flex items-center justify-center select-none touch-pan-y"
+        style={{ perspective: "1400px", cursor: "grab" }}
+        aria-label="Kéo để xoay 360°, cuộn để zoom"
+      >
       <div
         ref={sceneRef}
         style={{
           width: `${CW}px`, height: `${CH}px`,
           position: "relative",
           transformStyle: "preserve-3d",
-          transform: `rotateX(8deg) rotateY(-18deg)`,
+          transform: `rotateX(4deg) rotateY(-8deg)`,
           willChange: "transform",
         }}
       >
@@ -361,9 +398,8 @@ export function MockupCard3D({
             position:"absolute", inset:0,
             backfaceVisibility:"hidden", WebkitBackfaceVisibility:"hidden",
             borderRadius:`${R}px`, overflow:"hidden",
-            boxShadow:"0 32px 80px -12px rgba(0,0,0,0.45),0 0 0 1px rgba(108,71,255,0.18)",
           }}
-          className="bg-white dark:bg-[#0f1117]"
+          className="bg-white dark:bg-[#0f1117] shadow-[0_24px_48px_-20px_rgba(15,23,42,0.14),0_10px_24px_-12px_rgba(15,23,42,0.08),0_0_0_1px_rgba(148,163,184,0.35)] dark:shadow-[0_32px_80px_-12px_rgba(0,0,0,0.55),0_0_0_1px_rgba(108,71,255,0.28),0_0_40px_-12px_rgba(124,58,237,0.35)]"
         >
           <div className="flex items-center gap-3 px-5 py-3.5 bg-page-bg dark:bg-gray-800/90 border-b border-gray-100 dark:border-gray-700/70 shrink-0">
             <div className="flex gap-1.5 shrink-0">
@@ -441,6 +477,7 @@ export function MockupCard3D({
           </div>
         ))}
 
+      </div>
       </div>
     </div>
   );

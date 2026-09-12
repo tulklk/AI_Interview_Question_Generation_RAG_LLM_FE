@@ -11,12 +11,12 @@ export function FinalCtaSection() {
   const c = t.cta;
 
   return (
-    <section className="relative bg-[#f5f7fb] dark:bg-[#0b0f1a] py-20 px-6">
+    <section className="relative bg-[#f5f7fb] dark:bg-[#0b0f1a] py-12 sm:py-20 px-4 sm:px-6">
       <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
         <CosmicField variant="compact" />
       </div>
       <div className="relative z-10 max-w-6xl mx-auto">
-        <div className="bg-gradient-to-br from-[#6c47ff] to-[#8b65ff] rounded-xl px-10 py-16 text-center relative overflow-hidden">
+        <div className="bg-gradient-to-br from-[#6c47ff] to-[#8b65ff] rounded-xl px-5 sm:px-10 py-10 sm:py-16 text-center relative overflow-hidden">
           <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/3 pointer-events-none" />
           <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/4 pointer-events-none" />
 
@@ -27,28 +27,28 @@ export function FinalCtaSection() {
             </ScrollReveal>
 
             <ScrollReveal animation="fade-up" delay={80}>
-              <h2 className="text-4xl font-extrabold text-white leading-tight mb-4">
+              <h2 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-white leading-tight mb-4">
                 {c.headline}
               </h2>
             </ScrollReveal>
 
             <ScrollReveal animation="fade-up" delay={180}>
-              <p className="text-lg text-white/75 max-w-xl mx-auto leading-relaxed mb-10">
+              <p className="text-base sm:text-lg text-white/75 max-w-xl mx-auto leading-relaxed mb-8 sm:mb-10">
                 {c.subtext}
               </p>
             </ScrollReveal>
 
-            <ScrollReveal animation="fade-up" delay={300} as="div" className="flex items-center justify-center flex-wrap gap-4">
+            <ScrollReveal animation="fade-up" delay={300} as="div" className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3 sm:gap-4">
               <Link
                 href="/login"
-                className="inline-flex items-center gap-2 bg-white text-[#6c47ff] font-bold text-sm px-7 py-3.5 rounded-lg hover:bg-white/90 transition-colors shadow-lg"
+                className="inline-flex w-full sm:w-auto justify-center items-center gap-2 bg-white text-[#6c47ff] font-bold text-sm px-7 py-3.5 rounded-lg hover:bg-white/90 transition-colors shadow-lg"
               >
                 <Sparkles size={15} />
                 {c.primary}
               </Link>
               <Link
                 href="/login"
-                className="inline-flex items-center gap-2 border-2 border-white/40 text-white font-semibold text-sm px-7 py-3.5 rounded-lg hover:bg-white/10 transition-colors"
+                className="inline-flex w-full sm:w-auto justify-center items-center gap-2 border-2 border-white/40 text-white font-semibold text-sm px-7 py-3.5 rounded-lg hover:bg-white/10 transition-colors"
               >
                 {c.secondary}
                 <ArrowRight size={15} />

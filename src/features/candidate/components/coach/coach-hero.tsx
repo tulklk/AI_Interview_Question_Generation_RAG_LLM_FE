@@ -55,12 +55,12 @@ export function CoachHero({
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 shrink-0">
+        <div className="flex w-full flex-col gap-2 shrink-0 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
           <button
             type="button"
             disabled={isPremium && (busy || diagnosticDisabled)}
             onClick={() => (isPremium ? onPrimary() : onUpgrade())}
-            className="shimmer-button hr-cta-btn inline-flex items-center gap-2 h-10 px-4 rounded-lg text-[13px] font-semibold text-white disabled:opacity-50"
+            className="shimmer-button hr-cta-btn inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg px-4 text-[13px] font-semibold text-white disabled:opacity-50 sm:w-auto"
           >
             {isPremium && busy ? <Loader2 size={14} className="animate-spin" /> : isPremium ? <Sparkles size={14} /> : <Crown size={14} />}
             {ctaLabel}
@@ -68,7 +68,7 @@ export function CoachHero({
           <Link
             href="/candidate/practice"
             className={cn(
-              "inline-flex items-center gap-1.5 h-10 px-4 rounded-lg text-[13px] font-semibold border border-gray-200 dark:border-gray-700 hover:border-primary/40 transition-colors",
+              "inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-lg border border-gray-200 px-4 text-[13px] font-semibold transition-colors hover:border-primary/40 dark:border-gray-700 sm:w-auto",
               portalHeadingAlt
             )}
           >

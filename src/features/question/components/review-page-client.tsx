@@ -3,10 +3,11 @@
 import { useEffect, useState, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { ArrowLeft, AlertCircle, Sparkles, Pencil, Check, X, Loader2, Bookmark, Users } from "lucide-react";
+import { ArrowLeft, AlertCircle, Sparkles, Pencil, Check, X, Loader2, Bookmark, Users, Globe, PenLine, Clock, UserCheck } from "lucide-react";
 import { AiLoadingSpinner } from "@/shared/components/common/ai-loading-spinner";
 import { SessionStatusBadge } from "@/features/interview/components/history/session-status-badge";
 import { ReviewQuestionsSection } from "@/features/question/components/review-questions-section.lazy";
+import { QuestionSetInfoCard } from "@/features/question/components/question-set-info-card";
 import { useLanguage } from "@/shared/providers/language-context";
 import { useToast } from "@/shared/providers/toast-context";
 import { cn } from "@/lib/cn";
@@ -195,22 +196,38 @@ export function ReviewPageClient({
     if (ok) setEditingTitle(false);
   }
 
+  const questionCount =
+    draftQuestions?.length ?? session.generatedQuestions?.length ?? 0;
+  const metaParts = [
+    rp.questionCount.replace("{{count}}", String(questionCount)),
+    initialTimeLimitMinutes != null
+      ? rp.timeLimitLabel.replace("{{min}}", String(initialTimeLimitMinutes))
+      : rp.noTimeLimitLabel,
+    initialAutoRecommendEnabled
+      ? rp.recSettingsLabelOn.replace(
+          "{{score}}",
+          String(initialRecommendationMinScore ?? 70)
+        )
+      : rp.recSettingsLabelOff,
+  ];
+
   return (
-    <div className="space-y-6">
-      {/* Page header */}
-      <div className="animate-fade-up">
+    <div className="mx-auto w-full max-w-[1600px] space-y-4 xl:space-y-5">
+      {/* Unified page header */}
+      <div className="animate-fade-up space-y-3">
         <Link
           href="/hr/history"
           className={cn(
-            "inline-flex items-center gap-1.5 text-sm transition-colors mb-3 hover:text-gray-700 dark:hover:text-gray-300",
+            "inline-flex items-center gap-1.5 text-sm transition-colors hover:text-gray-700 dark:hover:text-gray-300",
             portalSubtext
           )}
         >
           <ArrowLeft size={14} />
           {rp.backToHistory}
         </Link>
-        <div className="flex items-start justify-between gap-4 flex-wrap">
-          <div className="min-w-0 flex-1">
+
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0 flex-1 space-y-1.5">
             {editingTitle ? (
               <div className="flex items-center gap-1.5">
                 <input
@@ -224,7 +241,7 @@ export function ReviewPageClient({
                   disabled={savingTitle}
                   maxLength={500}
                   className={cn(
-                    "text-xl font-bold rounded-lg px-2.5 py-1 outline-none focus:border-primary max-w-md",
+                    "text-xl font-bold rounded-lg px-2.5 py-1 outline-none focus:border-primary max-w-md w-full",
                     portalInput
                   )}
                 />
@@ -248,23 +265,54 @@ export function ReviewPageClient({
                 </button>
               </div>
             ) : (
-              <div className="flex items-center gap-2 group">
-                <h2 className={cn("text-2xl font-bold truncate", portalHeading)}>{session.jobTitle}</h2>
+              <div className="flex flex-wrap items-center gap-2 group">
+                <h2 className={cn("text-xl sm:text-2xl font-bold break-words", portalHeading)}>
+                  {session.jobTitle}
+                </h2>
                 {onRenameTitle && (
                   <button
                     type="button"
                     onClick={startEditTitle}
                     title={rp.renameTitleBtn}
-                    className="w-7 h-7 shrink-0 flex items-center justify-center rounded-lg text-gray-400 dark:text-gray-500 opacity-0 group-hover:opacity-100 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all"
+                    className="w-7 h-7 shrink-0 flex items-center justify-center rounded-lg text-gray-400 dark:text-gray-500 opacity-0 group-hover:opacity-100 focus:opacity-100 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all"
                   >
                     <Pencil size={13} />
                   </button>
                 )}
+                {publishStatus && (
+                  <span
+                    className={cn(
+                      "inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full",
+                      publishStatus === "PUBLISHED"
+                        ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-200/80 dark:border-emerald-800/50"
+                        : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700"
+                    )}
+                  >
+                    {publishStatus === "PUBLISHED" ? <Globe size={11} /> : <PenLine size={11} />}
+                    {publishStatus === "PUBLISHED" ? rp.statusPublished : rp.statusDraft}
+                  </span>
+                )}
+                {session.isFromStudio && (
+                  <span className="inline-flex items-center text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#6c47ff]/10 text-[#6c47ff]">
+                    Studio
+                  </span>
+                )}
               </div>
             )}
-            <p className={cn("text-sm mt-1", portalSubtext)}>{rp.subtext}</p>
+            <p className={cn("text-sm", portalSubtext)}>{rp.subtext}</p>
+            <p className={cn("text-xs flex flex-wrap items-center gap-x-1.5 gap-y-1", portalSubtext)}>
+              {metaParts.map((part, i) => (
+                <span key={part} className="inline-flex items-center gap-1.5">
+                  {i > 0 && <span aria-hidden className="text-gray-300 dark:text-gray-600">•</span>}
+                  {i === 1 && <Clock size={11} className="opacity-70" aria-hidden />}
+                  {i === 2 && <UserCheck size={11} className="opacity-70" aria-hidden />}
+                  {part}
+                </span>
+              ))}
+            </p>
           </div>
-          <div className="flex items-center gap-2 shrink-0">
+
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
             {questionSetId && (
               <Link
                 href="#jd-fit-review"
@@ -302,11 +350,6 @@ export function ReviewPageClient({
               </button>
             )}
             <SessionStatusBadge status={session.status} size="md" />
-            {session.isFromStudio && (
-              <span className="inline-flex items-center text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#6c47ff]/10 text-[#6c47ff]">
-                Studio
-              </span>
-            )}
           </div>
         </div>
       </div>
@@ -314,13 +357,13 @@ export function ReviewPageClient({
       {/* Plan summary */}
       {session.planDraft && (
         <div
-          className="animate-fade-up rounded-xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 p-5"
+          className="animate-fade-up rounded-xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 p-4"
           style={{ animationDelay: "60ms" }}
         >
-          <p className={cn("text-xs font-semibold uppercase tracking-wide mb-3", portalSubtext)}>
+          <p className={cn("text-xs font-semibold uppercase tracking-wide mb-2", portalSubtext)}>
             Interview Plan
           </p>
-          <div className="flex flex-wrap gap-4 text-sm">
+          <div className="flex flex-wrap gap-3 text-sm">
             <div>
               <span className={cn("text-xs font-semibold", portalSubtext)}>Role · </span>
               <span className={cn("font-medium", portalHeading)}>{session.planDraft.role}</span>
@@ -343,45 +386,16 @@ export function ReviewPageClient({
         </div>
       )}
 
-      {/* Desktop: JD Fit sticky trái · câu hỏi phải. Mobile: JD trên, câu hỏi dưới */}
+      {/* Questions ~70% left · sticky sidebar ~30% right (JD + info) */}
       <div
         className={cn(
-          "gap-6",
+          "gap-4 xl:gap-5",
           questionSetId
-            ? "flex flex-col lg:grid lg:grid-cols-[minmax(260px,340px)_minmax(0,1fr)] lg:items-start"
-            : "space-y-6"
+            ? "flex flex-col xl:grid xl:grid-cols-[minmax(0,1fr)_minmax(280px,340px)] xl:items-start"
+            : "space-y-4"
         )}
       >
-        {questionSetId && (
-          <aside
-            id="jd-fit-review"
-            className="animate-fade-up order-first w-full space-y-4 lg:sticky lg:top-4 lg:z-10 lg:self-start lg:max-h-[calc(100vh-5.5rem)] lg:overflow-y-auto lg:overscroll-contain"
-            style={{ animationDelay: "70ms" }}
-          >
-            <JobDescriptionViewer
-              jobDescription={jobDescription}
-              sourceType={jdSourceType}
-              originalFileName={jdOriginalFileName}
-              title={rp.jdViewer.title}
-              emptyLabel={rp.jdViewer.empty}
-              collapseLabel={rp.jdViewer.collapse}
-              expandLabel={rp.jdViewer.expand}
-              missingBadge={rp.jdViewer.missingBadge}
-              statsTemplate={rp.jdViewer.stats}
-              fromFileLabel={rp.jdViewer.fromFile}
-              viewParsedLabel={rp.jdViewer.viewParsed}
-            />
-            <Suspense fallback={null}>
-              <JdFitSection
-                questionSetId={questionSetId}
-                onJobDescriptionSaved={(meta) => void handleJdSaved(meta)}
-              />
-            </Suspense>
-          </aside>
-        )}
-
-        <div className="min-w-0 space-y-6">
-          {/* Error banner for failed sessions */}
+        <div className="min-w-0 order-2 xl:order-1 space-y-4">
           {session.status === "FAILED" && session.failureMessage && (
             <div
               className="animate-fade-up flex items-center gap-3 rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/30 px-4 py-3"
@@ -399,7 +413,6 @@ export function ReviewPageClient({
             </div>
           )}
 
-          {/* Loading animation while generating questions */}
           {isGenerating && (
             <div
               className="animate-fade-up rounded-2xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 p-10"
@@ -412,7 +425,6 @@ export function ReviewPageClient({
             </div>
           )}
 
-          {/* Retrying: COMPLETED but 0 questions — show brief spinner */}
           {isRetrying && !isGenerating && session.status !== "PLAN_PROPOSED" && (
             <div
               className="animate-fade-up rounded-2xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 p-8"
@@ -425,7 +437,6 @@ export function ReviewPageClient({
             </div>
           )}
 
-          {/* Review questions section — hidden when plan pending or actively generating or retrying */}
           {!isGenerating && !isRetrying && session.status !== "PLAN_PROPOSED" && (
             <div className="animate-fade-up" style={{ animationDelay: "120ms" }}>
               <ReviewQuestionsSection
@@ -445,6 +456,66 @@ export function ReviewPageClient({
             </div>
           )}
         </div>
+
+        {questionSetId && (
+          <aside
+            id="jd-fit-review"
+            className="order-1 xl:order-2 w-full space-y-4 xl:sticky xl:top-24 xl:self-start"
+            style={{ animationDelay: "70ms" }}
+          >
+            <QuestionSetInfoCard
+              title={rp.setInfoTitle}
+              rows={[
+                {
+                  label: rp.setInfoStatus,
+                  value:
+                    publishStatus === "PUBLISHED"
+                      ? rp.statusPublished
+                      : publishStatus === "DRAFT"
+                        ? rp.statusDraft
+                        : "—",
+                },
+                {
+                  label: rp.setInfoQuestions,
+                  value: String(questionCount),
+                },
+                {
+                  label: rp.setInfoTimeLimit,
+                  value:
+                    initialTimeLimitMinutes != null
+                      ? rp.timeLimitLabel.replace("{{min}}", String(initialTimeLimitMinutes))
+                      : rp.noTimeLimitLabel,
+                },
+                {
+                  label: rp.setInfoScore,
+                  value: initialAutoRecommendEnabled
+                    ? `≥ ${initialRecommendationMinScore ?? 70}`
+                    : rp.recSettingsLabelOff,
+                },
+              ]}
+            />
+            <JobDescriptionViewer
+              jobDescription={jobDescription}
+              sourceType={jdSourceType}
+              originalFileName={jdOriginalFileName}
+              title={rp.jdViewer.title}
+              emptyLabel={rp.jdViewer.empty}
+              collapseLabel={rp.collapseJd}
+              expandLabel={rp.viewFullJd}
+              missingBadge={rp.jdViewer.missingBadge}
+              statsTemplate={rp.jdViewer.stats}
+              fromFileLabel={rp.jdViewer.fromFile}
+              viewParsedLabel={rp.jdViewer.viewParsed}
+              compactPreview
+            />
+            <Suspense fallback={null}>
+              <JdFitSection
+                questionSetId={questionSetId}
+                onJobDescriptionSaved={(meta) => void handleJdSaved(meta)}
+              />
+            </Suspense>
+          </aside>
+        )}
       </div>
     </div>
   );

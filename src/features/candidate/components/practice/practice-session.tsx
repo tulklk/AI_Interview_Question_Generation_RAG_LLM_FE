@@ -32,6 +32,17 @@ import {
 } from "@/features/candidate/services/practice-session.service";
 import { UpgradeModal } from "@/features/candidate/components/billing/upgrade-modal";
 import { useCandidateSubscription } from "@/features/candidate/context/candidate-subscription-context";
+import { useAntiCheat } from "@/features/candidate/anti-cheat/useAntiCheat";
+import {
+  PracticeCameraPanel,
+  type PracticeCameraPanelHandle,
+} from "@/features/candidate/components/anti-cheat/PracticeCameraPanel";
+import { AntiCheatSetupCheck } from "@/features/candidate/components/anti-cheat/AntiCheatSetupCheck";
+import { AntiCheatStatus } from "@/features/candidate/components/anti-cheat/AntiCheatStatus";
+import { AntiCheatDebugPanel } from "@/features/candidate/components/anti-cheat/AntiCheatDebugPanel";
+import { IntegrityWarningModal } from "@/features/candidate/components/anti-cheat/IntegrityWarningModal";
+import { IntegrityViolationScreen } from "@/features/candidate/components/anti-cheat/IntegrityViolationScreen";
+import type { IntegrityState } from "@/features/candidate/anti-cheat/types";
 
 /** Purely a UI "recommended length" hint below the answer box — not a submission gate. */
 const MIN_ANSWER_CHARS = 20;
@@ -266,6 +277,27 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
   const [finishing, setFinishing] = useState(false);
   const [finishError, setFinishError] = useState(false);
   const [startAttempt, setStartAttempt] = useState(0);
+  /** Integrity gate: Q&A unlocked only after setup + Start Interview. */
+  const [integrityStarted, setIntegrityStarted] = useState(false);
+  const [integrityStarting, setIntegrityStarting] = useState(false);
+  const [integrityTerminated, setIntegrityTerminated] = useState(false);
+  const integrityTerminatingRef = useRef(false);
+  const integrityTerminatedRef = useRef(false);
+  const cameraPanelRef = useRef<PracticeCameraPanelHandle>(null);
+  const {
+    setup,
+    monitoring,
+    cameraDisabled,
+    debug,
+    integrity,
+    activeWarning,
+    acknowledgeWarning,
+    restoreIntegrityState,
+    setOnInterviewTerminated,
+    runSetup,
+    startMonitoring,
+    stopMonitoring,
+  } = useAntiCheat();
 
   const [draftSaveStatus, setDraftSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
   const draftSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -275,6 +307,8 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
   const finishingRef = useRef(false);
   /** Đồng bộ với exitOpen state nhưng được set TRƯỚC khi gọi setState → không có race với setInterval. */
   const exitOpenRef = useRef(false);
+  /** Warning modal also pauses the local timer display. */
+  const warningOpenRef = useRef(false);
   /** Timestamp (ms) khi dialog vừa mở — dùng để tính khoảng thời gian bị pause. */
   const pauseStartMsRef = useRef<number | null>(null);
   /** Tổng số ms đã bị pause — bù vào display deadline/startMs để tránh nhảy khi đóng dialog. */
@@ -296,22 +330,144 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
     finishingRef.current = finishing;
   }, [finishing]);
 
-  // Wrappers đặt exitOpenRef & pauseStartMsRef ĐỒNG BỘ trước setState.
-  // setInterval là macro-task → không thể chen vào giữa lệnh gán ref và cuối call-stack,
-  // nên tick tiếp theo luôn thấy giá trị mới của ref.
-  function openExitDialog() {
-    pauseStartMsRef.current = Date.now();
-    exitOpenRef.current = true;    // phải trước setExitOpen
-    setExitOpen(true);
+  // Integrity setup after session exists (phone model optional / may be unavailable)
+  const canStartIntegrity =
+    setup.camera === "ready" &&
+    setup.face === "ready" &&
+    setup.singleCandidate === "ready" &&
+    setup.integrity === "ready" &&
+    (setup.phoneModel === "ready" || setup.phoneModel === "unavailable");
+
+  const handleCameraReady = useCallback(
+    (ok: boolean) => {
+      if (!ok) return;
+      const video = cameraPanelRef.current?.getVideoElement() ?? null;
+      if (video) void runSetup(video);
+    },
+    [runSetup]
+  );
+
+  const handleRetryIntegritySetup = useCallback(() => {
+    const video = cameraPanelRef.current?.getVideoElement() ?? null;
+    if (video) void runSetup(video);
+    else void cameraPanelRef.current?.restart();
+  }, [runSetup]);
+
+  const handleStartIntegrity = useCallback(async () => {
+    if (!sessionId || integrityTerminated) return;
+    const video = cameraPanelRef.current?.getVideoElement();
+    if (!video) return;
+    setIntegrityStarting(true);
+    try {
+      const started = await startMonitoring(video, sessionId);
+      if (!started) {
+        integrityTerminatedRef.current = true;
+        setIntegrityTerminated(true);
+        return;
+      }
+      setIntegrityStarted(true);
+    } catch {
+      addToast("error", "Could not start integrity monitoring");
+    } finally {
+      setIntegrityStarting(false);
+    }
+  }, [sessionId, startMonitoring, addToast, integrityTerminated]);
+
+  // Cleanup monitors on unmount
+  useEffect(() => {
+    return () => {
+      stopMonitoring();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- unmount only
+  }, []);
+
+  function beginUiPause() {
+    if (pauseStartMsRef.current === null) {
+      pauseStartMsRef.current = Date.now();
+    }
   }
-  function closeExitDialog() {
+
+  function endUiPauseIfIdle() {
+    if (exitOpenRef.current || warningOpenRef.current) return;
     if (pauseStartMsRef.current !== null) {
       pausedOffsetMsRef.current += Date.now() - pauseStartMsRef.current;
       pauseStartMsRef.current = null;
     }
-    exitOpenRef.current = false;   // phải trước setExitOpen
+  }
+
+  function isUiPaused(): boolean {
+    return exitOpenRef.current || warningOpenRef.current || integrityTerminatedRef.current;
+  }
+
+  // Wrappers đặt exitOpenRef & pauseStartMsRef ĐỒNG BỘ trước setState.
+  function openExitDialog() {
+    if (integrityTerminatedRef.current) return;
+    beginUiPause();
+    exitOpenRef.current = true;
+    setExitOpen(true);
+  }
+  function closeExitDialog() {
+    exitOpenRef.current = false;
+    endUiPauseIfIdle();
     setExitOpen(false);
   }
+
+  const handleAcknowledgeWarning = useCallback(() => {
+    warningOpenRef.current = false;
+    endUiPauseIfIdle();
+    acknowledgeWarning();
+  }, [acknowledgeWarning]);
+
+  const handleIntegrityTerminated = useCallback(
+    async (_state: IntegrityState) => {
+      if (integrityTerminatingRef.current) return;
+      integrityTerminatingRef.current = true;
+      integrityTerminatedRef.current = true;
+      setIntegrityTerminated(true);
+      warningOpenRef.current = false;
+      endUiPauseIfIdle();
+      stopMonitoring();
+      setIntegrityStarted(false);
+
+      const sid = sessionIdRef.current;
+      if (sid) {
+        try {
+          await abandonPracticeSession(sid);
+        } catch {
+          // Session may already be closed — still show violation screen
+        }
+      }
+    },
+    [stopMonitoring]
+  );
+
+  useEffect(() => {
+    setOnInterviewTerminated((state) => {
+      void handleIntegrityTerminated(state);
+    });
+    return () => setOnInterviewTerminated(null);
+  }, [setOnInterviewTerminated, handleIntegrityTerminated]);
+
+  // Restore terminated state after refresh
+  useEffect(() => {
+    if (!sessionId) return;
+    const state = restoreIntegrityState(sessionId);
+    if (state.terminated) {
+      integrityTerminatedRef.current = true;
+      setIntegrityTerminated(true);
+      setIntegrityStarted(false);
+    }
+  }, [sessionId, restoreIntegrityState]);
+
+  // Pause timer while warning modal is visible
+  useEffect(() => {
+    if (activeWarning && !integrityTerminatedRef.current) {
+      if (!warningOpenRef.current) {
+        beginUiPause();
+        warningOpenRef.current = true;
+      }
+    }
+  }, [activeWarning]);
 
   const question = questions[currentIdx];
   const totalQuestions = questions.length;
@@ -430,7 +586,7 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
       }
 
       // ② Display: skip khi dialog mở (exitOpenRef set đồng bộ trước setExitOpen).
-      if (exitOpenRef.current) return;
+      if (isUiPaused()) return;
 
       // ③ Display dùng deadline đã bù pause offset → tiếp tục từ chỗ dừng, không nhảy.
       const displayRemaining = Math.floor((realDeadlineMs + pausedOffsetMsRef.current - Date.now()) / 1000);
@@ -469,7 +625,7 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
         return; // đang chuyển trang, không cần update display
       }
 
-      if (exitOpenRef.current) return; // đóng băng display khi dialog mở
+      if (isUiPaused()) return; // đóng băng display khi dialog mở
       setElapsedSeconds(elapsed);
     }
     tick();
@@ -530,6 +686,7 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
   );
 
   function goToQuestion(idx: number) {
+    if (integrityTerminatedRef.current) return;
     const clamped = Math.min(Math.max(0, idx), totalQuestions - 1);
     if (clamped === currentIdx) return;
     // Persist câu đang xem trước khi chuyển (không chờ / không block)
@@ -541,10 +698,12 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
   }
 
   function navigate(delta: number) {
+    if (integrityTerminatedRef.current) return;
     goToQuestion(currentIdx + delta);
   }
 
   function handleAnswerChange(value: string) {
+    if (integrityTerminatedRef.current) return;
     setAnswers((prev) => ({ ...prev, [question.id]: value }));
     if (sessionId && typeof window !== "undefined") {
       window.sessionStorage.setItem(draftKey(sessionId, question.id), value);
@@ -560,10 +719,13 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
 
   async function handleFinish() {
     const sid = sessionIdRef.current;
-    if (!sid || finishingRef.current) return;
+    if (!sid || finishingRef.current || integrityTerminatedRef.current) return;
     setFinishing(true);
     finishingRef.current = true;
     setFinishError(false);
+    // Stop integrity monitoring before navigating (intentional end — no FULLSCREEN_EXIT)
+    stopMonitoring();
+    setIntegrityStarted(false);
     try {
       const answersSnapshot = answersRef.current;
       const idx = currentIdxRef.current;
@@ -650,6 +812,9 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
       return;
     }
 
+    stopMonitoring();
+    setIntegrityStarted(false);
+
     // Lưu tổng thời gian bị "đóng băng" (bao gồm cả khoảng dialog đang mở ngay lúc này).
     // Khi người dùng "Tiếp Tục Luyện Tập", component mount lại → offset sẽ bị mất.
     // Lưu vào sessionStorage để khôi phục, giúp timer tiếp tục từ chỗ đã dừng.
@@ -681,6 +846,8 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
   function handleAbandon() {
     if (!sessionId || abandoning) return;
     setAbandoning(true);
+    stopMonitoring();
+    setIntegrityStarted(false);
     abandonPracticeSession(sessionId)
       .then(() => {
         if (typeof window !== "undefined") {
@@ -730,6 +897,7 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
   // A prior finish attempt already failed — retry directly, don't re-open review.
   // Otherwise this is a fresh submit request, so confirm via the review dialog first.
   function requestFinish() {
+    if (integrityTerminatedRef.current) return;
     if (finishError) {
       void handleFinish();
       return;
@@ -738,6 +906,7 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
   }
 
   function goToFirstUnanswered() {
+    if (integrityTerminatedRef.current) return;
     const idx = questions.findIndex((q) => !q.isLocked && !hasAnswerText(answers[q.id]));
     if (idx === -1) return;
     goToQuestion(idx);
@@ -783,6 +952,15 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
     );
   }
 
+  if (integrityTerminated || integrity.terminated) {
+    return (
+      <IntegrityViolationScreen
+        state={integrity}
+        returnHref="/candidate/dashboard"
+      />
+    );
+  }
+
   return (
     <>
     <ConfirmDialog
@@ -810,7 +988,100 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
       onConfirm={() => { setReviewOpen(false); void handleFinish(); }}
       onCancel={() => setReviewOpen(false)}
     />
-    <div className="min-h-screen hr-main-bg flex flex-col">
+
+    <IntegrityWarningModal
+      open={Boolean(activeWarning) && !integrityTerminated}
+      strike={activeWarning}
+      onAcknowledge={handleAcknowledgeWarning}
+    />
+
+    {/* Single camera instance — must stay mounted across setup → monitoring */}
+    <div
+      className={cn(
+        "z-50",
+        integrityStarted
+          ? "fixed bottom-4 right-4 w-40 sm:w-44"
+          : "fixed inset-0 hr-main-bg overflow-y-auto px-3 py-4 sm:px-4 sm:py-6 md:py-8"
+      )}
+    >
+      <div
+        className={cn(
+          !integrityStarted &&
+            "mx-auto my-auto w-full max-w-[1000px] overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-900"
+        )}
+      >
+        {!integrityStarted && (
+          <div
+            className={cn(
+              "flex items-start justify-between gap-3 border-b border-gray-100 px-4 py-3.5 sm:px-5",
+              "dark:border-gray-800"
+            )}
+          >
+            <div className="flex min-w-0 items-start gap-2.5">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={
+                  !headerLogoError && set.companyLogoUrl?.trim()
+                    ? set.companyLogoUrl!
+                    : "/images/logo.png"
+                }
+                alt={set.company ?? "logo"}
+                onError={() => setHeaderLogoError(true)}
+                className="mt-0.5 h-8 w-8 shrink-0 rounded-lg border border-gray-100/20 bg-white object-contain p-0.5 dark:border-gray-700 dark:bg-gray-900"
+              />
+              <div className="min-w-0">
+                <p className={cn("truncate text-base font-semibold sm:text-lg", portalHeadingAlt)}>
+                  {cleanTitle(set.title)}
+                </p>
+                <p className={cn("mt-0.5 text-xs sm:text-[13px]", portalSubtextAlt)}>
+                  {t.antiCheat.deviceCheckSubtitle}
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => openExitDialog()}
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
+              aria-label={p.exitConfirmBtn}
+            >
+              <X size={16} />
+            </button>
+          </div>
+        )}
+
+        <div
+          className={cn(
+            !integrityStarted &&
+              "grid grid-cols-1 items-start gap-5 p-4 sm:gap-6 sm:p-5 lg:grid-cols-2 lg:items-center"
+          )}
+        >
+          <PracticeCameraPanel
+            ref={cameraPanelRef}
+            onReady={handleCameraReady}
+            compact={integrityStarted}
+            className={cn(!integrityStarted && "max-w-none w-full")}
+          />
+          {!integrityStarted && (
+            <AntiCheatSetupCheck
+              setup={setup}
+              canStart={canStartIntegrity}
+              starting={integrityStarting}
+              onStart={() => void handleStartIntegrity()}
+              onRetrySetup={handleRetryIntegritySetup}
+            />
+          )}
+        </div>
+      </div>
+      <AntiCheatDebugPanel snapshot={debug} />
+    </div>
+
+    <div
+      className={cn(
+        "min-h-screen hr-main-bg flex flex-col",
+        !integrityStarted && "invisible pointer-events-none select-none"
+      )}
+      aria-hidden={!integrityStarted}
+    >
       {/* ── Top bar ─────────────────────────────────────────────────── */}
       <header className={cn("hr-topbar px-4 md:px-8 h-14 flex items-center justify-between shrink-0 border-b gap-2", portalDivider)}>
         {/* Left: set info */}
@@ -848,8 +1119,13 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
           </span>
         </div>
 
-        {/* Right: exit */}
+        {/* Right: integrity status + exit */}
         <div className="flex items-center gap-2 sm:gap-4 shrink-0">
+          <AntiCheatStatus
+            active={monitoring}
+            cameraDisabled={cameraDisabled}
+            warningCount={integrity.strikeCount}
+          />
           <button
             type="button"
             onClick={() => openExitDialog()}

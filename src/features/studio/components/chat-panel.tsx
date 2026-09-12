@@ -13,13 +13,13 @@ import {
   FileQuestion,
   Layers,
   Loader2,
-  Pencil,
   RefreshCw,
   Send,
   Sparkles,
   X,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
+import { getSkillIcon } from "@/features/candidate/utils/skill-icons";
 import { useLanguage } from "@/shared/providers/language-context";
 import { useHrSubscription } from "@/features/hr/context/hr-subscription-context";
 import { AiLoadingSpinner } from "@/shared/components/common/ai-loading-spinner";
@@ -36,6 +36,19 @@ import {
   type SourceOriginLabels,
 } from "@/features/studio/components/source-origin-badge";
 import { PlanReviewItBlock } from "@/features/studio/components/plan-review-it-block";
+import { PlanReviewHeader } from "@/features/studio/components/plan-review-header";
+import { PlanSummarySidebar } from "@/features/studio/components/plan-summary-sidebar";
+import {
+  validateDistributionSum,
+  validateFocusWeightSum,
+} from "@/features/studio/utils/distribution-math";
+import { normalizeStudioDifficulty } from "@/features/studio/utils/normalize-studio-settings";
+import {
+  PlanCreatingLoading,
+  PLAN_LOAD_STEP_COUNT,
+  PLAN_TICK_MS,
+  seedPlanLoadSteps,
+} from "@/features/studio/components/plan-creating-loading";
 import {
   PlanOutlinePreviewBlock,
   shouldShowOutlinePreview,
@@ -83,18 +96,18 @@ function PlanSectionCard({ section, index }: { section: PlanSectionItem; index: 
   const s = t.studioPage;
   const [open, setOpen] = useState(false);
   return (
-    <div className="overflow-hidden rounded-xl border border-gray-200 bg-white transition-shadow hover:shadow-sm dark:border-gray-700 dark:bg-gray-900/60">
+    <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900/60">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left"
+        className="flex min-h-14 w-full items-center gap-2.5 px-3 py-2 text-left"
         aria-expanded={open}
       >
-        <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-primary/10 text-[11px] font-bold text-gray-900 dark:text-gray-100">
-          {index + 1}
+        <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-gray-100 text-[10px] font-bold tabular-nums text-gray-700 dark:bg-gray-800 dark:text-gray-200">
+          {String(index + 1).padStart(2, "0")}
         </div>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold text-gray-900 dark:text-gray-50">{section.name}</p>
+          <p className="truncate text-[13px] font-semibold text-gray-900 dark:text-gray-50">{section.name}</p>
           <p className="text-[11px] text-gray-500 dark:text-gray-400">
             {section.numberOfQuestions} {s.settings.unitQuestions} · {section.estimatedMinutes} {s.settings.unitMin}
           </p>
@@ -285,6 +298,15 @@ function GenerationBanner({
 // Mirrors the plan-creation streaming UI in PlanEmptyState so both feel consistent.
 
 const QGEN_LOAD_STEP_COUNT = 4;
+/** Cosmetic step cadence while BE has not reported generatedQuestionCount yet. */
+const QGEN_TICK_MS = 12_000;
+
+function seedQGenTickSteps(startedAt: string | undefined): number {
+  if (!startedAt) return 0;
+  const elapsed = Date.now() - new Date(startedAt).getTime();
+  if (!Number.isFinite(elapsed) || elapsed < 0) return 0;
+  return Math.min(QGEN_LOAD_STEP_COUNT - 1, Math.floor(elapsed / QGEN_TICK_MS));
+}
 
 function QuestionGenerationLoading({
   run,
@@ -400,8 +422,6 @@ function QuestionGenerationLoading({
 
 // ── Empty / Ready state ───────────────────────────────────────────────────────
 
-const PLAN_LOAD_STEP_COUNT = 4;
-
 function PlanEmptyState({
   hasJd,
   skillCount,
@@ -421,89 +441,14 @@ function PlanEmptyState({
 }) {
   const { t } = useLanguage();
   const c = t.studioPage.chat;
-  const PLAN_STEPS = [
-    { label: c.planStep1, sub: c.stepExtracting },
-    { label: c.planStep2, sub: c.stepFocusing },
-    { label: c.planStep3, sub: c.stepStructuring },
-    { label: c.planStep4, sub: c.stepFinalizing },
-  ];
 
   if (showLoading) {
-    const allDone  = completedSteps >= PLAN_STEPS.length;
-    const activeIdx = allDone ? PLAN_STEPS.length - 1 : Math.min(completedSteps, PLAN_STEPS.length - 1);
-    return (
-      <div className="flex flex-1 flex-col items-center justify-center gap-5 px-6 py-16 text-center">
-        <div style={{ animation: "popIn 0.5s cubic-bezier(0.34,1.56,0.64,1) both" }}>
-          <AiLoadingSpinner />
-        </div>
-        <div>
-          <p className="text-base font-semibold text-gray-900 dark:text-gray-50">{c.streamingTitle}</p>
-          <div key={completedSteps} style={{ animation: "slideUpFade 0.4s ease-out both" }}>
-            <p className="mt-1 text-sm ai-status-text">
-              {PLAN_STEPS[activeIdx].sub}
-            </p>
-          </div>
-        </div>
-        {/* Indeterminate progress — plan creation (no fake %) */}
-        <div className="w-full max-w-xs" style={{ animation: "slideUpFade 0.35s ease-out 0.2s both" }}>
-          <div className="mb-2 flex items-center justify-between">
-            <span className="text-[11px] font-medium text-gray-500 dark:text-gray-400">
-              {c.planProgress}
-            </span>
-            <span className="text-[11px] font-medium text-gray-400">
-              {c.stepOf.replace("{{current}}", String(activeIdx + 1)).replace("{{total}}", String(PLAN_STEPS.length))}
-            </span>
-          </div>
-          <div className="studio-progress-indeterminate h-1.5 w-full rounded-full bg-gray-100 dark:bg-gray-800">
-            <span className="bg-linear-to-r from-primary to-primary/70" />
-          </div>
-        </div>
-        <div className="w-full max-w-xs space-y-2">
-          {PLAN_STEPS.map((step, i) => {
-            const done   = i < completedSteps;
-            const active = !allDone && i === completedSteps;
-            return (
-              <div
-                key={step.label}
-                style={{ animation: `slideUpFade 0.3s ease-out ${0.2 + i * 0.09}s both` }}
-                className={cn(
-                  "flex items-center gap-2 rounded-lg px-3 py-2 text-xs transition-all duration-500",
-                  done   ? "bg-emerald-50 dark:bg-emerald-950/25"
-                  : active ? "bg-primary/8 dark:bg-primary/10"
-                  :          "bg-gray-50 dark:bg-gray-800/60"
-                )}
-              >
-                {done ? (
-                  <Check className="h-3 w-3 shrink-0 text-emerald-500" strokeWidth={3} />
-                ) : active ? (
-                  <Loader2 className="h-3 w-3 shrink-0 animate-spin text-primary" />
-                ) : (
-                  <Loader2 className="h-3 w-3 shrink-0 text-gray-300 opacity-30 dark:text-gray-600" />
-                )}
-                <span
-                  className={cn(
-                    "transition-all duration-300",
-                    done   ? "text-emerald-700 line-through dark:text-emerald-400"
-                    : active ? "font-semibold text-gray-900 dark:text-gray-100"
-                    :          "text-gray-400 opacity-40 dark:text-gray-600"
-                  )}
-                >
-                  {step.label}
-                </span>
-                {done && (
-                  <span className="ml-auto text-[10px] font-semibold text-emerald-500">{c.stepDone}</span>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    );
+    return <PlanCreatingLoading completedSteps={completedSteps} />;
   }
 
   if (!hasJd) {
     return (
-      <div className="flex flex-1 flex-col items-center justify-center gap-5 px-6 py-14 text-center">
+      <div className="flex min-h-[280px] w-full flex-1 flex-col items-center justify-center gap-5 px-6 py-14 text-center">
         <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-100 dark:bg-gray-800" style={{ animation: "popIn 0.45s cubic-bezier(0.34,1.56,0.64,1) 0.08s both" }}>
           <Layers className="h-7 w-7 text-gray-400" />
         </div>
@@ -532,7 +477,7 @@ function PlanEmptyState({
   const jdAnalyzed = canCreatePlan;
 
   return (
-    <div className="flex flex-1 flex-col items-center justify-center gap-5 px-6 py-16 text-center">
+    <div className="flex min-h-[280px] w-full flex-1 flex-col items-center justify-center gap-5 px-6 py-16 text-center">
       <div className="relative h-14 w-14 shrink-0" style={{ animation: "popIn 0.45s cubic-bezier(0.34,1.56,0.64,1) 0.08s both" }}>
         <Image src="/images/logo.png" alt="HireGen AI" fill sizes="56px" className="object-contain" />
       </div>
@@ -741,105 +686,48 @@ function PlanWorkspace({
         isStreaming={isStreaming}
         onCreatePlan={onCreatePlan}
         completedSteps={planLoadCompletedSteps}
-        showLoading={planLoadShowLoading}
+        // Derive from live isStreaming so remount cannot desync latch vs stepper/badge
+        showLoading={Boolean(planLoadShowLoading || (isStreaming && !plan))}
       />
     );
   }
 
   return (
-    <div className="space-y-3 p-3">
-      {/* Plan header */}
-      <div
-        style={{ animation: "scaleInFade 0.4s cubic-bezier(0.34,1.56,0.64,1) both" }}
-        className={cn(
-          "rounded-xl border p-3",
-          planApproved
-            ? "border-emerald-200/80 bg-linear-to-br from-emerald-50 to-white dark:border-emerald-900 dark:from-emerald-950/30 dark:to-gray-900"
-            : "border-primary/20 bg-linear-to-br from-primary/5 to-white dark:border-primary/30 dark:from-primary/10 dark:to-gray-900"
-        )}>
-        {/* Row 1: badge + stats */}
-        <div className="flex items-center justify-between gap-2">
-          <span className={cn(
-            "inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-[10px] font-semibold",
-            planApproved
-              ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-200"
-              : "bg-primary/15 text-primary dark:bg-primary/25"
-          )}>
-            {planApproved ? c.badgeApproved : c.badgePending}
-          </span>
-          <div className="flex shrink-0 items-center gap-1.5">
-            {[
-              `${plan.totalQuestions} ${st.settings.unitQuestions}`,
-              `${plan.interviewLengthMinutes} ${st.settings.unitMin}`,
-              mixLabel,
-            ].map((stat) => (
-              <span key={stat} className="rounded-md bg-white/90 px-2 py-0.5 text-[11px] font-medium text-gray-600 shadow-sm dark:bg-gray-800 dark:text-gray-300">
-                {stat}
-              </span>
-            ))}
-          </div>
-        </div>
-        {/* Row 2: title — SCRUM-393 inline edit tên công việc */}
-        {editingTitle ? (
-          <div className="mt-1.5 flex items-center gap-1">
-            <input
-              autoFocus
-              value={titleDraft}
-              disabled={savingTitle}
-              maxLength={500}
-              onChange={(e) => setTitleDraft(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") void saveTitle();
-                if (e.key === "Escape") setEditingTitle(false);
-              }}
-              className="min-w-0 flex-1 rounded-md border border-gray-200 bg-white px-2 py-1 text-sm font-semibold outline-none focus:border-primary dark:border-gray-700 dark:bg-gray-950 dark:text-gray-50"
-            />
-            <button
-              type="button"
-              disabled={savingTitle || !titleDraft.trim()}
-              onClick={() => void saveTitle()}
-              className="inline-flex h-7 w-7 items-center justify-center rounded-md text-primary hover:bg-primary/10 disabled:opacity-40"
-              title={c.renameTitleSave}
-            >
-              {savingTitle ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
-            </button>
-            <button
-              type="button"
-              disabled={savingTitle}
-              onClick={() => setEditingTitle(false)}
-              className="inline-flex h-7 w-7 items-center justify-center rounded-md text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
-              title={c.renameTitleCancel}
-            >
-              <X size={14} />
-            </button>
-          </div>
-        ) : (
-          <div className="group mt-1.5 flex items-start gap-1.5">
-            <p className="min-w-0 flex-1 text-sm font-semibold leading-snug text-gray-900 dark:text-gray-50">
-              {displayTitle}
-            </p>
-            {onRenameTitle && (
-              <button
-                type="button"
-                onClick={() => {
-                  setTitleDraft(displayTitle);
-                  setEditingTitle(true);
-                }}
-                className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-gray-400 opacity-0 transition-opacity hover:bg-gray-100 hover:text-gray-700 group-hover:opacity-100 focus:opacity-100 dark:hover:bg-gray-800"
-                title={c.renameTitle}
-              >
-                <Pencil size={13} />
-              </button>
-            )}
-          </div>
+    <div className="space-y-3 p-3 pb-6">
+      <PlanReviewHeader
+        planApproved={planApproved}
+        badgePending={c.badgePending}
+        badgeApproved={c.badgeApproved}
+        sectionLabel={c.planInterviewLabel}
+        displayTitle={displayTitle}
+        totalQuestions={plan.totalQuestions ?? 0}
+        interviewLengthMinutes={plan.interviewLengthMinutes ?? 0}
+        difficulty={normalizeStudioDifficulty(
+          configDraft?.difficulty ?? settings?.difficulty ?? plan.difficulty ?? "Medium"
         )}
-      </div>
+        mixLabel={mixLabel}
+        unitQuestions={st.settings.unitQuestions}
+        unitMin={st.settings.unitMin}
+        editingTitle={editingTitle}
+        titleDraft={titleDraft}
+        savingTitle={savingTitle}
+        canRename={Boolean(onRenameTitle)}
+        renameTitle={c.renameTitle}
+        renameTitleSave={c.renameTitleSave}
+        renameTitleCancel={c.renameTitleCancel}
+        onStartEdit={() => {
+          setTitleDraft(displayTitle);
+          setEditingTitle(true);
+        }}
+        onCancelEdit={() => setEditingTitle(false)}
+        onTitleDraftChange={setTitleDraft}
+        onSaveTitle={() => void saveTitle()}
+      />
 
       {/* Generation: full-screen step overlay while generating or in 1200ms completion grace period */}
       {(isGeneratingQuestions || generationRun?.status === "Generating" || generationRun?.status === "Pending" || blockQGenSwitch) ? (
         <QuestionGenerationLoading run={generationRun} tickSteps={qGenTickSteps} />
       ) : (
-        /* Failed / completed banner */
         <GenerationBanner
           run={generationRun}
           isGenerating={false}
@@ -849,125 +737,202 @@ function PlanWorkspace({
         />
       )}
 
-      {/* Bước 1: Focus / độ khó / phân bổ / styles / coding */}
-      {!hasQuestions && (
-        <PlanReviewItBlock
-          plan={plan}
-          settings={settings}
-          draft={configDraft}
-          allowedSkillNames={hrSkills}
-          locked={isGeneratingQuestions}
-          isDirty={configDirty}
-          isConfigValidForPlan={isConfigValidForPlan}
-          canApplyConfig={canApplyConfig}
-          isApplying={isApplyingPlanConfig}
-          previewOpen={previewOpen}
-          onDraftChange={onConfigDraftChange}
-          onApplyToPlan={onApplyPlanConfig}
-        />
-      )}
-
-      {/* Bước 2: Live Preview — chỉ sau Apply bước 1 */}
-      {!hasQuestions && previewOpen && (
-          <PlanOutlinePreviewBlock
-            plan={plan}
-            draft={configDraft}
-            settings={settings}
-            allowedSkillNames={hrSkills}
-            locked={isGeneratingQuestions}
-            isApplying={isApplyingPlanConfig}
-            outlineDirty={outlineDirty}
-            settingsDirty={configDirty}
-            onDraftChange={onConfigDraftChange}
-            onApplyOutline={onApplyOutline ?? onApplyPlanConfig}
+      {(() => {
+        const numberOfQuestions =
+          configDraft?.numberOfQuestions ?? settings?.numberOfQuestions ?? plan.totalQuestions ?? 0;
+        const draftFocus =
+          (configDraft?.focusAreas?.length ?? 0) > 0
+            ? configDraft!.focusAreas!
+            : (settings?.focusAreas ?? []);
+        const focusValidation = validateFocusWeightSum(
+          draftFocus.length > 0 ? draftFocus : undefined
+        );
+        const distValidation = validateDistributionSum(
+          configDraft?.questionDistribution ?? settings?.questionDistribution,
+          numberOfQuestions
+        );
+        const styleCount = (configDraft?.questionStyles ?? settings?.questionStyles ?? []).length;
+        const summaryLabels = {
+          title: c.planSummaryTitle,
+          questions: c.planSummaryQuestions,
+          duration: c.planSummaryDuration,
+          difficulty: c.planSummaryDifficulty,
+          focus: c.planSummaryFocus,
+          distribution: c.planSummaryDistribution,
+          styles: c.planSummaryStyles,
+          stylesSelected: c.planSummaryStylesSelected,
+          coverage: c.planSummaryCoverage,
+          coverageSkills: c.planSummaryCoverageSkills,
+          sources: c.planSummarySources,
+          sourcesCount: c.planSummarySourcesCount,
+          ready: c.planReady,
+          notReady: c.planNotReady,
+          missingFocus: c.planMissingFocus,
+          missingDist: c.planMissingDist,
+          missingConfig: c.planMissingConfig,
+          unitQuestions: st.settings.unitQuestions,
+          unitMin: st.settings.unitMin,
+          sourceOriginJd: srcLabels.sourceOriginJd,
+        };
+        const summaryNode = (
+          <PlanSummarySidebar
+            totalQuestions={plan.totalQuestions ?? numberOfQuestions}
+            interviewLengthMinutes={plan.interviewLengthMinutes ?? 0}
+            difficulty={normalizeStudioDifficulty(
+              configDraft?.difficulty ?? settings?.difficulty ?? plan.difficulty ?? "Medium"
+            )}
+            focusSum={focusValidation.sum}
+            focusValid={focusValidation.valid}
+            distCountSum={distValidation.countSum}
+            distPctSum={distValidation.pctSum}
+            distValid={distValidation.valid}
+            styleCount={styleCount}
+            isConfigValidForPlan={isConfigValidForPlan}
+            coverageItems={coverageItems.map((item) => ({
+              skill: item.skill,
+              questionCount: item.questionCount,
+            }))}
+            sourceRows={sourceRows}
+            originLabels={originLabels}
+            labels={summaryLabels}
           />
-        )}
+        );
 
-      {/* Plan sections */}
-      {planSections.length > 0 && (
-        <div className="space-y-1.5">
-          <div className="flex items-center justify-between">
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">
-              {c.interviewStructure}
-            </p>
-            <span className="rounded-md bg-gray-100 px-1.5 py-0.5 text-[10px] font-semibold text-gray-500 dark:bg-gray-800">
-              {planSections.length} {c.sectionUnit}
-            </span>
-          </div>
-          <div className="space-y-1.5">
-            {planSections.map((section, idx) => (
-              <div key={`${section.id}-${idx}`} style={{ animation: `slideUpFade 0.32s ease-out ${idx * 0.06}s both` }}>
-                <PlanSectionCard section={section} index={idx} />
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+        const mainColumn = (
+          <div className="min-w-0 space-y-3">
+            {!hasQuestions && (
+              <PlanReviewItBlock
+                plan={plan}
+                settings={settings}
+                draft={configDraft}
+                allowedSkillNames={hrSkills}
+                locked={isGeneratingQuestions}
+                isDirty={configDirty}
+                isConfigValidForPlan={isConfigValidForPlan}
+                canApplyConfig={canApplyConfig}
+                isApplying={isApplyingPlanConfig}
+                previewOpen={previewOpen}
+                onDraftChange={onConfigDraftChange}
+                onApplyToPlan={onApplyPlanConfig}
+              />
+            )}
 
-      {/* Focus areas từ plan (read-only sau khi đã sinh câu) */}
-      {hasQuestions && focusAreas.length > 0 && (
-        <div className="space-y-2.5 rounded-xl border border-gray-200 p-3 dark:border-gray-700">
-          <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">{c.focusAreas}</p>
-          <div className="space-y-2.5">
-            {(() => {
-              // Normalize against the FULL set (not just the visible slice below) so the
-              // fraction-vs-percent signal isn't skewed when there are more than 6 areas.
-              const pctsAll = normalizeFocusAreaPercents(focusAreas);
-              const shown = focusAreas.slice(0, 6);
-              const pcts = pctsAll.slice(0, 6);
-              return shown.map((area, idx) => (
-                <FocusAreaRow
-                  key={`${area.name}-${idx}`}
-                  area={area}
-                  pct={pcts[idx]}
-                  index={idx}
-                  originLabels={originLabels}
-                />
-              ));
-            })()}
-          </div>
-        </div>
-      )}
+            {!hasQuestions && previewOpen && (
+              <PlanOutlinePreviewBlock
+                plan={plan}
+                draft={configDraft}
+                settings={settings}
+                allowedSkillNames={hrSkills}
+                locked={isGeneratingQuestions}
+                isApplying={isApplyingPlanConfig}
+                outlineDirty={outlineDirty}
+                settingsDirty={configDirty}
+                onDraftChange={onConfigDraftChange}
+                onApplyOutline={onApplyOutline ?? onApplyPlanConfig}
+              />
+            )}
 
-      {/* Coverage + provenance (SCRUM-420) */}
-      {coverageItems.length > 0 && (
-        <div className="space-y-2 rounded-xl border border-gray-200 p-3 dark:border-gray-700">
-          <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">Coverage</p>
-          <div className="space-y-2">
-            {coverageItems.slice(0, 6).map((item, idx) => (
-              <div key={`${item.skill}-${idx}`} className="flex items-start justify-between gap-2 text-xs">
-                <div className="min-w-0">
-                  <span className="font-medium text-gray-900 dark:text-gray-50">{item.skill}</span>
-                  <span className="ml-1 text-gray-400">({item.questionCount})</span>
+            {planSections.length > 0 && (
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">
+                    {c.interviewStructure}
+                  </p>
+                  <span className="rounded-md bg-gray-100 px-1.5 py-0.5 text-[10px] font-semibold text-gray-500 dark:bg-gray-800">
+                    {planSections.length} {c.sectionUnit}
+                  </span>
                 </div>
-                <ProvenanceOriginBadge
-                  primaryOrigin={item.provenance?.primaryOrigin}
-                  provenance={item.provenance}
-                  labels={originLabels}
-                />
+                <div className="space-y-1.5">
+                  {planSections.map((section, idx) => (
+                    <div key={`${section.id}-${idx}`}>
+                      <PlanSectionCard section={section} index={idx} />
+                    </div>
+                  ))}
+                </div>
               </div>
-            ))}
-          </div>
-        </div>
-      )}
+            )}
 
-      {/* Sources */}
-      {sourceRows.length > 0 && (
-        <div className="space-y-1.5">
-          <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">{c.sourcesUsed}</p>
-          <div className="flex flex-wrap gap-1.5">
-            {sourceRows.map((row, idx) => (
-              <span
-                key={`${row.name}-${idx}`}
-                className="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-white px-2 py-0.5 text-[11px] text-gray-600 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300"
-              >
-                <SourceOriginBadge scopeOrKb={row.scope} sourceFile={row.name} labels={originLabels} />
-                {planSourceDisplayName(row.name, srcLabels.sourceOriginJd)}
-              </span>
-            ))}
+            {hasQuestions && focusAreas.length > 0 && (
+              <div className="space-y-2 rounded-xl border border-gray-200 p-3 dark:border-gray-700">
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">{c.focusAreas}</p>
+                <div className="space-y-2">
+                  {(() => {
+                    const pctsAll = normalizeFocusAreaPercents(focusAreas);
+                    const shown = focusAreas.slice(0, 6);
+                    const pcts = pctsAll.slice(0, 6);
+                    return shown.map((area, idx) => (
+                      <FocusAreaRow
+                        key={`${area.name}-${idx}`}
+                        area={area}
+                        pct={pcts[idx]}
+                        index={idx}
+                        originLabels={originLabels}
+                      />
+                    ));
+                  })()}
+                </div>
+              </div>
+            )}
+
+            {/* Mobile/tablet: coverage + sources when sidebar hidden */}
+            <div className="space-y-3 xl:hidden">
+              {coverageItems.length > 0 && (
+                <div className="space-y-2 rounded-xl border border-gray-200 p-3 dark:border-gray-700">
+                  <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">
+                    {c.planSummaryCoverage}
+                  </p>
+                  <div className="flex flex-wrap gap-1">
+                    {coverageItems.map((item, idx) => {
+                      const skillIcon = getSkillIcon(item.skill);
+                      const SIcon = skillIcon?.icon;
+                      return (
+                        <span
+                          key={`${item.skill}-${idx}`}
+                          className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-700 dark:bg-gray-800 dark:text-gray-200"
+                        >
+                          {SIcon ? (
+                            <SIcon
+                              aria-hidden
+                              size={11}
+                              className={cn("shrink-0", skillIcon!.className)}
+                            />
+                          ) : null}
+                          {item.skill}
+                          <span className="tabular-nums text-gray-400">· {item.questionCount}</span>
+                        </span>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+              {sourceRows.length > 0 && (
+                <div className="space-y-1.5">
+                  <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">{c.sourcesUsed}</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {sourceRows.map((row, idx) => (
+                      <span
+                        key={`${row.name}-${idx}`}
+                        className="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-white px-2 py-0.5 text-[11px] text-gray-600 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300"
+                      >
+                        <SourceOriginBadge scopeOrKb={row.scope} sourceFile={row.name} labels={originLabels} />
+                        {planSourceDisplayName(row.name, srcLabels.sourceOriginJd)}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
-        </div>
-      )}
+        );
+
+        return (
+          <div className="xl:grid xl:grid-cols-[minmax(0,1fr)_minmax(280px,340px)] xl:items-start xl:gap-4">
+            <div className="mb-3 xl:hidden">{summaryNode}</div>
+            {mainColumn}
+            <div className="hidden xl:sticky xl:top-3 xl:block">{summaryNode}</div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
@@ -1147,6 +1112,8 @@ function AiAssistantTab({
 interface Props {
   messages: ChatMessage[];
   isStreaming: boolean;
+  /** ISO timestamp when create-plan started — seeds loading steps on remount. */
+  planStreamStartedAt?: string | null;
   plan: PlanDetail | null;
   canCreatePlan: boolean;
   questions?: StudioQuestion[];
@@ -1196,6 +1163,7 @@ type TabId = "plan" | "ai" | "questions";
 export function ChatPanel({
   messages,
   isStreaming,
+  planStreamStartedAt = null,
   plan,
   canCreatePlan,
   questions = [],
@@ -1243,19 +1211,27 @@ export function ChatPanel({
   const [activeTab, setActiveTab] = useState<TabId>(questions.length > 0 ? "questions" : "plan");
   const hasQuestions = questions.length > 0;
 
-  // Plan-creation progress lives here so switching tabs does not reset steps
-  const [planLoadCompletedSteps, setPlanLoadCompletedSteps] = useState(0);
+  // Plan-creation progress lives here so switching tabs does not reset steps.
+  // On remount (badge return), seed from planStreamStartedAt so UI continues
+  // near the elapsed step instead of always restarting at Bước 1.
+  const [planLoadCompletedSteps, setPlanLoadCompletedSteps] = useState(() =>
+    isStreaming ? seedPlanLoadSteps(planStreamStartedAt) : 0
+  );
   const [planLoadShowLoading, setPlanLoadShowLoading] = useState(isStreaming);
-  const planLoadPrevStreamingRef = useRef(false);
+  // Init from live flag so remount with isStreaming=true does not fake a rising edge twice
+  const planLoadPrevStreamingRef = useRef(isStreaming);
 
   useEffect(() => {
     const wasStreaming = planLoadPrevStreamingRef.current;
     planLoadPrevStreamingRef.current = isStreaming;
 
-    if (isStreaming && !wasStreaming) {
+    if (isStreaming) {
+      // Reconcile: never allow busy chrome without overlay latch while creating
       setPlanLoadShowLoading(true);
-      setPlanLoadCompletedSteps(0);
-    } else if (!isStreaming && wasStreaming) {
+      if (!wasStreaming) {
+        setPlanLoadCompletedSteps(seedPlanLoadSteps(planStreamStartedAt));
+      }
+    } else if (wasStreaming) {
       setPlanLoadCompletedSteps(PLAN_LOAD_STEP_COUNT);
       const timer = setTimeout(() => {
         setPlanLoadShowLoading(false);
@@ -1263,16 +1239,20 @@ export function ChatPanel({
       }, 1500);
       return () => clearTimeout(timer);
     }
-  }, [isStreaming]);
+  }, [isStreaming, planStreamStartedAt]);
+
+  const planLoadOverlayActive = planLoadShowLoading || isStreaming;
 
   useEffect(() => {
-    if (!planLoadShowLoading || !isStreaming) return;
+    if (!planLoadOverlayActive || !isStreaming) return;
     if (planLoadCompletedSteps >= PLAN_LOAD_STEP_COUNT) return;
-    const timer = setTimeout(() => setPlanLoadCompletedSteps((p) => p + 1), 5_000);
+    const timer = setTimeout(() => setPlanLoadCompletedSteps((p) => p + 1), PLAN_TICK_MS);
     return () => clearTimeout(timer);
-  }, [planLoadShowLoading, isStreaming, planLoadCompletedSteps]);
+  }, [planLoadOverlayActive, isStreaming, planLoadCompletedSteps]);
 
-  // Question-generation tick progress — lifted so tab switches do not reset steps
+  // Question-generation tick progress — lifted so tab switches do not reset steps.
+  // On remount (badge return), seed from generationRun.startedAt so UI continues
+  // near the elapsed step instead of always restarting at Bước 1.
   const isQGenBusy =
     isGeneratingQuestions
     || generationRun?.status === "Generating"
@@ -1281,20 +1261,52 @@ export function ChatPanel({
   const qGenTotal = generationRun?.requestedQuestionCount ?? 0;
   const [qGenTickSteps, setQGenTickSteps] = useState(0);
   const qGenPrevBusyRef = useRef(false);
+  const qGenRunIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     const wasBusy = qGenPrevBusyRef.current;
     qGenPrevBusyRef.current = isQGenBusy;
-    if (isQGenBusy && !wasBusy) {
-      setQGenTickSteps(0);
+
+    if (!isQGenBusy) {
+      if (wasBusy) qGenRunIdRef.current = null;
+      return;
     }
-  }, [isQGenBusy]);
+
+    // Ignore Completed/Failed leftovers while isGeneratingQuestions is already true
+    const activeRun =
+      generationRun?.status === "Pending" || generationRun?.status === "Generating"
+        ? generationRun
+        : null;
+    const runId = activeRun?.id ?? null;
+
+    // Same in-progress run already tracked — ignore poll updates
+    if (runId != null && runId === qGenRunIdRef.current) return;
+
+    const prevRunId = qGenRunIdRef.current;
+    qGenRunIdRef.current = runId;
+
+    if (runId == null) {
+      // Local generate started before Pending/Generating payload arrives
+      if (!wasBusy) setQGenTickSteps(0);
+      return;
+    }
+
+    if (prevRunId != null && prevRunId !== runId) {
+      // Different active run while still on the page — fresh generate
+      setQGenTickSteps(0);
+      return;
+    }
+
+    // Remount restore or first attach of this active run: seed from elapsed time
+    // (≈0 when the run just started).
+    setQGenTickSteps(seedQGenTickSteps(activeRun?.startedAt));
+  }, [isQGenBusy, generationRun?.id, generationRun?.status, generationRun?.startedAt]);
 
   useEffect(() => {
     if (!isQGenBusy) return;
     if (qGenDone > 0 && qGenTotal > 0) return;
     if (qGenTickSteps >= QGEN_LOAD_STEP_COUNT - 1) return;
-    const timer = setTimeout(() => setQGenTickSteps((p) => p + 1), 12_000);
+    const timer = setTimeout(() => setQGenTickSteps((p) => p + 1), QGEN_TICK_MS);
     return () => clearTimeout(timer);
   }, [isQGenBusy, qGenDone, qGenTotal, qGenTickSteps]);
 
@@ -1352,7 +1364,7 @@ export function ChatPanel({
       {/* Tab content — flex-1 when plan empty state so it fills the stretched card and centers content */}
       <div style={{ animation: "fadeSlideIn 0.2s ease-out both" }} className={cn(
         "flex min-h-0 flex-col overflow-y-auto",
-        activeTab === "plan" && !plan && "flex-1",
+        activeTab === "plan" && !plan && "min-h-[280px] flex-1",
         activeTab === "questions" && "flex-1 overflow-hidden"
       )}>
         {activeTab === "plan" && (
@@ -1384,7 +1396,7 @@ export function ChatPanel({
             onRefreshGenerationStatus={() => void onRefreshGenerationStatus?.()}
             onRenameTitle={onRenamePlanTitle}
             planLoadCompletedSteps={planLoadCompletedSteps}
-            planLoadShowLoading={planLoadShowLoading}
+            planLoadShowLoading={planLoadOverlayActive}
             qGenTickSteps={qGenTickSteps}
           />
         )}

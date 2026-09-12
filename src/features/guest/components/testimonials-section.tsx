@@ -117,16 +117,16 @@ export function TestimonialsSection() {
   const loading = items === null;
 
   return (
-    <section className="relative bg-page-bg dark:bg-[#0b0f1a] py-20 px-6">
+    <section className="relative bg-page-bg dark:bg-[#0b0f1a] py-12 sm:py-20 px-4 sm:px-6">
       <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
         <CosmicField variant="compact" />
       </div>
       <div className="relative z-10 max-w-6xl mx-auto">
-        <ScrollReveal animation="fade-up" className="text-center mb-14">
+        <ScrollReveal animation="fade-up" className="text-center mb-8 sm:mb-14">
           <p className="text-sm font-semibold text-primary uppercase tracking-widest mb-3">
             {tm.sectionLabel}
           </p>
-          <h2 className="text-3xl font-bold text-gray-900 dark:text-gray-50">{tm.headline}</h2>
+          <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-50">{tm.headline}</h2>
           <p className="text-gray-500 dark:text-gray-400 mt-3 max-w-lg mx-auto text-base leading-relaxed">
             {tm.subtext}
           </p>
@@ -149,7 +149,7 @@ export function TestimonialsSection() {
                   delay={i * 80}
                   className="h-full"
                 >
-                  <TiltCard className="h-full bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm p-7 flex flex-col gap-5">
+                  <TiltCard className="h-full bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm p-5 sm:p-7 flex flex-col gap-5">
                     <Quote size={22} className="text-primary/30 shrink-0" />
                     <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed flex-1 italic">
                       &ldquo;{item?.quote ?? person.quote}&rdquo;
@@ -160,11 +160,11 @@ export function TestimonialsSection() {
                       >
                         {person.initials}
                       </div>
-                      <div>
-                        <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 break-words">
                           {item?.name ?? person.name}
                         </p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                        <p className="text-xs text-gray-500 dark:text-gray-400 break-words">
                           {item?.role ?? person.role} · {item?.company ?? person.company}
                         </p>
                       </div>
@@ -190,7 +190,7 @@ export function TestimonialsSection() {
                   className="testimonial-card-enter h-full"
                   style={{ animationDelay: `${i * 90}ms` }}
                 >
-                <TiltCard className="h-full bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm p-7 flex flex-col gap-5">
+                <TiltCard className="h-full bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm p-5 sm:p-7 flex flex-col gap-5">
                   <div className="flex items-start justify-between">
                     <Quote size={22} className="text-primary/30 shrink-0" />
                     {fb.rating > 0 && <StarRow value={fb.rating} />}
@@ -219,10 +219,10 @@ export function TestimonialsSection() {
                       </div>
                     )}
                     <div
-                      className="feedback-section"
+                      className="feedback-section min-w-0 flex-1"
                       style={{ animationDelay: `${i * 90 + 150}ms` }}
                     >
-                      <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                      <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 break-words">
                         {fb.authorName}
                       </p>
                     </div>

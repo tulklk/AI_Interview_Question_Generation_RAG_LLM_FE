@@ -25,6 +25,25 @@ const SUBSCRIPTION_ERROR_MESSAGES: Record<string, Record<"en" | "vi", string>> =
   },
 };
 
+/** 5xx / proxy failures — never surface raw Cloudflare "error code: 1033". */
+const SERVER_ERROR_MESSAGES: Record<"en" | "vi", string> = {
+  en: "The server is temporarily unavailable, so the job description could not be analyzed. Please try again later.",
+  vi: "Máy chủ tạm thời không phản hồi nên chưa phân tích được JD. Vui lòng thử lại sau.",
+};
+
+const NETWORK_ERROR_MESSAGES: Record<"en" | "vi", string> = {
+  en: "Could not reach the server, so the job description could not be analyzed. Check your connection and try again.",
+  vi: "Không kết nối được máy chủ nên chưa phân tích được JD. Kiểm tra mạng rồi thử lại.",
+};
+
+const FALLBACK_MESSAGES: Record<"en" | "vi", string> = {
+  en: "Something went wrong. Please try again.",
+  vi: "Đã xảy ra lỗi. Vui lòng thử lại.",
+};
+
+/** Cloudflare / gateway pages often expose only "error code: 1033". */
+const CRYPTIC_ERROR_CODE_RE = /error\s*code\s*:\s*\d+/i;
+
 function pickErrorCode(data: unknown): string | null {
   if (!data || typeof data !== "object") return null;
   const o = data as Record<string, unknown>;
@@ -33,6 +52,27 @@ function pickErrorCode(data: unknown): string | null {
   if (ext && typeof ext === "object") {
     const e = ext as Record<string, unknown>;
     if (typeof e.errorCode === "string") return e.errorCode;
+  }
+  return null;
+}
+
+function isServerStatus(status: number | undefined): boolean {
+  return status === 500 || status === 502 || status === 503 || status === 504;
+}
+
+function isCrypticProxyMessage(text: string): boolean {
+  return CRYPTIC_ERROR_CODE_RE.test(text.trim());
+}
+
+function pickRawMessage(data: unknown): string | null {
+  if (!data || typeof data !== "object") {
+    if (typeof data === "string" && data.trim()) return data.trim();
+    return null;
+  }
+  const d = data as Record<string, unknown>;
+  for (const key of ["detail", "title", "message", "error"] as const) {
+    const v = d[key];
+    if (typeof v === "string" && v.trim()) return v.trim();
   }
   return null;
 }
@@ -47,8 +87,10 @@ export function extractErrorMessage(error: unknown, lang: "en" | "vi" = "en"): s
     errorCode?: string;
     extensions?: { errorCode?: string };
   }> | undefined;
+  const status = axiosErr?.response?.status;
   const data = axiosErr?.response?.data;
   const code = pickErrorCode(data);
+
   // Check the known-errorCode localized message BEFORE the generic detail/error
   // fields — ASP.NET ProblemDetails (problem+json) responses from SubscriptionGate
   // populate `detail` alongside `errorCode`, so checking detail first meant these
@@ -56,14 +98,23 @@ export function extractErrorMessage(error: unknown, lang: "en" | "vi" = "en"): s
   if (code && SUBSCRIPTION_ERROR_MESSAGES[code]) {
     return SUBSCRIPTION_ERROR_MESSAGES[code][lang];
   }
-  if (data && typeof data === "object") {
-    if (typeof data.detail === "string" && data.detail) return data.detail;
-    if (typeof data.title === "string" && data.title) return data.title;
-    if (typeof data.message === "string" && data.message) return data.message;
-    if (typeof data.error === "string" && data.error) return data.error;
+
+  // No HTTP response → network / timeout / CORS
+  if (axiosErr?.isAxiosError && !axiosErr.response) {
+    return NETWORK_ERROR_MESSAGES[lang];
   }
-  if (axiosErr?.message) return axiosErr.message;
-  return "Something went wrong. Please try again.";
+
+  if (isServerStatus(status)) {
+    return SERVER_ERROR_MESSAGES[lang];
+  }
+
+  const raw = pickRawMessage(data) ?? (axiosErr?.message?.trim() || null);
+  if (raw && isCrypticProxyMessage(raw)) {
+    return SERVER_ERROR_MESSAGES[lang];
+  }
+  if (raw) return raw;
+
+  return FALLBACK_MESSAGES[lang];
 }
 
 /**
