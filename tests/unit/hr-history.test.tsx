@@ -119,7 +119,9 @@ describe("HR History — publish / unpublish / bookmark", () => {
     await screen.findByText("Backend Developer Set", {}, { timeout: 10000 });
 
     await user.click(screen.getByTitle("Publish to marketplace"));
-    await user.click(await screen.findByRole("button", { name: "Publish" }));
+    // publish-dialog.tsx's confirm button is labelled with the selected
+    // ready-question count ("Publish {{count}} questions").
+    await user.click(await screen.findByRole("button", { name: /^Publish \d+ questions?$/ }));
 
     await waitFor(() => expect(interviewApi.publishQuestionSet).toHaveBeenCalledTimes(1));
     expect(interviewApi.publishQuestionSet.mock.calls[0][0]).toBe("qs-1");

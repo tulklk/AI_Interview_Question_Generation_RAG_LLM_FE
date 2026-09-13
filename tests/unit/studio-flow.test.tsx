@@ -340,7 +340,7 @@ describe("RAG013 — Save / Publish / Share", () => {
     // pre-selected — its own "Publish" confirm button is scoped to the
     // dialog to avoid ambiguity with the other two "Publish" CTAs.
     const dialog = await screen.findByRole("dialog", {}, { timeout: 10000 });
-    await user.click(within(dialog).getByRole("button", { name: "Publish" }));
+    await user.click(within(dialog).getByRole("button", { name: /^Publish \d+ questions?$/ }));
 
     expect(await screen.findByText("Question set published.", {}, { timeout: 10000 })).toBeInTheDocument();
     const publishedBtn = await findActionBarButton("Published");

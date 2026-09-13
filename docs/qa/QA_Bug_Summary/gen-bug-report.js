@@ -202,9 +202,9 @@ async function main() {
         "Admin Content page: the per-row Delete button did nothing on click.",
         "src/features/admin/components/content/content-table.tsx",
         "No delete endpoint exists for content sessions yet; the Trash2 icon button stayed active.",
-        'Disabled the button with title="Coming soon". Test: admin-content-table.test.tsx (ACT-2).',
+        'Disabled the button with title="Coming soon". Regression test admin-content-table.test.tsx (ACT-2) removed on 13/09/2026 because the Admin Content page was deleted from the product (commit 0ff281f).',
         "Trung bình",
-        "Đã sửa",
+        "Đã sửa (không còn áp dụng: trang đã bị gỡ)",
       ],
       [
         5,

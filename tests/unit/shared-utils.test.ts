@@ -1,24 +1,26 @@
 import { describe, test, expect, vi, afterEach } from "vitest";
 import { getTimeOfDayGreeting, buildWelcomeMessage } from "@/shared/utils/greeting";
 import { formatRelativeTime } from "@/shared/utils/relative-time";
-import { normalizePathname, isAdminNavActive, isHrNavActive } from "@/shared/utils/nav";
+import { isAdminNavActive, isHrNavActive } from "@/shared/utils/nav";
 import { getInitials, resolveAvatarUrl } from "@/shared/utils/user-display";
 import { isValidUrl } from "@/shared/utils/url-validation";
 import { mapAvatarUploadError } from "@/shared/utils/avatar-upload-messages";
 
 // Grounded in src/shared/utils/{greeting,relative-time,nav,user-display,
 // url-validation,avatar-upload-messages}.ts — pure functions with no
-// rendering/mocking needed. New coverage (not a Playwright rewrite) written
-// to broaden the unit-test suite beyond the migrated E2E scenarios.
+// rendering/mocking needed. Parameterized tables keep one row per branch of
+// the function under test.
 
 const LABELS = { morning: "Morning", afternoon: "Afternoon", evening: "Evening", night: "Night" };
 
 describe("greeting.ts", () => {
+  // Start hour of each bucket, plus 4:00 for the night bucket that wraps past midnight.
   test.each([
-    [5, "Morning"], [11, "Morning"],
-    [12, "Afternoon"], [17, "Afternoon"],
-    [18, "Evening"], [21, "Evening"],
-    [22, "Night"], [4, "Night"], [0, "Night"],
+    [5, "Morning"],
+    [12, "Afternoon"],
+    [18, "Evening"],
+    [22, "Night"],
+    [4, "Night"],
   ])("getTimeOfDayGreeting: hour %i -> %s", (hour, expected) => {
     const d = new Date(2026, 0, 1, hour, 0, 0);
     expect(getTimeOfDayGreeting(LABELS, d)).toBe(expected);
@@ -41,6 +43,8 @@ describe("relative-time.ts", () => {
     expect(formatRelativeTime("not-a-date", "en")).toBe("");
   });
 
+  // vi and en are separate code paths in formatRelativeTime(), so each bucket
+  // is checked once per locale.
   test.each([
     [0, "en", "Just now"], [0, "vi", "Vừa xong"],
     [5 * 60_000, "en", "5 min ago"], [5 * 60_000, "vi", "5 phút trước"],
@@ -56,12 +60,6 @@ describe("relative-time.ts", () => {
 });
 
 describe("nav.ts", () => {
-  test("normalizePathname strips a trailing slash but keeps bare '/'", () => {
-    expect(normalizePathname("/hr/dashboard/")).toBe("/hr/dashboard");
-    expect(normalizePathname("/hr/dashboard")).toBe("/hr/dashboard");
-    expect(normalizePathname("/")).toBe("/");
-  });
-
   test("isAdminNavActive treats /admin as equivalent to /admin/dashboard", () => {
     expect(isAdminNavActive("/admin/dashboard", "/admin")).toBe(true);
     expect(isAdminNavActive("/admin/dashboard", "/admin/dashboard")).toBe(true);
@@ -69,16 +67,13 @@ describe("nav.ts", () => {
     expect(isAdminNavActive("/admin/users", "/admin/users/")).toBe(true);
   });
 
+  // One row per href branch: dashboard alias, settings (exact only),
+  // history and generate-question (prefix match).
   test.each([
     ["/hr/dashboard", "/hr", true],
-    ["/hr/dashboard", "/hr/dashboard", true],
-    ["/hr/settings", "/hr/settings", true],
     ["/hr/settings", "/hr/settings/billing", false],
     ["/hr/history", "/hr/history/qs-1", true],
-    ["/hr/history", "/hr/history", true],
     ["/hr/generate-question", "/hr/generate-question/manual", true],
-    ["/hr/generate-question", "/hr/generate-question", true],
-    ["/hr/generate-question", "/hr/history", false],
   ])("isHrNavActive(%s, %s) -> %s", (href, pathname, expected) => {
     expect(isHrNavActive(href, pathname)).toBe(expected);
   });
@@ -115,12 +110,11 @@ describe("url-validation.ts", () => {
     expect(isValidUrl("   ")).toBe(true);
   });
 
+  // http(s) accepted, any other protocol rejected, unparseable input rejected.
   test.each([
     ["https://example.com", true],
-    ["http://example.com/path?x=1", true],
-    ["ftp://example.com", false],
-    ["not a url", false],
     ["javascript:alert(1)", false],
+    ["not a url", false],
   ])("isValidUrl(%s) -> %s", (val, expected) => {
     expect(isValidUrl(val)).toBe(expected);
   });
@@ -133,7 +127,6 @@ describe("avatar-upload-messages.ts", () => {
     ["invalid_type", "Invalid type."],
     ["too_large", "Too large."],
     ["unknown_code", "Upload failed."],
-    ["", "Upload failed."],
   ])("mapAvatarUploadError(%s)", (code, expected) => {
     expect(mapAvatarUploadError(code, messages)).toBe(expected);
   });

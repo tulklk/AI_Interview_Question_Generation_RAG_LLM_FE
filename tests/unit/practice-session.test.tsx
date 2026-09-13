@@ -35,6 +35,55 @@ vi.mock("@/features/candidate/services/candidate-billing.service", async () => {
   return mod.candidateBillingServiceMockFactory();
 });
 
+// The anti-cheat merge gates the whole session UI behind a device check:
+// until integrity monitoring starts, practice-session.tsx renders the session
+// with aria-hidden + "invisible", so getByRole finds nothing. The real hook and
+// camera panel also reach for MediaPipe/TensorFlow and getUserMedia, none of
+// which exist in jsdom. Stub both, and auto-confirm the setup screen so these
+// tests keep exercising the answering flow itself.
+const INTEGRITY_STATE = { sessionId: "sess-1", strikeCount: 0, maxStrikes: 3, terminated: false, strikes: [] };
+
+vi.mock("@/features/candidate/anti-cheat/useAntiCheat", () => ({
+  useAntiCheat: () => ({
+    setup: { camera: "ready", face: "ready", singleCandidate: "ready", phoneModel: "ready", integrity: "ready" },
+    monitoring: true,
+    cameraDisabled: false,
+    setCameraDisabled: vi.fn(),
+    debug: null,
+    integrity: INTEGRITY_STATE,
+    activeWarning: null,
+    acknowledgeWarning: vi.fn(),
+    restoreIntegrityState: () => INTEGRITY_STATE,
+    setOnInterviewTerminated: vi.fn(),
+    runSetup: vi.fn().mockResolvedValue(undefined),
+    startMonitoring: vi.fn().mockResolvedValue(true),
+    stopMonitoring: vi.fn(),
+    restoreReport: vi.fn(),
+    loadIntegrityState: () => INTEGRITY_STATE,
+  }),
+}));
+
+vi.mock("@/features/candidate/components/anti-cheat/PracticeCameraPanel", async () => {
+  const React = await import("react");
+  return {
+    PracticeCameraPanel: React.forwardRef<{ getVideoElement: () => HTMLVideoElement }>((_props, ref) => {
+      React.useImperativeHandle(ref, () => ({ getVideoElement: () => document.createElement("video") }));
+      return null;
+    }),
+  };
+});
+
+vi.mock("@/features/candidate/components/anti-cheat/AntiCheatSetupCheck", async () => {
+  const React = await import("react");
+  return {
+    AntiCheatSetupCheck: ({ onStart }: { onStart: () => void }) => {
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      React.useEffect(() => { onStart(); }, []);
+      return null;
+    },
+  };
+});
+
 import * as practiceApiTyped from "@/features/candidate/services/practice-session.service";
 const practiceApi = practiceApiTyped as unknown as ReturnType<typeof practiceSessionServiceMockFactory>;
 

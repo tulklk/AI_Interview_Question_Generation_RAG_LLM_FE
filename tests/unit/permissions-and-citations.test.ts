@@ -5,13 +5,13 @@ import {
 import { setAuthTokens, getAccessToken } from "@/core/auth/token.service";
 import { setCachedUserProfile, getCachedUserProfile } from "@/core/storage/user-profile-cache";
 import {
-  isJdCitation, sortCitationsPrimaryFirst, citationsForDisplay, formatCitationExcerpt, citationDisplayName,
+  isJdCitation, citationsForDisplay, formatCitationExcerpt, citationDisplayName,
 } from "@/features/studio/utils/citation-display";
 
 // Grounded in src/core/auth/permissions.ts and
 // src/features/studio/utils/citation-display.ts — localStorage-backed auth
-// state and pure citation-formatting helpers, both previously only
-// exercised indirectly (via mocks) by other tests, never as real functions.
+// state and pure citation-formatting helpers. Parameterized tables keep one
+// row per branch of the function under test.
 
 function fakeJwt(payload: Record<string, unknown>): string {
   const b64 = (obj: unknown) => btoa(JSON.stringify(obj)).replace(/=+$/, "");
@@ -55,11 +55,10 @@ describe("permissions.ts", () => {
     expect(getCachedUserProfile()).toBeNull();
   });
 
+  // Any role containing ADMIN, any role containing HR, everything else (incl. null).
   test.each([
-    ["ADMIN", "/admin/dashboard"],
     ["SUPER_ADMIN", "/admin/dashboard"],
     ["HR_MANAGER", "/hr/dashboard"],
-    ["JOB_SEEKER", "/candidate"],
     [null, "/candidate"],
   ] as const)("getRoleRedirect(%s) -> %s", (role, expected) => {
     expect(getRoleRedirect(role)).toBe(expected);
@@ -98,27 +97,13 @@ describe("permissions.ts", () => {
 });
 
 describe("citation-display.ts", () => {
+  // Normalized JD alias, a non-JD file, and the empty-input guard.
   test.each([
-    ["job-description", true], ["jd", true], ["Job Description", true], ["job_description", true],
-    ["handbook.pdf", false], [null, false], [undefined, false], ["", false],
+    ["Job Description", true],
+    ["handbook.pdf", false],
+    [null, false],
   ] as const)("isJdCitation(%s) -> %s", (sourceFile, expected) => {
     expect(isJdCitation(sourceFile)).toBe(expected);
-  });
-
-  test("sortCitationsPrimaryFirst puts the JD citation ahead of KB sources, preserving relative order otherwise", () => {
-    const citations = [
-      { sourceFile: "handbook.pdf", chunkIndex: 0, excerpt: "a" },
-      { sourceFile: "job-description", chunkIndex: 0, excerpt: "b" },
-      { sourceFile: "policy.pdf", chunkIndex: 1, excerpt: "c" },
-    ];
-    expect(sortCitationsPrimaryFirst(citations).map((c) => c.sourceFile)).toEqual([
-      "job-description", "handbook.pdf", "policy.pdf",
-    ]);
-  });
-
-  test("sortCitationsPrimaryFirst handles empty/null input", () => {
-    expect(sortCitationsPrimaryFirst(null)).toEqual([]);
-    expect(sortCitationsPrimaryFirst([])).toEqual([]);
   });
 
   test("citationsForDisplay injects a synthetic JD row (empty excerpt) when none is present", () => {

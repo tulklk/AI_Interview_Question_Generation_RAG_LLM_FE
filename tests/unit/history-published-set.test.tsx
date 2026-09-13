@@ -91,9 +91,8 @@ describe("RAG028 — published question set locks editing", () => {
 
     expect(await screen.findByText("Explain REST vs GraphQL.", {}, { timeout: 10000 })).toBeInTheDocument();
     expect(screen.getAllByText("Published")[0]).toBeInTheDocument();
-    expect(
-      screen.getByText("This set is published — unpublish it first to add, edit, delete, or reorder questions.")
-    ).toBeInTheDocument();
+    expect(screen.getByText("Question set is published")).toBeInTheDocument();
+    expect(screen.getByText("Unpublish to edit, delete, or reorder questions.")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Add Question" })).not.toBeInTheDocument();
 
     // question-edit-card.tsx: locked=true replaces the whole per-question action
@@ -139,16 +138,15 @@ describe("RAG028 — published question set locks editing", () => {
     renderWithProviders(<HrReviewPageClient />);
 
     expect(await screen.findByText("Explain REST vs GraphQL.", {}, { timeout: 10000 })).toBeInTheDocument();
-    expect(screen.getByText("Saved")).toBeInTheDocument();
-    expect(
-      screen.queryByText("This set is published — unpublish it first to add, edit, delete, or reorder questions.")
-    ).not.toBeInTheDocument();
+    // "Saved" (rp.statusDraft) renders twice now - header chip + QuestionSetInfoCard.
+    expect(screen.getAllByText("Saved")[0]).toBeInTheDocument();
+    expect(screen.queryByText("Question set is published")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Add Question" })).toBeInTheDocument();
 
     // Draft sets are unlocked, so each question keeps its own Delete control
     // (mirror of the RAG028-1 assertion that published sets have none). Each
-    // question renders both a desktop and a mobile action bar, so 2 questions
-    // yields 4 Delete-titled buttons.
-    expect(screen.getAllByTitle("Delete")).toHaveLength(4);
+    // question renders a single action bar, so 2 questions yield 2
+    // Delete-titled buttons.
+    expect(screen.getAllByTitle("Delete")).toHaveLength(2);
   }, 15000);
 });

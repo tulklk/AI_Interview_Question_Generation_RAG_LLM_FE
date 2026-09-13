@@ -12,12 +12,14 @@ import { extractErrorMessage } from "@/core/interceptors/error.interceptor";
 // pure function rather than by clicking through Studio's generate flow.
 
 describe("RGA011 — extractErrorMessage", () => {
-  test("RGA011-1 (finding): a bare 5xx with no error body surfaces axios's raw technical message", () => {
+  test("RGA011-1: a bare 5xx with no error body surfaces the friendly server-unavailable message", () => {
     const axiosLikeError = {
       response: { status: 500, data: {} },
       message: "Request failed with status code 500",
     };
-    expect(extractErrorMessage(axiosLikeError)).toBe("Request failed with status code 500");
+    expect(extractErrorMessage(axiosLikeError)).toBe(
+      "The server is temporarily unavailable, so the job description could not be analyzed. Please try again later."
+    );
   });
 
   test("a response body with a message field is preferred over the raw axios message", () => {

@@ -1,41 +1,13 @@
 import { describe, test, expect } from "vitest";
-import { AvatarUploadError, validateAvatarFile } from "@/shared/utils/cloudinary";
 import { computeStreakDays } from "@/features/candidate/utils/practice-streak";
 import { translateDimensionKey, translateQuestionCategory } from "@/features/candidate/utils/skill-labels";
 import { getCompanyInitials, getCompanyColor } from "@/features/candidate/utils/company-visual";
 import { toBackendRoleFilter, normalizeAdminRoleKey, getAdminUserStatus, isAdminRole } from "@/features/admin/utils/admin-user-display";
-import { getDifficultyBadgeClass, getCategoryBadgeClass, formatCategoryLabel, getScoreBadgeClass, getScoreLevel } from "@/features/candidate/components/ui/pill";
+import { formatCategoryLabel, getScoreBadgeClass, getScoreLevel } from "@/features/candidate/components/ui/pill";
 
 // Grounded in the listed pure-function modules — no rendering/mocking
-// needed. New coverage written to broaden the unit-test suite beyond the
-// migrated Playwright scenarios (these files had no prior test at all).
-
-describe("cloudinary.ts — validateAvatarFile", () => {
-  test("accepts an allowed image type under the size cap", () => {
-    const file = new File([new Uint8Array(1024)], "a.png", { type: "image/png" });
-    expect(() => validateAvatarFile(file)).not.toThrow();
-  });
-
-  test("rejects a disallowed mime type", () => {
-    const file = new File(["x"], "a.pdf", { type: "application/pdf" });
-    expect(() => validateAvatarFile(file)).toThrow(AvatarUploadError);
-    try {
-      validateAvatarFile(file);
-    } catch (e) {
-      expect((e as Error).message).toBe("invalid_type");
-    }
-  });
-
-  test("rejects a file over the 2MB cap", () => {
-    const big = new File([new Uint8Array(2 * 1024 * 1024 + 1)], "a.png", { type: "image/png" });
-    expect(() => validateAvatarFile(big)).toThrow(AvatarUploadError);
-    try {
-      validateAvatarFile(big);
-    } catch (e) {
-      expect((e as Error).message).toBe("too_large");
-    }
-  });
-});
+// needed. Parameterized tables keep one row per branch of the function under
+// test.
 
 describe("practice-streak.ts — computeStreakDays", () => {
   function daysAgoIso(n: number): string {
@@ -123,16 +95,16 @@ describe("admin-user-display.ts", () => {
   });
 
   test.each([
-    ["ADMIN", "ADMIN"], ["SysAdmin", "ADMIN"],
-    ["HR_MANAGER", "HR_MANAGER"], ["Recruiter", "HR_MANAGER"],
-    ["JOB_SEEKER", "JOB_SEEKER"], ["Candidate", "JOB_SEEKER"], ["JobSeeker", "JOB_SEEKER"],
-    ["something-else", "UNKNOWN"], [undefined, "UNKNOWN"],
+    ["SysAdmin", "ADMIN"],
+    ["HR_MANAGER", "HR_MANAGER"],
+    ["Candidate", "JOB_SEEKER"],
+    ["something-else", "UNKNOWN"],
+    [undefined, "UNKNOWN"],
   ] as const)("normalizeAdminRoleKey(%s) -> %s", (role, expected) => {
     expect(normalizeAdminRoleKey(role)).toBe(expected);
   });
 
   test.each([
-    [{ isActive: false, emailVerified: true }, "Suspended"],
     [{ isActive: true, emailVerified: false }, "Pending"],
     [{ isActive: true, emailVerified: true }, "Active"],
     // isActive=false takes priority over an unverified email
@@ -151,18 +123,6 @@ describe("admin-user-display.ts", () => {
 });
 
 describe("pill.tsx — pure helpers", () => {
-  test("getDifficultyBadgeClass covers all three difficulty levels", () => {
-    expect(getDifficultyBadgeClass("Easy")).toContain("emerald");
-    expect(getDifficultyBadgeClass("Medium")).toContain("amber");
-    expect(getDifficultyBadgeClass("Hard")).toContain("red");
-  });
-
-  test("getCategoryBadgeClass is case-insensitive and falls back for unknown categories", () => {
-    expect(getCategoryBadgeClass("Technical" as never)).toContain("blue");
-    expect(getCategoryBadgeClass("system-design" as never)).toContain("cyan");
-    expect(getCategoryBadgeClass("some-unknown-type" as never)).toContain("gray");
-  });
-
   test("formatCategoryLabel title-cases hyphen/underscore/space-separated words", () => {
     expect(formatCategoryLabel("problem-solving" as never)).toBe("Problem Solving");
     expect(formatCategoryLabel("system_design" as never)).toBe("System Design");

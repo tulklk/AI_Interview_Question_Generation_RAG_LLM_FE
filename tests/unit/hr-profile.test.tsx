@@ -28,6 +28,29 @@ const HR_USER = {
   },
 };
 
+// profile-section.tsx now reads useHrSubscription() for the premium badge;
+// the real provider fetches the subscription and opens a SignalR connection,
+// so stub the hook the same way the other HR page tests do.
+vi.mock("@/features/hr/context/hr-subscription-context", () => ({
+  useHrSubscription: () => ({
+    planId: "HR_FREE",
+    loading: false,
+    subscription: null,
+    isPremium: false,
+    limits: null,
+    canGenerateNow: true,
+    cooldownEndsAt: null,
+    generateWindowUsed: 0,
+    generateWindowLimit: 4,
+    hasFeature: () => false,
+    cancelPremium: vi.fn(),
+    purchaseAskAiPack: vi.fn(),
+    refresh: vi.fn(),
+    lastErrorCode: null,
+  }),
+  HrSubscriptionProvider: ({ children }: { children: React.ReactNode }) => children,
+}));
+
 vi.mock("@/features/auth/services/user.service", () => ({
   getCurrentUser: vi.fn(),
   updateHrProfile: vi.fn(),
@@ -45,8 +68,10 @@ async function renderEditing() {
   vi.mocked(getCurrentUser).mockResolvedValue(HR_USER as never);
   const user = userEvent.setup();
   renderWithProviders(<ProfileSection />);
-  expect(await screen.findByRole("heading", { name: "Profile Information" })).toBeInTheDocument();
-  await user.click(screen.getByRole("button", { name: "Edit Profile" }));
+  // The profile page was rebuilt into SectionCards (profile-field.tsx) - the
+  // old single "Profile Information" heading is now per-section headings.
+  expect(await screen.findByRole("heading", { name: "Personal information" })).toBeInTheDocument();
+  await user.click(screen.getByRole("button", { name: "Edit profile" }));
   expect(await screen.findByRole("button", { name: "Save Changes" })).toBeInTheDocument();
   return user;
 }
@@ -95,8 +120,9 @@ describe("AUTH007 — HR profile", () => {
     await user.type(fullName, "Some Unsaved Name");
     await user.click(screen.getByRole("button", { name: "Cancel" }));
 
-    expect(await screen.findByRole("button", { name: "Edit Profile" })).toBeInTheDocument();
-    expect(screen.getByText("Nguyen Van QA", { exact: true })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "Edit profile" })).toBeInTheDocument();
+    // The name shows twice now - ProfileHeaderCard heading + ProfileField value.
+    expect(screen.getAllByText("Nguyen Van QA", { exact: true })[0]).toBeInTheDocument();
     expect(screen.queryByText("Some Unsaved Name")).not.toBeInTheDocument();
   });
 
