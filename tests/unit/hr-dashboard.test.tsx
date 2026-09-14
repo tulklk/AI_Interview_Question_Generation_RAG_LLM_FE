@@ -66,7 +66,14 @@ describe("HR Dashboard — KPIs and sections", () => {
       expect(await findFirstText("75%")).toBeInTheDocument(); // Success Rate
       expect(await findFirstText("Backend Developer")).toBeInTheDocument(); // Top Role (string value, no animation)
     },
-    15000
+    // 5 sequential findFirstText calls, each with its own 10000ms budget —
+    // worst case ~50s additive, which the old 15000ms outer timeout couldn't
+    // cover. Each one normally resolves near-instantly (animate() is mocked
+    // in vitest.setup.ts and data resolves synchronously), but under a full
+    // parallel-suite run's CPU/worker contention, even trivial DOM queries
+    // can stall well past 10s individually — give real headroom instead of
+    // budgeting the happy path.
+    45000
   );
 
   test(
@@ -79,7 +86,7 @@ describe("HR Dashboard — KPIs and sections", () => {
       expect(matches.length).toBeGreaterThanOrEqual(2); // Top Role KPI + Recent Sessions row
       expect(await findFirstText("15")).toBeInTheDocument(); // that session's question count
     },
-    15000
+    25000
   );
 
   test(
@@ -91,7 +98,7 @@ describe("HR Dashboard — KPIs and sections", () => {
       expect(await findFirstText("Nguyen Van A")).toBeInTheDocument();
       expect(await findFirstText("88%")).toBeInTheDocument();
     },
-    15000
+    25000
   );
 
   test(
@@ -103,7 +110,7 @@ describe("HR Dashboard — KPIs and sections", () => {
       await findFirstText("15"); // dashboard finished loading real data
       expect(await findFirstText("No candidate recommendations yet.")).toBeInTheDocument();
     },
-    15000
+    25000
   );
 
   test(
@@ -118,9 +125,9 @@ describe("HR Dashboard — KPIs and sections", () => {
       await user.click(retryBtn);
 
       expect(await findFirstText("15")).toBeInTheDocument();
-      expect(screen.queryByText("Failed to load dashboard data.")).not.toBeInTheDocument();
+      expect(screen.queryByText("Failed to load data.")).not.toBeInTheDocument();
     },
-    15000
+    25000
   );
 
   test(
@@ -140,6 +147,6 @@ describe("HR Dashboard — KPIs and sections", () => {
       expect(await findFirstText("Failed to load data.")).toBeInTheDocument();
       expect(await findFirstText("Fallback Candidate")).toBeInTheDocument();
     },
-    15000
+    25000
   );
 });
