@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { Be_Vietnam_Pro } from "next/font/google";
-import Script from "next/script";
 import "./globals.css";
 import { Providers } from "./providers";
 
@@ -42,13 +41,6 @@ export default async function RootLayout({
       suppressHydrationWarning
     >
       <body>
-        {/*
-          Next.js 16 / React 19: thẻ <script> thô trong body component gây console error
-          và không chạy khi hydrate. Dùng next/script beforeInteractive — inject sớm từ HTML SSR.
-        */}
-        <Script id="hiregen-scroll-restore" strategy="beforeInteractive">
-          {`(function(){try{history.scrollRestoration='manual';}catch(e){}try{window.scrollTo(0,0);}catch(e){}})();`}
-        </Script>
         <Providers>{children}</Providers>
       </body>
     </html>

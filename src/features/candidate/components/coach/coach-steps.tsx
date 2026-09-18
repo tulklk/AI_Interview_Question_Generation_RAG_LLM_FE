@@ -1,37 +1,66 @@
 "use client";
 
-import { FileText, Sparkles, Target, type LucideIcon } from "lucide-react";
+import {
+  FileText,
+  Map,
+  RefreshCw,
+  Sparkles,
+  Target,
+  Upload,
+  BarChart3,
+  type LucideIcon,
+} from "lucide-react";
 import { cn } from "@/lib/cn";
 import { portalHeadingAlt, portalSubtextAlt } from "@/shared/utils/portal-ui";
 import { useLanguage } from "@/shared/providers/language-context";
 
-export type CoachStepIndex = 1 | 2 | 3;
+    /** 7 phase wizard: CV → Analysis → Goal → Diagnostic → Report → Roadmap → Reassess */
+export type CoachStepIndex = 1 | 2 | 3 | 4 | 5 | 6 | 7;
 
 interface CoachStepsProps {
   activeStep: CoachStepIndex;
+  maxUnlockedStep: CoachStepIndex;
+  /** Khi đã có lộ trình: khóa step trước (vd. 6 = chỉ chọn 6–7). */
+  minSelectableStep?: CoachStepIndex;
+  onSelect: (step: CoachStepIndex) => void;
 }
 
-// Always use the original step icons (no CheckCircle2 swap — progress bar carries state)
-const ICONS: LucideIcon[] = [FileText, Sparkles, Target];
+const ICONS: LucideIcon[] = [Upload, FileText, Target, Sparkles, BarChart3, Map, RefreshCw];
 
-/** How much of the progress bar to fill per active step */
-const PROGRESS_PCT: Record<CoachStepIndex, number> = { 1: 0, 2: 50, 3: 100 };
+const PROGRESS_PCT: Record<CoachStepIndex, number> = {
+  1: 0,
+  2: 16,
+  3: 32,
+  4: 48,
+  5: 64,
+  6: 82,
+  7: 100,
+};
 
-export function CoachSteps({ activeStep }: CoachStepsProps) {
+export function CoachSteps({
+  activeStep,
+  maxUnlockedStep,
+  minSelectableStep = 1,
+  onSelect,
+}: CoachStepsProps) {
   const { t } = useLanguage();
   const p = t.jobseekerCoachPage;
   const steps = [
-    { title: p.step1Title, desc: p.step1Desc },
-    { title: p.step2Title, desc: p.step2Desc },
-    { title: p.step3Title, desc: p.step3Desc },
+    { title: p.phaseCvTitle, desc: p.phaseCvDesc },
+    { title: p.phaseAnalysisTitle, desc: p.phaseAnalysisDesc },
+    { title: p.phaseGoalTitle, desc: p.phaseGoalDesc },
+    { title: p.phaseDiagnosticTitle, desc: p.phaseDiagnosticDesc },
+    { title: p.phaseReportTitle, desc: p.phaseReportDesc },
+    { title: p.phaseRoadmapTitle, desc: p.phaseRoadmapDesc },
+    { title: p.phaseReassessTitle, desc: p.phaseReassessDesc },
   ];
 
   const pct = PROGRESS_PCT[activeStep];
   const barColor = pct === 100 ? "bg-emerald-500" : "bg-primary";
+  const earlierLocked = minSelectableStep > 1;
 
   return (
     <>
-      {/* Scoped keyframe for the shimmer light sweep */}
       <style>{`
         @keyframes _cs_shimmer {
           0%   { transform: translateX(-100%) skewX(-12deg); }
@@ -51,53 +80,87 @@ export function CoachSteps({ activeStep }: CoachStepsProps) {
         }
       `}</style>
 
-      <div className="hr-glass-card px-6 py-5">
-        {/* Header label */}
+      <div className="hr-glass-card px-4 sm:px-6 py-5">
         <p className={cn("text-[10px] font-bold uppercase tracking-widest mb-5", portalSubtextAlt)}>
           {p.howTitle}
         </p>
 
-        {/* Stacked on mobile; horizontal stepper from md+ */}
-        <div className="flex flex-col gap-4 md:flex-row md:items-start md:gap-0">
+        {earlierLocked && (
+          <p className={cn("text-[11px] mb-3 -mt-2", portalSubtextAlt)}>{p.stepsLockedAfterRoadmap}</p>
+        )}
+
+        <div className="flex items-start overflow-x-auto pb-1 gap-0">
           {steps.map((step, i) => {
             const n = (i + 1) as CoachStepIndex;
             const isLast = i === steps.length - 1;
             const Icon = ICONS[i];
+            const isActive = n === activeStep;
+            const isPast = n < activeStep;
+            const unlocked = n >= minSelectableStep && n <= maxUnlockedStep;
 
             return (
               <div
                 key={n}
                 className={cn(
-                  "flex items-start gap-3",
-                  isLast ? "md:shrink-0" : "md:flex-1 md:min-w-0"
+                  "flex items-start gap-2 sm:gap-3",
+                  isLast ? "shrink-0" : "flex-1 min-w-[120px] sm:min-w-0"
                 )}
               >
-                {/* Circle indicator — uniform neutral color; progress bar shows state */}
-                <div className="w-9 h-9 rounded-full shrink-0 flex items-center justify-center border-2 bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 transition-all duration-300">
-                  <Icon size={15} />
-                </div>
+                <button
+                  type="button"
+                  disabled={!unlocked}
+                  title={!unlocked && n < minSelectableStep ? p.stepsLockedAfterRoadmap : undefined}
+                  onClick={() => onSelect(n)}
+                  className={cn(
+                    "w-8 h-8 sm:w-9 sm:h-9 rounded-full shrink-0 flex items-center justify-center border-2 transition-all duration-300",
+                    unlocked ? "cursor-pointer hover:scale-105" : "cursor-not-allowed opacity-50",
+                    isActive
+                      ? "bg-primary/10 border-primary text-primary"
+                      : isPast && unlocked
+                        ? "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-400 text-emerald-600 dark:text-emerald-400"
+                        : isPast && !unlocked
+                          ? "bg-gray-100 dark:bg-gray-800/80 border-gray-300 dark:border-gray-600 text-gray-400"
+                          : "bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400"
+                  )}
+                  aria-current={isActive ? "step" : undefined}
+                  aria-label={step.title}
+                >
+                  <Icon size={14} />
+                </button>
 
-                {/* Step text */}
-                <div className="min-w-0 flex-1 pt-0.5 break-words">
-                  <p className={cn("text-[13px] font-semibold leading-tight", portalHeadingAlt)}>
+                <button
+                  type="button"
+                  disabled={!unlocked}
+                  title={!unlocked && n < minSelectableStep ? p.stepsLockedAfterRoadmap : undefined}
+                  onClick={() => onSelect(n)}
+                  className={cn(
+                    "min-w-0 pt-0.5 text-left",
+                    unlocked ? "cursor-pointer" : "cursor-not-allowed opacity-50"
+                  )}
+                >
+                  <p
+                    className={cn(
+                      "text-[12px] sm:text-[13px] font-semibold leading-tight",
+                      isActive ? "text-primary" : portalHeadingAlt
+                    )}
+                  >
                     {step.title}
                   </p>
                   <p
                     className={cn(
-                      "text-[11px] mt-0.5 leading-4",
-                      !isLast && "md:pr-5",
+                      "text-[10px] sm:text-[11px] mt-0.5 leading-4 hidden sm:block",
+                      !isLast && "pr-3",
                       portalSubtextAlt
                     )}
                   >
                     {step.desc}
                   </p>
-                </div>
+                </button>
               </div>
             );
           })}
         </div>
 
-        {/* ── Progress bar with shimmer ── */}
         <div className="mt-5 h-1.5 rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden">
           <div
             className={cn(

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   FileText,
@@ -15,16 +15,21 @@ import {
   RefreshCw,
   FilePlus2,
   MoreHorizontal,
+  Folder,
+  ChevronLeft,
+  FolderInput,
+  Pencil,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { portalHeading, portalSubtext, portalInput } from "@/shared/utils/portal-ui";
 import { useCountUp } from "@/shared/hooks/use-count-up";
 import { useInView } from "framer-motion";
 import type { KnowledgeDocument, DocumentStatus, KnowledgeDocumentType, KnowledgeChunkPreview } from "@/features/knowledge/types/knowledge";
-import { HR_DOCUMENT_TYPES } from "@/features/knowledge/types/knowledge";
+import { HR_DOCUMENT_TYPES, ADMIN_DOCUMENT_TYPES, ADMIN_VIRTUAL_FOLDER_LABELS } from "@/features/knowledge/types/knowledge";
 import { useLanguage } from "@/shared/providers/language-context";
 import { useToast } from "@/shared/providers/toast-context";
 import { extractErrorMessage } from "@/core/interceptors/error.interceptor";
+import { AdminRoadmapNodeImportPanel } from "@/features/knowledge/components/admin-roadmap-node-import-panel";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -32,14 +37,35 @@ import { extractErrorMessage } from "@/core/interceptors/error.interceptor";
 
 interface KnowledgePageContentProps {
   variant: "hr" | "admin";
-  onFetchDocs: () => Promise<KnowledgeDocument[]>;
-  /** SCRUM-442: HR truyền documentType; Admin bỏ qua. */
-  onUpload: (file: File, documentType?: KnowledgeDocumentType) => Promise<KnowledgeDocument | null>;
+  onFetchDocs: (folder?: string | null) => Promise<KnowledgeDocument[]>;
+  /** SCRUM-442/449/450: documentType; Admin thêm adminNote + folder khi upload. */
+  onUpload: (
+    file: File,
+    documentType?: KnowledgeDocumentType,
+    adminNote?: string | null,
+    folder?: string | null
+  ) => Promise<KnowledgeDocument | null>;
   onDelete: (id: string) => Promise<boolean>;
   onReingest: (id: string) => Promise<boolean>;
   onRefreshDoc?: (id: string) => Promise<KnowledgeDocument | null>;
   onUpdateType?: (id: string, documentType: KnowledgeDocumentType) => Promise<KnowledgeDocument | null>;
   onFetchChunks?: (id: string) => Promise<KnowledgeChunkPreview[]>;
+  /** SCRUM-447: admin — PATCH documentType và/hoặc adminNote */
+  onPatchMeta?: (
+    id: string,
+    patch: {
+      documentType?: KnowledgeDocumentType;
+      adminNote?: string | null;
+      folder?: string | null;
+      clearFolder?: boolean;
+    }
+  ) => Promise<KnowledgeDocument | null>;
+  /** SCRUM-450: danh sách folder + count */
+  onFetchFolders?: () => Promise<{ name: string; count: number }[]>;
+  /** SCRUM-451: chuyển document sang folder */
+  onMoveDocs?: (documentIds: string[], folder: string | null) => Promise<number>;
+  /** SCRUM-451: đổi tên folder */
+  onRenameFolder?: (from: string, to: string | null) => Promise<number>;
 }
 
 // ---------------------------------------------------------------------------
@@ -51,9 +77,30 @@ const ACCEPTED_TYPES = [
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
   "application/msword",
   "text/plain",
+  "application/json",
+  "application/x-ndjson",
 ];
-const ACCEPTED_EXT = [".pdf", ".docx", ".doc", ".txt"];
+/** HR: PDF/DOCX/TXT only */
+const HR_ACCEPTED_EXT = [".pdf", ".docx", ".doc", ".txt"];
+/** SCRUM-448: Admin SYSTEM thêm .jsonl (Q/A dataset) */
+const ADMIN_ACCEPTED_EXT = [".pdf", ".docx", ".doc", ".txt", ".jsonl"];
 const MAX_FILE_MB = 20;
+
+type AdminFolderFilter = "all" | "tech" | "roadmap" | "other";
+
+function getAdminVirtualPath(doc: KnowledgeDocument): string {
+  const folder =
+    ADMIN_VIRTUAL_FOLDER_LABELS[doc.documentType ?? "Unclassified"] ?? "Other";
+  return `SYSTEM/${folder}/${doc.fileName}`;
+}
+
+function matchesAdminFolder(doc: KnowledgeDocument, filter: AdminFolderFilter): boolean {
+  const t = doc.documentType ?? "Unclassified";
+  if (filter === "all") return true;
+  if (filter === "tech") return t === "InternalStack";
+  if (filter === "roadmap") return t === "Roadmap";
+  return t !== "InternalStack" && t !== "Roadmap";
+}
 
 function DocStatTile({ value, label, color, bg }: { value: number; label: string; color: string; bg: string }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -266,6 +313,7 @@ function DocumentCard({
   onDelete,
   onReingest,
   onOpen,
+  onMove,
   deleting,
   reingesting,
 }: {
@@ -273,6 +321,7 @@ function DocumentCard({
   onDelete: (id: string) => void;
   onReingest: (id: string) => void;
   onOpen?: (doc: KnowledgeDocument) => void;
+  onMove?: (doc: KnowledgeDocument) => void;
   deleting: boolean;
   reingesting: boolean;
 }) {
@@ -348,6 +397,11 @@ function DocumentCard({
         </p>
         <div className="flex items-center gap-2 mt-0.5 flex-wrap">
           <StatusBadge status={doc.status} />
+          {doc.folder ? (
+            <span className="inline-flex items-center rounded-full bg-amber-50 dark:bg-amber-950/40 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 dark:text-amber-300">
+              {doc.folder}
+            </span>
+          ) : null}
           <span className="inline-flex items-center rounded-full bg-violet-50 dark:bg-violet-950/40 px-1.5 py-0.5 text-[10px] font-semibold text-violet-700 dark:text-violet-300">
             {typeLabel}
           </span>
@@ -366,6 +420,11 @@ function DocumentCard({
           )}
           <span className={cn("text-[11px]", portalSubtext)}>{formatDate(doc.createdAt)}</span>
         </div>
+        {doc.adminNote ? (
+          <p className={cn("text-[11px] mt-1 line-clamp-2", portalSubtext)} title={doc.adminNote}>
+            {doc.adminNote}
+          </p>
+        ) : null}
         {doc.status === "FAILED" && doc.errorMessage && (
           <p className="text-[11px] text-red-500 dark:text-red-400 mt-1 line-clamp-1">
             {doc.errorMessage}
@@ -416,6 +475,20 @@ function DocumentCard({
               {doc.status === "FAILED" ? kb.reingestTitle : kb.retryTitle}
             </button>
           )}
+          {onMove && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onMove(doc);
+                setMenuOpen(false);
+              }}
+              className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+            >
+              <FolderInput size={13} className="text-amber-500" />
+              {kb.moveToFolder ?? "Chuyển folder…"}
+            </button>
+          )}
           <button
             type="button"
             disabled={deleting}
@@ -444,10 +517,16 @@ function UploadZone({
   onFiles,
   uploading,
   uploadingFileName,
+  acceptedExt,
+  dragDropHint,
+  jsonlHint,
 }: {
   onFiles: (files: File[]) => void;
   uploading: boolean;
   uploadingFileName: string;
+  acceptedExt: string[];
+  dragDropHint: string;
+  jsonlHint?: string;
 }) {
   const { t } = useLanguage();
   const kb = t.knowledgePage;
@@ -458,10 +537,10 @@ function UploadZone({
     e.preventDefault();
     setDragging(false);
     const files = Array.from(e.dataTransfer.files).filter((f) =>
-      ACCEPTED_TYPES.includes(f.type) || ACCEPTED_EXT.some((ext) => f.name.toLowerCase().endsWith(ext))
+      ACCEPTED_TYPES.includes(f.type) || acceptedExt.some((ext) => f.name.toLowerCase().endsWith(ext))
     );
     if (files.length) onFiles(files);
-  }, [onFiles]);
+  }, [onFiles, acceptedExt]);
 
   return (
     <div
@@ -482,7 +561,7 @@ function UploadZone({
         ref={inputRef}
         type="file"
         className="hidden"
-        accept={ACCEPTED_EXT.join(",")}
+        accept={acceptedExt.join(",")}
         multiple
         onChange={(e) => {
           const files = Array.from(e.target.files ?? []);
@@ -514,8 +593,13 @@ function UploadZone({
             <span className="text-violet-600 dark:text-violet-400 font-medium">{kb.dragDropClick}</span>
           </p>
           <p className={cn("text-[11px] mt-1", portalSubtext)}>
-            {kb.dragDropHint.replace("{{n}}", String(MAX_FILE_MB))}
+            {dragDropHint.replace("{{n}}", String(MAX_FILE_MB))}
           </p>
+          {jsonlHint ? (
+            <p className={cn("text-[11px] mt-2 text-left leading-relaxed", portalSubtext)}>
+              {jsonlHint}
+            </p>
+          ) : null}
         </div>
       )}
     </div>
@@ -573,6 +657,150 @@ function DeleteModal({
 }
 
 // ---------------------------------------------------------------------------
+// SCRUM-451: Move file modal
+// ---------------------------------------------------------------------------
+
+function MoveFolderModal({
+  fileName,
+  currentFolder,
+  folderOptions,
+  busy,
+  onConfirm,
+  onCancel,
+}: {
+  fileName: string;
+  currentFolder?: string | null;
+  folderOptions: string[];
+  busy: boolean;
+  onConfirm: (folder: string | null) => void;
+  onCancel: () => void;
+}) {
+  const { t } = useLanguage();
+  const kb = t.knowledgePage;
+  const [value, setValue] = useState(currentFolder ?? "");
+
+  return createPortal(
+    <div className="fixed inset-0 z-9999 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onCancel} />
+      <div className="relative w-full max-w-sm rounded-2xl bg-white dark:bg-gray-900 shadow-2xl border border-gray-200 dark:border-gray-700 p-6">
+        <button type="button" onClick={onCancel} className="absolute top-4 right-4 p-1 text-gray-400 hover:text-gray-600">
+          <X size={16} />
+        </button>
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-950/50 flex items-center justify-center">
+            <FolderInput size={18} className="text-amber-500" />
+          </div>
+          <div>
+            <p className={cn("text-sm font-semibold", portalHeading)}>{kb.moveToFolder ?? "Chuyển folder"}</p>
+            <p className={cn("text-xs mt-0.5 truncate max-w-[220px]", portalSubtext)}>{fileName}</p>
+          </div>
+        </div>
+        <label className={cn("text-xs font-medium", portalSubtext)}>
+          {kb.uploadFolderLabel ?? "Folder / nhóm"}
+        </label>
+        <input
+          list="move-folder-options"
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          placeholder={kb.uploadFolderPlaceholder ?? "vd. swe (để trống = unsorted)"}
+          className={cn("mt-1.5 w-full px-3 py-2 text-sm rounded-xl border", portalInput)}
+        />
+        <datalist id="move-folder-options">
+          {folderOptions.map((f) => (
+            <option key={f} value={f} />
+          ))}
+        </datalist>
+        <p className={cn("text-[11px] mt-1.5", portalSubtext)}>
+          {kb.moveFolderHint ?? "Để trống để đưa về unsorted. Chỉ đổi metadata UI."}
+        </p>
+        <div className="flex gap-2 mt-4 justify-end">
+          <button type="button" onClick={onCancel} className="px-4 py-2 text-sm font-medium rounded-xl border border-gray-200 dark:border-gray-700">
+            {kb.deleteCancel}
+          </button>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => onConfirm(value.trim() || null)}
+            className="px-4 py-2 text-sm font-semibold rounded-xl bg-violet-600 hover:bg-violet-500 text-white disabled:opacity-50 inline-flex items-center gap-2"
+          >
+            {busy ? <Loader2 size={14} className="animate-spin" /> : <FolderInput size={14} />}
+            {kb.moveConfirm ?? "Chuyển"}
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
+function RenameFolderModal({
+  fromName,
+  folderOptions,
+  busy,
+  onConfirm,
+  onCancel,
+}: {
+  fromName: string;
+  folderOptions: string[];
+  busy: boolean;
+  onConfirm: (to: string | null) => void;
+  onCancel: () => void;
+}) {
+  const { t } = useLanguage();
+  const kb = t.knowledgePage;
+  const [value, setValue] = useState(fromName === "unsorted" ? "" : fromName);
+
+  return createPortal(
+    <div className="fixed inset-0 z-9999 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onCancel} />
+      <div className="relative w-full max-w-sm rounded-2xl bg-white dark:bg-gray-900 shadow-2xl border border-gray-200 dark:border-gray-700 p-6">
+        <button type="button" onClick={onCancel} className="absolute top-4 right-4 p-1 text-gray-400 hover:text-gray-600">
+          <X size={16} />
+        </button>
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-950/50 flex items-center justify-center">
+            <Pencil size={18} className="text-amber-500" />
+          </div>
+          <div>
+            <p className={cn("text-sm font-semibold", portalHeading)}>{kb.renameFolder ?? "Đổi tên folder"}</p>
+            <p className={cn("text-xs mt-0.5", portalSubtext)}>
+              {(kb.renameFolderFrom ?? "Từ: {{name}}").replace("{{name}}", fromName)}
+            </p>
+          </div>
+        </div>
+        <input
+          list="rename-folder-options"
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          placeholder={kb.uploadFolderPlaceholder ?? "tên mới (trống = unsorted)"}
+          className={cn("w-full px-3 py-2 text-sm rounded-xl border", portalInput)}
+        />
+        <datalist id="rename-folder-options">
+          {folderOptions.map((f) => (
+            <option key={f} value={f} />
+          ))}
+        </datalist>
+        <div className="flex gap-2 mt-4 justify-end">
+          <button type="button" onClick={onCancel} className="px-4 py-2 text-sm font-medium rounded-xl border border-gray-200 dark:border-gray-700">
+            {kb.deleteCancel}
+          </button>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => onConfirm(value.trim() || null)}
+            className="px-4 py-2 text-sm font-semibold rounded-xl bg-violet-600 hover:bg-violet-500 text-white disabled:opacity-50 inline-flex items-center gap-2"
+          >
+            {busy ? <Loader2 size={14} className="animate-spin" /> : <Pencil size={14} />}
+            {kb.renameConfirm ?? "Đổi tên"}
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Main component
 // ---------------------------------------------------------------------------
 
@@ -585,30 +813,62 @@ export function KnowledgePageContent({
   onRefreshDoc,
   onUpdateType,
   onFetchChunks,
+  onPatchMeta,
+  onFetchFolders,
+  onMoveDocs,
+  onRenameFolder,
 }: KnowledgePageContentProps) {
   const { t, lang } = useLanguage();
   const kb = t.knowledgePage;
   const { addToast } = useToast();
 
   const [docs, setDocs] = useState<KnowledgeDocument[]>([]);
+  const [folders, setFolders] = useState<{ name: string; count: number }[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [uploadingFileName, setUploadingFileName] = useState("");
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [reingestingId, setReingestingId] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<KnowledgeDocument | null>(null);
+  const [moveDoc, setMoveDoc] = useState<KnowledgeDocument | null>(null);
+  const [renameFrom, setRenameFrom] = useState<string | null>(null);
+  const [folderBusy, setFolderBusy] = useState(false);
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<string>("all");
+  const [adminFolderFilter, setAdminFolderFilter] = useState<AdminFolderFilter>("all");
+  /** SCRUM-450: null = list folder; string = đang xem files trong folder */
+  const [activeFolder, setActiveFolder] = useState<string | null>(null);
   const [uploadType, setUploadType] = useState<KnowledgeDocumentType>("InternalStack");
+  /** SCRUM-449: chú thích gắn với lần upload Admin */
+  const [uploadNote, setUploadNote] = useState("");
+  /** Folder đích upload — mặc định Coach diagnostic KB */
+  const coachKbFolder = (kb.coachKbFolderName ?? "test-candidate").toLowerCase();
+  const coachRoadmapFolder = (kb.coachRoadmapFolderName ?? "coach-roadmap").toLowerCase();
+  const [uploadFolder, setUploadFolder] = useState(coachKbFolder);
+  const uploadSectionRef = useRef<HTMLDivElement | null>(null);
   const [drawerDoc, setDrawerDoc] = useState<KnowledgeDocument | null>(null);
   const [drawerChunks, setDrawerChunks] = useState<KnowledgeChunkPreview[]>([]);
   const [drawerLoading, setDrawerLoading] = useState(false);
+  const [drawerAdminNote, setDrawerAdminNote] = useState("");
+  const [drawerFolder, setDrawerFolder] = useState("");
+  const [savingMeta, setSavingMeta] = useState(false);
 
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  const loadFolders = useCallback(async () => {
+    if (variant !== "admin" || !onFetchFolders) return;
+    try {
+      setFolders(await onFetchFolders());
+    } catch {
+      setFolders([]);
+    }
+  }, [variant, onFetchFolders]);
+
   const loadDocs = useCallback(async () => {
     try {
-      const result = await onFetchDocs();
+      const folderParam =
+        variant === "admin" && activeFolder ? activeFolder : undefined;
+      const result = await onFetchDocs(folderParam);
       setDocs(result);
     } catch (error) {
       setDocs([]);
@@ -620,11 +880,43 @@ export function KnowledgePageContent({
     } finally {
       setLoading(false);
     }
-  }, [onFetchDocs, addToast, lang]);
+  }, [onFetchDocs, addToast, lang, variant, activeFolder]);
 
   useEffect(() => {
     loadDocs();
   }, [loadDocs]);
+
+  useEffect(() => {
+    void loadFolders();
+  }, [loadFolders]);
+
+  useEffect(() => {
+    if (variant === "admin" && activeFolder && activeFolder !== "unsorted") {
+      setUploadFolder(activeFolder);
+    }
+  }, [variant, activeFolder]);
+
+  function applyCoachUploadPreset() {
+    setUploadFolder(coachKbFolder);
+    setUploadType("InternalStack");
+    uploadSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  function applyCoachRoadmapUploadPreset() {
+    setUploadFolder(coachRoadmapFolder);
+    setUploadType("Roadmap");
+    uploadSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  const folderQuickOptions = useMemo(() => {
+    const names = new Set<string>();
+    names.add(coachKbFolder);
+    names.add(coachRoadmapFolder);
+    for (const f of folders) {
+      if (f.name && f.name !== "unsorted") names.add(f.name);
+    }
+    return Array.from(names);
+  }, [folders, coachKbFolder, coachRoadmapFolder]);
 
   useEffect(() => {
     const hasProcessing = docs.some(
@@ -657,16 +949,23 @@ export function KnowledgePageContent({
       addToast("error", kb.fileTooLarge.replace("{{name}}", tooBig.name).replace("{{n}}", String(MAX_FILE_MB)));
       return;
     }
-    if (variant === "hr" && !uploadType) {
+    if ((variant === "hr" || variant === "admin") && !uploadType) {
       addToast("error", kb.typeRequired ?? "Chọn loại tài liệu trước khi upload.");
       return;
     }
+    let anySuccess = false;
     for (const file of files) {
       setUploading(true);
       setUploadingFileName(file.name);
       try {
-        const result = await onUpload(file, variant === "hr" ? uploadType : undefined);
+        const result = await onUpload(
+          file,
+          variant === "hr" || variant === "admin" ? uploadType : undefined,
+          variant === "admin" ? (uploadNote.trim() || null) : undefined,
+          variant === "admin" ? (uploadFolder.trim() || null) : undefined
+        );
         if (result) {
+          anySuccess = true;
           setDocs((prev) => [result, ...prev.filter((d) => d.id !== result.id)]);
           addToast("success", kb.uploadSuccess.replace("{{name}}", file.name));
           // Đồng bộ lại từ server (status/chunkCount đầy đủ).
@@ -684,10 +983,17 @@ export function KnowledgePageContent({
       setUploading(false);
       setUploadingFileName("");
     }
+    // SCRUM-449/450: clear chú thích sau upload; refresh folders
+    if (variant === "admin" && anySuccess) {
+      setUploadNote("");
+      void loadFolders();
+    }
   }
 
   async function openDrawer(doc: KnowledgeDocument) {
     setDrawerDoc(doc);
+    setDrawerAdminNote(doc.adminNote ?? "");
+    setDrawerFolder(doc.folder ?? "");
     setDrawerChunks([]);
     if (!onFetchChunks) return;
     setDrawerLoading(true);
@@ -707,14 +1013,92 @@ export function KnowledgePageContent({
   }
 
   async function handleChangeType(id: string, documentType: KnowledgeDocumentType) {
-    if (!onUpdateType) return;
-    const updated = await onUpdateType(id, documentType);
+    let updated: KnowledgeDocument | null = null;
+    if (variant === "admin" && onPatchMeta) {
+      updated = await onPatchMeta(id, { documentType });
+    } else if (onUpdateType) {
+      updated = await onUpdateType(id, documentType);
+    } else {
+      return;
+    }
     if (updated) {
       setDocs((prev) => prev.map((d) => (d.id === id ? { ...d, ...updated } : d)));
       if (drawerDoc?.id === id) setDrawerDoc({ ...drawerDoc, ...updated });
       addToast("success", kb.typeUpdated ?? "Đã cập nhật loại tài liệu.");
     } else {
       addToast("error", kb.typeUpdateFailed ?? "Không thể đổi loại tài liệu.");
+    }
+  }
+
+  async function handleSaveAdminNote() {
+    if (!drawerDoc || !onPatchMeta) return;
+    setSavingMeta(true);
+    const folderTrim = drawerFolder.trim();
+    const updated = await onPatchMeta(drawerDoc.id, {
+      adminNote: drawerAdminNote.trim() || null,
+      folder: folderTrim || null,
+      clearFolder: !folderTrim,
+    });
+    if (updated) {
+      setDocs((prev) => prev.map((d) => (d.id === drawerDoc.id ? { ...d, ...updated } : d)));
+      setDrawerDoc({ ...drawerDoc, ...updated });
+      addToast("success", kb.adminNoteSaved ?? "Đã lưu ghi chú admin.");
+      void loadFolders();
+    } else {
+      addToast("error", kb.adminNoteSaveFailed ?? "Không thể lưu ghi chú admin.");
+    }
+    setSavingMeta(false);
+  }
+
+  async function handleMoveConfirm(folder: string | null) {
+    if (!moveDoc || !onMoveDocs) return;
+    setFolderBusy(true);
+    try {
+      const n = await onMoveDocs([moveDoc.id], folder);
+      addToast(
+        "success",
+        (kb.moveSuccess ?? "Đã chuyển {{n}} file.").replace("{{n}}", String(n))
+      );
+      setMoveDoc(null);
+      if (drawerDoc?.id === moveDoc.id) {
+        setDrawerDoc({ ...drawerDoc, folder });
+        setDrawerFolder(folder ?? "");
+      }
+      await loadDocs();
+      await loadFolders();
+    } catch (error) {
+      addToast(
+        "error",
+        extractErrorMessage(error, lang === "vi" ? "vi" : "en") ||
+          (kb.moveFailed ?? "Không chuyển được folder.")
+      );
+    } finally {
+      setFolderBusy(false);
+    }
+  }
+
+  async function handleRenameConfirm(to: string | null) {
+    if (!renameFrom || !onRenameFolder) return;
+    setFolderBusy(true);
+    try {
+      const n = await onRenameFolder(renameFrom, to);
+      addToast(
+        "success",
+        (kb.renameSuccess ?? "Đã đổi tên · {{n}} file.").replace("{{n}}", String(n))
+      );
+      const next = to ?? "unsorted";
+      setRenameFrom(null);
+      if (activeFolder === renameFrom) setActiveFolder(next);
+      await loadFolders();
+      await loadDocs();
+    } catch (error) {
+      addToast(
+        "error",
+        extractErrorMessage(error, lang === "vi" ? "vi" : "en") ||
+          (kb.renameFailed ?? "Không đổi tên folder được.")
+      );
+    } finally {
+      setFolderBusy(false);
     }
   }
 
@@ -751,11 +1135,18 @@ export function KnowledgePageContent({
 
   const filtered = docs.filter((d) => {
     const matchSearch = !search || d.fileName.toLowerCase().includes(search.toLowerCase());
+    if (variant === "admin") {
+      // Khi đang trong một folder dataset — secondary filter Tech/Roadmap
+      return matchSearch && matchesAdminFolder(d, adminFolderFilter);
+    }
     const matchType =
       typeFilter === "all" ||
       (d.documentType ?? "Unclassified") === typeFilter;
     return matchSearch && matchType;
   });
+
+  const showFolderBrowser = variant === "admin" && activeFolder === null;
+  const folderTotalFiles = folders.reduce((s, f) => s + f.count, 0);
 
   const readyCount = docs.filter((d) => d.status === "READY").length;
   const processingCount = docs.filter(
@@ -770,6 +1161,27 @@ export function KnowledgePageContent({
           fileName={confirmDelete.fileName}
           onConfirm={() => handleDelete(confirmDelete.id)}
           onCancel={() => setConfirmDelete(null)}
+        />
+      )}
+
+      {moveDoc && onMoveDocs && (
+        <MoveFolderModal
+          fileName={moveDoc.fileName}
+          currentFolder={moveDoc.folder}
+          folderOptions={folders.filter((f) => f.name !== "unsorted").map((f) => f.name)}
+          busy={folderBusy}
+          onConfirm={handleMoveConfirm}
+          onCancel={() => setMoveDoc(null)}
+        />
+      )}
+
+      {renameFrom && onRenameFolder && (
+        <RenameFolderModal
+          fromName={renameFrom}
+          folderOptions={folders.filter((f) => f.name !== "unsorted").map((f) => f.name)}
+          busy={folderBusy}
+          onConfirm={handleRenameConfirm}
+          onCancel={() => setRenameFrom(null)}
         />
       )}
 
@@ -815,14 +1227,209 @@ export function KnowledgePageContent({
                 </option>
               </select>
             )}
+            {variant === "admin" && !showFolderBrowser && (
+              <div className="space-y-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveFolder(null);
+                    setSearch("");
+                    setLoading(true);
+                  }}
+                  className={cn(
+                    "inline-flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-lg",
+                    "text-violet-600 dark:text-violet-400 hover:bg-violet-50 dark:hover:bg-violet-950/40"
+                  )}
+                >
+                  <ChevronLeft size={14} />
+                  {kb.backToFolders ?? "Tất cả folder"}
+                </button>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <p className={cn("text-xs font-semibold flex items-center gap-1.5", portalHeading)}>
+                    <Folder size={14} className="text-amber-500" />
+                    SYSTEM / {activeFolder}
+                  </p>
+                  {onRenameFolder && activeFolder ? (
+                    <button
+                      type="button"
+                      onClick={() => setRenameFrom(activeFolder)}
+                      className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-lg text-amber-700 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950/40"
+                    >
+                      <Pencil size={12} />
+                      {kb.renameFolder ?? "Đổi tên"}
+                    </button>
+                  ) : null}
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {(
+                    [
+                      { key: "all" as AdminFolderFilter, label: kb.filterAllTypes ?? "Tất cả" },
+                      { key: "tech" as AdminFolderFilter, label: kb.virtualFolderTech ?? "SYSTEM/Tech" },
+                      { key: "roadmap" as AdminFolderFilter, label: kb.virtualFolderRoadmap ?? "SYSTEM/Roadmap" },
+                      { key: "other" as AdminFolderFilter, label: kb.virtualFolderOther ?? "Other" },
+                    ] as const
+                  ).map(({ key, label }) => (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => setAdminFolderFilter(key)}
+                      className={cn(
+                        "px-2.5 py-1 text-[11px] font-semibold rounded-lg border transition-colors",
+                        adminFolderFilter === key
+                          ? "bg-violet-100 dark:bg-violet-950/50 border-violet-300 dark:border-violet-700 text-violet-700 dark:text-violet-300"
+                          : "border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800"
+                      )}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                {adminFolderFilter === "roadmap" && <AdminRoadmapNodeImportPanel />}
+              </div>
+            )}
+            {variant === "admin" && showFolderBrowser && (
+              <p className={cn("text-xs", portalSubtext)}>
+                {(kb.folderBrowserHint ?? "Chọn folder để xem file · {{n}} file").replace(
+                  "{{n}}",
+                  String(folderTotalFiles)
+                )}
+              </p>
+            )}
+            {variant === "admin" && (
+              <div className="mt-2 space-y-2">
+                <div
+                  className={cn(
+                    "rounded-xl border px-3 py-2.5 text-xs leading-relaxed space-y-2",
+                    "border-amber-200/80 bg-amber-50/80 text-amber-950",
+                    "dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-100"
+                  )}
+                >
+                  <p>
+                    {kb.coachKbFolderBanner ??
+                      "Coach diagnostic uses SYSTEM folder test-candidate only."}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={applyCoachUploadPreset}
+                    className={cn(
+                      "inline-flex items-center h-8 px-3 rounded-lg text-[11px] font-semibold",
+                      "bg-amber-600 text-white hover:bg-amber-700 dark:bg-amber-500 dark:hover:bg-amber-400"
+                    )}
+                  >
+                    {kb.coachKbFolderBannerCta ?? "Point upload → test-candidate"}
+                  </button>
+                </div>
+                <div
+                  className={cn(
+                    "rounded-xl border px-3 py-2.5 text-xs leading-relaxed space-y-2",
+                    "border-sky-200/80 bg-sky-50/80 text-sky-950",
+                    "dark:border-sky-900/50 dark:bg-sky-950/30 dark:text-sky-100"
+                  )}
+                >
+                  <p>
+                    {kb.coachRoadmapFolderBanner ??
+                      "Coach roadmap uses SYSTEM folder coach-roadmap."}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={applyCoachRoadmapUploadPreset}
+                    className={cn(
+                      "inline-flex items-center h-8 px-3 rounded-lg text-[11px] font-semibold",
+                      "bg-sky-600 text-white hover:bg-sky-700 dark:bg-sky-500 dark:hover:bg-sky-400"
+                    )}
+                  >
+                    {kb.coachRoadmapFolderBannerCta ?? "Point upload → coach-roadmap"}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
-          {/* Document list */}
+          {/* Document / folder list */}
           <div className="flex flex-col overflow-y-auto max-h-[calc(100vh-340px)]">
             {loading ? (
               <div className="flex justify-center py-10">
                 <Loader2 size={22} className="text-violet-500 animate-spin" />
               </div>
+            ) : showFolderBrowser ? (
+              folders.length === 0 ? (
+                <div className="flex flex-col items-center gap-2 py-10 text-center">
+                  <Folder size={28} className="text-gray-300 dark:text-gray-600" />
+                  <p className={cn("text-sm", portalSubtext)}>
+                    {kb.emptyFolders ?? "Chưa có folder — upload file và gán tên nhóm (vd. swe)."}
+                  </p>
+                </div>
+              ) : (
+                folders
+                  .filter((f) => !search || f.name.toLowerCase().includes(search.toLowerCase()))
+                  .map((f) => {
+                    const nameLower = f.name.toLowerCase();
+                    const isCoachKb = nameLower === coachKbFolder;
+                    const isCoachRoadmap = nameLower === coachRoadmapFolder;
+                    return (
+                    <div
+                      key={f.name}
+                      className={cn(
+                        "group flex items-center gap-2 px-3 py-2.5 rounded-xl transition-colors",
+                        "hover:bg-gray-50 dark:hover:bg-gray-800/60",
+                        isCoachKb && "ring-1 ring-amber-300/70 dark:ring-amber-700/60 bg-amber-50/40 dark:bg-amber-950/20",
+                        isCoachRoadmap && "ring-1 ring-sky-300/70 dark:ring-sky-700/60 bg-sky-50/40 dark:bg-sky-950/20"
+                      )}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setActiveFolder(f.name);
+                          setLoading(true);
+                          setAdminFolderFilter("all");
+                        }}
+                        className="flex flex-1 items-center gap-3 min-w-0 text-left"
+                      >
+                        <span className="w-9 h-9 rounded-lg bg-amber-50 dark:bg-amber-950/40 flex items-center justify-center shrink-0">
+                          <Folder size={18} className="text-amber-500" />
+                        </span>
+                        <div className="flex-1 min-w-0">
+                          <p className={cn("text-sm font-medium truncate", portalHeading)}>
+                            {f.name}
+                            {isCoachKb ? (
+                              <span className="ml-2 text-[10px] font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-300">
+                                {kb.coachKbFolderBadge ?? "Coach KB"}
+                              </span>
+                            ) : null}
+                            {isCoachRoadmap ? (
+                              <span className="ml-2 text-[10px] font-semibold uppercase tracking-wide text-sky-700 dark:text-sky-300">
+                                {kb.coachRoadmapFolderBadge ?? "Coach roadmap"}
+                              </span>
+                            ) : null}
+                          </p>
+                          <p className={cn("text-[11px]", portalSubtext)}>
+                            {(kb.folderFileCount ?? "{{n}} file").replace("{{n}}", String(f.count))}
+                          </p>
+                        </div>
+                      </button>
+                      {onRenameFolder ? (
+                        <button
+                          type="button"
+                          title={kb.renameFolder ?? "Đổi tên folder"}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setRenameFrom(f.name);
+                          }}
+                          className={cn(
+                            "shrink-0 p-1.5 rounded-lg text-gray-400 hover:text-amber-600 dark:hover:text-amber-400",
+                            "hover:bg-amber-50 dark:hover:bg-amber-950/40 opacity-0 group-hover:opacity-100 transition-opacity"
+                          )}
+                        >
+                          <Pencil size={14} />
+                        </button>
+                      ) : null}
+                      <span className={cn("text-xs shrink-0", portalSubtext)}>
+                        {kb.folderTypeLabel ?? "Folder"}
+                      </span>
+                    </div>
+                    );
+                  })
+              )
             ) : filtered.length === 0 ? (
               <div className="flex flex-col items-center gap-2 py-10 text-center">
                 <BookOpen size={28} className="text-gray-300 dark:text-gray-600" />
@@ -838,7 +1445,6 @@ export function KnowledgePageContent({
                   onDelete={(id) => {
                     const d = docs.find((x) => x.id === id);
                     if (d) setConfirmDelete(d);
-                    // Đóng drawer nếu đang xem đúng file sắp xóa — tránh chồng modal + detail.
                     if (drawerDoc?.id === id) {
                       setDrawerDoc(null);
                       setDrawerChunks([]);
@@ -846,6 +1452,7 @@ export function KnowledgePageContent({
                   }}
                   onReingest={handleReingest}
                   onOpen={openDrawer}
+                  onMove={onMoveDocs ? (d) => setMoveDoc(d) : undefined}
                   deleting={deletingId === doc.id}
                   reingesting={reingestingId === doc.id}
                 />
@@ -857,13 +1464,13 @@ export function KnowledgePageContent({
         {/* ── Right panel: Upload + Info ─────────────────────────────────────── */}
         <div className="flex flex-col gap-4">
           {/* Upload area */}
-          <div className="hr-glass-card p-6">
+          <div className="hr-glass-card p-6" ref={uploadSectionRef}>
             <div className="flex items-center gap-2 mb-4">
               <FilePlus2 size={18} className="text-violet-500" />
               <h3 className={cn("text-sm font-semibold", portalHeading)}>{kb.uploadSection}</h3>
             </div>
 
-            {variant === "hr" && (
+            {(variant === "hr" || variant === "admin") && (
               <div className="mb-3 space-y-1.5">
                 <label className={cn("text-xs font-medium", portalSubtext)}>
                   {kb.documentTypeLabel ?? "Loại tài liệu"}
@@ -873,7 +1480,7 @@ export function KnowledgePageContent({
                   onChange={(e) => setUploadType(e.target.value as KnowledgeDocumentType)}
                   className={cn("w-full px-3 py-2 text-sm rounded-xl border", portalInput)}
                 >
-                  {HR_DOCUMENT_TYPES.map((t) => (
+                  {(variant === "admin" ? ADMIN_DOCUMENT_TYPES : HR_DOCUMENT_TYPES).map((t) => (
                     <option key={t} value={t}>
                       {(kb.documentTypes as Record<string, string> | undefined)?.[t] ?? t}
                     </option>
@@ -882,10 +1489,160 @@ export function KnowledgePageContent({
               </div>
             )}
 
+            {variant === "admin" && (
+              <div className="mb-3 space-y-2">
+                <label className={cn("text-xs font-medium", portalSubtext)}>
+                  {kb.uploadFolderLabel ?? "Folder / nhóm"}
+                </label>
+
+                <p className={cn("text-[11px]", portalSubtext)}>
+                  {kb.coachKbFolderQuickPick ?? "Chọn nhanh folder"}
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  <button
+                    type="button"
+                    onClick={applyCoachUploadPreset}
+                    className={cn(
+                      "h-8 px-2.5 rounded-lg text-[11px] font-semibold border transition-colors",
+                      uploadFolder.toLowerCase() === coachKbFolder
+                        ? "border-amber-500 bg-amber-100 text-amber-900 dark:bg-amber-950/50 dark:text-amber-100 dark:border-amber-600"
+                        : "border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:border-amber-400"
+                    )}
+                  >
+                    {kb.coachKbFolderUsePreset ?? "Coach (test-candidate)"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={applyCoachRoadmapUploadPreset}
+                    className={cn(
+                      "h-8 px-2.5 rounded-lg text-[11px] font-semibold border transition-colors",
+                      uploadFolder.toLowerCase() === coachRoadmapFolder
+                        ? "border-sky-500 bg-sky-100 text-sky-900 dark:bg-sky-950/50 dark:text-sky-100 dark:border-sky-600"
+                        : "border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:border-sky-400"
+                    )}
+                  >
+                    {kb.coachRoadmapFolderUsePreset ?? "Coach roadmap (coach-roadmap)"}
+                  </button>
+                  {folderQuickOptions
+                    .filter(
+                      (name) =>
+                        name.toLowerCase() !== coachKbFolder &&
+                        name.toLowerCase() !== coachRoadmapFolder
+                    )
+                    .map((name) => (
+                      <button
+                        key={name}
+                        type="button"
+                        onClick={() => setUploadFolder(name)}
+                        className={cn(
+                          "h-8 px-2.5 rounded-lg text-[11px] font-semibold border transition-colors",
+                          uploadFolder === name
+                            ? "border-violet-500 bg-violet-50 text-violet-800 dark:bg-violet-950/40 dark:text-violet-200"
+                            : "border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:border-violet-400"
+                        )}
+                      >
+                        {name}
+                      </button>
+                    ))}
+                </div>
+
+                <select
+                  value={
+                    folderQuickOptions.includes(uploadFolder) ? uploadFolder : "__custom__"
+                  }
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    if (v === "__custom__") return;
+                    setUploadFolder(v);
+                    if (v === coachKbFolder) setUploadType("InternalStack");
+                    if (v === coachRoadmapFolder) setUploadType("Roadmap");
+                  }}
+                  className={cn("w-full px-3 py-2 text-sm rounded-xl border", portalInput)}
+                >
+                  {folderQuickOptions.map((name) => (
+                    <option key={name} value={name}>
+                      {name === coachKbFolder
+                        ? `${name} · ${kb.coachKbFolderBadge ?? "Coach KB"}`
+                        : name === coachRoadmapFolder
+                          ? `${name} · ${kb.coachRoadmapFolderBadge ?? "Coach roadmap"}`
+                          : name}
+                    </option>
+                  ))}
+                  <option value="__custom__">
+                    {kb.coachKbFolderCustomLabel ?? "Custom…"}
+                  </option>
+                </select>
+
+                <div className="space-y-1">
+                  <label className={cn("text-[11px] font-medium", portalSubtext)}>
+                    {kb.coachKbFolderCustomLabel ?? "Hoặc nhập / chỉnh tên folder"}
+                  </label>
+                  <input
+                    list="admin-kb-folders"
+                    value={uploadFolder}
+                    onChange={(e) => setUploadFolder(e.target.value)}
+                    placeholder={kb.uploadFolderPlaceholder ?? "vd. test-candidate"}
+                    className={cn("w-full px-3 py-2 text-sm rounded-xl border", portalInput)}
+                  />
+                  <datalist id="admin-kb-folders">
+                    {folderQuickOptions.map((name) => (
+                      <option key={name} value={name} />
+                    ))}
+                  </datalist>
+                </div>
+
+                {activeFolder && activeFolder !== "unsorted" ? (
+                  <p className={cn("text-[11px] text-violet-700 dark:text-violet-300")}>
+                    {(kb.coachKbFolderActiveSync ?? "Đang xem folder «{{name}}» — upload sẽ vào folder này.").replace(
+                      "{{name}}",
+                      activeFolder
+                    )}
+                  </p>
+                ) : (
+                  <p className={cn("text-[11px]", portalSubtext)}>
+                    {kb.uploadFolderHint ??
+                      kb.coachKbFolderSelectHint ??
+                      "Assign folder for Coach / grouping."}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {variant === "admin" && (
+              <div className="mb-3 space-y-1.5">
+                <label className={cn("text-xs font-medium", portalSubtext)}>
+                  {kb.uploadNoteLabel ?? kb.adminNote ?? "Chú thích"}
+                </label>
+                <textarea
+                  value={uploadNote}
+                  onChange={(e) => setUploadNote(e.target.value)}
+                  rows={3}
+                  maxLength={2000}
+                  placeholder={
+                    kb.uploadNotePlaceholder ??
+                    kb.adminNotePlaceholder ??
+                    "Ví dụ: Seed SWE-QA flask — 48 Q/A Python web"
+                  }
+                  className={cn("w-full px-3 py-2 text-sm rounded-xl border resize-y min-h-[72px]", portalInput)}
+                />
+                <p className={cn("text-[11px]", portalSubtext)}>
+                  {kb.uploadNoteHint ??
+                    "Ghi chú gắn với tài liệu này (hiện trên danh sách; có thể sửa sau trong drawer)."}
+                </p>
+              </div>
+            )}
+
             <UploadZone
               onFiles={handleFiles}
               uploading={uploading}
               uploadingFileName={uploadingFileName}
+              acceptedExt={variant === "admin" ? ADMIN_ACCEPTED_EXT : HR_ACCEPTED_EXT}
+              dragDropHint={
+                variant === "admin"
+                  ? (kb.dragDropHintAdmin ?? kb.dragDropHint)
+                  : kb.dragDropHint
+              }
+              jsonlHint={variant === "admin" ? kb.jsonlUploadHint : undefined}
             />
           </div>
 
@@ -913,7 +1670,7 @@ export function KnowledgePageContent({
           {/* Supported formats */}
           <div className={cn("rounded-xl border px-4 py-3 flex flex-wrap gap-2 items-center", "border-gray-100 dark:border-gray-800 bg-gray-50/60 dark:bg-gray-900/40")}>
             <span className={cn("text-xs font-medium", portalSubtext)}>{kb.supportedFormats}</span>
-            {["PDF", "DOCX", "DOC", "TXT"].map((f) => (
+            {(variant === "admin" ? ["PDF", "DOCX", "DOC", "TXT", "JSONL"] : ["PDF", "DOCX", "DOC", "TXT"]).map((f) => (
               <span key={f} className="text-xs font-semibold px-2 py-0.5 rounded-md bg-violet-50 dark:bg-violet-950/40 text-violet-600 dark:text-violet-400">
                 {f}
               </span>
@@ -946,6 +1703,21 @@ export function KnowledgePageContent({
               </button>
             </div>
 
+            {variant === "admin" && (
+              <div className="mb-4 space-y-2 rounded-xl border border-gray-100 dark:border-gray-800 bg-gray-50/60 dark:bg-gray-950/40 p-3">
+                <div>
+                  <p className={cn("text-[11px] font-medium", portalSubtext)}>{kb.pathLabel ?? "Đường dẫn"}</p>
+                  <p className={cn("text-xs font-mono break-all mt-0.5", portalHeading)}>
+                    {drawerDoc.storagePath ?? getAdminVirtualPath(drawerDoc)}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className={cn("text-[11px] font-medium", portalSubtext)}>{kb.statusLabel ?? "Trạng thái"}</span>
+                  <StatusBadge status={drawerDoc.status} />
+                </div>
+              </div>
+            )}
+
             {variant === "hr" && onUpdateType && (
               <div className="mb-4 space-y-1.5">
                 <label className={cn("text-xs font-medium", portalSubtext)}>
@@ -964,6 +1736,85 @@ export function KnowledgePageContent({
                     </option>
                   ))}
                 </select>
+              </div>
+            )}
+
+            {variant === "admin" && (onUpdateType || onPatchMeta) && (
+              <div className="mb-4 space-y-1.5">
+                <label className={cn("text-xs font-medium", portalSubtext)}>
+                  {kb.changeType ?? "Đổi loại"}
+                </label>
+                <select
+                  value={drawerDoc.documentType && drawerDoc.documentType !== "Unclassified"
+                    ? drawerDoc.documentType
+                    : "InternalStack"}
+                  onChange={(e) => handleChangeType(drawerDoc.id, e.target.value as KnowledgeDocumentType)}
+                  className={cn("w-full px-3 py-2 text-sm rounded-xl border", portalInput)}
+                >
+                  {ADMIN_DOCUMENT_TYPES.map((t) => (
+                    <option key={t} value={t}>
+                      {(kb.documentTypes as Record<string, string> | undefined)?.[t] ?? t}
+                    </option>
+                  ))}
+                  <option value="Unclassified">
+                    {(kb.documentTypes as Record<string, string> | undefined)?.Unclassified ?? "Chưa phân loại"}
+                  </option>
+                </select>
+              </div>
+            )}
+
+            {variant === "admin" && onPatchMeta && (
+              <div className="mb-4 space-y-3">
+                <div className="space-y-1.5">
+                  <label className={cn("text-xs font-medium", portalSubtext)}>
+                    {kb.uploadFolderLabel ?? "Folder / nhóm"}
+                  </label>
+                  <input
+                    list="admin-kb-folders-drawer"
+                    value={drawerFolder}
+                    onChange={(e) => setDrawerFolder(e.target.value)}
+                    placeholder={kb.uploadFolderPlaceholder ?? "vd. swe"}
+                    className={cn("w-full px-3 py-2 text-sm rounded-xl border", portalInput)}
+                  />
+                  <datalist id="admin-kb-folders-drawer">
+                    {folders
+                      .filter((f) => f.name !== "unsorted")
+                      .map((f) => (
+                        <option key={f.name} value={f.name} />
+                      ))}
+                  </datalist>
+                </div>
+                <div className="space-y-1.5">
+                  <label className={cn("text-xs font-medium", portalSubtext)}>
+                    {kb.adminNote ?? "Ghi chú admin"}
+                  </label>
+                  <textarea
+                    value={drawerAdminNote}
+                    onChange={(e) => setDrawerAdminNote(e.target.value)}
+                    rows={3}
+                    placeholder={kb.adminNotePlaceholder ?? "Ghi chú nội bộ cho tài liệu hệ thống..."}
+                    className={cn("w-full px-3 py-2 text-sm rounded-xl border resize-y min-h-[72px]", portalInput)}
+                  />
+                </div>
+                <button
+                  type="button"
+                  disabled={savingMeta}
+                  onClick={handleSaveAdminNote}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-violet-600 hover:bg-violet-700 text-white disabled:opacity-50"
+                >
+                  {savingMeta ? <Loader2 size={12} className="animate-spin" /> : null}
+                  {kb.saveAdminNote ?? "Lưu ghi chú"}
+                </button>
+                {onMoveDocs ? (
+                  <button
+                    type="button"
+                    onClick={() => setMoveDoc(drawerDoc)}
+                    className="ml-2 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950/40"
+                  >
+                    <FolderInput size={12} />
+                    {kb.moveToFolder ?? "Chuyển folder…"}
+                  </button>
+                ) : null}
               </div>
             )}
 

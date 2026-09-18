@@ -6,7 +6,7 @@ import { motion, animate, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, RefreshCw, Share2, Loader2,
   Sparkles, ChevronDown, ChevronLeft, ChevronRight, CheckCircle2, AlertTriangle, Lightbulb, Target,
-  TrendingUp, TrendingDown, Minus, BookOpen, Flame, Lock, Crown,
+  TrendingUp, TrendingDown, Minus, BookOpen, Flame, Lock, Crown, Map as MapIcon, ArrowRight,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { useLanguage, type Lang } from "@/shared/providers/language-context";
@@ -234,6 +234,10 @@ interface FeedbackPageProps {
   previousScore?: number | null;
   /** XP reward earned this session — null when not yet available or nothing was earned. */
   xpReward?: XpReward | null;
+  /** Phiên Coach competency — ẩn XP, hiện CTA bước tiếp theo. */
+  isCoachSession?: boolean;
+  /** Drill roadmap item (không phải diagnostic/reassessment). */
+  isCoachDrill?: boolean;
 }
 
 export function FeedbackPage({
@@ -249,6 +253,8 @@ export function FeedbackPage({
   companyLogoUrl,
   previousScore,
   xpReward = null,
+  isCoachSession = false,
+  isCoachDrill = false,
 }: FeedbackPageProps) {
   const { t, lang } = useLanguage();
   const p = t.jobseekerFeedbackPage;
@@ -312,20 +318,65 @@ export function FeedbackPage({
   const companyColor = companyName ? getCompanyColor(companyName) : "bg-gray-400";
 
   // ── XP reward — real data passed from the complete endpoint response ────────
+  // Coach competency: không hiện XP (làm nhiễu CTA báo cáo/lộ trình).
+  const showXp = Boolean(xpReward) && !isCoachSession;
 
   return (
     <div className="w-full">
       {/* Back */}
       <Link
-        href="/candidate/history"
+        href={isCoachSession ? "/candidate/coach" : "/candidate/history"}
         className={cn(
           "inline-flex items-center gap-1.5 text-[13px] font-[500] hover:text-primary transition-colors mb-6",
           portalSubtextAlt
         )}
       >
         <ArrowLeft size={14} />
-        {p.backToHistory}
+        {isCoachSession ? p.backToCoach : p.backToHistory}
       </Link>
+
+      {/* Coach: bước tiếp theo — ưu tiên trên mọi CTA khác */}
+      {isCoachSession && !scoring && (
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-6 rounded-2xl border border-primary/25 bg-gradient-to-br from-violet-50/90 via-white to-sky-50/60 dark:from-violet-950/40 dark:via-gray-950 dark:to-sky-950/20 p-5 sm:p-6"
+        >
+          <div className="flex items-start gap-3">
+            <div className="w-9 h-9 rounded-xl bg-primary/15 flex items-center justify-center shrink-0">
+              {isCoachDrill ? (
+                <MapIcon size={16} className="text-primary" />
+              ) : (
+                <Target size={16} className="text-primary" />
+              )}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className={cn("text-[14px] font-bold", portalHeadingAlt)}>{p.coachNextTitle}</p>
+              <p className={cn("text-[13px] mt-1 leading-5", portalSubtextAlt)}>
+                {isCoachDrill ? p.coachNextBodyDrill : p.coachNextBodyDiagnostic}
+              </p>
+              <div className="flex flex-wrap gap-2 mt-3">
+                <Link
+                  href={isCoachDrill ? "/candidate/coach?step=6" : "/candidate/coach?step=5"}
+                  className="shimmer-button inline-flex items-center gap-2 h-9 px-4 text-[13px] font-semibold text-white hr-cta-btn rounded-lg"
+                >
+                  {isCoachDrill ? p.coachNextPrimaryRoadmap : p.coachNextPrimaryReport}
+                  <ArrowRight size={14} />
+                </Link>
+                {!isCoachDrill && (
+                  <Link
+                    href="/candidate/coach?step=6"
+                    className="inline-flex items-center gap-2 h-9 px-4 text-[13px] font-semibold rounded-lg border border-gray-200 dark:border-gray-700 hover:border-primary/40 transition-colors"
+                  >
+                    <MapIcon size={14} />
+                    {p.coachNextSecondaryRoadmap}
+                  </Link>
+                )}
+              </div>
+            </div>
+          </div>
+        </motion.div>
+      )}
 
       {/* ── Score Header ─────────────────────────────────────────── */}
       <motion.div
@@ -489,32 +540,43 @@ export function FeedbackPage({
 
         {/* Action buttons */}
         <div className="flex sm:flex-col gap-2 shrink-0 w-full sm:w-auto">
-          {session.questionSetId && (
+          {isCoachSession ? (
             <Link
-              href={`/candidate/practice/${session.questionSetId}`}
+              href={isCoachDrill ? "/candidate/coach?step=6" : "/candidate/coach?step=5"}
               className="shimmer-button flex items-center gap-2 h-9 px-4 text-[13px] font-semibold text-white hr-cta-btn rounded-lg"
             >
-              <RefreshCw size={13} />
-              {p.retryBtn}
+              {isCoachDrill ? p.coachNextPrimaryRoadmap : p.coachNextPrimaryReport}
+              <ArrowRight size={13} />
             </Link>
+          ) : (
+            session.questionSetId && (
+              <Link
+                href={`/candidate/practice/${session.questionSetId}`}
+                className="shimmer-button flex items-center gap-2 h-9 px-4 text-[13px] font-semibold text-white hr-cta-btn rounded-lg"
+              >
+                <RefreshCw size={13} />
+                {p.retryBtn}
+              </Link>
+            )
           )}
-          <button
-            type="button"
-            onClick={handleShare}
-            className={cn(
-              "hr-glass-card flex items-center gap-2 h-9 px-4 text-[13px] font-semibold hover:border-[#7C3AED]/30",
-              portalHeadingAlt
-            )}
-          >
-            <Share2 size={13} />
-            {p.shareBtn}
-          </button>
+          {!isCoachSession && (
+            <button
+              type="button"
+              onClick={handleShare}
+              className={cn(
+                "hr-glass-card flex items-center gap-2 h-9 px-4 text-[13px] font-semibold hover:border-[#7C3AED]/30",
+                portalHeadingAlt
+              )}
+            >
+              <Share2 size={13} />
+              {p.shareBtn}
+            </button>
+          )}
         </div>
       </motion.div>
 
-      {/* ── XP earned this session — shown for all users; backend controls whether
-           XP is awarded (normalizeXpReward returns null when totalEarned ≤ 0). */}
-      {xpReward && (
+      {/* ── XP earned this session — ẩn với Coach competency ── */}
+      {showXp && xpReward && (
         <SessionXpSummary xpReward={xpReward} className="mb-6" />
       )}
 
@@ -870,8 +932,8 @@ export function FeedbackPage({
         />
       )}
 
-      {/* ── XP gain notification (floating, bottom-right) — same gate as above ── */}
-      {xpReward && (
+      {/* ── XP gain notification — ẩn với Coach ── */}
+      {showXp && xpReward && (
         <XpGainNotification
           xpReward={xpReward}
           delayMs={1600}

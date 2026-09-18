@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Save, Loader2, RefreshCw, ShieldAlert } from "lucide-react";
+import { Save, Loader2, RefreshCw, ShieldAlert, Shield } from "lucide-react";
 import { FormField } from "@/shared/components/ui/form-field";
+import { Toggle } from "@/shared/components/ui/toggle";
 import { useLanguage } from "@/shared/providers/language-context";
 import { useToast } from "@/shared/providers/toast-context";
 import { cn } from "@/lib/cn";
@@ -35,6 +36,8 @@ export function GeneralSettings() {
   const [minQuestionsToPublish, setMinQuestionsToPublish] = useState("10");
   const [maxPinnedSets, setMaxPinnedSets] = useState("5");
   const [minAttemptsForTrending, setMinAttemptsForTrending] = useState("10");
+  const [antiCheatEnabled, setAntiCheatEnabled] = useState(false);
+  const [antiCheatMaxTabLeaves, setAntiCheatMaxTabLeaves] = useState("3");
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -52,6 +55,8 @@ export function GeneralSettings() {
       if (s.minQuestionsToPublish != null) setMinQuestionsToPublish(String(s.minQuestionsToPublish));
       if (s.maxPinnedSets != null) setMaxPinnedSets(String(s.maxPinnedSets));
       if (s.minAttemptsForTrending != null) setMinAttemptsForTrending(String(s.minAttemptsForTrending));
+      if (typeof s.antiCheatEnabled === "boolean") setAntiCheatEnabled(s.antiCheatEnabled);
+      if (s.antiCheatMaxTabLeaves != null) setAntiCheatMaxTabLeaves(String(s.antiCheatMaxTabLeaves));
     } catch {
       setLoadError(true);
     } finally {
@@ -64,6 +69,7 @@ export function GeneralSettings() {
   async function handleSave() {
     setSaving(true);
     try {
+      const maxLeaves = Math.min(20, Math.max(1, Number(antiCheatMaxTabLeaves) || 3));
       await updatePlatformSettings({
         platformName,
         defaultQuestionCount: Number(defaultQuestionCount) || undefined,
@@ -72,7 +78,10 @@ export function GeneralSettings() {
         minQuestionsToPublish: Number(minQuestionsToPublish) || undefined,
         maxPinnedSets: Number(maxPinnedSets) || 0,
         minAttemptsForTrending: Number(minAttemptsForTrending) || undefined,
+        antiCheatEnabled,
+        antiCheatMaxTabLeaves: maxLeaves,
       });
+      setAntiCheatMaxTabLeaves(String(maxLeaves));
       addToast("success", g.saveSuccess);
     } catch (err) {
       addToast("error", err instanceof Error && err.message ? err.message : "Không thể lưu cài đặt");
@@ -110,7 +119,6 @@ export function GeneralSettings() {
       <h3 className={cn("mb-5 text-base font-bold", portalHeadingAlt)}>{g.title}</h3>
 
       <div className="space-y-4">
-        {/* Platform Settings from BE */}
         <div className={cn("rounded-xl border p-4 space-y-4", portalCard)}>
           <div className="flex items-center gap-2 mb-1">
             <ShieldAlert size={14} className="text-primary shrink-0" />
@@ -171,6 +179,37 @@ export function GeneralSettings() {
             <p className={cn("mt-1 text-[11px]", portalSubtextAlt)}>
               Candidate thấy badge Trending khi AttemptCount ≥ ngưỡng này.
             </p>
+          </FormField>
+        </div>
+
+        <div className={cn("rounded-xl border p-4 space-y-4", portalCard)}>
+          <div className="flex items-center gap-2 mb-1">
+            <Shield size={14} className="text-primary shrink-0" />
+            <p className={cn("text-xs font-semibold uppercase tracking-wide", portalSubtextAlt)}>
+              {g.antiCheatSection}
+            </p>
+          </div>
+
+          <div className="flex items-center justify-between gap-4">
+            <div className="min-w-0">
+              <p className={cn("text-sm font-semibold", portalHeadingAlt)}>{g.antiCheatEnabled}</p>
+              <p className={cn("mt-0.5 text-[11px]", portalSubtextAlt)}>{g.antiCheatEnabledHint}</p>
+            </div>
+            <Toggle checked={antiCheatEnabled} onChange={setAntiCheatEnabled} />
+          </div>
+
+          <FormField label={g.antiCheatMaxTabLeaves} htmlFor="anti-cheat-max-leaves">
+            <input
+              id="anti-cheat-max-leaves"
+              type="number"
+              min={1}
+              max={20}
+              disabled={!antiCheatEnabled}
+              value={antiCheatMaxTabLeaves}
+              onChange={(e) => setAntiCheatMaxTabLeaves(e.target.value)}
+              className={cn(inputCls, !antiCheatEnabled && "opacity-50 cursor-not-allowed")}
+            />
+            <p className={cn("mt-1 text-[11px]", portalSubtextAlt)}>{g.antiCheatMaxTabLeavesHint}</p>
           </FormField>
         </div>
 

@@ -28,7 +28,7 @@ interface HrSubscriptionContextValue {
   subscription: MySubscription | null;
   isPremium: boolean;
   limits: SubscriptionLimits | null;
-  /** true nếu có thể generate ngay (Premium = luôn true; Free = còn lượt trong window) */
+  /** true nếu có thể generate ngay (Unlimited, còn lượt trong window, hoặc hết cooldown) */
   canGenerateNow: boolean;
   /** Thời điểm hết cooldown (null nếu không đang cooldown / chưa hết lượt trong window) */
   cooldownEndsAt: Date | null;
@@ -114,7 +114,8 @@ export function HrSubscriptionProvider({ children }: { children: ReactNode }) {
       canGenerateNow = true;
     } else if (subscription?.lastSuccessfulGenerateAt) {
       const last = new Date(subscription.lastSuccessfulGenerateAt);
-      const hours = limits?.generateCooldownHours ?? 24;
+      // Khớp BE HrGenerateWindow / gate: cooldown tối thiểu 1 giờ
+      const hours = Math.max(1, limits?.generateCooldownHours ?? 24);
       const endsAt = new Date(last.getTime() + hours * 60 * 60 * 1000);
       if (endsAt.getTime() > Date.now()) {
         canGenerateNow = false;

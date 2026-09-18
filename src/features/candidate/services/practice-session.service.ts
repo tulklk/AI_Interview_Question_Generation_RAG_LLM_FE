@@ -101,6 +101,10 @@ export interface PracticeSessionDetail {
   timeLimitMinutes: number | null;
   /** Absolute deadline (startedAt + timeLimitMinutes) BE enforces server-side; null = untimed. */
   expiresAt: string | null;
+  /** SCRUM-446: snapshot anti-cheat lúc start. */
+  antiCheatEnabled: boolean;
+  antiCheatMaxTabLeaves: number;
+  tabLeaveCount: number;
   questions: PracticeSessionQuestion[];
 }
 
@@ -155,6 +159,9 @@ function normalizeSessionDetail(raw: unknown): PracticeSessionDetail | null {
     overallScore: pickNullableNumber(src, "overallScore"),
     timeLimitMinutes: pickNullableNumber(src, "timeLimitMinutes"),
     expiresAt: pickOptionalString(src, "expiresAt") ?? null,
+    antiCheatEnabled: Boolean(src.antiCheatEnabled ?? src.AntiCheatEnabled),
+    antiCheatMaxTabLeaves: pickNumber(src, "antiCheatMaxTabLeaves", "AntiCheatMaxTabLeaves") || 3,
+    tabLeaveCount: pickNumber(src, "tabLeaveCount", "TabLeaveCount"),
     questions,
   };
 }
@@ -432,6 +439,38 @@ export async function completePracticeSession(sessionId: string): Promise<Comple
 
 export async function abandonPracticeSession(sessionId: string): Promise<void> {
   await apiClient.post(`${BASE}/${sessionId}/abandon`);
+}
+
+/** SCRUM-446: phản hồi sau khi báo rời tab. */
+export interface IntegrityEventResult {
+  sessionId: string;
+  status: "IN_PROGRESS" | "COMPLETED" | "ABANDONED" | string;
+  antiCheatEnabled: boolean;
+  antiCheatMaxTabLeaves: number;
+  tabLeaveCount: number;
+  autoSubmitted: boolean;
+  ignored: boolean;
+}
+
+/**
+ * SCRUM-446: báo BE khi candidate rời tab (visibility hidden).
+ * BE debounce ~2s; đủ ngưỡng thì tự nộp.
+ */
+export async function reportTabLeave(sessionId: string): Promise<IntegrityEventResult> {
+  const res = await apiClient.post(`${BASE}/${sessionId}/integrity-events`, {
+    eventType: "TAB_HIDDEN",
+  });
+  const src = extractData(res.data) ?? {};
+  const statusRaw = pickString(src, "status").toUpperCase();
+  return {
+    sessionId: pickString(src, "sessionId", "id") || sessionId,
+    status: statusRaw || "IN_PROGRESS",
+    antiCheatEnabled: Boolean(src.antiCheatEnabled ?? src.AntiCheatEnabled),
+    antiCheatMaxTabLeaves: pickNumber(src, "antiCheatMaxTabLeaves", "AntiCheatMaxTabLeaves") || 3,
+    tabLeaveCount: pickNumber(src, "tabLeaveCount", "TabLeaveCount"),
+    autoSubmitted: Boolean(src.autoSubmitted ?? src.AutoSubmitted),
+    ignored: Boolean(src.ignored ?? src.Ignored),
+  };
 }
 
 // ---------------------------------------------------------------------------

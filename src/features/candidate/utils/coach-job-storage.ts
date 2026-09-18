@@ -54,6 +54,18 @@ export function isCoachGeneratedSetId(questionSetId: string): boolean {
   }
 }
 
+/** Heuristic title — dùng khi localStorage không còn ID (tab khác / clear storage). */
+export function looksLikeCoachSet(title?: string | null, _company?: string | null): boolean {
+  const t = (title ?? "").toLowerCase();
+  // Không dùng company "Bộ của tôi" — personal JD practice cũng dùng nhãn đó.
+  return /cv\s*check|diagnostic|re-?assess|competency/.test(t);
+}
+
+/** Drill roadmap item vs diagnostic/reassessment — quyết định CTA step. */
+export function isCoachDrillTitle(title?: string | null): boolean {
+  return /^drill\b/i.test((title ?? "").trim());
+}
+
 export function writeCoachJobEntry(entry: CoachJobEntry | null) {
   if (typeof window === "undefined") return;
   if (!entry) {
