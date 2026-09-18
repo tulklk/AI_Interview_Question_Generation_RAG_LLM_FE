@@ -1,7 +1,7 @@
 ﻿"use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { AlertCircle, RefreshCw, Lock } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { JobseekerAppShell } from "@/features/candidate/components/layout/jobseeker-app-shell";
@@ -28,7 +28,7 @@ import { useLanguage } from "@/shared/providers/language-context";
 import { portalSubtextAlt } from "@/shared/utils/portal-ui";
 import { registerScoringSession, markScoringDone, removeScoringEntry } from "@/features/candidate/components/ui/scoring-progress-badge";
 import { cleanTitle } from "@/features/candidate/utils/clean-title";
-import { isCoachGeneratedSetId } from "@/features/candidate/utils/coach-job-storage";
+import { isCoachGeneratedSetId, isCoachDrillTitle, looksLikeCoachSet } from "@/features/candidate/utils/coach-job-storage";
 import type { XpReward } from "@/features/gamification/types/gamification.types";
 
 // AI scoring can still be in progress right after "complete" — the score comes
@@ -40,6 +40,9 @@ const SCORE_POLL_MAX_ATTEMPTS = 8;
 export function FeedbackResultClient() {
   const params = useParams<{ id: string }>();
   const sessionId = params.id ?? "";
+  const searchParams = useSearchParams();
+  /** Practice session gắn ?mode=coach khi điều hướng sang đây — nguồn tin cậy hơn heuristic theo title. */
+  const coachModeParam = searchParams.get("mode") === "coach";
   const { t } = useLanguage();
   const p = t.jobseekerFeedbackPage;
 
@@ -285,11 +288,20 @@ export function FeedbackResultClient() {
     <JobseekerAppShell
       pageTitle={p.pageTitle}
       fullWidth
-      breadcrumb={[
-        { label: "jobseeker", href: "/candidate/dashboard" },
-        { label: "history", href: "/candidate/history" },
-        { label: "feedback" },
-      ]}
+      breadcrumb={
+        isCoachGeneratedSetId(session?.questionSetId ?? "") ||
+        looksLikeCoachSet(set?.title, set?.company)
+          ? [
+              { label: "jobseeker", href: "/candidate/dashboard" },
+              { label: "AI Coach", href: "/candidate/coach" },
+              { label: "feedback" },
+            ]
+          : [
+              { label: "jobseeker", href: "/candidate/dashboard" },
+              { label: "history", href: "/candidate/history" },
+              { label: "feedback" },
+            ]
+      }
     >
       {loading && (
         /* Centre within the content pane (sidebar is w-62.5 = 250 px on lg+) */
@@ -322,6 +334,13 @@ export function FeedbackResultClient() {
 
       {!loading && !error && !forbidden && session && (
         <>
+          {(() => {
+            const coach =
+              coachModeParam ||
+              Boolean(session.questionSetId && isCoachGeneratedSetId(session.questionSetId)) ||
+              looksLikeCoachSet(set?.title, set?.company);
+            const drill = coach && isCoachDrillTitle(set?.title);
+            return (
           <FeedbackPage
             session={session}
             feedback={feedback}
@@ -334,14 +353,19 @@ export function FeedbackResultClient() {
             companyName={set?.company}
             companyLogoUrl={set?.companyLogoUrl}
             previousScore={previousScore}
-            xpReward={xpReward}
+            xpReward={coach ? null : xpReward}
+            isCoachSession={coach}
+            isCoachDrill={drill}
           />
+            );
+          })()}
 
           {/* Rating dialog — shows once after completion if no prior feedback.
               Hidden for drill sets and AI Coach-generated sets. */}
           {session.questionSetId &&
             !/^drill\b/i.test(set?.title?.trim() ?? "") &&
-            !isCoachGeneratedSetId(session.questionSetId) && (
+            !isCoachGeneratedSetId(session.questionSetId) &&
+            !looksLikeCoachSet(set?.title, set?.company) && (
             <QuestionSetFeedbackDialog
               open={showFeedbackDialog}
               questionSetId={session.questionSetId}

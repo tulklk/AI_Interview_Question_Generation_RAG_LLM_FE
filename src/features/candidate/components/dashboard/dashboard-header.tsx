@@ -129,7 +129,7 @@ export function DashboardHeader({ timeRange, onTimeRangeChange, activeDate, onDa
         </div>
 
         <Link
-          href="/candidate/roadmap"
+          href="/candidate/coach"
           className={cn(
             "hidden sm:flex items-center gap-1.5 h-9 px-3.5 rounded-lg text-[12px] font-[600] border border-gray-200 dark:border-gray-700 hover:border-primary/40 transition-colors",
             portalHeadingAlt

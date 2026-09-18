@@ -67,6 +67,10 @@ interface BackendDoc {
   documentType?: string;
   citationCount?: number;
   studioProjectCount?: number;
+  adminNote?: string | null;
+  folder?: string | null;
+  blobPath?: string;
+  storagePath?: string;
 }
 
 interface BackendListResponse {
@@ -89,7 +93,15 @@ function normalizeStatus(raw?: string): DocumentStatus {
 
 function normalizeDocumentType(raw?: string): KnowledgeDocumentType {
   const s = (raw ?? "").trim();
-  if (s === "Policy" || s === "InternalStack" || s === "Rubric" || s === "RolePack") return s;
+  if (
+    s === "Policy" ||
+    s === "InternalStack" ||
+    s === "Roadmap" ||
+    s === "Rubric" ||
+    s === "RolePack"
+  ) {
+    return s;
+  }
   return "Unclassified";
 }
 
@@ -109,6 +121,9 @@ function mapDoc(d: BackendDoc): KnowledgeDocument {
     documentType: normalizeDocumentType(d.documentType),
     citationCount: d.citationCount ?? 0,
     studioProjectCount: d.studioProjectCount ?? 0,
+    adminNote: d.adminNote ?? null,
+    folder: d.folder ?? null,
+    storagePath: d.storagePath ?? d.blobPath,
   };
 }
 
@@ -225,14 +240,46 @@ export async function getHrKnowledgeDoc(id: string): Promise<KnowledgeDocument |
 // Admin Knowledge Documents
 // ---------------------------------------------------------------------------
 
-export async function getAdminKnowledgeDocs(): Promise<KnowledgeDocument[]> {
-  const { data } = await apiClient.get("/api/admin/knowledge-documents");
+export async function getAdminKnowledgeDocs(folder?: string | null): Promise<KnowledgeDocument[]> {
+  const params: Record<string, string | number> = { page: 1, pageSize: 100 };
+  if (folder) params.folder = folder;
+  const { data } = await apiClient.get("/api/admin/knowledge-documents", { params });
   return extractList(data);
 }
 
-export async function uploadAdminKnowledgeDoc(file: File): Promise<KnowledgeDocument | null> {
+export async function getAdminKnowledgeFolders(): Promise<{ name: string; count: number }[]> {
+  try {
+    const { data } = await apiClient.get<{ data?: { name: string; count: number }[] } | { name: string; count: number }[]>(
+      "/api/admin/knowledge-documents/folders"
+    );
+    const raw = data as { data?: { name: string; count: number }[] };
+    if (Array.isArray(data)) return data as { name: string; count: number }[];
+    if (Array.isArray(raw?.data)) return raw.data;
+    return [];
+  } catch {
+    return [];
+  }
+}
+
+export async function uploadAdminKnowledgeDoc(
+  file: File,
+  documentType?: KnowledgeDocumentType,
+  adminNote?: string | null,
+  folder?: string | null
+): Promise<KnowledgeDocument | null> {
   const form = new FormData();
   form.append("File", file);
+  if (documentType) {
+    form.append("DocumentType", documentType);
+  }
+  // SCRUM-449: chú thích khi upload
+  if (adminNote && adminNote.trim()) {
+    form.append("AdminNote", adminNote.trim());
+  }
+  // SCRUM-450: nhóm folder UI
+  if (folder && folder.trim()) {
+    form.append("Folder", folder.trim());
+  }
   const { data } = await apiClient.post<BackendDoc | { data?: BackendDoc }>(
     "/api/admin/knowledge-documents",
     form,
@@ -244,6 +291,8 @@ export async function uploadAdminKnowledgeDoc(file: File): Promise<KnowledgeDocu
     ...doc,
     fileName: doc.fileName ?? doc.originalFileName ?? file.name,
     originalFileName: doc.originalFileName ?? file.name,
+    adminNote: doc.adminNote ?? adminNote ?? null,
+    folder: doc.folder ?? folder ?? null,
   });
 }
 
@@ -275,4 +324,73 @@ export async function getAdminKnowledgeDoc(id: string): Promise<KnowledgeDocumen
   } catch {
     return null;
   }
+}
+
+export interface AdminKnowledgeDocPatch {
+  documentType?: KnowledgeDocumentType;
+  adminNote?: string | null;
+  folder?: string | null;
+  clearFolder?: boolean;
+}
+
+export async function updateAdminKnowledgeDoc(
+  id: string,
+  patch: AdminKnowledgeDocPatch
+): Promise<KnowledgeDocument | null> {
+  try {
+    const { data } = await apiClient.patch<BackendDoc | { data?: BackendDoc }>(
+      `/api/admin/knowledge-documents/${id}`,
+      patch
+    );
+    const doc = (data as { data?: BackendDoc }).data ?? (data as BackendDoc);
+    return doc ? mapDoc(doc) : null;
+  } catch {
+    return null;
+  }
+}
+
+/** SCRUM-451: chuyển file sang folder */
+export async function moveAdminKnowledgeDocs(
+  documentIds: string[],
+  folder: string | null
+): Promise<number> {
+  const { data } = await apiClient.post<{ data?: { updatedCount?: number }; updatedCount?: number }>(
+    "/api/admin/knowledge-documents/move",
+    { documentIds, folder }
+  );
+  const raw = data as { data?: { updatedCount?: number }; updatedCount?: number };
+  return raw?.data?.updatedCount ?? raw?.updatedCount ?? 0;
+}
+
+/** SCRUM-451: đổi tên folder (bulk metadata) */
+export async function renameAdminKnowledgeFolder(
+  from: string,
+  to: string | null
+): Promise<number> {
+  const { data } = await apiClient.post<{ data?: { updatedCount?: number }; updatedCount?: number }>(
+    "/api/admin/knowledge-documents/folders/rename",
+    { from, to }
+  );
+  const raw = data as { data?: { updatedCount?: number }; updatedCount?: number };
+  return raw?.data?.updatedCount ?? raw?.updatedCount ?? 0;
+}
+
+export async function updateAdminKnowledgeDocType(
+  id: string,
+  documentType: KnowledgeDocumentType
+): Promise<KnowledgeDocument | null> {
+  return updateAdminKnowledgeDoc(id, { documentType });
+}
+
+export async function getAdminKnowledgeChunks(id: string, take = 20): Promise<KnowledgeChunkPreview[]> {
+  const { data } = await apiClient.get(`/api/admin/knowledge-documents/${id}/chunks`, {
+    params: { take },
+  });
+  const raw = (data as { data?: unknown })?.data ?? data;
+  const items = Array.isArray(raw) ? raw : (raw as { items?: unknown[] })?.items ?? [];
+  return (items as Array<Record<string, unknown>>).map((c) => ({
+    chunkId: String(c.chunkId ?? c.id ?? ""),
+    chunkIndex: Number(c.chunkIndex ?? 0),
+    content: String(c.content ?? ""),
+  }));
 }
