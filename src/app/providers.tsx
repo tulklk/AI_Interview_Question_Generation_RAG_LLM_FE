@@ -11,6 +11,7 @@ import { ToastProvider } from "@/shared/providers/toast-context";
 import { UserProvider } from "@/features/auth/context/user-context";
 import { ToastContainer } from "@/shared/components/ui/toast-container";
 import { NetworkOfflineOverlay } from "@/shared/components/ui/network-offline-overlay";
+import { ScrollReset } from "@/shared/components/common/scroll-reset";
 import type { ReactNode } from "react";
 
 export function Providers({ children }: { children: ReactNode }) {
@@ -20,6 +21,7 @@ export function Providers({ children }: { children: ReactNode }) {
         <LanguageProvider>
           <ToastProvider>
             <UserProvider>
+              <ScrollReset />
               {children}
               <ToastContainer />
               <NetworkOfflineOverlay />

@@ -4,10 +4,16 @@ import { AdminAppShell } from "@/features/admin/components/layout/admin-app-shel
 import { KnowledgePageContent } from "@/features/knowledge/components/knowledge-page-content";
 import {
   getAdminKnowledgeDocs,
+  getAdminKnowledgeFolders,
   uploadAdminKnowledgeDoc,
   deleteAdminKnowledgeDoc,
   reingestAdminKnowledgeDoc,
   getAdminKnowledgeDoc,
+  updateAdminKnowledgeDocType,
+  updateAdminKnowledgeDoc,
+  getAdminKnowledgeChunks,
+  moveAdminKnowledgeDocs,
+  renameAdminKnowledgeFolder,
 } from "@/features/knowledge/services/knowledge.service";
 import { BookOpen } from "lucide-react";
 import { useLanguage } from "@/shared/providers/language-context";
@@ -39,11 +45,19 @@ export default function AdminKnowledgePage() {
       <div className="animate-fade-up" style={{ animationDelay: "80ms" }}>
         <KnowledgePageContent
           variant="admin"
-          onFetchDocs={getAdminKnowledgeDocs}
-          onUpload={uploadAdminKnowledgeDoc}
+          onFetchDocs={(folder) => getAdminKnowledgeDocs(folder)}
+          onUpload={(file, documentType, adminNote, folder) =>
+            uploadAdminKnowledgeDoc(file, documentType ?? "InternalStack", adminNote, folder)
+          }
           onDelete={deleteAdminKnowledgeDoc}
           onReingest={reingestAdminKnowledgeDoc}
           onRefreshDoc={getAdminKnowledgeDoc}
+          onUpdateType={updateAdminKnowledgeDocType}
+          onPatchMeta={updateAdminKnowledgeDoc}
+          onFetchChunks={(id) => getAdminKnowledgeChunks(id, 20)}
+          onFetchFolders={getAdminKnowledgeFolders}
+          onMoveDocs={moveAdminKnowledgeDocs}
+          onRenameFolder={renameAdminKnowledgeFolder}
         />
       </div>
     </AdminAppShell>

@@ -1,80 +1,57 @@
 ﻿"use client";
 
-import Link from "next/link";
-import { Bot, Crown, Loader2, Sparkles, Store } from "lucide-react";
+import { Sparkles } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { portalHeadingAlt, portalSubtextAlt } from "@/shared/utils/portal-ui";
 import { useLanguage } from "@/shared/providers/language-context";
 
 interface CoachHeroProps {
   isPremium: boolean;
-  busy: boolean;
-  hasPlan: boolean;
-  diagnosticDisabled: boolean;
-  onPrimary: () => void;
   onUpgrade: () => void;
+  onNewRun?: () => void;
+  showNewRun?: boolean;
+  newRunBusy?: boolean;
 }
 
-export function CoachHero({
-  isPremium,
-  busy,
-  hasPlan,
-  diagnosticDisabled,
-  onPrimary,
-  onUpgrade,
-}: CoachHeroProps) {
+export function CoachHero({ isPremium, onUpgrade, onNewRun, showNewRun, newRunBusy }: CoachHeroProps) {
   const { t } = useLanguage();
   const p = t.jobseekerCoachPage;
 
-  const ctaLabel = !isPremium
-    ? p.upgradeCta
-    : busy
-      ? p.generating
-      : hasPlan
-        ? p.reDiagnostic
-        : p.startDiagnostic;
-
   return (
-    <div className="hr-glass-card overflow-hidden">
-      <div className="hr-quick-generate p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center gap-5">
-        <div className="flex items-start gap-3.5 min-w-0 flex-1">
-          <div className="w-10 h-10 rounded-xl bg-white/80 dark:bg-gray-900/70 border border-primary/15 flex items-center justify-center shrink-0">
-            <Bot size={20} className="text-primary" />
+    <div className="relative overflow-hidden rounded-[18px] border border-gray-200/80 dark:border-gray-800 bg-gradient-to-br from-white via-violet-50/40 to-sky-50/50 dark:from-gray-950 dark:via-violet-950/20 dark:to-gray-900 px-5 sm:px-7 py-6">
+      <div className="relative z-[1] flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+        <div className="min-w-0">
+          <div className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 text-primary px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide mb-2">
+            <Sparkles size={12} />
+            AI Coach
           </div>
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-[26px] font-[800] leading-[32px] gradient-text-animate">{p.title}</h1>
-              {isPremium && (
-                <span className="inline-flex items-center gap-1 text-[10px] font-[700] uppercase tracking-wide px-2 py-0.5 rounded-full bg-violet-100 dark:bg-violet-950 text-violet-700 dark:text-violet-300">
-                  <Crown size={10} />
-                  {p.planBadgePremium}
-                </span>
-              )}
-            </div>
-            <p className={cn("text-[13px] leading-[19px] mt-1.5 max-w-xl", portalSubtextAlt)}>{p.subtitle}</p>
-          </div>
+          <h1 className={cn("text-[22px] sm:text-[26px] font-bold tracking-tight", portalHeadingAlt)}>
+            {p.title}
+          </h1>
+          <p className={cn("mt-1.5 text-[13px] max-w-xl leading-relaxed", portalSubtextAlt)}>
+            {p.subtitle}
+          </p>
         </div>
-
-        <div className="flex w-full flex-col gap-2 shrink-0 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
-          <button
-            type="button"
-            disabled={isPremium && (busy || diagnosticDisabled)}
-            onClick={() => (isPremium ? onPrimary() : onUpgrade())}
-            className="shimmer-button hr-cta-btn inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg px-4 text-[13px] font-semibold text-white disabled:opacity-50 sm:w-auto"
-          >
-            {isPremium && busy ? <Loader2 size={14} className="animate-spin" /> : isPremium ? <Sparkles size={14} /> : <Crown size={14} />}
-            {ctaLabel}
-          </button>
-          <Link
-            href="/candidate/practice"
-            className={cn(
-              "inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-lg border border-gray-200 px-4 text-[13px] font-semibold transition-colors hover:border-primary/40 dark:border-gray-700 sm:w-auto",
-              portalHeadingAlt
-            )}
-          >
-            <Store size={14} />
-            {p.marketplaceCta}
-          </Link>
+        <div className="flex flex-wrap gap-2 shrink-0">
+          {showNewRun && onNewRun && (
+            <button
+              type="button"
+              onClick={onNewRun}
+              disabled={newRunBusy}
+              className="inline-flex items-center gap-2 h-9 px-3.5 rounded-lg text-[12px] font-semibold border border-gray-200 dark:border-gray-700 hover:border-primary/40 transition-colors disabled:opacity-60"
+            >
+              {p.newCoachRun}
+            </button>
+          )}
+          {!isPremium && (
+            <button
+              type="button"
+              onClick={onUpgrade}
+              className="shimmer-button hr-cta-btn inline-flex items-center gap-2 h-9 px-3.5 rounded-lg text-[12px] font-semibold text-white"
+            >
+              {p.upgradeCta}
+            </button>
+          )}
         </div>
       </div>
     </div>

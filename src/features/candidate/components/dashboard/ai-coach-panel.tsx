@@ -11,8 +11,20 @@ import { fillTemplate, type CoachRecommendation } from "@/features/candidate/uti
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import { useCandidateSubscription } from "@/features/candidate/context/candidate-subscription-context";
 import { UpgradeModal } from "@/features/candidate/components/billing/upgrade-modal";
-import { getCoachPlan, type CoachPlanItem } from "@/features/candidate/services/coach.service";
+import {
+  getCoachContext,
+  getCoachReport,
+  type CoachSkillResult,
+} from "@/features/candidate/services/coach.service";
 import { getSkillIcon } from "@/features/candidate/utils/skill-icons";
+
+/** CTA theo phase: chưa CV/confirm → Goal; có report → Roadmap; còn lại → Diagnostic. */
+function resolveCoachHref(confirmed: boolean | null, hasReport: boolean | null): string {
+  if (confirmed === false) return "/candidate/coach?step=3";
+  if (hasReport) return "/candidate/coach?step=6";
+  if (confirmed) return "/candidate/coach?step=4";
+  return "/candidate/coach";
+}
 
 const PRIORITY_COLOR: Record<CoachRecommendation["priority"], { bg: string; text: string; dot: string }> = {
   high:   { bg: "bg-red-50 dark:bg-red-950/40",    text: "text-red-600 dark:text-red-400",    dot: "bg-red-500" },
@@ -27,12 +39,12 @@ function capitalizeSkill(name: string): string {
 }
 
 /** Skill row: icon + name + score progress bar */
-function SkillRow({ item, index }: { item: CoachPlanItem; index: number }) {
+function SkillRow({ item, index }: { item: CoachSkillResult; index: number }) {
   const si = getSkillIcon(item.skill);
   const SIcon = si?.icon ?? Code2;
   const iconClass = si?.className ?? "text-gray-500 dark:text-gray-400";
   const name = capitalizeSkill(item.skill);
-  const score = item.currentScore ?? 0;
+  const score = item.skillScore ?? 0;
   const target = item.targetScore ?? 70;
   const pct = Math.min(Math.round((score / target) * 100), 100);
 
@@ -79,14 +91,25 @@ export function AiCoachPanel({ recommendations, loading }: AiCoachPanelProps) {
   const p = t.jobseekerDashboardPage.coach;
   const { planType } = useCandidateSubscription();
   const isPremium = planType === "PREMIUM";
-  const [items, setItems] = useState<CoachPlanItem[] | null>(null);
+  const [items, setItems] = useState<CoachSkillResult[] | null>(null);
   const [upgradeOpen, setUpgradeOpen] = useState(false);
+  const [coachHref, setCoachHref] = useState("/candidate/coach");
 
   useEffect(() => {
     if (!isPremium) return;
-    getCoachPlan()
-      .then((plan) => setItems(plan?.items ?? []))
+    getCoachReport()
+      .then((report) => setItems(report?.skills ?? []))
       .catch(() => setItems([]));
+
+    Promise.allSettled([getCoachContext(), getCoachReport()]).then(([ctx, report]) => {
+      const confirmed =
+        ctx.status === "fulfilled" ? Boolean(ctx.value.contextConfirmed) : null;
+      const hasReport =
+        report.status === "fulfilled"
+          ? Boolean(report.value && report.value.status === "Scored")
+          : null;
+      setCoachHref(resolveCoachHref(confirmed, hasReport));
+    });
   }, [isPremium]);
 
   if (loading) {
@@ -108,7 +131,7 @@ export function AiCoachPanel({ recommendations, loading }: AiCoachPanelProps) {
     );
   }
 
-  const incomplete = (items ?? []).filter((i) => i.status !== "done").slice(0, 4);
+  const incomplete = (items ?? []).filter((i) => i.band !== "strength").slice(0, 4);
 
   return (
     <div className="flex flex-col gap-3">
@@ -137,11 +160,11 @@ export function AiCoachPanel({ recommendations, loading }: AiCoachPanelProps) {
           </p>
           <div className="flex flex-col gap-3">
             {incomplete.map((item, idx) => (
-              <SkillRow key={item.id} item={item} index={idx} />
+              <SkillRow key={item.skill} item={item} index={idx} />
             ))}
           </div>
           <Link
-            href="/candidate/coach"
+            href={coachHref}
             className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-primary hover:text-primary-hover transition-colors mt-4"
           >
             {p.openCoach}
@@ -153,7 +176,7 @@ export function AiCoachPanel({ recommendations, loading }: AiCoachPanelProps) {
       {/* ── Premium: all done or no plan ── */}
       {isPremium && items && incomplete.length === 0 && (
         <Link
-          href="/candidate/coach"
+          href={coachHref}
           className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-primary hover:text-primary-hover"
         >
           {items.length === 0 ? p.startDiagnostic : p.openCoach}
@@ -196,7 +219,7 @@ export function AiCoachPanel({ recommendations, loading }: AiCoachPanelProps) {
 
             {/* CTA */}
             <Link
-              href={rec.ctaHref}
+              href={rec.ctaHref.includes("/candidate/coach") ? coachHref : rec.ctaHref}
               className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-primary hover:text-primary-hover transition-colors"
             >
               {p.ctaLabel}

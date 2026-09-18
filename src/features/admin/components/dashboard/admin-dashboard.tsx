@@ -10,7 +10,6 @@ import { AdminRagStatus } from "./admin-rag-status";
 import { AdminKpiGrid } from "./admin-kpi-grid";
 import { AdminRecentUsers } from "./admin-recent-users";
 import { AdminAlerts } from "./admin-alerts";
-import { AdminAuditFeed } from "./admin-audit-feed";
 import { AdminUserRoleChart } from "./admin-user-role-chart";
 import { AdminPlatformBarChart } from "./admin-platform-bar-chart";
 
@@ -33,7 +32,6 @@ function sec(i: number) {
  *
  * Pending backend integration (shown as honest placeholders):
  *   - Generation activity chart → requires GET /api/admin/sessions
- *   - Audit log feed            → requires GET /api/admin/audit
  *   - Questions generated count → requires GET /api/admin/stats
  *   - Practice sessions count   → requires candidate sessions API
  *   - System health status      → requires health-check endpoints
@@ -97,11 +95,6 @@ export function AdminDashboard() {
           <AdminUserRoleChart data={data} loading={loading} />
           <AdminPlatformBarChart data={data} loading={loading} />
         </div>
-      </motion.div>
-
-      {/* ── Audit feed ─────────────────────────────────────────────────────── */}
-      <motion.div {...sec(5)}>
-        <AdminAuditFeed />
       </motion.div>
     </div>
   );
