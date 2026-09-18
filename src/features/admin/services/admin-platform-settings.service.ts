@@ -4,6 +4,9 @@ export interface PlatformSettings {
   minQuestionsToPublish?: number;
   maxPinnedSets?: number;
   minAttemptsForTrending?: number;
+  /** SCRUM-446 */
+  antiCheatEnabled?: boolean;
+  antiCheatMaxTabLeaves?: number;
   platformName?: string;
   defaultQuestionCount?: number;
   maxJdsPerDay?: number;
@@ -24,6 +27,10 @@ function normalize(raw: unknown): PlatformSettings {
     maxPinnedSets: typeof data.maxPinnedSets === "number" ? data.maxPinnedSets : undefined,
     minAttemptsForTrending:
       typeof data.minAttemptsForTrending === "number" ? data.minAttemptsForTrending : undefined,
+    antiCheatEnabled:
+      typeof data.antiCheatEnabled === "boolean" ? data.antiCheatEnabled : undefined,
+    antiCheatMaxTabLeaves:
+      typeof data.antiCheatMaxTabLeaves === "number" ? data.antiCheatMaxTabLeaves : undefined,
     platformName: typeof data.platformName === "string" ? data.platformName : undefined,
     defaultQuestionCount:
       typeof data.defaultQuestionCount === "number" ? data.defaultQuestionCount : undefined,
@@ -45,6 +52,8 @@ export async function updatePlatformSettings(settings: PlatformSettings): Promis
     minQuestionsToPublish: settings.minQuestionsToPublish,
     maxPinnedSets: settings.maxPinnedSets,
     minAttemptsForTrending: settings.minAttemptsForTrending,
+    antiCheatEnabled: settings.antiCheatEnabled ?? false,
+    antiCheatMaxTabLeaves: settings.antiCheatMaxTabLeaves ?? 3,
     // Các field UI-only vẫn gửi nếu BE bỏ qua (backward compatible)
     platformName: settings.platformName,
     defaultQuestionCount: settings.defaultQuestionCount,

@@ -70,6 +70,7 @@ export function HrBillingSubscription() {
     planId,
     subscription,
     loading,
+    limits,
     canGenerateNow,
     cooldownEndsAt,
     generateWindowUsed,
@@ -117,6 +118,8 @@ export function HrBillingSubscription() {
   }
 
   const isPremium = planId === "HR_PREMIUM";
+  const generateUnlimited = limits?.generateUnlimited ?? false;
+  const generateCooldownHours = Math.max(1, limits?.generateCooldownHours ?? 24);
 
   function handlePlanClick(id: HrPlanId) {
     if (id === planId || busy) return;
@@ -311,18 +314,21 @@ export function HrBillingSubscription() {
             </p>
           )}
 
-          {/* Gia hạn (Premium) / Quota lượt tạo (Free) */}
-          {isPremium ? (
+          {/* Gia hạn Premium + quota generate khi Admin không bật Unlimited */}
+          {isPremium && (
             <p className="text-white/90 text-xs mb-2">
               {subscription?.cancelAtPeriodEnd
                 ? `${sub.cancelAtPeriodEndNote} ${formatDate(subscription?.periodEnd, locale)}`
                 : `${sub.renews}: ${formatDate(subscription?.periodEnd, locale)}`}
             </p>
-          ) : (
+          )}
+          {!generateUnlimited && (
             <div className="mb-3">
               <div className="flex items-center justify-between mb-1.5">
                 <p className="text-white/90 text-xs">
-                  {lang === "vi" ? "Lượt tạo bộ / đánh giá JD (24h)" : "Create set / JD review (24h)"}
+                  {lang === "vi"
+                    ? `Lượt tạo bộ / đánh giá JD (${generateCooldownHours}h)`
+                    : `Create set / JD review (${generateCooldownHours}h)`}
                 </p>
                 <p className="text-white text-sm font-bold tabular-nums">
                   {generateWindowUsed}

@@ -62,6 +62,18 @@ export interface WeeklyUsagePoint {
   submissions: number;
 }
 
+export type AdminSettingsTab = "general" | "permissions" | "notifications";
+
+/** Leaderboard row for admin dashboard (mock). */
+export interface DashboardTopRecruiter {
+  rank: number;
+  name: string;
+  email: string;
+  sessions: number;
+  questions: number;
+}
+
+/** Generated-content session row (Admin → Nội dung đã tạo). */
 export interface ContentSession {
   id: string;
   jobTitle: string;
@@ -77,8 +89,6 @@ export interface ContentSession {
   roleBg: string;
 }
 
-export type AdminSettingsTab = "general" | "permissions" | "notifications";
-
 export type AuditEventType =
   | "user_created"
   | "recruiter_login"
@@ -87,6 +97,7 @@ export type AuditEventType =
   | "settings_change"
   | "admin_action";
 
+/** Audit log row (Admin → Nhật ký kiểm tra). */
 export interface AuditLogEntry {
   id: string;
   type: AuditEventType;
@@ -95,13 +106,4 @@ export interface AuditLogEntry {
   ip: string;
   detail: string;
   timeLabel: string;
-}
-
-/** Leaderboard row for admin dashboard (mock). */
-export interface DashboardTopRecruiter {
-  rank: number;
-  name: string;
-  email: string;
-  sessions: number;
-  questions: number;
 }
