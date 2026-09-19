@@ -32,6 +32,9 @@ import { FeedbackResultClient } from "@/features/candidate/components/feedback/f
 
 vi.mock("next/navigation", () => ({
   useParams: () => ({ id: "session-1" }),
+  // feedback-result-client.tsx reads ?mode=coach (line 45) to render the
+  // AI-Coach variant; the default here keeps these cases on the normal flow.
+  useSearchParams: () => new URLSearchParams(),
 }));
 
 vi.mock("@/features/candidate/components/layout/jobseeker-app-shell", () => ({

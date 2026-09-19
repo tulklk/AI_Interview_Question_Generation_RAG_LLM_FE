@@ -15,6 +15,8 @@ import type { QuestionSet } from "@/features/candidate/types/jobseeker";
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn(), prefetch: vi.fn() }),
+  // practice-session.tsx reads ?mode=coach (line 250).
+  useSearchParams: () => new URLSearchParams(),
 }));
 
 vi.mock("@/features/candidate/services/practice-session.service", async () => {

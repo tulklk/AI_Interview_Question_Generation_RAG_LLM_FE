@@ -110,7 +110,9 @@ describe("Admin Plans — editing and saving", () => {
       )
     );
     expect(
-      await screen.findByText("Saved. New limits apply from the next billing period for existing subscribers.")
+      await screen.findByText(
+        "Saved. New limits apply immediately to Active subscribers on this plan; usage counts are unchanged."
+      )
     ).toBeInTheDocument();
   });
 

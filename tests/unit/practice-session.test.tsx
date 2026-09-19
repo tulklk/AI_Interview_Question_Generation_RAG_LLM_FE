@@ -24,6 +24,9 @@ import { PracticeSession } from "@/features/candidate/components/practice/practi
 const push = vi.fn();
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push, replace: vi.fn(), prefetch: vi.fn() }),
+  // practice-session.tsx reads ?mode=coach to switch into AI-Coach mode
+  // (line 250); the default here keeps these cases on the normal flow.
+  useSearchParams: () => new URLSearchParams(),
 }));
 
 vi.mock("@/features/candidate/services/practice-session.service", async () => {

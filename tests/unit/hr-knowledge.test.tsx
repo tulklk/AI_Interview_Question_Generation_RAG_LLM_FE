@@ -94,8 +94,12 @@ describe("HR Knowledge Documents — upload", () => {
 
     // knowledge-page-content.tsx passes the selected document category as a
     // 2nd arg for the "hr" variant (defaults to "InternalStack") — added
-    // alongside the upload-type selector UI.
-    await waitFor(() => expect(onUpload).toHaveBeenCalledWith(file, "InternalStack"));
+    // alongside the upload-type selector UI. The 3rd/4th args (adminNote,
+    // folder) only carry a value for the "admin" variant, so the HR path
+    // passes them through as undefined.
+    await waitFor(() =>
+      expect(onUpload).toHaveBeenCalledWith(file, "InternalStack", undefined, undefined)
+    );
     expect(await screen.findByText("resume-guide.pdf", {}, { timeout: 10000 })).toBeInTheDocument();
   });
 
