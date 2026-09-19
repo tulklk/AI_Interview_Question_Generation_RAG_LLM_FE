@@ -13,7 +13,7 @@
    npm run test -- -t "HIST-10"
    ```
 2. **Hội đồng chỉ mô tả bằng lời**, không đọc mã — dùng `grep -rn "<từ khóa tiếng Anh>" tests/unit/` để tìm ra đúng file/dòng trước, rồi chạy `-t` như trên.
-3. **Test case đó không có coverage tự động hoặc thuộc phần Backend/RAG** — trả lời thẳng thắn là phần này kiểm thử thủ công/thuộc nhóm khác, không né tránh, rồi demo trực tiếp trên UI hoặc nhường lại cho đúng thành viên phụ trách.
+3. **Test case đó thuộc phần Backend/RAG** — không còn là "ngoài phạm vi": Backend .NET có 232 unit test xUnit (38 test class, 232/232 pass 15/09/2026) và RAG service có 39 test pytest (39/39 pass 15/09/2026, chạy với Ollama local thật), đều đã ghi trong Report 7 mục V. Trả lời thẳng con số, rồi nhường phần giải thích chi tiết kỹ thuật cho thành viên phụ trách Backend/RAG. **Trường hợp thật sự không có coverage tự động**: nhóm tính năng AI Coach / lộ trình ứng viên / import knowledge theo folder (merge 19/09/2026, khai báo là FT-15 ngoài phạm vi) — trả lời thẳng là phần này kiểm thử thủ công, rồi demo trực tiếp trên UI.
 4. **Nếu biết chính xác cả file** (đường dẫn đầy đủ, VD đang mở sẵn trong IDE) — chạy thẳng theo đường dẫn file thay vì lọc theo tên, nhanh hơn và không phải lọc qua các file khác:
    ```
    npm run test -- tests/unit/<tên-file>.test.tsx
@@ -21,13 +21,13 @@
 
 **Điểm mấu chốt:** luôn ưu tiên lọc theo TÊN (`-t`) hoặc đường dẫn FILE chính xác đã biết trước — tránh gõ lại tên file theo trí nhớ vì rất dễ sai (từng gõ nhầm `candidate-biling.test` thiếu 1 chữ "l", Vitest báo lỗi khá mơ hồ "No test files found, exiting with code 1").
 
-**Nếu bị bắt giải thích (không chỉ chạy):** không cần học thuộc — đọc trực tiếp từ nguồn có sẵn. Ở mức nghiệp vụ, mỗi dòng trong `SU26SE102-GSU26SE52_QA_TestCases.xlsx` đã có sẵn Description/Procedure/Expected/Precondition. Ở mức code, toàn bộ 535 test đều theo đúng 1 khuôn **Arrange–Act–Assert**, nên chỉ cần thuộc pattern chung thay vì từng test. Mỗi file test còn có comment đầu file ghi rõ nó "grounded in" đúng file source nào và map sang đúng sheet Excel nào — là bằng chứng truy vết trực tiếp nếu bị hỏi "sao biết test này đúng yêu cầu".
+**Nếu bị bắt giải thích (không chỉ chạy):** không cần học thuộc — đọc trực tiếp từ nguồn có sẵn. Ở mức nghiệp vụ, mỗi dòng trong `SU26SE102-GSU26SE52_QA_TestCases.xlsx` đã có sẵn Description/Procedure/Expected/Precondition. Ở mức code, toàn bộ 470 test đều theo đúng 1 khuôn **Arrange–Act–Assert**, nên chỉ cần thuộc pattern chung thay vì từng test. Mỗi file test còn có comment đầu file ghi rõ nó "grounded in" đúng file source nào và map sang đúng sheet Excel nào — là bằng chứng truy vết trực tiếp nếu bị hỏi "sao biết test này đúng yêu cầu".
 
 ---
 
 ## 1. `tests/unit/forgot-reset-password.test.tsx` — AUTH005-2
 
-Sheet Excel: `AUTH005_ForgotResetPassword`. Grounded in `src/app/forgot-password/page.tsx`, `reset-password-content.tsx`.
+Test case tương ứng: `Report5_Test_Report.xlsx` > sheet **Authentication & Access** > **F1-33** (function *Forgot / Reset Password*). Grounded in `src/app/forgot-password/page.tsx`, `reset-password-content.tsx`.
 
 **Chạy:** `npm run test -- -t "AUTH005-2"`
 
@@ -40,7 +40,7 @@ Sheet Excel: `AUTH005_ForgotResetPassword`. Grounded in `src/app/forgot-password
 
 ## 2. `tests/unit/feedback-result-client.test.tsx` — FRC-1 đến FRC-4
 
-Sheet nguồn: cover state machine "poll điểm bài làm" của `FeedbackResultClient` (score-polling), không có coverage tự động trước đó. Grounded in `src/features/candidate/components/feedback/feedback-result-client.tsx`.
+Test case tương ứng: `Report5_Test_Report.xlsx` > sheet **Candidate Experience** > **F5-26…F5-29** (function *Practice Result Scoring*) — cover state machine "poll điểm bài làm" của `FeedbackResultClient` (score-polling), không có coverage tự động trước đó. Grounded in `src/features/candidate/components/feedback/feedback-result-client.tsx`.
 
 **Chạy:** `npm run test -- -t "FRC-"` (chạy cả nhóm 4 test) — đã verify: **4/4 pass, 372ms**.
 
@@ -59,7 +59,7 @@ Sheet nguồn: cover state machine "poll điểm bài làm" của `FeedbackResul
 
 ## 3. `tests/unit/history-published-set.test.tsx` — RAG028-1, RAG028-2, RAG028-3
 
-Sheet Excel: `RAG028` (published-set edit restrictions). Grounded in `review-questions-section.tsx` (biến `isLocked = publishStatus === "PUBLISHED"`).
+Test case tương ứng: `Report5_Test_Report.xlsx` > sheet **Question Set Management** > **F3-22** (RAG028-1), **F3-23** (RAG028-3), **F3-24** (RAG028-2) — function *Published Set Review Lock*. Grounded in `review-questions-section.tsx` (biến `isLocked = publishStatus === "PUBLISHED"`).
 
 **Chạy:** `npm run test -- -t "RAG028"` — đã verify: **3/3 pass**.
 
@@ -75,7 +75,7 @@ Sheet Excel: `RAG028` (published-set edit restrictions). Grounded in `review-que
 
 ## 4. `tests/unit/auth-interceptor.test.ts` — RGA001-1 đến RGA007-1 (11 test)
 
-Sheet Excel: RGA001/RGA002/RGA004/RGA013 (HRRAGAuthErrorHandling). Grounded in `auth.interceptor.ts` + `token.service.ts`. Viết trong commit `987bd61` (chuyển toàn bộ suite Playwright E2E sang Vitest unit test).
+Test case tương ứng: đây là file logic thuần nên nằm ở workbook unit test — `SU26SE102-GSU26SE52_QA_TestCases.xlsx` > sheet **FE-AuthInterceptor** (function `attachAuthInterceptor`), không nằm trong Report5_Test_Report.xlsx. Grounded in `auth.interceptor.ts` + `token.service.ts`. Viết trong commit `987bd61` (chuyển toàn bộ suite Playwright E2E sang Vitest unit test).
 
 **Chạy toàn bộ file (đường dẫn chính xác, nhanh nhất khi biết trước):**
 ```
@@ -103,6 +103,8 @@ npm run test -- tests/unit/auth-interceptor.test.ts
 
 ## 5. `tests/unit/hr-history.test.tsx` — HIST-10
 
+Test case tương ứng: `Report5_Test_Report.xlsx` > sheet **Question Set Management** > **F3-20** (function *Question Set History*).
+
 `HIST-10: a PUBLISHED set's Delete button is disabled and never opens the confirm dialog` ([hr-history.test.tsx:167](tests/unit/hr-history.test.tsx#L167)) — nút Delete ở **trang danh sách lịch sử** (list-level) cho set đã publish bị disable và không mở dialog xác nhận.
 
 **Chạy:** `npm run test -- -t "HIST-10"` — đã verify: **1/1 pass**.
@@ -110,6 +112,8 @@ npm run test -- tests/unit/auth-interceptor.test.ts
 ---
 
 ## 6. `tests/unit/studio-flow.test.tsx` — RGA-SUB-1
+
+Test case tương ứng: `Report5_Test_Report.xlsx` > sheet **Interview Plan Studio** > **F2-27** (function *AI Question Generation*).
 
 `RGA-SUB-1: a QUOTA_EXCEEDED errorCode on the generate call opens the quota-exceeded blocking dialog (not a toast)` ([studio-flow.test.tsx:144](tests/unit/studio-flow.test.tsx#L144)).
 
