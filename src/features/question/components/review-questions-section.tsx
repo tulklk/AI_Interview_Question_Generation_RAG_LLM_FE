@@ -909,7 +909,7 @@ export function ReviewQuestionsSection({
             {filteredQuestions.length > 0 && totalPages > 1 && (
               <div className="flex items-center justify-between gap-4 pt-2">
                 <p className={cn("text-xs", portalSubtext)}>
-                  Câu {startIdx + 1}–{Math.min(safePage * PAGE_SIZE, filteredQuestions.length)} / {filteredQuestions.length} câu hỏi
+                  {rp.paginationQuestions.replace("{{from}}", String(startIdx + 1)).replace("{{to}}", String(Math.min(safePage * PAGE_SIZE, filteredQuestions.length))).replace("{{total}}", String(filteredQuestions.length))}
                 </p>
                 <div className="flex items-center gap-1">
                   <button

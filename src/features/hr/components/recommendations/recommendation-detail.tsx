@@ -707,7 +707,7 @@ export function RecommendationDetail({ id }: { id: string }) {
                       title={rec.questionSetTitle}
                       className={cn("text-[11px] mt-0.5 truncate", portalSubtextAlt)}
                     >
-                      {(p.fit.fitAgainstSet ?? "Theo bộ câu hỏi: {{title}}").replace(
+                      {(p.fit.fitAgainstSet).replace(
                         "{{title}}",
                         rec.questionSetTitle
                       )}

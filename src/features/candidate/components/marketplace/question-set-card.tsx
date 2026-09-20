@@ -304,7 +304,7 @@ export function QuestionSetCard({
         </div>
       </div>
       <span className="text-[11px] font-bold text-primary whitespace-nowrap shrink-0">
-        {set.matchPercent}% Khớp CV
+        {p.matchPercent.replace("{{n}}", String(set.matchPercent))}
       </span>
     </div>
   ) : null;
@@ -401,7 +401,7 @@ export function QuestionSetCard({
                     "text-violet-600 dark:text-violet-300",
                     "border border-violet-200/70 dark:border-violet-700/40",
                   )}>
-                    {set.matchPercent}% Khớp CV
+                    {p.matchPercent.replace("{{n}}", String(set.matchPercent))}
                   </span>
                   <div className="w-full h-1 rounded-full bg-gray-100 dark:bg-gray-800/80 overflow-hidden">
                     <div

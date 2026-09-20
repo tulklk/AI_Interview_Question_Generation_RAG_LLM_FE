@@ -31,49 +31,10 @@ const inputCls = cn(
   "w-full px-3.5 py-2.5 text-sm rounded-lg focus:outline-none focus:ring-2 focus:ring-[#6c47ff]/20 focus:border-[#6c47ff] transition-colors"
 );
 
-const COPY_FALLBACK = {
-  heading: "Cấu hình AI",
-  subtext: "Chat LLM: Ollama hoặc OpenRouter. Embedding luôn Ollama local.",
-  statusTitle: "Trạng thái dịch vụ RAG",
-  statusHint: "Kiểm tra kết nối RAG, cấu hình và database vector.",
-  providerTitle: "Provider Chat LLM",
-  providerHint: "Chỉ đổi model sinh text. Embedding / RAG vector vẫn dùng Ollama local.",
-  ollamaDesc: "Local hoặc cloud qua Ollama (model đã pull).",
-  openrouterDesc: "Gọi nhiều model cloud qua OpenRouter — không ảnh hưởng embed.",
-  connectionTitle: "Kết nối Chat LLM",
-  connectionHint: "URL + API key cho chat. Embedding tách riêng bên dưới.",
-  baseUrl: "Chat Base URL",
-  apiKey: "Chat API Key",
-  apiKeyConfigured: "đã cấu hình",
-  apiKeyKeepPlaceholder: "•••••••• (để trống = giữ nguyên)",
-  apiKeyOpenRouterPlaceholder: "sk-or-… (bắt buộc với OpenRouter)",
-  apiKeyOptionalPlaceholder: "Tuỳ chọn — cloud/proxy",
-  clearApiKey: "Xóa Chat API key đã lưu",
-  llmTitle: "Mô hình & tham số",
-  chatModel: "Chat / LLM model",
-  cloudTag: "cloud",
-  localTag: "local",
-  ollamaModelHint: "Danh sách lấy từ Ollama /api/tags (model đã pull).",
-  openrouterModelHint: "Nhập model id OpenRouter, ví dụ openai/gpt-4o-mini (không dùng gemma4b:cloud).",
-  temperature: "Temperature",
-  tempHint: "0 = ổn định, 2 = sáng tạo hơn",
-  timeout: "Timeout (giây)",
-  refreshModels: "Làm mới",
-  refreshModelsBtn: "Tải lại model / status",
-  retrievalTitle: "Retrieval & Embedding (Ollama local)",
-  retrievalHint: "Top-K + embedding luôn chạy qua Ollama local — không đổi khi chọn OpenRouter.",
-  readOnlyTitle: "Embedding (cố định Ollama)",
-  saveBtn: "Lưu cấu hình AI",
-  saveSuccess: "Đã lưu cấu hình AI",
-  saveError: "Không thể lưu cấu hình AI",
-  loadError: "Không tải được cấu hình AI",
-  retry: "Thử lại",
-} as const;
-
 export function AiConfigPage() {
   const { t } = useLanguage();
   const { addToast } = useToast();
-  const copy = t.adminPages.aiConfigPage ?? COPY_FALLBACK;
+  const copy = t.adminPages.aiConfigPage;
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);

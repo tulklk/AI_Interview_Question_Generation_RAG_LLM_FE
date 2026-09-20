@@ -7,14 +7,9 @@ import { CreditCard } from "lucide-react";
 import { useLanguage } from "@/shared/providers/language-context";
 import { AdminPageHeader } from "@/features/admin/components/layout/admin-page-header";
 
-const FALLBACK = {
-  heading: "Subscription Plans",
-  subtext: "Quản lý giá và limit gói Free / Premium (HR & Candidate).",
-};
-
 export default function AdminPlansRoutePage() {
   const { t } = useLanguage();
-  const page = t.adminPages.plansPage ?? FALLBACK;
+  const page = t.adminPages.plansPage;
 
   return (
     <AdminAppShell

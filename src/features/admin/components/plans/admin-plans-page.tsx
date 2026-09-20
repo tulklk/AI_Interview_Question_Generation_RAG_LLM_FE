@@ -157,16 +157,20 @@ function Switch({
   checked,
   onChange,
   onDark = false,
+  ariaLabel,
 }: {
   checked: boolean;
   onChange: (next: boolean) => void;
   onDark?: boolean;
+  /** The switch renders no text — without a name it reads as a bare "switch". */
+  ariaLabel?: string;
 }) {
   return (
     <button
       type="button"
       role="switch"
       aria-checked={checked}
+      aria-label={ariaLabel}
       onClick={() => onChange(!checked)}
       className={cn(
         "relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors",
@@ -294,7 +298,7 @@ function ToggleField({
         <p className={cn("text-xs font-semibold leading-snug", portalHeading)}>{label}</p>
         <p className={cn("mt-1 text-[11px] leading-snug", portalSubtext)}>{hint}</p>
       </div>
-      <Switch checked={checked} onChange={onChange} />
+      <Switch checked={checked} onChange={onChange} ariaLabel={label} />
     </div>
   );
 }
@@ -529,6 +533,7 @@ export function AdminPlansPage() {
                         checked={d.isActive}
                         onChange={(next) => patchDraft(plan.id, { isActive: next })}
                         onDark
+                        ariaLabel={d.isActive ? ed.active : ed.inactive}
                       />
                       <span className="text-[10px] font-bold uppercase tracking-wider text-white/85">
                         {d.isActive ? ed.active : ed.inactive}

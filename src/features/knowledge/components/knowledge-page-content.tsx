@@ -436,6 +436,8 @@ function DocumentCard({
         ref={btnRef}
         type="button"
         onClick={openMenu}
+        aria-label={kb.moreActions}
+        aria-expanded={menuOpen}
         className={cn(
           "shrink-0 p-1.5 rounded-lg transition-all",
           "text-gray-400 hover:text-gray-600 dark:hover:text-gray-200",
@@ -486,7 +488,7 @@ function DocumentCard({
               className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
             >
               <FolderInput size={13} className="text-amber-500" />
-              {kb.moveToFolder ?? "Chuyển folder…"}
+              {kb.moveToFolder}
             </button>
           )}
           <button
@@ -691,18 +693,18 @@ function MoveFolderModal({
             <FolderInput size={18} className="text-amber-500" />
           </div>
           <div>
-            <p className={cn("text-sm font-semibold", portalHeading)}>{kb.moveToFolder ?? "Chuyển folder"}</p>
+            <p className={cn("text-sm font-semibold", portalHeading)}>{kb.moveToFolder}</p>
             <p className={cn("text-xs mt-0.5 truncate max-w-[220px]", portalSubtext)}>{fileName}</p>
           </div>
         </div>
         <label className={cn("text-xs font-medium", portalSubtext)}>
-          {kb.uploadFolderLabel ?? "Folder / nhóm"}
+          {kb.uploadFolderLabel}
         </label>
         <input
           list="move-folder-options"
           value={value}
           onChange={(e) => setValue(e.target.value)}
-          placeholder={kb.uploadFolderPlaceholder ?? "vd. swe (để trống = unsorted)"}
+          placeholder={kb.uploadFolderPlaceholder}
           className={cn("mt-1.5 w-full px-3 py-2 text-sm rounded-xl border", portalInput)}
         />
         <datalist id="move-folder-options">
@@ -711,7 +713,7 @@ function MoveFolderModal({
           ))}
         </datalist>
         <p className={cn("text-[11px] mt-1.5", portalSubtext)}>
-          {kb.moveFolderHint ?? "Để trống để đưa về unsorted. Chỉ đổi metadata UI."}
+          {kb.moveFolderHint}
         </p>
         <div className="flex gap-2 mt-4 justify-end">
           <button type="button" onClick={onCancel} className="px-4 py-2 text-sm font-medium rounded-xl border border-gray-200 dark:border-gray-700">
@@ -724,7 +726,7 @@ function MoveFolderModal({
             className="px-4 py-2 text-sm font-semibold rounded-xl bg-violet-600 hover:bg-violet-500 text-white disabled:opacity-50 inline-flex items-center gap-2"
           >
             {busy ? <Loader2 size={14} className="animate-spin" /> : <FolderInput size={14} />}
-            {kb.moveConfirm ?? "Chuyển"}
+            {kb.moveConfirm}
           </button>
         </div>
       </div>
@@ -762,9 +764,9 @@ function RenameFolderModal({
             <Pencil size={18} className="text-amber-500" />
           </div>
           <div>
-            <p className={cn("text-sm font-semibold", portalHeading)}>{kb.renameFolder ?? "Đổi tên folder"}</p>
+            <p className={cn("text-sm font-semibold", portalHeading)}>{kb.renameFolder}</p>
             <p className={cn("text-xs mt-0.5", portalSubtext)}>
-              {(kb.renameFolderFrom ?? "Từ: {{name}}").replace("{{name}}", fromName)}
+              {(kb.renameFolderFrom).replace("{{name}}", fromName)}
             </p>
           </div>
         </div>
@@ -772,7 +774,7 @@ function RenameFolderModal({
           list="rename-folder-options"
           value={value}
           onChange={(e) => setValue(e.target.value)}
-          placeholder={kb.uploadFolderPlaceholder ?? "tên mới (trống = unsorted)"}
+          placeholder={kb.uploadFolderPlaceholder}
           className={cn("w-full px-3 py-2 text-sm rounded-xl border", portalInput)}
         />
         <datalist id="rename-folder-options">
@@ -791,7 +793,7 @@ function RenameFolderModal({
             className="px-4 py-2 text-sm font-semibold rounded-xl bg-violet-600 hover:bg-violet-500 text-white disabled:opacity-50 inline-flex items-center gap-2"
           >
             {busy ? <Loader2 size={14} className="animate-spin" /> : <Pencil size={14} />}
-            {kb.renameConfirm ?? "Đổi tên"}
+            {kb.renameConfirm}
           </button>
         </div>
       </div>
@@ -950,7 +952,7 @@ export function KnowledgePageContent({
       return;
     }
     if ((variant === "hr" || variant === "admin") && !uploadType) {
-      addToast("error", kb.typeRequired ?? "Chọn loại tài liệu trước khi upload.");
+      addToast("error", kb.typeRequired);
       return;
     }
     let anySuccess = false;
@@ -1024,9 +1026,9 @@ export function KnowledgePageContent({
     if (updated) {
       setDocs((prev) => prev.map((d) => (d.id === id ? { ...d, ...updated } : d)));
       if (drawerDoc?.id === id) setDrawerDoc({ ...drawerDoc, ...updated });
-      addToast("success", kb.typeUpdated ?? "Đã cập nhật loại tài liệu.");
+      addToast("success", kb.typeUpdated);
     } else {
-      addToast("error", kb.typeUpdateFailed ?? "Không thể đổi loại tài liệu.");
+      addToast("error", kb.typeUpdateFailed);
     }
   }
 
@@ -1042,10 +1044,10 @@ export function KnowledgePageContent({
     if (updated) {
       setDocs((prev) => prev.map((d) => (d.id === drawerDoc.id ? { ...d, ...updated } : d)));
       setDrawerDoc({ ...drawerDoc, ...updated });
-      addToast("success", kb.adminNoteSaved ?? "Đã lưu ghi chú admin.");
+      addToast("success", kb.adminNoteSaved);
       void loadFolders();
     } else {
-      addToast("error", kb.adminNoteSaveFailed ?? "Không thể lưu ghi chú admin.");
+      addToast("error", kb.adminNoteSaveFailed);
     }
     setSavingMeta(false);
   }
@@ -1057,7 +1059,7 @@ export function KnowledgePageContent({
       const n = await onMoveDocs([moveDoc.id], folder);
       addToast(
         "success",
-        (kb.moveSuccess ?? "Đã chuyển {{n}} file.").replace("{{n}}", String(n))
+        (kb.moveSuccess).replace("{{n}}", String(n))
       );
       setMoveDoc(null);
       if (drawerDoc?.id === moveDoc.id) {
@@ -1070,7 +1072,7 @@ export function KnowledgePageContent({
       addToast(
         "error",
         extractErrorMessage(error, lang === "vi" ? "vi" : "en") ||
-          (kb.moveFailed ?? "Không chuyển được folder.")
+          (kb.moveFailed)
       );
     } finally {
       setFolderBusy(false);
@@ -1084,7 +1086,7 @@ export function KnowledgePageContent({
       const n = await onRenameFolder(renameFrom, to);
       addToast(
         "success",
-        (kb.renameSuccess ?? "Đã đổi tên · {{n}} file.").replace("{{n}}", String(n))
+        (kb.renameSuccess).replace("{{n}}", String(n))
       );
       const next = to ?? "unsorted";
       setRenameFrom(null);
@@ -1095,7 +1097,7 @@ export function KnowledgePageContent({
       addToast(
         "error",
         extractErrorMessage(error, lang === "vi" ? "vi" : "en") ||
-          (kb.renameFailed ?? "Không đổi tên folder được.")
+          (kb.renameFailed)
       );
     } finally {
       setFolderBusy(false);
@@ -1216,7 +1218,7 @@ export function KnowledgePageContent({
                 onChange={(e) => setTypeFilter(e.target.value)}
                 className={cn("w-full px-3 py-2 text-sm rounded-xl border", portalInput)}
               >
-                <option value="all">{kb.filterAllTypes ?? "Tất cả loại"}</option>
+                <option value="all">{kb.filterAllTypes}</option>
                 {HR_DOCUMENT_TYPES.map((t) => (
                   <option key={t} value={t}>
                     {(kb.documentTypes as Record<string, string> | undefined)?.[t] ?? t}
@@ -1242,7 +1244,7 @@ export function KnowledgePageContent({
                   )}
                 >
                   <ChevronLeft size={14} />
-                  {kb.backToFolders ?? "Tất cả folder"}
+                  {kb.backToFolders}
                 </button>
                 <div className="flex items-center gap-2 flex-wrap">
                   <p className={cn("text-xs font-semibold flex items-center gap-1.5", portalHeading)}>
@@ -1256,14 +1258,14 @@ export function KnowledgePageContent({
                       className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-lg text-amber-700 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950/40"
                     >
                       <Pencil size={12} />
-                      {kb.renameFolder ?? "Đổi tên"}
+                      {kb.renameFolder}
                     </button>
                   ) : null}
                 </div>
                 <div className="flex flex-wrap gap-1.5">
                   {(
                     [
-                      { key: "all" as AdminFolderFilter, label: kb.filterAllTypes ?? "Tất cả" },
+                      { key: "all" as AdminFolderFilter, label: kb.filterAllTypes },
                       { key: "tech" as AdminFolderFilter, label: kb.virtualFolderTech ?? "SYSTEM/Tech" },
                       { key: "roadmap" as AdminFolderFilter, label: kb.virtualFolderRoadmap ?? "SYSTEM/Roadmap" },
                       { key: "other" as AdminFolderFilter, label: kb.virtualFolderOther ?? "Other" },
@@ -1289,7 +1291,7 @@ export function KnowledgePageContent({
             )}
             {variant === "admin" && showFolderBrowser && (
               <p className={cn("text-xs", portalSubtext)}>
-                {(kb.folderBrowserHint ?? "Chọn folder để xem file · {{n}} file").replace(
+                {(kb.folderBrowserHint).replace(
                   "{{n}}",
                   String(folderTotalFiles)
                 )}
@@ -1356,7 +1358,7 @@ export function KnowledgePageContent({
                 <div className="flex flex-col items-center gap-2 py-10 text-center">
                   <Folder size={28} className="text-gray-300 dark:text-gray-600" />
                   <p className={cn("text-sm", portalSubtext)}>
-                    {kb.emptyFolders ?? "Chưa có folder — upload file và gán tên nhóm (vd. swe)."}
+                    {kb.emptyFolders}
                   </p>
                 </div>
               ) : (
@@ -1410,7 +1412,7 @@ export function KnowledgePageContent({
                       {onRenameFolder ? (
                         <button
                           type="button"
-                          title={kb.renameFolder ?? "Đổi tên folder"}
+                          title={kb.renameFolder}
                           onClick={(e) => {
                             e.stopPropagation();
                             setRenameFrom(f.name);
@@ -1473,7 +1475,7 @@ export function KnowledgePageContent({
             {(variant === "hr" || variant === "admin") && (
               <div className="mb-3 space-y-1.5">
                 <label className={cn("text-xs font-medium", portalSubtext)}>
-                  {kb.documentTypeLabel ?? "Loại tài liệu"}
+                  {kb.documentTypeLabel}
                 </label>
                 <select
                   value={uploadType}
@@ -1492,11 +1494,11 @@ export function KnowledgePageContent({
             {variant === "admin" && (
               <div className="mb-3 space-y-2">
                 <label className={cn("text-xs font-medium", portalSubtext)}>
-                  {kb.uploadFolderLabel ?? "Folder / nhóm"}
+                  {kb.uploadFolderLabel}
                 </label>
 
                 <p className={cn("text-[11px]", portalSubtext)}>
-                  {kb.coachKbFolderQuickPick ?? "Chọn nhanh folder"}
+                  {kb.coachKbFolderQuickPick}
                 </p>
                 <div className="flex flex-wrap gap-1.5">
                   <button
@@ -1575,7 +1577,7 @@ export function KnowledgePageContent({
 
                 <div className="space-y-1">
                   <label className={cn("text-[11px] font-medium", portalSubtext)}>
-                    {kb.coachKbFolderCustomLabel ?? "Hoặc nhập / chỉnh tên folder"}
+                    {kb.coachKbFolderCustomLabel}
                   </label>
                   <input
                     list="admin-kb-folders"
@@ -1593,7 +1595,7 @@ export function KnowledgePageContent({
 
                 {activeFolder && activeFolder !== "unsorted" ? (
                   <p className={cn("text-[11px] text-violet-700 dark:text-violet-300")}>
-                    {(kb.coachKbFolderActiveSync ?? "Đang xem folder «{{name}}» — upload sẽ vào folder này.").replace(
+                    {(kb.coachKbFolderActiveSync).replace(
                       "{{name}}",
                       activeFolder
                     )}
@@ -1611,7 +1613,7 @@ export function KnowledgePageContent({
             {variant === "admin" && (
               <div className="mb-3 space-y-1.5">
                 <label className={cn("text-xs font-medium", portalSubtext)}>
-                  {kb.uploadNoteLabel ?? kb.adminNote ?? "Chú thích"}
+                  {kb.uploadNoteLabel ?? kb.adminNote}
                 </label>
                 <textarea
                   value={uploadNote}
@@ -1620,14 +1622,12 @@ export function KnowledgePageContent({
                   maxLength={2000}
                   placeholder={
                     kb.uploadNotePlaceholder ??
-                    kb.adminNotePlaceholder ??
-                    "Ví dụ: Seed SWE-QA flask — 48 Q/A Python web"
+                    kb.adminNotePlaceholder
                   }
                   className={cn("w-full px-3 py-2 text-sm rounded-xl border resize-y min-h-[72px]", portalInput)}
                 />
                 <p className={cn("text-[11px]", portalSubtext)}>
-                  {kb.uploadNoteHint ??
-                    "Ghi chú gắn với tài liệu này (hiện trên danh sách; có thể sửa sau trong drawer)."}
+                  {kb.uploadNoteHint}
                 </p>
               </div>
             )}
@@ -1706,13 +1706,13 @@ export function KnowledgePageContent({
             {variant === "admin" && (
               <div className="mb-4 space-y-2 rounded-xl border border-gray-100 dark:border-gray-800 bg-gray-50/60 dark:bg-gray-950/40 p-3">
                 <div>
-                  <p className={cn("text-[11px] font-medium", portalSubtext)}>{kb.pathLabel ?? "Đường dẫn"}</p>
+                  <p className={cn("text-[11px] font-medium", portalSubtext)}>{kb.pathLabel}</p>
                   <p className={cn("text-xs font-mono break-all mt-0.5", portalHeading)}>
                     {drawerDoc.storagePath ?? getAdminVirtualPath(drawerDoc)}
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className={cn("text-[11px] font-medium", portalSubtext)}>{kb.statusLabel ?? "Trạng thái"}</span>
+                  <span className={cn("text-[11px] font-medium", portalSubtext)}>{kb.statusLabel}</span>
                   <StatusBadge status={drawerDoc.status} />
                 </div>
               </div>
@@ -1721,7 +1721,7 @@ export function KnowledgePageContent({
             {variant === "hr" && onUpdateType && (
               <div className="mb-4 space-y-1.5">
                 <label className={cn("text-xs font-medium", portalSubtext)}>
-                  {kb.changeType ?? "Đổi loại"}
+                  {kb.changeType}
                 </label>
                 <select
                   value={drawerDoc.documentType && drawerDoc.documentType !== "Unclassified"
@@ -1742,7 +1742,7 @@ export function KnowledgePageContent({
             {variant === "admin" && (onUpdateType || onPatchMeta) && (
               <div className="mb-4 space-y-1.5">
                 <label className={cn("text-xs font-medium", portalSubtext)}>
-                  {kb.changeType ?? "Đổi loại"}
+                  {kb.changeType}
                 </label>
                 <select
                   value={drawerDoc.documentType && drawerDoc.documentType !== "Unclassified"
@@ -1767,7 +1767,7 @@ export function KnowledgePageContent({
               <div className="mb-4 space-y-3">
                 <div className="space-y-1.5">
                   <label className={cn("text-xs font-medium", portalSubtext)}>
-                    {kb.uploadFolderLabel ?? "Folder / nhóm"}
+                    {kb.uploadFolderLabel}
                   </label>
                   <input
                     list="admin-kb-folders-drawer"
@@ -1786,13 +1786,13 @@ export function KnowledgePageContent({
                 </div>
                 <div className="space-y-1.5">
                   <label className={cn("text-xs font-medium", portalSubtext)}>
-                    {kb.adminNote ?? "Ghi chú admin"}
+                    {kb.adminNote}
                   </label>
                   <textarea
                     value={drawerAdminNote}
                     onChange={(e) => setDrawerAdminNote(e.target.value)}
                     rows={3}
-                    placeholder={kb.adminNotePlaceholder ?? "Ghi chú nội bộ cho tài liệu hệ thống..."}
+                    placeholder={kb.adminNotePlaceholder}
                     className={cn("w-full px-3 py-2 text-sm rounded-xl border resize-y min-h-[72px]", portalInput)}
                   />
                 </div>
@@ -1803,7 +1803,7 @@ export function KnowledgePageContent({
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-violet-600 hover:bg-violet-700 text-white disabled:opacity-50"
                 >
                   {savingMeta ? <Loader2 size={12} className="animate-spin" /> : null}
-                  {kb.saveAdminNote ?? "Lưu ghi chú"}
+                  {kb.saveAdminNote}
                 </button>
                 {onMoveDocs ? (
                   <button
@@ -1812,14 +1812,14 @@ export function KnowledgePageContent({
                     className="ml-2 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950/40"
                   >
                     <FolderInput size={12} />
-                    {kb.moveToFolder ?? "Chuyển folder…"}
+                    {kb.moveToFolder}
                   </button>
                 ) : null}
               </div>
             )}
 
             <p className={cn("text-xs font-semibold mb-2", portalHeading)}>
-              {kb.chunksPreview ?? "Xem trước chunk"}
+              {kb.chunksPreview}
               {drawerDoc.chunkCount != null ? ` (${drawerDoc.chunkCount})` : ""}
             </p>
             {drawerLoading ? (
@@ -1827,7 +1827,7 @@ export function KnowledgePageContent({
                 <Loader2 size={20} className="animate-spin text-violet-500" />
               </div>
             ) : drawerChunks.length === 0 ? (
-              <p className={cn("text-xs", portalSubtext)}>{kb.noChunks ?? "Chưa có chunk hoặc chưa ingest xong."}</p>
+              <p className={cn("text-xs", portalSubtext)}>{kb.noChunks}</p>
             ) : (
               <ul className="space-y-3">
                 {drawerChunks.map((c) => (

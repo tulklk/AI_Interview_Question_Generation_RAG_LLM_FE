@@ -226,7 +226,7 @@ export function GuestNavbar() {
                 {/* Avatar trigger — clean border, no p-gap */}
                 <button
                   type="button"
-                  aria-label="Tài khoản"
+                  aria-label={t.common.account}
                   onClick={() => {
                     setMobileAvatarOpen((v) => !v);
                     if (mobileOpen) setMobileOpen(false);

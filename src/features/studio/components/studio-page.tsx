@@ -609,7 +609,7 @@ export function StudioPage() {
                 <button
                   type="button"
                   onClick={() => setQuotaDialogOpen(false)}
-                  aria-label="Đóng"
+                  aria-label={t.common.close}
                   className="absolute right-4 top-4 flex h-7 w-7 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-800 dark:hover:text-gray-200"
                 >
                   <X size={15} />
@@ -678,7 +678,7 @@ export function StudioPage() {
             <button
               type="button"
               onClick={() => setReplaceDialogOpen(false)}
-              aria-label="Đóng"
+              aria-label={t.common.close}
               className="absolute right-4 top-4 flex h-7 w-7 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-800 dark:hover:text-gray-200"
             >
               <X size={15} />
@@ -966,7 +966,7 @@ export function StudioPage() {
               if (!studio.project) return;
               // SCRUM-445: regen Free tối đa 2 lần / plan — không chặn bằng túi 1/24h.
               if (regeneratingQuestionIds.includes(questionId)) {
-                throw new Error(s.chat.regeneratingBadge ?? "Đang regen…");
+                throw new Error(s.chat.regeneratingBadge);
               }
               const api = await import("@/features/studio/services/studio.service");
               const { extractErrorMessage } = await import("@/core/interceptors/error.interceptor");
@@ -1001,7 +1001,7 @@ export function StudioPage() {
               );
               addToast(
                 "success",
-                (s.chat.regenQueuedToast ?? "Đang tạo lại câu #{{n}}…").replace("{{n}}", nLabel)
+                (s.chat.regenQueuedToast).replace("{{n}}", nLabel)
               );
 
               // Poll nền — không block modal
@@ -1020,7 +1020,7 @@ export function StudioPage() {
                   if (latest.status === "Failed") {
                     addToast(
                       "error",
-                      (s.chat.regenFailedToast ?? "Tạo lại câu #{{n}} thất bại")
+                      (s.chat.regenFailedToast)
                         .replace("{{n}}", nLabel) +
                         (latest.errorMessage ? `: ${latest.errorMessage}` : "")
                     );
@@ -1029,7 +1029,7 @@ export function StudioPage() {
                   if (latest.status !== "Completed") {
                     addToast(
                       "error",
-                      (s.chat.regenFailedToast ?? "Tạo lại câu #{{n}} thất bại").replace(
+                      (s.chat.regenFailedToast).replace(
                         "{{n}}",
                         nLabel
                       ) + " (timeout)"
@@ -1047,7 +1047,7 @@ export function StudioPage() {
                   }
                   addToast(
                     "success",
-                    (s.chat.regenDoneToast ?? "Đã tạo lại câu #{{n}}").replace("{{n}}", nLabel)
+                    (s.chat.regenDoneToast).replace("{{n}}", nLabel)
                   );
                   void refreshSubscription();
                 } catch (error) {

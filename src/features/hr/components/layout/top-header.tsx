@@ -66,7 +66,7 @@ export function TopHeader({
           type="button"
           onClick={onMenuToggle}
           className="lg:hidden w-9 h-9 flex items-center justify-center rounded-xl text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors shrink-0"
-          aria-label="Open navigation menu"
+          aria-label={t.common.openMenu}
         >
           <Menu size={20} />
         </button>
