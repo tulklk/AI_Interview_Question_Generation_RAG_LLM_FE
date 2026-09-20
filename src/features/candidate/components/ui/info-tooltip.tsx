@@ -18,6 +18,8 @@ export function InfoTooltip({ label, className }: InfoTooltipProps) {
     <span className={cn("relative inline-flex", className)}>
       <button
         type="button"
+        // Icon-only trigger: without a name a screen reader just announces "button".
+        aria-label={label}
         aria-describedby={tooltipId}
         onMouseEnter={() => setOpen(true)}
         onMouseLeave={() => setOpen(false)}

@@ -57,7 +57,7 @@ export function QuestionTemplateCard({
           {/* eslint-disable-next-line @next/next/no-img-element -- SAS Azure Blob URL động */}
           <img
             src={attachedImageUrl}
-            alt="Ảnh đính kèm câu hỏi"
+            alt={t.common.questionImageAlt}
             className="max-h-72 w-full object-contain bg-gray-50 dark:bg-gray-950"
           />
         </div>

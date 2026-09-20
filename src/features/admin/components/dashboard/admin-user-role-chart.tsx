@@ -12,15 +12,16 @@ import {
 import { cn } from "@/lib/cn";
 import { portalHeadingAlt, portalSubtextAlt } from "@/shared/utils/portal-ui";
 import { useChartTheme } from "@/shared/hooks/use-chart-theme";
+import { useLanguage } from "@/shared/providers/language-context";
 import { useCountUp } from "@/shared/hooks/use-count-up";
 import type { AdminDashboardStats } from "@/features/admin/services/admin-dashboard.service";
 
-const TYPE_CONFIG: Record<string, { label: string; color: string }> = {
-  technical:   { label: "Kỹ thuật",   color: "#6c47ff" },
-  behavioral:  { label: "Hành vi",    color: "#3b82f6" },
-  situational: { label: "Tình huống", color: "#10b981" },
-  cultural:    { label: "Văn hóa",    color: "#f59e0b" },
-  leadership:  { label: "Lãnh đạo",   color: "#ef4444" },
+const TYPE_COLOR: Record<string, string> = {
+  technical:   "#6c47ff",
+  behavioral:  "#3b82f6",
+  situational: "#10b981",
+  cultural:    "#f59e0b",
+  leadership:  "#ef4444",
 };
 const FALLBACK_COLOR = "#94a3b8";
 
@@ -30,6 +31,12 @@ interface Props {
 }
 
 export function AdminUserRoleChart({ data, loading }: Props) {
+  const { t } = useLanguage();
+  const c = t.adminPages.dashboard.questionTypeChart;
+  const typeLabel: Record<string, string> = {
+    technical: c.technical, behavioral: c.behavioral, situational: c.situational,
+    cultural: c.cultural, leadership: c.leadership,
+  };
   const chart = useChartTheme();
   const { ref, isInView } = useAdminInView();
 
@@ -40,24 +47,24 @@ export function AdminUserRoleChart({ data, loading }: Props) {
   const chartData = Object.entries(counts)
     .filter(([, v]) => v > 0)
     .map(([key, value]) => ({
-      name:  TYPE_CONFIG[key]?.label ?? key,
+      name:  typeLabel[key] ?? key,
       value,
-      color: TYPE_CONFIG[key]?.color ?? FALLBACK_COLOR,
+      color: TYPE_COLOR[key] ?? FALLBACK_COLOR,
     }))
     .sort((a, b) => b.value - a.value);
 
   return (
     <div ref={ref} className="hr-glass-card flex flex-col p-6">
       <div className="mb-3">
-        <h3 className={cn("text-base font-bold", portalHeadingAlt)}>Phân bổ loại câu hỏi</h3>
-        <p className={cn("mt-0.5 text-xs", portalSubtextAlt)}>Tỉ lệ câu hỏi theo từng thể loại</p>
+        <h3 className={cn("text-base font-bold", portalHeadingAlt)}>{c.title}</h3>
+        <p className={cn("mt-0.5 text-xs", portalSubtextAlt)}>{c.subtitle}</p>
       </div>
 
       {loading ? (
         <div className="h-55 rounded-xl bg-gray-100 dark:bg-gray-800 animate-pulse" />
       ) : chartData.length === 0 ? (
         <div className="flex h-55 items-center justify-center">
-          <p className={cn("text-sm", portalSubtextAlt)}>Chưa có dữ liệu</p>
+          <p className={cn("text-sm", portalSubtextAlt)}>{c.noData}</p>
         </div>
       ) : !isInView ? (
         <div style={{ height: 220 }} />
@@ -87,7 +94,7 @@ export function AdminUserRoleChart({ data, loading }: Props) {
                 formatter={(value, name) => {
                   const num = typeof value === "number" ? value : Number(value ?? 0);
                   return [
-                    `${num.toLocaleString()} câu (${total > 0 ? Math.round((num / total) * 100) : 0}%)`,
+                    c.tooltipQuestions.replace("{{n}}", num.toLocaleString()).replace("{{pct}}", String(total > 0 ? Math.round((num / total) * 100) : 0)),
                     name,
                   ];
                 }}
@@ -118,7 +125,7 @@ export function AdminUserRoleChart({ data, loading }: Props) {
             <p className={cn("text-[22px] font-extrabold leading-none tabular-nums", portalHeadingAlt)}>
               {animatedTotal}
             </p>
-            <p className={cn("mt-0.5 text-[10px] font-medium", portalSubtextAlt)}>Tổng câu hỏi</p>
+            <p className={cn("mt-0.5 text-[10px] font-medium", portalSubtextAlt)}>{c.totalQuestions}</p>
           </div>
         </div>
       )}

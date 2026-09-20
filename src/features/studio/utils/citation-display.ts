@@ -69,16 +69,42 @@ export function formatCitationExcerpt(
   return `${text.slice(0, maxLen)}…`;
 }
 
+/**
+ * Canned provenance strings the backend emits in Vietnamese regardless of the
+ * requested UI language (e.g. PlanProvenanceValidator writes a fixed
+ * "Suy luận từ instruction/JD"). Those are system labels, not content, so map
+ * them onto the active language here. Anything unrecognised is LLM-written
+ * content — it follows the JD's language and must be shown verbatim.
+ */
+export interface ProvenanceReasonLabels {
+  reasonInferredFromJd: string;
+  reasonRubricFromLlm: string;
+  reasonSampleFromLlm: string;
+}
+
+const CANNED_REASONS: { match: RegExp; key: keyof ProvenanceReasonLabels }[] = [
+  { match: /^suy\s*luận\s*từ\s*instruction\s*\/?\s*jd$/i, key: "reasonInferredFromJd" },
+  { match: /^tiêu\s*chí\s*chấm\b.*\bllm\b/i, key: "reasonRubricFromLlm" },
+  { match: /^đáp\s*án\s*mẫu\b.*\bllm\b/i, key: "reasonSampleFromLlm" },
+];
+
 /** Reason LLM: chỉ giữ nguồn suy luận, bỏ chú thích kỹ thuật retrieve (data cũ). */
 export function formatLlmProvenanceReason(
   reason: string | null | undefined,
-  maxLen = 72
+  maxLen = 72,
+  labels?: ProvenanceReasonLabels
 ): string | null {
   const cleaned = (reason ?? "")
     .replace(/\s*[—\-–]\s*không khớp excerpt chunk retrieve\b/gi, "")
     .replace(/\s*[—\-–]\s*BE validator fallback\b/gi, "")
     .trim();
-  return formatCitationExcerpt(cleaned || null, maxLen);
+  if (!cleaned) return null;
+
+  if (labels) {
+    const hit = CANNED_REASONS.find((c) => c.match.test(cleaned));
+    if (hit) return formatCitationExcerpt(labels[hit.key], maxLen);
+  }
+  return formatCitationExcerpt(cleaned, maxLen);
 }
 
 export function citationDisplayName(
@@ -112,7 +138,7 @@ export function formatJdCitationPrimary(
   return chunkLabel ? `${name} · ${chunkLabel}` : name;
 }
 
-export interface CitationRoleLabels {
+export interface CitationRoleLabels extends ProvenanceReasonLabels {
   sourceRoleJd: string;
   sourceRoleAdmin: string;
   sourceRoleLlm: string;
@@ -136,7 +162,7 @@ export function citationRoleBadge(
   if (origin === "LLM")
     return {
       badge: labels.sourceRoleLlm,
-      hint: formatLlmProvenanceReason(cit.reason, 80) ?? cit.reason,
+      hint: formatLlmProvenanceReason(cit.reason, 80, labels) ?? cit.reason,
       tone: "llm",
     };
   const primary = isJdCitation(cit.sourceFile);

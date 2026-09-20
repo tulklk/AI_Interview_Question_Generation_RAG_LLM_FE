@@ -84,7 +84,7 @@ export function GeneralSettings() {
       setAntiCheatMaxTabLeaves(String(maxLeaves));
       addToast("success", g.saveSuccess);
     } catch (err) {
-      addToast("error", err instanceof Error && err.message ? err.message : "Không thể lưu cài đặt");
+      addToast("error", err instanceof Error && err.message ? err.message : g.saveFailed);
     } finally {
       setSaving(false);
     }
@@ -101,14 +101,14 @@ export function GeneralSettings() {
   if (loadError) {
     return (
       <div className="flex flex-col items-center gap-3 py-16 text-center">
-        <p className={cn("text-sm", portalSubtextAlt)}>Không tải được cài đặt</p>
+        <p className={cn("text-sm", portalSubtextAlt)}>{g.loadFailed}</p>
         <button
           type="button"
           onClick={loadSettings}
           className="flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline"
         >
           <RefreshCw size={12} />
-          Thử lại
+          {g.retry}
         </button>
       </div>
     );
@@ -123,12 +123,12 @@ export function GeneralSettings() {
           <div className="flex items-center gap-2 mb-1">
             <ShieldAlert size={14} className="text-primary shrink-0" />
             <p className={cn("text-xs font-semibold uppercase tracking-wide", portalSubtextAlt)}>
-              Cấu hình hệ thống
+              {g.systemSection}
             </p>
           </div>
 
           <FormField
-            label="Số câu hỏi tối thiểu để HR đăng bộ lên marketplace"
+            label={g.minQuestionsLabel}
             htmlFor="min-questions-publish"
           >
             <input
@@ -141,12 +141,12 @@ export function GeneralSettings() {
               className={inputCls}
             />
             <p className={cn("mt-1 text-[11px]", portalSubtextAlt)}>
-              Thay đổi ngay runtime, không cần redeploy. Ví dụ: đặt 1 để test dễ hơn.
+              {g.minQuestionsHint}
             </p>
           </FormField>
 
           <FormField
-            label="Số bộ tối đa được ghim trên Marketplace"
+            label={g.maxPinnedLabel}
             htmlFor="max-pinned-sets"
           >
             <input
@@ -159,12 +159,12 @@ export function GeneralSettings() {
               className={inputCls}
             />
             <p className={cn("mt-1 text-[11px]", portalSubtextAlt)}>
-              SCRUM-404: Admin không thể ghim quá số này cùng lúc.
+              {g.maxPinnedHint}
             </p>
           </FormField>
 
           <FormField
-            label="Ngưỡng lượt practice để hiện badge Trending"
+            label={g.trendingLabel}
             htmlFor="min-attempts-trending"
           >
             <input
@@ -177,7 +177,7 @@ export function GeneralSettings() {
               className={inputCls}
             />
             <p className={cn("mt-1 text-[11px]", portalSubtextAlt)}>
-              Candidate thấy badge Trending khi AttemptCount ≥ ngưỡng này.
+              {g.trendingHint}
             </p>
           </FormField>
         </div>
@@ -195,7 +195,7 @@ export function GeneralSettings() {
               <p className={cn("text-sm font-semibold", portalHeadingAlt)}>{g.antiCheatEnabled}</p>
               <p className={cn("mt-0.5 text-[11px]", portalSubtextAlt)}>{g.antiCheatEnabledHint}</p>
             </div>
-            <Toggle checked={antiCheatEnabled} onChange={setAntiCheatEnabled} />
+            <Toggle checked={antiCheatEnabled} onChange={setAntiCheatEnabled} ariaLabel={g.antiCheatEnabled} />
           </div>
 
           <FormField label={g.antiCheatMaxTabLeaves} htmlFor="anti-cheat-max-leaves">
@@ -286,7 +286,7 @@ export function GeneralSettings() {
         className="shimmer-button mt-6 flex w-full min-h-9 items-center justify-center gap-2 rounded-lg px-5 py-2.5 text-sm font-semibold text-white hr-cta-btn disabled:opacity-60"
       >
         {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
-        {saving ? "Đang lưu…" : g.saveBtn}
+        {saving ? g.saving : g.saveBtn}
       </button>
     </div>
   );

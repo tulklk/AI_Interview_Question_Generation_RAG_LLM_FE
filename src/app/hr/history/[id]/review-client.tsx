@@ -141,14 +141,14 @@ export function HrReviewPageClient() {
           try {
             const savedTitle = await renameQuestionSetTitle(draft.id, title);
             setDraft((prev) => (prev ? { ...prev, jobTitle: savedTitle } : prev));
-            addToast("success", t.reviewPage.renameSuccess ?? "Đã đổi tên.");
+            addToast("success", t.reviewPage.renameSuccess);
             return true;
           } catch (err) {
             addToast(
               "error",
               err instanceof Error && err.message
                 ? err.message
-                : (t.reviewPage.renameFailed ?? "Không đổi được tên.")
+                : (t.reviewPage.renameFailed)
             );
             return false;
           }

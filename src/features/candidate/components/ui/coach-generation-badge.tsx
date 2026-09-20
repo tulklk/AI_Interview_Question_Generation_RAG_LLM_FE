@@ -193,7 +193,7 @@ export function CoachGenerationBadge() {
         {/* Dismiss — always shown */}
         <button
           type="button"
-          aria-label="Đóng"
+          aria-label={t.common.close}
           className={cn(
             "absolute -top-2 -left-2 w-5 h-5 rounded-full flex items-center justify-center",
             "bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600",

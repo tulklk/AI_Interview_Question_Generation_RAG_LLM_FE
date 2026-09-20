@@ -2,6 +2,7 @@
 
 import { ArrowUp } from "lucide-react";
 import { cn } from "@/lib/cn";
+import { useLanguage } from "@/shared/providers/language-context";
 
 interface ScrollToTopButtonProps {
   visible: boolean;
@@ -15,13 +16,14 @@ interface ScrollToTopButtonProps {
 }
 
 export function ScrollToTopButton({ visible, onClick, positionClassName }: ScrollToTopButtonProps) {
+  const { t } = useLanguage();
   const position = positionClassName !== undefined ? positionClassName : "fixed bottom-20 right-6 z-50";
 
   return (
     <button
       type="button"
       onClick={onClick}
-      aria-label="Cuộn lên đầu trang"
+      aria-label={t.common.scrollToTop}
       className={cn(
         position,
         "group relative w-10 h-10 rounded-full shrink-0 overflow-hidden",

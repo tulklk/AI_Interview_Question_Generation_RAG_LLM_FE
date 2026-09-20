@@ -229,8 +229,8 @@ function JobseekerAppShellInner({
           extraActions={
             <Link
               href="/candidate/leaderboard"
-              aria-label="Bảng xếp hạng"
-              title="Bảng xếp hạng"
+              aria-label={t.common.leaderboard}
+              title={t.common.leaderboard}
               className={cn(
                 "w-9 h-9 flex items-center justify-center rounded-xl transition-colors",
                 pathname.startsWith("/candidate/leaderboard")

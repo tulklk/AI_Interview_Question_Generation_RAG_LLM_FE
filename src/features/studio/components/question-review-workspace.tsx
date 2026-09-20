@@ -181,6 +181,9 @@ function QuestionDetail({
       sourceTechnicalBody: c.sourceTechnicalBody,
       sourcePrimary: c.sourcePrimary,
       sourceSecondary: c.sourceSecondary,
+      reasonInferredFromJd: c.reasonInferredFromJd,
+      reasonRubricFromLlm: c.reasonRubricFromLlm,
+      reasonSampleFromLlm: c.reasonSampleFromLlm,
       jobDescription: c.sourceJobDescription,
       sourcesPanelTitle: c.sourcesPanelTitle,
       sourcesEmptyLegacy: c.sourcesEmptyLegacy,
@@ -297,7 +300,7 @@ function QuestionDetail({
           {isRegenerating && (
             <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-800 dark:bg-amber-950/50 dark:text-amber-300">
               <Loader2 className="h-3 w-3 animate-spin" strokeWidth={2.5} />
-              {c.regeneratingBadge ?? "Đang regen…"}
+              {c.regeneratingBadge}
             </span>
           )}
           <span className={cn("inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold", typeBadge(question.type))}>

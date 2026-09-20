@@ -630,7 +630,7 @@ function CandidateRow({ rec, lang, labels, index, selected, onToggleSelect, onSt
                     title={rec.questionSetTitle}
                     className="text-[10px] font-medium text-cyan-700/90 dark:text-cyan-400/90 truncate max-w-[14rem]"
                   >
-                    {(c.fitAgainst ?? "Khớp với: {{title}}").replace("{{title}}", rec.questionSetTitle)}
+                    {(c.fitAgainst).replace("{{title}}", rec.questionSetTitle)}
                   </span>
                 )}
               </span>

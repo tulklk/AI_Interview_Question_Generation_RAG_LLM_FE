@@ -313,7 +313,7 @@ export function SavedSetsPage() {
                 disabled={page <= 1}
                 onClick={() => goToPage(page - 1)}
                 className={navBtnCls}
-                aria-label="Trang trước"
+                aria-label={t.common.prevPage}
               >
                 <ChevronLeft size={15} />
               </button>

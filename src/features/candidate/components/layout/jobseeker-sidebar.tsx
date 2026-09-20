@@ -196,6 +196,7 @@ export function JobseekerSidebar({ open, onClose, onOpenUpgrade }: JobseekerSide
           <button
             type="button"
             onClick={onClose}
+            aria-label={t.common.close}
             className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
           >
             <X size={16} />
