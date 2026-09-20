@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { AlertCircle, ArrowLeft, Loader2 } from "lucide-react";
+import { AlertCircle, ArrowLeft, Loader2, Users } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { useLanguage } from "@/shared/providers/language-context";
 import { portalHeading, portalSubtext } from "@/shared/utils/portal-ui";
@@ -27,6 +27,16 @@ export function CompareRecommendationsPage() {
   const [error, setError] = useState(false);
 
   useEffect(() => {
+    // Opened without ?ids= (bookmark, direct URL, back/forward): nothing to compare.
+    // Skip the request — an empty `ids` makes the API 400 and we'd show a
+    // "must belong to the same question set" error that misstates the problem.
+    if (ids.length === 0) {
+      setLoading(false);
+      setError(false);
+      setData(null);
+      return;
+    }
+
     let cancelled = false;
     setLoading(true);
     setError(false);
@@ -50,6 +60,18 @@ export function CompareRecommendationsPage() {
       <div className="flex flex-col items-center gap-3 py-24">
         <Loader2 size={28} className="animate-spin text-primary" />
         <p className={cn("text-[14px]", portalSubtext)}>{p.loading}</p>
+      </div>
+    );
+  }
+
+  if (ids.length === 0) {
+    return (
+      <div className="flex flex-col items-center gap-3 py-24 text-center">
+        <Users size={28} className="text-primary/70" />
+        <p className={cn("text-[14px]", portalSubtext)}>{p.compareNoSelection}</p>
+        <Link href="/hr/candidate-recommendations" className="text-[13px] font-semibold text-primary hover:underline">
+          {p.backToList}
+        </Link>
       </div>
     );
   }

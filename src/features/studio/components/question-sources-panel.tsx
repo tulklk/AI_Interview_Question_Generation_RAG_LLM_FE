@@ -76,6 +76,9 @@ function buildRoleLabels(labels: QuestionSourcesLabels): CitationRoleLabels {
     sourceTechnicalBody: labels.sourceTechnicalBody,
     sourcePrimary: labels.sourcePrimary,
     sourceSecondary: labels.sourceSecondary,
+    reasonInferredFromJd: labels.reasonInferredFromJd,
+    reasonRubricFromLlm: labels.reasonRubricFromLlm,
+    reasonSampleFromLlm: labels.reasonSampleFromLlm,
   };
 }
 
@@ -97,7 +100,7 @@ function renderCitationLine(
   // LLM: chỉ hiện nguồn suy luận (không hiện chú thích retrieve kỹ thuật)
   const secondary =
     tone === "llm" && cit.reason
-      ? formatLlmProvenanceReason(cit.reason, 48) ?? excerpt
+      ? formatLlmProvenanceReason(cit.reason, 48, labels) ?? excerpt
       : excerpt;
   return (
     <SourceLine
@@ -155,7 +158,7 @@ export function QuestionSourcesGroupedPanel({
           key={`lp-${i}`}
           tone="llm"
           badge={labels.sourceRoleLlm}
-          primary={it.reason ? formatLlmProvenanceReason(it.reason, 72) ?? labels.sourceRoleLlm : labels.sourceRoleLlm}
+          primary={it.reason ? formatLlmProvenanceReason(it.reason, 72, labels) ?? labels.sourceRoleLlm : labels.sourceRoleLlm}
         />
       ))}
     </div>

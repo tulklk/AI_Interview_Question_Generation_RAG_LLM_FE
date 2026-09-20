@@ -30,7 +30,7 @@ export interface PlanQuestionPreviewLabels {
   empty: string;
   minSlotsHint: string;
   /** SCRUM-426: "Đoạn #{{n}}" */
-  sourceChunk?: string;
+  sourceChunk: string;
   jobDescription?: string;
   /** SCRUM-427: label «Lý do hỏi» từ goal */
   whyAsked: string;
@@ -94,7 +94,7 @@ function formatLockedCitationLine(
   labels: PlanQuestionPreviewLabels
 ): string {
   const jdLabel = labels.jobDescription ?? "Job Description";
-  const chunkTpl = labels.sourceChunk ?? "Đoạn #{{n}}";
+  const chunkTpl = labels.sourceChunk;
   if (isJdCitation(cit.sourceFile) || resolveCitationOrigin(cit) === "HR") {
     const primary = formatJdCitationPrimary(cit, {
       jobDescription: jdLabel,

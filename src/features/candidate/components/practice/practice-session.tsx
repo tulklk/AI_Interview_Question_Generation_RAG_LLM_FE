@@ -700,7 +700,7 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
         if (result.autoSubmitted || result.status === "COMPLETED") {
           addToast(
             "error",
-            p.antiCheatAutoSubmitToast ?? "Đã đủ số lần rời trang — hệ thống đang nộp bài…"
+            p.antiCheatAutoSubmitToast
           );
           if (!finishingRef.current) {
             void handleFinish();
@@ -709,7 +709,7 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
         }
 
         const toastTpl =
-          p.antiCheatTabLeaveToast ?? "Bạn đã rời trang ({{n}}/{{max}}).";
+          p.antiCheatTabLeaveToast;
         addToast(
           "error",
           toastTpl

@@ -6,14 +6,21 @@ interface ToggleProps {
   checked: boolean;
   onChange: (checked: boolean) => void;
   disabled?: boolean;
+  /**
+   * Accessible name. The switch renders no text of its own, so without this a
+   * screen reader announces a bare "switch" — pass the same wording as the
+   * visible label sitting next to it.
+   */
+  ariaLabel?: string;
 }
 
-export function Toggle({ checked, onChange, disabled = false }: ToggleProps) {
+export function Toggle({ checked, onChange, disabled = false, ariaLabel }: ToggleProps) {
   return (
     <button
       type="button"
       role="switch"
       aria-checked={checked}
+      aria-label={ariaLabel}
       disabled={disabled}
       onClick={() => onChange(!checked)}
       className={cn(

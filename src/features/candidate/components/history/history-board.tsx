@@ -263,6 +263,7 @@ function PaginationBar({
   totalPages: number;
   onPage: (p: number) => void;
 }) {
+  const { t } = useLanguage();
   if (totalPages <= 1) return null;
   const pages = buildPageNumbers(page, totalPages);
 
@@ -272,6 +273,7 @@ function PaginationBar({
       <button
         type="button"
         onClick={() => onPage(page - 1)}
+        aria-label={t.common.prevPageShort}
         disabled={page === 1}
         className={cn(
           "w-8 h-8 flex items-center justify-center rounded-lg transition-colors",
@@ -319,6 +321,7 @@ function PaginationBar({
       <button
         type="button"
         onClick={() => onPage(page + 1)}
+        aria-label={t.common.nextPageShort}
         disabled={page === totalPages}
         className={cn(
           "w-8 h-8 flex items-center justify-center rounded-lg transition-colors",
@@ -752,7 +755,7 @@ export function HistoryBoard() {
           <PaginationBar page={page} totalPages={totalPages} onPage={setPage} />
           {totalCount > 0 && (
             <p className={cn("text-right text-[11px] mt-2", portalSubtextAlt)}>
-              {((page - 1) * PAGE_SIZE) + 1}–{Math.min(page * PAGE_SIZE, totalCount)} / {totalCount} phiên
+              {p.paginationSessions.replace("{{from}}", String(((page - 1) * PAGE_SIZE) + 1)).replace("{{to}}", String(Math.min(page * PAGE_SIZE, totalCount))).replace("{{total}}", String(totalCount))}
             </p>
           )}
         </>

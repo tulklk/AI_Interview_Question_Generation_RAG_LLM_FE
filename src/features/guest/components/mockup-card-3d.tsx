@@ -11,6 +11,7 @@
 import { useEffect, useRef } from "react";
 import { Sparkles } from "lucide-react";
 import { KEYWORD_ICONS } from "@/features/guest/components/keyword-icons";
+import { useLanguage } from "@/shared/providers/language-context";
 
 const CHIPS = ["React", "TypeScript", "Next.js", "SSR", "REST API"] as const;
 
@@ -37,6 +38,7 @@ interface MockupCard3DProps {
 export function MockupCard3D({
   title, jdLabel, jdText, kwLabel, question, aiLabel, aiAnswer, className = "",
 }: MockupCard3DProps) {
+  const { t } = useLanguage();
   const boxRef        = useRef<HTMLDivElement>(null);
   const wrapperRef    = useRef<HTMLDivElement>(null);
   const sceneRef      = useRef<HTMLDivElement>(null);
@@ -347,7 +349,7 @@ export function MockupCard3D({
         ref={wrapperRef}
         className="mockup-3d-fit flex items-center justify-center select-none touch-pan-y"
         style={{ perspective: "1400px", cursor: "grab" }}
-        aria-label="Kéo để xoay 360°, cuộn để zoom"
+        aria-label={t.common.rotateHint}
       >
       <div
         ref={sceneRef}

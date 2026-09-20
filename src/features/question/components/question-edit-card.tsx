@@ -159,6 +159,9 @@ export function QuestionEditCard({
       sourceTechnicalBody: sc.sourceTechnicalBody,
       sourcePrimary: sc.sourcePrimary,
       sourceSecondary: sc.sourceSecondary,
+      reasonInferredFromJd: sc.reasonInferredFromJd,
+      reasonRubricFromLlm: sc.reasonRubricFromLlm,
+      reasonSampleFromLlm: sc.reasonSampleFromLlm,
       jobDescription: sc.sourceJobDescription,
       sourcesPanelTitle: sc.sourcesPanelTitle,
       sourcesEmptyLegacy: sc.sourcesEmptyLegacy,
@@ -578,7 +581,7 @@ export function QuestionEditCard({
                       value={editRationale}
                       onChange={(e) => setEditRationale(e.target.value)}
                       rows={3}
-                      placeholder="Lý do hỏi câu này (không gồm template/snippet meta)"
+                      placeholder={t.common.whyAskedPlaceholder}
                       className={cn(
                         "w-full resize-y rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary",
                         portalInput
@@ -697,7 +700,7 @@ export function QuestionEditCard({
                         className="inline-flex items-center gap-1 rounded-md border border-gray-200 bg-gray-50 px-2 py-1 text-[11px] font-medium text-gray-600 hover:border-primary/40 hover:text-primary disabled:opacity-40 dark:border-gray-700 dark:bg-gray-950/40 dark:text-gray-300"
                       >
                         {imageBusy ? <Loader2 className="h-3 w-3 animate-spin" /> : <ImagePlus className="h-3 w-3" strokeWidth={2} />}
-                        {(templateVm.attachedImageUrl || question.attachedImageUrl) ? "Đổi ảnh" : "Thêm ảnh"}
+                        {(templateVm.attachedImageUrl || question.attachedImageUrl) ? rp.changeImage : rp.addImage}
                       </button>
                       {(templateVm.attachedImageUrl || question.attachedImageUrl) && (
                         <button
