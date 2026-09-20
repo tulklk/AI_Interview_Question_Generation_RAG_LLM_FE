@@ -7,15 +7,10 @@ import { Cpu } from "lucide-react";
 import { useLanguage } from "@/shared/providers/language-context";
 import { AdminPageHeader } from "@/features/admin/components/layout/admin-page-header";
 
-const FALLBACK = {
-  heading: "Cấu hình AI",
-  subtext: "Chọn provider LLM (Ollama / OpenRouter), model và thông số RAG runtime.",
-};
-
 export default function AdminAiConfigRoutePage() {
   const { t } = useLanguage();
   // Fallback khi HMR/cache chưa kịp nạp key mới trong dictionary
-  const page = t.adminPages.aiConfigPage ?? FALLBACK;
+  const page = t.adminPages.aiConfigPage;
 
   return (
     <AdminAppShell

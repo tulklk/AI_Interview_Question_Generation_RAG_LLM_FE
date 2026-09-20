@@ -564,7 +564,7 @@ export function AdminFeedbacksPage() {
                             type="button"
                             onClick={() => setEditTarget(fb)}
                             disabled={!!actioning}
-                            title="Chỉnh sửa"
+                            title={t.common.edit}
                             className={cn(
                               "feedback-action-btn w-7 h-7 flex items-center justify-center rounded-lg",
                               "transition-all duration-150 active:scale-90",

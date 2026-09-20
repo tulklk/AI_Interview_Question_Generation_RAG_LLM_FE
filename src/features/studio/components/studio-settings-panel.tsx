@@ -256,8 +256,9 @@ export function StudioSettingsPanel({ settings, plan, locked = false, configDirt
             value={settings?.outputLanguage ?? "Vietnamese"}
             onChange={(v) => onChangeSetting({ outputLanguage: v })}
             options={[
-              { value: "Vietnamese", label: "Tiếng Việt" },
-              { value: "English", label: "English" },
+              // Values are the API contract (kept in English); only the labels follow the UI language.
+              { value: "Vietnamese", label: s.settings.langOptionVietnamese },
+              { value: "English", label: s.settings.langOptionEnglish },
             ]}
             disabled={prefsDisabled}
           />

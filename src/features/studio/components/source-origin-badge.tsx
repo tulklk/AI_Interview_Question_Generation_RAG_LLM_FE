@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import { cn } from "@/lib/cn";
 import type { PlanProvenanceBlock, PlanSourceScope } from "@/features/studio/types/studio.types";
-import { formatLlmProvenanceReason } from "@/features/studio/utils/citation-display";
+import { formatLlmProvenanceReason, type ProvenanceReasonLabels } from "@/features/studio/utils/citation-display";
 import { useLanguage } from "@/shared/providers/language-context";
 
 export type SourceOriginKind = PlanSourceScope | "HR" | "SYSTEM" | "ADMIN" | "LLM";
@@ -74,7 +74,14 @@ export function sourceOriginLabel(kind: SourceOriginKind, labels: SourceOriginLa
   return labels.admin;
 }
 
-export function provenanceTooltip(block?: PlanProvenanceBlock | null): string | undefined {
+/**
+ * Plain helper (no hooks), so the caller passes the provenance labels when it
+ * has them — without them the backend's own wording is shown unchanged.
+ */
+export function provenanceTooltip(
+  block?: PlanProvenanceBlock | null,
+  labels?: ProvenanceReasonLabels
+): string | undefined {
   if (!block?.items?.length) return undefined;
   return block.items
     .slice(0, 3)
@@ -84,7 +91,7 @@ export function provenanceTooltip(block?: PlanProvenanceBlock | null): string | 
       if (it.reason) {
         const reason =
           it.origin === "LLM"
-            ? formatLlmProvenanceReason(it.reason, 120)
+            ? formatLlmProvenanceReason(it.reason, 120, labels)
             : it.reason;
         if (reason) parts.push(reason);
       }

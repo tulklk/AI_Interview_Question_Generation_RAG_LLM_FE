@@ -426,7 +426,7 @@ export function SetDetail({ set }: SetDetailProps) {
     <div>
       {/* Back link */}
       <Link
-        href="/candidate"
+        href="/candidate/practice"
         className={cn("inline-flex items-center gap-1.5 text-[13px] font-medium hover:text-primary transition-colors mb-5", portalSubtextAlt)}
       >
         <ArrowLeft size={14} />
