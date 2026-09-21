@@ -138,7 +138,7 @@ export const systemActivity: SystemActivityEvent[] = [
   {
     id: "4",
     type: "export",
-    description: "Session exported to PDF",
+    description: "Session exported to Excel",
     actor: "michael.c@amazon.com",
     timestamp: "1 hour ago",
     metadata: "Product Manager · 12 questions",

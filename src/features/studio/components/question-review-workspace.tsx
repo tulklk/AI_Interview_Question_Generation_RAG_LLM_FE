@@ -25,6 +25,13 @@ import {
 import { cn } from "@/lib/cn";
 import { useLanguage } from "@/shared/providers/language-context";
 import { useOverlayTransition } from "@/shared/hooks/use-overlay-transition";
+import { HiringModeControls } from "@/features/hr/components/hiring-mode-controls";
+import {
+  PublicJdEditorPanel,
+  type HiringPostingDraft,
+  type HiringPostingInitial,
+  type HiringPostingSaved,
+} from "@/features/hr/components/public-jd-editor-panel";
 import {
   groupQuestionSources,
 } from "@/features/studio/utils/citation-display";
@@ -119,6 +126,27 @@ export type QuestionReviewWorkspaceProps = {
   isSavingDraft?: boolean;
   isDraftSaved?: boolean;
   isPublished?: boolean;
+  /** SCRUM-464: Practice vs Tuyển trên toolbar review */
+  hiringMode?: { isHiringAssessment: boolean; hrAntiCheatEnabled: boolean };
+  onHiringModeChange?: (next: {
+    isHiringAssessment: boolean;
+    hrAntiCheatEnabled: boolean;
+  }) => void | Promise<void>;
+  /** SCRUM-470: soạn JD công khai + posting khi chế độ Tuyển */
+  questionSetId?: string | null;
+  publicJd?: {
+    initialPublicJobDescription?: string | null;
+    initialPosting?: HiringPostingInitial | null;
+    fullJobDescription?: string | null;
+    jdSourceType?: "PastedText" | "UploadedFile" | null;
+    jdOriginalFileName?: string | null;
+    jdFileUrl?: string | null;
+    needsAttention?: boolean;
+    onAttentionCleared?: () => void;
+    onDraftChange?: (text: string) => void;
+    onPostingDraftChange?: (draft: HiringPostingDraft) => void;
+    onSaved?: (publicJobDescription: string, posting: HiringPostingSaved) => void;
+  } | null;
 };
 
 // ── Question detail (inline from chat-panel QuestionCard) ─────────────────────
@@ -143,7 +171,13 @@ function QuestionDetail({
   isRegenerating?: boolean;
 }) {
   const { t, lang } = useLanguage();
+  const re = t.rubricEditor;
+  const rubricLabels = useMemo(
+    () => ({ ...re, sumHint: (sum: number) => re.sumHint.replace("{{sum}}", String(sum)) }),
+    [re]
+  );
   const c = t.studioPage.chat;
+  const qcLabels = t.reviewPage.questionCard;
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [sourcesOpen, setSourcesOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -309,21 +343,25 @@ function QuestionDetail({
           <span className={cn("inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold", difficultyBadge(question.difficulty))}>
             {question.difficulty}
           </span>
+          {/* Same labelling as the review card: name the domain instead of
+              leaving a bare tag the reader has to interpret. */}
           {question.skill?.trim() ? (
             <span
-              title={question.skill.trim()}
-              className="inline-flex max-w-[160px] truncate rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-semibold text-sky-800 dark:bg-sky-950/50 dark:text-sky-300"
+              title={`${qcLabels.domainBadge}: ${question.skill.trim()}`}
+              className="inline-flex max-w-[200px] items-center gap-1 rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-semibold text-sky-800 dark:bg-sky-950/50 dark:text-sky-300"
             >
-              {question.skill.trim()}
+              <span className="shrink-0 opacity-70">{qcLabels.domainBadge}</span>
+              <span className="truncate">{question.skill.trim()}</span>
             </span>
           ) : null}
           {question.focusArea?.trim() &&
           question.focusArea.trim().toLowerCase() !== (question.skill?.trim().toLowerCase() ?? "") ? (
             <span
-              title={question.focusArea.trim()}
-              className="inline-flex max-w-[160px] truncate rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-800 dark:bg-amber-950/40 dark:text-amber-300"
+              title={`${qcLabels.focusBadge}: ${question.focusArea.trim()}`}
+              className="inline-flex max-w-[200px] items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-800 dark:bg-amber-950/40 dark:text-amber-300"
             >
-              {question.focusArea.trim()}
+              <span className="shrink-0 opacity-70">{qcLabels.focusBadge}</span>
+              <span className="truncate">{question.focusArea.trim()}</span>
             </span>
           ) : null}
           {templateLabel && (
@@ -467,6 +505,7 @@ function QuestionDetail({
             questionType={question.type}
             disabled={busy}
             compact={false}
+            labels={rubricLabels}
           />
           <div className="flex justify-end gap-2">
             <button
@@ -823,7 +862,7 @@ function QuestionDetail({
                             const msg =
                               err instanceof Error && err.message
                                 ? err.message
-                                : "Regen failed";
+                                : c.regenFailedShort;
                             setRegenError(msg);
                           } finally {
                             setBusy(false);
@@ -872,6 +911,10 @@ export function QuestionReviewWorkspace({
   isSavingDraft = false,
   isDraftSaved = false,
   isPublished = false,
+  hiringMode,
+  onHiringModeChange,
+  questionSetId = null,
+  publicJd = null,
 }: QuestionReviewWorkspaceProps) {
   const { t, lang } = useLanguage();
   const c = t.studioPage.chat;
@@ -1106,6 +1149,14 @@ export function QuestionReviewWorkspace({
         </span>
 
         <div className="ml-auto flex items-center gap-1.5">
+          {hiringMode && onHiringModeChange && (
+            <HiringModeControls
+              variant="compact"
+              value={hiringMode}
+              onChange={onHiringModeChange}
+              className="mr-1"
+            />
+          )}
           <button
             type="button"
             className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-xs font-medium text-gray-700 md:hidden dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300"
@@ -1195,7 +1246,7 @@ export function QuestionReviewWorkspace({
           <button
             type="button"
             className="absolute inset-0 z-20 bg-black/30 lg:hidden"
-            aria-label="Close list"
+            aria-label={t.common.closeMenu}
             onClick={() => setNavOpen(false)}
           />
         )}
@@ -1214,6 +1265,27 @@ export function QuestionReviewWorkspace({
         </aside>
 
         <div className="flex min-w-0 flex-1 flex-col overflow-y-auto bg-gray-50/40 p-3 sm:p-4 dark:bg-gray-950">
+          {/* SCRUM-470: JD công khai + posting khi Tuyển (hoặc needsAttention sau bật thất bại) */}
+          {questionSetId &&
+            publicJd &&
+            (hiringMode?.isHiringAssessment || publicJd.needsAttention) && (
+              <div className="mb-3 shrink-0">
+                <PublicJdEditorPanel
+                  questionSetId={questionSetId}
+                  initialPublicJobDescription={publicJd.initialPublicJobDescription}
+                  initialPosting={publicJd.initialPosting}
+                  fullJobDescription={publicJd.fullJobDescription}
+                  jdSourceType={publicJd.jdSourceType}
+                  jdOriginalFileName={publicJd.jdOriginalFileName}
+                  jdFileUrl={publicJd.jdFileUrl}
+                  needsAttention={publicJd.needsAttention}
+                  onAttentionCleared={publicJd.onAttentionCleared}
+                  onDraftChange={publicJd.onDraftChange}
+                  onPostingDraftChange={publicJd.onPostingDraftChange}
+                  onSaved={publicJd.onSaved}
+                />
+              </div>
+            )}
           {selected ? (
             <>
               <QuestionDetail

@@ -38,7 +38,7 @@ function getBotReply(
     return responses.features;
   if (/how|work|step|hoạt động|cách|bước/.test(q))
     return responses.howItWorks;
-  if (/export|pdf|download|xuất/.test(q))
+  if (/export|pdf|excel|download|xuất/.test(q))
     return responses.export;
   if (/vietnam|việt|tiếng việt|vi/.test(q))
     return responses.vietnamese;

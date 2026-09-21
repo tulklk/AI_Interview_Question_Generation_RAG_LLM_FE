@@ -964,6 +964,11 @@ export function useStudio() {
       focusAreas: patch.focusAreas ?? base.focusAreas ?? [],
       questionDistribution: patch.questionDistribution ?? base.questionDistribution ?? [],
       questionStyles: patch.questionStyles ?? base.questionStyles ?? [],
+      isHiringAssessment: patch.isHiringAssessment ?? base.isHiringAssessment ?? false,
+      hrAntiCheatEnabled:
+        (patch.isHiringAssessment ?? base.isHiringAssessment ?? false)
+          ? (patch.hrAntiCheatEnabled ?? base.hrAntiCheatEnabled ?? false)
+          : false,
     };
     // Optimistic update — reflect changes immediately in UI without waiting for API.
     // P2c fix: capture a version number so a slow first request's error rollback
@@ -1037,6 +1042,11 @@ export function useStudio() {
         focusAreas: patch.focusAreas ?? base.focusAreas ?? [],
         questionDistribution: patch.questionDistribution ?? base.questionDistribution ?? [],
         questionStyles: patch.questionStyles ?? base.questionStyles ?? [],
+        isHiringAssessment: patch.isHiringAssessment ?? base.isHiringAssessment ?? false,
+        hrAntiCheatEnabled:
+          (patch.isHiringAssessment ?? base.isHiringAssessment ?? false)
+            ? (patch.hrAntiCheatEnabled ?? base.hrAntiCheatEnabled ?? false)
+            : false,
       };
       // Optimistic sync panel cơ bản (số câu / độ khó) ngay khi apply
       const optimistic = { ...base, ...payload } as StudioSettings;
@@ -1173,6 +1183,8 @@ export function useStudio() {
     timeLimitMinutes?: number | null;
     autoRecommendEnabled?: boolean;
     recommendationMinScore?: number;
+    isHiringAssessment?: boolean;
+    hrAntiCheatEnabled?: boolean;
   }): Promise<boolean> => {
     if (!project) return false;
     try {
@@ -1185,12 +1197,14 @@ export function useStudio() {
           abandoned > 0 ? `${tx.unpublished} Đã hủy ${abandoned} phiên đang làm.` : tx.unpublished
         );
       } else {
-        // SCRUM-439: BE Save subset + Publish + time limit + recommend
+        // SCRUM-439 / SCRUM-464: Save subset + Publish + time limit + recommend + hiring
         await studioApi.publishProject(project.id, {
           interviewQuestionIds: opts?.interviewQuestionIds,
           timeLimitMinutes: opts?.timeLimitMinutes ?? null,
           autoRecommendEnabled: opts?.autoRecommendEnabled,
           recommendationMinScore: opts?.recommendationMinScore,
+          isHiringAssessment: opts?.isHiringAssessment,
+          hrAntiCheatEnabled: opts?.hrAntiCheatEnabled,
         });
         const updated = await studioApi.getProject(project.id);
         setProject(updated);

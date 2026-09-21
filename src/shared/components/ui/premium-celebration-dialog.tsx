@@ -207,12 +207,12 @@ export function PremiumCelebrationDialog({
   const benefits = isVi
     ? [
         "Không giới hạn tạo câu hỏi phỏng vấn",
-        "Xuất dữ liệu Excel & PDF",
+        "Xuất dữ liệu Excel",
         "Truy cập kho câu hỏi cao cấp",
       ]
     : [
         "Unlimited interview question generation",
-        "Export data to Excel & PDF",
+        "Export data to Excel",
         "Access to the premium question bank",
       ];
 

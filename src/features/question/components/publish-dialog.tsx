@@ -11,6 +11,7 @@ import {
   portalInput,
   portalSubtext,
 } from "@/shared/utils/portal-ui";
+import { HiringModeControls } from "@/features/hr/components/hiring-mode-controls";
 
 export type PublishDialogQuestion = {
   id: string;
@@ -25,6 +26,9 @@ export type PublishDialogConfirmPayload = {
   timeLimitMinutes: number | null;
   autoRecommendEnabled: boolean;
   recommendationMinScore: number;
+  /** SCRUM-464 */
+  isHiringAssessment: boolean;
+  hrAntiCheatEnabled: boolean;
 };
 
 interface PublishDialogProps {
@@ -33,21 +37,31 @@ interface PublishDialogProps {
   currentTimeLimitMinutes?: number | null;
   initialAutoRecommendEnabled?: boolean;
   initialRecommendationMinScore?: number;
+  initialIsHiringAssessment?: boolean;
+  initialHrAntiCheatEnabled?: boolean;
   saving?: boolean;
   onConfirm: (payload: PublishDialogConfirmPayload) => void;
   onClose: () => void;
+  /**
+   * SCRUM-470: gate trước khi publish — vd. validate/autosave JD+posting khi Hiring.
+   * Return false → giữ dialog mở, không gọi onConfirm.
+   */
+  onBeforeConfirm?: (payload: PublishDialogConfirmPayload) => Promise<boolean>;
 }
 
-/** SCRUM-439: Dialog chọn câu + time limit + ngưỡng gợi ý ứng viên trước khi publish. */
+/** SCRUM-439 / SCRUM-464: Dialog chọn câu + time limit + recommend + Practice/Tuyển. */
 export function PublishDialog({
   questions,
   minQuestions,
   currentTimeLimitMinutes = null,
   initialAutoRecommendEnabled = true,
   initialRecommendationMinScore = 70,
+  initialIsHiringAssessment = false,
+  initialHrAntiCheatEnabled = false,
   saving = false,
   onConfirm,
   onClose,
+  onBeforeConfirm,
 }: PublishDialogProps) {
   const { t } = useLanguage();
   const d = t.publishDialog;
@@ -75,6 +89,11 @@ export function PublishDialog({
     String(initialRecommendationMinScore)
   );
   const [scoreError, setScoreError] = useState(false);
+  const [isHiringAssessment, setIsHiringAssessment] = useState(initialIsHiringAssessment);
+  const [hrAntiCheatEnabled, setHrAntiCheatEnabled] = useState(
+    initialIsHiringAssessment && initialHrAntiCheatEnabled
+  );
+  const [gating, setGating] = useState(false);
 
   const selectedReadyCount = useMemo(() => {
     let n = 0;
@@ -96,6 +115,7 @@ export function PublishDialog({
 
   const canConfirm =
     !saving &&
+    !gating &&
     meetsMin &&
     !hasSelectedNotReady &&
     selected.size > 0;
@@ -126,7 +146,7 @@ export function PublishDialog({
     });
   }
 
-  function handleConfirm() {
+  async function handleConfirm() {
     if (!canConfirm) return;
     let timeLimitMinutes: number | null = null;
     if (!noLimit) {
@@ -144,26 +164,41 @@ export function PublishDialog({
       return;
     }
 
-    onConfirm({
+    const payload: PublishDialogConfirmPayload = {
       questionIds: Array.from(selected),
       timeLimitMinutes,
       autoRecommendEnabled,
       recommendationMinScore: score,
-    });
+      isHiringAssessment,
+      hrAntiCheatEnabled: isHiringAssessment && hrAntiCheatEnabled,
+    };
+
+    // SCRUM-470: parent validate JD/posting khi Hiring trước khi publish thật
+    if (onBeforeConfirm) {
+      setGating(true);
+      try {
+        const ok = await onBeforeConfirm(payload);
+        if (!ok) return;
+      } finally {
+        setGating(false);
+      }
+    }
+
+    onConfirm(payload);
   }
 
   function handleClose() {
-    if (saving) return;
+    if (saving || gating) return;
     onClose();
   }
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape" && !saving) onClose();
+      if (e.key === "Escape" && !saving && !gating) onClose();
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [saving, onClose]);
+  }, [saving, gating, onClose]);
 
   const footerReadyText = d.footerReady.replace("{{count}}", String(selectedReadyCount));
   const confirmLabel = d.confirmWithCount.replace("{{count}}", String(selectedReadyCount));
@@ -418,6 +453,19 @@ export function PublishDialog({
 
             <div className="my-4 border-t border-gray-100 dark:border-gray-800" />
 
+            {/* SCRUM-464: Practice vs Tuyển */}
+            <HiringModeControls
+              variant="full"
+              disabled={saving}
+              value={{ isHiringAssessment, hrAntiCheatEnabled }}
+              onChange={(next) => {
+                setIsHiringAssessment(next.isHiringAssessment);
+                setHrAntiCheatEnabled(next.hrAntiCheatEnabled);
+              }}
+            />
+
+            <div className="my-4 border-t border-gray-100 dark:border-gray-800" />
+
             {/* Recommend */}
             <section className="space-y-2.5">
               <div className="flex items-start gap-2">
@@ -568,16 +616,16 @@ export function PublishDialog({
             </button>
             <button
               type="button"
-              onClick={handleConfirm}
+              onClick={() => void handleConfirm()}
               disabled={!canConfirm}
               className="flex flex-1 items-center justify-center gap-2 whitespace-nowrap rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-emerald-700 disabled:opacity-60"
             >
-              {saving ? (
+              {saving || gating ? (
                 <Loader2 size={15} className="animate-spin" />
               ) : (
                 <Rocket size={15} />
               )}
-              {saving ? d.publishing : confirmLabel}
+              {saving || gating ? d.publishing : confirmLabel}
             </button>
           </div>
         </div>

@@ -137,6 +137,19 @@ export function HrReviewPageClient() {
         initialTimeLimitMinutes={draft.timeLimitMinutes}
         initialAutoRecommendEnabled={draft.autoRecommendEnabled ?? true}
         initialRecommendationMinScore={draft.recommendationMinScore ?? 70}
+        initialIsHiringAssessment={draft.isHiringAssessment ?? false}
+        initialHrAntiCheatEnabled={draft.hrAntiCheatEnabled ?? false}
+        initialPublicJobDescription={draft.publicJobDescription ?? null}
+        initialHiringPosting={{
+          jobLocation: draft.jobLocation,
+          workplaceType: draft.workplaceType,
+          salaryMin: draft.salaryMin,
+          salaryMax: draft.salaryMax,
+          salaryNegotiable: draft.salaryNegotiable,
+          jobExpertise: draft.jobExpertise,
+          jobDomain: draft.jobDomain,
+        }}
+        jdFileUrl={draft.jdFileUrl ?? null}
         onRenameTitle={async (title) => {
           try {
             const savedTitle = await renameQuestionSetTitle(draft.id, title);

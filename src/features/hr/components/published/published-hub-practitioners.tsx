@@ -12,11 +12,13 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { useLanguage } from "@/shared/providers/language-context";
+import { useToast } from "@/shared/providers/toast-context";
 import { formatRelativeTime } from "@/shared/utils/relative-time";
 import { portalHeading, portalSubtext } from "@/shared/utils/portal-ui";
 import type { Practitioner, PractitionerSessionStatus } from "@/features/interview/services/interview.service";
 import { InviteCandidateModal } from "@/features/hr/components/recommendations/invite-candidate-modal";
 import { invitePractitioner } from "@/features/hr/services/hr-talent.service";
+import { useRouter } from "next/navigation";
 
 const PAGE_SIZE = 7;
 
@@ -80,21 +82,27 @@ function StatusBadge({
   );
 }
 
-/** SCRUM-440: bảng practitioners nhúng trong hub (không chrome publish). */
+/** SCRUM-440 / SCRUM-471: bảng practitioners nhúng trong hub. */
 export function PublishedHubPractitioners({
   items,
   questionSetId,
   questionSetTitle,
+  isHiringAssessment = false,
   limit,
 }: {
   items: Practitioner[];
   questionSetId: string;
   questionSetTitle: string;
+  /** SCRUM-471: bộ Tuyển — badge Luyện khi không official */
+  isHiringAssessment?: boolean;
   /** Nếu set — chỉ hiện N dòng đầu (overview preview), không pagination. */
   limit?: number;
 }) {
   const { t, lang } = useLanguage();
   const p = t.practitionersPage;
+  const h = t.publishedHubPage;
+  const { addToast } = useToast();
+  const router = useRouter();
   const [page, setPage] = useState(1);
   const [inviteTarget, setInviteTarget] = useState<Practitioner | null>(null);
 
@@ -167,7 +175,19 @@ export function PublishedHubPractitioners({
                     <ScoreCell score={item.score} />
                   </td>
                   <td className={cn(tdCls, "overflow-hidden")}>
-                    <StatusBadge status={item.status} labels={p.statusLabels} />
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <StatusBadge status={item.status} labels={p.statusLabels} />
+                      {item.isOfficialTest && (
+                        <span className="inline-flex items-center rounded-md bg-violet-50 px-1.5 py-0.5 text-[10px] font-semibold text-violet-700 dark:bg-violet-950/40 dark:text-violet-300">
+                          {t.hiringMode.officialTestBadge}
+                        </span>
+                      )}
+                      {isHiringAssessment && !item.isOfficialTest && item.status === "COMPLETED" && (
+                        <span className="inline-flex items-center rounded-md bg-gray-100 px-1.5 py-0.5 text-[10px] font-semibold text-gray-600 dark:bg-gray-800 dark:text-gray-300">
+                          {h.practiceOnlyBadge}
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td className={cn(tdCls, "overflow-hidden whitespace-nowrap", portalSubtext)}>
                     {item.completedAt
@@ -244,7 +264,18 @@ export function PublishedHubPractitioners({
           }}
           onClose={() => setInviteTarget(null)}
           onSend={async (message) => {
-            await invitePractitioner(questionSetId, inviteTarget.candidateUserId, message);
+            const { recommendationId } = await invitePractitioner(
+              questionSetId,
+              inviteTarget.candidateUserId,
+              message
+            );
+            setInviteTarget(null);
+            addToast("success", h.inviteSuccessOfferCta);
+            if (recommendationId) {
+              router.push(`/hr/candidate-recommendations/${recommendationId}`);
+            } else {
+              router.push("/hr/candidate-recommendations");
+            }
           }}
         />
       )}

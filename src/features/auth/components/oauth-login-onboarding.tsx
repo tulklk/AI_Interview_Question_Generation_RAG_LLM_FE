@@ -404,7 +404,7 @@ export function OAuthLoginOnboarding({
                         >
                           <Building2 size={13} className="text-gray-400 shrink-0" />
                           <span className="truncate">{companyName}</span>
-                          <span className="ml-auto text-xs text-primary shrink-0">Dùng tên này</span>
+                          <span className="ml-auto text-xs text-primary shrink-0">{t.common.useThisName}</span>
                         </button>
                       </div>
                     )}

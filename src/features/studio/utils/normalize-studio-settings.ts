@@ -68,5 +68,7 @@ export function normalizeStudioSettings(s: StudioSettings | null): StudioSetting
         }
       : null,
     recommendedGeneratedAt: s.recommendedGeneratedAt ?? null,
+    isHiringAssessment: Boolean(s.isHiringAssessment),
+    hrAntiCheatEnabled: Boolean(s.isHiringAssessment) && Boolean(s.hrAntiCheatEnabled),
   };
 }

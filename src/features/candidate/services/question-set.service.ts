@@ -19,6 +19,8 @@ export interface ListQuestionSetsParams {
   /** SCRUM-404: featured | newest | most_practiced | highest_rated | best_match */
   sortBy?: "featured" | "newest" | "most_practiced" | "highest_rated" | "best_match";
   chip?: "cv" | "targetRole" | "weak" | "trending" | "unattempted" | "retry";
+  /** SCRUM-467: true = Tuyển dụng; false = Practice; omit = không lọc */
+  isHiringAssessment?: boolean;
 }
 
 export interface PaginatedQuestionSets {
@@ -184,6 +186,34 @@ function normalizeQuestionSet(raw: unknown): QuestionSet | null {
     myLastScore: pickNumber(src, "myLastScore"),
     myLastCompletedAt: pickOptionalString(src, "myLastCompletedAt"),
     avgCompletionMinutes: pickNumber(src, "avgCompletionMinutes"),
+    isHiringAssessment: pickBool(src, "isHiringAssessment", "IsHiringAssessment"),
+    jobDescription: pickNullableString(src, "jobDescription", "JobDescription") ?? null,
+    publicJobDescriptionPreview:
+      pickNullableString(src, "publicJobDescriptionPreview", "PublicJobDescriptionPreview") ?? null,
+    jdSourceType: pickOptionalString(src, "jdSourceType", "JdSourceType") ?? null,
+    jdOriginalFileName: pickNullableString(src, "jdOriginalFileName", "JdOriginalFileName") ?? null,
+    jdFileUrl: pickNullableString(src, "jdFileUrl", "JdFileUrl") ?? null,
+    publishedAt: pickOptionalString(src, "publishedAt", "PublishedAt") ?? null,
+    jobLocation: pickNullableString(src, "jobLocation", "JobLocation") ?? null,
+    workplaceType: (() => {
+      const raw = pickOptionalString(src, "workplaceType", "WorkplaceType");
+      if (!raw) return null;
+      const v = raw.trim().toLowerCase();
+      if (v === "atoffice") return "AtOffice" as const;
+      if (v === "hybrid") return "Hybrid" as const;
+      if (v === "remote") return "Remote" as const;
+      return null;
+    })(),
+    salaryMin: pickNumber(src, "salaryMin", "SalaryMin") ?? null,
+    salaryMax: pickNumber(src, "salaryMax", "SalaryMax") ?? null,
+    salaryNegotiable:
+      typeof src.salaryNegotiable === "boolean"
+        ? src.salaryNegotiable
+        : typeof src.SalaryNegotiable === "boolean"
+          ? (src.SalaryNegotiable as boolean)
+          : true,
+    jobExpertise: pickNullableString(src, "jobExpertise", "JobExpertise") ?? null,
+    jobDomain: pickNullableString(src, "jobDomain", "JobDomain") ?? null,
     questions,
   };
 }
@@ -216,6 +246,9 @@ export async function listQuestionSets(params: ListQuestionSetsParams = {}): Pro
   if (params.pageSize) query.PageSize = params.pageSize;
   if (params.sortBy) query.SortBy = params.sortBy;
   if (params.chip) query.Chip = params.chip;
+  if (typeof params.isHiringAssessment === "boolean") {
+    query.IsHiringAssessment = params.isHiringAssessment ? "true" : "false";
+  }
 
   // indexes: null serializes arrays as repeated `Skills=a&Skills=b` (ASP.NET Core's
   // expected format for `[FromQuery] string[]`) instead of axios's default `Skills[]=a`.

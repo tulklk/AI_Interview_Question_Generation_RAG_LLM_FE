@@ -56,6 +56,7 @@ export function QuestionsTab({
 }: Props) {
   const { t, lang } = useLanguage();
   const c = t.studioPage.chat;
+  const qt = t.studioPage.questionsTab;
   const sourceLabels: QuestionSourcesLabels = useMemo(
     () => ({
       sourceRoleJd: c.sourceRoleJd,
@@ -84,14 +85,16 @@ export function QuestionsTab({
   return (
     <div className={cn(portalCard, "p-4")}>
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h3 className={cn("text-sm font-semibold", portalHeading)}>Questions ({questions.length})</h3>
+        <h3 className={cn("text-sm font-semibold", portalHeading)}>
+          {qt.title.replace("{{count}}", String(questions.length))}
+        </h3>
         {onRefreshStatus && (
           <button
             type="button"
             onClick={() => void onRefreshStatus()}
             className="rounded border border-gray-300 px-2 py-1 text-xs hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-800"
           >
-            Làm mới trạng thái
+            {qt.refreshStatus}
           </button>
         )}
       </div>
@@ -100,34 +103,36 @@ export function QuestionsTab({
         <div className={cn("mt-3 rounded-lg border p-3 text-xs", statusBannerClass(generationRun?.status))}>
           <p className="font-medium">
             {isGenerating && generationRun?.status !== "Completed" && generationRun?.status !== "Failed"
-              ? "Đang sinh câu hỏi (RAG async)…"
-              : `Job: ${generationRun?.status ?? "—"}`}
+              ? qt.generatingAsync
+              : qt.jobStatus.replace("{{status}}", generationRun?.status ?? "—")}
           </p>
           {generationRun && (
             <p className={cn("mt-1", portalSubtext)}>
-              Run {generationRun.id.slice(0, 8)}… • yêu cầu {generationRun.requestedQuestionCount}q
-              {generationRun.generatedQuestionCount > 0 ? ` • đã tạo ${generationRun.generatedQuestionCount}` : ""}
+              {qt.runMeta
+                .replace("{{id}}", generationRun.id.slice(0, 8))
+                .replace("{{requested}}", String(generationRun.requestedQuestionCount))}
+              {generationRun.generatedQuestionCount > 0
+                ? qt.runMetaGenerated.replace("{{generated}}", String(generationRun.generatedQuestionCount))
+                : ""}
             </p>
           )}
           {generationRun?.status === "Failed" && (
             <p className="mt-2 font-medium text-red-700 dark:text-red-300">
-              [{generationRun.errorCode ?? "FAILED"}] {generationRun.errorMessage || "Không có chi tiết lỗi."}
+              [{generationRun.errorCode ?? "FAILED"}] {generationRun.errorMessage || qt.noErrorDetail}
             </p>
           )}
           {generationRun?.status === "Generating" && !isGenerating && (
-            <p className="mt-2">
-              Job vẫn Generating — RAG có thể chưa callback BE. Bấm Làm mới hoặc kiểm tra deploy BE/RAG.
-            </p>
+            <p className="mt-2">{qt.stillGeneratingHint}</p>
           )}
           {questions.length === 0 && generationRun?.status === "Completed" && (
-            <p className="mt-2">Run Completed nhưng list rỗng — thử Làm mới hoặc Generate lại.</p>
+            <p className="mt-2">{qt.emptyCompletedHint}</p>
           )}
         </div>
       )}
 
       {questions.length === 0 && !generationRun && !isGenerating && (
         <p className={cn("mt-3 text-sm", portalSubtext)}>
-          Chưa có câu hỏi. Approve plan rồi bấm Generate Interview Questions.
+          {qt.emptyNoQuestions}
         </p>
       )}
 
@@ -151,13 +156,13 @@ export function QuestionsTab({
                   }}
                   className="text-xs text-indigo-600"
                 >
-                  Edit
+                  {qt.edit}
                 </button>
                 <button type="button" onClick={() => onRegenerateQuestion(question.id)} className="text-xs text-amber-600">
-                  Regenerate
+                  {qt.regenerate}
                 </button>
                 <button type="button" onClick={() => onDeleteQuestion(question.id)} className="text-xs text-red-600">
-                  Delete
+                  {qt.delete}
                 </button>
               </div>
             </div>
@@ -171,7 +176,7 @@ export function QuestionsTab({
                 />
                 <div className="flex justify-end gap-2">
                   <button type="button" onClick={() => setEditingId(null)} className="rounded border px-2 py-1 text-xs">
-                    Cancel
+                    {qt.cancel}
                   </button>
                   <button
                     type="button"
@@ -186,7 +191,7 @@ export function QuestionsTab({
                     }}
                     className="rounded bg-[#6c47ff] px-2 py-1 text-xs text-white"
                   >
-                    Save
+                    {qt.save}
                   </button>
                 </div>
               </div>
@@ -196,7 +201,7 @@ export function QuestionsTab({
                   const templateVm = inferStudioTemplate(question);
                   return (
                     <QuestionTemplateCard
-                      title={`Question #${displayNo}`}
+                      title={qt.questionTitle.replace("{{n}}", String(displayNo))}
                       difficulty={question.difficulty}
                       prompt={question.content}
                       snippet={templateVm.snippet}
@@ -209,7 +214,7 @@ export function QuestionsTab({
                 {/* SCRUM-421: 3 khối JD / Admin / LLM */}
                 <div className="mt-2">
                   <p className={cn("text-[10px] font-semibold uppercase tracking-widest", portalSubtext)}>
-                    Nguồn
+                    {qt.sources}
                   </p>
                   <QuestionSourcesCompactGrouped
                     question={question}

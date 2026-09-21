@@ -226,11 +226,11 @@ export function CandidateBillingPage() {
       setUsage(use);
       setHistory(hist);
     } catch {
-      if (showLoader) addToast("error", "Failed to load billing information.");
+      if (showLoader) addToast("error", b.loadFailed);
     } finally {
       if (showLoader) setLoading(false);
     }
-  }, [addToast]);
+  }, [addToast, b.loadFailed]);
 
   // Initial load
   useEffect(() => {

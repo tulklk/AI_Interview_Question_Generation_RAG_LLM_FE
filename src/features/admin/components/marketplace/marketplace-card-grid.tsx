@@ -91,6 +91,8 @@ function SkillsPopover({
 export interface AdminMarketplaceSetCardLabels {
   badgePinned: string;
   badgeTrending: string;
+  badgeHiring: string;
+  badgePractice: string;
   questions: string;
   estimatedTimePrefix: string;
   attempts: string;
@@ -167,6 +169,17 @@ export function AdminMarketplaceSetCard({
 
           <div className="min-w-0 flex-1">
             <div className="mb-1 flex flex-wrap items-center gap-1.5">
+              {/* SCRUM-472: tag phân biệt Practice / Tuyển */}
+              <span
+                className={cn(
+                  "inline-flex items-center rounded-md px-1.5 py-0.5 text-[10px] font-semibold",
+                  item.isHiringAssessment
+                    ? "bg-sky-50 text-sky-700 dark:bg-sky-950/40 dark:text-sky-300"
+                    : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300"
+                )}
+              >
+                {item.isHiringAssessment ? labels.badgeHiring : labels.badgePractice}
+              </span>
               {item.isPinned ? (
                 <span className="inline-flex items-center gap-1 rounded-md bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
                   <Pin size={10} />

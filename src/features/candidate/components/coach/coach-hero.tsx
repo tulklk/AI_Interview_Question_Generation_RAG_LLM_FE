@@ -38,7 +38,7 @@ export function CoachHero({ isPremium, onUpgrade, onNewRun, showNewRun, newRunBu
               type="button"
               onClick={onNewRun}
               disabled={newRunBusy}
-              className="inline-flex items-center gap-2 h-9 px-3.5 rounded-lg text-[12px] font-semibold border border-gray-200 dark:border-gray-700 hover:border-primary/40 transition-colors disabled:opacity-60"
+              className="inline-flex items-center gap-2 h-9 px-3.5 rounded-lg text-[12px] font-semibold border border-gray-200 text-gray-600 dark:border-gray-700 dark:text-gray-300 hover:border-primary/40 hover:text-primary transition-colors disabled:opacity-60"
             >
               {p.newCoachRun}
             </button>

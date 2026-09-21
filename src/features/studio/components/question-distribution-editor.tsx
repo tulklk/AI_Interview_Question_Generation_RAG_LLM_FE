@@ -128,7 +128,7 @@ export function QuestionDistributionEditor({
             value={d.questionCount ?? 0}
             onChange={(e) => updateCount(idx, Number(e.target.value))}
             className="w-10 rounded border border-gray-200 bg-white px-1 py-0.5 text-center tabular-nums dark:border-gray-700 dark:bg-gray-900"
-            aria-label="Question count"
+            aria-label={cfg.questionCountAria}
           />
           <span className="w-7 shrink-0 text-[10px] text-gray-400">
             {t.studioPage.settings.unitQuestions}

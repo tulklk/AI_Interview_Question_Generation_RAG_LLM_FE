@@ -779,7 +779,7 @@ export function MarketplacePage() {
   }, [search]);
 
   useEffect(() => {
-    listQuestionSets({ pageSize: 100 })
+    listQuestionSets({ pageSize: 100, isHiringAssessment: false })
       .then((res) => {
         const skillSet = new Set<string>();
         res.items.forEach((s) => s.skills.forEach((sk) => skillSet.add(sk)));
@@ -932,6 +932,7 @@ export function MarketplacePage() {
         pageSize: 500,          // fetch all; client handles pagination
         sortBy: effectiveSortBy,
         chip: marketplaceChip,
+        isHiringAssessment: false,
       });
       if (cancelled) return;
 
@@ -1160,10 +1161,10 @@ export function MarketplacePage() {
                     <span className="text-[26px] shrink-0">🔍</span>
                     <div>
                       <p className="text-[13.5px] font-semibold text-gray-700 dark:text-gray-300">
-                        Không có bộ phù hợp với bạn
+                        {p.cvNoMatchTitle}
                       </p>
                       <p className="text-[12px] text-gray-400 dark:text-gray-500 mt-0.5">
-                        Thử thay đổi điều kiện lọc để xem các bộ khớp với CV của bạn.
+                        {p.cvNoMatchBody}
                       </p>
                     </div>
                   </div>

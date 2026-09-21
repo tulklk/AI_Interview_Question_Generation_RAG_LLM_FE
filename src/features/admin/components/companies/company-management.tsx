@@ -296,7 +296,7 @@ export function CompanyManagement() {
             className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors shrink-0"
           >
             <Search size={14} />
-            <span className="hidden sm:inline">Tìm kiếm</span>
+            <span className="hidden sm:inline">{t.common.search}</span>
           </button>
         </div>
         <button
@@ -358,7 +358,7 @@ export function CompanyManagement() {
                           className="flex items-center gap-1.5 text-xs font-medium text-primary hover:underline"
                         >
                           <RefreshCw size={12} />
-                          Thử lại
+                          {t.common.retry}
                         </button>
                       </div>
                     </td>
@@ -472,7 +472,7 @@ export function CompanyManagement() {
                 disabled={page <= 1 || loading}
                 className="px-3 py-1.5 text-xs font-medium rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors disabled:opacity-40"
               >
-                Trước
+                {t.common.previous}
               </button>
               <button
                 type="button"
