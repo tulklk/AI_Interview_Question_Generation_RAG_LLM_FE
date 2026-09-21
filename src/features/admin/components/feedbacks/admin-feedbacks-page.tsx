@@ -123,11 +123,11 @@ function EditFeedbackModal({ feedback, onClose, onSaved }: EditFeedbackModalProp
     setSaving(true);
     try {
       await adminUpdateFeedback(feedback.id, { content: content.trim() || undefined, rating: rating || undefined });
-      addToast("success", t.adminPages.feedbacks.approveSuccess.replace("duyệt", "cập nhật").replace("Approved", "Updated"));
+      addToast("success", t.adminPages.feedbacks.updateSuccess);
       onSaved();
       onClose();
     } catch {
-      addToast("error", "Không thể cập nhật feedback. Vui lòng thử lại.");
+      addToast("error", t.adminPages.feedbacks.updateError);
     } finally {
       setSaving(false);
     }
@@ -214,7 +214,7 @@ function EditFeedbackModal({ feedback, onClose, onSaved }: EditFeedbackModalProp
             {saving
               ? <span className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
               : <Save size={13} />}
-            {saving ? p.actions.approving : "Lưu thay đổi"}
+            {saving ? p.actions.approving : p.actions.saveChanges}
           </button>
         </div>
       </div>

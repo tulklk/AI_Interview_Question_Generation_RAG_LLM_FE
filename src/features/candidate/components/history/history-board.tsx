@@ -408,8 +408,13 @@ export function HistoryBoard() {
     if (checkingSetId) return;
     setCheckingSetId(questionSetId);
     try {
-      await getQuestionSetById(questionSetId);
-      router.push(`/candidate/practice/${questionSetId}`);
+      const set = await getQuestionSetById(questionSetId);
+      // SCRUM-470: bộ Tuyển deep-link sang Jobs; Practice giữ /practice
+      router.push(
+        set.isHiringAssessment
+          ? `/candidate/jobs/${questionSetId}`
+          : `/candidate/practice/${questionSetId}`
+      );
     } catch (err) {
       if (err instanceof NotFoundError) {
         setShowUnpublishedDialog(true);

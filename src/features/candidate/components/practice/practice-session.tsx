@@ -395,7 +395,7 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
     } finally {
       setIntegrityStarting(false);
     }
-  }, [sessionId, startMonitoring, addToast, integrityTerminated]);
+  }, [sessionId, startMonitoring, addToast, integrityTerminated, t.antiCheat.integrityStartFailed]);
 
   // Cleanup monitors on unmount
   useEffect(() => {
@@ -564,20 +564,6 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
         if (!session.antiCheatEnabled) setIntegrityStarted(true);
         setAnswers((prev) => ({ ...prev, ...answersMap }));
         setResumed(wasResumed);
-
-        // Khôi phục offset "đóng băng" từ lần "Lưu & Thoát" trước — chỉ khi KHÔNG anti-cheat
-        // và không có deadline cứng.
-        if (!session.antiCheatEnabled && !session.expiresAt && typeof window !== "undefined") {
-          const savedOffset = window.sessionStorage.getItem(`practice-exit-offset-${session.id}`);
-          const savedExitTs  = window.sessionStorage.getItem(`practice-exit-ts-${session.id}`);
-          if (savedOffset && savedExitTs) {
-            // Bù thêm thời gian điều hướng (từ lúc thoát đến lúc component này mount lại)
-            const navigationMs = Date.now() - parseInt(savedExitTs, 10);
-            pausedOffsetMsRef.current = parseInt(savedOffset, 10) + navigationMs;
-            window.sessionStorage.removeItem(`practice-exit-offset-${session.id}`);
-            window.sessionStorage.removeItem(`practice-exit-ts-${session.id}`);
-          }
-        }
 
         if (wasResumed && !session.antiCheatEnabled) addToast("success", p.resumedToast);
         const firstUnanswered = session.questions.findIndex(
@@ -894,42 +880,11 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
     }
   }
 
-  async function handleSaveAndExit() {
-    const sid = sessionIdRef.current;
-    if (!sid) {
-      router.push(`/candidate/sets/${set.id}`);
-      return;
-    }
-
-    stopMonitoring();
-    setIntegrityStarted(false);
-
-    // Lưu tổng thời gian bị "đóng băng" (bao gồm cả khoảng dialog đang mở ngay lúc này).
-    // Khi người dùng "Tiếp Tục Luyện Tập", component mount lại → offset sẽ bị mất.
-    // Lưu vào sessionStorage để khôi phục, giúp timer tiếp tục từ chỗ đã dừng.
-    if (typeof window !== "undefined") {
-      const dialogOpenMs = pauseStartMsRef.current !== null
-        ? Date.now() - pauseStartMsRef.current
-        : 0;
-      const totalOffset = pausedOffsetMsRef.current + dialogOpenMs;
-      window.sessionStorage.setItem(`practice-exit-offset-${sid}`, String(totalOffset));
-      window.sessionStorage.setItem(`practice-exit-ts-${sid}`, String(Date.now()));
-    }
-
-    // Flush câu đang trả lời (nếu hợp lệ) trước khi thoát — phiên vẫn IN_PROGRESS trên server
-    // P0 fix: gate on hasAnswerText so any non-empty answer is saved, matching the UI "answered" check.
-    const currentQ = questions[currentIdxRef.current];
-    if (currentQ && !currentQ.isLocked) {
-      const text = answersRef.current[currentQ.id] ?? "";
-      if (hasAnswerText(text)) {
-        try {
-          await submitAnswerApi(sid, { questionId: currentQ.id, answerText: text });
-        } catch {
-          // best-effort — phiên vẫn còn trong sessionStorage
-        }
-      }
-    }
-    router.push(`/candidate/sets/${set.id}`);
+  /** SCRUM-469: thoát = abandon; về jobs nếu bộ Tuyển. */
+  function detailHrefAfterLeave() {
+    return set.isHiringAssessment
+      ? `/candidate/jobs/${set.id}`
+      : `/candidate/sets/${set.id}`;
   }
 
   function handleAbandon() {
@@ -942,7 +897,7 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
         if (typeof window !== "undefined") {
           questions.forEach((q) => window.sessionStorage.removeItem(draftKey(sessionId, q.id)));
         }
-        router.push(`/candidate/sets/${set.id}`);
+        router.push(detailHrefAfterLeave());
       })
       .catch(async () => {
         // Same server-side timeout race as handleFinish — if the session already
@@ -953,7 +908,7 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
           if (typeof window !== "undefined") {
             questions.forEach((q) => window.sessionStorage.removeItem(draftKey(sessionId, q.id)));
           }
-          router.push(`/candidate/sets/${set.id}`);
+          router.push(detailHrefAfterLeave());
           return;
         }
         setAbandoning(false);
@@ -1054,24 +1009,39 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
     <>
     <ConfirmDialog
       open={exitOpen}
-      title={antiCheatEnabled ? p.antiCheatExitTitle : p.exitConfirmTitle}
-      message={antiCheatEnabled ? p.antiCheatExitMessage : p.exitConfirmMessage}
-      confirmLabel={antiCheatEnabled ? p.exitCancelBtn : p.exitConfirmBtn}
+      title={
+        antiCheatEnabled
+          ? p.antiCheatExitTitle
+          : set.isHiringAssessment
+            ? p.exitConfirmTitleHiring
+            : p.exitConfirmTitle
+      }
+      message={
+        antiCheatEnabled
+          ? p.antiCheatExitMessage
+          : set.isHiringAssessment
+            ? p.exitConfirmMessageHiring
+            : p.exitConfirmMessage
+      }
+      confirmLabel={
+        antiCheatEnabled
+          ? p.exitCancelBtn
+          : set.isHiringAssessment
+            ? p.exitConfirmBtnHiring
+            : p.exitConfirmBtn
+      }
       cancelLabel={p.exitCancelBtn}
       variant={antiCheatEnabled ? "primary" : "danger"}
+      loading={abandoning}
       onConfirm={() => {
         if (antiCheatEnabled) {
           closeExitDialog();
           return;
         }
-        void handleSaveAndExit();
+        // SCRUM-469: thoát = ngắt phiên (abandon), không còn soft Save & Exit
+        handleAbandon();
       }}
       onCancel={() => closeExitDialog()}
-      extraAction={
-        antiCheatEnabled
-          ? undefined
-          : { label: p.abandonBtn, onClick: handleAbandon, loading: abandoning }
-      }
     />
     <ConfirmDialog
       open={reviewOpen}

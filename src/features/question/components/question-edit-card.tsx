@@ -581,7 +581,7 @@ export function QuestionEditCard({
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
                   <div>
                     <label className={cn("text-xs font-medium mb-1 block", portalHeading)}>
-                      {rp.questionFields.rationale} (lý do hỏi)
+                      {rp.questionFields.rationale} {rp.rationaleHint}
                     </label>
                     <textarea
                       value={editRationale}

@@ -46,6 +46,7 @@ import {
   withAbandonedToast,
 } from "@/features/interview/services/interview.service";
 import { useHrSubscription } from "@/features/hr/context/hr-subscription-context";
+import { extractErrorMessage } from "@/core/interceptors/error.interceptor";
 import { QuestionSetFeedbackPanel } from "./question-set-feedback-panel";
 import {
   PublishDialog,
@@ -110,8 +111,9 @@ export function QuestionSetHistoryTable({ filter = "all" }: QuestionSetHistoryTa
   const dm = t.historyPage.deleteModal;
   const { addToast } = useToast();
   const router = useRouter();
-  const { planId } = useHrSubscription();
-  const isPremium = planId === "HR_PREMIUM";
+  const { hasFeature } = useHrSubscription();
+  // SCRUM-473: gate theo CanExport (Admin có thể bật/tắt), không hardcode planId
+  const canExport = hasFeature("export");
 
   const [items, setItems] = useState<HistoryQuestionSetItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -126,6 +128,8 @@ export function QuestionSetHistoryTable({ filter = "all" }: QuestionSetHistoryTa
   const [publishTimeLimit, setPublishTimeLimit] = useState<number | null>(null);
   const [publishAutoRecommend, setPublishAutoRecommend] = useState(true);
   const [publishMinScore, setPublishMinScore] = useState(70);
+  const [publishIsHiring, setPublishIsHiring] = useState(false);
+  const [publishHrAntiCheat, setPublishHrAntiCheat] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [sourceFilter, setSourceFilter] = useState<"all" | "studio" | "legacy">("all");
   const [questionFilter, setQuestionFilter] = useState<"all" | "1-5" | "6-10" | "11-20" | "21+">("all");
@@ -298,6 +302,8 @@ export function QuestionSetHistoryTable({ filter = "all" }: QuestionSetHistoryTa
       setPublishTimeLimit(draft.timeLimitMinutes ?? null);
       setPublishAutoRecommend(draft.autoRecommendEnabled ?? true);
       setPublishMinScore(draft.recommendationMinScore ?? 70);
+      setPublishIsHiring(draft.isHiringAssessment ?? false);
+      setPublishHrAntiCheat(draft.hrAntiCheatEnabled ?? false);
       setPublishTarget(item);
     } catch (err) {
       addToast("error", err instanceof Error && err.message ? err.message : t.historyPage.actionFailed);
@@ -315,6 +321,8 @@ export function QuestionSetHistoryTable({ filter = "all" }: QuestionSetHistoryTa
         timeLimitMinutes: payload.timeLimitMinutes,
         autoRecommendEnabled: payload.autoRecommendEnabled,
         recommendationMinScore: payload.recommendationMinScore,
+        isHiringAssessment: payload.isHiringAssessment,
+        hrAntiCheatEnabled: payload.hrAntiCheatEnabled,
       });
       setItems((prev) =>
         prev.map((x) =>
@@ -341,8 +349,9 @@ export function QuestionSetHistoryTable({ filter = "all" }: QuestionSetHistoryTa
     setBusyId(item.questionSetId);
     try {
       await exportHistoryQuestionSet(item.questionSetId, item.title);
+      addToast("success", ht.exportSuccess);
     } catch (err) {
-      addToast("error", err instanceof Error && err.message ? err.message : ht.exportDisabledTitle);
+      addToast("error", extractErrorMessage(err, lang === "vi" ? "vi" : "en") || ht.exportFailed);
     } finally {
       setBusyId(null);
     }
@@ -765,7 +774,7 @@ export function QuestionSetHistoryTable({ filter = "all" }: QuestionSetHistoryTa
               <MessageSquare size={14} className="shrink-0 opacity-70" />
               <span className="truncate">{t.historyPage.feedbackTitle}</span>
             </button>
-            {isPremium && (
+            {canExport && (
               <button
                 type="button"
                 role="menuitem"
@@ -822,8 +831,42 @@ export function QuestionSetHistoryTable({ filter = "all" }: QuestionSetHistoryTa
           currentTimeLimitMinutes={publishTimeLimit}
           initialAutoRecommendEnabled={publishAutoRecommend}
           initialRecommendationMinScore={publishMinScore}
+          initialIsHiringAssessment={publishIsHiring}
+          initialHrAntiCheatEnabled={publishHrAntiCheat}
           saving={publishing}
           onConfirm={(payload) => void confirmHistoryPublish(payload)}
+          onBeforeConfirm={async (payload) => {
+            if (!payload.isHiringAssessment || !publishTarget) return true;
+            try {
+              const draft = await getDraft(publishTarget.questionSetId);
+              if (!draft) {
+                addToast("error", t.historyPage.actionFailed);
+                return false;
+              }
+              if (!draft.publicJobDescription?.trim()) {
+                addToast("error", t.hiringMode.publicJdRequired);
+                return false;
+              }
+              const locationOk = Boolean(draft.jobLocation?.trim());
+              const expertiseOk = Boolean(draft.jobExpertise?.trim());
+              const domainOk = Boolean(draft.jobDomain?.trim());
+              const salaryOk =
+                draft.salaryNegotiable === true ||
+                draft.salaryMin != null ||
+                draft.salaryMax != null;
+              if (!locationOk || !expertiseOk || !domainOk || !salaryOk) {
+                addToast("error", t.hiringMode.postingIncomplete);
+                return false;
+              }
+              return true;
+            } catch (err) {
+              addToast(
+                "error",
+                err instanceof Error && err.message ? err.message : t.hiringMode.postingIncomplete
+              );
+              return false;
+            }
+          }}
           onClose={() => {
             if (!publishing) setPublishTarget(null);
           }}

@@ -63,6 +63,25 @@ export interface QuestionSet {
   myLastCompletedAt?: string | null;
   avgCompletionMinutes?: number | null;
   questions: PracticeQuestion[];
+  /** SCRUM-464: bộ Tuyển — hiện JD + badge */
+  isHiringAssessment?: boolean;
+  /** SCRUM-465: bản JD ngắn (PublicJobDescription) */
+  jobDescription?: string | null;
+  /** SCRUM-467: snippet list card */
+  publicJobDescriptionPreview?: string | null;
+  jdSourceType?: string | null;
+  jdOriginalFileName?: string | null;
+  jdFileUrl?: string | null;
+  /** SCRUM-468: thời điểm publish */
+  publishedAt?: string | null;
+  /** SCRUM-468: metadata tin tuyển */
+  jobLocation?: string | null;
+  workplaceType?: "AtOffice" | "Hybrid" | "Remote" | null;
+  salaryMin?: number | null;
+  salaryMax?: number | null;
+  salaryNegotiable?: boolean;
+  jobExpertise?: string | null;
+  jobDomain?: string | null;
 }
 
 // ── Candidate ──────────────────────────────────────────────────────────────

@@ -17,6 +17,7 @@ import { getJobDescription } from "@/features/studio/services/studio.service";
 import { JdFitReviewPanel } from "@/features/hr/components/question-sets/jd-fit-review-panel";
 import { JobDescriptionViewer } from "@/features/question/components/job-description-viewer";
 import type { GenerationSession, GeneratedQuestion } from "@/features/interview/types/generation-session";
+import type { HiringPostingInitial } from "@/features/hr/components/public-jd-editor-panel";
 
 export type JdMetaUpdate = {
   content?: string | null;
@@ -42,6 +43,13 @@ interface ReviewPageClientProps {
   initialTimeLimitMinutes?: number | null;
   initialAutoRecommendEnabled?: boolean;
   initialRecommendationMinScore?: number;
+  initialIsHiringAssessment?: boolean;
+  initialHrAntiCheatEnabled?: boolean;
+  /** SCRUM-465 */
+  initialPublicJobDescription?: string | null;
+  /** SCRUM-468 */
+  initialHiringPosting?: HiringPostingInitial | null;
+  jdFileUrl?: string | null;
   onRenameTitle?: (title: string) => Promise<boolean>;
 }
 
@@ -62,6 +70,11 @@ export function ReviewPageClient({
   initialTimeLimitMinutes,
   initialAutoRecommendEnabled,
   initialRecommendationMinScore,
+  initialIsHiringAssessment,
+  initialHrAntiCheatEnabled,
+  initialPublicJobDescription,
+  initialHiringPosting,
+  jdFileUrl,
   onRenameTitle,
 }: ReviewPageClientProps) {
   const { t } = useLanguage();
@@ -419,8 +432,8 @@ export function ReviewPageClient({
               style={{ animationDelay: "120ms" }}
             >
               <AiLoadingSpinner
-                text="AI đang tạo câu hỏi phỏng vấn..."
-                subtext="Câu hỏi sẽ tự động hiển thị khi hoàn thành. Vui lòng chờ."
+                text={t.generatePage.pollingQuestionsTitle}
+                subtext={rp.generatingQuestionsSubtext}
               />
             </div>
           )}
@@ -451,6 +464,14 @@ export function ReviewPageClient({
                 initialTimeLimitMinutes={initialTimeLimitMinutes}
                 initialAutoRecommendEnabled={initialAutoRecommendEnabled}
                 initialRecommendationMinScore={initialRecommendationMinScore}
+                initialIsHiringAssessment={initialIsHiringAssessment}
+                initialHrAntiCheatEnabled={initialHrAntiCheatEnabled}
+                initialPublicJobDescription={initialPublicJobDescription}
+                initialHiringPosting={initialHiringPosting}
+                fullJobDescription={jobDescription}
+                jdSourceType={jdSourceType}
+                jdOriginalFileName={jdOriginalFileName}
+                jdFileUrl={jdFileUrl}
                 isFromStudio={session.isFromStudio}
               />
             </div>

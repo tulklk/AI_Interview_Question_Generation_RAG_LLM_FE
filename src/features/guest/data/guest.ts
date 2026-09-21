@@ -56,7 +56,7 @@ export const benefits: BenefitItem[] = [
     iconColor: "text-orange-500",
     title: "Export-Ready Sets",
     description:
-      "Download your question sets as PDF or DOCX, share with teammates, or save to your session history.",
+      "Download your question sets as Excel, share with teammates, or save to your session history.",
   },
 ];
 
@@ -101,7 +101,7 @@ export const features: FeatureItem[] = [
     icon: History,
     title: "History & Export",
     description:
-      "Access all past sessions from your history dashboard. Export to PDF or DOCX for use in interviews anytime.",
+      "Access all past sessions from your history dashboard. Export to Excel for use in interviews anytime.",
   },
 ];
 
@@ -185,7 +185,7 @@ export const pricingPlansRecruiter: PricingPlan[] = [
       { text: "Generate 4 lần / cooldown 24 giờ", included: true },
       { text: "Regenerate plan ≤ 5 lần / draft", included: true },
       { text: "Publish bộ câu hỏi lên Marketplace", included: true },
-      { text: "Export PDF / DOCX", included: false },
+      { text: "Export Excel", included: false },
       { text: "Ask-AI trong Studio", included: false },
       { text: "Generate không giới hạn", included: false },
     ],
@@ -203,7 +203,7 @@ export const pricingPlansRecruiter: PricingPlan[] = [
       { text: "Mọi thứ trong Free", included: true },
       { text: "Generate bộ câu hỏi không giới hạn", included: true },
       { text: "Regenerate plan ≤ 5 lần / draft", included: true },
-      { text: "Export PDF / DOCX", included: true },
+      { text: "Export Excel", included: true },
       { text: "Ask-AI Studio — 1000 request / kỳ", included: true },
       { text: "Mua thêm pack Ask-AI khi hết hạn mức", included: true },
       { text: "Publish Marketplace không giới hạn", included: true },

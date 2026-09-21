@@ -259,8 +259,86 @@ function normalizeDraft(raw: unknown): DraftQuestionSet | null {
         : typeof src.RecommendationMinScore === "number"
           ? src.RecommendationMinScore
           : 70,
+    isHiringAssessment:
+      typeof src.isHiringAssessment === "boolean"
+        ? src.isHiringAssessment
+        : typeof src.IsHiringAssessment === "boolean"
+          ? src.IsHiringAssessment
+          : false,
+    hrAntiCheatEnabled:
+      typeof src.hrAntiCheatEnabled === "boolean"
+        ? src.hrAntiCheatEnabled
+        : typeof src.HrAntiCheatEnabled === "boolean"
+          ? src.HrAntiCheatEnabled
+          : false,
+    publicJobDescription:
+      typeof src.publicJobDescription === "string"
+        ? src.publicJobDescription
+        : typeof src.PublicJobDescription === "string"
+          ? src.PublicJobDescription
+          : null,
+    jobLocation:
+      typeof src.jobLocation === "string"
+        ? src.jobLocation
+        : typeof src.JobLocation === "string"
+          ? src.JobLocation
+          : null,
+    workplaceType: normalizeWorkplaceType(
+      typeof src.workplaceType === "string"
+        ? src.workplaceType
+        : typeof src.WorkplaceType === "string"
+          ? src.WorkplaceType
+          : null
+    ),
+    salaryMin:
+      typeof src.salaryMin === "number"
+        ? src.salaryMin
+        : typeof src.SalaryMin === "number"
+          ? src.SalaryMin
+          : null,
+    salaryMax:
+      typeof src.salaryMax === "number"
+        ? src.salaryMax
+        : typeof src.SalaryMax === "number"
+          ? src.SalaryMax
+          : null,
+    salaryNegotiable:
+      typeof src.salaryNegotiable === "boolean"
+        ? src.salaryNegotiable
+        : typeof src.SalaryNegotiable === "boolean"
+          ? src.SalaryNegotiable
+          : true,
+    jobExpertise:
+      typeof src.jobExpertise === "string"
+        ? src.jobExpertise
+        : typeof src.JobExpertise === "string"
+          ? src.JobExpertise
+          : null,
+    jobDomain:
+      typeof src.jobDomain === "string"
+        ? src.jobDomain
+        : typeof src.JobDomain === "string"
+          ? src.JobDomain
+          : null,
+    jdFileUrl:
+      typeof src.jdFileUrl === "string"
+        ? src.jdFileUrl
+        : typeof src.JdFileUrl === "string"
+          ? src.JdFileUrl
+          : null,
     questions,
   };
+}
+
+function normalizeWorkplaceType(
+  raw: string | null
+): "AtOffice" | "Hybrid" | "Remote" | null {
+  if (!raw) return null;
+  const v = raw.trim().toLowerCase();
+  if (v === "atoffice") return "AtOffice";
+  if (v === "hybrid") return "Hybrid";
+  if (v === "remote") return "Remote";
+  return null;
 }
 
 export async function getDraft(questionSetId: string): Promise<DraftQuestionSet | null> {
@@ -542,9 +620,11 @@ export type PublishQuestionSetPayload = {
   timeLimitMinutes?: number | null;
   autoRecommendEnabled?: boolean;
   recommendationMinScore?: number;
+  isHiringAssessment?: boolean;
+  hrAntiCheatEnabled?: boolean;
 };
 
-/** SCRUM-439: publish selective + time limit + recommend settings. */
+/** SCRUM-439 / SCRUM-464: publish selective + time limit + recommend + hiring. */
 export async function publishQuestionSet(
   questionSetId: string,
   payload?: PublishQuestionSetPayload
@@ -555,6 +635,8 @@ export async function publishQuestionSet(
       timeLimitMinutes: payload?.timeLimitMinutes ?? null,
       autoRecommendEnabled: payload?.autoRecommendEnabled ?? null,
       recommendationMinScore: payload?.recommendationMinScore ?? null,
+      isHiringAssessment: payload?.isHiringAssessment ?? null,
+      hrAntiCheatEnabled: payload?.hrAntiCheatEnabled ?? null,
     });
     return true;
   } catch (err) {
@@ -563,7 +645,7 @@ export async function publishQuestionSet(
   }
 }
 
-/** SCRUM-438: tổng hợp set PUBLISHED (practice + rating). */
+/** SCRUM-438 / SCRUM-471: tổng hợp set PUBLISHED (practice + rating + hiring flag). */
 export type PublishedOverviewItem = {
   questionSetId: string;
   title: string;
@@ -576,6 +658,8 @@ export type PublishedOverviewItem = {
   averageScore: number | null;
   averageRating: number | null;
   feedbackCount: number;
+  /** SCRUM-471: bộ Tuyển vs Luyện tập */
+  isHiringAssessment: boolean;
 };
 
 export async function getPublishedOverview(): Promise<PublishedOverviewItem[]> {
@@ -616,6 +700,7 @@ export async function getPublishedOverview(): Promise<PublishedOverviewItem[]> {
         averageScore: num(src.averageScore ?? src.AverageScore),
         averageRating: num(src.averageRating ?? src.AverageRating),
         feedbackCount: int(src.feedbackCount ?? src.FeedbackCount),
+        isHiringAssessment: Boolean(src.isHiringAssessment ?? src.IsHiringAssessment),
       } satisfies PublishedOverviewItem;
     })
     .filter((x): x is PublishedOverviewItem => x !== null);
@@ -689,6 +774,158 @@ export async function setQuestionSetRecommendationSettings(
           : typeof rec.RecommendationMinScore === "number"
             ? (rec.RecommendationMinScore as number)
             : recommendationMinScore,
+    };
+  } catch (err) {
+    throw new Error(extractBeErrorMessage(err));
+  }
+}
+
+/** SCRUM-464: Practice vs Tuyển + anti-cheat HR (cho phép sửa khi PUBLISHED). */
+export async function setQuestionSetHiringAssessment(
+  questionSetId: string,
+  isHiringAssessment: boolean,
+  hrAntiCheatEnabled: boolean
+): Promise<{ isHiringAssessment: boolean; hrAntiCheatEnabled: boolean }> {
+  try {
+    const { data } = await apiClient.put<{
+      data?: { isHiringAssessment?: boolean; hrAntiCheatEnabled?: boolean };
+      isHiringAssessment?: boolean;
+      hrAntiCheatEnabled?: boolean;
+    }>(`/api/hr/question-sets/${questionSetId}/hiring-assessment`, {
+      isHiringAssessment,
+      hrAntiCheatEnabled: isHiringAssessment && hrAntiCheatEnabled,
+    });
+    const root = (data as { data?: Record<string, unknown> })?.data ?? data;
+    const rec = root && typeof root === "object" ? (root as Record<string, unknown>) : {};
+    const hiring =
+      typeof rec.isHiringAssessment === "boolean"
+        ? rec.isHiringAssessment
+        : typeof rec.IsHiringAssessment === "boolean"
+          ? (rec.IsHiringAssessment as boolean)
+          : isHiringAssessment;
+    const hrAc =
+      typeof rec.hrAntiCheatEnabled === "boolean"
+        ? rec.hrAntiCheatEnabled
+        : typeof rec.HrAntiCheatEnabled === "boolean"
+          ? (rec.HrAntiCheatEnabled as boolean)
+          : hrAntiCheatEnabled;
+    return {
+      isHiringAssessment: hiring,
+      hrAntiCheatEnabled: hiring && hrAc,
+    };
+  } catch (err) {
+    throw new Error(extractBeErrorMessage(err));
+  }
+}
+
+/** SCRUM-465: bản JD ngắn hiện cho candidate. */
+export async function setQuestionSetPublicJobDescription(
+  questionSetId: string,
+  publicJobDescription: string
+): Promise<{ publicJobDescription: string; characterCount: number }> {
+  try {
+    const { data } = await apiClient.put<{
+      data?: { publicJobDescription?: string; characterCount?: number };
+      publicJobDescription?: string;
+      characterCount?: number;
+    }>(`/api/hr/question-sets/${questionSetId}/public-job-description`, {
+      publicJobDescription,
+    });
+    const root = (data as { data?: Record<string, unknown> })?.data ?? data;
+    const rec = root && typeof root === "object" ? (root as Record<string, unknown>) : {};
+    const text =
+      typeof rec.publicJobDescription === "string"
+        ? rec.publicJobDescription
+        : typeof rec.PublicJobDescription === "string"
+          ? (rec.PublicJobDescription as string)
+          : publicJobDescription;
+    const count =
+      typeof rec.characterCount === "number"
+        ? rec.characterCount
+        : typeof rec.CharacterCount === "number"
+          ? (rec.CharacterCount as number)
+          : text.length;
+    return { publicJobDescription: text, characterCount: count };
+  } catch (err) {
+    throw new Error(extractBeErrorMessage(err));
+  }
+}
+
+/** SCRUM-468: metadata tin tuyển (location / salary / expertise / domain). */
+export type HiringPostingPayload = {
+  jobLocation: string;
+  workplaceType?: "AtOffice" | "Hybrid" | "Remote" | null;
+  salaryMin?: number | null;
+  salaryMax?: number | null;
+  salaryNegotiable: boolean;
+  jobExpertise: string;
+  jobDomain: string;
+};
+
+export type HiringPostingResult = HiringPostingPayload & { questionSetId?: string };
+
+export async function setQuestionSetHiringPosting(
+  questionSetId: string,
+  payload: HiringPostingPayload
+): Promise<HiringPostingResult> {
+  try {
+    const { data } = await apiClient.put<{
+      data?: Record<string, unknown>;
+    }>(`/api/hr/question-sets/${questionSetId}/hiring-posting`, {
+      jobLocation: payload.jobLocation,
+      workplaceType: payload.workplaceType || null,
+      salaryMin: payload.salaryNegotiable ? null : payload.salaryMin ?? null,
+      salaryMax: payload.salaryNegotiable ? null : payload.salaryMax ?? null,
+      salaryNegotiable: payload.salaryNegotiable,
+      jobExpertise: payload.jobExpertise,
+      jobDomain: payload.jobDomain,
+    });
+    const root = (data as { data?: Record<string, unknown> })?.data ?? data;
+    const rec = root && typeof root === "object" ? (root as Record<string, unknown>) : {};
+    return {
+      jobLocation:
+        typeof rec.jobLocation === "string"
+          ? rec.jobLocation
+          : typeof rec.JobLocation === "string"
+            ? (rec.JobLocation as string)
+            : payload.jobLocation,
+      workplaceType: normalizeWorkplaceType(
+        typeof rec.workplaceType === "string"
+          ? rec.workplaceType
+          : typeof rec.WorkplaceType === "string"
+            ? (rec.WorkplaceType as string)
+            : payload.workplaceType ?? null
+      ),
+      salaryMin:
+        typeof rec.salaryMin === "number"
+          ? rec.salaryMin
+          : typeof rec.SalaryMin === "number"
+            ? (rec.SalaryMin as number)
+            : null,
+      salaryMax:
+        typeof rec.salaryMax === "number"
+          ? rec.salaryMax
+          : typeof rec.SalaryMax === "number"
+            ? (rec.SalaryMax as number)
+            : null,
+      salaryNegotiable:
+        typeof rec.salaryNegotiable === "boolean"
+          ? rec.salaryNegotiable
+          : typeof rec.SalaryNegotiable === "boolean"
+            ? (rec.SalaryNegotiable as boolean)
+            : payload.salaryNegotiable,
+      jobExpertise:
+        typeof rec.jobExpertise === "string"
+          ? rec.jobExpertise
+          : typeof rec.JobExpertise === "string"
+            ? (rec.JobExpertise as string)
+            : payload.jobExpertise,
+      jobDomain:
+        typeof rec.jobDomain === "string"
+          ? rec.jobDomain
+          : typeof rec.JobDomain === "string"
+            ? (rec.JobDomain as string)
+            : payload.jobDomain,
     };
   } catch (err) {
     throw new Error(extractBeErrorMessage(err));
@@ -823,6 +1060,8 @@ export interface Practitioner {
   status: PractitionerSessionStatus;
   completedAt: string | null;
   startedAt: string | null;
+  /** SCRUM-464: bài test chính thức trên bộ Tuyển */
+  isOfficialTest?: boolean;
 }
 
 function normalizePractitionerStatus(raw: string): PractitionerSessionStatus {
@@ -848,11 +1087,18 @@ function normalizePractitioner(raw: unknown, index: number): Practitioner | null
     status: normalizePractitionerStatus(pickStr(src, "status", "Status") || "IN_PROGRESS"),
     completedAt: typeof src.completedAt === "string" ? src.completedAt : pickStr(src, "completedAt", "CompletedAt") || null,
     startedAt,
+    isOfficialTest: Boolean(src.isOfficialTest ?? src.IsOfficialTest),
   };
 }
 
-export async function getPractitioners(questionSetId: string): Promise<Practitioner[]> {
-  const res = await apiClient.get(`/api/hr/question-sets/${questionSetId}/practitioners`);
+/** SCRUM-471: includePractice=true trên bộ Tuyển trả thêm phiên luyện. */
+export async function getPractitioners(
+  questionSetId: string,
+  opts?: { includePractice?: boolean }
+): Promise<Practitioner[]> {
+  const res = await apiClient.get(`/api/hr/question-sets/${questionSetId}/practitioners`, {
+    params: opts?.includePractice ? { includePractice: true } : undefined,
+  });
   return extractItemList(res.data)
     .map((raw, i) => normalizePractitioner(raw, i))
     .filter((p): p is Practitioner => p !== null);

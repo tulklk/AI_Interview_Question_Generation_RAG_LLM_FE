@@ -779,7 +779,7 @@ export function MarketplacePage() {
   }, [search]);
 
   useEffect(() => {
-    listQuestionSets({ pageSize: 100 })
+    listQuestionSets({ pageSize: 100, isHiringAssessment: false })
       .then((res) => {
         const skillSet = new Set<string>();
         res.items.forEach((s) => s.skills.forEach((sk) => skillSet.add(sk)));
@@ -932,6 +932,7 @@ export function MarketplacePage() {
         pageSize: 500,          // fetch all; client handles pagination
         sortBy: effectiveSortBy,
         chip: marketplaceChip,
+        isHiringAssessment: false,
       });
       if (cancelled) return;
 

@@ -8,6 +8,8 @@ export interface AdminMarketplaceListParams {
   keyword?: string;
   companyId?: string;
   hrUserId?: string;
+  /** SCRUM-472: undefined = tất cả; true = Tuyển; false = Practice */
+  isHiringAssessment?: boolean;
   sortBy?: MarketplaceSortBy;
 }
 
@@ -31,6 +33,8 @@ export interface AdminMarketplaceListItem {
   rating?: number | null;
   isPinned: boolean;
   isTrending?: boolean;
+  /** SCRUM-472: true = Tuyển; false = Practice */
+  isHiringAssessment: boolean;
   pinnedAt?: string | null;
   publishedAt?: string | null;
 }
@@ -160,6 +164,7 @@ function normalizeListItem(raw: unknown): AdminMarketplaceListItem | null {
     rating: pickNumber(src, "rating") ?? null,
     isPinned: pickBool(src, "isPinned"),
     isTrending: pickBool(src, "isTrending"),
+    isHiringAssessment: pickBool(src, "isHiringAssessment"),
     pinnedAt: pickOptionalString(src, "pinnedAt"),
     publishedAt: pickOptionalString(src, "publishedAt"),
   };
@@ -204,6 +209,9 @@ export async function listMarketplaceQuestionSets(
   if (params.keyword?.trim()) query.Keyword = params.keyword.trim();
   if (params.companyId) query.CompanyId = params.companyId;
   if (params.hrUserId) query.HrUserId = params.hrUserId;
+  if (params.isHiringAssessment !== undefined) {
+    query.IsHiringAssessment = params.isHiringAssessment ? "true" : "false";
+  }
   if (params.sortBy) query.SortBy = params.sortBy;
 
   const res = await apiClient.get("/api/admin/marketplace/question-sets", { params: query });

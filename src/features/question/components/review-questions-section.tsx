@@ -46,6 +46,9 @@ import {
   QuestionSetPublishedError,
   setQuestionSetTimeLimit,
   setQuestionSetRecommendationSettings,
+  setQuestionSetHiringAssessment,
+  setQuestionSetPublicJobDescription,
+  setQuestionSetHiringPosting,
   getDraft,
 } from "@/features/interview/services/interview.service";
 import { QuestionEditCard } from "./question-edit-card";
@@ -54,6 +57,15 @@ import { PublishDialog, type PublishDialogConfirmPayload } from "./publish-dialo
 import { AddQuestionDialog } from "./add-question-dialog";
 import { TimeLimitDialog } from "./time-limit-dialog";
 import { ConfirmDialog } from "@/shared/components/ui/confirm-dialog";
+import { HiringModeControls } from "@/features/hr/components/hiring-mode-controls";
+import {
+  PublicJdEditorPanel,
+  postingDraftToPayload,
+  validateHiringPostingDraft,
+  type HiringPostingDraft,
+  type HiringPostingSaved,
+  type HiringPostingInitial,
+} from "@/features/hr/components/public-jd-editor-panel";
 import { useToast } from "@/shared/providers/toast-context";
 import { ASK_AI_ENABLED } from "@/features/question/constants/question-ui-flags";
 import { MIN_QUESTIONS_TO_PUBLISH } from "@/features/interview/components/generate/question-builder-set-panel";
@@ -158,6 +170,17 @@ interface ReviewQuestionsSectionProps {
   /** SCRUM-424 */
   initialAutoRecommendEnabled?: boolean;
   initialRecommendationMinScore?: number;
+  /** SCRUM-464 */
+  initialIsHiringAssessment?: boolean;
+  initialHrAntiCheatEnabled?: boolean;
+  /** SCRUM-465 */
+  initialPublicJobDescription?: string | null;
+  /** SCRUM-468 */
+  initialHiringPosting?: HiringPostingInitial | null;
+  fullJobDescription?: string | null;
+  jdSourceType?: "PastedText" | "UploadedFile" | null;
+  jdOriginalFileName?: string | null;
+  jdFileUrl?: string | null;
   /** SCRUM-374: job từ Studio — card dùng format sample + rubric. */
   isFromStudio?: boolean;
 }
@@ -179,6 +202,14 @@ export function ReviewQuestionsSection({
   initialTimeLimitMinutes,
   initialAutoRecommendEnabled = true,
   initialRecommendationMinScore = 70,
+  initialIsHiringAssessment = false,
+  initialHrAntiCheatEnabled = false,
+  initialPublicJobDescription = null,
+  initialHiringPosting = null,
+  fullJobDescription = null,
+  jdSourceType = null,
+  jdOriginalFileName = null,
+  jdFileUrl = null,
   isFromStudio = false,
 }: ReviewQuestionsSectionProps) {
   const { t } = useLanguage();
@@ -208,6 +239,35 @@ export function ReviewQuestionsSection({
   const [savingTimeLimit, setSavingTimeLimit] = useState(false);
   const [autoRecommendEnabled, setAutoRecommendEnabled] = useState(initialAutoRecommendEnabled);
   const [recommendationMinScore, setRecommendationMinScore] = useState(initialRecommendationMinScore);
+  const [isHiringAssessment, setIsHiringAssessment] = useState(initialIsHiringAssessment);
+  const [hrAntiCheatEnabled, setHrAntiCheatEnabled] = useState(
+    initialIsHiringAssessment && initialHrAntiCheatEnabled
+  );
+  const [publicJobDescription, setPublicJobDescription] = useState(
+    initialPublicJobDescription?.trim() ?? ""
+  );
+  const [publicJdDraft, setPublicJdDraft] = useState(
+    initialPublicJobDescription?.trim() ?? ""
+  );
+  const [hiringPosting, setHiringPosting] = useState<HiringPostingSaved>(() => ({
+    jobLocation: initialHiringPosting?.jobLocation?.trim() ?? "",
+    workplaceType: initialHiringPosting?.workplaceType ?? null,
+    salaryMin: initialHiringPosting?.salaryMin ?? null,
+    salaryMax: initialHiringPosting?.salaryMax ?? null,
+    salaryNegotiable: initialHiringPosting?.salaryNegotiable ?? true,
+    jobExpertise: initialHiringPosting?.jobExpertise?.trim() ?? "",
+    jobDomain: initialHiringPosting?.jobDomain?.trim() ?? "",
+  }));
+  const [postingDraft, setPostingDraft] = useState<HiringPostingDraft>(() => ({
+    jobLocation: initialHiringPosting?.jobLocation?.trim() ?? "",
+    workplaceType: initialHiringPosting?.workplaceType ?? "",
+    salaryMin: initialHiringPosting?.salaryMin != null ? String(initialHiringPosting.salaryMin) : "",
+    salaryMax: initialHiringPosting?.salaryMax != null ? String(initialHiringPosting.salaryMax) : "",
+    salaryNegotiable: initialHiringPosting?.salaryNegotiable ?? true,
+    jobExpertise: initialHiringPosting?.jobExpertise?.trim() ?? "",
+    jobDomain: initialHiringPosting?.jobDomain?.trim() ?? "",
+  }));
+  const [publicJdNeedsAttention, setPublicJdNeedsAttention] = useState(false);
   const [showRecSettings, setShowRecSettings] = useState(false);
   const [savingRecSettings, setSavingRecSettings] = useState(false);
   const [page, setPage] = useState(1);
@@ -500,6 +560,79 @@ export function ReviewQuestionsSection({
     }
   }
 
+  /** Lưu JD ngắn + posting nếu HR đã soạn nhưng chưa bấm Lưu — cần trước khi bật Tuyển / publish Tuyển. */
+  async function ensureHiringPostingReady(): Promise<boolean> {
+    if (!questionSetId) return false;
+
+    const scrollToEditor = () => {
+      setPublicJdNeedsAttention(true);
+      document
+        .getElementById("public-jd-editor")
+        ?.scrollIntoView({ behavior: "smooth", block: "center" });
+    };
+
+    let jdOk = Boolean(publicJobDescription.trim());
+    if (!jdOk) {
+      const draft = publicJdDraft.trim();
+      if (!draft) {
+        scrollToEditor();
+        addToast("error", t.hiringMode.publicJdRequired);
+        return false;
+      }
+      const saved = await setQuestionSetPublicJobDescription(questionSetId, draft);
+      setPublicJobDescription(saved.publicJobDescription);
+      setPublicJdDraft(saved.publicJobDescription);
+      jdOk = true;
+    }
+
+    const postingComplete =
+      Boolean(hiringPosting.jobLocation.trim()) &&
+      Boolean(hiringPosting.jobExpertise.trim()) &&
+      Boolean(hiringPosting.jobDomain.trim()) &&
+      (hiringPosting.salaryNegotiable ||
+        hiringPosting.salaryMin != null ||
+        hiringPosting.salaryMax != null);
+
+    if (!postingComplete) {
+      const errKey = validateHiringPostingDraft(postingDraft);
+      if (errKey) {
+        scrollToEditor();
+        const h = t.hiringMode;
+        const msg =
+          errKey === "postingLocationRequired"
+            ? h.postingLocationRequired
+            : errKey === "postingExpertiseRequired"
+              ? h.postingExpertiseRequired
+              : errKey === "postingDomainRequired"
+                ? h.postingDomainRequired
+                : errKey === "postingSalaryRequired"
+                  ? h.postingSalaryRequired
+                  : errKey === "postingSalaryRangeInvalid"
+                    ? h.postingSalaryRangeInvalid
+                    : h.postingIncomplete;
+        addToast("error", msg);
+        return false;
+      }
+      const savedPosting = await setQuestionSetHiringPosting(
+        questionSetId,
+        postingDraftToPayload(postingDraft)
+      );
+      const next: HiringPostingSaved = {
+        jobLocation: savedPosting.jobLocation,
+        workplaceType: savedPosting.workplaceType ?? null,
+        salaryMin: savedPosting.salaryMin ?? null,
+        salaryMax: savedPosting.salaryMax ?? null,
+        salaryNegotiable: savedPosting.salaryNegotiable,
+        jobExpertise: savedPosting.jobExpertise,
+        jobDomain: savedPosting.jobDomain,
+      };
+      setHiringPosting(next);
+    }
+
+    setPublicJdNeedsAttention(false);
+    return jdOk;
+  }
+
   async function handleSelectivePublish(payload: PublishDialogConfirmPayload) {
     if (!questionSetId) return;
     setPublishing(true);
@@ -509,12 +642,16 @@ export function ReviewQuestionsSection({
         timeLimitMinutes: payload.timeLimitMinutes,
         autoRecommendEnabled: payload.autoRecommendEnabled,
         recommendationMinScore: payload.recommendationMinScore,
+        isHiringAssessment: payload.isHiringAssessment,
+        hrAntiCheatEnabled: payload.hrAntiCheatEnabled,
       });
       if (payload.timeLimitMinutes !== timeLimitMinutes) {
         setTimeLimitMinutes(payload.timeLimitMinutes);
       }
       setAutoRecommendEnabled(payload.autoRecommendEnabled);
       setRecommendationMinScore(payload.recommendationMinScore);
+      setIsHiringAssessment(payload.isHiringAssessment);
+      setHrAntiCheatEnabled(payload.isHiringAssessment && payload.hrAntiCheatEnabled);
       onPublishStatusChange?.("PUBLISHED");
       addToast("success", rp.publishSuccess);
       setShowPublishDialog(false);
@@ -684,6 +821,51 @@ export function ReviewQuestionsSection({
               <Pencil size={9} />
             </button>
           )}
+          {!readOnly && questionSetId && (
+            <HiringModeControls
+              variant="compact"
+              value={{ isHiringAssessment, hrAntiCheatEnabled }}
+              onChange={async (next) => {
+                if (next.isHiringAssessment) {
+                  try {
+                    const ok = await ensureHiringPostingReady();
+                    if (!ok) return;
+                  } catch (err) {
+                    addToast(
+                      "error",
+                      err instanceof Error && err.message
+                        ? err.message
+                        : t.hiringMode.postingIncomplete
+                    );
+                    setPublicJdNeedsAttention(true);
+                    return;
+                  }
+                }
+                try {
+                  const saved = await setQuestionSetHiringAssessment(
+                    questionSetId,
+                    next.isHiringAssessment,
+                    next.hrAntiCheatEnabled
+                  );
+                  setIsHiringAssessment(saved.isHiringAssessment);
+                  setHrAntiCheatEnabled(saved.hrAntiCheatEnabled);
+                } catch (err) {
+                  addToast(
+                    "error",
+                    err instanceof Error && err.message
+                      ? err.message
+                      : t.hiringMode.publicJdRequired
+                  );
+                  if (next.isHiringAssessment) {
+                    setPublicJdNeedsAttention(true);
+                    document
+                      .getElementById("public-jd-editor")
+                      ?.scrollIntoView({ behavior: "smooth", block: "center" });
+                  }
+                }
+              }}
+            />
+          )}
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
@@ -734,6 +916,29 @@ export function ReviewQuestionsSection({
         </div>
       </div>
 
+      {/* SCRUM-470: panel JD/posting chỉ khi Tuyển (hoặc vừa bật Tuyển thất bại → needsAttention) */}
+      {questionSetId && !readOnly && (isHiringAssessment || publicJdNeedsAttention) && (
+        <PublicJdEditorPanel
+          questionSetId={questionSetId}
+          initialPublicJobDescription={publicJobDescription}
+          initialPosting={hiringPosting}
+          onSaved={(text, posting) => {
+            setPublicJobDescription(text);
+            setPublicJdDraft(text);
+            setHiringPosting(posting);
+            setPublicJdNeedsAttention(false);
+          }}
+          needsAttention={publicJdNeedsAttention}
+          onAttentionCleared={() => setPublicJdNeedsAttention(false)}
+          onDraftChange={setPublicJdDraft}
+          onPostingDraftChange={setPostingDraft}
+          fullJobDescription={fullJobDescription}
+          jdSourceType={jdSourceType}
+          jdOriginalFileName={jdOriginalFileName}
+          jdFileUrl={jdFileUrl}
+        />
+      )}
+
       <ConfirmDialog
         open={publishConfirmAction === "unpublish"}
         title={rp.unpublishConfirmTitle}
@@ -758,8 +963,25 @@ export function ReviewQuestionsSection({
           currentTimeLimitMinutes={timeLimitMinutes}
           initialAutoRecommendEnabled={autoRecommendEnabled}
           initialRecommendationMinScore={recommendationMinScore}
+          initialIsHiringAssessment={isHiringAssessment}
+          initialHrAntiCheatEnabled={hrAntiCheatEnabled}
           saving={publishing}
           onConfirm={(payload) => void handleSelectivePublish(payload)}
+          onBeforeConfirm={async (payload) => {
+            if (!payload.isHiringAssessment) return true;
+            try {
+              return await ensureHiringPostingReady();
+            } catch (err) {
+              addToast(
+                "error",
+                err instanceof Error && err.message
+                  ? err.message
+                  : t.hiringMode.postingIncomplete
+              );
+              setPublicJdNeedsAttention(true);
+              return false;
+            }
+          }}
           onClose={() => {
             if (!publishing) setShowPublishDialog(false);
           }}
