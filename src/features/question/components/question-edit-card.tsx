@@ -389,20 +389,25 @@ export function QuestionEditCard({
                     {templateLabel}
                   </span>
                 ) : null}
+                {/* Name the domain explicitly: the skill tag alone left "which
+                    domain does this question belong to" answerable only by
+                    inference from the set's role. */}
                 {skillTrimmed ? (
                   <span
-                    title={skillTrimmed}
-                    className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-sky-100 text-sky-800 dark:bg-sky-950/50 dark:text-sky-300 max-w-[180px] truncate"
+                    title={`${qc.domainBadge}: ${skillTrimmed}`}
+                    className="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-sky-100 text-sky-800 dark:bg-sky-950/50 dark:text-sky-300 max-w-[220px]"
                   >
-                    {skillTrimmed}
+                    <span className="opacity-70 shrink-0">{qc.domainBadge}</span>
+                    <span className="truncate">{skillTrimmed}</span>
                   </span>
                 ) : null}
                 {showFocusBadge ? (
                   <span
-                    title={focusTrimmed}
-                    className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300 max-w-[180px] truncate"
+                    title={`${qc.focusBadge}: ${focusTrimmed}`}
+                    className="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300 max-w-[220px]"
                   >
-                    {focusTrimmed}
+                    <span className="opacity-70 shrink-0">{qc.focusBadge}</span>
+                    <span className="truncate">{focusTrimmed}</span>
                   </span>
                 ) : null}
                 {question.isEdited && (
