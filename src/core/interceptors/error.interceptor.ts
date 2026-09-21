@@ -41,6 +41,32 @@ const FALLBACK_MESSAGES: Record<"en" | "vi", string> = {
   vi: "Đã xảy ra lỗi. Vui lòng thử lại.",
 };
 
+/**
+ * The BE answers in Vietnamese whatever language the UI is in — its global
+ * handlers (InvalidModelStateResponseFactory, UseStatusCodePages) and ~240
+ * service-level throws all carry hardcoded Vietnamese. Relaying that verbatim put
+ * Vietnamese toasts on an English UI. These stand in by status code when the raw
+ * message is Vietnamese and the UI is not.
+ */
+const STATUS_MESSAGES: Record<number, Record<"en" | "vi", string>> = {
+  400: { en: "That request wasn't valid. Please check the form and try again.", vi: "Dữ liệu không hợp lệ." },
+  401: { en: "Your session has expired. Please sign in again.", vi: "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại." },
+  403: { en: "You don't have permission to do that.", vi: "Bạn không có quyền thực hiện thao tác này." },
+  404: { en: "We couldn't find what you asked for.", vi: "Không tìm thấy tài nguyên yêu cầu." },
+  405: { en: "That action isn't supported here.", vi: "Phương thức không được hỗ trợ." },
+  409: { en: "That conflicts with the current state. Refresh and try again.", vi: "Thao tác xung đột với trạng thái hiện tại. Tải lại rồi thử lại." },
+  413: { en: "That file is too large.", vi: "Tệp quá lớn." },
+  429: { en: "Too many requests. Please wait a moment and try again.", vi: "Quá nhiều yêu cầu. Vui lòng đợi một lát rồi thử lại." },
+};
+
+const VIETNAMESE_RE =
+  /[àáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ]/i;
+
+/** True when the text is Vietnamese but the reader asked for English. */
+function isWrongLanguage(text: string, lang: "en" | "vi"): boolean {
+  return lang === "en" && VIETNAMESE_RE.test(text);
+}
+
 /** Cloudflare / gateway pages often expose only "error code: 1033". */
 const CRYPTIC_ERROR_CODE_RE = /error\s*code\s*:\s*\d+/i;
 
@@ -112,9 +138,16 @@ export function extractErrorMessage(error: unknown, lang: "en" | "vi" = "en"): s
   if (raw && isCrypticProxyMessage(raw)) {
     return SERVER_ERROR_MESSAGES[lang];
   }
+  // Vietnamese UI: the BE text is already correct, so keep its specificity.
+  // English UI: swap it for our own wording — the detail is unreadable anyway.
+  const byStatus = status !== undefined ? STATUS_MESSAGES[status]?.[lang] : undefined;
+
+  if (raw && isWrongLanguage(raw, lang)) {
+    return byStatus ?? FALLBACK_MESSAGES[lang];
+  }
   if (raw) return raw;
 
-  return FALLBACK_MESSAGES[lang];
+  return byStatus ?? FALLBACK_MESSAGES[lang];
 }
 
 /**

@@ -14,8 +14,11 @@ import { cn } from "@/lib/cn";
 import {
   listCompletedSessions,
   getPracticeStats,
+  getUnfinishedSessionCounts,
   type CompletedSessionSummary,
   type PracticeStats,
+  type PracticeSessionStatus,
+  type UnfinishedSessionCounts,
 } from "@/features/candidate/services/practice-session.service";
 import {
   getQuestionSetById,
@@ -36,6 +39,9 @@ import {
 import { cleanTitle } from "@/features/candidate/utils/clean-title";
 
 const PAGE_SIZE = 10;
+
+/** Show the "too many unfinished attempts" nudge from this many onwards. */
+const UNFINISHED_WARN_AT = 5;
 
 type TimeFilterKey = "all" | "week" | "month";
 
@@ -348,6 +354,10 @@ export function HistoryBoard() {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [timeFilter, setTimeFilter] = useState<TimeFilterKey>("all");
+  // Attempts the candidate never finished were invisible: the BE list defaults to
+  // COMPLETED, so abandoned/in-progress sessions never reached this page.
+  const [statusFilter, setStatusFilter] = useState<PracticeSessionStatus>("COMPLETED");
+  const [unfinished, setUnfinished] = useState<UnfinishedSessionCounts | null>(null);
   const [page, setPage] = useState(1);
 
   // "Luyện lại" publish-check state
@@ -414,6 +424,7 @@ export function HistoryBoard() {
   // Fetch stats + chart sessions once (not affected by page/filter changes)
   useEffect(() => {
     getPracticeStats().then(setStats).catch(() => {});
+    getUnfinishedSessionCounts().then(setUnfinished).catch(() => {});
     // Fetch up to 50 recent sessions just for sparkline/bar chart data
     listCompletedSessions({ page: 1, pageSize: 50 })
       .then((res) => setChartSessions([...res.items].reverse()))
@@ -431,6 +442,7 @@ export function HistoryBoard() {
       pageSize: PAGE_SIZE,
       fromDate,
       keyword: debouncedSearch || undefined,
+      status: statusFilter,
     })
       .then((res) => {
         if (cancelled) return;
@@ -447,7 +459,7 @@ export function HistoryBoard() {
         if (!cancelled) setLoading(false);
       });
     return () => { cancelled = true; };
-  }, [reloadKey, timeFilter, debouncedSearch, page]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [reloadKey, timeFilter, debouncedSearch, page, statusFilter]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Chart data — uses dedicated chartSessions (50 most recent, chronological order)
   // so charts stay consistent across all pages, not just the current page's items.
@@ -511,6 +523,15 @@ export function HistoryBoard() {
         ? <MiniBarChart data={durationData} color="#06B6D4" />
         : undefined,
     },
+    // Attempts started but never finished — previously invisible on this page.
+    {
+      icon: XCircle,   label: p.unfinished.statLabel,
+      value: (unfinished?.total ?? 0).toString(),
+      countUp: { value: unfinished?.total ?? 0 },
+      bg: "bg-amber-100 dark:bg-amber-950/50 shadow-sm ring-1 ring-black/5 dark:ring-white/10",
+      color: "text-amber-600 dark:text-amber-400",
+      chart: undefined,
+    },
   ];
 
   const timeOptions: { value: TimeFilterKey; label: string }[] = [
@@ -518,6 +539,17 @@ export function HistoryBoard() {
     { value: "week",  label: p.filters.thisWeek },
     { value: "month", label: p.filters.thisMonth },
   ];
+
+  const statusOptions: { value: PracticeSessionStatus; label: string; count?: number }[] = [
+    { value: "COMPLETED",   label: p.unfinished.filterCompleted },
+    { value: "IN_PROGRESS", label: p.unfinished.filterInProgress, count: unfinished?.inProgress },
+    { value: "ABANDONED",   label: p.unfinished.filterAbandoned,  count: unfinished?.abandoned },
+  ];
+
+  function handleStatusFilterChange(v: PracticeSessionStatus) {
+    setStatusFilter(v);
+    setPage(1);
+  }
 
   if (error && sessions.length === 0) {
     return (
@@ -539,7 +571,7 @@ export function HistoryBoard() {
   return (
     <div ref={topRef}>
       {/* Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
         {statCards.map((s, i) => (
           <motion.div
             key={s.label}
@@ -551,6 +583,28 @@ export function HistoryBoard() {
           </motion.div>
         ))}
       </div>
+
+      {/* Nudge once unfinished attempts pile up. The FE can only surface this —
+          a real cap has to be enforced server-side when a session is started. */}
+      {unfinished && unfinished.total >= UNFINISHED_WARN_AT && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.15 }}
+          role="status"
+          className="mb-4 flex items-start gap-2.5 rounded-xl border border-amber-200 bg-amber-50/70 px-4 py-3 dark:border-amber-900/50 dark:bg-amber-950/30"
+        >
+          <AlertCircle size={16} className="mt-0.5 shrink-0 text-amber-500" />
+          <div className="min-w-0">
+            <p className="text-[13px] font-semibold text-amber-900 dark:text-amber-200">
+              {p.unfinished.warnTitle}
+            </p>
+            <p className="mt-0.5 text-[12px] leading-snug text-amber-800/90 dark:text-amber-200/80">
+              {p.unfinished.warnBody.replace("{{count}}", String(unfinished.total))}
+            </p>
+          </div>
+        </motion.div>
+      )}
 
       {/* Filter bar */}
       <motion.div
@@ -571,6 +625,31 @@ export function HistoryBoard() {
             placeholder={p.filters.searchPlaceholder}
             className="flex-1 text-[12px] bg-transparent outline-none"
           />
+        </div>
+
+        {/* Status filter — abandoned / in-progress attempts were unreachable before. */}
+        <div className="flex items-center gap-1.5 flex-wrap">
+          {statusOptions.map((o) => (
+            <button
+              key={o.value}
+              type="button"
+              onClick={() => handleStatusFilterChange(o.value)}
+              aria-pressed={statusFilter === o.value}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[12px] font-semibold transition-colors",
+                statusFilter === o.value
+                  ? "border-primary/50 bg-primary/5 text-primary dark:border-primary/40"
+                  : "border-gray-200 text-gray-600 hover:border-primary/40 hover:text-primary dark:border-gray-700 dark:text-gray-300"
+              )}
+            >
+              {o.label}
+              {typeof o.count === "number" && o.count > 0 && (
+                <span className="rounded-full bg-amber-100 px-1.5 text-[10px] font-bold text-amber-700 dark:bg-amber-950/60 dark:text-amber-300">
+                  {o.count}
+                </span>
+              )}
+            </button>
+          ))}
         </div>
 
         <TimeFilterDropdown

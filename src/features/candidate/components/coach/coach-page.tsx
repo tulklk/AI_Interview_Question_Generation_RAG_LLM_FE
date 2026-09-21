@@ -231,7 +231,7 @@ export function CoachPage() {
                       type="button"
                       onClick={() => void w.startNewRun()}
                       disabled={w.resetting}
-                      className="inline-flex items-center gap-2 h-9 px-3.5 rounded-lg text-[12px] font-semibold border border-gray-200 dark:border-gray-700 hover:border-primary/40 disabled:opacity-60"
+                      className="inline-flex items-center gap-2 h-9 px-3.5 rounded-lg text-[12px] font-semibold border border-gray-200 text-gray-600 dark:border-gray-700 dark:text-gray-300 hover:border-primary/40 hover:text-primary disabled:opacity-60"
                     >
                       {w.resetting ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
                       {p.newCoachRun}

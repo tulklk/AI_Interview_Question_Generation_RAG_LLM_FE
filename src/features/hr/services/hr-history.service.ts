@@ -1,4 +1,6 @@
 import { apiClient } from "@/core/api/http-client";
+import { extractErrorMessage } from "@/core/interceptors/error.interceptor";
+import { getUiLang } from "@/shared/providers/language-context";
 import type { HistoryQuestionSetItem, HistoryPublishStatus } from "@/features/hr/types/history-question-set";
 
 function unwrapData(data: unknown): unknown {
@@ -46,10 +48,9 @@ function normalizeItem(raw: unknown): HistoryQuestionSetItem | null {
   };
 }
 
+/** BE answers in Vietnamese whatever the UI language — localize before surfacing. */
 function extractBeErrorMessage(err: unknown): string {
-  const data = (err as { response?: { data?: { error?: string; detail?: string; message?: string } } })
-    ?.response?.data;
-  return data?.error ?? data?.detail ?? data?.message ?? "";
+  return extractErrorMessage(err, getUiLang());
 }
 
 /** SCRUM-391: danh sách bộ câu hỏi HR sở hữu cho trang History. */
@@ -83,6 +84,6 @@ export async function deleteHistoryQuestionSet(questionSetId: string): Promise<v
   try {
     await apiClient.delete(`/api/hr/question-sets/${questionSetId}`);
   } catch (err) {
-    throw new Error(extractBeErrorMessage(err) || "Không thể xóa bộ câu hỏi.");
+    throw new Error(extractBeErrorMessage(err));
   }
 }

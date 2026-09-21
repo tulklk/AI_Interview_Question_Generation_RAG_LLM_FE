@@ -43,6 +43,7 @@ import {
   deleteQuestionSetQuestion,
   addQuestionSetQuestion,
   reorderQuestionSetQuestions,
+  QuestionSetPublishedError,
   setQuestionSetTimeLimit,
   setQuestionSetRecommendationSettings,
   getDraft,
@@ -182,6 +183,13 @@ export function ReviewQuestionsSection({
 }: ReviewQuestionsSectionProps) {
   const { t } = useLanguage();
   const rp = t.reviewPage;
+  /**
+   * A published set refuses every question mutation with 409. Showing the generic
+   * "please try again" there sends HR in a loop — the set has to be unpublished
+   * first, which is exactly what editLockedHint says.
+   */
+  const publishLockMessage = (err: unknown, fallback: string) =>
+    err instanceof QuestionSetPublishedError ? rp.editLockedHint : fallback;
   const { addToast } = useToast();
 
   /** Shared message builder for the 6 mutation-handler guards below — was a
@@ -335,9 +343,11 @@ export function ReviewQuestionsSection({
       console.warn("[persistReorder] no valid question IDs — reorder skipped. IDs:", next.map(q => q.id));
       return;
     }
-    void reorderQuestionSetQuestions(questionSetId, items).then((ok) => {
-      if (!ok) addToast("error", "Không thể lưu thứ tự câu hỏi. Vui lòng thử lại.");
-    });
+    void reorderQuestionSetQuestions(questionSetId, items)
+      .then((ok) => {
+        if (!ok) addToast("error", rp.questionCard.reorderFailed);
+      })
+      .catch((err) => addToast("error", publishLockMessage(err, rp.questionCard.reorderFailed)));
   }
 
   function handleDragEnd(event: DragEndEvent) {
@@ -371,13 +381,19 @@ export function ReviewQuestionsSection({
       answerMethod: changes.answerMethod ?? "Text",
     };
 
-    const ok = await updateQuestionSetQuestion(questionSetId, id, payload);
+    let ok = false;
+    try {
+      ok = await updateQuestionSetQuestion(questionSetId, id, payload);
+    } catch (err) {
+      addToast("error", publishLockMessage(err, rp.questionCard.editFailed));
+      return false;
+    }
 
     if (ok) {
       setQuestions((prev) => prev.map((q) => (q.id === id ? { ...q, ...changes } : q)));
-      addToast("success", "Chỉnh sửa câu hỏi thành công");
+      addToast("success", rp.questionCard.editSaved);
     } else {
-      addToast("error", "Không thể lưu chỉnh sửa. Vui lòng thử lại.");
+      addToast("error", rp.questionCard.editFailed);
     }
     return ok;
   }
@@ -400,14 +416,16 @@ export function ReviewQuestionsSection({
       addToast("error", missingQuestionSetIdMessage(rp.actionDelete));
       return;
     }
-    deleteQuestionSetQuestion(questionSetId, id).then((ok) => {
-      if (ok) {
-        removeQuestionFromState(id);
-        addToast("success", "Đã xóa câu hỏi");
-      } else {
-        addToast("error", "Không thể xóa câu hỏi. Vui lòng thử lại.");
-      }
-    });
+    deleteQuestionSetQuestion(questionSetId, id)
+      .then((ok) => {
+        if (ok) {
+          removeQuestionFromState(id);
+          addToast("success", rp.questionCard.deleted);
+        } else {
+          addToast("error", rp.questionCard.deleteFailed);
+        }
+      })
+      .catch((err) => addToast("error", publishLockMessage(err, rp.questionCard.deleteFailed)));
   }
 
   function handleMoveUp(index: number) {
@@ -433,7 +451,9 @@ export function ReviewQuestionsSection({
       addToast("error", missingQuestionSetIdMessage(rp.actionAddQuestion));
       return;
     }
-    const created = await addQuestionSetQuestion(questionSetId, {
+    let created;
+    try {
+      created = await addQuestionSetQuestion(questionSetId, {
       question: newQ.question,
       questionType: newQ.questionType,
       difficulty: newQ.difficulty,
@@ -441,9 +461,13 @@ export function ReviewQuestionsSection({
       sampleAnswer: newQ.sampleAnswer,
       answerMethod: newQ.answerMethod ?? "Text",
       order: questions.length + 1,
-    });
+      });
+    } catch (err) {
+      addToast("error", publishLockMessage(err, rp.questionCard.addFailed));
+      return;
+    }
     if (!created) {
-      addToast("error", "Không thể thêm câu hỏi. Vui lòng thử lại.");
+      addToast("error", rp.questionCard.addFailed);
       return;
     }
     const refreshed = await getDraft(questionSetId);
@@ -451,7 +475,7 @@ export function ReviewQuestionsSection({
       setQuestions(refreshed.questions);
       setPage(Math.ceil(refreshed.questions.length / PAGE_SIZE));
     }
-    addToast("success", "Thêm câu hỏi thành công");
+    addToast("success", rp.questionCard.added);
   }
 
   async function handleConfirmPublishAction() {
@@ -1005,8 +1029,8 @@ export function ReviewQuestionsSection({
                       <AlertCircle size={18} className="text-amber-500" />
                     </div>
                     <div>
-                      <h3 className={cn("text-sm font-semibold", portalHeading)}>Đang chỉnh sửa câu hỏi</h3>
-                      <p className={cn("text-xs mt-0.5", portalSubtext)}>Bạn chưa lưu câu hỏi đang chỉnh sửa</p>
+                      <h3 className={cn("text-sm font-semibold", portalHeading)}>{rp.unsavedDialog.title}</h3>
+                      <p className={cn("text-xs mt-0.5", portalSubtext)}>{rp.unsavedDialog.subtitle}</p>
                     </div>
                   </div>
                   <button
@@ -1020,7 +1044,11 @@ export function ReviewQuestionsSection({
 
                 <div className="rounded-xl bg-amber-50/60 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/30 px-4 py-3 mb-5">
                   <p className={cn("text-sm leading-relaxed", portalHeading)}>
-                    Bạn đang chỉnh sửa câu hỏi chưa lưu. Nhấn <strong>Ở lại</strong> để lưu, hoặc <strong>Bỏ qua</strong> để rời trang và mất thay đổi.
+                    {rp.unsavedDialog.body.split(/(\{\{stay\}\}|\{\{leave\}\})/).map((part, i) =>
+                      part === "{{stay}}" ? <strong key={i}>{rp.unsavedDialog.stay}</strong>
+                        : part === "{{leave}}" ? <strong key={i}>{rp.unsavedDialog.leave}</strong>
+                          : part
+                    )}
                   </p>
                 </div>
 
@@ -1033,7 +1061,7 @@ export function ReviewQuestionsSection({
                       portalHeading
                     )}
                   >
-                    Bỏ qua
+                    {rp.unsavedDialog.leave}
                   </button>
                   <button
                     type="button"
@@ -1041,7 +1069,7 @@ export function ReviewQuestionsSection({
                     className="flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-semibold rounded-xl shimmer-button hr-cta-btn text-white"
                   >
                     <Check size={14} />
-                    Ở lại để lưu
+                    {rp.unsavedDialog.stayBtn}
                   </button>
                 </div>
               </div>

@@ -391,7 +391,7 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
       }
       setIntegrityStarted(true);
     } catch {
-      addToast("error", "Could not start integrity monitoring");
+      addToast("error", p.integrityStartFailed);
     } finally {
       setIntegrityStarting(false);
     }
@@ -558,6 +558,10 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
         setAntiCheatMaxTabLeaves(session.antiCheatMaxTabLeaves || 3);
         setTabLeaveCount(session.tabLeaveCount || 0);
         antiCheatEnabledRef.current = session.antiCheatEnabled;
+        // Anti-cheat off ⇒ no proctoring gate at all. Without this the candidate was
+        // still held behind the camera/face/phone checks and could not start the
+        // practice without a webcam, even though HR had disabled anti-cheat.
+        if (!session.antiCheatEnabled) setIntegrityStarted(true);
         setAnswers((prev) => ({ ...prev, ...answersMap }));
         setResumed(wasResumed);
 
@@ -805,9 +809,12 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
     setFinishing(true);
     finishingRef.current = true;
     setFinishError(false);
-    // Stop integrity monitoring before navigating (intentional end — no FULLSCREEN_EXIT)
+    // Stop integrity monitoring before navigating (intentional end — no FULLSCREEN_EXIT).
+    // Only flip the gate closed when there IS a gate: with anti-cheat off nothing
+    // re-opens it, and a failed complete() below would leave the exam invisible
+    // with no way back.
     stopMonitoring();
-    setIntegrityStarted(false);
+    if (antiCheatEnabledRef.current) setIntegrityStarted(false);
     try {
       const answersSnapshot = answersRef.current;
       const idx = currentIdxRef.current;
@@ -1087,7 +1094,9 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
       onAcknowledge={handleAcknowledgeWarning}
     />
 
-    {/* Single camera instance — must stay mounted across setup → monitoring */}
+    {/* Single camera instance — must stay mounted across setup → monitoring.
+        Only mounted when anti-cheat is on: otherwise there is nothing to proctor. */}
+    {antiCheatEnabled && (
     <div
       className={cn(
         "z-50",
@@ -1166,6 +1175,7 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
       </div>
       <AntiCheatDebugPanel snapshot={debug} />
     </div>
+    )}
 
     <div
       className={cn(

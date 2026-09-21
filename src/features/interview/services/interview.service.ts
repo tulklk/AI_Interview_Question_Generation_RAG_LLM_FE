@@ -1,4 +1,6 @@
 import { apiClient } from "@/core/api/http-client";
+import { extractErrorMessage } from "@/core/interceptors/error.interceptor";
+import { getUiLang } from "@/shared/providers/language-context";
 import type {
   GeneratedQuestion,
   QuestionType,
@@ -300,6 +302,24 @@ export async function getDrafts(): Promise<DraftQuestionSet[]> {
 // Question-set question CRUD. BE rejects edits while the set is PUBLISHED — unpublish first.
 // ---------------------------------------------------------------------------
 
+/**
+ * Thrown when the BE refuses a question mutation with 409 because the set is live
+ * on the marketplace. Without this the reason was swallowed by `catch { return false }`
+ * and HR was told to "try again" — advice that can never succeed, since the set has
+ * to be unpublished first.
+ */
+export class QuestionSetPublishedError extends Error {
+  constructor(message = "Question set is published — unpublish it before editing") {
+    super(message);
+    this.name = "QuestionSetPublishedError";
+  }
+}
+
+function rethrowPublished(err: unknown): void {
+  const status = (err as { response?: { status?: number } })?.response?.status;
+  if (status === 409) throw new QuestionSetPublishedError();
+}
+
 export async function updateQuestionSetQuestion(
   questionSetId: string,
   questionId: string,
@@ -336,7 +356,8 @@ export async function updateQuestionSetQuestion(
     }
     await apiClient.put(`/api/hr/question-sets/${questionSetId}/questions/${questionId}`, body);
     return true;
-  } catch {
+  } catch (err) {
+    rethrowPublished(err);
     return false;
   }
 }
@@ -345,7 +366,8 @@ export async function deleteQuestionSetQuestion(questionSetId: string, questionI
   try {
     await apiClient.delete(`/api/hr/question-sets/${questionSetId}/questions/${questionId}`);
     return true;
-  } catch {
+  } catch (err) {
+    rethrowPublished(err);
     return false;
   }
 }
@@ -480,7 +502,8 @@ export async function addQuestionSetQuestion(
     );
     const root = (data as { data?: unknown })?.data ?? data;
     return normalizeDraftQuestion(root, 0);
-  } catch {
+  } catch (err) {
+    rethrowPublished(err);
     return null;
   }
 }
@@ -494,7 +517,8 @@ export async function reorderQuestionSetQuestions(
       items: items.map((i) => ({ questionId: i.id, order: i.order })),
     });
     return true;
-  } catch {
+  } catch (err) {
+    rethrowPublished(err);
     return false;
   }
 }
@@ -503,10 +527,14 @@ export async function reorderQuestionSetQuestions(
 // Publish / Unpublish
 // ---------------------------------------------------------------------------
 
+/**
+ * The BE replies in Vietnamese regardless of the chosen UI language, so relaying
+ * its text verbatim put Vietnamese toasts on an English screen. Route through the
+ * shared extractor, which keeps the BE wording on a Vietnamese UI and substitutes
+ * our own per-status wording on an English one.
+ */
 function extractBeErrorMessage(err: unknown): string {
-  const data = (err as { response?: { data?: { error?: string; detail?: string; message?: string } } })
-    ?.response?.data;
-  return data?.error ?? data?.detail ?? data?.message ?? "";
+  return extractErrorMessage(err, getUiLang());
 }
 
 export type PublishQuestionSetPayload = {
@@ -682,7 +710,7 @@ export async function renameQuestionSetTitle(questionSetId: string, title: strin
         : trimmed;
     return saved || trimmed;
   } catch (err) {
-    throw new Error(extractBeErrorMessage(err) || "Không thể cập nhật tên.");
+    throw new Error(extractBeErrorMessage(err));
   }
 }
 

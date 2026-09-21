@@ -15,6 +15,21 @@ export type Lang = "en" | "vi";
 
 const STORAGE_KEY = "hiregena-lang";
 
+/**
+ * Reads the UI language outside React. Services and axios interceptors run
+ * without context but still have to localize BE errors, which arrive in
+ * Vietnamese regardless of the chosen language.
+ */
+export function getUiLang(): Lang {
+  if (typeof window === "undefined") return "en";
+  try {
+    const v = window.localStorage.getItem(STORAGE_KEY);
+    return v === "vi" || v === "en" ? v : "en";
+  } catch {
+    return "en";
+  }
+}
+
 interface LanguageContextValue {
   lang: Lang;
   setLang: (lang: Lang) => void;
