@@ -149,6 +149,7 @@ function QuestionDetail({
     [re]
   );
   const c = t.studioPage.chat;
+  const qcLabels = t.reviewPage.questionCard;
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [sourcesOpen, setSourcesOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -314,21 +315,25 @@ function QuestionDetail({
           <span className={cn("inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold", difficultyBadge(question.difficulty))}>
             {question.difficulty}
           </span>
+          {/* Same labelling as the review card: name the domain instead of
+              leaving a bare tag the reader has to interpret. */}
           {question.skill?.trim() ? (
             <span
-              title={question.skill.trim()}
-              className="inline-flex max-w-[160px] truncate rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-semibold text-sky-800 dark:bg-sky-950/50 dark:text-sky-300"
+              title={`${qcLabels.domainBadge}: ${question.skill.trim()}`}
+              className="inline-flex max-w-[200px] items-center gap-1 rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-semibold text-sky-800 dark:bg-sky-950/50 dark:text-sky-300"
             >
-              {question.skill.trim()}
+              <span className="shrink-0 opacity-70">{qcLabels.domainBadge}</span>
+              <span className="truncate">{question.skill.trim()}</span>
             </span>
           ) : null}
           {question.focusArea?.trim() &&
           question.focusArea.trim().toLowerCase() !== (question.skill?.trim().toLowerCase() ?? "") ? (
             <span
-              title={question.focusArea.trim()}
-              className="inline-flex max-w-[160px] truncate rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-800 dark:bg-amber-950/40 dark:text-amber-300"
+              title={`${qcLabels.focusBadge}: ${question.focusArea.trim()}`}
+              className="inline-flex max-w-[200px] items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-800 dark:bg-amber-950/40 dark:text-amber-300"
             >
-              {question.focusArea.trim()}
+              <span className="shrink-0 opacity-70">{qcLabels.focusBadge}</span>
+              <span className="truncate">{question.focusArea.trim()}</span>
             </span>
           ) : null}
           {templateLabel && (

@@ -842,6 +842,14 @@ function PlanWorkspace({
                     {planSections.length} {c.sectionUnit}
                   </span>
                 </div>
+                {/* These sections are whatever the plan generated — naming that on
+                    screen stops the structure from reading like a fixed template. */}
+                <p className="flex items-center gap-1 text-[10px] leading-snug text-gray-400 dark:text-gray-500">
+                  <Sparkles size={10} className="shrink-0 text-primary/70" />
+                  {typeof plan?.revision === "number"
+                    ? c.structureProvenance.replace("{{rev}}", String(plan.revision))
+                    : c.structureProvenanceNoRev}
+                </p>
                 <div className="space-y-1.5">
                   {planSections.map((section, idx) => (
                     <div key={`${section.id}-${idx}`}>

@@ -4962,6 +4962,8 @@ Yêu cầu:
       planMissingDist: "Phân bổ câu hỏi chưa hợp lệ",
       planMissingConfig: "Hoàn thiện cấu hình rồi Áp dụng vào kế hoạch",
       interviewStructure: "CẤU TRÚC PHỎNG VẤN",
+      structureProvenance: "Do AI sinh từ JD và tri thức truy xuất · bản {{rev}}",
+      structureProvenanceNoRev: "Do AI sinh từ JD và tri thức truy xuất",
       sectionUnit: "phần",
       questionCount: "{{count}} câu · {{minutes}} phút",
       focusAreas: "TRỌNG TÂM ĐÁNH GIÁ (RAG)",

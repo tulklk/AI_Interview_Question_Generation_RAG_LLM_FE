@@ -4964,6 +4964,10 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
       planMissingDist: "Question distribution is invalid",
       planMissingConfig: "Finish configuration and Apply to plan",
       interviewStructure: "INTERVIEW STRUCTURE",
+      /** Section names and splits come from the generated plan, not from a fixed
+       *  template — say so on screen, with the revision that produced them. */
+      structureProvenance: "AI-generated from the JD and retrieved knowledge · revision {{rev}}",
+      structureProvenanceNoRev: "AI-generated from the JD and retrieved knowledge",
       sectionUnit: "sections",
       questionCount: "{{count}} questions · {{minutes}} min",
       focusAreas: "EVALUATION FOCUS (RAG)",
