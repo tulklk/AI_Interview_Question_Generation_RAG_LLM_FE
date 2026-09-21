@@ -221,7 +221,7 @@ export function FocusAreasEditor({ focusAreas, disabled, allowedSkillNames, onCh
                   disabled={disabled || idx === 0}
                   onClick={() => move(idx, -1)}
                   className="rounded p-0.5 text-gray-400 hover:text-primary disabled:opacity-30"
-                  aria-label="Move up"
+                  aria-label={t.reviewPage.questionActions.moveUp}
                 >
                   <ChevronUp className="h-3 w-3" />
                 </button>
@@ -230,7 +230,7 @@ export function FocusAreasEditor({ focusAreas, disabled, allowedSkillNames, onCh
                   disabled={disabled || idx === focusAreas.length - 1}
                   onClick={() => move(idx, 1)}
                   className="rounded p-0.5 text-gray-400 hover:text-primary disabled:opacity-30"
-                  aria-label="Move down"
+                  aria-label={t.reviewPage.questionActions.moveDown}
                 >
                   <ChevronDown className="h-3 w-3" />
                 </button>

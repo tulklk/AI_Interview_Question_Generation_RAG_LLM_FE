@@ -408,7 +408,7 @@ export function QuestionSetHistoryTable({ filter = "all" }: QuestionSetHistoryTa
             "focus:border-primary/60"
           )}
         >
-          <option value="all">Nguồn: Tất cả</option>
+          <option value="all">{filters.sourceAll}</option>
           <option value="studio">Studio</option>
           <option value="legacy">Legacy</option>
         </select>
@@ -427,11 +427,11 @@ export function QuestionSetHistoryTable({ filter = "all" }: QuestionSetHistoryTa
             "focus:border-primary/60"
           )}
         >
-          <option value="all">Số câu: Tất cả</option>
-          <option value="1-5">1–5 câu</option>
-          <option value="6-10">6–10 câu</option>
-          <option value="11-20">11–20 câu</option>
-          <option value="21+">21+ câu</option>
+          <option value="all">{filters.questionCountAll}</option>
+          <option value="1-5">{filters.questionCount1to5}</option>
+          <option value="6-10">{filters.questionCount6to10}</option>
+          <option value="11-20">{filters.questionCount11to20}</option>
+          <option value="21+">{filters.questionCount21plus}</option>
         </select>
 
         {/* Ngày */}
@@ -448,8 +448,8 @@ export function QuestionSetHistoryTable({ filter = "all" }: QuestionSetHistoryTa
             "focus:border-primary/60"
           )}
         >
-          <option value="newest">Ngày: Mới nhất</option>
-          <option value="oldest">Ngày: Cũ nhất</option>
+          <option value="newest">{filters.dateNewest}</option>
+          <option value="oldest">{filters.dateOldest}</option>
         </select>
 
         {/* Xóa lọc — chỉ hiện khi có filter đang active */}
@@ -466,7 +466,7 @@ export function QuestionSetHistoryTable({ filter = "all" }: QuestionSetHistoryTa
             className="inline-flex items-center gap-1 rounded-lg border border-gray-200 px-2 py-1.5 text-[12px] text-gray-500 transition-colors hover:border-red-300 hover:text-red-600 dark:border-gray-700 dark:text-gray-400 dark:hover:border-red-800 dark:hover:text-red-400"
           >
             <X size={11} />
-            Xóa lọc
+            {filters.clearFilters}
           </button>
         )}
       </div>

@@ -143,6 +143,11 @@ function QuestionDetail({
   isRegenerating?: boolean;
 }) {
   const { t, lang } = useLanguage();
+  const re = t.rubricEditor;
+  const rubricLabels = useMemo(
+    () => ({ ...re, sumHint: (sum: number) => re.sumHint.replace("{{sum}}", String(sum)) }),
+    [re]
+  );
   const c = t.studioPage.chat;
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [sourcesOpen, setSourcesOpen] = useState(false);
@@ -467,6 +472,7 @@ function QuestionDetail({
             questionType={question.type}
             disabled={busy}
             compact={false}
+            labels={rubricLabels}
           />
           <div className="flex justify-end gap-2">
             <button
@@ -1195,7 +1201,7 @@ export function QuestionReviewWorkspace({
           <button
             type="button"
             className="absolute inset-0 z-20 bg-black/30 lg:hidden"
-            aria-label="Close list"
+            aria-label={t.common.closeMenu}
             onClick={() => setNavOpen(false)}
           />
         )}

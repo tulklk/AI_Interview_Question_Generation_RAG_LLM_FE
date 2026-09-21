@@ -14,6 +14,20 @@
     scrollToTop: "Scroll to top",
     notifications: "Notifications",
     openMenu: "Open navigation menu",
+    closeMenu: "Close menu",
+    search: "Search",
+    retry: "Retry",
+    previous: "Previous",
+    showMore: "Show more",
+    dropFileOr: "Drag and drop a file here, or",
+    useThisName: "Use this name",
+    deleteSource: "Delete source",
+    editFeedback: "Edit feedback",
+    offlineTitle: "No internet connection",
+    offlineBody: "Check your Wi-Fi or mobile data. The page reloads automatically once you are back online.",
+    offlineRetry: "Retry",
+    offlineReconnecting: "Reconnecting…",
+    offlineReconnectingSub: "Connection restored. Reloading the page…",
     prevPageShort: "Previous page",
     nextPageShort: "Next page",
     moreActions: "More actions",
@@ -1123,6 +1137,27 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
       publishStatusPublished: "Published only",
       publishStatusDraft: "Draft only",
       exportAll: "Export All",
+      sourceAll: "Source: All",
+      questionCountAll: "Questions: All",
+      questionCount1to5: "1–5 questions",
+      questionCount6to10: "6–10 questions",
+      questionCount11to20: "11–20 questions",
+      questionCount21plus: "21+ questions",
+      dateNewest: "Date: Newest",
+      dateOldest: "Date: Oldest",
+      clearFilters: "Clear filters",
+      scoreAll: "Score: All",
+      noCandidateMatch: "No candidate matches the current filters.",
+    },
+    feedbackPanel: {
+      title: "Candidate feedback",
+      ratingCount: "{{count}} ratings",
+      noRating: "No ratings yet",
+      loading: "Loading feedback…",
+      loadFailed: "Couldn't load feedback. Please try again.",
+      retry: "Retry",
+      emptyTitle: "No feedback yet",
+      emptyBody: "No candidate has rated this question set yet.",
     },
     table: {
       jobTitle: "Title",
@@ -2558,6 +2593,9 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
 
   jobseekerCoachPage: {
     title: "AI Coach",
+    insightHeading: "AI Coach feedback",
+    insightCta: "See AI Coach suggestions",
+    redirecting: "Taking you to AI Coach…",
     subtitle: "Practice from your CV skills — not from HR job posts.",
     planTitle: "Skill plan",
     planSubtitle: "Track current vs target scores after your CV knowledge check.",
@@ -2808,6 +2846,8 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
   },
 
   jobseekerMarketplacePage: {
+    cvNoMatchTitle: "No sets match your profile",
+    cvNoMatchBody: "Try changing the filters to see sets that match your CV.",
     heroBadge: "AI-Powered Interview Practice",
     heroTitle: "Ace Your Next",
     heroTitleAccent: "Tech Interview",
@@ -3083,6 +3123,7 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
   },
 
   jobseekerPracticePage: {
+    integrityStartFailed: "Could not start integrity monitoring.",
     lockedQuestion: {
       blurredPlaceholder: "Premium question content is hidden on the Free plan. Upgrade to unlock the full set.",
       title: "Premium question — upgrade to unlock",
@@ -3207,6 +3248,8 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
     loadingFeedbackSub: "This usually takes a few seconds.",
     feedbackLoadFailed: "Feedback isn't ready yet. Please try again in a moment.",
     feedbackForbidden: "This session belongs to another account, so we can't show its feedback here.",
+    feedbackNotFound: "This practice session no longer exists. It may have been deleted, or the link belongs to another account.",
+    backToHistoryBtn: "Back to History",
     retryLoadBtn: "Retry",
     scoreLabels: {
       Technical: "Technical",
@@ -3229,6 +3272,7 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
       upsellCta: "Unlock full AI Feedback",
       lockedHint: "This includes score and rewrite tips. Upgrade to Premium to unlock every question.",
       lockedPreviewTitle: "AI details locked",
+      lockedQuestionText: "Premium question — upgrade to see the full wording.",
       practiceOther: "Practice another set",
     },
   },
@@ -3314,9 +3358,26 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
 
   jobseekerHistoryPage: {
     paginationSessions: "{{from}}–{{to}} / {{total}} sessions",
+    /** Attempts started but never finished — hidden by the default listing before. */
+    unfinished: {
+      statLabel: "Unfinished",
+      statHint: "{{inProgress}} in progress · {{abandoned}} abandoned",
+      filterCompleted: "Completed",
+      filterInProgress: "In progress",
+      filterAbandoned: "Abandoned",
+      badgeInProgress: "In progress",
+      badgeAbandoned: "Abandoned",
+      emptyInProgress: "No practice session is currently open.",
+      emptyAbandoned: "You haven't abandoned any practice session.",
+      warnTitle: "You have a lot of unfinished attempts",
+      warnBody: "{{count}} practice attempts were started but never completed. Finish a session to get feedback and a score.",
+      resume: "Resume",
+    },
     heading: "Practice History",
     subtext: "Track your progress across all practice sessions.",
-    statLabels: ["Total Sessions", "Avg Score", "Best Score", "Time Practiced", "Latest Score"],
+    // The BE's stats query counts Status == Completed only, so "Total" was wrong:
+    // it never included the abandoned/in-progress attempts shown beside it.
+    statLabels: ["Completed", "Avg Score", "Best Score", "Time Practiced", "Latest Score"],
     filters: {
       searchPlaceholder: "Search by company or role...",
       allTime: "All Time",
@@ -3515,6 +3576,8 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
 
   jobseekerProfilePage: {
     heading: "My Profile",
+    notUpdated: "Not filled in yet",
+    dropFileHere: "Drop the file here",
     editBtn: "Edit Profile",
     saveBtn: "Save Changes",
     cancelBtn: "Cancel",
@@ -3616,6 +3679,8 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
   },
   hrRecommendationsPage: {
     heading: "Candidate Recommendations",
+    candidateInfoHeading: "Candidate information",
+    statusLabel: "Status",
     detailHeading: "Candidate Detail",
     subtext: "Review AI-matched candidates based on their practice session results.",
     displayPrefsBtn: "Display settings",
@@ -4163,6 +4228,19 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
     },
   },
 
+  /** Shared RubricEditor — both call sites pass these so the defaults never show. */
+  rubricEditor: {
+    title: "Level-based scoring criteria",
+    presetHint: "Pick a criteria template for this question type",
+    applyPreset: "Apply default template",
+    weightLabel: "Weight",
+    anchorsTitle: "Score anchors",
+    readyBadge: "Ready to publish",
+    notReadyBadge: "Criteria incomplete",
+    sumHint: "Total weight: {{sum}}% (needs 100%)",
+    resetTemplate: "Reset template",
+  },
+
   reviewPage: {
     addImage: "Add image",
     changeImage: "Change image",
@@ -4270,6 +4348,44 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
       sampleAnswer: "Sample Answer",
       optional: "(optional)",
     },
+    questionCard: {
+      imageUploadFailed: "Couldn't upload the image.",
+      imageAdded: "Image attached.",
+      imageRemoveFailed: "Couldn't remove the image.",
+      imageRemoved: "Image removed.",
+      answerMethodText: "Text — written answer",
+      answerMethodCode: "Code — code editor",
+      skillLabel: "Skill / tech tag",
+      skillPlaceholder: "e.g. React, SQL, Redis",
+      focusLabel: "Focus area",
+      focusPlaceholder: "e.g. Frontend, Database",
+      sampleAnswerCode: "Code / answer",
+      sampleAnswerPlain: "Sample answer",
+      detailsExpand: "Sample answer & rubric",
+      detailsCollapse: "Collapse details",
+      detailsEmpty: "No extra details yet.",
+      reorderFailed: "Couldn't save the question order. Please try again.",
+      editSaved: "Question updated.",
+      editFailed: "Couldn't save your edit. Please try again.",
+      deleted: "Question deleted.",
+      deleteFailed: "Couldn't delete the question. Please try again.",
+      addFailed: "Couldn't add the question. Please try again.",
+      added: "Question added.",
+      scoringRubric: "Scoring rubric",
+      scoringRubricEditLabel: "Scoring rubric (one criterion per line)",
+      answerMethodLabel: "Answer method",
+      promptBadge: "Prompt",
+      removeImage: "Remove image",
+    },
+    unsavedDialog: {
+      title: "Question still being edited",
+      subtitle: "You haven't saved the question you're editing",
+      // {{stay}} / {{leave}} are replaced with the button labels below.
+      body: "You have unsaved changes to this question. Press {{stay}} to save, or {{leave}} to leave the page and lose them.",
+      stay: "Stay",
+      stayBtn: "Stay and save",
+      leave: "Discard",
+    },
     addDialog: {
       title: "Add Question",
       questionLabel: "Question",
@@ -4296,6 +4412,11 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
     },
     askAI: {
       panelTitle: "Ask AI",
+      panelHeading: "Ask AI about this question",
+      quickSuggestions: "Quick suggestions",
+      retry: "Retry",
+      unsavedQuestionHint: "This question isn't saved yet. Save the draft before asking AI.",
+      loadingHistory: "Loading history…",
       panelSubtitle: "Ask about this specific question — AI has full context of the JD, plan, and this question.",
       placeholder: "e.g. Make this question harder, add a behavioral version, explain the rationale...",
       applyBtn: "Apply to Question",
@@ -4662,6 +4783,7 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
       distributionLabel: "Question distribution",
       stylesLabel: "Question styles",
       config: {
+        questionCountAria: "Question count",
         distributionHint: "Adjust % or per-type counts. Changing question count above auto-scales counts (keeps %). Dragging % normalizes the total to 100.",
         distributionInvalid: "Invalid distribution: {{count}}/{{total}} questions, {{pct}}% total.",
         distributionInvalidTitle: "Distribution incomplete",
@@ -5112,6 +5234,14 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
       code: "Code",
       systemDesign: "System design",
     },
+    templateNames: {
+      CODE_COMPLETION: "Code completion",
+      BUG_DETECTION: "Bug detection",
+      REFACTORING: "Refactoring",
+      TEST_CASE_DESIGN: "Test case design",
+      PERFORMANCE_ANALYSIS: "Performance analysis",
+      SYSTEM_DESIGN: "System design",
+    },
     templateHints: {
       CODE_COMPLETION: "Candidate completes the code",
       BUG_DETECTION: "Find and explain bugs in code",
@@ -5135,6 +5265,19 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
     classificationSection: "Classification",
     difficultyLabel: "Difficulty",
     questionTypeLabel: "Question type",
+    /** Keyed by the enum value the API expects — only the label is translated. */
+    difficultyOptions: {
+      Easy: "Easy",
+      Medium: "Medium",
+      Hard: "Hard",
+    },
+    questionTypeOptions: {
+      Technical: "Technical",
+      Behavioral: "Behavioral",
+      Situational: "Situational",
+      "Problem-solving": "Problem solving",
+      "System-design": "System design",
+    },
     skillLabel: "Skill / tech tag",
     skillPlaceholder: "e.g. React, SQL, Redis",
     focusAreaLabel: "Focus area",

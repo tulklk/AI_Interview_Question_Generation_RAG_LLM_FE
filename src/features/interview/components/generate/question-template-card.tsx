@@ -48,7 +48,11 @@ export function QuestionTemplateCard({
   bare = false,
 }: Props) {
   const { t } = useLanguage();
-  const templateLabel = templateId ? (TEMPLATE_LABELS[templateId] ?? templateId) : null;
+  const templateLabel = templateId
+    ? ((t.questionBuilder.templateNames as Record<string, string>)[templateId]
+        ?? TEMPLATE_LABELS[templateId]
+        ?? templateId)
+    : null;
 
   const body = (
     <>

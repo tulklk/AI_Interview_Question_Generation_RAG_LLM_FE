@@ -908,7 +908,7 @@ export function RecommendationDetail({ id }: { id: string }) {
           <div className="w-6 h-6 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center shrink-0">
             <User size={13} className={portalSubtextAlt} />
           </div>
-          <h3 className={cn("text-[14px] font-semibold", portalHeadingAlt)}>Thông tin ứng viên</h3>
+          <h3 className={cn("text-[14px] font-semibold", portalHeadingAlt)}>{p.candidateInfoHeading}</h3>
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-3">
           {/* Email */}
@@ -947,7 +947,7 @@ export function RecommendationDetail({ id }: { id: string }) {
           <div>
             <div className="flex items-center gap-1 mb-0.5">
               <CheckCircle2 size={9} className="text-gray-400 shrink-0" />
-              <p className={cn("text-[10px] font-bold uppercase tracking-wider", portalSubtextAlt)}>Trạng thái</p>
+              <p className={cn("text-[10px] font-bold uppercase tracking-wider", portalSubtextAlt)}>{p.statusLabel}</p>
             </div>
             <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
               <StatusChip status={rec.status} labels={p.card} />
@@ -1124,7 +1124,7 @@ export function RecommendationDetail({ id }: { id: string }) {
                         onClick={() => setCvSummaryExpanded(true)}
                         className="text-[11px] font-medium text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-400 transition-colors"
                       >
-                        · Xem thêm
+                        {"00b7 " + t.common.showMore}
                       </button>
                     )}
                   </motion.div>

@@ -365,11 +365,11 @@ export function ReviewPageClient({
           </p>
           <div className="flex flex-wrap gap-3 text-sm">
             <div>
-              <span className={cn("text-xs font-semibold", portalSubtext)}>Role · </span>
+              <span className={cn("text-xs font-semibold", portalSubtext)}>{t.historyPage.table.role} · </span>
               <span className={cn("font-medium", portalHeading)}>{session.planDraft.role}</span>
             </div>
             <div>
-              <span className={cn("text-xs font-semibold", portalSubtext)}>Level · </span>
+              <span className={cn("text-xs font-semibold", portalSubtext)}>{t.historyPage.table.level} · </span>
               <span className={cn("font-medium", portalHeading)}>{session.planDraft.level}</span>
             </div>
             <div className="flex gap-1.5 flex-wrap">

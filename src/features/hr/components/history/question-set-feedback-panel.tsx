@@ -148,6 +148,7 @@ export function QuestionSetFeedbackPanel({
   onClose,
 }: QuestionSetFeedbackPanelProps) {
   const { t } = useLanguage();
+  const fp = t.historyPage.feedbackPanel;
   const [items, setItems] = useState<HrFeedbackEntry[]>([]);
   const [total, setTotal] = useState(0);
   const [avgRating, setAvgRating] = useState<number | null>(null);
@@ -231,7 +232,7 @@ export function QuestionSetFeedbackPanel({
                 <div className="flex items-center gap-2 mb-0.5">
                   <MessageSquare size={15} className="text-violet-500 shrink-0" />
                   <h2 className={cn("text-[15px] font-bold truncate", portalHeading)}>
-                    Feedback ứng viên
+                    {fp.title}
                   </h2>
                 </div>
                 {questionSetTitle && (
@@ -262,12 +263,12 @@ export function QuestionSetFeedbackPanel({
                       <div>
                         <StarRow value={avgRating} size={13} />
                         <p className={cn("text-[10px] mt-0.5", portalSubtext)}>
-                          {total} đánh giá
+                          {fp.ratingCount.replace("{{count}}", String(total))}
                         </p>
                       </div>
                     </>
                   ) : (
-                    <p className={cn("text-[13px]", portalSubtext)}>Chưa có đánh giá</p>
+                    <p className={cn("text-[13px]", portalSubtext)}>{fp.noRating}</p>
                   )}
                 </div>
 
@@ -288,21 +289,21 @@ export function QuestionSetFeedbackPanel({
               {loading && (
                 <div className="flex flex-col items-center justify-center py-20 gap-3">
                   <Loader2 size={22} className="animate-spin text-violet-500" />
-                  <p className={cn("text-[13px]", portalSubtext)}>Đang tải feedback…</p>
+                  <p className={cn("text-[13px]", portalSubtext)}>{fp.loading}</p>
                 </div>
               )}
 
               {!loading && error && (
                 <div className="flex flex-col items-center justify-center py-20 gap-3 text-center px-6">
                   <AlertCircle size={24} className="text-red-400" />
-                  <p className={cn("text-[13px]", portalSubtext)}>Không thể tải feedback. Vui lòng thử lại.</p>
+                  <p className={cn("text-[13px]", portalSubtext)}>{fp.loadFailed}</p>
                   <button
                     type="button"
                     onClick={() => setReloadKey((k) => k + 1)}
                     className="flex items-center gap-1.5 text-[13px] font-semibold text-violet-600 dark:text-violet-400 hover:underline"
                   >
                     <RefreshCw size={13} />
-                    Thử lại
+                    {fp.retry}
                   </button>
                 </div>
               )}
@@ -310,9 +311,9 @@ export function QuestionSetFeedbackPanel({
               {!loading && !error && total === 0 && (
                 <div className="flex flex-col items-center justify-center py-20 gap-2 text-center px-6">
                   <MessageSquare size={28} className="text-gray-300 dark:text-gray-600" />
-                  <p className={cn("text-[14px] font-medium", portalHeading)}>Chưa có feedback</p>
+                  <p className={cn("text-[14px] font-medium", portalHeading)}>{fp.emptyTitle}</p>
                   <p className={cn("text-[12px]", portalSubtext)}>
-                    Ứng viên chưa gửi đánh giá cho bộ câu hỏi này.
+                    {fp.emptyBody}
                   </p>
                 </div>
               )}
@@ -337,6 +338,7 @@ export function QuestionSetFeedbackPanel({
                     type="button"
                     onClick={() => setPage((p) => Math.max(1, p - 1))}
                     disabled={page === 1}
+                    aria-label={t.common.prevPageShort}
                     className="w-7 h-7 flex items-center justify-center rounded-lg border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                   >
                     <ChevronLeft size={13} />
@@ -348,6 +350,7 @@ export function QuestionSetFeedbackPanel({
                     type="button"
                     onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                     disabled={page === totalPages}
+                    aria-label={t.common.nextPageShort}
                     className="w-7 h-7 flex items-center justify-center rounded-lg border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                   >
                     <ChevronRight size={13} />

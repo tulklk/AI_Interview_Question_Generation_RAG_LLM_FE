@@ -148,7 +148,7 @@ function EditFeedbackModal({ feedback, onClose, onSaved }: EditFeedbackModalProp
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-800">
           <h3 className="text-[15px] font-bold text-gray-900 dark:text-gray-100">
-            Chỉnh sửa feedback
+            {t.common.editFeedback}
           </h3>
           <button type="button" onClick={onClose}
             className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
