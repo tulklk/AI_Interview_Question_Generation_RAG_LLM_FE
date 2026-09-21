@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { AlertCircle, RefreshCw, Lock } from "lucide-react";
 import { cn } from "@/lib/cn";
@@ -56,6 +57,7 @@ export function FeedbackResultClient() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [forbidden, setForbidden] = useState(false);
+  const [notFound, setNotFound] = useState(false);
   const [scoring, setScoring] = useState(false);
   /** P4: true when the score poll exhausted all attempts and still no score. */
   const [scoringTimedOut, setScoringTimedOut] = useState(false);
@@ -118,6 +120,7 @@ export function FeedbackResultClient() {
     setLoading(true);
     setError(false);
     setForbidden(false);
+    setNotFound(false);
     setSet(null);
     setFeedback({});
     setAiInsight(null);
@@ -168,7 +171,9 @@ export function FeedbackResultClient() {
       .then((s) => {
         if (cancelled) return;
         if (!s) {
-          setError(true);
+          // getPracticeSession only resolves to null on a 404 — a permanent miss,
+          // so show "no longer exists" instead of the retryable "not ready yet".
+          setNotFound(true);
           return;
         }
         setSession(s);
@@ -310,6 +315,16 @@ export function FeedbackResultClient() {
         </div>
       )}
 
+      {!loading && notFound && (
+        <div className="flex flex-col items-center gap-3 py-20 text-center">
+          <AlertCircle size={28} className="text-gray-400 dark:text-gray-500" />
+          <p className={cn("text-[14px] max-w-sm", portalSubtextAlt)}>{p.feedbackNotFound}</p>
+          <Link href="/candidate/history" className="text-[13px] font-semibold text-primary hover:underline">
+            {p.backToHistoryBtn}
+          </Link>
+        </div>
+      )}
+
       {!loading && forbidden && (
         <div className="flex flex-col items-center gap-3 py-20 text-center">
           <Lock size={28} className="text-gray-400 dark:text-gray-500" />
@@ -317,7 +332,7 @@ export function FeedbackResultClient() {
         </div>
       )}
 
-      {!loading && !forbidden && error && (
+      {!loading && !forbidden && !notFound && error && (
         <div className="flex flex-col items-center gap-3 py-20 text-center">
           <AlertCircle size={28} className="text-red-500" />
           <p className={cn("text-[14px]", portalSubtextAlt)}>{p.feedbackLoadFailed}</p>
@@ -332,7 +347,7 @@ export function FeedbackResultClient() {
         </div>
       )}
 
-      {!loading && !error && !forbidden && session && (
+      {!loading && !error && !forbidden && !notFound && session && (
         <>
           {(() => {
             const coach =

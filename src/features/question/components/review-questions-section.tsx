@@ -43,8 +43,12 @@ import {
   deleteQuestionSetQuestion,
   addQuestionSetQuestion,
   reorderQuestionSetQuestions,
+  QuestionSetPublishedError,
   setQuestionSetTimeLimit,
   setQuestionSetRecommendationSettings,
+  setQuestionSetHiringAssessment,
+  setQuestionSetPublicJobDescription,
+  setQuestionSetHiringPosting,
   getDraft,
 } from "@/features/interview/services/interview.service";
 import { QuestionEditCard } from "./question-edit-card";
@@ -53,6 +57,15 @@ import { PublishDialog, type PublishDialogConfirmPayload } from "./publish-dialo
 import { AddQuestionDialog } from "./add-question-dialog";
 import { TimeLimitDialog } from "./time-limit-dialog";
 import { ConfirmDialog } from "@/shared/components/ui/confirm-dialog";
+import { HiringModeControls } from "@/features/hr/components/hiring-mode-controls";
+import {
+  PublicJdEditorPanel,
+  postingDraftToPayload,
+  validateHiringPostingDraft,
+  type HiringPostingDraft,
+  type HiringPostingSaved,
+  type HiringPostingInitial,
+} from "@/features/hr/components/public-jd-editor-panel";
 import { useToast } from "@/shared/providers/toast-context";
 import { ASK_AI_ENABLED } from "@/features/question/constants/question-ui-flags";
 import { MIN_QUESTIONS_TO_PUBLISH } from "@/features/interview/components/generate/question-builder-set-panel";
@@ -157,6 +170,17 @@ interface ReviewQuestionsSectionProps {
   /** SCRUM-424 */
   initialAutoRecommendEnabled?: boolean;
   initialRecommendationMinScore?: number;
+  /** SCRUM-464 */
+  initialIsHiringAssessment?: boolean;
+  initialHrAntiCheatEnabled?: boolean;
+  /** SCRUM-465 */
+  initialPublicJobDescription?: string | null;
+  /** SCRUM-468 */
+  initialHiringPosting?: HiringPostingInitial | null;
+  fullJobDescription?: string | null;
+  jdSourceType?: "PastedText" | "UploadedFile" | null;
+  jdOriginalFileName?: string | null;
+  jdFileUrl?: string | null;
   /** SCRUM-374: job từ Studio — card dùng format sample + rubric. */
   isFromStudio?: boolean;
 }
@@ -178,10 +202,25 @@ export function ReviewQuestionsSection({
   initialTimeLimitMinutes,
   initialAutoRecommendEnabled = true,
   initialRecommendationMinScore = 70,
+  initialIsHiringAssessment = false,
+  initialHrAntiCheatEnabled = false,
+  initialPublicJobDescription = null,
+  initialHiringPosting = null,
+  fullJobDescription = null,
+  jdSourceType = null,
+  jdOriginalFileName = null,
+  jdFileUrl = null,
   isFromStudio = false,
 }: ReviewQuestionsSectionProps) {
   const { t } = useLanguage();
   const rp = t.reviewPage;
+  /**
+   * A published set refuses every question mutation with 409. Showing the generic
+   * "please try again" there sends HR in a loop — the set has to be unpublished
+   * first, which is exactly what editLockedHint says.
+   */
+  const publishLockMessage = (err: unknown, fallback: string) =>
+    err instanceof QuestionSetPublishedError ? rp.editLockedHint : fallback;
   const { addToast } = useToast();
 
   /** Shared message builder for the 6 mutation-handler guards below — was a
@@ -200,6 +239,35 @@ export function ReviewQuestionsSection({
   const [savingTimeLimit, setSavingTimeLimit] = useState(false);
   const [autoRecommendEnabled, setAutoRecommendEnabled] = useState(initialAutoRecommendEnabled);
   const [recommendationMinScore, setRecommendationMinScore] = useState(initialRecommendationMinScore);
+  const [isHiringAssessment, setIsHiringAssessment] = useState(initialIsHiringAssessment);
+  const [hrAntiCheatEnabled, setHrAntiCheatEnabled] = useState(
+    initialIsHiringAssessment && initialHrAntiCheatEnabled
+  );
+  const [publicJobDescription, setPublicJobDescription] = useState(
+    initialPublicJobDescription?.trim() ?? ""
+  );
+  const [publicJdDraft, setPublicJdDraft] = useState(
+    initialPublicJobDescription?.trim() ?? ""
+  );
+  const [hiringPosting, setHiringPosting] = useState<HiringPostingSaved>(() => ({
+    jobLocation: initialHiringPosting?.jobLocation?.trim() ?? "",
+    workplaceType: initialHiringPosting?.workplaceType ?? null,
+    salaryMin: initialHiringPosting?.salaryMin ?? null,
+    salaryMax: initialHiringPosting?.salaryMax ?? null,
+    salaryNegotiable: initialHiringPosting?.salaryNegotiable ?? true,
+    jobExpertise: initialHiringPosting?.jobExpertise?.trim() ?? "",
+    jobDomain: initialHiringPosting?.jobDomain?.trim() ?? "",
+  }));
+  const [postingDraft, setPostingDraft] = useState<HiringPostingDraft>(() => ({
+    jobLocation: initialHiringPosting?.jobLocation?.trim() ?? "",
+    workplaceType: initialHiringPosting?.workplaceType ?? "",
+    salaryMin: initialHiringPosting?.salaryMin != null ? String(initialHiringPosting.salaryMin) : "",
+    salaryMax: initialHiringPosting?.salaryMax != null ? String(initialHiringPosting.salaryMax) : "",
+    salaryNegotiable: initialHiringPosting?.salaryNegotiable ?? true,
+    jobExpertise: initialHiringPosting?.jobExpertise?.trim() ?? "",
+    jobDomain: initialHiringPosting?.jobDomain?.trim() ?? "",
+  }));
+  const [publicJdNeedsAttention, setPublicJdNeedsAttention] = useState(false);
   const [showRecSettings, setShowRecSettings] = useState(false);
   const [savingRecSettings, setSavingRecSettings] = useState(false);
   const [page, setPage] = useState(1);
@@ -335,9 +403,11 @@ export function ReviewQuestionsSection({
       console.warn("[persistReorder] no valid question IDs — reorder skipped. IDs:", next.map(q => q.id));
       return;
     }
-    void reorderQuestionSetQuestions(questionSetId, items).then((ok) => {
-      if (!ok) addToast("error", "Không thể lưu thứ tự câu hỏi. Vui lòng thử lại.");
-    });
+    void reorderQuestionSetQuestions(questionSetId, items)
+      .then((ok) => {
+        if (!ok) addToast("error", rp.questionCard.reorderFailed);
+      })
+      .catch((err) => addToast("error", publishLockMessage(err, rp.questionCard.reorderFailed)));
   }
 
   function handleDragEnd(event: DragEndEvent) {
@@ -371,13 +441,19 @@ export function ReviewQuestionsSection({
       answerMethod: changes.answerMethod ?? "Text",
     };
 
-    const ok = await updateQuestionSetQuestion(questionSetId, id, payload);
+    let ok = false;
+    try {
+      ok = await updateQuestionSetQuestion(questionSetId, id, payload);
+    } catch (err) {
+      addToast("error", publishLockMessage(err, rp.questionCard.editFailed));
+      return false;
+    }
 
     if (ok) {
       setQuestions((prev) => prev.map((q) => (q.id === id ? { ...q, ...changes } : q)));
-      addToast("success", "Chỉnh sửa câu hỏi thành công");
+      addToast("success", rp.questionCard.editSaved);
     } else {
-      addToast("error", "Không thể lưu chỉnh sửa. Vui lòng thử lại.");
+      addToast("error", rp.questionCard.editFailed);
     }
     return ok;
   }
@@ -400,14 +476,16 @@ export function ReviewQuestionsSection({
       addToast("error", missingQuestionSetIdMessage(rp.actionDelete));
       return;
     }
-    deleteQuestionSetQuestion(questionSetId, id).then((ok) => {
-      if (ok) {
-        removeQuestionFromState(id);
-        addToast("success", "Đã xóa câu hỏi");
-      } else {
-        addToast("error", "Không thể xóa câu hỏi. Vui lòng thử lại.");
-      }
-    });
+    deleteQuestionSetQuestion(questionSetId, id)
+      .then((ok) => {
+        if (ok) {
+          removeQuestionFromState(id);
+          addToast("success", rp.questionCard.deleted);
+        } else {
+          addToast("error", rp.questionCard.deleteFailed);
+        }
+      })
+      .catch((err) => addToast("error", publishLockMessage(err, rp.questionCard.deleteFailed)));
   }
 
   function handleMoveUp(index: number) {
@@ -433,7 +511,9 @@ export function ReviewQuestionsSection({
       addToast("error", missingQuestionSetIdMessage(rp.actionAddQuestion));
       return;
     }
-    const created = await addQuestionSetQuestion(questionSetId, {
+    let created;
+    try {
+      created = await addQuestionSetQuestion(questionSetId, {
       question: newQ.question,
       questionType: newQ.questionType,
       difficulty: newQ.difficulty,
@@ -441,9 +521,13 @@ export function ReviewQuestionsSection({
       sampleAnswer: newQ.sampleAnswer,
       answerMethod: newQ.answerMethod ?? "Text",
       order: questions.length + 1,
-    });
+      });
+    } catch (err) {
+      addToast("error", publishLockMessage(err, rp.questionCard.addFailed));
+      return;
+    }
     if (!created) {
-      addToast("error", "Không thể thêm câu hỏi. Vui lòng thử lại.");
+      addToast("error", rp.questionCard.addFailed);
       return;
     }
     const refreshed = await getDraft(questionSetId);
@@ -451,7 +535,7 @@ export function ReviewQuestionsSection({
       setQuestions(refreshed.questions);
       setPage(Math.ceil(refreshed.questions.length / PAGE_SIZE));
     }
-    addToast("success", "Thêm câu hỏi thành công");
+    addToast("success", rp.questionCard.added);
   }
 
   async function handleConfirmPublishAction() {
@@ -476,6 +560,79 @@ export function ReviewQuestionsSection({
     }
   }
 
+  /** Lưu JD ngắn + posting nếu HR đã soạn nhưng chưa bấm Lưu — cần trước khi bật Tuyển / publish Tuyển. */
+  async function ensureHiringPostingReady(): Promise<boolean> {
+    if (!questionSetId) return false;
+
+    const scrollToEditor = () => {
+      setPublicJdNeedsAttention(true);
+      document
+        .getElementById("public-jd-editor")
+        ?.scrollIntoView({ behavior: "smooth", block: "center" });
+    };
+
+    let jdOk = Boolean(publicJobDescription.trim());
+    if (!jdOk) {
+      const draft = publicJdDraft.trim();
+      if (!draft) {
+        scrollToEditor();
+        addToast("error", t.hiringMode.publicJdRequired);
+        return false;
+      }
+      const saved = await setQuestionSetPublicJobDescription(questionSetId, draft);
+      setPublicJobDescription(saved.publicJobDescription);
+      setPublicJdDraft(saved.publicJobDescription);
+      jdOk = true;
+    }
+
+    const postingComplete =
+      Boolean(hiringPosting.jobLocation.trim()) &&
+      Boolean(hiringPosting.jobExpertise.trim()) &&
+      Boolean(hiringPosting.jobDomain.trim()) &&
+      (hiringPosting.salaryNegotiable ||
+        hiringPosting.salaryMin != null ||
+        hiringPosting.salaryMax != null);
+
+    if (!postingComplete) {
+      const errKey = validateHiringPostingDraft(postingDraft);
+      if (errKey) {
+        scrollToEditor();
+        const h = t.hiringMode;
+        const msg =
+          errKey === "postingLocationRequired"
+            ? h.postingLocationRequired
+            : errKey === "postingExpertiseRequired"
+              ? h.postingExpertiseRequired
+              : errKey === "postingDomainRequired"
+                ? h.postingDomainRequired
+                : errKey === "postingSalaryRequired"
+                  ? h.postingSalaryRequired
+                  : errKey === "postingSalaryRangeInvalid"
+                    ? h.postingSalaryRangeInvalid
+                    : h.postingIncomplete;
+        addToast("error", msg);
+        return false;
+      }
+      const savedPosting = await setQuestionSetHiringPosting(
+        questionSetId,
+        postingDraftToPayload(postingDraft)
+      );
+      const next: HiringPostingSaved = {
+        jobLocation: savedPosting.jobLocation,
+        workplaceType: savedPosting.workplaceType ?? null,
+        salaryMin: savedPosting.salaryMin ?? null,
+        salaryMax: savedPosting.salaryMax ?? null,
+        salaryNegotiable: savedPosting.salaryNegotiable,
+        jobExpertise: savedPosting.jobExpertise,
+        jobDomain: savedPosting.jobDomain,
+      };
+      setHiringPosting(next);
+    }
+
+    setPublicJdNeedsAttention(false);
+    return jdOk;
+  }
+
   async function handleSelectivePublish(payload: PublishDialogConfirmPayload) {
     if (!questionSetId) return;
     setPublishing(true);
@@ -485,12 +642,16 @@ export function ReviewQuestionsSection({
         timeLimitMinutes: payload.timeLimitMinutes,
         autoRecommendEnabled: payload.autoRecommendEnabled,
         recommendationMinScore: payload.recommendationMinScore,
+        isHiringAssessment: payload.isHiringAssessment,
+        hrAntiCheatEnabled: payload.hrAntiCheatEnabled,
       });
       if (payload.timeLimitMinutes !== timeLimitMinutes) {
         setTimeLimitMinutes(payload.timeLimitMinutes);
       }
       setAutoRecommendEnabled(payload.autoRecommendEnabled);
       setRecommendationMinScore(payload.recommendationMinScore);
+      setIsHiringAssessment(payload.isHiringAssessment);
+      setHrAntiCheatEnabled(payload.isHiringAssessment && payload.hrAntiCheatEnabled);
       onPublishStatusChange?.("PUBLISHED");
       addToast("success", rp.publishSuccess);
       setShowPublishDialog(false);
@@ -660,6 +821,51 @@ export function ReviewQuestionsSection({
               <Pencil size={9} />
             </button>
           )}
+          {!readOnly && questionSetId && (
+            <HiringModeControls
+              variant="compact"
+              value={{ isHiringAssessment, hrAntiCheatEnabled }}
+              onChange={async (next) => {
+                if (next.isHiringAssessment) {
+                  try {
+                    const ok = await ensureHiringPostingReady();
+                    if (!ok) return;
+                  } catch (err) {
+                    addToast(
+                      "error",
+                      err instanceof Error && err.message
+                        ? err.message
+                        : t.hiringMode.postingIncomplete
+                    );
+                    setPublicJdNeedsAttention(true);
+                    return;
+                  }
+                }
+                try {
+                  const saved = await setQuestionSetHiringAssessment(
+                    questionSetId,
+                    next.isHiringAssessment,
+                    next.hrAntiCheatEnabled
+                  );
+                  setIsHiringAssessment(saved.isHiringAssessment);
+                  setHrAntiCheatEnabled(saved.hrAntiCheatEnabled);
+                } catch (err) {
+                  addToast(
+                    "error",
+                    err instanceof Error && err.message
+                      ? err.message
+                      : t.hiringMode.publicJdRequired
+                  );
+                  if (next.isHiringAssessment) {
+                    setPublicJdNeedsAttention(true);
+                    document
+                      .getElementById("public-jd-editor")
+                      ?.scrollIntoView({ behavior: "smooth", block: "center" });
+                  }
+                }
+              }}
+            />
+          )}
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
@@ -710,6 +916,29 @@ export function ReviewQuestionsSection({
         </div>
       </div>
 
+      {/* SCRUM-470: panel JD/posting chỉ khi Tuyển (hoặc vừa bật Tuyển thất bại → needsAttention) */}
+      {questionSetId && !readOnly && (isHiringAssessment || publicJdNeedsAttention) && (
+        <PublicJdEditorPanel
+          questionSetId={questionSetId}
+          initialPublicJobDescription={publicJobDescription}
+          initialPosting={hiringPosting}
+          onSaved={(text, posting) => {
+            setPublicJobDescription(text);
+            setPublicJdDraft(text);
+            setHiringPosting(posting);
+            setPublicJdNeedsAttention(false);
+          }}
+          needsAttention={publicJdNeedsAttention}
+          onAttentionCleared={() => setPublicJdNeedsAttention(false)}
+          onDraftChange={setPublicJdDraft}
+          onPostingDraftChange={setPostingDraft}
+          fullJobDescription={fullJobDescription}
+          jdSourceType={jdSourceType}
+          jdOriginalFileName={jdOriginalFileName}
+          jdFileUrl={jdFileUrl}
+        />
+      )}
+
       <ConfirmDialog
         open={publishConfirmAction === "unpublish"}
         title={rp.unpublishConfirmTitle}
@@ -734,8 +963,25 @@ export function ReviewQuestionsSection({
           currentTimeLimitMinutes={timeLimitMinutes}
           initialAutoRecommendEnabled={autoRecommendEnabled}
           initialRecommendationMinScore={recommendationMinScore}
+          initialIsHiringAssessment={isHiringAssessment}
+          initialHrAntiCheatEnabled={hrAntiCheatEnabled}
           saving={publishing}
           onConfirm={(payload) => void handleSelectivePublish(payload)}
+          onBeforeConfirm={async (payload) => {
+            if (!payload.isHiringAssessment) return true;
+            try {
+              return await ensureHiringPostingReady();
+            } catch (err) {
+              addToast(
+                "error",
+                err instanceof Error && err.message
+                  ? err.message
+                  : t.hiringMode.postingIncomplete
+              );
+              setPublicJdNeedsAttention(true);
+              return false;
+            }
+          }}
           onClose={() => {
             if (!publishing) setShowPublishDialog(false);
           }}
@@ -1005,8 +1251,8 @@ export function ReviewQuestionsSection({
                       <AlertCircle size={18} className="text-amber-500" />
                     </div>
                     <div>
-                      <h3 className={cn("text-sm font-semibold", portalHeading)}>Đang chỉnh sửa câu hỏi</h3>
-                      <p className={cn("text-xs mt-0.5", portalSubtext)}>Bạn chưa lưu câu hỏi đang chỉnh sửa</p>
+                      <h3 className={cn("text-sm font-semibold", portalHeading)}>{rp.unsavedDialog.title}</h3>
+                      <p className={cn("text-xs mt-0.5", portalSubtext)}>{rp.unsavedDialog.subtitle}</p>
                     </div>
                   </div>
                   <button
@@ -1020,7 +1266,11 @@ export function ReviewQuestionsSection({
 
                 <div className="rounded-xl bg-amber-50/60 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/30 px-4 py-3 mb-5">
                   <p className={cn("text-sm leading-relaxed", portalHeading)}>
-                    Bạn đang chỉnh sửa câu hỏi chưa lưu. Nhấn <strong>Ở lại</strong> để lưu, hoặc <strong>Bỏ qua</strong> để rời trang và mất thay đổi.
+                    {rp.unsavedDialog.body.split(/(\{\{stay\}\}|\{\{leave\}\})/).map((part, i) =>
+                      part === "{{stay}}" ? <strong key={i}>{rp.unsavedDialog.stay}</strong>
+                        : part === "{{leave}}" ? <strong key={i}>{rp.unsavedDialog.leave}</strong>
+                          : part
+                    )}
                   </p>
                 </div>
 
@@ -1033,7 +1283,7 @@ export function ReviewQuestionsSection({
                       portalHeading
                     )}
                   >
-                    Bỏ qua
+                    {rp.unsavedDialog.leave}
                   </button>
                   <button
                     type="button"
@@ -1041,7 +1291,7 @@ export function ReviewQuestionsSection({
                     className="flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-semibold rounded-xl shimmer-button hr-cta-btn text-white"
                   >
                     <Check size={14} />
-                    Ở lại để lưu
+                    {rp.unsavedDialog.stayBtn}
                   </button>
                 </div>
               </div>

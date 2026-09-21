@@ -4,7 +4,7 @@
 // Loading the Google GSI script (accounts.google.com/gsi/client) on every page
 // wastes ~81 KiB on pages that never use Google login (marketing, dashboard, etc.).
 // It is mounted in AuthLayout instead, so it only loads on login/register routes.
-import { LanguageProvider } from "@/shared/providers/language-context";
+import { LanguageProvider, type Lang } from "@/shared/providers/language-context";
 import { ThemeProvider } from "@/shared/providers/theme-context";
 import { ThemeTransitionProvider } from "@/shared/providers/theme-transition-context";
 import { ToastProvider } from "@/shared/providers/toast-context";
@@ -14,11 +14,17 @@ import { NetworkOfflineOverlay } from "@/shared/components/ui/network-offline-ov
 import { ScrollReset } from "@/shared/components/common/scroll-reset";
 import type { ReactNode } from "react";
 
-export function Providers({ children }: { children: ReactNode }) {
+export function Providers({
+  children,
+  initialLang = "en",
+}: {
+  children: ReactNode;
+  initialLang?: Lang;
+}) {
   return (
     <ThemeProvider>
       <ThemeTransitionProvider>
-        <LanguageProvider>
+        <LanguageProvider initialLang={initialLang}>
           <ToastProvider>
             <UserProvider>
               <ScrollReset />

@@ -122,9 +122,17 @@ export async function invitePractitioner(
   questionSetId: string,
   candidateUserId: string,
   message?: string
-): Promise<void> {
-  await apiClient.post(
+): Promise<{ recommendationId: string }> {
+  const res = await apiClient.post(
     `/api/hr/question-sets/${questionSetId}/practitioners/${candidateUserId}/invite`,
     { message: message?.trim() || null }
   );
+  const root = (res.data as { data?: unknown })?.data ?? res.data;
+  const src =
+    root && typeof root === "object" ? (root as Record<string, unknown>) : {};
+  const recommendationId =
+    (typeof src.recommendationId === "string" && src.recommendationId) ||
+    (typeof src.RecommendationId === "string" && src.RecommendationId) ||
+    "";
+  return { recommendationId };
 }

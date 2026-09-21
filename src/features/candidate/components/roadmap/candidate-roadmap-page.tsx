@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/cn";
+import { useLanguage } from "@/shared/providers/language-context";
 import { portalSubtextAlt } from "@/shared/utils/portal-ui";
 
 /**
@@ -11,6 +12,7 @@ import { portalSubtextAlt } from "@/shared/utils/portal-ui";
  * Lộ trình thật nằm tại /candidate/coach với API roadmaps.
  */
 export function CandidateRoadmapPage() {
+  const { t } = useLanguage();
   const router = useRouter();
 
   useEffect(() => {
@@ -21,7 +23,7 @@ export function CandidateRoadmapPage() {
     <div className="flex flex-col items-center justify-center min-h-[40vh] gap-3">
       <Loader2 size={24} className="animate-spin text-primary" />
       <p className={cn("text-[13px]", portalSubtextAlt)}>
-        Đang chuyển tới AI Coach…
+        {t.jobseekerCoachPage.redirecting}
       </p>
     </div>
   );

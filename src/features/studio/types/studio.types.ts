@@ -308,6 +308,9 @@ export interface StudioSettings {
   recommendedConfiguration?: RecommendedConfiguration | null;
   recommendedGeneratedAt?: string | null;
   readiness: StudioReadiness;
+  /** SCRUM-464: Practice vs Tuyển — chọn sau khi có câu */
+  isHiringAssessment?: boolean;
+  hrAntiCheatEnabled?: boolean;
 }
 
 /** SCRUM-388: refine chat trả settings đã sync + citations */

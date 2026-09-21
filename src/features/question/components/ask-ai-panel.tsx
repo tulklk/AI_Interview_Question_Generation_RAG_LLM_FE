@@ -223,7 +223,7 @@ export function AskAIPanel({
           {historyLoading && (
             <div className="flex items-center justify-center gap-2 h-full min-h-50 text-xs text-gray-400 dark:text-gray-500">
               <Loader2 size={13} className="animate-spin text-primary" />
-              <span>Đang tải lịch sử...</span>
+              <span>{ai.loadingHistory}</span>
             </div>
           )}
 
@@ -236,7 +236,7 @@ export function AskAIPanel({
                   <Image src="/images/logo.png" alt="HireGen AI" width={48} height={48} className="object-contain w-full h-full" />
                 </div>
                 <div>
-                  <p className={cn("text-sm font-semibold", portalHeading)}>Hỏi AI về câu hỏi này</p>
+                  <p className={cn("text-sm font-semibold", portalHeading)}>{ai.panelHeading}</p>
                   <p className={cn("text-xs mt-1 max-w-xs leading-relaxed", portalSubtext)}>
                     {ai.panelSubtitle}
                   </p>
@@ -246,7 +246,7 @@ export function AskAIPanel({
               {/* Prompt chips */}
               <div className="w-full max-w-lg">
                 <p className={cn("text-[10px] font-semibold uppercase tracking-wider text-center mb-3", portalSubtext)}>
-                  Gợi ý nhanh
+                  {ai.quickSuggestions}
                 </p>
                 <div className="flex flex-wrap justify-center gap-2">
                   {ai.examplePrompts.map((prompt) => (
@@ -328,7 +328,7 @@ export function AskAIPanel({
                   <span className="flex-1">{error}</span>
                   <button type="button" onClick={() => setError(null)} className="flex items-center gap-1 font-semibold hover:underline shrink-0">
                     <RefreshCw size={10} />
-                    Thử lại
+                    {ai.retry}
                   </button>
                 </div>
               )}
@@ -348,7 +348,7 @@ export function AskAIPanel({
           {!questionIdValid && (
             <p className="text-[11px] text-amber-600 dark:text-amber-400 mb-2.5 flex items-center gap-1.5 bg-amber-50 dark:bg-amber-950/30 px-3 py-2 rounded-lg">
               <AlertCircle size={11} className="shrink-0" />
-              Câu hỏi chưa được lưu. Vui lòng lưu bản nháp trước khi hỏi AI.
+              {ai.unsavedQuestionHint}
             </p>
           )}
           <div className="flex gap-2.5 items-end">

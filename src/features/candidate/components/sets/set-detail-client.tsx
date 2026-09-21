@@ -46,7 +46,13 @@ export function SetDetailClient() {
 
     getQuestionSetById(id)
       .then((res) => {
-        if (!cancelled) setSet(res);
+        if (cancelled) return;
+        // SCRUM-467: bộ Tuyển → trang jobs ITViec
+        if (res.isHiringAssessment) {
+          router.replace(`/candidate/jobs/${id}`);
+          return;
+        }
+        setSet(res);
       })
       .catch((err) => {
         if (cancelled) return;
@@ -60,7 +66,7 @@ export function SetDetailClient() {
     return () => {
       cancelled = true;
     };
-  }, [id, reloadKey]);
+  }, [id, reloadKey, router]);
 
   // ── Background publish-status polling ────────────────────────────────────
   // Starts once the set has been loaded successfully. Re-checks every

@@ -32,7 +32,7 @@ function SetRow({ set, rank }: { set: QuestionSet; rank: number }) {
 
   return (
     <Link
-      href={`/candidate/sets/${set.id}`}
+      href={set.isHiringAssessment ? `/candidate/jobs/${set.id}` : `/candidate/sets/${set.id}`}
       className={cn(
         "flex items-center gap-2.5 px-3 py-2.5 transition-colors group",
         "border-b border-gray-100 dark:border-gray-800 last:border-0",
@@ -142,11 +142,17 @@ export function CoachMarketplacePanel({ skills = [] }: CoachMarketplacePanelProp
         const params = {
           pageSize: PANEL_SIZE,
           sortBy: "best_match" as const,
+          isHiringAssessment: false,
           ...(currentSkills.length > 0 ? { skills: currentSkills } : { chip: "cv" as const }),
         };
         let res = await listQuestionSets(params);
         if (res.items.length === 0 && currentSkills.length > 0) {
-          res = await listQuestionSets({ pageSize: PANEL_SIZE, sortBy: "best_match", chip: "cv" });
+          res = await listQuestionSets({
+            pageSize: PANEL_SIZE,
+            sortBy: "best_match",
+            chip: "cv",
+            isHiringAssessment: false,
+          });
         }
         if (cancelled) return;
         const sorted = [...res.items].sort((a, b) => (b.matchPercent ?? 0) - (a.matchPercent ?? 0));
@@ -223,7 +229,7 @@ export function CoachMarketplacePanel({ skills = [] }: CoachMarketplacePanelProp
             ))}
             <div className="px-4 py-2.5 border-t border-gray-100 dark:border-gray-800 flex justify-end">
               <Link
-                href="/candidate/practice"
+                href="/candidate/jobs"
                 className="inline-flex items-center gap-1 text-[11px] font-semibold text-primary hover:underline"
               >
                 {p.marketplaceSeeAll}

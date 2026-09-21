@@ -201,7 +201,7 @@ export function QuestionBuilderPreview({
             sampleAnswer.trim() ? (
               <div className="rounded-lg border border-gray-100 border-l-2 border-l-emerald-500 bg-emerald-50/40 px-3 py-2.5 dark:border-gray-800 dark:border-l-emerald-500 dark:bg-emerald-950/20">
                 <p className="text-[10px] font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-400">
-                  Đáp án mẫu
+                  {t.reviewPage.questionCard.sampleAnswerPlain}
                 </p>
                 <p className={cn("mt-1 text-xs leading-relaxed whitespace-pre-wrap", portalHeading)}>
                   {sampleAnswer.trim()}

@@ -297,7 +297,7 @@ export function GuestNavbar() {
                 setMobileAvatarOpen(false);
                 setMobileOpen((v) => !v);
               }}
-              aria-label={mobileOpen ? "Đóng menu" : "Mở menu"}
+              aria-label={mobileOpen ? t.common.closeMenu : t.common.openMenu}
             >
               {mobileOpen ? <X size={20} /> : <Menu size={20} />}
             </button>
@@ -325,7 +325,7 @@ export function GuestNavbar() {
           <button
             className="p-2 rounded-lg text-gray-500 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-gray-800 transition-colors"
             onClick={() => setMobileOpen(false)}
-            aria-label="Close menu"
+            aria-label={t.common.closeMenu}
           >
             <X size={20} />
           </button>

@@ -23,6 +23,8 @@ export const metadata: Metadata = {
 
 /** Cookie theme đã resolve (light|dark) — set bởi ThemeProvider, đọc ở SSR để khỏi FOUC / khỏi <script>. */
 const THEME_RESOLVED_COOKIE = "hiregena-theme-resolved";
+/** Đồng bộ với LanguageProvider — SSR đọc cookie này để HTML khớp ngôn ngữ client. */
+const LANG_COOKIE = "hiregena-lang";
 
 export default async function RootLayout({
   children,
@@ -32,16 +34,18 @@ export default async function RootLayout({
   const cookieStore = await cookies();
   const resolved = cookieStore.get(THEME_RESOLVED_COOKIE)?.value;
   const isDark = resolved === "dark";
+  const langCookie = cookieStore.get(LANG_COOKIE)?.value;
+  const initialLang = langCookie === "vi" ? "vi" : "en";
 
   return (
     <html
-      lang="en"
+      lang={initialLang === "vi" ? "vi-VN" : "en"}
       className={`${beVietnamPro.variable}${isDark ? " dark" : ""}`}
       style={{ colorScheme: isDark ? "dark" : "light" }}
       suppressHydrationWarning
     >
       <body>
-        <Providers>{children}</Providers>
+        <Providers initialLang={initialLang}>{children}</Providers>
       </body>
     </html>
   );
