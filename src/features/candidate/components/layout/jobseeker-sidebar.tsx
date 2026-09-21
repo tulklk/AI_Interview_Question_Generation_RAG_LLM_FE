@@ -35,7 +35,13 @@ export function JobseekerSidebar({ open, onClose, onOpenUpgrade }: JobseekerSide
   // Hide the "Practice CTA" promo on set detail pages AND the main practice
   // marketplace — user is already there, so the promo competes with page CTAs.
   const isSetDetail = /^\/candidate\/sets\/[^/]+\/?$/.test(pathname);
-  const hidePracticeCta = isSetDetail || pathname === "/candidate/practice" || pathname === "/candidate/coach";
+  const isJobDetail = /^\/candidate\/jobs\/[^/]+\/?$/.test(pathname);
+  const hidePracticeCta =
+    isSetDetail ||
+    isJobDetail ||
+    pathname === "/candidate/practice" ||
+    pathname === "/candidate/jobs" ||
+    pathname === "/candidate/coach";
 
   const sidebarContent = (
     <>

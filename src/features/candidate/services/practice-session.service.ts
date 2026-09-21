@@ -477,6 +477,16 @@ export async function reportTabLeave(sessionId: string): Promise<IntegrityEventR
 // History list
 // ---------------------------------------------------------------------------
 
+/** Practice session lifecycle state as the BE reports it. */
+export type PracticeSessionStatus = "COMPLETED" | "IN_PROGRESS" | "ABANDONED";
+
+function normalizeSessionStatus(raw: string): PracticeSessionStatus {
+  const v = raw.toUpperCase();
+  if (v === "IN_PROGRESS") return "IN_PROGRESS";
+  if (v === "ABANDONED") return "ABANDONED";
+  return "COMPLETED";
+}
+
 export interface CompletedSessionSummary {
   id: string;
   questionSetId: string;
@@ -485,6 +495,7 @@ export interface CompletedSessionSummary {
   companyLogoUrl?: string | null;
   score: number | null;
   durationMinutes: number;
+  status: PracticeSessionStatus;
   startedAt?: string;
   completedAt?: string;
 }
@@ -520,6 +531,7 @@ function normalizeCompletedSession(raw: unknown): CompletedSessionSummary | null
     companyLogoUrl,
     score: pickNullableNumber(src, "score", "overallScore"),
     durationMinutes,
+    status: normalizeSessionStatus(pickString(src, "status")),
     startedAt: pickOptionalString(src, "startedAt"),
     completedAt: pickOptionalString(src, "completedAt"),
   };
@@ -539,14 +551,26 @@ function extractTotal(raw: unknown, fallback: number): number {
   return fallback;
 }
 
-/** Lists a page of the candidate's completed practice sessions, most recent first. */
+/**
+ * Lists a page of the candidate's practice sessions, most recent first.
+ *
+ * The BE defaults to COMPLETED when no Status is sent, which hid every abandoned
+ * or in-progress attempt from the candidate entirely — pass `status` to see them.
+ */
 export async function listCompletedSessions(
-  params: { page?: number; pageSize?: number; fromDate?: string; toDate?: string; keyword?: string } = {}
+  params: {
+    page?: number;
+    pageSize?: number;
+    fromDate?: string;
+    toDate?: string;
+    keyword?: string;
+    status?: PracticeSessionStatus;
+  } = {}
 ): Promise<PaginatedCompletedSessions> {
   try {
     const res = await apiClient.get(BASE, {
       params: {
-        Status: "COMPLETED",
+        Status: params.status ?? "COMPLETED",
         Page: params.page ?? 1,
         PageSize: params.pageSize ?? 20,
         FromDate: params.fromDate,
@@ -563,6 +587,31 @@ export async function listCompletedSessions(
     if (status === 404) return { items: [], totalCount: 0 };
     throw err;
   }
+}
+
+export interface UnfinishedSessionCounts {
+  inProgress: number;
+  abandoned: number;
+  total: number;
+}
+
+/**
+ * Counts the attempts the candidate started but never finished. `/stats` only
+ * reports a single totalSessions figure and the default listing hides these
+ * entirely, so there was no way to see how many attempts were left hanging.
+ * Asks for one row per status and reads the server's totalCount.
+ */
+export async function getUnfinishedSessionCounts(): Promise<UnfinishedSessionCounts> {
+  const count = async (status: PracticeSessionStatus) => {
+    try {
+      const res = await listCompletedSessions({ page: 1, pageSize: 1, status });
+      return res.totalCount;
+    } catch {
+      return 0;
+    }
+  };
+  const [inProgress, abandoned] = await Promise.all([count("IN_PROGRESS"), count("ABANDONED")]);
+  return { inProgress, abandoned, total: inProgress + abandoned };
 }
 
 // ---------------------------------------------------------------------------

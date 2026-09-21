@@ -26,6 +26,17 @@ import { PublishDialog } from "@/features/question/components/publish-dialog";
 import type { PublishDialogConfirmPayload } from "@/features/question/components/publish-dialog";
 import { MIN_QUESTIONS_TO_PUBLISH } from "@/features/interview/components/generate/question-builder-set-panel";
 import { pollGenerationRun } from "@/features/studio/utils/poll-generation-run";
+import {
+  getDraft,
+  setQuestionSetHiringPosting,
+  setQuestionSetPublicJobDescription,
+} from "@/features/interview/services/interview.service";
+import {
+  postingDraftToPayload,
+  validateHiringPostingDraft,
+  type HiringPostingDraft,
+  type HiringPostingSaved,
+} from "@/features/hr/components/public-jd-editor-panel";
 
 /** SCRUM-431: đã xem hướng dẫn viền vàng 2 cột (bỏ qua lần sau). */
 const STUDIO_CONFIG_GUIDE_SEEN_KEY = "studio_config_guide_seen";
@@ -209,9 +220,181 @@ export function StudioPage() {
   const [replaceDialogOpen, setReplaceDialogOpen] = useState(false);
   const [publishDialogOpen, setPublishDialogOpen] = useState(false);
   const [publishing, setPublishing] = useState(false);
+
+  // SCRUM-470: JD công khai + posting tin tuyển (Studio review)
+  const [publicJobDescription, setPublicJobDescription] = useState("");
+  const [publicJdDraft, setPublicJdDraft] = useState("");
+  const [hiringPosting, setHiringPosting] = useState<HiringPostingSaved>({
+    jobLocation: "",
+    workplaceType: null,
+    salaryMin: null,
+    salaryMax: null,
+    salaryNegotiable: true,
+    jobExpertise: "",
+    jobDomain: "",
+  });
+  const [postingDraft, setPostingDraft] = useState<HiringPostingDraft>({
+    jobLocation: "",
+    workplaceType: "",
+    salaryMin: "",
+    salaryMax: "",
+    salaryNegotiable: true,
+    jobExpertise: "",
+    jobDomain: "",
+  });
+  const [publicJdNeedsAttention, setPublicJdNeedsAttention] = useState(false);
+
   useEffect(() => {
     if (studio.questionsAlreadyExist) setReplaceDialogOpen(true);
   }, [studio.questionsAlreadyExist]);
+
+  // Hydrate JD/posting từ draft khi đã có questionSetId (sau Save draft)
+  const questionSetId = studio.project?.questionSetId ?? null;
+  useEffect(() => {
+    if (!questionSetId) {
+      setPublicJobDescription("");
+      setPublicJdDraft("");
+      setHiringPosting({
+        jobLocation: "",
+        workplaceType: null,
+        salaryMin: null,
+        salaryMax: null,
+        salaryNegotiable: true,
+        jobExpertise: "",
+        jobDomain: "",
+      });
+      setPostingDraft({
+        jobLocation: "",
+        workplaceType: "",
+        salaryMin: "",
+        salaryMax: "",
+        salaryNegotiable: true,
+        jobExpertise: "",
+        jobDomain: "",
+      });
+      setPublicJdNeedsAttention(false);
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      try {
+        const draft = await getDraft(questionSetId);
+        if (cancelled || !draft) return;
+        const jd = draft.publicJobDescription?.trim() ?? "";
+        setPublicJobDescription(jd);
+        setPublicJdDraft(jd);
+        const posting: HiringPostingSaved = {
+          jobLocation: draft.jobLocation?.trim() ?? "",
+          workplaceType: draft.workplaceType ?? null,
+          salaryMin: draft.salaryMin ?? null,
+          salaryMax: draft.salaryMax ?? null,
+          salaryNegotiable: draft.salaryNegotiable ?? true,
+          jobExpertise: draft.jobExpertise?.trim() ?? "",
+          jobDomain: draft.jobDomain?.trim() ?? "",
+        };
+        setHiringPosting(posting);
+        setPostingDraft({
+          jobLocation: posting.jobLocation,
+          workplaceType: posting.workplaceType ?? "",
+          salaryMin: posting.salaryMin != null ? String(posting.salaryMin) : "",
+          salaryMax: posting.salaryMax != null ? String(posting.salaryMax) : "",
+          salaryNegotiable: posting.salaryNegotiable,
+          jobExpertise: posting.jobExpertise,
+          jobDomain: posting.jobDomain,
+        });
+      } catch {
+        // giữ state hiện tại nếu hydrate lỗi
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [questionSetId]);
+
+  /** SCRUM-470: autosave JD + posting nếu thiếu trước khi bật Tuyển / publish Tuyển. */
+  const ensureHiringPostingReady = useCallback(async (): Promise<boolean> => {
+    if (!questionSetId) {
+      addToast("error", t.reviewPage.saveDraftFirstHint);
+      return false;
+    }
+
+    const scrollToEditor = () => {
+      setPublicJdNeedsAttention(true);
+      document
+        .getElementById("public-jd-editor")
+        ?.scrollIntoView({ behavior: "smooth", block: "center" });
+    };
+
+    let jdOk = Boolean(publicJobDescription.trim());
+    if (!jdOk) {
+      const draft = publicJdDraft.trim();
+      if (!draft) {
+        scrollToEditor();
+        addToast("error", t.hiringMode.publicJdRequired);
+        return false;
+      }
+      const saved = await setQuestionSetPublicJobDescription(questionSetId, draft);
+      setPublicJobDescription(saved.publicJobDescription);
+      setPublicJdDraft(saved.publicJobDescription);
+      jdOk = true;
+    }
+
+    const postingComplete =
+      Boolean(hiringPosting.jobLocation.trim()) &&
+      Boolean(hiringPosting.jobExpertise.trim()) &&
+      Boolean(hiringPosting.jobDomain.trim()) &&
+      (hiringPosting.salaryNegotiable ||
+        hiringPosting.salaryMin != null ||
+        hiringPosting.salaryMax != null);
+
+    if (!postingComplete) {
+      const errKey = validateHiringPostingDraft(postingDraft);
+      if (errKey) {
+        scrollToEditor();
+        const h = t.hiringMode;
+        const msg =
+          errKey === "postingLocationRequired"
+            ? h.postingLocationRequired
+            : errKey === "postingExpertiseRequired"
+              ? h.postingExpertiseRequired
+              : errKey === "postingDomainRequired"
+                ? h.postingDomainRequired
+                : errKey === "postingSalaryRequired"
+                  ? h.postingSalaryRequired
+                  : errKey === "postingSalaryRangeInvalid"
+                    ? h.postingSalaryRangeInvalid
+                    : h.postingIncomplete;
+        addToast("error", msg);
+        return false;
+      }
+      const savedPosting = await setQuestionSetHiringPosting(
+        questionSetId,
+        postingDraftToPayload(postingDraft)
+      );
+      const next: HiringPostingSaved = {
+        jobLocation: savedPosting.jobLocation,
+        workplaceType: savedPosting.workplaceType ?? null,
+        salaryMin: savedPosting.salaryMin ?? null,
+        salaryMax: savedPosting.salaryMax ?? null,
+        salaryNegotiable: savedPosting.salaryNegotiable,
+        jobExpertise: savedPosting.jobExpertise,
+        jobDomain: savedPosting.jobDomain,
+      };
+      setHiringPosting(next);
+    }
+
+    setPublicJdNeedsAttention(false);
+    return jdOk;
+  }, [
+    questionSetId,
+    publicJobDescription,
+    publicJdDraft,
+    hiringPosting,
+    postingDraft,
+    addToast,
+    t.reviewPage.saveDraftFirstHint,
+    t.hiringMode,
+  ]);
 
   // Quota dialog — shown only when:
   //   (a) user explicitly triggers an action (handleNewSession / handleGenerateQuestions)
@@ -509,6 +692,8 @@ export function StudioPage() {
           timeLimitMinutes: payload.timeLimitMinutes,
           autoRecommendEnabled: payload.autoRecommendEnabled,
           recommendationMinScore: payload.recommendationMinScore,
+          isHiringAssessment: payload.isHiringAssessment,
+          hrAntiCheatEnabled: payload.hrAntiCheatEnabled,
         });
         // Only close on success — togglePublish already toasted the error, and
         // closing on failure would silently discard the user's selection.
@@ -1052,7 +1237,7 @@ export function StudioPage() {
                   void refreshSubscription();
                 } catch (error) {
                   if (regenCancelledRef.current) return;
-                  addToast("error", extractErrorMessage(error, lang) || "Regen failed");
+                  addToast("error", extractErrorMessage(error, lang) || s.chat.regenFailedShort);
                 } finally {
                   setRegeneratingQuestionIds((prev) => prev.filter((id) => id !== questionId));
                 }
@@ -1099,6 +1284,51 @@ export function StudioPage() {
             isSavingDraft={studio.isSavingDraft}
             isDraftSaved={studio.isDraftSaved}
             isPublished={studio.project?.isPublished ?? false}
+            hiringMode={{
+              isHiringAssessment: Boolean(studio.settings?.isHiringAssessment),
+              hrAntiCheatEnabled: Boolean(studio.settings?.hrAntiCheatEnabled),
+            }}
+            onHiringModeChange={async (next) => {
+              if (next.isHiringAssessment) {
+                if (!questionSetId) {
+                  addToast("error", t.reviewPage.saveDraftFirstHint);
+                  return;
+                }
+                try {
+                  const ok = await ensureHiringPostingReady();
+                  if (!ok) return;
+                } catch (err) {
+                  addToast(
+                    "error",
+                    err instanceof Error && err.message
+                      ? err.message
+                      : t.hiringMode.postingIncomplete
+                  );
+                  setPublicJdNeedsAttention(true);
+                  return;
+                }
+              }
+              await studio.updateSettingField({
+                isHiringAssessment: next.isHiringAssessment,
+                hrAntiCheatEnabled: next.hrAntiCheatEnabled,
+              });
+            }}
+            questionSetId={questionSetId}
+            publicJd={{
+              initialPublicJobDescription: publicJobDescription,
+              initialPosting: hiringPosting,
+              fullJobDescription: studio.jdContent ?? null,
+              needsAttention: publicJdNeedsAttention,
+              onAttentionCleared: () => setPublicJdNeedsAttention(false),
+              onDraftChange: setPublicJdDraft,
+              onPostingDraftChange: setPostingDraft,
+              onSaved: (text: string, posting: HiringPostingSaved) => {
+                setPublicJobDescription(text);
+                setPublicJdDraft(text);
+                setHiringPosting(posting);
+                setPublicJdNeedsAttention(false);
+              },
+            }}
           />
           )}
         </div>
@@ -1212,7 +1442,31 @@ export function StudioPage() {
           }))}
           minQuestions={MIN_QUESTIONS_TO_PUBLISH}
           saving={publishing}
+          currentTimeLimitMinutes={null}
+          initialAutoRecommendEnabled={true}
+          initialRecommendationMinScore={70}
+          initialIsHiringAssessment={Boolean(studio.settings?.isHiringAssessment)}
+          initialHrAntiCheatEnabled={Boolean(studio.settings?.hrAntiCheatEnabled)}
           onConfirm={(payload) => void confirmPublish(payload)}
+          onBeforeConfirm={async (payload) => {
+            if (!payload.isHiringAssessment) return true;
+            if (!questionSetId) {
+              addToast("error", t.reviewPage.saveDraftFirstHint);
+              return false;
+            }
+            try {
+              return await ensureHiringPostingReady();
+            } catch (err) {
+              addToast(
+                "error",
+                err instanceof Error && err.message
+                  ? err.message
+                  : t.hiringMode.postingIncomplete
+              );
+              setPublicJdNeedsAttention(true);
+              return false;
+            }
+          }}
           onClose={() => {
             if (!publishing) setPublishDialogOpen(false);
           }}

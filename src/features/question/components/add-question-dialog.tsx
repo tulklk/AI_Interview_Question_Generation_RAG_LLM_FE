@@ -140,7 +140,7 @@ export function AddQuestionDialog({ totalCount, onAdd, onClose }: AddQuestionDia
           {/* SCRUM-400: phương thức trả lời Candidate */}
           <div className="space-y-1.5">
             <label className={cn("text-sm font-medium", portalHeading)}>
-              Phương thức trả lời / Answer method
+              {t.reviewPage.questionCard.answerMethodLabel}
             </label>
             <select
               value={answerMethod}
@@ -150,8 +150,8 @@ export function AddQuestionDialog({ totalCount, onAdd, onClose }: AddQuestionDia
                 portalInput
               )}
             >
-              <option value="Text">Text — trả lời văn xuôi</option>
-              <option value="Code">Code — nhập code</option>
+              <option value="Text">{t.reviewPage.questionCard.answerMethodText}</option>
+              <option value="Code">{t.reviewPage.questionCard.answerMethodCode}</option>
             </select>
           </div>
 

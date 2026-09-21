@@ -502,7 +502,7 @@ function DocumentCard({
             className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors disabled:opacity-50"
           >
             <Trash2 size={13} className="text-red-400" />
-            Xoá nguồn
+            {t.common.deleteSource}
           </button>
         </div>,
         document.body

@@ -84,6 +84,7 @@ function PricingPlanCard({
   managePlanLabel: string;
   upgradePlanLabel: string;
 }) {
+  const { t } = useLanguage();
   const footnote =
     "priceFootnote" in planT && typeof planT.priceFootnote === "string"
       ? planT.priceFootnote
@@ -136,7 +137,7 @@ function PricingPlanCard({
     },
     "disabled-cross": {
       href: "#",
-      label: "Không áp dụng cho tài khoản này",
+      label: t.pricing.ctaNotApplicable,
       disabled: true,
       cls: plan.highlighted
         ? "bg-white/10 text-white/40 border border-white/20 cursor-not-allowed"
@@ -144,7 +145,7 @@ function PricingPlanCard({
     },
     "disabled-free": {
       href: "#",
-      label: "Bạn đã có tài khoản",
+      label: t.pricing.ctaAlreadyHaveAccount,
       disabled: true,
       cls: plan.highlighted
         ? "bg-white/10 text-white/40 border border-white/20 cursor-not-allowed"

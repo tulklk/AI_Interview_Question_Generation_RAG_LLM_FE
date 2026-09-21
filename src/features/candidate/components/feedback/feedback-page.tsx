@@ -776,9 +776,16 @@ export function FeedbackPage({
                         </Pill>
                       )}
                     </div>
+                    {/* Never put paywalled text in the DOM: a CSS blur is cosmetic and
+                        readable via devtools. The practice page already renders only the
+                        placeholder for locked questions — match it here. */}
                     <QuestionContent
-                      text={q.question}
-                      className={cn("text-[15px] font-bold leading-6", portalHeadingAlt, isLocked && "blur-[2px] select-none")}
+                      text={isLocked ? p.freemium.lockedQuestionText : q.question}
+                      className={cn(
+                        "text-[15px] font-bold leading-6",
+                        portalHeadingAlt,
+                        isLocked && "blur-[2px] select-none"
+                      )}
                     />
                   </div>
                   {isLocked ? (

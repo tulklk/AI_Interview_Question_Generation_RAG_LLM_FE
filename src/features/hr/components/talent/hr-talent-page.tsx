@@ -352,7 +352,7 @@ export function HrTalentPage() {
             onChange={(e) => setScoreFilter(e.target.value as ScoreFilter)}
             className={filterDropdownCls(scoreFilter !== "")}
           >
-            <option value="">Điểm: Tất cả</option>
+            <option value="">{t.historyPage.filters.scoreAll}</option>
             <option value="50">≥ 50</option>
             <option value="70">≥ 70</option>
             <option value="85">≥ 85</option>
@@ -363,8 +363,8 @@ export function HrTalentPage() {
             onChange={(e) => setDateSort(e.target.value as DateSort)}
             className={filterDropdownCls(dateSort !== "newest")}
           >
-            <option value="newest">Ngày: Mới nhất</option>
-            <option value="oldest">Ngày: Cũ nhất</option>
+            <option value="newest">{t.historyPage.filters.dateNewest}</option>
+            <option value="oldest">{t.historyPage.filters.dateOldest}</option>
           </select>
 
           {hasFilters && (
@@ -375,7 +375,7 @@ export function HrTalentPage() {
               className="inline-flex items-center gap-1 rounded-lg border border-gray-200 px-2 py-1.5 text-[12px] text-gray-500 transition-colors hover:border-red-300 hover:text-red-600 dark:border-gray-700 dark:text-gray-400 dark:hover:border-red-800 dark:hover:text-red-400"
             >
               <X size={11} />
-              Xóa lọc
+              {t.historyPage.filters.clearFilters}
             </button>
           )}
         </div>
@@ -408,7 +408,7 @@ export function HrTalentPage() {
             <div className="rounded-xl border border-dashed border-gray-200 px-6 py-10 text-center dark:border-gray-700">
               <SearchX className="mx-auto mb-2 h-7 w-7 text-gray-300" />
               <p className={cn("text-[13px]", portalSubtext)}>
-                Không tìm thấy ứng viên phù hợp với bộ lọc hiện tại.
+                {t.historyPage.filters.noCandidateMatch}
               </p>
             </div>
           ) : (

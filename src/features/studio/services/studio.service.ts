@@ -512,7 +512,7 @@ export async function listGenerationRuns(projectId: string): Promise<GenerationR
   return data;
 }
 
-/** SCRUM-439: publish từ Studio — chọn interview question ids + time limit + recommend. */
+/** SCRUM-439 + SCRUM-464: publish từ Studio — chọn câu + time limit + recommend + hiring. */
 export async function publishProject(
   projectId: string,
   body?: {
@@ -520,6 +520,8 @@ export async function publishProject(
     timeLimitMinutes?: number | null;
     autoRecommendEnabled?: boolean;
     recommendationMinScore?: number;
+    isHiringAssessment?: boolean;
+    hrAntiCheatEnabled?: boolean;
   }
 ): Promise<void> {
   await apiClient.post(`/api/studio/projects/${projectId}/publish`, {
@@ -527,6 +529,8 @@ export async function publishProject(
     timeLimitMinutes: body?.timeLimitMinutes ?? null,
     autoRecommendEnabled: body?.autoRecommendEnabled ?? null,
     recommendationMinScore: body?.recommendationMinScore ?? null,
+    isHiringAssessment: body?.isHiringAssessment ?? null,
+    hrAntiCheatEnabled: body?.hrAntiCheatEnabled ?? null,
   });
 }
 
