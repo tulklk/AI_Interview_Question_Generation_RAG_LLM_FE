@@ -5462,6 +5462,23 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
     backToGenerateBtn: "Generate with AI",
     refreshBtn: "Refresh",
     quickCreateBtn: "Quick create",
+    bulkBar: {
+      title: "Quick create",
+      hint: "Create multiple minimal questions in the selected set — enrich rubric later in History or compose below.",
+      typeLabel: "Type",
+      difficultyLabel: "Difficulty",
+      countLabel: "Count",
+      createBtn: "Quick create",
+      creatingBtn: "Creating…",
+      pasteLabel: "Content (optional — one question per line)",
+      pastePlaceholder: "Paste multiple question lines here…\nQuestion 1\nQuestion 2",
+      pasteEmptyHint: "If empty, creates {{count}} placeholder question(s) to edit later in History.",
+      placeholderPrefix: "[Draft] Question",
+      toastNeedSet: "Select or create a question set first.",
+      toastSuccess: "Created {{ok}}/{{total}} questions in the set.",
+      toastPartial: "Stopped early: created {{ok}}/{{total}} questions.",
+      toastFailed: "Could not create questions. Check the set is still DRAFT.",
+    },
     // Steps
     steps: {
       selectSet: "Select set",

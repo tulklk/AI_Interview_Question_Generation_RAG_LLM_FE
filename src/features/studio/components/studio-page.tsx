@@ -831,7 +831,7 @@ export function StudioPage() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => router.push("/hr/generate/manual")}
+                    onClick={() => router.push("/hr/generate-question/manual")}
                     className="inline-flex min-h-9 w-full items-center justify-center gap-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 transition-colors hover:bg-gray-50 dark:hover:bg-gray-700"
                   >
                     {t.generatePage.quota.createManuallyBtn}
@@ -923,7 +923,7 @@ export function StudioPage() {
         <StudioTopBar
           projectName={studio.project?.name}
           onNewSession={handleNewSession}
-          onCreateManually={() => router.push("/hr/generate/manual")}
+          onCreateManually={() => router.push("/hr/generate-question/manual")}
           onSaveDraft={studio.saveDraftAction}
           onShare={studio.createShare}
           isGenerating={studio.isGeneratingQuestions}

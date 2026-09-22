@@ -7,7 +7,7 @@
  */
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
 import Link from "next/link";
-import { ArrowLeft, Check, RefreshCw, Zap } from "lucide-react";
+import { ArrowLeft, Check, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/cn";
 import type { StudioCodeTemplateId } from "@/features/studio/constants/question-templates";
 import type { DifficultyLevel, QuestionType } from "@/features/interview/types/generation-session";
@@ -28,6 +28,11 @@ import {
   QuestionBuilderComposer,
   type ContentMode,
 } from "@/features/interview/components/generate/question-builder-composer";
+import {
+  BULK_MAX,
+  buildBulkQuestionTexts,
+  QuestionBuilderBulkBar,
+} from "@/features/interview/components/generate/question-builder-bulk-bar";
 import { QuestionBuilderPreview } from "@/features/interview/components/generate/question-builder-preview";
 import {
   buildPresetCriteria,
@@ -121,6 +126,13 @@ export function QuestionBuilderPage() {
   const [localPreviewUrl, setLocalPreviewUrl] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [sessionAdded, setSessionAdded] = useState<SessionAddedQuestion[]>([]);
+
+  // SCRUM-477: thanh Tạo nhanh N câu
+  const [bulkType, setBulkType] = useState<QuestionType>("Technical");
+  const [bulkDifficulty, setBulkDifficulty] = useState<DifficultyLevel>("Medium");
+  const [bulkCount, setBulkCount] = useState(5);
+  const [bulkPaste, setBulkPaste] = useState("");
+  const [bulkCreating, setBulkCreating] = useState(false);
 
   const selectedSet = useMemo(
     () => drafts.find((d) => d.questionSetId === selectedSetId) ?? null,
@@ -367,6 +379,73 @@ export function QuestionBuilderPage() {
 
   const composerDisabled = !selectedSetId;
 
+  /** SCRUM-477: tạo N câu tối thiểu vào bộ đang chọn */
+  const onBulkCreate = async () => {
+    if (!selectedSetId) {
+      addToast("error", qb.bulkBar.toastNeedSet);
+      return;
+    }
+    const texts = buildBulkQuestionTexts(
+      bulkPaste,
+      bulkCount,
+      qb.bulkBar.placeholderPrefix
+    );
+    if (texts.length === 0) return;
+
+    setBulkCreating(true);
+    let ok = 0;
+    const total = Math.min(texts.length, BULK_MAX);
+    try {
+      for (let i = 0; i < total; i++) {
+        const created = await addQuestionSetQuestion(selectedSetId, {
+          question: texts[i],
+          questionType: bulkType,
+          difficulty: bulkDifficulty,
+          answerMethod: "Text",
+          evaluationCriteria: [],
+          citations: [],
+        });
+        if (!created) {
+          if (ok === 0) {
+            addToast("error", qb.bulkBar.toastFailed);
+          } else {
+            addToast(
+              "error",
+              qb.bulkBar.toastPartial
+                .replace("{{ok}}", String(ok))
+                .replace("{{total}}", String(total))
+            );
+          }
+          return;
+        }
+        ok += 1;
+        setSessionAdded((prev) => [
+          {
+            id: created.id,
+            question: created.question,
+            difficulty: created.difficulty,
+            questionType: created.questionType,
+          },
+          ...prev,
+        ]);
+        setDrafts((prev) =>
+          prev.map((d) =>
+            d.questionSetId === selectedSetId
+              ? { ...d, questionCount: d.questionCount + 1 }
+              : d
+          )
+        );
+      }
+      addToast(
+        "success",
+        qb.bulkBar.toastSuccess.replace("{{ok}}", String(ok)).replace("{{total}}", String(total))
+      );
+      setBulkPaste("");
+    } finally {
+      setBulkCreating(false);
+    }
+  };
+
   return (
     <div className="space-y-4">
       {/* ── Header — Studio-style ── */}
@@ -382,15 +461,6 @@ export function QuestionBuilderPage() {
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-2">
-            {/* SCRUM-477: sang trang Bulk — tạo nhanh nhiều câu */}
-            <Link
-              href="/hr/generate/manual"
-              className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-3 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-primary-hover"
-            >
-              <Zap size={16} />
-              <span>{qb.quickCreateBtn}</span>
-            </Link>
-
             <Link
               href="/hr/generate-question"
               className={cn(
@@ -532,6 +602,21 @@ export function QuestionBuilderPage() {
         </div>
 
         <div style={{ animation: "slideUpFade 0.42s cubic-bezier(0.25,0.46,0.45,0.94) both 0.18s" }}>
+          <div>
+            <QuestionBuilderBulkBar
+              disabled={composerDisabled}
+              creating={bulkCreating}
+              questionType={bulkType}
+              difficulty={bulkDifficulty}
+              count={bulkCount}
+              pasteText={bulkPaste}
+              onQuestionTypeChange={setBulkType}
+              onDifficultyChange={setBulkDifficulty}
+              onCountChange={setBulkCount}
+              onPasteTextChange={setBulkPaste}
+              onCreate={() => void onBulkCreate()}
+            />
+          </div>
           <QuestionBuilderComposer
             disabled={composerDisabled}
             selectedSetId={selectedSetId || null}
