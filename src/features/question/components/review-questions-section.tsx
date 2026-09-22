@@ -921,10 +921,31 @@ export function ReviewQuestionsSection({
           questionSetId={questionSetId}
           initialPublicJobDescription={publicJobDescription}
           initialPosting={hiringPosting}
-          onSaved={(text, posting) => {
+          onSaved={async (text, posting) => {
             setPublicJobDescription(text);
             setPublicJdDraft(text);
             setHiringPosting(posting);
+            // Panel hiện vì needsAttention (chưa bật Tuyển) → sau lưu đủ thì bật Tuyển.
+            if (!isHiringAssessment && questionSetId) {
+              try {
+                const saved = await setQuestionSetHiringAssessment(
+                  questionSetId,
+                  true,
+                  hrAntiCheatEnabled
+                );
+                setIsHiringAssessment(saved.isHiringAssessment);
+                setHrAntiCheatEnabled(saved.hrAntiCheatEnabled);
+              } catch (err) {
+                addToast(
+                  "error",
+                  err instanceof Error && err.message
+                    ? err.message
+                    : t.hiringMode.publicJdRequired
+                );
+                // Giữ needsAttention → panel vẫn mở, không về Luyện tập
+                return;
+              }
+            }
             setPublicJdNeedsAttention(false);
           }}
           needsAttention={publicJdNeedsAttention}

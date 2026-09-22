@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { useLanguage } from "@/shared/providers/language-context";
+import { MIN_QUESTIONS_TO_PUBLISH } from "@/features/interview/components/generate/question-builder-set-panel";
 import type { PlanDetail } from "@/features/studio/types/studio.types";
 interface StudioActionBarProps {
   hasJd: boolean;
@@ -222,11 +223,15 @@ export function StudioActionBar({
                   : "border border-gray-200 bg-white text-gray-400 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-500"
               )}
               title={
-                allReady
-                  ? s.publish
-                  : s.publishBlockedToast
-                      .replace("{{ready}}", String(readyCount))
-                      .replace("{{total}}", String(questionCount))
+                readyCount < MIN_QUESTIONS_TO_PUBLISH
+                  ? s.publishMinToast
+                      .replace("{{min}}", String(MIN_QUESTIONS_TO_PUBLISH))
+                      .replace("{{count}}", String(readyCount))
+                  : allReady
+                    ? s.publish
+                    : s.publishBlockedToast
+                        .replace("{{ready}}", String(readyCount))
+                        .replace("{{total}}", String(questionCount))
               }
             >
               <Globe className="h-3.5 w-3.5" />

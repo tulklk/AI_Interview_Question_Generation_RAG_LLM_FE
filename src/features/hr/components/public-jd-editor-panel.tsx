@@ -51,7 +51,10 @@ type Props = {
   jdSourceType?: "PastedText" | "UploadedFile" | null;
   jdOriginalFileName?: string | null;
   jdFileUrl?: string | null;
-  onSaved?: (publicJobDescription: string, posting: HiringPostingSaved) => void;
+  onSaved?: (
+    publicJobDescription: string,
+    posting: HiringPostingSaved
+  ) => void | Promise<void>;
   /** Highlight khi HR bật Tuyển nhưng chưa lưu bản ngắn / posting. */
   needsAttention?: boolean;
   onAttentionCleared?: () => void;
@@ -135,11 +138,22 @@ export function PublicJdEditorPanel({
   const [posting, setPosting] = useState<HiringPostingDraft>(() => postingFromInitial(initialPosting));
   const [saving, setSaving] = useState(false);
   const [didPrefill, setDidPrefill] = useState(false);
+  /**
+   * Highlight cảnh báo (ring + text vàng) — local only.
+   * Không gọi onAttentionCleared khi user gõ: parent dùng needsAttention để
+   * giữ panel mở khi chưa bật Tuyển; clear parent sớm → panel biến mất giữa chừng.
+   */
+  const [attentionUi, setAttentionUi] = useState(needsAttention);
 
   useEffect(() => {
     setText(initialPublicJobDescription?.trim() ?? "");
     setPosting(postingFromInitial(initialPosting));
   }, [initialPublicJobDescription, initialPosting, questionSetId]);
+
+  // Parent bật needsAttention (vd. bật Tuyển thất bại) → hiện lại highlight.
+  useEffect(() => {
+    if (needsAttention) setAttentionUi(true);
+  }, [needsAttention]);
 
   useEffect(() => {
     onDraftChange?.(text);
@@ -183,7 +197,7 @@ export function PublicJdEditorPanel({
 
   function patchPosting(patch: Partial<HiringPostingDraft>) {
     setPosting((prev) => ({ ...prev, ...patch }));
-    if (needsAttention) onAttentionCleared?.();
+    setAttentionUi(false);
   }
 
   async function handleSave() {
@@ -227,8 +241,10 @@ export function PublicJdEditorPanel({
         jobDomain: savedPosting.jobDomain,
       };
       setPosting(postingFromInitial(next));
-      onSaved?.(savedJd.publicJobDescription, next);
-      onAttentionCleared?.();
+      setAttentionUi(false);
+      // Parent quyết định clear needsAttention (vd. sau khi bật Tuyển).
+      // Không gọi onAttentionCleared ở đây — tránh panel biến mất / về Luyện tập sớm.
+      await Promise.resolve(onSaved?.(savedJd.publicJobDescription, next));
       addToast("success", h.publicJdSaveSuccess);
     } catch (err) {
       addToast("error", err instanceof Error && err.message ? err.message : h.publicJdSaveFailed);
@@ -257,7 +273,7 @@ export function PublicJdEditorPanel({
       className={cn(
         portalCard,
         "space-y-3 p-4",
-        needsAttention && "ring-2 ring-amber-400 dark:ring-amber-500",
+        attentionUi && "ring-2 ring-amber-400 dark:ring-amber-500",
         className
       )}
     >
@@ -265,7 +281,7 @@ export function PublicJdEditorPanel({
         <div className="min-w-0">
           <p className={cn("text-sm font-semibold", portalHeading)}>{h.publicJdTitle}</p>
           <p className={cn("mt-0.5 text-xs leading-snug", portalSubtext)}>{h.publicJdHint}</p>
-          {needsAttention && (
+          {attentionUi && (
             <p className="mt-1 text-xs font-medium text-amber-700 dark:text-amber-300">
               {h.postingIncomplete}
             </p>
@@ -325,7 +341,7 @@ export function PublicJdEditorPanel({
         value={text}
         onChange={(e) => {
           setText(e.target.value);
-          if (needsAttention) onAttentionCleared?.();
+          setAttentionUi(false);
         }}
         rows={6}
         placeholder={h.publicJdPlaceholder}

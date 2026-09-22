@@ -674,14 +674,14 @@ export function StudioPage() {
     if (readyCount < MIN_QUESTIONS_TO_PUBLISH) {
       addToast(
         "error",
-        s.publishBlockedToast
-          .replace("{{ready}}", String(readyCount))
-          .replace("{{total}}", String(studio.questions.length))
+        s.publishMinToast
+          .replace("{{min}}", String(MIN_QUESTIONS_TO_PUBLISH))
+          .replace("{{count}}", String(readyCount))
       );
       return;
     }
     setPublishDialogOpen(true);
-  }, [addToast, readyCount, s.publishBlockedToast, studio]);
+  }, [addToast, readyCount, s.publishMinToast, studio]);
 
   const confirmPublish = useCallback(
     async (payload: PublishDialogConfirmPayload) => {
@@ -1322,10 +1322,30 @@ export function StudioPage() {
               onAttentionCleared: () => setPublicJdNeedsAttention(false),
               onDraftChange: setPublicJdDraft,
               onPostingDraftChange: setPostingDraft,
-              onSaved: (text: string, posting: HiringPostingSaved) => {
+              onSaved: async (text: string, posting: HiringPostingSaved) => {
                 setPublicJobDescription(text);
                 setPublicJdDraft(text);
                 setHiringPosting(posting);
+                // Panel hiện vì needsAttention (chưa bật Tuyển) → sau lưu đủ thì bật Tuyển,
+                // giữ panel + không để UI kẹt ở Luyện tập.
+                const alreadyHiring = Boolean(studio.settings?.isHiringAssessment);
+                if (!alreadyHiring) {
+                  try {
+                    await studio.updateSettingField({
+                      isHiringAssessment: true,
+                      hrAntiCheatEnabled: Boolean(studio.settings?.hrAntiCheatEnabled),
+                    });
+                  } catch (err) {
+                    addToast(
+                      "error",
+                      err instanceof Error && err.message
+                        ? err.message
+                        : t.hiringMode.publicJdRequired
+                    );
+                    // Giữ needsAttention → panel vẫn mở
+                    return;
+                  }
+                }
                 setPublicJdNeedsAttention(false);
               },
             }}
