@@ -5103,6 +5103,7 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
       wordCount: "{{words}} words · {{chars}} characters",
       noContent: "No content",
       saveAndAnalyze: "Save & Analyze",
+      savingAnalyzing: "Saving & analyzing…",
       uploadedInfo: "Uploaded & analyzed · {{words}} words",
       replaceFile: "Replace",
       dropToReplace: "Drop new file to replace",

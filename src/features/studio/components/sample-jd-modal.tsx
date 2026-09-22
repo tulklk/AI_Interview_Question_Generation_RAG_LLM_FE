@@ -24,6 +24,10 @@ import { cn } from "@/lib/cn";
 import { useLanguage } from "@/shared/providers/language-context";
 import { useToast } from "@/shared/providers/toast-context";
 import { portalHeading, portalSubtext } from "@/shared/utils/portal-ui";
+import {
+  hrSidebarSpacerClass,
+  useHrSidebarCollapsed,
+} from "@/features/hr/hooks/use-hr-sidebar-collapsed";
 
 const MODAL_ANIM_MS = 220;
 
@@ -304,6 +308,7 @@ export function SampleJdModal({
 }) {
   const { t, lang } = useLanguage();
   const { addToast } = useToast();
+  const sidebarCollapsed = useHrSidebarCollapsed();
   const src = t.studioPage.sources;
   const locale = lang === "en" ? "en" : "vi";
   const titleId = useId();
@@ -388,21 +393,25 @@ export function SampleJdModal({
   }
 
   return createPortal(
-    <div className="fixed inset-0 z-[200] flex items-end justify-center sm:items-center sm:p-4">
-      <div
-        className={cn(
-          "absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity",
-          visible ? "opacity-100" : "opacity-0"
-        )}
-        style={{ transitionDuration: `${MODAL_ANIM_MS}ms` }}
-        onClick={close}
-        aria-hidden
-      />
+    <div className="fixed inset-0 z-[200] flex pointer-events-none">
+      <div className={cn("hidden shrink-0 lg:block", hrSidebarSpacerClass(sidebarCollapsed))} aria-hidden />
+      <div className="flex min-w-0 flex-1 flex-col">
+        <div className="h-14 shrink-0" aria-hidden />
+        <div
+          className={cn(
+            "pointer-events-auto relative flex flex-1 items-end justify-center sm:items-center sm:p-4",
+            "bg-black/50 backdrop-blur-sm transition-opacity",
+            visible ? "opacity-100" : "opacity-0"
+          )}
+          style={{ transitionDuration: `${MODAL_ANIM_MS}ms` }}
+          onClick={close}
+        >
       <div
         ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
+        onClick={(e) => e.stopPropagation()}
         className={cn(
           "relative z-10 flex w-full flex-col overflow-hidden border border-gray-100 bg-white shadow-2xl dark:border-gray-800 dark:bg-gray-900",
           "max-h-[100dvh] rounded-t-2xl sm:max-h-[74vh] sm:max-w-[560px] sm:rounded-2xl md:max-w-[560px]",
@@ -537,6 +546,8 @@ export function SampleJdModal({
               {src.useSample}
             </button>
           </div>
+        </div>
+      </div>
         </div>
       </div>
     </div>,

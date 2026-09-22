@@ -171,6 +171,7 @@ export function useStudio() {
   const [isGeneratingQuestions, setIsGeneratingQuestions] = useState(false);
   const [isSavingDraft, setIsSavingDraft] = useState(false);
   const [isDraftSaved, setIsDraftSaved] = useState(false);
+  const [isSavingJd, setIsSavingJd] = useState(false);
   /** Set to true when BE rejects generateQuestions with COOLDOWN_ACTIVE / QUOTA_EXCEEDED.
    *  Reset to false at the start of each new generate attempt. */
   const [quotaExceeded, setQuotaExceeded] = useState(false);
@@ -517,7 +518,8 @@ export function useStudio() {
   }, [refreshMessages, refreshPlanAndSettings]);
 
   const saveJobDescription = useCallback(async () => {
-    if (!project || !jdContent.trim()) return;
+    if (!project || !jdContent.trim() || isSavingJd) return;
+    setIsSavingJd(true);
     try {
       // SCRUM-432: PUT đã classify + extract — không gọi analyze lần 2
       const summary = await studioApi.upsertJobDescription(project.id, jdContent, "PastedText");
@@ -534,8 +536,10 @@ export function useStudio() {
       // Từ chối nội dung JD (không phải tin tuyển / không IT) → chỉ inline, không toast
       if (isJdInputRejectError(error)) return;
       addToast("error", message);
+    } finally {
+      setIsSavingJd(false);
     }
-  }, [addToast, jdContent, lang, project, refreshPlanAndSettings, tx.jdAnalyzeServerError, tx.jdSaved, tx.jdSaveFailed]);
+  }, [addToast, isSavingJd, jdContent, lang, project, refreshPlanAndSettings, tx.jdAnalyzeServerError, tx.jdSaved, tx.jdSaveFailed]);
 
   const uploadJobDescription = useCallback(async (file: File): Promise<boolean> => {
     if (!project) return false;
@@ -1366,6 +1370,7 @@ export function useStudio() {
       questionsAlreadyExist,
       isSavingDraft,
       isDraftSaved,
+      isSavingJd,
       saveJobDescription,
       saveJobDescriptionPosition,
       saveJobDescriptionMetadata,
@@ -1412,6 +1417,7 @@ export function useStudio() {
       questionsAlreadyExist,
       isSavingDraft,
       isDraftSaved,
+      isSavingJd,
       isStreaming,
       planStreamStartedAt,
       jdContent,
