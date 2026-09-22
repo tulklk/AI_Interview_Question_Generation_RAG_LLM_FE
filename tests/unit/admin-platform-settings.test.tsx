@@ -58,7 +58,7 @@ describe("Admin Platform Settings — General", () => {
     const user = userEvent.setup();
     renderWithProviders(<AdminSettingsPage />);
 
-    const retryBtn = await screen.findByRole("button", { name: "Thử lại" }, { timeout: 10000 });
+    const retryBtn = await screen.findByRole("button", { name: "Retry" }, { timeout: 10000 });
     settingsApi.getPlatformSettings.mockResolvedValue({ platformName: "HireGen AI Prod" });
     await user.click(retryBtn);
 

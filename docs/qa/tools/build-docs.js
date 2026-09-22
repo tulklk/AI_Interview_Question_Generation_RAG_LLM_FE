@@ -263,6 +263,12 @@ async function buildR5() {
       "SU26SE102-GSU26SE52",
       "Re-verified the test artifacts against the AI Coach, candidate roadmap and knowledge-folder import merge. The frontend suite was re-run: 20 test cases in 6 files failed because the code under test had changed, the 6 test files were updated to the new behaviour and the suite passed 470/470 (62 files, totals unchanged). Report5_Test_Report.xlsx rebuilt as v7.2 - the frontend Round 1 dates move to 19/09/2026 while the 39 RAG Service API cases keep their 15/09/2026 pytest run - and the AKB-1, AKB-2 and APLAN-3 descriptions corrected. Added feature FT-15 to the scope table: the AI Coach workflow, candidate roadmaps and knowledge-folder import are out of scope for this test cycle and are covered by manual system testing only. SU26SE102-GSU26SE52_QA_TestCases.xlsx is unchanged because none of the functions it documents were modified.",
     ];
+    const texts21 = [
+      "21/09/2026",
+      "M",
+      "SU26SE102-GSU26SE52",
+      "Re-verified the test artifacts after the AI Configuration page was rebuilt as read-only and the Jobs board, public JD and hiring assessment mode feature was merged. The frontend suite was re-run: 10 test files needed updating - one test file's import broke because the page it tested had lost the service it used to call (rewritten from 5 to 1 test case), a shared HR subscription fixture was missing a field that let a Free-plan test silently pass with Premium-level export access, two mock factories were missing fields required by their updated types (caught by a separate tsc --noEmit pass, not by Vitest itself), and the rest asserted stale Vietnamese or superseded UI text - and the suite passed 466/466 (62 files, -4 from the AI Configuration module). Report5_Test_Report.xlsx rebuilt as 344 functional test cases in 10 feature modules, all Passed (305 Vitest UI test cases and the unchanged 39 RAG Service API pytest test cases); the Administration module dropped from 47 to 43 cases. Added feature FT-16 to the scope table: the Jobs board, public JD and hiring assessment mode feature is out of scope for this test cycle and is covered by manual system testing only. SU26SE102-GSU26SE52_QA_TestCases.xlsx is unchanged because none of the functions it documents were modified.",
+    ];
     const cloneRow = (vals) => {
       let i = 0;
       const out = src
@@ -271,8 +277,8 @@ async function buildR5() {
       if (i !== 4) throw new Error("Report5: change row has " + i + " text runs, expected 4");
       return out;
     };
-    xml = xml.replace(src, src + cloneRow(texts) + cloneRow(texts15) + cloneRow(texts19));
-    summary.push("Record of changes: added 13/09/2026, 15/09/2026 and 19/09/2026 rows");
+    xml = xml.replace(src, src + cloneRow(texts) + cloneRow(texts15) + cloneRow(texts19) + cloneRow(texts21));
+    summary.push("Record of changes: added 13/09/2026, 15/09/2026, 19/09/2026 and 21/09/2026 rows");
   }
 
   zip.file("word/document.xml", xml);

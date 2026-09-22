@@ -131,7 +131,7 @@ describe("HR Knowledge Documents — delete", () => {
     // scope to the row container to find it reliably.
     const row = screen.getByText("handbook.pdf").closest("div.group") as HTMLElement;
     await user.click(within(row).getByRole("button"));
-    await user.click(await screen.findByText("Xoá nguồn"));
+    await user.click(await screen.findByText("Delete source"));
 
     expect(await screen.findByText("Delete document?")).toBeInTheDocument();
     expect(onDelete).not.toHaveBeenCalled();

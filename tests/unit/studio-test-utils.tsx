@@ -129,8 +129,18 @@ export function freeSubscriptionReady() {
     lastSuccessfulGenerateAt: null,
     generateWindowUsed: 0,
     generateWindowLimit: 1,
-    limits: { ...sub.limits, generateUnlimited: false, generateCooldownHours: 24, generatePerWindow: 1 },
-    entitlements: { ...sub.entitlements, generateUnlimited: false },
+    // Only generateUnlimited was overridden below — canExport still inherited
+    // `true` from premiumSubscription(), so this "Free" fixture silently
+    // granted export. hasFeature() in hr-subscription-context.tsx reads
+    // limits.canExport directly (see HIST-9 in hr-history.test.tsx).
+    limits: {
+      ...sub.limits,
+      generateUnlimited: false,
+      generateCooldownHours: 24,
+      generatePerWindow: 1,
+      canExport: false,
+    },
+    entitlements: { ...sub.entitlements, generateUnlimited: false, canExport: false },
   };
 }
 

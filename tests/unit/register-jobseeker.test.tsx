@@ -8,9 +8,11 @@ import { RegisterJobSeekerForm } from "@/features/auth/components/register-jobse
 // src/core/i18n/en.ts (`registerJobSeekerPage` section). Maps to Excel sheet
 // AUTH003_RegisterJobSeeker. Unit-test rewrite of the former
 // register-jobseeker.spec.ts Playwright suite.
-// Note: step1/step2 field-required messages ("Họ tên là bắt buộc", "Vui lòng
-// nhập email hợp lệ", etc.) are hard-coded Vietnamese in the component
-// itself, not pulled from an i18n dictionary — that's real current behavior.
+// Note: step1/step2 field-required messages now come from the i18n dictionary
+// (rp.fullNameRequired, rp.emailInvalid, rp.targetRoleRequired, etc.) and
+// follow the UI language — renderWithProviders() defaults to English, so
+// assertions below check the English wording, not the Vietnamese hardcoded
+// text this component used to always show regardless of language.
 
 const push = vi.fn();
 
@@ -52,7 +54,7 @@ describe("AUTH003 — Register Jobseeker, step 1", () => {
     await user.type(screen.getByPlaceholderText("Min. 8 characters"), "Password1!");
     await user.type(screen.getByPlaceholderText("Repeat your password"), "Password1!");
     await user.click(screen.getByRole("button", { name: "Continue" }));
-    expect(await screen.findByText("Họ tên là bắt buộc")).toBeInTheDocument();
+    expect(await screen.findByText("Full name is required.")).toBeInTheDocument();
   });
 
   test("AUTH003-2: blocks Continue on invalid email format", async () => {
@@ -63,7 +65,7 @@ describe("AUTH003 — Register Jobseeker, step 1", () => {
     await user.type(screen.getByPlaceholderText("Min. 8 characters"), "Password1!");
     await user.type(screen.getByPlaceholderText("Repeat your password"), "Password1!");
     await user.click(screen.getByRole("button", { name: "Continue" }));
-    expect(await screen.findByText("Vui lòng nhập email hợp lệ")).toBeInTheDocument();
+    expect(await screen.findByText("Please enter a valid email address.")).toBeInTheDocument();
   });
 
   test("AUTH003-3: blocks Continue when password is under 8 characters", async () => {
@@ -119,9 +121,9 @@ describe("AUTH003 — Register Jobseeker, step 2", () => {
     const form = screen.getByPlaceholderText("e.g. Frontend Developer").closest("form")!;
     form.requestSubmit();
 
-    expect(await screen.findByText("Vị trí mục tiêu là bắt buộc")).toBeInTheDocument();
-    expect(screen.getByText("Vui lòng chọn cấp độ kinh nghiệm")).toBeInTheDocument();
-    expect(screen.getByText("Chọn ít nhất một công nghệ")).toBeInTheDocument();
+    expect(await screen.findByText("Target role is required.")).toBeInTheDocument();
+    expect(screen.getByText("Please select an experience level.")).toBeInTheDocument();
+    expect(screen.getByText("Select at least one technology.")).toBeInTheDocument();
   });
 
   async function fillStep2(user: ReturnType<typeof userEvent.setup>) {

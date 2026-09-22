@@ -59,6 +59,7 @@ function session(overrides: Partial<CompletedSessionSummary> = {}): CompletedSes
     durationMinutes: 24,
     startedAt: RECENT_STARTED_AT,
     completedAt: RECENT_COMPLETED_AT,
+    status: "COMPLETED",
     ...overrides,
   };
 }

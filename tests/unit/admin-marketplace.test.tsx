@@ -60,6 +60,7 @@ function item(overrides: Partial<AdminMarketplaceListItem> = {}): AdminMarketpla
     uniqueCandidateCount: 30,
     rating: 4.5,
     isPinned: false,
+    isHiringAssessment: false,
     ...overrides,
   };
 }

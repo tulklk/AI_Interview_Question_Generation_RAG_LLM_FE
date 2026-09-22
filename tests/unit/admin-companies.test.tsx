@@ -92,7 +92,7 @@ describe("Admin Companies — listing", () => {
     const user = userEvent.setup();
     renderWithProviders(<CompanyManagementPage />);
 
-    const retryBtn = await screen.findByRole("button", { name: /Thử lại/ }, { timeout: 10000 });
+    const retryBtn = await screen.findByRole("button", { name: /Retry/ }, { timeout: 10000 });
     companyApi.listCompanies.mockResolvedValue({ items: [company()], totalCount: 1 } as never);
     await user.click(retryBtn);
 

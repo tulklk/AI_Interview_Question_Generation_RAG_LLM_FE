@@ -210,7 +210,14 @@ describe("MQ — Question Builder", () => {
     renderWithProviders(<QuestionBuilderPage />);
 
     await screen.findByRole("button", { name: "Save & add next" }, { timeout: 10000 });
-    await user.click(screen.getByRole("button", { name: "System design" }));
+    // Two controls now share the label "System design": the content-mode
+    // toggle (Theory/Code/System design — what this test wants) and the
+    // question-type chip (Technical/.../System design), which started
+    // rendering "System design" instead of the raw "System-design" enum
+    // value once question-builder-composer.tsx began translating it. The
+    // content-mode toggle renders first in the composer.
+    const [contentModeBtn] = screen.getAllByRole("button", { name: "System design" });
+    await user.click(contentModeBtn);
 
     expect(await screen.findByText(/System design template/)).toBeInTheDocument();
     expect(screen.getByPlaceholderText(/architecture overview, sequence diagram/)).toBeInTheDocument();

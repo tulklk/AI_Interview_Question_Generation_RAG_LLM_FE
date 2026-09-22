@@ -22,7 +22,7 @@ describe("PremiumRevokedDialog", () => {
     expect(await screen.findByText("Premium Plan Revoked")).toBeInTheDocument();
     expect(screen.getByText("Free Plan")).toBeInTheDocument();
     expect(screen.getByText("Unlimited question set generation")).toBeInTheDocument();
-    expect(screen.getByText("Export PDF / DOCX")).toBeInTheDocument();
+    expect(screen.getByText("Export Excel")).toBeInTheDocument();
     expect(screen.getByText("Ask-AI in Studio")).toBeInTheDocument();
     expect(screen.getByText("Publish to Marketplace")).toBeInTheDocument();
   });

@@ -14,9 +14,9 @@ const PYTEST_FILE = PYTEST_ARG ? PYTEST_ARG.slice("--pytest=".length) : null;
 const TESTER = "Hoàng Đăng Khoa";
 // Frontend (Vitest) Round-1 date. The RAG Service API cases keep the date of
 // their own pytest run, which is not re-executed when only the frontend changes.
-const RUN_DATE = "19/09/2026";
+const RUN_DATE = "21/09/2026";
 const RAG_RUN_DATE = "15/09/2026";
-const VERSION = "v7.2";
+const VERSION = "v7.3";
 const PROJECT_NAME = "IQGS – AI-Powered Interview Question Generation System Using RAG and LLM";
 const PROJECT_CODE = "SU26SE102";
 const CREATOR = "NamNM";
@@ -142,9 +142,12 @@ function estHeight(texts, widths, base = 15) {
       `Replaced the 18 Pending RAG Service API scenarios with the ${ragCases.length} pytest API test cases of the RAG_IQGS repository (commit 145f796), executed on ${RAG_RUN_DATE} against a live local Ollama (gemma3:4b, nomic-embed-text) with an isolated ChromaDB: ${ragPassed} Passed, ${ragCases.length - ragPassed} not passed. Total functional test cases: ${total}.`,
       "RAG_IQGS/tests/test_e2e_api.py; RAG_IQGS/tests/test_ollama_integration.py"]);
   }
-  history.push([RUN_DATE, VERSION, "Sync", "M",
+  history.push(["19/09/2026", "v7.2", "Sync", "M",
     "Re-executed the frontend suite after the AI Coach workflow, candidate roadmap and knowledge-folder import changes: 470/470 Vitest test cases passed in 62 files (unchanged totals). Six test files needed updating for the new code (next/navigation now supplies useSearchParams to the practice and feedback screens; the admin knowledge service gained folder and document-type functions; the HR upload callback gained adminNote/folder arguments). Corrected AKB-1, AKB-2 (the Admin knowledge page now opens on a folder browser) and APLAN-3 (plan-limit save message reworded). Round 1 dates for the RAG Service API module stay on " + RAG_RUN_DATE + " because that service was not changed and its pytest run was not repeated.",
     "tests/unit/admin-knowledge.test.tsx; admin-plans.test.tsx; candidate-forbidden.test.tsx; feedback-result-client.test.tsx; hr-knowledge.test.tsx; practice-session.test.tsx"]);
+  history.push([RUN_DATE, VERSION, "Sync", "M",
+    "Re-executed the frontend suite after the AI Configuration page was rebuilt as read-only and the Jobs board, public JD and hiring assessment mode feature was merged: 466/466 Vitest test cases passed in 62 files (-4 from the AI Configuration module, which lost its editable save form; see F8 in the Administration sheet). Ten test files needed updating: admin-ai-config.test.tsx was rewritten from 5 to 1 test case for the new read-only page; a shared HR subscription test fixture (studio-test-utils.tsx) was missing a canExport field that let a Free-plan test silently pass with Premium-level export access; candidate-dashboard.test.tsx and admin-marketplace.test.tsx were missing fields required by their updated types (caught by a separate tsc --noEmit pass, not by Vitest); register-jobseeker.test.tsx asserted hardcoded Vietnamese validation text now sourced from the i18n dictionary in English by default; and admin-companies.test.tsx, admin-platform-settings.test.tsx, hr-knowledge.test.tsx, premium-revoked-dialog.test.tsx and question-builder.test.tsx asserted other stale or superseded UI text. Total functional test cases: " + total + " (Administration module 47->43). Round 1 dates for the RAG Service API module stay on " + RAG_RUN_DATE + " because that service was not changed and its pytest run was not repeated.",
+    "tests/unit/admin-ai-config.test.tsx; admin-companies.test.tsx; admin-marketplace.test.tsx; admin-platform-settings.test.tsx; candidate-dashboard.test.tsx; hr-knowledge.test.tsx; premium-revoked-dialog.test.tsx; question-builder.test.tsx; register-jobseeker.test.tsx; studio-test-utils.tsx"]);
   const coverRowStyle = [1, 2, 3, 4, 5, 6].map((c) => clone(cover.getCell(11, c).style));
   for (let r = 11; r <= 40; r++) for (let c = 1; c <= 6; c++) cover.getCell(r, c).value = null;
   history.forEach((h, i) => {
