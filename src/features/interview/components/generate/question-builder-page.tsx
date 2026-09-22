@@ -5,7 +5,7 @@
  * đủ field như Studio Save (sampleAnswer, rubric, skill, focusArea, questionType).
  * Chọn/tạo bộ → Loại nội dung → Soạn → Preview → Lưu
  */
-import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import Link from "next/link";
 import { ArrowLeft, Check, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/cn";
@@ -133,6 +133,8 @@ export function QuestionBuilderPage() {
   const [bulkCount, setBulkCount] = useState(5);
   const [bulkPaste, setBulkPaste] = useState("");
   const [bulkCreating, setBulkCreating] = useState(false);
+  // Khóa sync — chặn double-click trước khi React kịp re-render disabled
+  const bulkCreatingLockRef = useRef(false);
 
   const selectedSet = useMemo(
     () => drafts.find((d) => d.questionSetId === selectedSetId) ?? null,
@@ -381,6 +383,7 @@ export function QuestionBuilderPage() {
 
   /** SCRUM-477: tạo N câu tối thiểu vào bộ đang chọn */
   const onBulkCreate = async () => {
+    if (bulkCreatingLockRef.current || bulkCreating) return;
     if (!selectedSetId) {
       addToast("error", qb.bulkBar.toastNeedSet);
       return;
@@ -392,6 +395,7 @@ export function QuestionBuilderPage() {
     );
     if (texts.length === 0) return;
 
+    bulkCreatingLockRef.current = true;
     setBulkCreating(true);
     let ok = 0;
     const total = Math.min(texts.length, BULK_MAX);
@@ -442,6 +446,7 @@ export function QuestionBuilderPage() {
       );
       setBulkPaste("");
     } finally {
+      bulkCreatingLockRef.current = false;
       setBulkCreating(false);
     }
   };
