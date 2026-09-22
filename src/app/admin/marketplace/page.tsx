@@ -152,7 +152,7 @@ export default function AdminMarketplacePage() {
     setUnpublishingId(item.id);
     try {
       const abandoned = await unpublishMarketplaceQuestionSet(item.id);
-      addToast("success", withAbandonedToast(m.unpublishSuccess, abandoned));
+      addToast("success", withAbandonedToast(m.unpublishSuccess, abandoned, m.unpublishAbandoned));
       await Promise.all([fetchList(), fetchStats()]);
       if (selectedId === item.id) {
         setDetailOpen(false);

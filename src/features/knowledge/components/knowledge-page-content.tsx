@@ -876,13 +876,12 @@ export function KnowledgePageContent({
       setDocs([]);
       addToast(
         "error",
-        extractErrorMessage(error, lang === "vi" ? "vi" : "en") ||
-          (lang === "vi" ? "Không tải được danh sách tài liệu." : "Failed to load documents.")
+        extractErrorMessage(error, lang === "vi" ? "vi" : "en") || kb.loadFailed
       );
     } finally {
       setLoading(false);
     }
-  }, [onFetchDocs, addToast, lang, variant, activeFolder]);
+  }, [onFetchDocs, addToast, lang, variant, activeFolder, kb.loadFailed]);
 
   useEffect(() => {
     loadDocs();
@@ -1006,8 +1005,7 @@ export function KnowledgePageContent({
       setDrawerChunks([]);
       addToast(
         "error",
-        extractErrorMessage(error, lang === "vi" ? "vi" : "en") ||
-          (lang === "vi" ? "Không tải được preview chunk." : "Failed to load chunk preview.")
+        extractErrorMessage(error, lang === "vi" ? "vi" : "en") || kb.chunkPreviewFailed
       );
     } finally {
       setDrawerLoading(false);

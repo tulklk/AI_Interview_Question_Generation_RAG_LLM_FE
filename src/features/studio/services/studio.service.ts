@@ -335,7 +335,7 @@ export async function approvePlan(projectId: string, planId: string, revision: n
 /** SCRUM-393: đổi tiêu đề / tên công việc trên plan — BE lưu Title (+ sync roleTitle JSON). */
 export async function renamePlanTitle(projectId: string, planId: string, title: string): Promise<PlanSummary> {
   const trimmed = title.trim();
-  if (!trimmed) throw new Error("Tiêu đề không được để trống.");
+  if (!trimmed) throw new Error("Title cannot be empty.");
   const { data } = await apiClient.put<PlanSummary>(
     `/api/studio/projects/${projectId}/plans/${planId}/title`,
     { title: trimmed }

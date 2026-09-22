@@ -255,7 +255,7 @@ export function PublishedInsightsTable() {
       setItems((prev) => prev.filter((x) => x.questionSetId !== item.questionSetId));
       addToast(
         "success",
-        withAbandonedToast(t.historyPage.unpublishSuccess, abandoned)
+        withAbandonedToast(t.historyPage.unpublishSuccess, abandoned, t.historyPage.unpublishAbandoned)
       );
     } catch (err) {
       addToast(

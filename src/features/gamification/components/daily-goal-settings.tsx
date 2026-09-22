@@ -84,7 +84,7 @@ export function DailyGoalSettings({ className }: DailyGoalSettingsProps) {
       //    will clear savedOptimistic automatically.
       refresh();
     } catch {
-      addToast("error", isVi ? "Không thể cập nhật mục tiêu" : "Could not update goal");
+      addToast("error", g.goalUpdateFailed);
     } finally {
       setSaving(false);
     }

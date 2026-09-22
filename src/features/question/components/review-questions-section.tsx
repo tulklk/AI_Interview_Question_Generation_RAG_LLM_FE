@@ -550,7 +550,7 @@ export function ReviewQuestionsSection({
     try {
       const abandoned = await unpublishQuestionSet(questionSetId);
       onPublishStatusChange?.("DRAFT");
-      addToast("success", withAbandonedToast(rp.unpublishSuccess, abandoned));
+      addToast("success", withAbandonedToast(rp.unpublishSuccess, abandoned, rp.unpublishAbandoned));
     } catch (err) {
       const message = err instanceof Error && err.message ? err.message : rp.unpublishFailed;
       addToast("error", message);

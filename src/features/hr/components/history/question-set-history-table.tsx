@@ -266,7 +266,7 @@ export function QuestionSetHistoryTable({ filter = "all" }: QuestionSetHistoryTa
             x.questionSetId === item.questionSetId ? { ...x, status: "DRAFT", publishedAt: null } : x
           )
         );
-        addToast("success", withAbandonedToast(t.historyPage.unpublishSuccess, abandoned));
+        addToast("success", withAbandonedToast(t.historyPage.unpublishSuccess, abandoned, t.historyPage.unpublishAbandoned));
       } catch (err) {
         addToast("error", err instanceof Error && err.message ? err.message : t.historyPage.actionFailed);
       } finally {

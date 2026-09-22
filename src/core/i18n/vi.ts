@@ -1014,6 +1014,9 @@ Yêu cầu:
       "JSONL (Admin): mỗi dòng {\"question\",\"answer\"}. Nên chọn loại Tech/InternalStack. Upload theo từng repo (flask.jsonl…) thay vì default.jsonl nếu đã tách file.",
     fileTooLarge: "File \"{{name}}\" vượt quá {{n}} MB.",
     uploadFailed: "Không thể tải lên \"{{name}}\". Vui lòng thử lại.",
+    loadFailed: "Không tải được danh sách tài liệu.",
+    chunkPreviewFailed: "Không tải được preview chunk.",
+    roadmapImportFailed: "Import thất bại.",
     notItDomain:
       "Tài liệu \"{{name}}\" không thuộc lĩnh vực IT/phần mềm. Hệ thống chỉ nhận tài liệu kỹ thuật.",
     uploadSuccess: "Đã tải lên \"{{name}}\" thành công.",
@@ -1123,6 +1126,7 @@ Yêu cầu:
     unpublishTitle: "Gỡ xuất bản",
     publishSuccess: "Đã xuất bản bộ câu hỏi.",
     unpublishSuccess: "Đã gỡ xuất bản bộ câu hỏi.",
+    unpublishAbandoned: "Đã hủy {{count}} phiên đang làm.",
     actionFailed: "Thao tác thất bại. Vui lòng thử lại.",
     publishedSummary: "{{n}} bộ đã xuất bản · {{q}} câu hỏi",
     detailNotFoundTitle: "Không tìm thấy bộ câu hỏi",
@@ -1776,6 +1780,8 @@ Yêu cầu:
         activateNowBtn: "Kích hoạt ngay",
         activatingLabel: "Đang kích hoạt…",
         activateFailed: "Kích hoạt thất bại. Vui lòng thử lại.",
+        awaitingSystemConfirm:
+          "Đang chờ xác nhận từ hệ thống. Vui lòng thử lại sau vài giây.",
       },
       paymentHistory: {
         title: "Lịch sử thanh toán",
@@ -2150,6 +2156,7 @@ Yêu cầu:
       unpublish: "Gỡ đăng",
       unpublishing: "Đang gỡ...",
       unpublishSuccess: "Đã gỡ bộ câu hỏi khỏi Marketplace.",
+      unpublishAbandoned: "Đã hủy {{count}} phiên đang làm.",
       unpublishFailed: "Gỡ đăng bộ câu hỏi thất bại.",
       unpublishConfirmTitle: "Gỡ đăng bộ câu hỏi này?",
       unpublishConfirmMessage: "Bộ sẽ bị gỡ khỏi Marketplace. Các phiên ứng viên đang làm sẽ bị hủy.",
@@ -2557,6 +2564,8 @@ Yêu cầu:
         unsaved: "Có thay đổi chưa lưu",
         resetBtn: "Hoàn tác",
         hintPrice: "Gói Free bắt buộc 0. Gói Premium tối thiểu 10.000.",
+        freePriceMustBeZero: "Gói Free phải có giá 0 VNĐ.",
+        premiumMinPrice: "Gói Premium phải có giá tối thiểu 10.000 VNĐ.",
         hintAskAi: "Số lần gọi Ask-AI trong mỗi kỳ thanh toán.",
         hintCooldown: "Số giờ của một cửa sổ generate. Tối thiểu 1 giờ khi tắt Unlimited.",
         hintGeneratePerWindow: "Số lần sinh bộ / JD-fit trong mỗi cửa sổ. Bỏ qua khi bật Unlimited.",
@@ -4275,6 +4284,8 @@ Yêu cầu:
         activateNowBtn: "Kích hoạt ngay",
         activatingLabel: "Đang kích hoạt…",
         activateFailed: "Kích hoạt thất bại. Vui lòng thử lại.",
+        awaitingSystemConfirm:
+          "Đang chờ xác nhận từ hệ thống. Vui lòng thử lại sau vài giây.",
       },
       // Cancel modal
       cancelModalTitle: "Hủy đăng ký",
@@ -5343,7 +5354,10 @@ Yêu cầu:
       draftSaveFailed: "Lưu bộ câu hỏi thất bại.",
       publishNotFound: "Không thể publish. Hãy generate câu hỏi trước, rồi Save hoặc Publish.",
       unpublished: "Đã unpublish bộ câu hỏi.",
+      unpublishAbandoned: "Đã hủy {{count}} phiên đang làm.",
       published: "Đã publish bộ câu hỏi.",
+      generationStaleJob:
+        "Job vẫn {{status}} sau 5 phút (run {{runId}}…). RAG có thể chưa callback — bấm Làm mới trạng thái.",
       shareCreated: "Đã tạo link share và copy vào clipboard.",
       newSessionCreated: "Đã tạo bộ mới. Nhập JD + chọn tài liệu rồi Lập plan.",
       jdSaveFailed: "Lưu Job Description thất bại.",
@@ -5550,6 +5564,7 @@ Yêu cầu:
     goalPresetIntense: "Cường độ cao (120 XP / ngày)",
     saveGoal: "Lưu mục tiêu",
     goalSaved: "Đã cập nhật mục tiêu hàng ngày",
+    goalUpdateFailed: "Không thể cập nhật mục tiêu",
 
     // Sessions
     totalSessions: "Phiên",

@@ -58,9 +58,10 @@ function makeDefault(): ManualQuestion {
 }
 
 export function ManualQuestionCreator() {
-  const { lang } = useLanguage();
+  const { lang, t } = useLanguage();
   const { addToast } = useToast();
   const isVi = lang === "vi";
+  const mp = t.manualPage;
 
   const [open,       setOpen]       = useState(false);
   const [role,       setRole]       = useState("");
@@ -88,20 +89,20 @@ export function ManualQuestionCreator() {
   function handleSave() {
     const filled = questions.filter((q) => q.content.trim());
     if (!role.trim()) {
-      addToast("error", isVi ? "Vui lòng nhập vị trí ứng tuyển." : "Please enter the job title.");
+      addToast("error", mp.validation.roleRequired);
       return;
     }
     if (filled.length === 0) {
-      addToast("error", isVi ? "Vui lòng thêm ít nhất 1 câu hỏi." : "Please add at least 1 question.");
+      addToast("error", mp.validation.questionsRequired);
       return;
     }
     setSaving(true);
     // Dummy save — simulate a short delay then success
     setTimeout(() => {
       setSaving(false);
-      addToast("success", isVi
-        ? `Đã lưu bộ câu hỏi "${role}" (${filled.length} câu).`
-        : `Saved question set "${role}" (${filled.length} questions).`
+      addToast(
+        "success",
+        mp.toast.saved.replace("{{role}}", role).replace("{{count}}", String(filled.length))
       );
     }, 800);
   }
@@ -109,7 +110,7 @@ export function ManualQuestionCreator() {
   function handleExport() {
     const filled = questions.filter((q) => q.content.trim());
     if (!role.trim() || filled.length === 0) {
-      addToast("error", isVi ? "Nhập vị trí và ít nhất 1 câu hỏi trước khi xuất." : "Enter a role and at least 1 question before exporting.");
+      addToast("error", mp.validation.exportMinRequired);
       return;
     }
     // Dummy export as plain text

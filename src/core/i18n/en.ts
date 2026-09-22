@@ -1012,6 +1012,9 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
       "JSONL (Admin): one object per line with {\"question\",\"answer\"}. Prefer Tech/InternalStack. Upload per-repo files (flask.jsonl…) instead of default.jsonl if already split.",
     fileTooLarge: "File \"{{name}}\" exceeds {{n}} MB.",
     uploadFailed: "Could not upload \"{{name}}\". Please try again.",
+    loadFailed: "Failed to load documents.",
+    chunkPreviewFailed: "Failed to load chunk preview.",
+    roadmapImportFailed: "Import failed.",
     notItDomain:
       "\"{{name}}\" is not an IT/software document. Only technical knowledge is accepted.",
     uploadSuccess: "\"{{name}}\" uploaded successfully.",
@@ -1121,6 +1124,7 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
     unpublishTitle: "Unpublish",
     publishSuccess: "Question set published.",
     unpublishSuccess: "Question set unpublished.",
+    unpublishAbandoned: "Abandoned {{count}} in-progress session(s).",
     actionFailed: "Action failed. Please try again.",
     publishedSummary: "{{n}} published sets · {{q}} questions",
     detailNotFoundTitle: "Question set not found",
@@ -1774,6 +1778,8 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
         activateNowBtn: "Activate Now",
         activatingLabel: "Activating…",
         activateFailed: "Activation failed. Please try again.",
+        awaitingSystemConfirm:
+          "Awaiting system confirmation. Please try again in a moment.",
       },
       paymentHistory: {
         title: "Payment History",
@@ -2149,6 +2155,7 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
       unpublish: "Unpublish",
       unpublishing: "Unpublishing...",
       unpublishSuccess: "Unpublished from Marketplace.",
+      unpublishAbandoned: "Abandoned {{count}} in-progress session(s).",
       unpublishFailed: "Failed to unpublish.",
       unpublishConfirmTitle: "Unpublish this question set?",
       unpublishConfirmMessage: "The set will be removed from Marketplace. In-progress candidate sessions will be abandoned.",
@@ -2556,6 +2563,8 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
         unsaved: "Unsaved changes",
         resetBtn: "Revert",
         hintPrice: "Free must stay at 0. Premium requires at least 10,000.",
+        freePriceMustBeZero: "The Free plan must have a price of 0 VND.",
+        premiumMinPrice: "The Premium plan must cost at least 10,000 VND.",
         hintAskAi: "Ask-AI requests allowed per billing period.",
         hintCooldown: "Length of one generate window. Min 1 hour when Unlimited is off.",
         hintGeneratePerWindow: "Successful question-set / JD-fit runs per window. Ignored while Unlimited is on.",
@@ -4273,6 +4282,8 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
         activateNowBtn: "Activate Now",
         activatingLabel: "Activating…",
         activateFailed: "Activation failed. Please try again.",
+        awaitingSystemConfirm:
+          "Awaiting system confirmation. Please try again in a moment.",
       },
       // Cancel modal
       cancelModalTitle: "Cancel Subscription",
@@ -5347,7 +5358,10 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
       draftSaveFailed: "Failed to save question set.",
       publishNotFound: "Could not publish. Generate questions first, then Save or Publish.",
       unpublished: "Question set unpublished.",
+      unpublishAbandoned: "Abandoned {{count}} in-progress session(s).",
       published: "Question set published.",
+      generationStaleJob:
+        "Job still {{status}} after 5 minutes (run {{runId}}…). RAG may not have called back — click Refresh status.",
       shareCreated: "Share link created and copied to clipboard.",
       newSessionCreated: "New session created. Enter a JD, select documents, then create a plan.",
       jdSaveFailed: "Failed to save Job Description.",
@@ -5569,6 +5583,7 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
     goalPresetIntense: "Intense (120 XP / day)",
     saveGoal: "Save goal",
     goalSaved: "Daily goal updated",
+    goalUpdateFailed: "Could not update goal",
 
     // Sessions
     totalSessions: "Sessions",

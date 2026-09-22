@@ -165,7 +165,7 @@ export function PractitionersPage({ questionSetId }: { questionSetId: string }) 
     try {
       const abandoned = await unpublishQuestionSet(questionSetId);
       setSet((s) => (s ? { ...s, status: "DRAFT" } : s));
-      addToast("success", withAbandonedToast(rp.unpublishSuccess, abandoned));
+      addToast("success", withAbandonedToast(rp.unpublishSuccess, abandoned, rp.unpublishAbandoned));
     } catch (err) {
       addToast("error", err instanceof Error && err.message ? err.message : rp.unpublishFailed);
     } finally {

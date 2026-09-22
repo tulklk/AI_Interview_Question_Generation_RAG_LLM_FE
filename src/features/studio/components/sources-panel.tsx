@@ -252,7 +252,7 @@ export function SourcesPanel({
       return;
     }
     if (skillsDraft.length >= 20) {
-      addToast("error", src.skillsMaxHint ?? "Tối đa 20 kỹ năng.");
+      addToast("error", src.skillsMaxHint);
       return;
     }
     setSkillsDraft((prev) => [...prev, next]);
