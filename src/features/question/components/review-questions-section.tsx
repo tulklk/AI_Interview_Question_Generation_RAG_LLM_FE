@@ -68,7 +68,7 @@ import {
 } from "@/features/hr/components/public-jd-editor-panel";
 import { useToast } from "@/shared/providers/toast-context";
 import { ASK_AI_ENABLED } from "@/features/question/constants/question-ui-flags";
-import { MIN_QUESTIONS_TO_PUBLISH } from "@/features/interview/components/generate/question-builder-set-panel";
+import { useMinQuestionsToPublish } from "@/features/hr/hooks/use-min-questions-to-publish";
 
 // ── Sortable wrapper ──────────────────────────────────────────────────────────
 
@@ -213,6 +213,7 @@ export function ReviewQuestionsSection({
   isFromStudio = false,
 }: ReviewQuestionsSectionProps) {
   const { t } = useLanguage();
+  const minQuestionsToPublish = useMinQuestionsToPublish();
   const rp = t.reviewPage;
   /**
    * A published set refuses every question mutation with 409. Showing the generic
@@ -980,7 +981,7 @@ export function ReviewQuestionsSection({
             ready: Boolean(q.isReady),
             defaultSelected: Boolean(q.isReady && q.isActive !== false),
           }))}
-          minQuestions={MIN_QUESTIONS_TO_PUBLISH}
+          minQuestions={minQuestionsToPublish}
           currentTimeLimitMinutes={timeLimitMinutes}
           initialAutoRecommendEnabled={autoRecommendEnabled}
           initialRecommendationMinScore={recommendationMinScore}

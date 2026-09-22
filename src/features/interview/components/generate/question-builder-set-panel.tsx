@@ -14,8 +14,11 @@ import {
   portalSubtext,
 } from "@/shared/utils/portal-ui";
 import { useLanguage } from "@/shared/providers/language-context";
+import { DEFAULT_MIN_QUESTIONS_TO_PUBLISH } from "@/features/hr/services/hr-platform-flags.service";
+import { useMinQuestionsToPublish } from "@/features/hr/hooks/use-min-questions-to-publish";
 
-export const MIN_QUESTIONS_TO_PUBLISH = 10;
+/** @deprecated Dùng useMinQuestionsToPublish() — giữ alias fallback seed = 10. */
+export const MIN_QUESTIONS_TO_PUBLISH = DEFAULT_MIN_QUESTIONS_TO_PUBLISH;
 
 export type SessionAddedQuestion = {
   id: string;
@@ -38,6 +41,8 @@ type Props = {
   creatingSet: boolean;
   onCreateSet: () => void;
   sessionAdded: SessionAddedQuestion[];
+  /** Override từ parent; mặc định đọc Admin qua hook. */
+  minQuestions?: number;
 };
 
 export function QuestionBuilderSetPanel({
@@ -54,14 +59,17 @@ export function QuestionBuilderSetPanel({
   creatingSet,
   onCreateSet,
   sessionAdded,
+  minQuestions: minQuestionsProp,
 }: Props) {
   const { t } = useLanguage();
   const qb = t.questionBuilder;
+  const minFromAdmin = useMinQuestionsToPublish();
+  const minQuestions = minQuestionsProp ?? minFromAdmin;
 
   const selected = drafts.find((d) => d.questionSetId === selectedSetId) ?? null;
   const count = selected?.questionCount ?? 0;
-  const progressPct = Math.min(100, Math.round((count / MIN_QUESTIONS_TO_PUBLISH) * 100));
-  const readyToPublish = count >= MIN_QUESTIONS_TO_PUBLISH;
+  const progressPct = Math.min(100, Math.round((count / Math.max(1, minQuestions)) * 100));
+  const readyToPublish = count >= minQuestions;
 
   return (
     <aside className={cn(portalCard, "flex flex-col p-4")}>
@@ -223,7 +231,7 @@ export function QuestionBuilderSetPanel({
                   : "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400"
               )}
             >
-              {count}/{MIN_QUESTIONS_TO_PUBLISH}
+              {count}/{minQuestions}
             </span>
           </div>
 
@@ -240,7 +248,7 @@ export function QuestionBuilderSetPanel({
           <p className={cn(portalSubtext, "text-[10px] leading-snug")}>
             {readyToPublish
               ? qb.progressReady
-              : qb.progressNeeds.replace("{{n}}", String(MIN_QUESTIONS_TO_PUBLISH - count))}
+              : qb.progressNeeds.replace("{{n}}", String(minQuestions - count))}
           </p>
 
           <Link

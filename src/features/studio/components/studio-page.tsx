@@ -10,6 +10,7 @@ import { useLanguage } from "@/shared/providers/language-context";
 import { useToast } from "@/shared/providers/toast-context";
 import { useStudio } from "@/features/studio/hooks/use-studio";
 import { useHrSubscription } from "@/features/hr/context/hr-subscription-context";
+import { useMinQuestionsToPublish } from "@/features/hr/hooks/use-min-questions-to-publish";
 import { StudioTopBar } from "@/features/studio/components/studio-top-bar";
 import { StudioProgressBar } from "@/features/studio/components/studio-progress";
 import { SourcesPanel } from "@/features/studio/components/sources-panel";
@@ -28,7 +29,6 @@ import type { PlanOutlineItem, StudioQuestion, StudioSettings } from "@/features
 import { normalizeOutlineItems } from "@/features/studio/components/plan-question-preview-list";
 import { PublishDialog } from "@/features/question/components/publish-dialog";
 import type { PublishDialogConfirmPayload } from "@/features/question/components/publish-dialog";
-import { MIN_QUESTIONS_TO_PUBLISH } from "@/features/interview/components/generate/question-builder-set-panel";
 import { pollGenerationRun } from "@/features/studio/utils/poll-generation-run";
 import {
   getDraft,
@@ -139,6 +139,7 @@ export function StudioPage() {
     subscription,
     refresh: refreshSubscription,
   } = useHrSubscription();
+  const minQuestionsToPublish = useMinQuestionsToPublish();
   const [mounted, setMounted] = useState(false);
   /** SCRUM-429: câu đang regen nền (badge + chặn double-click) */
   const [regeneratingQuestionIds, setRegeneratingQuestionIds] = useState<string[]>([]);
@@ -686,17 +687,17 @@ export function StudioPage() {
       void studio.togglePublish();
       return;
     }
-    if (readyCount < MIN_QUESTIONS_TO_PUBLISH) {
+    if (readyCount < minQuestionsToPublish) {
       addToast(
         "error",
         s.publishMinToast
-          .replace("{{min}}", String(MIN_QUESTIONS_TO_PUBLISH))
+          .replace("{{min}}", String(minQuestionsToPublish))
           .replace("{{count}}", String(readyCount))
       );
       return;
     }
     setPublishDialogOpen(true);
-  }, [addToast, readyCount, s.publishMinToast, studio]);
+  }, [addToast, readyCount, minQuestionsToPublish, s.publishMinToast, studio]);
 
   const confirmPublish = useCallback(
     async (payload: PublishDialogConfirmPayload) => {
@@ -1471,6 +1472,7 @@ export function StudioPage() {
         plan={studio.currentPlan}
         questionCount={studio.questions.length}
         readyCount={readyCount}
+        minQuestionsToPublish={minQuestionsToPublish}
         isStreaming={studio.isStreaming}
         isGeneratingQuestions={studio.isGeneratingQuestions}
         canCreatePlan={canCreatePlan && !sideColumnsLocked}
@@ -1497,7 +1499,7 @@ export function StudioPage() {
             preview: q.content,
             ready: Boolean(q.expectedAnswer?.trim()) && studioQuestionRubricReady(q),
           }))}
-          minQuestions={MIN_QUESTIONS_TO_PUBLISH}
+          minQuestions={minQuestionsToPublish}
           saving={publishing}
           currentTimeLimitMinutes={null}
           initialAutoRecommendEnabled={true}

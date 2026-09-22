@@ -27,7 +27,7 @@ import { AiLoadingSpinner } from "@/shared/components/common/ai-loading-spinner"
 import { ConfirmDialog } from "@/shared/components/ui/confirm-dialog";
 import { PublishDialog, type PublishDialogConfirmPayload } from "@/features/question/components/publish-dialog";
 import { portalHeading, portalSubtext } from "@/shared/utils/portal-ui";
-import { MIN_QUESTIONS_TO_PUBLISH } from "@/features/interview/components/generate/question-builder-set-panel";
+import { useMinQuestionsToPublish } from "@/features/hr/hooks/use-min-questions-to-publish";
 
 function getInitials(name: string): string {
   return name.trim().split(/\s+/).map((w) => w[0]?.toUpperCase() ?? "").slice(0, 2).join("");
@@ -106,6 +106,7 @@ const PAGE_SIZE = 7;
 
 export function PractitionersPage({ questionSetId }: { questionSetId: string }) {
   const { t, lang } = useLanguage();
+  const minQuestionsToPublish = useMinQuestionsToPublish();
   const p = t.practitionersPage;
   const rp = t.reviewPage;
   const { addToast } = useToast();
@@ -215,11 +216,11 @@ export function PractitionersPage({ questionSetId }: { questionSetId: string }) 
       return;
     }
     const readyN = set.questions.filter((q) => q.isReady).length;
-    if (readyN < MIN_QUESTIONS_TO_PUBLISH) {
+    if (readyN < minQuestionsToPublish) {
       addToast(
         "error",
         rp.publishMinHint
-          .replace("{{min}}", String(MIN_QUESTIONS_TO_PUBLISH))
+          .replace("{{min}}", String(minQuestionsToPublish))
           .replace("{{count}}", String(readyN))
       );
       return;
@@ -534,7 +535,7 @@ export function PractitionersPage({ questionSetId }: { questionSetId: string }) 
             ready: Boolean(q.isReady),
             defaultSelected: Boolean(q.isReady && q.isActive !== false),
           }))}
-          minQuestions={MIN_QUESTIONS_TO_PUBLISH}
+          minQuestions={minQuestionsToPublish}
           currentTimeLimitMinutes={set.timeLimitMinutes ?? null}
           initialAutoRecommendEnabled={set.autoRecommendEnabled ?? true}
           initialRecommendationMinScore={set.recommendationMinScore ?? 70}

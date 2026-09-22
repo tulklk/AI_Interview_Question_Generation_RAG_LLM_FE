@@ -11,8 +11,8 @@ import {
 /**
  * Additional hub events the backend may broadcast when an admin changes a
  * user's subscription plan (activate-premium, revoke, renew, etc.).
- * We listen to all plausible names so the real-time update works regardless
- * of the exact event name the BE team settled on.
+ * BE gửi `SubscriptionChanged` từ Admin grant / extend / revoke;
+ * các tên khác giữ để tương thích nếu hub mở rộng.
  */
 const PLAN_CHANGE_EVENTS = [
   "SubscriptionChanged",
@@ -26,11 +26,10 @@ const PLAN_CHANGE_EVENTS = [
 /**
  * Background poll interval for subscription refresh.
  *
- * The SignalR hub only fires `PaymentPaid` for webhook-confirmed payments.
- * Admin grants/revocations go through the admin API without a hub broadcast,
- * so polling is the only reliable mechanism for detecting those changes.
+ * SignalR: `PaymentPaid` (SePay) + `SubscriptionChanged` (Admin grant/revoke).
+ * Poll 30s vẫn là fallback khi hub lỗi / client offline lúc event fire.
  *
- * 30 s → user sees plan update within ~30 s of admin action.
+ * 30 s → user sees plan update within ~30 s of admin action nếu miss SignalR.
  * The `/api/me/subscription` endpoint is lightweight (single DB read) so
  * this frequency is safe even with many concurrent users.
  */
@@ -47,12 +46,9 @@ interface Options {
  * Keeps subscription data fresh in real-time:
  *
  * 1. Connects to `/hubs/subscription-payments` via SignalR.
- * 2. Listens for `PaymentPaid` (payment webhook) and plan-change events
- *    (admin grants / revocations) — calls `onSubscriptionChanged` on each.
- * 3. Polls every 30 seconds regardless of SignalR state.
- *    — Admin grants go through the admin REST API without a hub broadcast,
- *      so polling is required to detect them reliably.
- *    — 30 s means the user sees the plan change within ~30 s of admin action.
+ * 2. Listens for `PaymentPaid` (payment webhook) and `SubscriptionChanged`
+ *    (admin grants / revocations / extends) — calls `onSubscriptionChanged` on each.
+ * 3. Polls every 30 seconds regardless of SignalR state (missed events / hub down).
  *
  * Designed to be used inside both `HrSubscriptionProvider` and
  * `CandidateSubscriptionProvider` so each context stays live without
@@ -97,7 +93,7 @@ export function useSubscriptionRealtime({
       }
       void conn.start().catch(() => {
         // Start failed → SignalR unavailable.
-        // The 30-second fallback poll below still picks up admin-granted upgrades.
+        // Fallback poll vẫn bắt Admin grant nếu miss SubscriptionChanged.
       });
     }
 
