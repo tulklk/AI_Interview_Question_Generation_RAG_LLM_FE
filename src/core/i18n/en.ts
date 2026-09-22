@@ -4876,6 +4876,7 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
     viewQuestionSet: "View question set",
     copyShareLink: "Copy link",
     publishBlockedToast: "Add a sample answer and scoring rubric to every question before publishing ({{ready}}/{{total}} ready).",
+    publishMinToast: "Need at least {{min}} questions with sample answer and scoring rubric to publish ({{count}}/{{min}}).",
     outlineMinItemsToast: "The outline needs at least 5 items to apply.",
     settings: {
       readyToGenerate: "Ready to generate questions",

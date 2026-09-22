@@ -1188,7 +1188,10 @@ interface Props {
     onAttentionCleared?: () => void;
     onDraftChange?: (text: string) => void;
     onPostingDraftChange?: (draft: HiringPostingDraft) => void;
-    onSaved?: (publicJobDescription: string, posting: HiringPostingSaved) => void;
+    onSaved?: (
+      publicJobDescription: string,
+      posting: HiringPostingSaved
+    ) => void | Promise<void>;
   } | null;
 }
 

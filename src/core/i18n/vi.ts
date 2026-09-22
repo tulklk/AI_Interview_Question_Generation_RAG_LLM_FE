@@ -4874,6 +4874,7 @@ Yêu cầu:
     viewQuestionSet: "Xem bộ câu hỏi",
     copyShareLink: "Sao chép liên kết",
     publishBlockedToast: "Thêm đáp án mẫu và rubric cho mọi câu trước khi xuất bản ({{ready}}/{{total}} sẵn sàng).",
+    publishMinToast: "Cần tối thiểu {{min}} câu có đáp án mẫu và rubric để xuất bản ({{count}}/{{min}}).",
     outlineMinItemsToast: "Outline cần ít nhất 5 câu để áp dụng.",
     settings: {
       readyToGenerate: "Sẵn sàng sinh câu hỏi",
