@@ -44,6 +44,31 @@ function persistActiveProjectId(id: string) {
   }
 }
 
+/**
+ * SCRUM-475: fingerprint nội dung draft để biết nút Lưu còn khớp bản đã save.
+ * Dùng field ảnh hưởng snapshot save — tránh reset "Đã lưu" khi chỉ đổi reference mảng.
+ */
+function questionsDraftFingerprint(items: StudioQuestion[]): string {
+  return items
+    .map((q) =>
+      [
+        q.id,
+        q.orderIndex,
+        q.content,
+        q.difficulty,
+        q.type,
+        q.expectedAnswer ?? "",
+        q.scoringRubric ?? "",
+        q.rubricJson ?? "",
+        q.codeSnippet ?? "",
+        q.codeTemplateType ?? "",
+        q.attachedImageUrl ?? "",
+        q.rationale ?? "",
+      ].join("\x1f")
+    )
+    .join("\x1e");
+}
+
 type StudioTaskKind = "streaming" | "generating";
 
 type StudioTaskPayload = {
@@ -146,6 +171,7 @@ export function useStudio() {
   const [isGeneratingQuestions, setIsGeneratingQuestions] = useState(false);
   const [isSavingDraft, setIsSavingDraft] = useState(false);
   const [isDraftSaved, setIsDraftSaved] = useState(false);
+  const [isSavingJd, setIsSavingJd] = useState(false);
   /** Set to true when BE rejects generateQuestions with COOLDOWN_ACTIVE / QUOTA_EXCEEDED.
    *  Reset to false at the start of each new generate attempt. */
   const [quotaExceeded, setQuotaExceeded] = useState(false);
@@ -183,10 +209,31 @@ export function useStudio() {
     settingsRef.current = settings;
   }, [settings]);
 
-  // Bộ câu hỏi chỉ còn "đã lưu" chừng nào danh sách chưa đổi lại (sinh mới, sửa, xoá, đổi project).
+  /**
+   * SCRUM-475: fingerprint bản đã save.
+   * null = chưa từng save trong session / đã đổi project — nút hiện "Lưu".
+   */
+  const savedQuestionsFingerprintRef = useRef<string | null>(null);
+  const questionsFingerprint = useMemo(
+    () => questionsDraftFingerprint(questions),
+    [questions]
+  );
+
+  // Đổi project → quên bản đã lưu (bootstrap sẽ gắn lại nếu có questionSetId).
   useEffect(() => {
+    savedQuestionsFingerprintRef.current = null;
     setIsDraftSaved(false);
-  }, [questions, project?.id]);
+  }, [project?.id]);
+
+  // Bộ câu hỏi chỉ còn "Đã lưu" khi fingerprint khớp bản vừa save / đã sync History.
+  useEffect(() => {
+    const saved = savedQuestionsFingerprintRef.current;
+    if (saved === null) {
+      setIsDraftSaved(false);
+      return;
+    }
+    setIsDraftSaved(saved === questionsFingerprint);
+  }, [questionsFingerprint]);
 
   // SCRUM-402: badge theo streaming / generate loop / run Pending|Generating sau remount.
   // While `loading`, do not clear create_plan from LS (bootstrap may still restore it).
@@ -306,7 +353,17 @@ export function useStudio() {
       setGenerationRun(latestRun);
       if (plan) {
         const qs = await studioApi.listQuestions(detail.id, { page: 1, pageSize: 100, planId: plan.id }).catch(() => null);
-        if (qs) setQuestions(qs.items);
+        if (qs) {
+          // SCRUM-475: project đã gắn History → coi draft đã lưu (nút Đã lưu) cho đến khi sửa.
+          const fp = questionsDraftFingerprint(qs.items);
+          if (detail.questionSetId && qs.items.length > 0) {
+            savedQuestionsFingerprintRef.current = fp;
+          } else {
+            savedQuestionsFingerprintRef.current = null;
+          }
+          setQuestions(qs.items);
+          setIsDraftSaved(Boolean(detail.questionSetId && qs.items.length > 0));
+        }
         // Plan already exists — clear any stale create-plan session
         const stored = readStudioTaskPayload();
         if (stored?.kind === "create_plan" && stored.projectId === detail.id) {
@@ -461,7 +518,8 @@ export function useStudio() {
   }, [refreshMessages, refreshPlanAndSettings]);
 
   const saveJobDescription = useCallback(async () => {
-    if (!project || !jdContent.trim()) return;
+    if (!project || !jdContent.trim() || isSavingJd) return;
+    setIsSavingJd(true);
     try {
       // SCRUM-432: PUT đã classify + extract — không gọi analyze lần 2
       const summary = await studioApi.upsertJobDescription(project.id, jdContent, "PastedText");
@@ -478,8 +536,10 @@ export function useStudio() {
       // Từ chối nội dung JD (không phải tin tuyển / không IT) → chỉ inline, không toast
       if (isJdInputRejectError(error)) return;
       addToast("error", message);
+    } finally {
+      setIsSavingJd(false);
     }
-  }, [addToast, jdContent, lang, project, refreshPlanAndSettings, tx.jdAnalyzeServerError, tx.jdSaved, tx.jdSaveFailed]);
+  }, [addToast, isSavingJd, jdContent, lang, project, refreshPlanAndSettings, tx.jdAnalyzeServerError, tx.jdSaved, tx.jdSaveFailed]);
 
   const uploadJobDescription = useCallback(async (file: File): Promise<boolean> => {
     if (!project) return false;
@@ -776,7 +836,7 @@ export function useStudio() {
       if (!project || !currentPlan) return false;
       const trimmed = title.trim();
       if (!trimmed) {
-        addToast("error", tx.planTitleEmpty ?? "Tiêu đề không được để trống.");
+        addToast("error", tx.planTitleEmpty);
         return false;
       }
       try {
@@ -785,7 +845,7 @@ export function useStudio() {
         setPlans((prev) =>
           prev.map((p) => (p.id === currentPlan.id ? { ...p, title: summary.title || trimmed } : p))
         );
-        addToast("success", tx.planTitleRenamed ?? "Đã cập nhật tên công việc.");
+        addToast("success", tx.planTitleRenamed);
         return true;
       } catch (error) {
         addToast("error", extractErrorMessage(error, lang));
@@ -897,18 +957,23 @@ export function useStudio() {
 
       if (latest.status === "Failed") {
         throw new Error(
-          `[${latest.errorCode ?? "FAILED"}] ${latest.errorMessage || "RAG sinh câu hỏi thất bại."}`
+          `[${latest.errorCode ?? "FAILED"}] ${latest.errorMessage || tx.generationFailed}`
         );
       }
       if (latest.status !== "Completed") {
         throw new Error(
-          `Job vẫn ${latest.status} sau 5 phút (run ${latest.id.slice(0, 8)}…). RAG có thể chưa callback — bấm Làm mới trạng thái.`
+          tx.generationStaleJob
+            .replace("{{status}}", latest.status)
+            .replace("{{runId}}", latest.id.slice(0, 8))
         );
       }
 
       const result = await studioApi.listQuestions(project.id, { page: 1, pageSize: 100, planId: currentPlan.id });
       if (generateCancelledRef.current) return;
+      // SCRUM-475: gen xong = draft chưa lưu lại (kể cả đã từng save trước đó)
+      savedQuestionsFingerprintRef.current = null;
       setQuestions(result.items);
+      setIsDraftSaved(false);
       addToast("success", tx.generationDone.replace("{{count}}", String(result.items.length)));
     } catch (error) {
       if (generateCancelledRef.current) return;
@@ -929,7 +994,7 @@ export function useStudio() {
     }
   // generateCancelledRef is stable (useRef), so it's intentionally omitted from deps.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [addToast, currentPlan, isGeneratingQuestions, lang, project, refreshGenerationStatus, settings, tx.generationDone, tx.generationFailed, tx.generationStarted]);
+  }, [addToast, currentPlan, isGeneratingQuestions, lang, project, refreshGenerationStatus, settings, tx.generationDone, tx.generationFailed, tx.generationStarted, tx.generationStaleJob]);
 
   /** P2b: Called after user confirms the replace-questions dialog. */
   const confirmReplaceQuestions = useCallback(async () => {
@@ -1160,11 +1225,15 @@ export function useStudio() {
   }, [addToast, currentPlan, lang, project, refreshStudioState, settings, tx.applyingSettings, tx.planApprovedNoSettings, tx.settingsApplied]);
 
   const saveDraftAction = useCallback(async () => {
-    if (!project || isSavingDraft) return;
+    // SCRUM-475: không gọi API thừa khi UI đang ở Đã lưu
+    if (!project || isSavingDraft || isDraftSaved) return;
     setIsSavingDraft(true);
     try {
       const result = await studioApi.saveDraft(project.id);
       const updated = await studioApi.getProject(project.id);
+      // Gắn fingerprint TRƯỚC setProject để effect đổi project?.id (nếu có) không xoá nhầm —
+      // thực tế id không đổi; fingerprint giữ "Đã lưu" dù questions re-fetch cùng nội dung.
+      savedQuestionsFingerprintRef.current = questionsDraftFingerprint(questions);
       setProject({
         ...updated,
         questionSetId: result.questionSetId ?? updated.questionSetId ?? null,
@@ -1176,7 +1245,7 @@ export function useStudio() {
     } finally {
       setIsSavingDraft(false);
     }
-  }, [addToast, isSavingDraft, project, lang, tx.draftSaveFailed, tx.draftSaved, tx.saved]);
+  }, [addToast, isDraftSaved, isSavingDraft, project, questions, lang, tx.draftSaveFailed, tx.draftSaved, tx.saved]);
 
   const togglePublish = useCallback(async (opts?: {
     interviewQuestionIds?: string[];
@@ -1194,7 +1263,9 @@ export function useStudio() {
         setProject(updated);
         addToast(
           "success",
-          abandoned > 0 ? `${tx.unpublished} Đã hủy ${abandoned} phiên đang làm.` : tx.unpublished
+          abandoned > 0
+            ? `${tx.unpublished} ${tx.unpublishAbandoned.replace("{{count}}", String(abandoned))}`
+            : tx.unpublished
         );
       } else {
         // SCRUM-439 / SCRUM-464: Save subset + Publish + time limit + recommend + hiring
@@ -1215,7 +1286,7 @@ export function useStudio() {
       addToast("error", extractErrorMessage(error, lang));
       return false;
     }
-  }, [addToast, project, lang, tx.published, tx.unpublished]);
+  }, [addToast, project, lang, tx.published, tx.unpublished, tx.unpublishAbandoned]);
 
   const createShare = useCallback(async () => {
     if (!project) return;
@@ -1257,6 +1328,9 @@ export function useStudio() {
       // reset means any subsequent call builds from a clean base.
       settingsRef.current = null;
       settingsVersionRef.current += 1;
+      // SCRUM-475: session mới — nút Lưu về trạng thái chưa lưu
+      savedQuestionsFingerprintRef.current = null;
+      setIsDraftSaved(false);
       setQuestions([]);
       setMessages([]);
       setGenerationRun(null);
@@ -1296,6 +1370,7 @@ export function useStudio() {
       questionsAlreadyExist,
       isSavingDraft,
       isDraftSaved,
+      isSavingJd,
       saveJobDescription,
       saveJobDescriptionPosition,
       saveJobDescriptionMetadata,
@@ -1342,6 +1417,7 @@ export function useStudio() {
       questionsAlreadyExist,
       isSavingDraft,
       isDraftSaved,
+      isSavingJd,
       isStreaming,
       planStreamStartedAt,
       jdContent,

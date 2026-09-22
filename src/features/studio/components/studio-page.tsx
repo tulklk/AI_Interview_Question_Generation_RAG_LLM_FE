@@ -10,6 +10,7 @@ import { useLanguage } from "@/shared/providers/language-context";
 import { useToast } from "@/shared/providers/toast-context";
 import { useStudio } from "@/features/studio/hooks/use-studio";
 import { useHrSubscription } from "@/features/hr/context/hr-subscription-context";
+import { useMinQuestionsToPublish } from "@/features/hr/hooks/use-min-questions-to-publish";
 import { StudioTopBar } from "@/features/studio/components/studio-top-bar";
 import { StudioProgressBar } from "@/features/studio/components/studio-progress";
 import { SourcesPanel } from "@/features/studio/components/sources-panel";
@@ -19,12 +20,15 @@ import { portalCard } from "@/shared/utils/portal-ui";
 import { StudioSettingsPanel } from "@/features/studio/components/studio-settings-panel";
 import { useStudioConfig } from "@/features/studio/hooks/use-studio-config";
 import { StudioActionBar } from "@/features/studio/components/studio-action-bar";
+import {
+  hrSidebarSpacerClass,
+  useHrSidebarCollapsed,
+} from "@/features/hr/hooks/use-hr-sidebar-collapsed";
 import { isPublishReady, normalizeFromJson, normalizeFromUnknown } from "@/shared/rubric";
 import type { PlanOutlineItem, StudioQuestion, StudioSettings } from "@/features/studio/types/studio.types";
 import { normalizeOutlineItems } from "@/features/studio/components/plan-question-preview-list";
 import { PublishDialog } from "@/features/question/components/publish-dialog";
 import type { PublishDialogConfirmPayload } from "@/features/question/components/publish-dialog";
-import { MIN_QUESTIONS_TO_PUBLISH } from "@/features/interview/components/generate/question-builder-set-panel";
 import { pollGenerationRun } from "@/features/studio/utils/poll-generation-run";
 import {
   getDraft,
@@ -125,6 +129,7 @@ export function StudioPage() {
 
   const { t, lang } = useLanguage();
   const { addToast } = useToast();
+  const sidebarCollapsed = useHrSidebarCollapsed();
   const s = t.studioPage;
   const hs = t.hrSubscription;
   const router = useRouter();
@@ -134,6 +139,7 @@ export function StudioPage() {
     subscription,
     refresh: refreshSubscription,
   } = useHrSubscription();
+  const minQuestionsToPublish = useMinQuestionsToPublish();
   const [mounted, setMounted] = useState(false);
   /** SCRUM-429: câu đang regen nền (badge + chặn double-click) */
   const [regeneratingQuestionIds, setRegeneratingQuestionIds] = useState<string[]>([]);
@@ -515,6 +521,16 @@ export function StudioPage() {
     wasGeneratingRef.current = studio.isGeneratingQuestions;
   }, [studio.isGeneratingQuestions, switchMobileTab]);
 
+  // After Save & Analyze succeeds, nudge new users toward settings / plan column
+  const wasSavingJdRef = useRef(false);
+  useEffect(() => {
+    if (wasSavingJdRef.current && !studio.isSavingJd) {
+      const ready = Boolean(studio.jdContent.trim() && studio.jdSummary);
+      if (ready) switchMobileTab("settings");
+    }
+    wasSavingJdRef.current = studio.isSavingJd;
+  }, [studio.isSavingJd, studio.jdContent, studio.jdSummary, switchMobileTab]);
+
   const locale = lang === "vi" ? "vi-VN" : "en-US";
   const cooldownTimeStr = cooldownEndsAt
     ? cooldownEndsAt.toLocaleString(locale)
@@ -671,17 +687,17 @@ export function StudioPage() {
       void studio.togglePublish();
       return;
     }
-    if (readyCount < MIN_QUESTIONS_TO_PUBLISH) {
+    if (readyCount < minQuestionsToPublish) {
       addToast(
         "error",
         s.publishMinToast
-          .replace("{{min}}", String(MIN_QUESTIONS_TO_PUBLISH))
+          .replace("{{min}}", String(minQuestionsToPublish))
           .replace("{{count}}", String(readyCount))
       );
       return;
     }
     setPublishDialogOpen(true);
-  }, [addToast, readyCount, s.publishMinToast, studio]);
+  }, [addToast, readyCount, minQuestionsToPublish, s.publishMinToast, studio]);
 
   const confirmPublish = useCallback(
     async (payload: PublishDialogConfirmPayload) => {
@@ -770,7 +786,7 @@ export function StudioPage() {
     ? createPortal(
         <div className="fixed inset-0 z-50 flex pointer-events-none">
           {/* Transparent spacer matching sidebar width (desktop) */}
-          <div className="hidden lg:block w-62.5 shrink-0" aria-hidden />
+          <div className={cn("hidden shrink-0 lg:block", hrSidebarSpacerClass(sidebarCollapsed))} aria-hidden />
 
           {/* Right column — mirrors the AppShell right pane */}
           <div className="flex flex-1 flex-col">
@@ -848,10 +864,14 @@ export function StudioPage() {
   // P2b: Replace-questions confirm dialog — backdrop portal, simpler than quota dialog.
   const replaceDialog = replaceDialogOpen && mounted
     ? createPortal(
-        <div
-          className="fixed inset-0 z-9999 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in"
-          onClick={() => setReplaceDialogOpen(false)}
-        >
+        <div className="fixed inset-0 z-9999 flex pointer-events-none">
+          <div className={cn("hidden shrink-0 lg:block", hrSidebarSpacerClass(sidebarCollapsed))} aria-hidden />
+          <div className="flex min-w-0 flex-1 flex-col">
+            <div className="h-14 shrink-0" aria-hidden />
+            <div
+              className="pointer-events-auto flex flex-1 items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in"
+              onClick={() => setReplaceDialogOpen(false)}
+            >
           <div
             role="alertdialog"
             aria-modal
@@ -894,6 +914,8 @@ export function StudioPage() {
               >
                 {s.toasts.replaceQuestionsConfirm}
               </button>
+            </div>
+          </div>
             </div>
           </div>
         </div>,
@@ -944,6 +966,20 @@ export function StudioPage() {
           isStreaming={studio.isStreaming}
           isApplying={studio.isApplyingSettings}
           generationRun={studio.generationRun}
+          onStepClick={(id) => {
+            if (id === "jd") {
+              switchMobileTab("sources");
+              collapseSources(false);
+            } else {
+              switchMobileTab("main");
+            }
+            requestAnimationFrame(() => {
+              document.getElementById("studio-main-workspace")?.scrollIntoView({
+                behavior: "smooth",
+                block: "start",
+              });
+            });
+          }}
         />
       </div>
 
@@ -1046,6 +1082,7 @@ export function StudioPage() {
                 jdContent={studio.jdContent}
                 onJdChange={studio.setJdContent}
                 onSaveJd={studio.saveJobDescription}
+                isSavingJd={studio.isSavingJd}
                 onUploadJd={studio.uploadJobDescription}
                 jdInputWarning={studio.jdInputWarning}
                 onSaveMetadata={studio.saveJobDescriptionMetadata}
@@ -1065,6 +1102,7 @@ export function StudioPage() {
 
         {/* Main workspace */}
         <div
+          id="studio-main-workspace"
           className={cn(
             "flex-col transition-all duration-300",
             // Mobile: show only when active tab (with slide animation)
@@ -1434,6 +1472,7 @@ export function StudioPage() {
         plan={studio.currentPlan}
         questionCount={studio.questions.length}
         readyCount={readyCount}
+        minQuestionsToPublish={minQuestionsToPublish}
         isStreaming={studio.isStreaming}
         isGeneratingQuestions={studio.isGeneratingQuestions}
         canCreatePlan={canCreatePlan && !sideColumnsLocked}
@@ -1460,7 +1499,7 @@ export function StudioPage() {
             preview: q.content,
             ready: Boolean(q.expectedAnswer?.trim()) && studioQuestionRubricReady(q),
           }))}
-          minQuestions={MIN_QUESTIONS_TO_PUBLISH}
+          minQuestions={minQuestionsToPublish}
           saving={publishing}
           currentTimeLimitMinutes={null}
           initialAutoRecommendEnabled={true}

@@ -27,7 +27,6 @@ import { SidebarUserFooter } from "@/features/hr/components/layout/sidebar-user-
 import { HrUpgradeModal } from "@/features/hr/components/billing/hr-upgrade-modal";
 import type { HrPlanId } from "@/features/hr/types/hr-subscription";
 import type { QuestionSetsFilterKey } from "@/features/hr/types/history-question-set";
-import { useQuestionSetNavCounts } from "@/features/hr/hooks/use-question-set-nav-counts";
 
 const COLLAPSE_KEY = "hr-sidebar-collapsed";
 const HISTORY_HREF = "/hr/history";
@@ -110,7 +109,6 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
   // Initialize open when already on that route → no collapsed flash on mount
   const [historyOpen, setHistoryOpen] = useState(onHistoryRoute || onPublishedInsightsRoute);
   const [candidatesOpen, setCandidatesOpen] = useState(onCandidatesRoute);
-  const navCounts = useQuestionSetNavCounts(historyOpen || onHistoryRoute || onPublishedInsightsRoute);
 
   useEffect(() => {
     const stored = localStorage.getItem(SEEN_KEY);
@@ -173,6 +171,11 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
       const next = !prev;
       try {
         localStorage.setItem(COLLAPSE_KEY, next ? "1" : "0");
+      } catch {
+        /* ignore */
+      }
+      try {
+        window.dispatchEvent(new Event("hr-sidebar-collapsed-changed"));
       } catch {
         /* ignore */
       }
@@ -311,16 +314,6 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
                               ? onPublishedInsightsRoute
                               : onHistoryRoute && activeFilter === sub.filter;
                           const SubIcon = sub.icon;
-                          const count =
-                            sub.filter === "insights"
-                              ? null
-                              : sub.filter === "all"
-                                ? navCounts.all
-                                : sub.filter === "DRAFT"
-                                  ? navCounts.draft
-                                  : sub.filter === "PUBLISHED"
-                                    ? navCounts.published
-                                    : navCounts.bookmarked;
                           return (
                             <li key={sub.filter}>
                               <Link
@@ -341,18 +334,6 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
                                 <span className="min-w-0 flex-1 truncate">
                                   {s.questionSetsSub[sub.labelKey]}
                                 </span>
-                                {count != null && (
-                                  <span
-                                    className={cn(
-                                      "shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-semibold tabular-nums",
-                                      subActive
-                                        ? "bg-[rgba(124,58,237,0.15)] text-[#7C3AED] dark:bg-[rgba(124,58,237,0.25)] dark:text-[#a78bff]"
-                                        : "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400"
-                                    )}
-                                  >
-                                    {count}
-                                  </span>
-                                )}
                               </Link>
                             </li>
                           );

@@ -78,7 +78,19 @@ function PublishedSectionTable({
 
   return (
     <div className="overflow-x-auto rounded-b-xl border border-t-0 border-gray-200 dark:border-gray-800">
-      <table className="w-full min-w-[920px] text-left text-sm">
+      <table className="w-full min-w-[920px] table-fixed text-left text-sm">
+        {/* SCRUM-438: table-fixed tránh cột title phình theo nội dung dài → header lệch */}
+        <colgroup>
+          <col style={{ width: "28%" }} />
+          <col style={{ width: "12%" }} />
+          <col style={{ width: "11%" }} />
+          <col style={{ width: "6%" }} />
+          <col style={{ width: "9%" }} />
+          <col style={{ width: "10%" }} />
+          <col style={{ width: "7%" }} />
+          <col style={{ width: "9%" }} />
+          <col style={{ width: "8%" }} />
+        </colgroup>
         <thead className="border-b border-gray-100 bg-gray-50/80 dark:border-gray-800 dark:bg-gray-900/50">
           <tr>
             <th className="px-3 py-2.5 text-[11px] font-semibold uppercase tracking-wide text-gray-500">
@@ -113,7 +125,7 @@ function PublishedSectionTable({
             const busy = busyId === item.questionSetId;
             return (
               <tr key={item.questionSetId} className="bg-white dark:bg-gray-950">
-                <td className="px-3 py-3">
+                <td className="overflow-hidden px-3 py-3">
                   <Link
                     href={`/hr/published/${item.questionSetId}`}
                     className={cn("font-semibold hover:text-primary line-clamp-2", portalHeading)}
@@ -255,7 +267,7 @@ export function PublishedInsightsTable() {
       setItems((prev) => prev.filter((x) => x.questionSetId !== item.questionSetId));
       addToast(
         "success",
-        withAbandonedToast(t.historyPage.unpublishSuccess, abandoned)
+        withAbandonedToast(t.historyPage.unpublishSuccess, abandoned, t.historyPage.unpublishAbandoned)
       );
     } catch (err) {
       addToast(

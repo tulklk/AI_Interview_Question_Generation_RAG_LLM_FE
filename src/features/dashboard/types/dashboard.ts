@@ -1,5 +1,6 @@
 import type { ComponentType } from "react";
 
+/** Shared by StatCard (Admin dashboard still uses it). */
 export interface StatItem {
   id: string;
   label: string;
@@ -9,28 +10,6 @@ export interface StatItem {
   icon: ComponentType<{ size?: number; className?: string }>;
   iconBg: string;
   iconColor: string;
-}
-
-export interface WeeklyDataPoint {
-  day: string;
-  questions: number;
-  jds: number;
-}
-
-export interface CategoryStat {
-  name: string;
-  count: number;
-  color: string;
-}
-
-export interface RecentSession {
-  id: string;
-  title: string;
-  role: string;
-  roleColor: string;
-  roleBg: string;
-  questionsCount: number;
-  relativeTime: string;
 }
 
 export interface NavItem {

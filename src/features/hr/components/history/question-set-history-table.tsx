@@ -46,6 +46,7 @@ import {
   withAbandonedToast,
 } from "@/features/interview/services/interview.service";
 import { useHrSubscription } from "@/features/hr/context/hr-subscription-context";
+import { useMinQuestionsToPublish } from "@/features/hr/hooks/use-min-questions-to-publish";
 import { extractErrorMessage } from "@/core/interceptors/error.interceptor";
 import { QuestionSetFeedbackPanel } from "./question-set-feedback-panel";
 import {
@@ -53,7 +54,6 @@ import {
   type PublishDialogConfirmPayload,
   type PublishDialogQuestion,
 } from "@/features/question/components/publish-dialog";
-import { MIN_QUESTIONS_TO_PUBLISH } from "@/features/interview/components/generate/question-builder-set-panel";
 
 function formatDate(iso: string, lang: "en" | "vi"): string {
   const d = new Date(iso);
@@ -112,6 +112,7 @@ export function QuestionSetHistoryTable({ filter = "all" }: QuestionSetHistoryTa
   const { addToast } = useToast();
   const router = useRouter();
   const { hasFeature } = useHrSubscription();
+  const minQuestionsToPublish = useMinQuestionsToPublish();
   // SCRUM-473: gate theo CanExport (Admin có thể bật/tắt), không hardcode planId
   const canExport = hasFeature("export");
 
@@ -266,7 +267,7 @@ export function QuestionSetHistoryTable({ filter = "all" }: QuestionSetHistoryTa
             x.questionSetId === item.questionSetId ? { ...x, status: "DRAFT", publishedAt: null } : x
           )
         );
-        addToast("success", withAbandonedToast(t.historyPage.unpublishSuccess, abandoned));
+        addToast("success", withAbandonedToast(t.historyPage.unpublishSuccess, abandoned, t.historyPage.unpublishAbandoned));
       } catch (err) {
         addToast("error", err instanceof Error && err.message ? err.message : t.historyPage.actionFailed);
       } finally {
@@ -289,11 +290,11 @@ export function QuestionSetHistoryTable({ filter = "all" }: QuestionSetHistoryTa
         defaultSelected: Boolean(q.isReady && q.isActive !== false),
       }));
       const readyN = qs.filter((q) => q.ready).length;
-      if (readyN < MIN_QUESTIONS_TO_PUBLISH) {
+      if (readyN < minQuestionsToPublish) {
         addToast(
           "error",
           t.reviewPage.publishMinHint
-            .replace("{{min}}", String(MIN_QUESTIONS_TO_PUBLISH))
+            .replace("{{min}}", String(minQuestionsToPublish))
             .replace("{{count}}", String(readyN))
         );
         return;
@@ -742,7 +743,8 @@ export function QuestionSetHistoryTable({ filter = "all" }: QuestionSetHistoryTa
             className="w-52 overflow-hidden rounded-lg border border-gray-200 bg-white py-1 shadow-lg dark:border-gray-700 dark:bg-gray-900"
           >
             <Link
-              href={`/hr/question-sets/${openMenuItem.questionSetId}/practitioners`}
+              // Gom về hub published — tránh 2 UI practitioners song song
+              href={`/hr/published/${openMenuItem.questionSetId}?tab=practitioners`}
               role="menuitem"
               className={menuItemCls}
               title={t.historyPage.practitionersTitle}
@@ -827,7 +829,7 @@ export function QuestionSetHistoryTable({ filter = "all" }: QuestionSetHistoryTa
       {publishTarget && (
         <PublishDialog
           questions={publishQuestions}
-          minQuestions={MIN_QUESTIONS_TO_PUBLISH}
+          minQuestions={minQuestionsToPublish}
           currentTimeLimitMinutes={publishTimeLimit}
           initialAutoRecommendEnabled={publishAutoRecommend}
           initialRecommendationMinScore={publishMinScore}

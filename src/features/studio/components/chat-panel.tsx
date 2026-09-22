@@ -1356,6 +1356,10 @@ export function ChatPanel({
   useEffect(() => {
     if (questions.length > 0 && prevQuestionsLengthRef.current === 0) {
       setActiveTab("questions");
+      const main = document.querySelector("main.hr-main-bg") as HTMLElement | null;
+      main?.scrollTo({ top: 0, behavior: "smooth" });
+      const reviewPane = document.querySelector("[data-studio-review-scroll]") as HTMLElement | null;
+      reviewPane?.scrollTo({ top: 0, behavior: "smooth" });
     }
     prevQuestionsLengthRef.current = questions.length;
   }, [questions.length]);

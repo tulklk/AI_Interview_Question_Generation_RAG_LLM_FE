@@ -20,15 +20,18 @@ import {
   Lightbulb,
   ArrowRight,
   Loader2,
+  Trash2,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { useLanguage } from "@/shared/providers/language-context";
+import { useToast } from "@/shared/providers/toast-context";
 import { portalHeadingAlt, portalSubtextAlt } from "@/shared/utils/portal-ui";
 import { useHrDashboard } from "@/features/hr/hooks/use-hr-dashboard";
 import { useHrSubscription } from "@/features/hr/context/hr-subscription-context";
+import { deleteProject } from "@/features/studio/services/studio.service";
+import type { HrDashboardRecentSession } from "@/features/hr/services/hr-dashboard.service";
 import { HrActivityChart } from "./hr-activity-chart";
 import { HrTypeChart } from "./hr-type-chart";
-import type { GenerationSession } from "@/features/interview/types/generation-session";
 import type { CandidateRecommendation, RecommendationStatus } from "@/features/hr/services/recommendation.service";
 
 // ---------------------------------------------------------------------------
@@ -187,7 +190,7 @@ function KpiCard({ icon: Icon, iconBg, iconColor, label, value, loading, sparkli
 // Status badge for session
 // ---------------------------------------------------------------------------
 
-function sessionStatusBadge(status: GenerationSession["status"], labels: Record<string, string>) {
+function sessionStatusBadge(status: string, labels: Record<string, string>) {
   const label = labels[status] ?? status;
   if (status === "COMPLETED") return (
     <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400">
@@ -233,11 +236,10 @@ function candidateStatusBadge(status: RecommendationStatus, label: string) {
   );
 }
 
+import { getScoreBandLabel, scoreBandTextClass } from "@/features/hr/utils/score-band";
+
 function scoreColor(score: number) {
-  if (score >= 80) return "text-emerald-600 dark:text-emerald-400";
-  if (score >= 65) return "text-violet-600 dark:text-violet-400";
-  if (score >= 50) return "text-amber-600 dark:text-amber-400";
-  return "text-red-500 dark:text-red-400";
+  return scoreBandTextClass(score);
 }
 
 // ---------------------------------------------------------------------------
@@ -418,31 +420,50 @@ export function HrDashboard() {
   const { t } = useLanguage();
   const p = t.hrDashboardPage;
   const { planId } = useHrSubscription();
+  const { addToast } = useToast();
 
   const data = useHrDashboard();
 
-  // ── Sparkline data derived from dailyActivity ──────────────────────────────
+  // Local list để xóa optimistic — chỉ sync khi load xong (tránh flash rỗng khi reload KPI)
+  const [sessions, setSessions] = useState<HrDashboardRecentSession[]>(data.recentSessions);
+  const [deleteTarget, setDeleteTarget] = useState<HrDashboardRecentSession | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!data.loading) {
+      setSessions(data.recentSessions);
+    }
+  }, [data.recentSessions, data.loading]);
+
+  async function confirmDeleteSession() {
+    if (!deleteTarget) return;
+    const id = deleteTarget.id;
+    setDeleteTarget(null);
+    setDeletingId(id);
+    try {
+      await deleteProject(id);
+      setSessions((prev) => prev.filter((s) => s.id !== id));
+      addToast("success", p.recentSessions.deleteSuccess);
+      // Làm mới KPI (totalSessions, …) sau soft-delete
+      data.reload();
+    } catch (err) {
+      addToast(
+        "error",
+        err instanceof Error && err.message ? err.message : p.recentSessions.deleteFailed
+      );
+    } finally {
+      setDeletingId(null);
+    }
+  }
+
+  // ── Sparkline: chỉ series thật từ dailyActivity (không ước lượng) ──────────
   const activity14 = data.dailyActivity.slice(-14);
-  // Total sessions: raw daily count
-  const totalSparkline = activity14.map(d => d.sessions);
-  // Completed: estimated daily completed = sessions × overall success rate
-  const completedSparkline = activity14.map(d =>
-    Math.round(d.sessions * (data.successRate / 100))
-  );
-  // Questions generated: estimated = sessions × avg questions per session
-  const avgQPerSession = data.totalSessions > 0
-    ? data.totalQuestionsGenerated / data.totalSessions
-    : 0;
-  const questionsSparkline = activity14.map(d =>
-    Math.round(d.sessions * avgQPerSession)
-  );
-  // Success rate trend: use same daily sessions pattern (BE has no daily breakdown)
-  const successSparkline = totalSparkline;
+  const totalSparkline = activity14.map((d) => d.sessions);
   // This month: filter dailyActivity by current month ("MM/DD" format)
   const currentMonthStr = String(new Date().getMonth() + 1).padStart(2, "0");
   const thisMonthSparkline = data.dailyActivity
-    .filter(d => d.date.startsWith(currentMonthStr + "/"))
-    .map(d => d.sessions);
+    .filter((d) => d.date.startsWith(currentMonthStr + "/"))
+    .map((d) => d.sessions);
 
   const kpis: KpiCardProps[] = [
     {
@@ -462,8 +483,6 @@ export function HrDashboard() {
       label: p.kpi.completedSessions,
       value: data.completedSessions,
       loading: data.loading,
-      sparkline: completedSparkline,
-      sparklineColor: "#10B981",
     },
     {
       icon: MessageSquareText,
@@ -472,8 +491,6 @@ export function HrDashboard() {
       label: p.kpi.totalQuestions,
       value: data.totalQuestionsGenerated,
       loading: data.loading,
-      sparkline: questionsSparkline,
-      sparklineColor: "#3B82F6",
     },
     {
       icon: TrendingUp,
@@ -482,8 +499,6 @@ export function HrDashboard() {
       label: p.kpi.successRate,
       value: `${data.successRate}%`,
       loading: data.loading,
-      sparkline: successSparkline,
-      sparklineColor: "#F59E0B",
     },
     {
       icon: CalendarDays,
@@ -502,7 +517,6 @@ export function HrDashboard() {
       label: p.kpi.topRole,
       value: sanitizeRoleLabel(data.topRole) || "—",
       loading: data.loading,
-      // no sparkline — text value, not numeric
     },
   ];
 
@@ -627,9 +641,9 @@ export function HrDashboard() {
             </Link>
           </div>
 
-          {data.loading ? (
+          {data.loading && sessions.length === 0 ? (
             <SkeletonRows count={5} />
-          ) : data.recentSessions.length === 0 ? (
+          ) : sessions.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-10 gap-2">
               <History size={28} className="text-gray-300 dark:text-gray-700" />
               <p className={cn("text-[12px]", portalSubtextAlt)}>{p.recentSessions.empty}</p>
@@ -645,47 +659,73 @@ export function HrDashboard() {
                 <span className={cn("w-28 shrink-0 text-[10px] font-semibold uppercase tracking-wider", portalSubtextAlt)}>{p.recentSessions.status}</span>
                 <span className={cn("w-8 shrink-0 text-right text-[10px] font-semibold uppercase tracking-wider", portalSubtextAlt)}>{p.recentSessions.questions}</span>
                 <span className={cn("w-14 shrink-0 text-right text-[10px] font-semibold uppercase tracking-wider", portalSubtextAlt)}>{p.recentSessions.created}</span>
+                <span className={cn("w-8 shrink-0 text-right text-[10px] font-semibold uppercase tracking-wider", portalSubtextAlt)}>{p.recentSessions.actions}</span>
               </div>
               {/* Rows */}
               <div className="divide-y divide-gray-100 dark:divide-gray-800/60">
-                {data.recentSessions.map((session) => {
-                  const qCount = (session.generatedQuestions ?? []).filter((q) => q.question).length
-                    || session.planDraft?.questionCount
-                    || session.generatedQuestions?.length
-                    || 0;
-                  const dateStr = new Date(session.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric" });
-                  const jobTitle = session.jobTitle || session.planDraft?.role || "—";
+                {sessions.map((session) => {
+                  const qCount = session.questionsCount ?? 0;
+                  const dateStr = new Date(session.createdAt).toLocaleDateString(undefined, {
+                    month: "short",
+                    day: "numeric",
+                  });
+                  const jobTitle = session.role || "—";
+                  const isDeleting = deletingId === session.id;
                   return (
-                    <Link
+                    <div
                       key={session.id}
-                      href="/hr/generate-question"
-                      onClick={() => {
-                        try {
-                          localStorage.setItem("studio_active_project_id", session.id);
-                        } catch {
-                          /* ignore */
-                        }
-                      }}
                       className="flex items-center gap-4 px-5 py-3.5 hover:bg-gray-50/80 dark:hover:bg-gray-800/40 transition-colors group"
                     >
-                      <div className="flex-1 min-w-0">
-                        <p className={cn("text-[13px] font-semibold truncate leading-tight group-hover:text-primary transition-colors", portalHeadingAlt)}>
-                          {jobTitle}
-                        </p>
-                        {session.planDraft?.level && (
-                          <p className={cn("text-[11px] mt-0.5", portalSubtextAlt)}>{session.planDraft.level}</p>
-                        )}
+                      <Link
+                        href="/hr/generate-question"
+                        onClick={() => {
+                          try {
+                            localStorage.setItem("studio_active_project_id", session.id);
+                          } catch {
+                            /* ignore */
+                          }
+                        }}
+                        className="flex flex-1 min-w-0 items-center gap-4"
+                      >
+                        <div className="flex-1 min-w-0">
+                          <p className={cn("text-[13px] font-semibold truncate leading-tight group-hover:text-primary transition-colors", portalHeadingAlt)}>
+                            {jobTitle}
+                          </p>
+                          {session.level && (
+                            <p className={cn("text-[11px] mt-0.5", portalSubtextAlt)}>{session.level}</p>
+                          )}
+                        </div>
+                        <div className="w-28 shrink-0">
+                          {sessionStatusBadge(session.status, p.recentSessions.statusLabel)}
+                        </div>
+                        <div className={cn("w-8 shrink-0 text-right tabular-nums font-semibold text-[13px]", portalHeadingAlt)}>
+                          {qCount > 0 ? qCount : "—"}
+                        </div>
+                        <div className={cn("w-14 shrink-0 text-right text-[11px] whitespace-nowrap", portalSubtextAlt)}>
+                          {dateStr}
+                        </div>
+                      </Link>
+                      <div className="w-8 shrink-0 flex justify-end">
+                        <button
+                          type="button"
+                          title={p.recentSessions.deleteTitle}
+                          aria-label={p.recentSessions.deleteTitle}
+                          disabled={isDeleting}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setDeleteTarget(session);
+                          }}
+                          className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors disabled:opacity-50"
+                        >
+                          {isDeleting ? (
+                            <Loader2 size={14} className="animate-spin" />
+                          ) : (
+                            <Trash2 size={14} />
+                          )}
+                        </button>
                       </div>
-                      <div className="w-28 shrink-0">
-                        {sessionStatusBadge(session.status, p.recentSessions.statusLabel)}
-                      </div>
-                      <div className={cn("w-8 shrink-0 text-right tabular-nums font-semibold text-[13px]", portalHeadingAlt)}>
-                        {qCount > 0 ? qCount : "—"}
-                      </div>
-                      <div className={cn("w-14 shrink-0 text-right text-[11px] whitespace-nowrap", portalSubtextAlt)}>
-                        {dateStr}
-                      </div>
-                    </Link>
+                    </div>
                   );
                 })}
               </div>
@@ -799,8 +839,10 @@ export function HrDashboard() {
                       <p className={cn("text-[10px] truncate max-w-40", portalSubtextAlt)}>{c.candidateEmail}</p>
                     </td>
                     <td className={cn("px-4 py-3", portalSubtextAlt)}>{c.targetRole || "—"}</td>
-                    <td className={cn("px-4 py-3 text-right font-bold tabular-nums", scoreColor(c.score))}>
-                      {c.score > 0 ? `${c.score}%` : "—"}
+                    <td className={cn("px-4 py-3 text-right font-bold", scoreColor(c.score))}>
+                      {c.score > 0
+                        ? getScoreBandLabel(c.score, t.jobseekerFeedbackPage.scoreLevels)
+                        : "—"}
                     </td>
                     <td className="px-4 py-3 text-right">
                       {candidateStatusBadge(c.status, p.candidates.statusLabel[c.status] ?? c.status)}
@@ -823,6 +865,37 @@ export function HrDashboard() {
           {p.subscription.upgrade} <ArrowRight size={12} />
         </Link>
       </div>
+
+      {/* Confirm xóa phiên Studio */}
+      {deleteTarget && (
+        <div className="fixed inset-0 z-9999 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setDeleteTarget(null)} />
+          <div className="relative w-full max-w-md rounded-2xl border border-gray-200 bg-white p-5 shadow-xl dark:border-gray-700 dark:bg-gray-900">
+            <h3 className={cn("text-sm font-semibold", portalHeadingAlt)}>{p.recentSessions.deleteModal.title}</h3>
+            <p className={cn("mt-1 text-[12px]", portalSubtextAlt)}>{p.recentSessions.deleteModal.subtitle}</p>
+            <p className={cn("mt-2 text-[13px]", portalSubtextAlt)}>{p.recentSessions.deleteModal.body}</p>
+            <p className={cn("mt-2 truncate rounded-lg bg-gray-50 px-3 py-2 text-[13px] font-semibold dark:bg-gray-800", portalHeadingAlt)}>
+              {deleteTarget.role || "—"}
+            </p>
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setDeleteTarget(null)}
+                className="rounded-lg border border-gray-200 px-3 py-1.5 text-[12px] font-medium dark:border-gray-700"
+              >
+                {p.recentSessions.deleteModal.cancel}
+              </button>
+              <button
+                type="button"
+                onClick={() => void confirmDeleteSession()}
+                className="rounded-lg bg-red-600 px-3 py-1.5 text-[12px] font-medium text-white"
+              >
+                {p.recentSessions.deleteModal.confirm}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

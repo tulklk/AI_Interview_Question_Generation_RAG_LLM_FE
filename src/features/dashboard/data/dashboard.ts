@@ -1,24 +1,14 @@
 import {
-  FileText,
-  Zap,
-  TrendingUp,
-  BarChart3,
   LayoutDashboard,
-  Sparkles,
   Wand2,
   History,
   Settings,
   BookOpen,
   Users,
 } from "lucide-react";
-import type {
-  StatItem,
-  WeeklyDataPoint,
-  CategoryStat,
-  RecentSession,
-  NavItem,
-} from "@/features/dashboard/types/dashboard";
+import type { NavItem } from "@/features/dashboard/types/dashboard";
 
+/** Nav items cho HR sidebar — không còn mock stats/sessions. */
 export const navItems: NavItem[] = [
   {
     label: "Dashboard",
@@ -49,104 +39,5 @@ export const navItems: NavItem[] = [
     label: "Settings",
     href: "/hr/settings",
     icon: Settings,
-  },
-];
-
-export const stats: StatItem[] = [
-  {
-    id: "jds-processed",
-    label: "Total JDs Processed",
-    value: "24",
-    trend: "+12%",
-    trendPositive: true,
-    icon: FileText,
-    iconBg: "bg-gray-100 dark:bg-gray-800",
-    iconColor: "text-gray-900 dark:text-gray-100",
-  },
-  {
-    id: "questions-generated",
-    label: "Questions Generated",
-    value: "186",
-    trend: "+28%",
-    trendPositive: true,
-    icon: Zap,
-    iconBg: "bg-gray-100 dark:bg-gray-800",
-    iconColor: "text-gray-900 dark:text-gray-100",
-  },
-  {
-    id: "this-week",
-    label: "This Week",
-    value: "12",
-    trend: "+4",
-    trendPositive: true,
-    icon: TrendingUp,
-    iconBg: "bg-gray-100 dark:bg-gray-800",
-    iconColor: "text-gray-900 dark:text-gray-100",
-  },
-  {
-    id: "avg-questions",
-    label: "Avg Questions / JD",
-    value: "7.75",
-    trend: "+0.5",
-    trendPositive: true,
-    icon: BarChart3,
-    iconBg: "bg-gray-100 dark:bg-gray-800",
-    iconColor: "text-gray-900 dark:text-gray-100",
-  },
-];
-
-export const weeklyActivity: WeeklyDataPoint[] = [
-  { day: "Mon", questions: 20, jds: 5 },
-  { day: "Tue", questions: 25, jds: 8 },
-  { day: "Wed", questions: 22, jds: 6 },
-  { day: "Thu", questions: 38, jds: 9 },
-  { day: "Fri", questions: 45, jds: 12 },
-  { day: "Sat", questions: 30, jds: 8 },
-  { day: "Sun", questions: 25, jds: 7 },
-];
-
-export const categoryStats: CategoryStat[] = [
-  { name: "Technical", count: 68, color: "#6c47ff" },
-  { name: "Behavioral", count: 42, color: "#6c47ff" },
-  { name: "Situational", count: 35, color: "#6c47ff" },
-  { name: "Cultural", count: 18, color: "#6c47ff" },
-];
-
-export const recentSessions: RecentSession[] = [
-  {
-    id: "1",
-    title: "Senior Frontend Developer",
-    role: "Frontend",
-    roleColor: "text-blue-600 dark:text-blue-400",
-    roleBg: "bg-blue-50 dark:bg-blue-950/40",
-    questionsCount: 15,
-    relativeTime: "3 hours ago",
-  },
-  {
-    id: "2",
-    title: "Product Manager",
-    role: "Product",
-    roleColor: "text-purple-600 dark:text-purple-400",
-    roleBg: "bg-purple-50 dark:bg-purple-950/40",
-    questionsCount: 12,
-    relativeTime: "1 day ago",
-  },
-  {
-    id: "3",
-    title: "Data Scientist",
-    role: "Data",
-    roleColor: "text-amber-600 dark:text-amber-400",
-    roleBg: "bg-amber-50 dark:bg-amber-950/40",
-    questionsCount: 18,
-    relativeTime: "2 days ago",
-  },
-  {
-    id: "4",
-    title: "Backend Developer",
-    role: "Backend",
-    roleColor: "text-emerald-600 dark:text-emerald-400",
-    roleBg: "bg-emerald-50 dark:bg-emerald-950/40",
-    questionsCount: 14,
-    relativeTime: "3 days ago",
   },
 ];

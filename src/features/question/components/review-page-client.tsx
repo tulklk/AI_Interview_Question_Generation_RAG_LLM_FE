@@ -337,7 +337,8 @@ export function ReviewPageClient({
             )}
             {questionSetId && (
               <Link
-                href={`/hr/question-sets/${questionSetId}/practitioners`}
+                // Gom về hub published — cùng tab practitioners với Practice & ratings
+                href={`/hr/published/${questionSetId}?tab=practitioners`}
                 title={t.practitionersPage.heading}
                 className="w-9 h-9 flex items-center justify-center rounded-lg border border-gray-200 dark:border-gray-700 text-gray-400 dark:text-gray-500 hover:text-primary hover:bg-primary/5 transition-colors"
               >

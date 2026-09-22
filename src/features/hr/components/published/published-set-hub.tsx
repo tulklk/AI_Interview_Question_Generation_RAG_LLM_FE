@@ -144,7 +144,8 @@ export function PublishedSetHub({ questionSetId }: { questionSetId: string }) {
         "success",
         withAbandonedToast(
           Boolean(draft?.isHiringAssessment) ? h.unpublishSuccessHiring : h.unpublishSuccess,
-          abandoned
+          abandoned,
+          t.historyPage.unpublishAbandoned
         )
       );
       router.push("/hr/published");

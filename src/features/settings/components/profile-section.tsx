@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { Briefcase, Link2, Pencil, Save, SlidersHorizontal, User, X } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Briefcase, Building2, CheckCircle2, Link2, Pencil, Save, SlidersHorizontal, User, X } from "lucide-react";
 import { FaGithub, FaLinkedinIn } from "react-icons/fa";
 import { AiLoadingSpinner } from "@/shared/components/common/ai-loading-spinner";
 import { cn } from "@/lib/cn";
@@ -19,6 +19,10 @@ import { uploadAvatarToCloudinary } from "@/shared/utils/cloudinary";
 import { mapAvatarUploadError } from "@/shared/utils/avatar-upload-messages";
 import { isValidUrl } from "@/shared/utils/url-validation";
 import { portalDivider, portalHeading, portalInput, portalSubtext } from "@/shared/utils/portal-ui";
+import {
+  searchCompanies,
+  type CompanyOption,
+} from "@/features/hr/services/company.service";
 
 interface HrProfileForm {
   fullName: string;
@@ -70,6 +74,7 @@ const COMPLETENESS_FIELDS: (keyof HrProfileForm)[] = [
 export function ProfileSection() {
   const { t } = useLanguage();
   const sp = t.settingsPage.profile;
+  const rp = t.registerPage;
   const { refreshUser } = useUser();
   const { isPremium } = useHrSubscription();
   const { addToast } = useToast();
@@ -83,6 +88,13 @@ export function ProfileSection() {
   const [linkedInTouched, setLinkedInTouched] = useState(false);
   const [githubTouched, setGithubTouched] = useState(false);
   const [googleLinked, setGoogleLinked] = useState(false);
+
+  const [companyResults, setCompanyResults] = useState<CompanyOption[]>([]);
+  const [companyOpen, setCompanyOpen] = useState(false);
+  const [companyLoading, setCompanyLoading] = useState(false);
+  const [companySearched, setCompanySearched] = useState(false);
+  const companyRef = useRef<HTMLDivElement>(null);
+  const companyDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const loadProfile = useCallback(async () => {
     setLoading(true);
@@ -123,12 +135,75 @@ export function ProfileSection() {
     loadProfile();
   }, [loadProfile]);
 
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (companyRef.current && !companyRef.current.contains(e.target as Node)) {
+        setCompanyOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const fetchCompanies = useCallback(async (keyword: string) => {
+    if (!keyword.trim()) {
+      setCompanyResults([]);
+      setCompanySearched(false);
+      return;
+    }
+    setCompanyLoading(true);
+    try {
+      const results = await searchCompanies(keyword);
+      setCompanyResults(results);
+    } catch {
+      setCompanyResults([]);
+    } finally {
+      setCompanyLoading(false);
+      setCompanySearched(true);
+    }
+  }, []);
+
+  function handleCompanyChange(value: string) {
+    setForm((prev) => ({ ...prev, companyName: value, companyId: "" }));
+    setCompanySearched(false);
+    if (companyDebounceRef.current) clearTimeout(companyDebounceRef.current);
+    if (value.trim()) {
+      companyDebounceRef.current = setTimeout(() => fetchCompanies(value), 350);
+    } else {
+      setCompanyResults([]);
+    }
+    setCompanyOpen(true);
+  }
+
+  function selectCompany(company: CompanyOption) {
+    setForm((prev) => ({ ...prev, companyName: company.name, companyId: company.id }));
+    setCompanyOpen(false);
+    setCompanyResults([]);
+    setCompanySearched(false);
+  }
+
+  function useTypedCompanyName() {
+    setForm((prev) => ({ ...prev, companyId: "" }));
+    setCompanyOpen(false);
+    setCompanyResults([]);
+    setCompanySearched(false);
+  }
+
+  function resetCompanySearch() {
+    setCompanyOpen(false);
+    setCompanyResults([]);
+    setCompanySearched(false);
+    setCompanyLoading(false);
+    if (companyDebounceRef.current) clearTimeout(companyDebounceRef.current);
+  }
+
   function handleCancel() {
     setForm(snapshot);
     setEditing(false);
     setUploadingAvatar(false);
     setLinkedInTouched(false);
     setGithubTouched(false);
+    resetCompanySearch();
   }
 
   function handleAvatarUploadError(code: string) {
@@ -151,7 +226,7 @@ export function ProfileSection() {
     try {
       await updateHrProfile({
         fullName: form.fullName.trim(),
-        companyId: form.companyId,
+        companyId: form.companyId || undefined,
         companyName: form.companyName.trim() || undefined,
         jobTitle: form.jobTitle.trim() || undefined,
         phoneNumber: form.phoneNumber.trim() || undefined,
@@ -170,6 +245,7 @@ export function ProfileSection() {
       await refreshUser();
       await loadProfile();
       setEditing(false);
+      resetCompanySearch();
       addToast("success", sp.saveSuccess);
     } catch {
       addToast("error", sp.saveFailed);
@@ -434,13 +510,79 @@ export function ProfileSection() {
             <div className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <FormField label={sp.company} htmlFor="company">
-                  <input
-                    id="company"
-                    value={form.companyName}
-                    onChange={(e) => setForm((prev) => ({ ...prev, companyName: e.target.value }))}
-                    disabled={saving || uploadingAvatar}
-                    className={inputCls}
-                  />
+                  <div className="relative" ref={companyRef}>
+                    <div className="relative">
+                      <Building2
+                        size={15}
+                        className="pointer-events-none absolute left-3 top-1/2 z-10 -translate-y-1/2 text-gray-400"
+                      />
+                      <input
+                        id="company"
+                        type="text"
+                        value={form.companyName}
+                        onChange={(e) => handleCompanyChange(e.target.value)}
+                        onFocus={() => {
+                          if (form.companyName.trim()) setCompanyOpen(true);
+                        }}
+                        disabled={saving || uploadingAvatar}
+                        autoComplete="off"
+                        className={cn(
+                          inputCls,
+                          "pl-9 pr-9",
+                          form.companyId && "border-emerald-300 focus:border-emerald-400 focus:ring-emerald-100"
+                        )}
+                      />
+                      {companyLoading ? (
+                        <span className="absolute right-3.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 rounded-full border-2 border-primary/30 border-t-primary animate-spin" />
+                      ) : form.companyId ? (
+                        <CheckCircle2
+                          size={14}
+                          className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-emerald-500"
+                        />
+                      ) : null}
+                    </div>
+                    {companyOpen && form.companyName.trim() && (
+                      <div className="absolute z-20 mt-1 w-full overflow-hidden rounded-xl border border-gray-200 bg-white shadow-lg dark:border-gray-700 dark:bg-gray-900">
+                        {companyLoading && (
+                          <div className="flex items-center gap-2.5 px-4 py-3 text-sm text-gray-400 dark:text-gray-500">
+                            <span className="h-3.5 w-3.5 shrink-0 rounded-full border-2 border-primary/30 border-t-primary animate-spin" />
+                            {rp.companySearchHint}
+                          </div>
+                        )}
+                        {!companyLoading && companyResults.length > 0 && (
+                          <div className="max-h-44 overflow-y-auto py-1">
+                            {companyResults.map((c) => (
+                              <button
+                                key={c.id}
+                                type="button"
+                                onMouseDown={() => selectCompany(c)}
+                                className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm text-gray-700 transition-colors hover:bg-primary/5 hover:text-primary dark:text-gray-200"
+                              >
+                                <Building2 size={13} className="shrink-0 text-gray-400" />
+                                <span className="truncate">{c.name}</span>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                        {!companyLoading && companyResults.length === 0 && companySearched && (
+                          <div>
+                            <p className="px-4 pb-1 pt-3 text-xs text-gray-400 dark:text-gray-500">
+                              {rp.companyNotSelected}
+                            </p>
+                            <button
+                              type="button"
+                              onMouseDown={useTypedCompanyName}
+                              className="mt-1 flex w-full items-center gap-2.5 border-t border-gray-100 px-4 py-2.5 text-left text-sm text-gray-700 transition-colors hover:bg-primary/5 hover:text-primary dark:border-gray-700 dark:text-gray-200"
+                            >
+                              <Building2 size={13} className="shrink-0 text-gray-400" />
+                              <span className="truncate">{form.companyName}</span>
+                              <span className="ml-auto shrink-0 text-xs text-primary">{t.common.useThisName}</span>
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </FormField>
                 <FormField label={sp.jobTitle} htmlFor="job-title">
                   <input

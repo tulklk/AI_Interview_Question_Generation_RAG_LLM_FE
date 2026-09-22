@@ -117,9 +117,10 @@ export function formatCategoryLabel(category: QuestionCategory): string {
  * a bare "NN%" is shown (dashboard recent sessions, history rows, per-question scores).
  */
 export function getScoreBadgeClass(score: number): string {
-  if (score >= 80) return "bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300";
-  if (score >= 65) return "bg-violet-100 dark:bg-violet-950 text-violet-700 dark:text-violet-300";
-  return "bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300";
+  if (score >= 90) return "bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300";
+  if (score >= 80) return "bg-violet-100 dark:bg-violet-950 text-violet-700 dark:text-violet-300";
+  if (score >= 70) return "bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300";
+  return "bg-red-100 dark:bg-red-950 text-red-600 dark:text-red-400";
 }
 
 interface PendingScorePillProps {
@@ -160,13 +161,14 @@ export interface ScoreLevelLabels {
 /**
  * Single source of truth for the overall-score "level" badge: label and badge
  * color are derived from the same thresholds so they can never disagree.
+ * Ngưỡng: ≥90 Xuất sắc | ≥80 Tốt | ≥70 Khá | &lt;70 Cần cải thiện
  */
 export function getScoreLevel(
   score: number,
   labels: ScoreLevelLabels,
 ): { label: string; badgeClass: string } {
-  if (score >= 80) return { label: labels.excellent, badgeClass: "bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300" };
-  if (score >= 65) return { label: labels.good, badgeClass: "bg-violet-100 dark:bg-violet-950 text-violet-700 dark:text-violet-300" };
-  if (score >= 50) return { label: labels.fair, badgeClass: "bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300" };
+  if (score >= 90) return { label: labels.excellent, badgeClass: "bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300" };
+  if (score >= 80) return { label: labels.good, badgeClass: "bg-violet-100 dark:bg-violet-950 text-violet-700 dark:text-violet-300" };
+  if (score >= 70) return { label: labels.fair, badgeClass: "bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300" };
   return { label: labels.needsWork, badgeClass: "bg-red-100 dark:bg-red-950 text-red-600 dark:text-red-400" };
 }

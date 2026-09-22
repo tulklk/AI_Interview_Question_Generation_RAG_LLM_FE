@@ -43,6 +43,7 @@ interface Props {
   isStreaming?: boolean;
   isApplying?: boolean;
   generationRun?: GenerationRun | null;
+  onStepClick?: (id: StudioFlowStepId) => void;
 }
 
 export function StudioProgressBar({
@@ -53,6 +54,7 @@ export function StudioProgressBar({
   isStreaming,
   isApplying,
   generationRun,
+  onStepClick,
 }: Props) {
   const { t } = useLanguage();
   const s = t.studioPage;
@@ -108,7 +110,15 @@ export function StudioProgressBar({
             return (
               <li key={step.id} className={cn("flex min-w-0 items-center", idx < STEPS.length - 1 && "flex-1")}>
                 {/* Step node */}
-                <div className="flex shrink-0 flex-col items-center gap-1">
+                <button
+                  type="button"
+                  disabled={!onStepClick}
+                  onClick={() => onStepClick?.(step.id)}
+                  className={cn(
+                    "flex shrink-0 flex-col items-center gap-1 rounded-lg",
+                    onStepClick && "cursor-pointer hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                  )}
+                >
                   {/* Circle */}
                   <div
                     className={cn(
@@ -147,7 +157,7 @@ export function StudioProgressBar({
                   >
                     {step.label}
                   </span>
-                </div>
+                </button>
 
                 {/* Connector */}
                 {idx < STEPS.length - 1 && (
