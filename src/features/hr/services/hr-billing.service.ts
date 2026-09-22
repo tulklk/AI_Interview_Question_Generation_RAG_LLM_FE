@@ -1,24 +1,21 @@
-import {
-  getMySubscription,
-  isPremiumPlanCode,
-} from "@/features/subscription/services/subscription.service";
 import type { PaymentHistoryItem } from "@/features/candidate/types/billing";
+import { getMyPaymentHistory } from "@/features/subscription/services/subscription.service";
 
-/** Derives payment history from the current subscription. */
+/**
+ * Lịch sử thanh toán HR — GET /api/me/subscription/payments (SubscriptionTransaction thật).
+ */
 export async function getHrPaymentHistory(): Promise<PaymentHistoryItem[]> {
   try {
-    const sub = await getMySubscription();
-    if (!isPremiumPlanCode(sub.planCode) || sub.priceMonthly <= 0) return [];
-    return [
-      {
-        invoiceId: `HR-${sub.periodStart.slice(0, 10)}`,
-        planName: sub.planName,
-        amount: sub.priceMonthly,
-        currency: sub.currency || "VND",
-        status: "PAID",
-        paymentDate: sub.periodStart,
-      },
-    ];
+    const rows = await getMyPaymentHistory(50);
+    return rows.map((r) => ({
+      invoiceId: r.invoiceId,
+      planName: r.planName,
+      amount: r.amount,
+      currency: r.currency,
+      status: r.status,
+      paymentDate: r.paymentDate,
+      receiptUrl: r.receiptUrl,
+    }));
   } catch {
     return [];
   }

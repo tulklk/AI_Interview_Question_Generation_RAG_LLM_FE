@@ -60,6 +60,8 @@ interface Props {
   jdLocked?: boolean;
   /** Tooltip khi khóa do quota */
   jdLockedTitle?: string;
+  /** Đang lưu & phân tích JD (paste) */
+  isSavingJd?: boolean;
 }
 
 type JdMode = "paste" | "upload";
@@ -162,6 +164,7 @@ export function SourcesPanel({
   locked = false,
   jdLocked = false,
   jdLockedTitle,
+  isSavingJd = false,
 }: Props) {
   // Derived once — reused everywhere a metadata-edit control needs to know
   // whether ANY save handler was provided, instead of repeating the disjunction.
@@ -252,7 +255,7 @@ export function SourcesPanel({
       return;
     }
     if (skillsDraft.length >= 20) {
-      addToast("error", src.skillsMaxHint ?? "Tối đa 20 kỹ năng.");
+      addToast("error", src.skillsMaxHint);
       return;
     }
     setSkillsDraft((prev) => [...prev, next]);
@@ -502,10 +505,11 @@ export function SourcesPanel({
                 <button
                   type="button"
                   onClick={() => void onSaveJd()}
-                  disabled={!jdContent.trim()}
-                  className="shrink-0 rounded-lg bg-primary px-2.5 py-1.5 text-[11px] font-medium text-white disabled:opacity-40 hover:bg-primary-hover transition-colors"
+                  disabled={!jdContent.trim() || isSavingJd}
+                  className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-primary px-2.5 py-1.5 text-[11px] font-medium text-white transition-colors hover:bg-primary-hover disabled:opacity-40"
                 >
-                  {src.saveAndAnalyze}
+                  {isSavingJd ? <Loader2 size={12} className="animate-spin" /> : null}
+                  {isSavingJd ? src.savingAnalyzing : src.saveAndAnalyze}
                 </button>
               </div>
               {jdInputWarning && (

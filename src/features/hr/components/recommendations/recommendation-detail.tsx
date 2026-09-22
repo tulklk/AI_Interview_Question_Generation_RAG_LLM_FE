@@ -34,6 +34,11 @@ import {
 import { getCurrentUser } from "@/features/auth/services/user.service";
 import { InviteScheduleFields, defaultInviteSchedule, toInvitePayload } from "./invite-schedule-fields";
 import {
+  getScoreBandLabel,
+  scoreBandTextClass,
+} from "@/features/hr/utils/score-band";
+import type { ScoreLevelLabels } from "@/features/candidate/components/ui/pill";
+import {
   portalHeading,
   portalSubtext,
   portalDivider,
@@ -117,18 +122,26 @@ interface InviteModalProps {
   actionLabels: ReturnType<typeof useLanguage>["t"]["hrRecommendationsPage"];
 }
 
-function buildDefaultInviteMessage(template: string, rec: CandidateRecommendation): string {
+function buildDefaultInviteMessage(
+  template: string,
+  rec: CandidateRecommendation,
+  scoreLabels: ScoreLevelLabels,
+): string {
   return template
     .replace("{{name}}", rec.candidateName || "")
     .replace("{{title}}", rec.questionSetTitle || "")
-    .replace("{{score}}", String(rec.score));
+    .replace("{{score}}", getScoreBandLabel(rec.score, scoreLabels));
 }
 
 function InviteModal({ rec, onClose, onSent, labels, actionLabels }: InviteModalProps) {
-  const [message, setMessage] = useState(() => buildDefaultInviteMessage(labels.defaultMessage, rec));
+  const { addToast } = useToast();
+  const { t } = useLanguage();
+  const scoreLabels = t.jobseekerFeedbackPage.scoreLevels;
+  const [message, setMessage] = useState(() =>
+    buildDefaultInviteMessage(labels.defaultMessage, rec, scoreLabels),
+  );
   const [schedule, setSchedule] = useState(defaultInviteSchedule);
   const [sending, setSending] = useState(false);
-  const { addToast } = useToast();
   const p = actionLabels;
 
   useEffect(() => {
@@ -139,7 +152,7 @@ function InviteModal({ rec, onClose, onSent, labels, actionLabels }: InviteModal
     window.addEventListener("keydown", handleKeyDown);
     void getCurrentUser().then((u) => {
       const tpl = u.hrProfile?.inviteMessageTemplate?.trim();
-      if (tpl) setMessage(buildDefaultInviteMessage(tpl, rec));
+      if (tpl) setMessage(buildDefaultInviteMessage(tpl, rec, scoreLabels));
     }).catch(() => undefined);
     return () => {
       document.body.style.overflow = "";
@@ -241,17 +254,25 @@ interface OfferModalProps {
 
 const OFFER_MAX_LEN = 5000;
 
-function buildDefaultOfferMessage(template: string, rec: CandidateRecommendation): string {
+function buildDefaultOfferMessage(
+  template: string,
+  rec: CandidateRecommendation,
+  scoreLabels: ScoreLevelLabels,
+): string {
   return template
     .replace("{{name}}", rec.candidateName || "")
     .replace("{{title}}", rec.questionSetTitle || "")
-    .replace("{{score}}", String(rec.score));
+    .replace("{{score}}", getScoreBandLabel(rec.score, scoreLabels));
 }
 
 function OfferModal({ rec, onClose, onSent, labels }: OfferModalProps) {
-  const [message, setMessage] = useState(() => buildDefaultOfferMessage(labels.defaultMessage, rec));
-  const [sending, setSending] = useState(false);
   const { addToast } = useToast();
+  const { t } = useLanguage();
+  const scoreLabels = t.jobseekerFeedbackPage.scoreLevels;
+  const [message, setMessage] = useState(() =>
+    buildDefaultOfferMessage(labels.defaultMessage, rec, scoreLabels),
+  );
+  const [sending, setSending] = useState(false);
 
   useEffect(() => {
     document.body.style.overflow = "hidden";
@@ -493,10 +514,8 @@ export function RecommendationDetail({ id }: { id: string }) {
   const cvFileName = cvPreview?.cvFileName ?? rec.cvFileName;
   const cvIsImage = isImageCv(cvPreview?.contentType, cvFileName);
   const cvIsPdf = isPdfCv(cvPreview?.contentType, cvFileName);
-  const scoreColor = rec.score >= 85
-    ? "text-emerald-500 dark:text-emerald-400"
-    : rec.score >= 70 ? "text-amber-500 dark:text-amber-400"
-    : "text-red-500 dark:text-red-400";
+  const scoreColor = scoreBandTextClass(rec.score);
+  const scoreBandLabel = getScoreBandLabel(rec.score, t.jobseekerFeedbackPage.scoreLevels);
 
   const CHIP_LIMIT = 5;
   const SKILL_CHIP_LIMIT = 6;
@@ -576,9 +595,9 @@ export function RecommendationDetail({ id }: { id: string }) {
           {/* Metrics */}
           <div className="flex items-center gap-4 sm:gap-5 flex-wrap shrink-0">
             {/* Evaluation Score */}
-            <div className="flex flex-col items-center min-w-12">
-              <span className={cn("text-[26px] font-black leading-none tabular-nums", scoreColor)}>
-                {rec.score}
+            <div className="flex flex-col items-center min-w-16">
+              <span className={cn("text-[18px] font-black leading-none text-center", scoreColor)}>
+                {scoreBandLabel}
               </span>
               <span className={cn("text-[9px] font-bold uppercase tracking-wide mt-0.5 whitespace-nowrap", portalSubtextAlt)}>
                 {p.detail.overallScore}

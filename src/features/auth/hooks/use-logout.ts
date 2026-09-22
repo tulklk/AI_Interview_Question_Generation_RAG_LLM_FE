@@ -2,7 +2,9 @@
 
 import { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
-import { logoutSession } from "@/features/auth/services/logout.service";
+import { logout } from "@/features/auth/services/logout.service";
+import { getRefreshToken } from "@/core/auth/token.service";
+import { clearAuth } from "@/core/auth/permissions";
 import { useUser } from "@/features/auth/context/user-context";
 
 export function useLogout() {
@@ -10,17 +12,19 @@ export function useLogout() {
   const { clearUser } = useUser();
   const [loggingOut, setLoggingOut] = useState(false);
 
-  const logout = useCallback(async () => {
+  const logoutFn = useCallback(async () => {
     if (loggingOut) return;
     setLoggingOut(true);
-    try {
-      await logoutSession();
-      clearUser();
-      router.push("/login");
-    } finally {
-      setLoggingOut(false);
+    const refreshToken = getRefreshToken();
+    // Optimistic: clear local session + navigate immediately (do not wait on API timeout)
+    clearAuth();
+    clearUser();
+    router.push("/login");
+    if (refreshToken) {
+      void logout(refreshToken).catch(() => undefined);
     }
+    setLoggingOut(false);
   }, [clearUser, loggingOut, router]);
 
-  return { logout, loggingOut };
+  return { logout: logoutFn, loggingOut };
 }

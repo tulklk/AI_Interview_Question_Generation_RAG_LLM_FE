@@ -722,9 +722,18 @@ export function parseAbandonedSessionCount(raw: unknown): number {
   return Number.isFinite(n) ? Math.max(0, n) : 0;
 }
 
-export function withAbandonedToast(base: string, count: number): string {
+/**
+ * Nối thông báo unpublish với số phiên bị hủy — caller truyền `abandonedMsg`
+ * đã dịch (chứa `{{count}}`), không hardcode ngôn ngữ trong helper.
+ * SCRUM-474
+ */
+export function withAbandonedToast(
+  base: string,
+  count: number,
+  abandonedMsg: string
+): string {
   if (count <= 0) return base;
-  return `${base} Đã hủy ${count} phiên đang làm.`;
+  return `${base} ${abandonedMsg.replace("{{count}}", String(count))}`;
 }
 
 /**
@@ -934,7 +943,7 @@ export async function setQuestionSetHiringPosting(
 
 export async function renameQuestionSetTitle(questionSetId: string, title: string): Promise<string> {
   const trimmed = title.trim();
-  if (!trimmed) throw new Error("Tiêu đề không được để trống.");
+  if (!trimmed) throw new Error("Title cannot be empty.");
   try {
     const { data } = await apiClient.put<{ data?: { title?: string }; title?: string }>(
       `/api/hr/question-sets/${questionSetId}/title`,

@@ -426,7 +426,7 @@ function DocumentCard({
           </p>
         ) : null}
         {doc.status === "FAILED" && doc.errorMessage && (
-          <p className="text-[11px] text-red-500 dark:text-red-400 mt-1 line-clamp-1">
+          <p className="text-[11px] text-red-500 dark:text-red-400 mt-1 line-clamp-2" title={doc.errorMessage}>
             {doc.errorMessage}
           </p>
         )}
@@ -876,13 +876,12 @@ export function KnowledgePageContent({
       setDocs([]);
       addToast(
         "error",
-        extractErrorMessage(error, lang === "vi" ? "vi" : "en") ||
-          (lang === "vi" ? "Không tải được danh sách tài liệu." : "Failed to load documents.")
+        extractErrorMessage(error, lang === "vi" ? "vi" : "en") || kb.loadFailed
       );
     } finally {
       setLoading(false);
     }
-  }, [onFetchDocs, addToast, lang, variant, activeFolder]);
+  }, [onFetchDocs, addToast, lang, variant, activeFolder, kb.loadFailed]);
 
   useEffect(() => {
     loadDocs();
@@ -997,7 +996,8 @@ export function KnowledgePageContent({
     setDrawerAdminNote(doc.adminNote ?? "");
     setDrawerFolder(doc.folder ?? "");
     setDrawerChunks([]);
-    if (!onFetchChunks) return;
+    // FAILED: chưa embed → không gọi preview; hiện errorMessage trong drawer
+    if (!onFetchChunks || doc.status === "FAILED") return;
     setDrawerLoading(true);
     try {
       const chunks = await onFetchChunks(doc.id);
@@ -1006,8 +1006,7 @@ export function KnowledgePageContent({
       setDrawerChunks([]);
       addToast(
         "error",
-        extractErrorMessage(error, lang === "vi" ? "vi" : "en") ||
-          (lang === "vi" ? "Không tải được preview chunk." : "Failed to load chunk preview.")
+        extractErrorMessage(error, lang === "vi" ? "vi" : "en") || kb.chunkPreviewFailed
       );
     } finally {
       setDrawerLoading(false);
@@ -1126,8 +1125,11 @@ export function KnowledgePageContent({
     const ok = await onReingest(id);
     if (ok) {
       setDocs((prev) =>
-        prev.map((d) => (d.id === id ? { ...d, status: "INGESTING" as const } : d))
+        prev.map((d) => (d.id === id ? { ...d, status: "INGESTING" as const, errorMessage: undefined } : d))
       );
+      if (drawerDoc?.id === id) {
+        setDrawerDoc({ ...drawerDoc, status: "INGESTING", errorMessage: undefined });
+      }
       addToast("success", kb.reingestSuccess);
     } else {
       addToast("error", kb.reingestFailed);
@@ -1703,6 +1705,45 @@ export function KnowledgePageContent({
               </button>
             </div>
 
+            {/* HR: hiện status (Admin đã có trong khối meta bên dưới) */}
+            {variant === "hr" && (
+              <div className="mb-4 flex items-center gap-2">
+                <span className={cn("text-[11px] font-medium", portalSubtext)}>{kb.statusLabel}</span>
+                <StatusBadge status={drawerDoc.status} />
+              </div>
+            )}
+
+            {/* SCRUM-466: lỗi ingest đầy đủ khi bấm vào doc FAILED */}
+            {drawerDoc.status === "FAILED" && (
+              <div
+                role="alert"
+                className="mb-4 rounded-xl border border-red-200 dark:border-red-900/60 bg-red-50 dark:bg-red-950/30 p-3"
+              >
+                <div className="flex items-start gap-2">
+                  <AlertCircle size={16} className="shrink-0 text-red-500 mt-0.5" aria-hidden />
+                  <div className="min-w-0 space-y-1">
+                    <p className="text-xs font-semibold text-red-700 dark:text-red-300">
+                      {kb.ingestFailedTitle}
+                    </p>
+                    <p className="text-xs text-red-600 dark:text-red-400 whitespace-pre-wrap break-words">
+                      {drawerDoc.errorMessage?.trim() || kb.ingestErrorUnknown}
+                    </p>
+                    <button
+                      type="button"
+                      disabled={reingestingId === drawerDoc.id}
+                      onClick={() => handleReingest(drawerDoc.id)}
+                      className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-semibold rounded-lg bg-red-600 hover:bg-red-700 text-white disabled:opacity-50"
+                    >
+                      {reingestingId === drawerDoc.id
+                        ? <Loader2 size={12} className="animate-spin" />
+                        : <RotateCcw size={12} />}
+                      {kb.reingestTitle}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {variant === "admin" && (
               <div className="mb-4 space-y-2 rounded-xl border border-gray-100 dark:border-gray-800 bg-gray-50/60 dark:bg-gray-950/40 p-3">
                 <div>
@@ -1827,7 +1868,9 @@ export function KnowledgePageContent({
                 <Loader2 size={20} className="animate-spin text-violet-500" />
               </div>
             ) : drawerChunks.length === 0 ? (
-              <p className={cn("text-xs", portalSubtext)}>{kb.noChunks}</p>
+              <p className={cn("text-xs", portalSubtext)}>
+                {drawerDoc.status === "FAILED" ? kb.ingestFailedNoChunks : kb.noChunks}
+              </p>
             ) : (
               <ul className="space-y-3">
                 {drawerChunks.map((c) => (

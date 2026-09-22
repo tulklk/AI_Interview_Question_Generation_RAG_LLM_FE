@@ -2,9 +2,12 @@
 
 import { useState } from "react";
 import { apiClient } from "@/core/api/http-client";
+import { useLanguage } from "@/shared/providers/language-context";
 
 /** Tab import curated roadmap JSONL trên Admin Knowledge (SYSTEM/Roadmap). */
 export function AdminRoadmapNodeImportPanel() {
+  const { t } = useLanguage();
+  const kb = t.knowledgePage;
   const [text, setText] = useState("");
   const [result, setResult] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -18,7 +21,8 @@ export function AdminRoadmapNodeImportPanel() {
       });
       setResult(JSON.stringify(res.data?.data ?? res.data, null, 2));
     } catch (e) {
-      setResult(e instanceof Error ? e.message : "Import thất bại");
+      // SCRUM-474: thông báo lỗi theo ngôn ngữ UI
+      setResult(e instanceof Error ? e.message : kb.roadmapImportFailed);
     } finally {
       setBusy(false);
     }

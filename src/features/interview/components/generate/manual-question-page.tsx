@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useId, useRef, useCallback } from "react";
+import { useState, useId, useRef, useCallback, useEffect } from "react";
 import Link from "next/link";
 import * as XLSX from "xlsx";
 import {
@@ -12,12 +12,12 @@ import {
   Copy,
   Download,
   FileSpreadsheet,
-  GripVertical,
   ListPlus,
   Plus,
   Trash2,
   Upload,
   X,
+  Zap,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { useLanguage } from "@/shared/providers/language-context";
@@ -36,9 +36,21 @@ interface ManualQuestion {
   difficulty: Difficulty;
 }
 
+/** SCRUM-477: tùy chọn nhân bản */
+type CloneOptions = { count: number; clearContent: boolean };
+
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const PAGE_SIZE = 5;
+/** SCRUM-477: tăng page size để ít lật trang khi tạo hàng loạt */
+const PAGE_SIZE = 10;
+const BULK_MIN = 1;
+const BULK_MAX = 50;
+const CLONE_N_MAX = 20;
+
+function clamp(n: number, min: number, max: number) {
+  if (Number.isNaN(n)) return min;
+  return Math.min(max, Math.max(min, Math.floor(n)));
+}
 
 const QUESTION_TYPES: { value: QuestionType; labelVi: string; labelEn: string; color: string }[] = [
   { value: "Technical",       labelVi: "Kỹ thuật",           labelEn: "Technical",       color: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300" },
@@ -77,6 +89,18 @@ function uid() {
 
 function makeBlank(): ManualQuestion {
   return { id: uid(), content: "", type: "Technical", difficulty: "Medium" };
+}
+
+function makeBlankWith(type: QuestionType, difficulty: Difficulty): ManualQuestion {
+  return { id: uid(), content: "", type, difficulty };
+}
+
+/** Tách clipboard thành các dòng nội dung không rỗng */
+function splitPasteLines(text: string): string[] {
+  return text
+    .split(/\r\n|\n|\r/)
+    .map((line) => line.trim())
+    .filter(Boolean);
 }
 
 // ── Excel helpers ─────────────────────────────────────────────────────────────
@@ -352,6 +376,83 @@ function ConfirmImportModal({ count, isVi, mp, onAppend, onReplace, onCancel }: 
   );
 }
 
+// ── SCRUM-477: modal nhân N bản trống ─────────────────────────────────────────
+
+interface CloneNModalProps {
+  mp: ReturnType<typeof useLanguage>["t"]["manualPage"];
+  count: number;
+  onCountChange: (n: number) => void;
+  onConfirm: () => void;
+  onCancel: () => void;
+}
+
+function CloneNModal({ mp, count, onCountChange, onConfirm, onCancel }: CloneNModalProps) {
+  const cm = mp.cloneMenu;
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in"
+      onClick={onCancel}
+    >
+      <div
+        role="dialog"
+        aria-modal
+        aria-labelledby="clone-n-title"
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-sm rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-xl animate-scale-in"
+      >
+        <div className="flex items-start justify-between gap-3 px-5 pt-5 pb-2">
+          <div>
+            <h3 id="clone-n-title" className={cn("text-sm font-semibold", portalHeading)}>
+              {cm.dialogTitle}
+            </h3>
+            <p className={cn("text-xs mt-1", portalSubtext)}>{cm.dialogDesc}</p>
+          </div>
+          <button
+            type="button"
+            onClick={onCancel}
+            className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors shrink-0"
+            aria-label={cm.cancel}
+          >
+            <X size={14} />
+          </button>
+        </div>
+        <div className="px-5 pb-5 pt-2 space-y-3">
+          <div>
+            <label className={cn("mb-1.5 block text-xs font-medium", portalSubtext)}>
+              {cm.countLabel}
+            </label>
+            <input
+              type="number"
+              min={1}
+              max={CLONE_N_MAX}
+              value={count}
+              onChange={(e) => onCountChange(Number(e.target.value))}
+              className={cn(portalInput, "w-full rounded-lg px-3 py-2 text-sm tabular-nums outline-none focus:border-primary focus:ring-2 focus:ring-primary/20")}
+              autoFocus
+            />
+          </div>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={onCancel}
+              className={cn("flex-1 rounded-lg border px-4 py-2 text-sm font-medium transition-colors", portalCard, portalHeading)}
+            >
+              {cm.cancel}
+            </button>
+            <button
+              type="button"
+              onClick={onConfirm}
+              className="flex-1 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary-hover transition-colors"
+            >
+              {cm.confirm}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
 
 export function ManualQuestionPage() {
@@ -379,6 +480,14 @@ export function ManualQuestionPage() {
   const [showDropZone,  setShowDropZone]  = useState(false);
   const [pendingImport, setPendingImport] = useState<ManualQuestion[] | null>(null);
 
+  // SCRUM-477: metadata chung cho "Tạo nhanh"
+  const [bulkType,       setBulkType]       = useState<QuestionType>("Technical");
+  const [bulkDifficulty, setBulkDifficulty] = useState<Difficulty>("Medium");
+  const [bulkCount,      setBulkCount]      = useState(10);
+  // Dialog nhân N bản trống
+  const [cloneNTargetId, setCloneNTargetId] = useState<string | null>(null);
+  const [cloneNCount,    setCloneNCount]    = useState(5);
+
   // ── Derived ───────────────────────────────────────────────────────────────
 
   const totalCount = questions.length;
@@ -399,8 +508,20 @@ export function ManualQuestionPage() {
 
   function addQuestion() {
     const nextTotal = totalCount + 1;
-    setQuestions((prev) => [...prev, makeBlank()]);
+    setQuestions((prev) => [...prev, makeBlankWith(bulkType, bulkDifficulty)]);
     setPage(Math.ceil(nextTotal / PAGE_SIZE));
+    setTimeout(() => listEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" }), 60);
+  }
+
+  /** SCRUM-477: tạo nhanh N slot trống với type/difficulty từ thanh bulk */
+  function bulkCreate() {
+    const n = clamp(bulkCount, BULK_MIN, BULK_MAX);
+    setBulkCount(n);
+    const created = Array.from({ length: n }, () => makeBlankWith(bulkType, bulkDifficulty));
+    const nextTotal = totalCount + n;
+    setQuestions((prev) => [...prev, ...created]);
+    setPage(Math.ceil(nextTotal / PAGE_SIZE));
+    addToast("success", mp.bulkBar.toast.replace("{{count}}", String(n)));
     setTimeout(() => listEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" }), 60);
   }
 
@@ -408,17 +529,74 @@ export function ManualQuestionPage() {
     setQuestions((prev) => prev.filter((q) => q.id !== id));
   }
 
-  function cloneQuestion(id: string) {
+  /** SCRUM-477: nhân bản 1 hoặc N (có thể xóa content) */
+  function cloneQuestion(id: string, opts: CloneOptions = { count: 1, clearContent: false }) {
+    const count = clamp(opts.count, 1, CLONE_N_MAX);
     const srcIdx = questions.findIndex((q) => q.id === id);
+    if (srcIdx === -1) return;
+
     setQuestions((prev) => {
-      if (srcIdx === -1) return prev;
-      const copy = { ...prev[srcIdx], id: uid() };
+      const src = prev[srcIdx];
+      const copies: ManualQuestion[] = Array.from({ length: count }, () => ({
+        id: uid(),
+        content: opts.clearContent ? "" : src.content,
+        type: src.type,
+        difficulty: src.difficulty,
+      }));
       const next = [...prev];
-      next.splice(srcIdx + 1, 0, copy);
+      next.splice(srcIdx + 1, 0, ...copies);
       return next;
     });
-    if (srcIdx !== -1) setPage(Math.ceil((srcIdx + 2) / PAGE_SIZE));
-    addToast("success", mp.toast.cloned);
+
+    setPage(Math.ceil((srcIdx + 1 + count) / PAGE_SIZE));
+    if (opts.clearContent && count > 1) {
+      addToast("success", mp.cloneMenu.toastN.replace("{{count}}", String(count)));
+    } else if (opts.clearContent) {
+      addToast("success", mp.cloneMenu.toastN.replace("{{count}}", "1"));
+    } else {
+      addToast("success", mp.cloneMenu.toastOne);
+    }
+  }
+
+  function confirmCloneN() {
+    if (!cloneNTargetId) return;
+    const n = clamp(cloneNCount, 1, CLONE_N_MAX);
+    setCloneNCount(n);
+    cloneQuestion(cloneNTargetId, { count: n, clearContent: true });
+    setCloneNTargetId(null);
+  }
+
+  /**
+   * SCRUM-477: paste ≥2 dòng → dòng đầu vào ô hiện tại, các dòng còn lại thành câu mới.
+   * Trả về true nếu đã xử lý (caller nên preventDefault).
+   */
+  function handleMultiLinePaste(id: string, text: string): boolean {
+    const lines = splitPasteLines(text);
+    if (lines.length < 2) return false;
+
+    const srcIdx = questions.findIndex((q) => q.id === id);
+    if (srcIdx === -1) return false;
+
+    const src = questions[srcIdx];
+    const extras = lines.slice(1).map((content) => ({
+      id: uid(),
+      content,
+      type: src.type,
+      difficulty: src.difficulty,
+    }));
+
+    setQuestions((prev) => {
+      const next = [...prev];
+      const idx = next.findIndex((q) => q.id === id);
+      if (idx === -1) return prev;
+      next[idx] = { ...next[idx], content: lines[0] };
+      next.splice(idx + 1, 0, ...extras);
+      return next;
+    });
+
+    setPage(Math.ceil((srcIdx + lines.length) / PAGE_SIZE));
+    addToast("success", mp.paste.toast.replace("{{count}}", String(lines.length)));
+    return true;
   }
 
   function patchQuestion(id: string, patch: Partial<ManualQuestion>) {
@@ -543,6 +721,17 @@ export function ManualQuestionPage() {
         />
       )}
 
+      {/* SCRUM-477: dialog nhân N bản trống */}
+      {cloneNTargetId && (
+        <CloneNModal
+          mp={mp}
+          count={cloneNCount}
+          onCountChange={(n) => setCloneNCount(clamp(n, 1, CLONE_N_MAX))}
+          onConfirm={confirmCloneN}
+          onCancel={() => setCloneNTargetId(null)}
+        />
+      )}
+
       <div className="animate-fade-up space-y-6 pb-28">
 
         {/* Page header */}
@@ -552,7 +741,7 @@ export function ManualQuestionPage() {
             <p className={cn("text-sm mt-1 max-w-xl", portalSubtext)}>{mp.subtext}</p>
           </div>
           <Link
-            href="/hr/generate"
+            href="/hr/generate-question"
             className="inline-flex items-center gap-2 self-start rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/80 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 hover:border-primary/40 transition-colors shadow-sm shrink-0"
           >
             <ArrowLeft size={14} />
@@ -681,6 +870,80 @@ export function ManualQuestionPage() {
             {mp.excel.formatHint}
           </p>
 
+          {/* SCRUM-477: thanh Tạo nhanh */}
+          <div className={cn(portalCard, "p-3 sm:p-4")}>
+            <div className="flex flex-col sm:flex-row sm:items-end gap-3 flex-wrap">
+              <div className="flex items-center gap-2 shrink-0 pb-0.5">
+                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                  <Zap size={14} />
+                </div>
+                <span className={cn("text-sm font-semibold", portalHeading)}>{mp.bulkBar.title}</span>
+              </div>
+
+              <div className="flex flex-wrap items-end gap-2 flex-1">
+                <div className="min-w-32">
+                  <label className={cn("mb-1 block text-[11px] font-medium", portalSubtext)}>
+                    {mp.bulkBar.typeLabel}
+                  </label>
+                  <div className="relative">
+                    <select
+                      value={bulkType}
+                      onChange={(e) => setBulkType(e.target.value as QuestionType)}
+                      className={cn(portalInput, "w-full appearance-none rounded-lg px-2.5 py-1.5 pr-7 text-xs outline-none focus:border-primary focus:ring-2 focus:ring-primary/20")}
+                    >
+                      {QUESTION_TYPES.map((ty) => (
+                        <option key={ty.value} value={ty.value}>{isVi ? ty.labelVi : ty.labelEn}</option>
+                      ))}
+                    </select>
+                    <ChevronDown size={11} className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-gray-400" />
+                  </div>
+                </div>
+
+                <div className="min-w-24">
+                  <label className={cn("mb-1 block text-[11px] font-medium", portalSubtext)}>
+                    {mp.bulkBar.difficultyLabel}
+                  </label>
+                  <div className="relative">
+                    <select
+                      value={bulkDifficulty}
+                      onChange={(e) => setBulkDifficulty(e.target.value as Difficulty)}
+                      className={cn(portalInput, "w-full appearance-none rounded-lg px-2.5 py-1.5 pr-7 text-xs outline-none focus:border-primary focus:ring-2 focus:ring-primary/20")}
+                    >
+                      {DIFFICULTY_OPTS.map((d) => (
+                        <option key={d.value} value={d.value}>{isVi ? d.labelVi : d.labelEn}</option>
+                      ))}
+                    </select>
+                    <ChevronDown size={11} className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-gray-400" />
+                  </div>
+                </div>
+
+                <div className="w-20">
+                  <label className={cn("mb-1 block text-[11px] font-medium", portalSubtext)}>
+                    {mp.bulkBar.countLabel}
+                  </label>
+                  <input
+                    type="number"
+                    min={BULK_MIN}
+                    max={BULK_MAX}
+                    value={bulkCount}
+                    onChange={(e) => setBulkCount(clamp(Number(e.target.value), BULK_MIN, BULK_MAX))}
+                    className={cn(portalInput, "w-full rounded-lg px-2.5 py-1.5 text-xs tabular-nums outline-none focus:border-primary focus:ring-2 focus:ring-primary/20")}
+                  />
+                </div>
+
+                <button
+                  type="button"
+                  onClick={bulkCreate}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-primary-hover transition-colors shadow-sm"
+                >
+                  <Zap size={12} />
+                  {mp.bulkBar.createBtn}
+                </button>
+              </div>
+            </div>
+            <p className={cn("text-[11px] mt-2", portalSubtext)}>{mp.bulkBar.pasteHint}</p>
+          </div>
+
           {/* Empty state */}
           {totalCount === 0 && (
             <div className={cn(
@@ -719,7 +982,7 @@ export function ManualQuestionPage() {
 
           {/* Question cards */}
           {totalCount > 0 && (
-            <div className="space-y-2.5">
+            <div className="space-y-2">
               {pageItems.map((q, localIdx) => (
                 <QuestionCard
                   key={q.id}
@@ -730,7 +993,12 @@ export function ManualQuestionPage() {
                   hasError={questionHasError(q)}
                   onChange={(patch) => patchQuestion(q.id, patch)}
                   onDelete={() => removeQuestion(q.id)}
-                  onClone={() => cloneQuestion(q.id)}
+                  onCloneOne={() => cloneQuestion(q.id, { count: 1, clearContent: false })}
+                  onOpenCloneN={() => {
+                    setCloneNCount(5);
+                    setCloneNTargetId(q.id);
+                  }}
+                  onMultiLinePaste={(text) => handleMultiLinePaste(q.id, text)}
                   canDelete={totalCount > 1}
                 />
               ))}
@@ -835,7 +1103,7 @@ export function ManualQuestionPage() {
   );
 }
 
-// ── Question card ─────────────────────────────────────────────────────────────
+// ── Question card (SCRUM-477: compact row) ─────────────────────────────────────
 
 interface QuestionCardProps {
   index: number;
@@ -845,95 +1113,173 @@ interface QuestionCardProps {
   hasError: boolean;
   onChange: (patch: Partial<ManualQuestion>) => void;
   onDelete: () => void;
-  onClone: () => void;
+  onCloneOne: () => void;
+  onOpenCloneN: () => void;
+  onMultiLinePaste: (text: string) => boolean;
   canDelete: boolean;
 }
 
-function QuestionCard({ index, question, isVi, mp, hasError, onChange, onDelete, onClone, canDelete }: QuestionCardProps) {
+function QuestionCard({
+  index,
+  question,
+  isVi,
+  mp,
+  hasError,
+  onChange,
+  onDelete,
+  onCloneOne,
+  onOpenCloneN,
+  onMultiLinePaste,
+  canDelete,
+}: QuestionCardProps) {
   const typeInfo = QUESTION_TYPES.find((t) => t.value === question.type);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    function onDocClick(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", onDocClick);
+    return () => document.removeEventListener("mousedown", onDocClick);
+  }, [menuOpen]);
+
+  function handlePaste(e: React.ClipboardEvent<HTMLTextAreaElement>) {
+    const text = e.clipboardData.getData("text");
+    if (onMultiLinePaste(text)) {
+      e.preventDefault();
+    }
+  }
 
   return (
-    <div className={cn(
-      "group rounded-xl border bg-white dark:bg-gray-900 transition-colors",
-      hasError
-        ? "border-red-300 dark:border-red-700"
-        : "border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600",
-    )}>
-      <div className="flex items-center gap-2 px-4 pt-3 pb-2 border-b border-gray-100 dark:border-gray-800">
-        <GripVertical size={14} className="text-gray-300 dark:text-gray-600 cursor-grab shrink-0" aria-hidden />
-        <span className="text-[11px] font-bold text-gray-400 dark:text-gray-500 tabular-nums">
+    <div
+      className={cn(
+        "group rounded-xl border bg-white dark:bg-gray-900 transition-colors px-3 py-2.5",
+        hasError
+          ? "border-red-300 dark:border-red-700"
+          : "border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600",
+      )}
+    >
+      <div className="flex items-start gap-2">
+        <span className="mt-2 text-[11px] font-bold text-gray-400 dark:text-gray-500 tabular-nums w-5 shrink-0 text-right">
           {String(index + 1).padStart(2, "0")}
         </span>
-        <span className={cn("inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold shrink-0", typeInfo?.color)}>
-          {isVi ? typeInfo?.labelVi : typeInfo?.labelEn}
-        </span>
-        <div className="flex-1" />
-        <button
-          type="button"
-          onClick={onClone}
-          title={mp.questionsSection.cloneBtn}
-          aria-label={mp.questionsSection.cloneBtn}
-          className="flex h-6 w-6 items-center justify-center rounded-md text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
-        >
-          <Copy size={12} />
-        </button>
-        <button
-          type="button"
-          onClick={onDelete}
-          disabled={!canDelete}
-          title={mp.questionsSection.deleteBtn}
-          aria-label={mp.questionsSection.deleteBtn}
-          className="flex h-6 w-6 items-center justify-center rounded-md text-gray-400 hover:bg-red-50 dark:hover:bg-red-950/40 hover:text-red-500 dark:hover:text-red-400 disabled:pointer-events-none disabled:opacity-30 transition-colors"
-        >
-          <Trash2 size={12} />
-        </button>
-      </div>
 
-      <div className="px-4 py-3 space-y-2.5">
-        <textarea
-          value={question.content}
-          onChange={(e) => onChange({ content: e.target.value })}
-          rows={2}
-          placeholder={mp.questionsSection.questionPlaceholder}
-          className={cn(
-            "w-full resize-none rounded-lg border px-3 py-2 text-sm outline-none transition",
-            hasError
-              ? "border-red-300 dark:border-red-600 focus:ring-2 focus:ring-red-400/20"
-              : "border-gray-200 dark:border-gray-700 focus:border-primary focus:ring-2 focus:ring-primary/20",
-            "bg-gray-50/50 dark:bg-gray-800/50 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500",
+        <div className="flex-1 min-w-0 space-y-1.5">
+          <textarea
+            value={question.content}
+            onChange={(e) => onChange({ content: e.target.value })}
+            onPaste={handlePaste}
+            rows={2}
+            placeholder={mp.questionsSection.questionPlaceholder}
+            className={cn(
+              "w-full resize-none rounded-lg border px-3 py-2 text-sm outline-none transition",
+              hasError
+                ? "border-red-300 dark:border-red-600 focus:ring-2 focus:ring-red-400/20"
+                : "border-gray-200 dark:border-gray-700 focus:border-primary focus:ring-2 focus:ring-primary/20",
+              "bg-gray-50/50 dark:bg-gray-800/50 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500",
+            )}
+            aria-invalid={hasError}
+          />
+          {hasError && (
+            <p className="text-xs text-red-500">{mp.validation.questionContentRequired}</p>
           )}
-          aria-invalid={hasError}
-        />
-        {hasError && <p className="text-xs text-red-500 -mt-1">{mp.validation.questionContentRequired}</p>}
 
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="relative">
-            <select
-              value={question.type}
-              onChange={(e) => onChange({ type: e.target.value as QuestionType })}
-              aria-label={isVi ? "Loại câu hỏi" : "Question type"}
-              className={cn("appearance-none rounded-full border-0 px-3 py-1 pr-6 text-[11px] font-semibold outline-none cursor-pointer transition", typeInfo?.color ?? "bg-gray-100 text-gray-600")}
-            >
-              {QUESTION_TYPES.map((ty) => (
-                <option key={ty.value} value={ty.value}>{isVi ? ty.labelVi : ty.labelEn}</option>
-              ))}
-            </select>
-            <ChevronDown size={9} className="pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 opacity-60" />
-          </div>
+          <div className="flex flex-wrap items-center gap-1.5">
+            <div className="relative">
+              <select
+                value={question.type}
+                onChange={(e) => onChange({ type: e.target.value as QuestionType })}
+                aria-label={isVi ? "Loại câu hỏi" : "Question type"}
+                className={cn(
+                  "appearance-none rounded-full border-0 px-2.5 py-0.5 pr-5 text-[10px] font-semibold outline-none cursor-pointer transition",
+                  typeInfo?.color ?? "bg-gray-100 text-gray-600",
+                )}
+              >
+                {QUESTION_TYPES.map((ty) => (
+                  <option key={ty.value} value={ty.value}>
+                    {isVi ? ty.labelVi : ty.labelEn}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown size={8} className="pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 opacity-60" />
+            </div>
 
-          <div className="relative">
-            <select
-              value={question.difficulty}
-              onChange={(e) => onChange({ difficulty: e.target.value as Difficulty })}
-              aria-label={isVi ? "Độ khó" : "Difficulty"}
-              className="appearance-none rounded-full border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-1 pr-6 text-[11px] font-medium text-gray-600 dark:text-gray-300 outline-none cursor-pointer transition hover:border-gray-300 dark:hover:border-gray-600"
-            >
-              {DIFFICULTY_OPTS.map((d) => (
-                <option key={d.value} value={d.value}>{isVi ? d.labelVi : d.labelEn}</option>
-              ))}
-            </select>
-            <ChevronDown size={9} className="pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 text-gray-400" />
+            <div className="relative">
+              <select
+                value={question.difficulty}
+                onChange={(e) => onChange({ difficulty: e.target.value as Difficulty })}
+                aria-label={isVi ? "Độ khó" : "Difficulty"}
+                className="appearance-none rounded-full border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-2.5 py-0.5 pr-5 text-[10px] font-medium text-gray-600 dark:text-gray-300 outline-none cursor-pointer transition hover:border-gray-300 dark:hover:border-gray-600"
+              >
+                {DIFFICULTY_OPTS.map((d) => (
+                  <option key={d.value} value={d.value}>
+                    {isVi ? d.labelVi : d.labelEn}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown size={8} className="pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 text-gray-400" />
+            </div>
           </div>
+        </div>
+
+        <div className="flex items-center gap-0.5 shrink-0 pt-1">
+          <div className="relative" ref={menuRef}>
+            <button
+              type="button"
+              onClick={() => setMenuOpen((o) => !o)}
+              title={mp.questionsSection.cloneBtn}
+              aria-label={mp.questionsSection.cloneBtn}
+              aria-expanded={menuOpen}
+              className="flex h-7 w-7 items-center justify-center rounded-md text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+            >
+              <Copy size={12} />
+            </button>
+            {menuOpen && (
+              <div
+                role="menu"
+                className="absolute right-0 top-full mt-1 z-20 w-52 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-lg py-1 animate-scale-in"
+              >
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    onCloneOne();
+                  }}
+                  className="flex w-full items-center gap-2 px-3 py-2 text-xs text-left text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800"
+                >
+                  <Copy size={12} className="shrink-0 text-gray-400" />
+                  {mp.cloneMenu.cloneOne}
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    onOpenCloneN();
+                  }}
+                  className="flex w-full items-center gap-2 px-3 py-2 text-xs text-left text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800"
+                >
+                  <ListPlus size={12} className="shrink-0 text-gray-400" />
+                  {mp.cloneMenu.cloneNEmpty}
+                </button>
+              </div>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={onDelete}
+            disabled={!canDelete}
+            title={mp.questionsSection.deleteBtn}
+            aria-label={mp.questionsSection.deleteBtn}
+            className="flex h-7 w-7 items-center justify-center rounded-md text-gray-400 hover:bg-red-50 dark:hover:bg-red-950/40 hover:text-red-500 dark:hover:text-red-400 disabled:pointer-events-none disabled:opacity-30 transition-colors"
+          >
+            <Trash2 size={12} />
+          </button>
         </div>
       </div>
     </div>

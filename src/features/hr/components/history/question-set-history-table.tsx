@@ -266,7 +266,7 @@ export function QuestionSetHistoryTable({ filter = "all" }: QuestionSetHistoryTa
             x.questionSetId === item.questionSetId ? { ...x, status: "DRAFT", publishedAt: null } : x
           )
         );
-        addToast("success", withAbandonedToast(t.historyPage.unpublishSuccess, abandoned));
+        addToast("success", withAbandonedToast(t.historyPage.unpublishSuccess, abandoned, t.historyPage.unpublishAbandoned));
       } catch (err) {
         addToast("error", err instanceof Error && err.message ? err.message : t.historyPage.actionFailed);
       } finally {
@@ -742,7 +742,8 @@ export function QuestionSetHistoryTable({ filter = "all" }: QuestionSetHistoryTa
             className="w-52 overflow-hidden rounded-lg border border-gray-200 bg-white py-1 shadow-lg dark:border-gray-700 dark:bg-gray-900"
           >
             <Link
-              href={`/hr/question-sets/${openMenuItem.questionSetId}/practitioners`}
+              // Gom về hub published — tránh 2 UI practitioners song song
+              href={`/hr/published/${openMenuItem.questionSetId}?tab=practitioners`}
               role="menuitem"
               className={menuItemCls}
               title={t.historyPage.practitionersTitle}

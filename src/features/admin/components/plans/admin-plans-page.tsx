@@ -63,6 +63,8 @@ const FALLBACK_EDITOR = {
   freeTier: "Free tier",
   premiumTier: "Premium tier",
   hintPrice: "Free must stay at 0. Premium requires at least 10,000.",
+  freePriceMustBeZero: "The Free plan must have a price of 0 VND.",
+  premiumMinPrice: "The Premium plan must cost at least 10,000 VND.",
   hintAskAi: "Ask-AI requests allowed per billing period.",
   hintCooldown: "Length of one generate window. Min 1 hour when Unlimited is off.",
   hintGeneratePerWindow: "Successful question-set / JD-fit runs per window. Ignored while Unlimited is on.",
@@ -432,11 +434,11 @@ export function AdminPlansPage() {
     if (!d) return;
     const code = (plan.code ?? "").toUpperCase();
     if (code.includes("FREE") && d.priceMonthly !== 0) {
-      addToast("error", "Gói Free phải có giá 0 VNĐ.");
+      addToast("error", ed.freePriceMustBeZero);
       return;
     }
     if (code.includes("PREMIUM") && d.priceMonthly < 10000) {
-      addToast("error", "Gói Premium phải có giá tối thiểu 10.000 VNĐ.");
+      addToast("error", ed.premiumMinPrice);
       return;
     }
     setSavingId(plan.id);

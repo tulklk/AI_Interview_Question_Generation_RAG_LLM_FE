@@ -145,7 +145,10 @@ export type QuestionReviewWorkspaceProps = {
     onAttentionCleared?: () => void;
     onDraftChange?: (text: string) => void;
     onPostingDraftChange?: (draft: HiringPostingDraft) => void;
-    onSaved?: (publicJobDescription: string, posting: HiringPostingSaved) => void;
+    onSaved?: (
+      publicJobDescription: string,
+      posting: HiringPostingSaved
+    ) => void | Promise<void>;
   } | null;
 };
 
@@ -178,8 +181,8 @@ function QuestionDetail({
   );
   const c = t.studioPage.chat;
   const qcLabels = t.reviewPage.questionCard;
-  const [detailsOpen, setDetailsOpen] = useState(false);
-  const [sourcesOpen, setSourcesOpen] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(true);
+  const [sourcesOpen, setSourcesOpen] = useState(true);
   const [menuOpen, setMenuOpen] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [regenOpen, setRegenOpen] = useState(false);
@@ -248,9 +251,14 @@ function QuestionDetail({
 
   const typeLabel = formatStudioQuestionTypeLabel(question.type, lang === "vi" ? "vi" : "en");
 
+  // Keep Sources + Sample answer expanded when switching questions (do not
+  // force-close on streaming content updates — that left panels collapsed after gen).
   useEffect(() => {
-    setDetailsOpen(false);
-    setSourcesOpen(false);
+    setDetailsOpen(true);
+    setSourcesOpen(true);
+  }, [question.id]);
+
+  useEffect(() => {
     setEditing(false);
     setMenuOpen(false);
     setDraftContent(question.content);
@@ -1068,6 +1076,7 @@ export function QuestionReviewWorkspace({
 
       <div
         ref={listRef}
+        data-studio-review-scroll
         tabIndex={0}
         onKeyDown={handleListKeyDown}
         className="min-h-0 flex-1 overflow-y-auto outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
@@ -1180,6 +1189,8 @@ export function QuestionReviewWorkspace({
                 type="button"
                 disabled={isSavingDraft || isDraftSaved}
                 onClick={() => onSaveDraft?.()}
+                title={isDraftSaved ? s.saved : s.save}
+                aria-label={isDraftSaved ? s.saved : s.save}
                 className={cn(
                   "inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors",
                   isDraftSaved
@@ -1264,7 +1275,10 @@ export function QuestionReviewWorkspace({
           {navigatorPanel}
         </aside>
 
-        <div className="flex min-w-0 flex-1 flex-col overflow-y-auto bg-gray-50/40 p-3 sm:p-4 dark:bg-gray-950">
+        <div
+          data-studio-review-scroll
+          className="flex min-w-0 flex-1 flex-col overflow-y-auto bg-gray-50/40 p-3 sm:p-4 dark:bg-gray-950"
+        >
           {/* SCRUM-470: JD công khai + posting khi Tuyển (hoặc needsAttention sau bật thất bại) */}
           {questionSetId &&
             publicJd &&

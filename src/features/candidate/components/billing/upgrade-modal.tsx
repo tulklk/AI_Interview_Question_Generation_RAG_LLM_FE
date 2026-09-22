@@ -162,12 +162,7 @@ export function UpgradeModal({ onClose, onDone }: UpgradeModalProps) {
         handleClose();
       } else {
         // Backend chưa xử lý xong đơn 0đ — polling/SignalR tiếp tục chạy ngầm
-        addToast(
-          "success",
-          lang === "vi"
-            ? "Đang chờ xác nhận từ hệ thống. Vui lòng thử lại sau vài giây."
-            : "Awaiting system confirmation. Please try again in a moment."
-        );
+        addToast("success", b.paymentPanel.awaitingSystemConfirm);
       }
     } catch {
       addToast("error", b.paymentPanel.activateFailed);

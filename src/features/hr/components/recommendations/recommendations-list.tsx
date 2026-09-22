@@ -38,6 +38,13 @@ import {
   portalSubtextAlt,
   portalDivider,
 } from "@/shared/utils/portal-ui";
+import {
+  getScoreBandLabel,
+  getScoreBandRingClass,
+  resolveScoreBandId,
+  scoreBandBadgeClassName,
+} from "@/features/hr/utils/score-band";
+import type { ScoreLevelLabels } from "@/features/candidate/components/ui/pill";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -63,17 +70,21 @@ function avatarColor(name: string): string {
   return AVATAR_COLORS[Math.abs(h) % AVATAR_COLORS.length];
 }
 
-function ScoreBadge({ score }: { score: number }) {
-  const { ring, text, bg } =
-    score >= 85
-      ? { ring: "ring-emerald-400 dark:ring-emerald-500", text: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-50 dark:bg-emerald-950/40" }
-      : score >= 70
-        ? { ring: "ring-amber-400 dark:ring-amber-500",   text: "text-amber-600 dark:text-amber-400",   bg: "bg-amber-50 dark:bg-amber-950/40" }
-        : { ring: "ring-red-400 dark:ring-red-500",       text: "text-red-500 dark:text-red-400",       bg: "bg-red-50 dark:bg-red-950/40" };
+function ScoreBadge({ score, labels }: { score: number; labels: ScoreLevelLabels }) {
+  const { text } = getScoreBandRingClass(score);
+  const label = getScoreBandLabel(score, labels);
+  const compact = label.length > 6;
   return (
-    <div className={cn("w-12 h-12 rounded-full ring-2 flex flex-col items-center justify-center shrink-0", ring, bg)}>
-      <span className={cn("text-[15px] font-extrabold tabular-nums leading-none", text)}>{score}</span>
-      <span className="text-[9px] font-medium text-gray-400 dark:text-gray-500 leading-none mt-0.5">pts</span>
+    <div className={scoreBandBadgeClassName(score)} title={label}>
+      <span
+        className={cn(
+          "font-bold leading-tight text-center tracking-tight",
+          compact ? "text-[9px]" : "text-[10px]",
+          text,
+        )}
+      >
+        {label}
+      </span>
     </div>
   );
 }
@@ -107,20 +118,27 @@ interface InviteModalProps {
   labels: ReturnType<typeof useLanguage>["t"]["hrRecommendationsPage"]["invite"];
 }
 
-function buildDefaultInviteMessage(template: string, rec: CandidateRecommendation): string {
+function buildDefaultInviteMessage(
+  template: string,
+  rec: CandidateRecommendation,
+  scoreLabels: ScoreLevelLabels,
+): string {
   return template
     .replace("{{name}}", rec.candidateName || "")
     .replace("{{title}}", rec.questionSetTitle || "")
-    .replace("{{score}}", String(rec.score));
+    .replace("{{score}}", getScoreBandLabel(rec.score, scoreLabels));
 }
 
 function InviteModal({ rec, onClose, onSent, labels }: InviteModalProps) {
-  const [message, setMessage] = useState(() => buildDefaultInviteMessage(labels.defaultMessage, rec));
-  const [schedule, setSchedule] = useState(defaultInviteSchedule);
-  const [sending, setSending] = useState(false);
   const { addToast } = useToast();
   const { t } = useLanguage();
   const p = t.hrRecommendationsPage;
+  const scoreLabels = t.jobseekerFeedbackPage.scoreLevels;
+  const [message, setMessage] = useState(() =>
+    buildDefaultInviteMessage(labels.defaultMessage, rec, scoreLabels),
+  );
+  const [schedule, setSchedule] = useState(defaultInviteSchedule);
+  const [sending, setSending] = useState(false);
 
   useEffect(() => {
     document.body.style.overflow = "hidden";
@@ -130,7 +148,7 @@ function InviteModal({ rec, onClose, onSent, labels }: InviteModalProps) {
     window.addEventListener("keydown", handleKeyDown);
     void getCurrentUser().then((u) => {
       const tpl = u.hrProfile?.inviteMessageTemplate?.trim();
-      if (tpl) setMessage(buildDefaultInviteMessage(tpl, rec));
+      if (tpl) setMessage(buildDefaultInviteMessage(tpl, rec, scoreLabels));
     }).catch(() => undefined);
     return () => {
       document.body.style.overflow = "";
@@ -251,17 +269,23 @@ interface OfferModalProps {
 
 const OFFER_MAX_LEN = 5000;
 
-function buildDefaultOfferMessage(template: string, rec: CandidateRecommendation): string {
+function buildDefaultOfferMessage(
+  template: string,
+  rec: CandidateRecommendation,
+  scoreLabels: ScoreLevelLabels,
+): string {
   return template
     .replace("{{name}}", rec.candidateName || "")
     .replace("{{title}}", rec.questionSetTitle || "")
-    .replace("{{score}}", String(rec.score));
+    .replace("{{score}}", getScoreBandLabel(rec.score, scoreLabels));
 }
 
 function OfferModal({ rec, onClose, onSent, labels }: OfferModalProps) {
-  const [message, setMessage] = useState(() => buildDefaultOfferMessage(labels.defaultMessage, rec));
-  const [sending, setSending] = useState(false);
   const { addToast } = useToast();
+  const { t } = useLanguage();
+  const scoreLabels = t.jobseekerFeedbackPage.scoreLevels;
+  const [message, setMessage] = useState(() => buildDefaultOfferMessage(labels.defaultMessage, rec, scoreLabels));
+  const [sending, setSending] = useState(false);
 
   useEffect(() => {
     document.body.style.overflow = "hidden";
@@ -504,6 +528,8 @@ function CandidateRow({ rec, lang, labels, index, selected, onToggleSelect, onSt
   const skillBtnRef = useRef<HTMLButtonElement>(null);
   const skillPopoverRef = useRef<HTMLDivElement>(null);
   const { addToast } = useToast();
+  const { t } = useLanguage();
+  const scoreLabels = t.jobseekerFeedbackPage.scoreLevels;
   const c = labels.card;
   const canAct = rec.status !== "INVITED" && rec.status !== "DISMISSED";
   // BE allows re-shortlisting a dismissed recommendation to bring it back into
@@ -562,10 +588,12 @@ function CandidateRow({ rec, lang, labels, index, selected, onToggleSelect, onSt
     } finally { setBusy(null); }
   }
 
-  // Score-based left accent colour
+  // Score-band left accent (90 / 80 / 70)
+  const band = resolveScoreBandId(rec.score);
   const accentBar =
-    rec.score >= 85 ? "bg-emerald-400"
-    : rec.score >= 70 ? "bg-amber-400"
+    band === "excellent" ? "bg-emerald-400"
+    : band === "good" ? "bg-violet-400"
+    : band === "fair" ? "bg-amber-400"
     : "bg-red-400";
 
   return (
@@ -606,7 +634,7 @@ function CandidateRow({ rec, lang, labels, index, selected, onToggleSelect, onSt
 
         {/* Identity block */}
         <div className="min-w-0 flex-1">
-          {/* Row 1: name + badges */}
+          {/* Row 1: name + status badges only */}
           <div className="flex items-center gap-2 flex-wrap">
             <p className={cn("text-sm font-bold leading-tight", portalHeadingAlt)}>
               {rec.candidateName || "—"}
@@ -618,21 +646,6 @@ function CandidateRow({ rec, lang, labels, index, selected, onToggleSelect, onSt
                 className="inline-flex text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400 whitespace-nowrap"
               >
                 {c.accepted}
-              </span>
-            )}
-            {typeof rec.fitPercent === "number" && (
-              <span className="inline-flex max-w-full items-center gap-1.5 flex-wrap">
-                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-cyan-50 text-cyan-700 dark:bg-cyan-950/40 dark:text-cyan-400 whitespace-nowrap">
-                  {c.fitPercent} {rec.fitPercent}%
-                </span>
-                {rec.questionSetTitle && (
-                  <span
-                    title={rec.questionSetTitle}
-                    className="text-[10px] font-medium text-cyan-700/90 dark:text-cyan-400/90 truncate max-w-[14rem]"
-                  >
-                    {(c.fitAgainst).replace("{{title}}", rec.questionSetTitle)}
-                  </span>
-                )}
               </span>
             )}
             {hasContact && (
@@ -652,7 +665,75 @@ function CandidateRow({ rec, lang, labels, index, selected, onToggleSelect, onSt
             )}
           </div>
 
-          {/* Row 2: email · role */}
+          {/* Row ngữ cảnh: Fit + link bộ câu hỏi / JD */}
+          {(typeof rec.fitPercent === "number" || Boolean(rec.questionSetTitle) || Boolean(rec.questionSetId)) && (
+            <div className="flex items-center gap-2 flex-wrap mt-1.5">
+              {typeof rec.fitPercent === "number" && (
+                rec.questionSetId ? (
+                  <Link
+                    href={`/hr/history/${rec.questionSetId}?jdFit=1`}
+                    title={c.fitAgainst.replace("{{title}}", rec.questionSetTitle || c.questionSet)}
+                    onClick={(e) => e.stopPropagation()}
+                    className="inline-flex items-center text-xs font-bold px-2.5 py-1 rounded-full bg-cyan-50 text-cyan-700 dark:bg-cyan-950/50 dark:text-cyan-300 whitespace-nowrap ring-1 ring-cyan-200/80 dark:ring-cyan-800/60 hover:bg-cyan-100 dark:hover:bg-cyan-950/70 hover:underline underline-offset-2 transition-colors"
+                  >
+                    {c.fitPercent} {rec.fitPercent}%
+                  </Link>
+                ) : (
+                  <span className="inline-flex items-center text-xs font-bold px-2.5 py-1 rounded-full bg-cyan-50 text-cyan-700 dark:bg-cyan-950/50 dark:text-cyan-300 whitespace-nowrap ring-1 ring-cyan-200/80 dark:ring-cyan-800/60">
+                    {c.fitPercent} {rec.fitPercent}%
+                  </span>
+                )
+              )}
+              {rec.questionSetId && (
+                <Link
+                  href={`/hr/published/${rec.questionSetId}`}
+                  title={rec.questionSetTitle || c.questionSet}
+                  onClick={(e) => e.stopPropagation()}
+                  className={cn(
+                    "inline-flex items-center gap-1.5 min-w-0 max-w-xs sm:max-w-md",
+                    "text-[12px] font-semibold px-2.5 py-1 rounded-lg",
+                    "bg-violet-50 text-violet-800 dark:bg-violet-950/40 dark:text-violet-200",
+                    "ring-1 ring-violet-200/70 dark:ring-violet-800/50",
+                    "hover:bg-violet-100 dark:hover:bg-violet-950/60 hover:underline underline-offset-2 transition-colors",
+                  )}
+                >
+                  <span className="shrink-0 text-[10px] font-bold uppercase tracking-wide text-violet-500 dark:text-violet-400">
+                    {c.questionSet}
+                  </span>
+                  <span className="truncate">{rec.questionSetTitle || "—"}</span>
+                </Link>
+              )}
+              {!rec.questionSetId && rec.questionSetTitle && (
+                <span
+                  title={rec.questionSetTitle}
+                  className={cn(
+                    "inline-flex items-center gap-1.5 min-w-0 max-w-xs sm:max-w-md",
+                    "text-[12px] font-semibold px-2.5 py-1 rounded-lg",
+                    "bg-violet-50 text-violet-800 dark:bg-violet-950/40 dark:text-violet-200",
+                    "ring-1 ring-violet-200/70 dark:ring-violet-800/50",
+                  )}
+                >
+                  <span className="shrink-0 text-[10px] font-bold uppercase tracking-wide text-violet-500 dark:text-violet-400">
+                    {c.questionSet}
+                  </span>
+                  <span className="truncate">{rec.questionSetTitle}</span>
+                </span>
+              )}
+              {rec.questionSetId && (
+                <Link
+                  // Cùng hub published với tên bộ — tránh 1 set mở 3 trang khác nhau
+                  href={`/hr/published/${rec.questionSetId}`}
+                  title="JD"
+                  onClick={(e) => e.stopPropagation()}
+                  className="inline-flex items-center text-[12px] font-semibold px-2.5 py-1 rounded-lg bg-sky-50 text-sky-800 dark:bg-sky-950/40 dark:text-sky-200 ring-1 ring-sky-200/70 dark:ring-sky-800/50 hover:bg-sky-100 dark:hover:bg-sky-950/60 hover:underline underline-offset-2 transition-colors whitespace-nowrap"
+                >
+                  JD
+                </Link>
+              )}
+            </div>
+          )}
+
+          {/* Row: email · role */}
           <p className={cn("text-[11px] truncate mt-0.5", portalSubtextAlt)}>
             {rec.candidateEmail}
             {rec.targetRole && (
@@ -660,28 +741,14 @@ function CandidateRow({ rec, lang, labels, index, selected, onToggleSelect, onSt
             )}
           </p>
 
-          {/* Row 3: title nếu chưa hiện cạnh Fit · time */}
-          {(() => {
-            const fitShowsTitle = typeof rec.fitPercent === "number" && Boolean(rec.questionSetTitle);
-            if (fitShowsTitle && !rec.completedAt) return null;
-            return (
-              <p className={cn("text-[11px] truncate mt-0.5", portalSubtextAlt)}>
-                {!fitShowsTitle && (
-                  <span className="font-medium text-gray-600 dark:text-gray-300">
-                    {rec.questionSetTitle || "—"}
-                  </span>
-                )}
-                {rec.completedAt && (
-                  <span className="text-gray-400 dark:text-gray-500">
-                    {!fitShowsTitle ? " · " : ""}
-                    {formatRelativeTime(rec.completedAt, lang)}
-                  </span>
-                )}
-              </p>
-            );
-          })()}
+          {/* Row: thời gian hoàn thành */}
+          {rec.completedAt && (
+            <p className={cn("text-[11px] truncate mt-0.5 text-gray-400 dark:text-gray-500")}>
+              {formatRelativeTime(rec.completedAt, lang)}
+            </p>
+          )}
 
-          {/* Row 4: skill tags */}
+          {/* Row: skill tags */}
           {rec.techStack.length > 0 && (
             <div className="flex flex-wrap gap-1 mt-1.5 items-center">
               {visibleSkills.map((s) => {
@@ -745,7 +812,7 @@ function CandidateRow({ rec, lang, labels, index, selected, onToggleSelect, onSt
         {/* Right: score + action strip */}
         <div className="flex items-center gap-3 shrink-0 pl-2 sm:pl-0">
           {/* Score badge */}
-          <ScoreBadge score={rec.score} />
+          <ScoreBadge score={rec.score} labels={scoreLabels} />
 
           {/* Divider */}
           <div className="w-px h-8 bg-gray-200 dark:bg-gray-700 shrink-0" />

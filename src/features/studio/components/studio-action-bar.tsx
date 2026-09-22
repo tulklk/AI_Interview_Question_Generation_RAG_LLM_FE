@@ -16,7 +16,12 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { useLanguage } from "@/shared/providers/language-context";
+import { MIN_QUESTIONS_TO_PUBLISH } from "@/features/interview/components/generate/question-builder-set-panel";
 import type { PlanDetail } from "@/features/studio/types/studio.types";
+import {
+  hrSidebarLeftOffsetClass,
+  useHrSidebarCollapsed,
+} from "@/features/hr/hooks/use-hr-sidebar-collapsed";
 interface StudioActionBarProps {
   hasJd: boolean;
   plan: PlanDetail | null;
@@ -70,6 +75,7 @@ export function StudioActionBar({
   useEffect(() => { setMounted(true); }, []);
   const { t } = useLanguage();
   const s = t.studioPage;
+  const sidebarCollapsed = useHrSidebarCollapsed();
 
   const planApproved = plan?.status === "Approved";
   const hasQuestions = questionCount > 0;
@@ -149,7 +155,10 @@ export function StudioActionBar({
     <div
       role="region"
       aria-label={s.aria.actionBar}
-      className="fixed bottom-0 left-0 right-0 z-20 border-t border-gray-200 bg-white/95 shadow-[0_-4px_12px_rgba(15,23,42,0.04)] backdrop-blur-sm dark:border-gray-800 dark:bg-gray-950/95 lg:left-62.5"
+      className={cn(
+        "fixed bottom-0 left-0 right-0 z-20 border-t border-gray-200 bg-white/95 shadow-[0_-4px_12px_rgba(15,23,42,0.04)] backdrop-blur-sm dark:border-gray-800 dark:bg-gray-950/95",
+        hrSidebarLeftOffsetClass(sidebarCollapsed)
+      )}
     >
       <div className="flex items-center gap-2 px-3 py-2.5 sm:gap-3 sm:px-4">
         <div className="flex min-w-0 flex-1 items-center gap-2.5">
@@ -222,11 +231,15 @@ export function StudioActionBar({
                   : "border border-gray-200 bg-white text-gray-400 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-500"
               )}
               title={
-                allReady
-                  ? s.publish
-                  : s.publishBlockedToast
-                      .replace("{{ready}}", String(readyCount))
-                      .replace("{{total}}", String(questionCount))
+                readyCount < MIN_QUESTIONS_TO_PUBLISH
+                  ? s.publishMinToast
+                      .replace("{{min}}", String(MIN_QUESTIONS_TO_PUBLISH))
+                      .replace("{{count}}", String(readyCount))
+                  : allReady
+                    ? s.publish
+                    : s.publishBlockedToast
+                        .replace("{{ready}}", String(readyCount))
+                        .replace("{{total}}", String(questionCount))
               }
             >
               <Globe className="h-3.5 w-3.5" />
