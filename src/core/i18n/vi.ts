@@ -5456,6 +5456,7 @@ Yêu cầu:
     pageSubtext: "Đủ field như Studio: sample answer, rubric, skill, focus area — sẵn sàng publish marketplace",
     backToGenerateBtn: "Tạo bằng AI",
     refreshBtn: "Làm mới",
+    quickCreateBtn: "Tạo nhanh",
     steps: {
       selectSet: "Chọn bộ",
       selectType: "Chọn loại",

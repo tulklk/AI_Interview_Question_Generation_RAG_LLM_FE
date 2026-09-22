@@ -5461,6 +5461,7 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
     pageSubtext: "All fields like Studio: sample answer, rubric, skill, focus area — ready for Marketplace",
     backToGenerateBtn: "Generate with AI",
     refreshBtn: "Refresh",
+    quickCreateBtn: "Quick create",
     // Steps
     steps: {
       selectSet: "Select set",

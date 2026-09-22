@@ -7,7 +7,7 @@
  */
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
 import Link from "next/link";
-import { ArrowLeft, Check, RefreshCw } from "lucide-react";
+import { ArrowLeft, Check, RefreshCw, Zap } from "lucide-react";
 import { cn } from "@/lib/cn";
 import type { StudioCodeTemplateId } from "@/features/studio/constants/question-templates";
 import type { DifficultyLevel, QuestionType } from "@/features/interview/types/generation-session";
@@ -382,6 +382,15 @@ export function QuestionBuilderPage() {
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-2">
+            {/* SCRUM-477: sang trang Bulk — tạo nhanh nhiều câu */}
+            <Link
+              href="/hr/generate/manual"
+              className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-3 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-primary-hover"
+            >
+              <Zap size={16} />
+              <span>{qb.quickCreateBtn}</span>
+            </Link>
+
             <Link
               href="/hr/generate-question"
               className={cn(
