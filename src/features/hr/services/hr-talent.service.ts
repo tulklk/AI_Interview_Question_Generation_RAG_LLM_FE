@@ -9,6 +9,8 @@ export interface HrTalentItem {
   seniorityLevel: string | null;
   questionSetId: string;
   questionSetTitle: string;
+  /** true = bộ Tuyển dụng; false = bộ Luyện tập */
+  isHiringAssessment: boolean;
   sessionStatus: string;
   overallScore: number | null;
   startedAt: string | null;
@@ -73,6 +75,14 @@ function extractTotal(res: unknown, fallback: number): number {
   return typeof v === "number" ? v : fallback;
 }
 
+function pickBool(obj: Record<string, unknown>, ...keys: string[]): boolean {
+  for (const k of keys) {
+    const v = obj[k];
+    if (typeof v === "boolean") return v;
+  }
+  return false;
+}
+
 function normalizeItem(raw: unknown): HrTalentItem | null {
   const src = asRecord(raw);
   if (!src) return null;
@@ -89,6 +99,7 @@ function normalizeItem(raw: unknown): HrTalentItem | null {
     seniorityLevel: pickNullableStr(src, "seniorityLevel", "SeniorityLevel"),
     questionSetId,
     questionSetTitle: pickStr(src, "questionSetTitle", "QuestionSetTitle"),
+    isHiringAssessment: pickBool(src, "isHiringAssessment", "IsHiringAssessment"),
     sessionStatus: pickStr(src, "sessionStatus", "SessionStatus") || "IN_PROGRESS",
     overallScore: pickNullableNum(src, "overallScore", "OverallScore"),
     startedAt: pickNullableStr(src, "startedAt", "StartedAt"),

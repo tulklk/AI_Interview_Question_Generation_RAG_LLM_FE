@@ -100,7 +100,8 @@ export function QuestionBuilderPage() {
   const [newTitle, setNewTitle] = useState("");
   const [newDescription, setNewDescription] = useState("");
   const [creatingSet, setCreatingSet] = useState(false);
-  const [showCreateForm, setShowCreateForm] = useState(false);
+  // Mặc định mở form tạo bộ mới — không auto chọn draft có sẵn
+  const [showCreateForm, setShowCreateForm] = useState(true);
 
   const [contentMode, setContentMode] = useState<ContentMode>("code");
   const [selectedTemplate, setSelectedTemplate] = useState<StudioCodeTemplateId>("BUG_DETECTION");
@@ -176,12 +177,17 @@ export function QuestionBuilderPage() {
       const items = await listHistoryQuestionSets();
       const onlyDraft = items.filter((x) => x.status === "DRAFT");
       setDrafts(onlyDraft);
+      // Không auto chọn bộ đầu tiên — chỉ chọn khi vừa tạo (preferId) hoặc giữ lựa chọn hiện tại
       setSelectedSetId((prev) => {
         if (preferId && onlyDraft.some((d) => d.questionSetId === preferId)) return preferId;
         if (prev && onlyDraft.some((d) => d.questionSetId === prev)) return prev;
-        return onlyDraft[0]?.questionSetId ?? "";
+        return "";
       });
-      if (onlyDraft.length === 0) setShowCreateForm(true);
+      if (preferId && onlyDraft.some((d) => d.questionSetId === preferId)) {
+        setShowCreateForm(false);
+      } else if (onlyDraft.length === 0) {
+        setShowCreateForm(true);
+      }
     } finally {
       setLoadingDrafts(false);
     }
@@ -501,6 +507,7 @@ export function QuestionBuilderPage() {
             selectedSetId={selectedSetId}
             onSelectSet={(id) => {
               setSelectedSetId(id);
+              setShowCreateForm(false);
               setSessionAdded([]);
             }}
             showCreateForm={showCreateForm}

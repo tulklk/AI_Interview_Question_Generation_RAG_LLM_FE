@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 
 function renderBold(text: string, boldClassName: string): ReactNode[] {
   return text.split(/<strong>(.*?)<\/strong>/g).map((part, i) =>
@@ -27,6 +27,7 @@ import {
   type UpgradePaymentIntent,
 } from "@/features/subscription/services/subscription.service";
 import { getHrPaymentHistory } from "@/features/hr/services/hr-billing.service";
+import { printPaymentInvoice } from "@/features/subscription/utils/print-payment-invoice";
 import { HrUsagePanel } from "@/features/settings/components/hr-usage-panel";
 import type { PaymentHistoryItem } from "@/features/candidate/types/billing";
 import {
@@ -102,6 +103,13 @@ export function HrBillingSubscription() {
   }, []);
 
   useEffect(() => {
+    void getHrPaymentHistory()
+      .then(setHistory)
+      .finally(() => setHistoryLoading(false));
+  }, []);
+
+  const reloadPaymentHistory = useCallback(() => {
+    setHistoryLoading(true);
     void getHrPaymentHistory()
       .then(setHistory)
       .finally(() => setHistoryLoading(false));
@@ -196,6 +204,7 @@ export function HrBillingSubscription() {
           stop = true;
           window.clearInterval(id);
           await refresh();
+          reloadPaymentHistory();
           setPayment(null);
           setPolling(false);
           addToast("success", sub.upgradeSuccess);
@@ -218,7 +227,7 @@ export function HrBillingSubscription() {
       setPolling(false);
       window.clearInterval(id);
     };
-  }, [payment?.orderCode, refresh, addToast, sub.upgradeSuccess]);
+  }, [payment?.orderCode, refresh, reloadPaymentHistory, addToast, sub.upgradeSuccess]);
 
   // Trạng thái thanh toán — dịch sang ngôn ngữ hiện tại
   function localizeStatus(raw: string): { label: string; color: string } {
@@ -651,7 +660,14 @@ export function HrBillingSubscription() {
                   <thead>
                     <tr className={cn("border-b", portalDivider)}>
                       {[ph.colInvoice, ph.colPlan, ph.colAmount, ph.colStatus, ph.colDate, ph.colActions].map((col) => (
-                        <th key={col} className={cn("px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wide", portalSubtext)}>
+                        <th
+                          key={col}
+                          className={cn(
+                            "px-4 py-3 text-[11px] font-bold uppercase tracking-wide",
+                            col === ph.colActions ? "text-right" : "text-left",
+                            portalSubtext,
+                          )}
+                        >
                           {col}
                         </th>
                       ))}
@@ -684,40 +700,64 @@ export function HrBillingSubscription() {
                         <td className={cn("px-4 py-3 tabular-nums text-xs", portalSubtext)}>
                           {formatDate(item.paymentDate, locale)}
                         </td>
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-1">
-                            {item.receiptUrl && (
-                              <a
-                                href={item.receiptUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className={cn("flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors", portalSubtext)}
-                              >
-                                <ExternalLink size={11} />
-                                {ph.viewBtn}
-                              </a>
-                            )}
-                            {item.receiptUrl ? (
-                              <a
-                                href={item.receiptUrl}
-                                download
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className={cn("flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors", portalSubtext)}
-                              >
-                                <Download size={11} />
-                                {ph.downloadBtn}
-                              </a>
-                            ) : (
+                        <td className="px-4 py-3 text-right">
+                          <div className="flex items-center justify-end gap-1">
+                            {item.status === "PAID" && (
                               <button
                                 type="button"
-                                disabled
-                                title={t.common.comingSoon}
-                                className={cn("flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-md opacity-50 cursor-not-allowed", portalSubtext)}
+                                onClick={() => {
+                                  const ok = printPaymentInvoice({
+                                    invoiceId: item.invoiceId,
+                                    planName: item.planName,
+                                    amount: item.amount,
+                                    currency: item.currency || "VND",
+                                    paymentDate: item.paymentDate,
+                                    paymentMethodValue: "SePay",
+                                    locale,
+                                    labels: {
+                                      brand: ph.invoiceBrand,
+                                      paidTitle: ph.invoicePaidTitle,
+                                      invoiceId: ph.invoiceNumberLabel,
+                                      paymentDate: ph.invoicePaymentDate,
+                                      paymentMethod: ph.invoicePaymentMethod,
+                                      plan: ph.colPlan,
+                                      poweredBy: ph.invoicePoweredBy,
+                                      footnote: ph.invoiceFootnote,
+                                    },
+                                  });
+                                  if (!ok) addToast("error", ph.exportInvoiceFailed);
+                                }}
+                                className={cn(
+                                  "flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors",
+                                  portalSubtext,
+                                )}
                               >
                                 <Download size={11} />
-                                {ph.downloadBtn}
+                                {ph.exportInvoiceBtn}
                               </button>
+                            )}
+                            {item.receiptUrl && (
+                              <>
+                                <a
+                                  href={item.receiptUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className={cn("flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors", portalSubtext)}
+                                >
+                                  <ExternalLink size={11} />
+                                  {ph.viewBtn}
+                                </a>
+                                <a
+                                  href={item.receiptUrl}
+                                  download
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className={cn("flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors", portalSubtext)}
+                                >
+                                  <Download size={11} />
+                                  {ph.downloadBtn}
+                                </a>
+                              </>
                             )}
                           </div>
                         </td>

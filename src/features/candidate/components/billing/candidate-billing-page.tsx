@@ -28,6 +28,7 @@ import {
   cancelSubscription,
 } from "@/features/candidate/services/candidate-billing.service";
 import { isPremiumPlanCode, listSubscriptionPlans } from "@/features/subscription/services/subscription.service";
+import { printPaymentInvoice } from "@/features/subscription/utils/print-payment-invoice";
 import { UpgradeModal } from "@/features/candidate/components/billing/upgrade-modal";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -630,7 +631,14 @@ export function CandidateBillingPage() {
               <thead>
                 <tr className="border-b border-gray-200 dark:border-gray-800">
                   {[b.colInvoice, b.colPlan, b.colAmount, b.colStatus, b.colDate, b.colActions].map((col) => (
-                    <th key={col} className={cn("px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wide", portalSubtext)}>
+                    <th
+                      key={col}
+                      className={cn(
+                        "px-4 py-3 text-[11px] font-bold uppercase tracking-wide",
+                        col === b.colActions ? "text-right" : "text-left",
+                        portalSubtext,
+                      )}
+                    >
                       {col}
                     </th>
                   ))}
@@ -663,40 +671,64 @@ export function CandidateBillingPage() {
                     <td className={cn("px-4 py-3 tabular-nums", portalSubtext)}>
                       {formatDate(item.paymentDate, locale)}
                     </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-1">
-                        {item.receiptUrl && (
-                          <a
-                            href={item.receiptUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className={cn("flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors", portalSubtext)}
-                          >
-                            <ExternalLink size={11} />
-                            {b.viewBtn}
-                          </a>
-                        )}
-                        {item.receiptUrl ? (
-                          <a
-                            href={item.receiptUrl}
-                            download
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className={cn("flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors", portalSubtext)}
-                          >
-                            <Download size={11} />
-                            {b.downloadBtn}
-                          </a>
-                        ) : (
+                    <td className="px-4 py-3 text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        {item.status === "PAID" && (
                           <button
                             type="button"
-                            disabled
-                            title={t.common.comingSoon}
-                            className={cn("flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-md opacity-50 cursor-not-allowed", portalSubtext)}
+                            onClick={() => {
+                              const ok = printPaymentInvoice({
+                                invoiceId: item.invoiceId,
+                                planName: item.planName,
+                                amount: item.amount,
+                                currency: item.currency || "VND",
+                                paymentDate: item.paymentDate,
+                                paymentMethodValue: "SePay",
+                                locale: lang,
+                                labels: {
+                                  brand: b.invoiceBrand,
+                                  paidTitle: b.invoicePaidTitle,
+                                  invoiceId: b.invoiceNumberLabel,
+                                  paymentDate: b.invoicePaymentDate,
+                                  paymentMethod: b.invoicePaymentMethod,
+                                  plan: b.colPlan,
+                                  poweredBy: b.invoicePoweredBy,
+                                  footnote: b.invoiceFootnote,
+                                },
+                              });
+                              if (!ok) addToast("error", b.exportInvoiceFailed);
+                            }}
+                            className={cn(
+                              "flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors",
+                              portalSubtext,
+                            )}
                           >
                             <Download size={11} />
-                            {b.downloadBtn}
+                            {b.exportInvoiceBtn}
                           </button>
+                        )}
+                        {item.receiptUrl && (
+                          <>
+                            <a
+                              href={item.receiptUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className={cn("flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors", portalSubtext)}
+                            >
+                              <ExternalLink size={11} />
+                              {b.viewBtn}
+                            </a>
+                            <a
+                              href={item.receiptUrl}
+                              download
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className={cn("flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors", portalSubtext)}
+                            >
+                              <Download size={11} />
+                              {b.downloadBtn}
+                            </a>
+                          </>
                         )}
                       </div>
                     </td>

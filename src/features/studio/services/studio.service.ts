@@ -47,6 +47,11 @@ export async function updateProject(projectId: string, name: string, description
   return mapProjectDetail(data);
 }
 
+/** Soft-delete project Studio (IsActive=false) — dùng cho xóa phiên trên HR dashboard. */
+export async function deleteProject(projectId: string): Promise<void> {
+  await apiClient.delete(`/api/studio/projects/${projectId}`);
+}
+
 export async function saveDraft(projectId: string): Promise<{ questionSetId?: string | null; status?: string; questionCount?: number }> {
   const { data } = await apiClient.post<{
     questionSetId?: string;

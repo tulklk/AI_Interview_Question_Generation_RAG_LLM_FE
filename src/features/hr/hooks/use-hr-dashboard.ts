@@ -2,12 +2,15 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { listRecommendations } from "@/features/hr/services/recommendation.service";
-import { getHrDashboard, type HrDashboardHiringFunnel } from "@/features/hr/services/hr-dashboard.service";
-import type { GenerationSession, QuestionType, DifficultyLevel } from "@/features/interview/types/generation-session";
+import {
+  getHrDashboard,
+  type HrDashboardHiringFunnel,
+  type HrDashboardRecentSession,
+} from "@/features/hr/services/hr-dashboard.service";
 import type { CandidateRecommendation } from "@/features/hr/services/recommendation.service";
 
 export interface DailyActivity {
-  date: string;   // "MM/DD"
+  date: string; // "MM/DD"
   sessions: number;
 }
 
@@ -17,7 +20,6 @@ export interface QuestionTypeCount {
 }
 
 export interface HrDashboardData {
-  sessions: GenerationSession[];
   candidates: CandidateRecommendation[];
   totalSessions: number;
   completedSessions: number;
@@ -27,7 +29,8 @@ export interface HrDashboardData {
   topRole: string;
   dailyActivity: DailyActivity[];
   questionTypeDistribution: QuestionTypeCount[];
-  recentSessions: GenerationSession[];
+  /** IQGS-HR-DUMMY: dùng type aggregate thật — không stub GenerationSession với question "x" */
+  recentSessions: HrDashboardRecentSession[];
   weekOverWeekTrend: "up" | "down" | "flat" | null;
   hiringFunnel: HrDashboardHiringFunnel | null;
   loading: boolean;
@@ -35,42 +38,13 @@ export interface HrDashboardData {
   reload: () => void;
 }
 
-/** Turns an aggregate recent-session summary into a minimal, render-compatible GenerationSession. */
-function toGenerationSessionStub(row: {
-  id: string; role: string; level: string; status: string; questionsCount: number; createdAt: string;
-}): GenerationSession {
-  const questionType: QuestionType = "Technical";
-  const difficulty: DifficultyLevel = "Medium";
-  const createdAt = row.createdAt || new Date().toISOString();
-  return {
-    id: row.id,
-    jobTitle: row.role || "Interview Questions",
-    hrOwner: "",
-    status: (row.status as GenerationSession["status"]) || "COMPLETED",
-    planDraft: row.role
-      ? {
-          role: row.role,
-          level: row.level,
-          difficulty,
-          questionCount: row.questionsCount,
-          questionTypes: [questionType],
-          topics: [],
-        }
-      : undefined,
-    generatedQuestions: Array.from({ length: row.questionsCount }, (_, i) => ({
-      id: `${row.id}-stub-${i}`,
-      question: "x",
-      questionType,
-      difficulty,
-      orderIndex: i,
-    })),
-    createdAt,
-    updatedAt: createdAt,
-  };
-}
-
 function toRecommendationStub(row: {
-  id: string; candidateName: string; candidateEmail: string; targetRole: string; score: number; status: CandidateRecommendation["status"];
+  id: string;
+  candidateName: string;
+  candidateEmail: string;
+  targetRole: string;
+  score: number;
+  status: CandidateRecommendation["status"];
 }): CandidateRecommendation {
   return {
     id: row.id,
@@ -145,9 +119,7 @@ export function useHrDashboard(): HrDashboardData {
   }, [reloadKey]);
 
   if (aggregate) {
-    const recentSessions = aggregate.recentSessions.map(toGenerationSessionStub);
     return {
-      sessions: [],
       candidates: aggregate.topRecommendations.map(toRecommendationStub),
       totalSessions: aggregate.kpis?.totalSessions ?? 0,
       completedSessions: aggregate.kpis?.completedSessions ?? 0,
@@ -157,7 +129,7 @@ export function useHrDashboard(): HrDashboardData {
       topRole: aggregate.kpis?.topRole ?? "",
       dailyActivity: aggregate.dailyActivity,
       questionTypeDistribution: aggregate.questionTypeDistribution,
-      recentSessions,
+      recentSessions: aggregate.recentSessions,
       weekOverWeekTrend: aggregate.insights?.weekOverWeekTrend ?? null,
       hiringFunnel: aggregate.hiringFunnel,
       loading,
@@ -167,7 +139,6 @@ export function useHrDashboard(): HrDashboardData {
   }
 
   return {
-    sessions: [],
     candidates,
     totalSessions: 0,
     completedSessions: 0,

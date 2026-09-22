@@ -185,7 +185,8 @@ function Section({
   hint,
   status,
   labels,
-  defaultOpen = true,
+  // SCRUM-477: mặc định đóng accordion khi tạo câu — mở từng mục khi cần
+  defaultOpen = false,
   children,
 }: {
   index: number;

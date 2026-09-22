@@ -10,6 +10,7 @@ import {
   getUpgradePaymentStatus,
   getMySubscription,
   getMyUsage,
+  getMyPaymentHistory,
   isPremiumPlanCode,
   type UpgradePaymentIntent,
   type MySubscription,
@@ -73,21 +74,19 @@ export async function getCandidateBillingUsage(): Promise<CandidateBillingUsage>
   return enrichUsage(sub);
 }
 
-/** Sandbox chưa có payment history riêng — trả rỗng hoặc 1 dòng từ subscription */
+/** GET /api/me/subscription/payments — lịch sử SubscriptionTransaction thật */
 export async function getCandidatePaymentHistory(): Promise<PaymentHistoryItem[]> {
   try {
-    const sub = await getMySubscription();
-    if (!isPremiumPlanCode(sub.planCode) || sub.priceMonthly <= 0) return [];
-    return [
-      {
-        invoiceId: `SANDBOX-${sub.periodStart.slice(0, 10)}`,
-        planName: sub.planName,
-        amount: sub.priceMonthly,
-        currency: sub.currency || "VND",
-        status: "PAID",
-        paymentDate: sub.periodStart,
-      },
-    ];
+    const rows = await getMyPaymentHistory(50);
+    return rows.map((r) => ({
+      invoiceId: r.invoiceId,
+      planName: r.planName,
+      amount: r.amount,
+      currency: r.currency,
+      status: r.status,
+      paymentDate: r.paymentDate,
+      receiptUrl: r.receiptUrl,
+    }));
   } catch {
     return [];
   }

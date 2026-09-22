@@ -254,6 +254,57 @@ export async function getMyUsage(): Promise<UsageCounterRow[]> {
   });
 }
 
+/** Dòng lịch sử thanh toán từ GET /api/me/subscription/payments */
+export interface MyPaymentHistoryItem {
+  invoiceId: string;
+  planName: string;
+  amount: number;
+  currency: string;
+  status: "PAID" | "PENDING" | "FAILED";
+  paymentDate: string;
+  receiptUrl?: string;
+}
+
+function normalizePaymentHistoryStatus(raw: string): MyPaymentHistoryItem["status"] {
+  const s = (raw || "").toUpperCase();
+  if (s === "PAID" || s === "COMPLETED" || s === "SUCCESS") return "PAID";
+  if (s === "PENDING") return "PENDING";
+  return "FAILED";
+}
+
+function normalizePaymentHistoryItem(raw: unknown): MyPaymentHistoryItem | null {
+  const o = asRecord(raw);
+  if (!o) return null;
+  const invoiceId = pickString(o, "invoiceId", "InvoiceId");
+  if (!invoiceId) return null;
+  const paymentDate =
+    pickString(o, "paymentDate", "PaymentDate") ||
+    pickString(o, "confirmedAt", "ConfirmedAt") ||
+    pickString(o, "createdAt", "CreatedAt");
+  return {
+    invoiceId,
+    planName: pickString(o, "planName", "PlanName") || "—",
+    amount: pickNumber(o, "amount", "Amount"),
+    currency: pickString(o, "currency", "Currency") || "VND",
+    status: normalizePaymentHistoryStatus(pickString(o, "status", "Status")),
+    paymentDate: paymentDate || new Date().toISOString(),
+    receiptUrl: pickString(o, "receiptUrl", "ReceiptUrl") || undefined,
+  };
+}
+
+/** GET /api/me/subscription/payments — lịch sử từ SubscriptionTransaction */
+export async function getMyPaymentHistory(take = 50): Promise<MyPaymentHistoryItem[]> {
+  const res = await apiClient.get("/api/me/subscription/payments", {
+    params: { take },
+  });
+  const root = asRecord(res.data);
+  const data = root?.data;
+  const list = Array.isArray(data) ? data : [];
+  return list
+    .map(normalizePaymentHistoryItem)
+    .filter((r): r is MyPaymentHistoryItem => r !== null);
+}
+
 /** POST /api/me/subscription/upgrade */
 export async function createUpgradePaymentOrder(): Promise<UpgradePaymentIntent> {
   const res = await apiClient.post("/api/me/subscription/upgrade", {});

@@ -37,11 +37,17 @@ import {
 } from "@/features/hr/services/hr-talent.service";
 import { listHistoryQuestionSets } from "@/features/hr/services/hr-history.service";
 import type { HistoryQuestionSetItem } from "@/features/hr/types/history-question-set";
+import {
+  getScoreBandLabel,
+  getScoreBandRingClass,
+  scoreBandBadgeClassName,
+} from "@/features/hr/utils/score-band";
+import type { ScoreLevelLabels } from "@/features/candidate/components/ui/pill";
 
 const PAGE_SIZE = 20;
 
 type StatusFilter = "" | "COMPLETED" | "IN_PROGRESS" | "ABANDONED";
-type ScoreFilter = "" | "50" | "70" | "85";
+type ScoreFilter = "" | "70" | "80" | "90";
 type DateSort = "newest" | "oldest";
 
 const STATUS_TABS: { key: StatusFilter; labelKey: "allStatuses" | "completed" | "inProgress" | "abandoned" }[] = [
@@ -97,28 +103,31 @@ function buildAttemptMap(rows: HrTalentItem[]): Map<string, number> {
   return map;
 }
 
-function ScoreBadge({ score, pendingTitle }: { score: number | null; pendingTitle: string }) {
+function ScoreBadge({ score, pendingTitle, labels }: { score: number | null; pendingTitle: string; labels: ScoreLevelLabels }) {
   if (score === null) {
     return (
       <div
-        className="w-12 h-12 rounded-full ring-2 ring-gray-200 dark:ring-gray-700 bg-gray-50 dark:bg-gray-900 flex flex-col items-center justify-center shrink-0"
+        className="h-10 min-w-14 px-2 rounded-full ring-2 ring-gray-200 dark:ring-gray-700 bg-gray-50 dark:bg-gray-900 flex items-center justify-center shrink-0"
         title={pendingTitle}
       >
-        <span className="text-[13px] font-bold text-gray-400">—</span>
+        <span className="text-[13px] font-bold text-gray-400 leading-none">—</span>
       </div>
     );
   }
-  const rounded = Math.round(score);
-  const { ring, text, bg } =
-    rounded >= 85
-      ? { ring: "ring-emerald-400 dark:ring-emerald-500", text: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-50 dark:bg-emerald-950/40" }
-      : rounded >= 70
-        ? { ring: "ring-amber-400 dark:ring-amber-500", text: "text-amber-600 dark:text-amber-400", bg: "bg-amber-50 dark:bg-amber-950/40" }
-        : { ring: "ring-red-400 dark:ring-red-500", text: "text-red-500 dark:text-red-400", bg: "bg-red-50 dark:bg-red-950/40" };
+  const { text } = getScoreBandRingClass(score);
+  const label = getScoreBandLabel(score, labels);
+  const compact = label.length > 6;
   return (
-    <div className={cn("w-12 h-12 rounded-full ring-2 flex flex-col items-center justify-center shrink-0", ring, bg)}>
-      <span className={cn("text-[15px] font-extrabold tabular-nums leading-none", text)}>{rounded}</span>
-      <span className="text-[9px] font-medium text-gray-400 dark:text-gray-500 leading-none mt-0.5">pts</span>
+    <div className={scoreBandBadgeClassName(score)} title={label}>
+      <span
+        className={cn(
+          "font-bold leading-tight text-center tracking-tight",
+          compact ? "text-[9px]" : "text-[10px]",
+          text,
+        )}
+      >
+        {label}
+      </span>
     </div>
   );
 }
@@ -150,18 +159,42 @@ function SessionStatusChip({
   );
 }
 
+function ModeChip({
+  isHiringAssessment,
+  labels,
+}: {
+  isHiringAssessment: boolean;
+  labels: { practice: string; hiring: string };
+}) {
+  return (
+    <span
+      className={cn(
+        "inline-flex text-[11px] font-semibold px-2.5 py-0.5 rounded-full whitespace-nowrap",
+        isHiringAssessment
+          ? "bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300"
+          : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300",
+      )}
+      title={isHiringAssessment ? labels.hiring : labels.practice}
+    >
+      {isHiringAssessment ? labels.hiring : labels.practice}
+    </span>
+  );
+}
+
 function TalentRow({
   item,
   attemptNo,
   index,
   lang,
   labels,
+  scoreLabels,
 }: {
   item: HrTalentItem;
   attemptNo: number;
   index: number;
   lang: "en" | "vi";
   labels: ReturnType<typeof useLanguage>["t"]["hrTalentPage"];
+  scoreLabels: ScoreLevelLabels;
 }) {
   const seed = item.candidateName || item.candidateEmail;
   const initials = getInitials(seed);
@@ -172,11 +205,13 @@ function TalentRow({
   const accentBar =
     score == null
       ? "bg-gray-300"
-      : score >= 85
-        ? "bg-emerald-400"
-        : score >= 70
-          ? "bg-amber-400"
-          : "bg-red-400";
+      : (() => {
+          const { ring } = getScoreBandRingClass(score);
+          if (ring.includes("emerald")) return "bg-emerald-400";
+          if (ring.includes("violet")) return "bg-violet-400";
+          if (ring.includes("amber")) return "bg-amber-400";
+          return "bg-red-400";
+        })();
 
   return (
     <motion.div
@@ -211,6 +246,10 @@ function TalentRow({
             {item.candidateName || item.candidateEmail || "—"}
           </p>
           <SessionStatusChip status={item.sessionStatus} labels={labels.statusLabels} />
+          <ModeChip
+            isHiringAssessment={item.isHiringAssessment}
+            labels={{ practice: labels.modePractice, hiring: labels.modeHiring }}
+          />
           {isInvited && (
             <span className="inline-flex text-[11px] font-semibold px-2.5 py-0.5 rounded-full whitespace-nowrap bg-teal-50 text-teal-700 dark:bg-teal-950/40 dark:text-teal-400">
               {labels.invitedBadge}
@@ -248,7 +287,11 @@ function TalentRow({
         </p>
       </div>
 
-      <ScoreBadge score={item.overallScore} pendingTitle={labels.scorePendingTitle} />
+      <ScoreBadge
+        score={item.overallScore}
+        pendingTitle={labels.scorePendingTitle}
+        labels={scoreLabels}
+      />
 
       <div className="flex items-center gap-1.5 shrink-0">
         <Link
@@ -284,7 +327,7 @@ export function HrTalentPage() {
   const [questionSets, setQuestionSets] = useState<HistoryQuestionSetItem[]>([]);
 
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("COMPLETED");
   const [scoreFilter, setScoreFilter] = useState<ScoreFilter>("");
   const [dateSort, setDateSort] = useState<DateSort>("newest");
   const [questionSetId, setQuestionSetId] = useState("");
@@ -435,9 +478,9 @@ export function HrTalentPage() {
             className="h-8 px-3 text-[12px] font-medium bg-gray-100 dark:bg-gray-800 border-0 rounded-lg text-gray-700 dark:text-gray-300 outline-none focus:ring-2 focus:ring-primary/20 transition-colors cursor-pointer"
           >
             <option value="">{t.historyPage.filters.scoreAll}</option>
-            <option value="50">≥ 50</option>
-            <option value="70">≥ 70</option>
-            <option value="85">≥ 85</option>
+            <option value="70">{t.historyPage.filters.scoreFairPlus}</option>
+            <option value="80">{t.historyPage.filters.scoreGoodPlus}</option>
+            <option value="90">{t.historyPage.filters.scoreExcellentPlus}</option>
           </select>
 
           <select
@@ -542,6 +585,7 @@ export function HrTalentPage() {
                 index={i}
                 lang={lang}
                 labels={p}
+                scoreLabels={t.jobseekerFeedbackPage.scoreLevels}
               />
             ))}
           </div>
