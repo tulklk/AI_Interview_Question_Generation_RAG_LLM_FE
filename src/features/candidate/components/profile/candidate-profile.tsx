@@ -673,7 +673,7 @@ export function CandidateProfile() {
             </a>
           ) : (
             <div className="h-32 flex items-center justify-center">
-              <p className={cn("text-[12px] italic", portalSubtextAlt)}>Chưa cập nhật</p>
+              <p className={cn("text-[12px] italic", portalSubtextAlt)}>{p.notUpdated}</p>
             </div>
           )}
         </motion.div>
@@ -899,7 +899,7 @@ export function CandidateProfile() {
                 <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mb-3">
                   <Upload size={26} className="text-primary" aria-hidden="true" />
                 </div>
-                <p className="text-sm font-bold text-primary">Thả file vào đây</p>
+                <p className="text-sm font-bold text-primary">{p.dropFileHere}</p>
                 <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">PDF · DOCX · JPG · PNG</p>
               </div>
             )}
@@ -1053,7 +1053,7 @@ export function CandidateProfile() {
               <div>
                 <p className={cn("text-[13px] max-w-xs", portalSubtextAlt)}>{p.cv.emptyState}</p>
                 <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-1">
-                  Kéo thả file vào đây hoặc
+                  {t.common.dropFileOr}
                 </p>
               </div>
               <button

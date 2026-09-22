@@ -5,7 +5,7 @@
  * đủ field như Studio Save (sampleAnswer, rubric, skill, focusArea, questionType).
  * Chọn/tạo bộ → Loại nội dung → Soạn → Preview → Lưu
  */
-import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import Link from "next/link";
 import { ArrowLeft, Check, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/cn";
@@ -28,6 +28,11 @@ import {
   QuestionBuilderComposer,
   type ContentMode,
 } from "@/features/interview/components/generate/question-builder-composer";
+import {
+  BULK_MAX,
+  buildBulkQuestionTexts,
+  QuestionBuilderBulkBar,
+} from "@/features/interview/components/generate/question-builder-bulk-bar";
 import { QuestionBuilderPreview } from "@/features/interview/components/generate/question-builder-preview";
 import {
   buildPresetCriteria,
@@ -100,7 +105,8 @@ export function QuestionBuilderPage() {
   const [newTitle, setNewTitle] = useState("");
   const [newDescription, setNewDescription] = useState("");
   const [creatingSet, setCreatingSet] = useState(false);
-  const [showCreateForm, setShowCreateForm] = useState(false);
+  // Mặc định mở form tạo bộ mới — không auto chọn draft có sẵn
+  const [showCreateForm, setShowCreateForm] = useState(true);
 
   const [contentMode, setContentMode] = useState<ContentMode>("code");
   const [selectedTemplate, setSelectedTemplate] = useState<StudioCodeTemplateId>("BUG_DETECTION");
@@ -120,6 +126,15 @@ export function QuestionBuilderPage() {
   const [localPreviewUrl, setLocalPreviewUrl] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [sessionAdded, setSessionAdded] = useState<SessionAddedQuestion[]>([]);
+
+  // SCRUM-477: thanh Tạo nhanh N câu
+  const [bulkType, setBulkType] = useState<QuestionType>("Technical");
+  const [bulkDifficulty, setBulkDifficulty] = useState<DifficultyLevel>("Medium");
+  const [bulkCount, setBulkCount] = useState(5);
+  const [bulkPaste, setBulkPaste] = useState("");
+  const [bulkCreating, setBulkCreating] = useState(false);
+  // Khóa sync — chặn double-click trước khi React kịp re-render disabled
+  const bulkCreatingLockRef = useRef(false);
 
   const selectedSet = useMemo(
     () => drafts.find((d) => d.questionSetId === selectedSetId) ?? null,
@@ -176,12 +191,17 @@ export function QuestionBuilderPage() {
       const items = await listHistoryQuestionSets();
       const onlyDraft = items.filter((x) => x.status === "DRAFT");
       setDrafts(onlyDraft);
+      // Không auto chọn bộ đầu tiên — chỉ chọn khi vừa tạo (preferId) hoặc giữ lựa chọn hiện tại
       setSelectedSetId((prev) => {
         if (preferId && onlyDraft.some((d) => d.questionSetId === preferId)) return preferId;
         if (prev && onlyDraft.some((d) => d.questionSetId === prev)) return prev;
-        return onlyDraft[0]?.questionSetId ?? "";
+        return "";
       });
-      if (onlyDraft.length === 0) setShowCreateForm(true);
+      if (preferId && onlyDraft.some((d) => d.questionSetId === preferId)) {
+        setShowCreateForm(false);
+      } else if (onlyDraft.length === 0) {
+        setShowCreateForm(true);
+      }
     } finally {
       setLoadingDrafts(false);
     }
@@ -361,6 +381,76 @@ export function QuestionBuilderPage() {
 
   const composerDisabled = !selectedSetId;
 
+  /** SCRUM-477: tạo N câu tối thiểu vào bộ đang chọn */
+  const onBulkCreate = async () => {
+    if (bulkCreatingLockRef.current || bulkCreating) return;
+    if (!selectedSetId) {
+      addToast("error", qb.bulkBar.toastNeedSet);
+      return;
+    }
+    const texts = buildBulkQuestionTexts(
+      bulkPaste,
+      bulkCount,
+      qb.bulkBar.placeholderPrefix
+    );
+    if (texts.length === 0) return;
+
+    bulkCreatingLockRef.current = true;
+    setBulkCreating(true);
+    let ok = 0;
+    const total = Math.min(texts.length, BULK_MAX);
+    try {
+      for (let i = 0; i < total; i++) {
+        const created = await addQuestionSetQuestion(selectedSetId, {
+          question: texts[i],
+          questionType: bulkType,
+          difficulty: bulkDifficulty,
+          answerMethod: "Text",
+          evaluationCriteria: [],
+          citations: [],
+        });
+        if (!created) {
+          if (ok === 0) {
+            addToast("error", qb.bulkBar.toastFailed);
+          } else {
+            addToast(
+              "error",
+              qb.bulkBar.toastPartial
+                .replace("{{ok}}", String(ok))
+                .replace("{{total}}", String(total))
+            );
+          }
+          return;
+        }
+        ok += 1;
+        setSessionAdded((prev) => [
+          {
+            id: created.id,
+            question: created.question,
+            difficulty: created.difficulty,
+            questionType: created.questionType,
+          },
+          ...prev,
+        ]);
+        setDrafts((prev) =>
+          prev.map((d) =>
+            d.questionSetId === selectedSetId
+              ? { ...d, questionCount: d.questionCount + 1 }
+              : d
+          )
+        );
+      }
+      addToast(
+        "success",
+        qb.bulkBar.toastSuccess.replace("{{ok}}", String(ok)).replace("{{total}}", String(total))
+      );
+      setBulkPaste("");
+    } finally {
+      bulkCreatingLockRef.current = false;
+      setBulkCreating(false);
+    }
+  };
+
   return (
     <div className="space-y-4">
       {/* ── Header — Studio-style ── */}
@@ -501,6 +591,7 @@ export function QuestionBuilderPage() {
             selectedSetId={selectedSetId}
             onSelectSet={(id) => {
               setSelectedSetId(id);
+              setShowCreateForm(false);
               setSessionAdded([]);
             }}
             showCreateForm={showCreateForm}
@@ -516,6 +607,21 @@ export function QuestionBuilderPage() {
         </div>
 
         <div style={{ animation: "slideUpFade 0.42s cubic-bezier(0.25,0.46,0.45,0.94) both 0.18s" }}>
+          <div>
+            <QuestionBuilderBulkBar
+              disabled={composerDisabled}
+              creating={bulkCreating}
+              questionType={bulkType}
+              difficulty={bulkDifficulty}
+              count={bulkCount}
+              pasteText={bulkPaste}
+              onQuestionTypeChange={setBulkType}
+              onDifficultyChange={setBulkDifficulty}
+              onCountChange={setBulkCount}
+              onPasteTextChange={setBulkPaste}
+              onCreate={() => void onBulkCreate()}
+            />
+          </div>
           <QuestionBuilderComposer
             disabled={composerDisabled}
             selectedSetId={selectedSetId || null}

@@ -140,6 +140,7 @@ export function QuestionEditCard({
   const { t } = useLanguage();
   const rp = t.reviewPage;
   const sc = t.studioPage.chat;
+  const qc = rp.questionCard;
   const { addToast } = useToast();
   const [isAnswerOpen, setIsAnswerOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -159,6 +160,9 @@ export function QuestionEditCard({
       sourceTechnicalBody: sc.sourceTechnicalBody,
       sourcePrimary: sc.sourcePrimary,
       sourceSecondary: sc.sourceSecondary,
+      reasonInferredFromJd: sc.reasonInferredFromJd,
+      reasonRubricFromLlm: sc.reasonRubricFromLlm,
+      reasonSampleFromLlm: sc.reasonSampleFromLlm,
       jobDescription: sc.sourceJobDescription,
       sourcesPanelTitle: sc.sourcesPanelTitle,
       sourcesEmptyLegacy: sc.sourcesEmptyLegacy,
@@ -221,14 +225,14 @@ export function QuestionEditCard({
     try {
       const updated = await uploadQuestionSetQuestionImage(questionSetId, question.id, file);
       if (!updated) {
-        addToast("error", "Upload ảnh thất bại.");
+        addToast("error", qc.imageUploadFailed);
         return;
       }
       onImageUpdated?.({
         ...question,
         attachedImageUrl: updated.attachedImageUrl ?? null,
       });
-      addToast("success", "Đã thêm ảnh đính kèm.");
+      addToast("success", qc.imageAdded);
     } finally {
       setImageBusy(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -241,14 +245,14 @@ export function QuestionEditCard({
     try {
       const updated = await deleteQuestionSetQuestionImage(questionSetId, question.id);
       if (!updated) {
-        addToast("error", "Xóa ảnh thất bại.");
+        addToast("error", qc.imageRemoveFailed);
         return;
       }
       onImageUpdated?.({
         ...question,
         attachedImageUrl: null,
       });
-      addToast("success", "Đã xóa ảnh đính kèm.");
+      addToast("success", qc.imageRemoved);
     } finally {
       setImageBusy(false);
     }
@@ -385,20 +389,25 @@ export function QuestionEditCard({
                     {templateLabel}
                   </span>
                 ) : null}
+                {/* Name the domain explicitly: the skill tag alone left "which
+                    domain does this question belong to" answerable only by
+                    inference from the set's role. */}
                 {skillTrimmed ? (
                   <span
-                    title={skillTrimmed}
-                    className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-sky-100 text-sky-800 dark:bg-sky-950/50 dark:text-sky-300 max-w-[180px] truncate"
+                    title={`${qc.domainBadge}: ${skillTrimmed}`}
+                    className="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-sky-100 text-sky-800 dark:bg-sky-950/50 dark:text-sky-300 max-w-[220px]"
                   >
-                    {skillTrimmed}
+                    <span className="opacity-70 shrink-0">{qc.domainBadge}</span>
+                    <span className="truncate">{skillTrimmed}</span>
                   </span>
                 ) : null}
                 {showFocusBadge ? (
                   <span
-                    title={focusTrimmed}
-                    className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300 max-w-[180px] truncate"
+                    title={`${qc.focusBadge}: ${focusTrimmed}`}
+                    className="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300 max-w-[220px]"
                   >
-                    {focusTrimmed}
+                    <span className="opacity-70 shrink-0">{qc.focusBadge}</span>
+                    <span className="truncate">{focusTrimmed}</span>
                   </span>
                 ) : null}
                 {question.isEdited && (
@@ -460,7 +469,7 @@ export function QuestionEditCard({
                   </div>
                   <div>
                     <label className={cn("text-xs font-medium mb-1 block", portalHeading)}>
-                      Phương thức trả lời
+                      {qc.answerMethodLabel}
                     </label>
                     <select
                       value={editAnswerMethod}
@@ -470,8 +479,8 @@ export function QuestionEditCard({
                         portalInput
                       )}
                     >
-                      <option value="Text">Text — văn xuôi</option>
-                      <option value="Code">Code — nhập code</option>
+                      <option value="Text">{qc.answerMethodText}</option>
+                      <option value="Code">{qc.answerMethodCode}</option>
                     </select>
                   </div>
                 </div>
@@ -479,12 +488,12 @@ export function QuestionEditCard({
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className={cn("text-xs font-medium mb-1 block", portalHeading)}>
-                      Skill / tech tag
+                      {qc.skillLabel}
                     </label>
                     <input
                       value={editSkill}
                       onChange={(e) => setEditSkill(e.target.value)}
-                      placeholder="VD: React, SQL, Redis"
+                      placeholder={qc.skillPlaceholder}
                       className={cn(
                         "w-full rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary",
                         portalInput
@@ -493,12 +502,12 @@ export function QuestionEditCard({
                   </div>
                   <div>
                     <label className={cn("text-xs font-medium mb-1 block", portalHeading)}>
-                      Focus area
+                      {qc.focusLabel}
                     </label>
                     <input
                       value={editFocusArea}
                       onChange={(e) => setEditFocusArea(e.target.value)}
-                      placeholder="VD: Frontend, Database"
+                      placeholder={qc.focusPlaceholder}
                       className={cn(
                         "w-full rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary",
                         portalInput
@@ -515,7 +524,7 @@ export function QuestionEditCard({
                         {rp.questionFields.question}
                       </label>
                       <span className="text-[10px] font-bold uppercase tracking-wide text-sky-700 dark:text-sky-400">
-                        Đề bài
+                        {qc.promptBadge}
                       </span>
                     </div>
                     <textarea
@@ -549,7 +558,7 @@ export function QuestionEditCard({
                             : "text-emerald-700 dark:text-emerald-400"
                         )}
                       >
-                        {editAnswerMethod === "Code" ? "Code / đáp án" : "Đáp án mẫu"}
+                        {editAnswerMethod === "Code" ? qc.sampleAnswerCode : qc.sampleAnswerPlain}
                       </span>
                     </div>
                     <textarea
@@ -572,13 +581,13 @@ export function QuestionEditCard({
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
                   <div>
                     <label className={cn("text-xs font-medium mb-1 block", portalHeading)}>
-                      {rp.questionFields.rationale} (lý do hỏi)
+                      {rp.questionFields.rationale} {rp.rationaleHint}
                     </label>
                     <textarea
                       value={editRationale}
                       onChange={(e) => setEditRationale(e.target.value)}
                       rows={3}
-                      placeholder="Lý do hỏi câu này (không gồm template/snippet meta)"
+                      placeholder={t.common.whyAskedPlaceholder}
                       className={cn(
                         "w-full resize-y rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary",
                         portalInput
@@ -587,7 +596,7 @@ export function QuestionEditCard({
                   </div>
                   <div>
                     <label className={cn("text-xs font-medium mb-1 block", portalHeading)}>
-                      Scoring rubric / tiêu chí (mỗi dòng 1 tiêu chí)
+                      {qc.scoringRubricEditLabel}
                     </label>
                     <textarea
                       value={editScoringRubric}
@@ -678,7 +687,7 @@ export function QuestionEditCard({
                     )}
                   >
                     {isAnswerOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
-                    {isAnswerOpen ? "Thu gọn chi tiết" : "Sample answer & rubric"}
+                    {isAnswerOpen ? qc.detailsCollapse : qc.detailsExpand}
                   </button>
 
                   {canEditImage && (
@@ -697,7 +706,7 @@ export function QuestionEditCard({
                         className="inline-flex items-center gap-1 rounded-md border border-gray-200 bg-gray-50 px-2 py-1 text-[11px] font-medium text-gray-600 hover:border-primary/40 hover:text-primary disabled:opacity-40 dark:border-gray-700 dark:bg-gray-950/40 dark:text-gray-300"
                       >
                         {imageBusy ? <Loader2 className="h-3 w-3 animate-spin" /> : <ImagePlus className="h-3 w-3" strokeWidth={2} />}
-                        {(templateVm.attachedImageUrl || question.attachedImageUrl) ? "Đổi ảnh" : "Thêm ảnh"}
+                        {(templateVm.attachedImageUrl || question.attachedImageUrl) ? rp.changeImage : rp.addImage}
                       </button>
                       {(templateVm.attachedImageUrl || question.attachedImageUrl) && (
                         <button
@@ -706,7 +715,7 @@ export function QuestionEditCard({
                           onClick={() => void handleDeleteImage()}
                           className="inline-flex items-center gap-1 rounded-md border border-red-200 bg-red-50 px-2 py-1 text-[11px] font-medium text-red-600 hover:bg-red-100 disabled:opacity-40 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300"
                         >
-                          Xóa ảnh
+                          {qc.removeImage}
                         </button>
                       )}
                     </>
@@ -716,13 +725,13 @@ export function QuestionEditCard({
                 {isAnswerOpen && (
                   <div className="mt-3 space-y-2 animate-fade-up">
                     {!hasDetailContent ? (
-                      <p className={cn("text-[11px]", portalSubtext)}>Chưa có chi tiết bổ sung.</p>
+                      <p className={cn("text-[11px]", portalSubtext)}>{qc.detailsEmpty}</p>
                     ) : (
                       <>
                         {sampleAnswerDisplay ? (
                           <div className="rounded-lg border border-gray-100 border-l-2 border-l-emerald-500 bg-emerald-50/40 px-3 py-2 dark:border-gray-800 dark:border-l-emerald-500 dark:bg-emerald-950/20">
                             <p className="text-[10px] font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-400">
-                              Đáp án mẫu
+                              {qc.sampleAnswerPlain}
                             </p>
                             <QuestionContent
                               text={sampleAnswerDisplay}
@@ -735,7 +744,7 @@ export function QuestionEditCard({
                         {question.scoringRubric?.trim() ? (
                           <div className="rounded-lg border border-gray-100 border-l-2 border-l-amber-500 bg-amber-50/40 px-3 py-2 dark:border-gray-800 dark:border-l-amber-500 dark:bg-amber-950/20">
                             <p className="text-[10px] font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-400">
-                              Scoring rubric
+                              {qc.scoringRubric}
                             </p>
                             <p className={cn("mt-0.5 text-sm whitespace-pre-wrap leading-relaxed", portalHeading)}>
                               {question.scoringRubric}
@@ -806,7 +815,7 @@ export function QuestionEditCard({
                       <>
                         <button
                           type="button"
-                          aria-label="Close menu"
+                          aria-label={t.common.closeMenu}
                           className="fixed inset-0 z-10 cursor-default"
                           onClick={() => setMoreOpen(false)}
                         />

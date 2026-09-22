@@ -30,6 +30,7 @@ import { AppShell } from "@/features/hr/components/layout/app-shell";
 import { buildPracticeHeatmapFromBuckets } from "@/features/candidate/utils/dashboard-analytics";
 import { PracticeHeatmap } from "@/features/candidate/components/dashboard/practice-heatmap";
 import { SectionCard } from "@/features/candidate/components/ui/section-card";
+import { getScoreBandLabel } from "@/features/hr/utils/score-band";
 
 const AVATAR_COLORS = [
   "bg-violet-500", "bg-blue-500", "bg-emerald-500", "bg-amber-500",
@@ -51,13 +52,15 @@ function ScoreRing({ score, label, quality }: { score: number; label: string; qu
   const radius = 40;
   const circ = 2 * Math.PI * radius;
   const dash = (Math.min(100, Math.max(0, score)) / 100) * circ;
-  const color = score >= 85 ? "#10b981" : score >= 70 ? "#f59e0b" : "#ef4444";
+  const color = score >= 90 ? "#10b981" : score >= 80 ? "#8b5cf6" : score >= 70 ? "#f59e0b" : "#ef4444";
   const textColor =
-    score >= 85
+    score >= 90
       ? "text-emerald-600 dark:text-emerald-400"
-      : score >= 70
-        ? "text-amber-600 dark:text-amber-400"
-        : "text-red-500 dark:text-red-400";
+      : score >= 80
+        ? "text-violet-600 dark:text-violet-400"
+        : score >= 70
+          ? "text-amber-600 dark:text-amber-400"
+          : "text-red-500 dark:text-red-400";
 
   return (
     <div className="flex items-center gap-5">
@@ -284,13 +287,7 @@ export function HrCandidateOverviewPage({ candidateUserId }: { candidateUserId: 
                 <ScoreRing
                   score={data.bestScore}
                   label={p.stats.bestScore}
-                  quality={
-                    data.bestScore >= 85
-                      ? p.scoreExcellent
-                      : data.bestScore >= 70
-                        ? p.scoreGood
-                        : p.scoreFair
-                  }
+                  quality={getScoreBandLabel(data.bestScore, t.jobseekerFeedbackPage.scoreLevels)}
                 />
               </div>
             )}

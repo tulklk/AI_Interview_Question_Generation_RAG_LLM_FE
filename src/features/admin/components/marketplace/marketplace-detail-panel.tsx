@@ -39,6 +39,8 @@ interface MarketplaceDetailPanelProps {
     unpublish: string;
     emptyPractitioners: string;
     retry: string;
+    badgeHiring: string;
+    badgePractice: string;
   };
   onRetry: () => void;
 }
@@ -132,6 +134,18 @@ export function MarketplaceDetailPanel({
           ) : detail ? (
             <div className="space-y-5">
               <div>
+                <div className="mb-1.5 flex flex-wrap items-center gap-1.5">
+                  <span
+                    className={cn(
+                      "inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-semibold",
+                      detail.isHiringAssessment
+                        ? "bg-sky-50 text-sky-700 dark:bg-sky-950/40 dark:text-sky-300"
+                        : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300"
+                    )}
+                  >
+                    {detail.isHiringAssessment ? labels.badgeHiring : labels.badgePractice}
+                  </span>
+                </div>
                 <h3 className={cn("text-lg font-bold", portalHeadingAlt)}>{detail.title}</h3>
                 {detail.description ? (
                   <p className={cn("mt-1 text-sm", portalSubtextAlt)}>{detail.description}</p>

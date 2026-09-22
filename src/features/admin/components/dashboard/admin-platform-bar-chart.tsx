@@ -14,6 +14,7 @@ import {
 import { cn } from "@/lib/cn";
 import { portalHeadingAlt, portalSubtextAlt } from "@/shared/utils/portal-ui";
 import { useChartTheme } from "@/shared/hooks/use-chart-theme";
+import { useLanguage } from "@/shared/providers/language-context";
 import type { AdminDashboardStats } from "@/features/admin/services/admin-dashboard.service";
 
 interface Props {
@@ -22,16 +23,18 @@ interface Props {
 }
 
 export function AdminPlatformBarChart({ data, loading }: Props) {
+  const { t } = useLanguage();
+  const c = t.adminPages.dashboard.platformChart;
   const chart = useChartTheme();
   const { ref, isInView } = useAdminInView();
 
   const chartData = [
-    { name: "Bộ câu hỏi",     value: data?.totalQuestionSets ?? 0, color: "#6c47ff", unit: "bộ" },
-    { name: "Dễ",              value: data?.easySets          ?? 0, color: "#10b981", unit: "bộ" },
-    { name: "Trung bình",      value: data?.mediumSets        ?? 0, color: "#f59e0b", unit: "bộ" },
-    { name: "Khó",             value: data?.hardSets          ?? 0, color: "#ef4444", unit: "bộ" },
-    { name: "Tổng câu hỏi",   value: data?.totalQuestions    ?? 0, color: "#3b82f6", unit: "câu" },
-    { name: "Lượt luyện tập", value: data?.totalAttempts     ?? 0, color: "#8b5cf6", unit: "lượt" },
+    { name: c.questionSets,   value: data?.totalQuestionSets ?? 0, color: "#6c47ff", unit: c.unitSets },
+    { name: c.easy,           value: data?.easySets          ?? 0, color: "#10b981", unit: c.unitSets },
+    { name: c.medium,         value: data?.mediumSets        ?? 0, color: "#f59e0b", unit: c.unitSets },
+    { name: c.hard,           value: data?.hardSets          ?? 0, color: "#ef4444", unit: c.unitSets },
+    { name: c.totalQuestions, value: data?.totalQuestions    ?? 0, color: "#3b82f6", unit: c.unitQuestions },
+    { name: c.totalAttempts,  value: data?.totalAttempts     ?? 0, color: "#8b5cf6", unit: c.unitAttempts },
   ];
 
   const maxVal = Math.max(...chartData.map((d) => d.value), 1);
@@ -39,8 +42,8 @@ export function AdminPlatformBarChart({ data, loading }: Props) {
   return (
     <div ref={ref} className="hr-glass-card flex flex-col p-6">
       <div className="mb-3">
-        <h3 className={cn("text-base font-bold", portalHeadingAlt)}>Thống kê bộ câu hỏi</h3>
-        <p className={cn("mt-0.5 text-xs", portalSubtextAlt)}>Phân bổ theo độ khó và hoạt động</p>
+        <h3 className={cn("text-base font-bold", portalHeadingAlt)}>{c.title}</h3>
+        <p className={cn("mt-0.5 text-xs", portalSubtextAlt)}>{c.subtitle}</p>
       </div>
 
       {loading ? (
@@ -70,7 +73,7 @@ export function AdminPlatformBarChart({ data, loading }: Props) {
               formatter={(value, _name, item) => {
                 const num = typeof value === "number" ? value : Number(value ?? 0);
                 const unit = (item?.payload as { unit?: string } | undefined)?.unit ?? "";
-                return [`${num.toLocaleString()} ${unit}`, "Số lượng"];
+                return [`${num.toLocaleString()} ${unit}`, c.quantity];
               }}
               contentStyle={{
                 fontSize: 12,

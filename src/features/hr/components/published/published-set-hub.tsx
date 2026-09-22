@@ -69,6 +69,8 @@ export function PublishedSetHub({ questionSetId }: { questionSetId: string }) {
   const [error, setError] = useState(false);
   const [unpublishing, setUnpublishing] = useState(false);
   const [showHiddenQuestions, setShowHiddenQuestions] = useState(false);
+  /** SCRUM-471: bộ Tuyển — bật để xem thêm phiên luyện */
+  const [includePractice, setIncludePractice] = useState(false);
 
   const setTab = useCallback(
     (next: HubTab) => {
@@ -85,9 +87,8 @@ export function PublishedSetHub({ questionSetId }: { questionSetId: string }) {
     setLoading(true);
     setError(false);
     try {
-      const [d, prac, fb] = await Promise.all([
+      const [d, fb] = await Promise.all([
         getDraft(questionSetId),
-        getPractitioners(questionSetId),
         getHrQuestionSetFeedback(questionSetId, 1, 20),
       ]);
       if (!d) {
@@ -95,6 +96,10 @@ export function PublishedSetHub({ questionSetId }: { questionSetId: string }) {
         return;
       }
       setDraft(d);
+      const hiring = Boolean(d.isHiringAssessment);
+      const prac = await getPractitioners(questionSetId, {
+        includePractice: hiring && includePractice,
+      });
       setPractitioners(prac);
       setFeedbackItems(fb.items);
       setFeedbackTotal(fb.totalCount);
@@ -104,7 +109,7 @@ export function PublishedSetHub({ questionSetId }: { questionSetId: string }) {
     } finally {
       setLoading(false);
     }
-  }, [questionSetId]);
+  }, [questionSetId, includePractice]);
 
   useEffect(() => {
     void reload();
@@ -135,7 +140,14 @@ export function PublishedSetHub({ questionSetId }: { questionSetId: string }) {
     setUnpublishing(true);
     try {
       const abandoned = await unpublishQuestionSet(questionSetId);
-      addToast("success", withAbandonedToast(h.unpublishSuccess, abandoned));
+      addToast(
+        "success",
+        withAbandonedToast(
+          Boolean(draft?.isHiringAssessment) ? h.unpublishSuccessHiring : h.unpublishSuccess,
+          abandoned,
+          t.historyPage.unpublishAbandoned
+        )
+      );
       router.push("/hr/published");
     } catch (err) {
       addToast("error", err instanceof Error && err.message ? err.message : h.actionFailed);
@@ -169,12 +181,13 @@ export function PublishedSetHub({ questionSetId }: { questionSetId: string }) {
   }
 
   const isPublished = draft.status === "PUBLISHED";
+  const isHiring = Boolean(draft.isHiringAssessment);
   const questionsForTab = showHiddenQuestions ? draft.questions : liveQuestions;
 
   const tabLabel: Record<HubTab, string> = {
     overview: h.tabOverview,
     questions: h.tabQuestions,
-    practitioners: h.tabPractitioners,
+    practitioners: isHiring ? h.tabApplicants : h.tabPractitioners,
     feedback: h.tabFeedback,
   };
 
@@ -206,13 +219,19 @@ export function PublishedSetHub({ questionSetId }: { questionSetId: string }) {
             <span
               className={cn(
                 "inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-semibold",
-                isPublished
-                  ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400"
-                  : "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400"
+                !isPublished
+                  ? "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400"
+                  : isHiring
+                    ? "bg-violet-50 text-violet-700 dark:bg-violet-950/40 dark:text-violet-300"
+                    : "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400"
               )}
             >
               {isPublished ? <Globe size={11} /> : <FileText size={11} />}
-              {isPublished ? h.statusPublished : h.statusDraft}
+              {!isPublished
+                ? h.statusDraft
+                : isHiring
+                  ? h.statusPublishedHiring
+                  : h.statusPublishedMarketplace}
             </span>
           </div>
           <p className={cn("mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs", portalSubtext)}>
@@ -293,9 +312,9 @@ export function PublishedSetHub({ questionSetId }: { questionSetId: string }) {
             {[
               {
                 icon: Users,
-                label: h.metricAttempts,
+                label: isHiring ? h.metricApplicants : h.metricAttempts,
                 value: String(practitioners.length),
-                sub: h.metricAttemptsSub
+                sub: (isHiring ? h.metricApplicantsSub : h.metricAttemptsSub)
                   .replace("{{done}}", String(completed.length))
                   .replace("{{progress}}", String(inProgress)),
               },
@@ -337,7 +356,9 @@ export function PublishedSetHub({ questionSetId }: { questionSetId: string }) {
           <div className="grid gap-5 lg:grid-cols-2">
             <section className="space-y-2">
               <div className="flex items-center justify-between">
-                <h3 className={cn("text-sm font-semibold", portalHeading)}>{h.recentPractitioners}</h3>
+                <h3 className={cn("text-sm font-semibold", portalHeading)}>
+                  {isHiring ? h.recentApplicants : h.recentPractitioners}
+                </h3>
                 <button type="button" onClick={() => setTab("practitioners")} className="text-xs font-semibold text-primary hover:underline">
                   {h.viewAll}
                 </button>
@@ -346,6 +367,7 @@ export function PublishedSetHub({ questionSetId }: { questionSetId: string }) {
                 items={practitioners}
                 questionSetId={questionSetId}
                 questionSetTitle={draft.jobTitle}
+                isHiringAssessment={isHiring}
                 limit={5}
               />
             </section>
@@ -409,7 +431,7 @@ export function PublishedSetHub({ questionSetId }: { questionSetId: string }) {
                     >
                       {live ? (
                         <>
-                          <Globe size={10} /> {h.badgeLive}
+                          <Globe size={10} /> {isHiring ? h.badgeLiveHiring : h.badgeLive}
                         </>
                       ) : (
                         <>
@@ -429,11 +451,28 @@ export function PublishedSetHub({ questionSetId }: { questionSetId: string }) {
       )}
 
       {tab === "practitioners" && (
-        <PublishedHubPractitioners
-          items={practitioners}
-          questionSetId={questionSetId}
-          questionSetTitle={draft.jobTitle}
-        />
+        <div className="space-y-3">
+          {isHiring && (
+            <label className="flex cursor-pointer items-start gap-2.5 rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 dark:border-gray-800 dark:bg-gray-950/40">
+              <input
+                type="checkbox"
+                checked={includePractice}
+                onChange={(e) => setIncludePractice(e.target.checked)}
+                className="mt-0.5 accent-primary"
+              />
+              <span>
+                <span className={cn("block text-xs font-semibold", portalHeading)}>{h.showPracticeToggle}</span>
+                <span className={cn("block text-[11px] mt-0.5", portalSubtext)}>{h.showPracticeHint}</span>
+              </span>
+            </label>
+          )}
+          <PublishedHubPractitioners
+            items={practitioners}
+            questionSetId={questionSetId}
+            questionSetTitle={draft.jobTitle}
+            isHiringAssessment={isHiring}
+          />
+        </div>
       )}
 
       {tab === "feedback" && <PublishedHubFeedback questionSetId={questionSetId} />}

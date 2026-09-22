@@ -15,6 +15,7 @@ export interface RubricEditorLabels {
   anchorsTitle: string;
   readyBadge: string;
   notReadyBadge: string;
+  resetTemplate: string;
   sumHint: (sum: number) => string;
 }
 
@@ -26,6 +27,7 @@ const DEFAULT_LABELS: RubricEditorLabels = {
   anchorsTitle: "Mốc chấm",
   readyBadge: "Sẵn sàng publish",
   notReadyBadge: "Chưa đủ tiêu chí",
+  resetTemplate: "Đặt lại khung",
   sumHint: (sum) => `Tổng trọng số: ${sum}% (cần 100%)`,
 };
 
@@ -211,7 +213,7 @@ export function RubricEditor({
           onClick={() => onChange(emptyRubric(value.level))}
           className="mt-2 text-[10px] text-gray-500 underline dark:text-gray-400"
         >
-          Đặt lại khung
+          {labels.resetTemplate}
         </button>
       )}
     </div>

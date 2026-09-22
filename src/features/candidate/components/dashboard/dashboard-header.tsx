@@ -91,7 +91,7 @@ export function DashboardHeader({ timeRange, onTimeRangeChange, activeDate, onDa
                 type="button"
                 onClick={() => onDateChange(null)}
                 className="ml-0.5 opacity-60 hover:opacity-100 transition-opacity"
-                aria-label="Xóa ngày đã chọn"
+                aria-label={t.common.clearSelectedDate}
               >
                 <X size={10} />
               </button>
@@ -109,7 +109,7 @@ export function DashboardHeader({ timeRange, onTimeRangeChange, activeDate, onDa
                   ? "text-primary"
                   : "text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-200"
               )}
-              title="Chọn ngày cụ thể"
+              title={t.common.pickDate}
             >
               <CalendarDays size={13} />
             </button>
@@ -123,13 +123,13 @@ export function DashboardHeader({ timeRange, onTimeRangeChange, activeDate, onDa
                 const val = e.target.value;
                 if (val) onDateChange(val);
               }}
-              aria-label="Chọn ngày phân tích"
+              aria-label={t.common.pickAnalysisDate}
             />
           </div>
         </div>
 
         <Link
-          href="/candidate/roadmap"
+          href="/candidate/coach"
           className={cn(
             "hidden sm:flex items-center gap-1.5 h-9 px-3.5 rounded-lg text-[12px] font-[600] border border-gray-200 dark:border-gray-700 hover:border-primary/40 transition-colors",
             portalHeadingAlt

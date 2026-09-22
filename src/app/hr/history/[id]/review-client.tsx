@@ -137,18 +137,31 @@ export function HrReviewPageClient() {
         initialTimeLimitMinutes={draft.timeLimitMinutes}
         initialAutoRecommendEnabled={draft.autoRecommendEnabled ?? true}
         initialRecommendationMinScore={draft.recommendationMinScore ?? 70}
+        initialIsHiringAssessment={draft.isHiringAssessment ?? false}
+        initialHrAntiCheatEnabled={draft.hrAntiCheatEnabled ?? false}
+        initialPublicJobDescription={draft.publicJobDescription ?? null}
+        initialHiringPosting={{
+          jobLocation: draft.jobLocation,
+          workplaceType: draft.workplaceType,
+          salaryMin: draft.salaryMin,
+          salaryMax: draft.salaryMax,
+          salaryNegotiable: draft.salaryNegotiable,
+          jobExpertise: draft.jobExpertise,
+          jobDomain: draft.jobDomain,
+        }}
+        jdFileUrl={draft.jdFileUrl ?? null}
         onRenameTitle={async (title) => {
           try {
             const savedTitle = await renameQuestionSetTitle(draft.id, title);
             setDraft((prev) => (prev ? { ...prev, jobTitle: savedTitle } : prev));
-            addToast("success", t.reviewPage.renameSuccess ?? "Đã đổi tên.");
+            addToast("success", t.reviewPage.renameSuccess);
             return true;
           } catch (err) {
             addToast(
               "error",
               err instanceof Error && err.message
                 ? err.message
-                : (t.reviewPage.renameFailed ?? "Không đổi được tên.")
+                : (t.reviewPage.renameFailed)
             );
             return false;
           }

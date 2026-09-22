@@ -123,11 +123,11 @@ function EditFeedbackModal({ feedback, onClose, onSaved }: EditFeedbackModalProp
     setSaving(true);
     try {
       await adminUpdateFeedback(feedback.id, { content: content.trim() || undefined, rating: rating || undefined });
-      addToast("success", t.adminPages.feedbacks.approveSuccess.replace("duyệt", "cập nhật").replace("Approved", "Updated"));
+      addToast("success", t.adminPages.feedbacks.updateSuccess);
       onSaved();
       onClose();
     } catch {
-      addToast("error", "Không thể cập nhật feedback. Vui lòng thử lại.");
+      addToast("error", t.adminPages.feedbacks.updateError);
     } finally {
       setSaving(false);
     }
@@ -148,7 +148,7 @@ function EditFeedbackModal({ feedback, onClose, onSaved }: EditFeedbackModalProp
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-800">
           <h3 className="text-[15px] font-bold text-gray-900 dark:text-gray-100">
-            Chỉnh sửa feedback
+            {t.common.editFeedback}
           </h3>
           <button type="button" onClick={onClose}
             className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
@@ -214,7 +214,7 @@ function EditFeedbackModal({ feedback, onClose, onSaved }: EditFeedbackModalProp
             {saving
               ? <span className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
               : <Save size={13} />}
-            {saving ? p.actions.approving : "Lưu thay đổi"}
+            {saving ? p.actions.approving : p.actions.saveChanges}
           </button>
         </div>
       </div>
@@ -564,7 +564,7 @@ export function AdminFeedbacksPage() {
                             type="button"
                             onClick={() => setEditTarget(fb)}
                             disabled={!!actioning}
-                            title="Chỉnh sửa"
+                            title={t.common.edit}
                             className={cn(
                               "feedback-action-btn w-7 h-7 flex items-center justify-center rounded-lg",
                               "transition-all duration-150 active:scale-90",

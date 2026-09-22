@@ -30,7 +30,7 @@ interface SessionRowProps {
 }
 
 function SessionRow({ session, scoreDelta, bookmarked, onToggleBookmark, pendingTooltip, menu }: SessionRowProps) {
-  const { lang } = useLanguage();
+  const { t, lang } = useLanguage();
   const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -91,6 +91,8 @@ function SessionRow({ session, scoreDelta, bookmarked, onToggleBookmark, pending
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
+          aria-label={t.common.moreActions}
+          aria-expanded={open}
           className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 dark:text-gray-500 hover:text-primary hover:bg-[#F5F3FF] dark:hover:bg-purple-950/30 transition-colors"
         >
           <MoreHorizontal size={15} />

@@ -1,11 +1,11 @@
 ﻿"use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ChevronLeft, ChevronRight, X,
-  Loader2, Sparkles, AlertCircle, RefreshCw, Lock, Save, Crown,
+  Loader2, Sparkles, AlertCircle, RefreshCw, Lock, Save, Crown, ShieldAlert, Target,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { useLanguage } from "@/shared/providers/language-context";
@@ -28,6 +28,7 @@ import {
   completePracticeSession,
   abandonPracticeSession,
   getPracticeSession,
+  reportTabLeave,
   ForbiddenError,
 } from "@/features/candidate/services/practice-session.service";
 import { UpgradeModal } from "@/features/candidate/components/billing/upgrade-modal";
@@ -240,6 +241,18 @@ interface PracticeSessionProps {
 export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionProps) {
   const { t } = useLanguage();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  /**
+   * SCRUM-452: ?mode=coach — phiên đo năng lực AI Coach.
+   * Coach không tính XP/gamification (điểm chỉ dùng cho competency), và mỗi câu
+   * gắn với một skill trong framework nên hiển thị skill để ứng viên biết đang bị đo gì.
+   */
+  const isCoachMode = searchParams.get("mode") === "coach";
+  /** Giữ context coach khi điều hướng sang trang kết quả để trang đó ẩn XP và CTA về Coach. */
+  const resultHref = (sid: string) =>
+    isCoachMode
+      ? `/candidate/practice/${sid}/result?mode=coach`
+      : `/candidate/practice/${sid}/result`;
   const { addToast } = useToast();
   const { refreshSubscription } = useCandidateSubscription();
   const p = t.jobseekerPracticePage;
@@ -299,6 +312,14 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
     stopMonitoring,
   } = useAntiCheat();
 
+  /** SCRUM-446: snapshot anti-cheat từ BE lúc start. */
+  const [antiCheatEnabled, setAntiCheatEnabled] = useState(false);
+  const [antiCheatMaxTabLeaves, setAntiCheatMaxTabLeaves] = useState(3);
+  const [tabLeaveCount, setTabLeaveCount] = useState(0);
+  const [tabLeaveFlash, setTabLeaveFlash] = useState(false);
+  const antiCheatEnabledRef = useRef(false);
+  const reportingTabLeaveRef = useRef(false);
+
   const [draftSaveStatus, setDraftSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
   const draftSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -329,6 +350,9 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
   useEffect(() => {
     finishingRef.current = finishing;
   }, [finishing]);
+  useEffect(() => {
+    antiCheatEnabledRef.current = antiCheatEnabled;
+  }, [antiCheatEnabled]);
 
   // Integrity setup after session exists (phone model optional / may be unavailable)
   const canStartIntegrity =
@@ -367,11 +391,11 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
       }
       setIntegrityStarted(true);
     } catch {
-      addToast("error", "Could not start integrity monitoring");
+      addToast("error", p.integrityStartFailed);
     } finally {
       setIntegrityStarting(false);
     }
-  }, [sessionId, startMonitoring, addToast, integrityTerminated]);
+  }, [sessionId, startMonitoring, addToast, integrityTerminated, t.antiCheat.integrityStartFailed]);
 
   // Cleanup monitors on unmount
   useEffect(() => {
@@ -381,7 +405,11 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
     // eslint-disable-next-line react-hooks/exhaustive-deps -- unmount only
   }, []);
 
+  // SCRUM-446: anti-cheat ON -> khong pause dong ho (khong cong pausedOffsetMs).
+  // Gap dieu kien vao day de openExitDialog/closeExitDialog ben duoi tu dong
+  // co dung ngu nghia, khong phai nhan doi logic o tung call-site.
   function beginUiPause() {
+    if (antiCheatEnabledRef.current) return;
     if (pauseStartMsRef.current === null) {
       pauseStartMsRef.current = Date.now();
     }
@@ -389,10 +417,10 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
 
   function endUiPauseIfIdle() {
     if (exitOpenRef.current || warningOpenRef.current) return;
-    if (pauseStartMsRef.current !== null) {
+    if (!antiCheatEnabledRef.current && pauseStartMsRef.current !== null) {
       pausedOffsetMsRef.current += Date.now() - pauseStartMsRef.current;
-      pauseStartMsRef.current = null;
     }
+    pauseStartMsRef.current = null;
   }
 
   function isUiPaused(): boolean {
@@ -526,25 +554,18 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
         setSessionId(session.id);
         setStartedAt(session.startedAt ?? new Date().toISOString());
         setExpiresAt(session.expiresAt);
+        setAntiCheatEnabled(session.antiCheatEnabled);
+        setAntiCheatMaxTabLeaves(session.antiCheatMaxTabLeaves || 3);
+        setTabLeaveCount(session.tabLeaveCount || 0);
+        antiCheatEnabledRef.current = session.antiCheatEnabled;
+        // Anti-cheat off ⇒ no proctoring gate at all. Without this the candidate was
+        // still held behind the camera/face/phone checks and could not start the
+        // practice without a webcam, even though HR had disabled anti-cheat.
+        if (!session.antiCheatEnabled) setIntegrityStarted(true);
         setAnswers((prev) => ({ ...prev, ...answersMap }));
         setResumed(wasResumed);
 
-        // Khôi phục offset "đóng băng" từ lần "Lưu & Thoát" trước, chỉ cho phiên
-        // không có deadline cứng (estimated countdown / untimed) — phiên có expiresAt
-        // phải hiển thị thời gian thực còn lại của server.
-        if (!session.expiresAt && typeof window !== "undefined") {
-          const savedOffset = window.sessionStorage.getItem(`practice-exit-offset-${session.id}`);
-          const savedExitTs  = window.sessionStorage.getItem(`practice-exit-ts-${session.id}`);
-          if (savedOffset && savedExitTs) {
-            // Bù thêm thời gian điều hướng (từ lúc thoát đến lúc component này mount lại)
-            const navigationMs = Date.now() - parseInt(savedExitTs, 10);
-            pausedOffsetMsRef.current = parseInt(savedOffset, 10) + navigationMs;
-            window.sessionStorage.removeItem(`practice-exit-offset-${session.id}`);
-            window.sessionStorage.removeItem(`practice-exit-ts-${session.id}`);
-          }
-        }
-
-        if (wasResumed) addToast("success", p.resumedToast);
+        if (wasResumed && !session.antiCheatEnabled) addToast("success", p.resumedToast);
         const firstUnanswered = session.questions.findIndex(
           (q) => !hasAnswerText(answersMap[q.id])
         );
@@ -647,6 +668,57 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, []);
 
+  // SCRUM-446: khi anti-cheat ON, rời tab → báo BE (debounce phía server).
+  useEffect(() => {
+    if (!antiCheatEnabled || !sessionId) return;
+
+    async function onVisibilityChange() {
+      if (document.visibilityState !== "hidden") return;
+      if (finishingRef.current || timeUpRef.current) return;
+      if (reportingTabLeaveRef.current) return;
+      const sid = sessionIdRef.current;
+      if (!sid) return;
+
+      reportingTabLeaveRef.current = true;
+      try {
+        const result = await reportTabLeave(sid);
+        if (result.ignored) return;
+        setTabLeaveCount(result.tabLeaveCount);
+        setTabLeaveFlash(true);
+        window.setTimeout(() => setTabLeaveFlash(false), 4000);
+
+        if (result.autoSubmitted || result.status === "COMPLETED") {
+          addToast(
+            "error",
+            p.antiCheatAutoSubmitToast
+          );
+          if (!finishingRef.current) {
+            void handleFinish();
+          }
+          return;
+        }
+
+        const toastTpl =
+          p.antiCheatTabLeaveToast;
+        addToast(
+          "error",
+          toastTpl
+            .replace("{{n}}", String(result.tabLeaveCount))
+            .replace("{{max}}", String(result.antiCheatMaxTabLeaves || antiCheatMaxTabLeaves))
+        );
+      } catch {
+        // best-effort — không chặn làm bài nếu báo cáo fail
+      } finally {
+        reportingTabLeaveRef.current = false;
+      }
+    }
+
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", onVisibilityChange);
+    // handleFinish ổn định đủ qua refs; deps chính là antiCheat + session
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [antiCheatEnabled, sessionId, antiCheatMaxTabLeaves]);
+
   // Clear draft save status when the active question changes.
   useEffect(() => {
     setDraftSaveStatus("idle");
@@ -723,9 +795,12 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
     setFinishing(true);
     finishingRef.current = true;
     setFinishError(false);
-    // Stop integrity monitoring before navigating (intentional end — no FULLSCREEN_EXIT)
+    // Stop integrity monitoring before navigating (intentional end — no FULLSCREEN_EXIT).
+    // Only flip the gate closed when there IS a gate: with anti-cheat off nothing
+    // re-opens it, and a failed complete() below would leave the exam invisible
+    // with no way back.
     stopMonitoring();
-    setIntegrityStarted(false);
+    if (antiCheatEnabledRef.current) setIntegrityStarted(false);
     try {
       const answersSnapshot = answersRef.current;
       const idx = currentIdxRef.current;
@@ -751,8 +826,8 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
       }
 
       const result = await completePracticeSession(sid);
-      // Persist XP reward across navigation so the result page can show it.
-      if (result.xpReward && typeof window !== "undefined") {
+      // Coach: điểm dùng cho competency, không thưởng XP → không snapshot gamification.
+      if (result.xpReward && !isCoachMode && typeof window !== "undefined") {
         window.sessionStorage.setItem(
           `practice-xp-reward-${sid}`,
           JSON.stringify(result.xpReward)
@@ -788,14 +863,14 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
           );
         }
       }
-      router.push(`/candidate/practice/${sid}/result`);
+      router.push(resultHref(sid));
     } catch {
       // BE now enforces the question set's own time limit server-side and can
       // auto-complete a session before our client-side auto-submit reaches it —
       // complete() then 400s even though the session is actually done.
       const existing = await getPracticeSession(sid).catch(() => null);
       if (existing && existing.status !== "IN_PROGRESS") {
-        router.push(`/candidate/practice/${sid}/result`);
+        router.push(resultHref(sid));
         return;
       }
       setFinishError(true);
@@ -805,42 +880,11 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
     }
   }
 
-  async function handleSaveAndExit() {
-    const sid = sessionIdRef.current;
-    if (!sid) {
-      router.push(`/candidate/sets/${set.id}`);
-      return;
-    }
-
-    stopMonitoring();
-    setIntegrityStarted(false);
-
-    // Lưu tổng thời gian bị "đóng băng" (bao gồm cả khoảng dialog đang mở ngay lúc này).
-    // Khi người dùng "Tiếp Tục Luyện Tập", component mount lại → offset sẽ bị mất.
-    // Lưu vào sessionStorage để khôi phục, giúp timer tiếp tục từ chỗ đã dừng.
-    if (typeof window !== "undefined") {
-      const dialogOpenMs = pauseStartMsRef.current !== null
-        ? Date.now() - pauseStartMsRef.current
-        : 0;
-      const totalOffset = pausedOffsetMsRef.current + dialogOpenMs;
-      window.sessionStorage.setItem(`practice-exit-offset-${sid}`, String(totalOffset));
-      window.sessionStorage.setItem(`practice-exit-ts-${sid}`, String(Date.now()));
-    }
-
-    // Flush câu đang trả lời (nếu hợp lệ) trước khi thoát — phiên vẫn IN_PROGRESS trên server
-    // P0 fix: gate on hasAnswerText so any non-empty answer is saved, matching the UI "answered" check.
-    const currentQ = questions[currentIdxRef.current];
-    if (currentQ && !currentQ.isLocked) {
-      const text = answersRef.current[currentQ.id] ?? "";
-      if (hasAnswerText(text)) {
-        try {
-          await submitAnswerApi(sid, { questionId: currentQ.id, answerText: text });
-        } catch {
-          // best-effort — phiên vẫn còn trong sessionStorage
-        }
-      }
-    }
-    router.push(`/candidate/sets/${set.id}`);
+  /** SCRUM-469: thoát = abandon; về jobs nếu bộ Tuyển. */
+  function detailHrefAfterLeave() {
+    return set.isHiringAssessment
+      ? `/candidate/jobs/${set.id}`
+      : `/candidate/sets/${set.id}`;
   }
 
   function handleAbandon() {
@@ -853,7 +897,7 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
         if (typeof window !== "undefined") {
           questions.forEach((q) => window.sessionStorage.removeItem(draftKey(sessionId, q.id)));
         }
-        router.push(`/candidate/sets/${set.id}`);
+        router.push(detailHrefAfterLeave());
       })
       .catch(async () => {
         // Same server-side timeout race as handleFinish — if the session already
@@ -864,7 +908,7 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
           if (typeof window !== "undefined") {
             questions.forEach((q) => window.sessionStorage.removeItem(draftKey(sessionId, q.id)));
           }
-          router.push(`/candidate/sets/${set.id}`);
+          router.push(detailHrefAfterLeave());
           return;
         }
         setAbandoning(false);
@@ -965,14 +1009,39 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
     <>
     <ConfirmDialog
       open={exitOpen}
-      title={p.exitConfirmTitle}
-      message={p.exitConfirmMessage}
-      confirmLabel={p.exitConfirmBtn}
+      title={
+        antiCheatEnabled
+          ? p.antiCheatExitTitle
+          : set.isHiringAssessment
+            ? p.exitConfirmTitleHiring
+            : p.exitConfirmTitle
+      }
+      message={
+        antiCheatEnabled
+          ? p.antiCheatExitMessage
+          : set.isHiringAssessment
+            ? p.exitConfirmMessageHiring
+            : p.exitConfirmMessage
+      }
+      confirmLabel={
+        antiCheatEnabled
+          ? p.exitCancelBtn
+          : set.isHiringAssessment
+            ? p.exitConfirmBtnHiring
+            : p.exitConfirmBtn
+      }
       cancelLabel={p.exitCancelBtn}
-      variant="danger"
-      onConfirm={() => { void handleSaveAndExit(); }}
+      variant={antiCheatEnabled ? "primary" : "danger"}
+      loading={abandoning}
+      onConfirm={() => {
+        if (antiCheatEnabled) {
+          closeExitDialog();
+          return;
+        }
+        // SCRUM-469: thoát = ngắt phiên (abandon), không còn soft Save & Exit
+        handleAbandon();
+      }}
       onCancel={() => closeExitDialog()}
-      extraAction={{ label: p.abandonBtn, onClick: handleAbandon, loading: abandoning }}
     />
     <ConfirmDialog
       open={reviewOpen}
@@ -995,7 +1064,9 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
       onAcknowledge={handleAcknowledgeWarning}
     />
 
-    {/* Single camera instance — must stay mounted across setup → monitoring */}
+    {/* Single camera instance — must stay mounted across setup → monitoring.
+        Only mounted when anti-cheat is on: otherwise there is nothing to proctor. */}
+    {antiCheatEnabled && (
     <div
       className={cn(
         "z-50",
@@ -1074,6 +1145,7 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
       </div>
       <AntiCheatDebugPanel snapshot={debug} />
     </div>
+    )}
 
     <div
       className={cn(
@@ -1082,6 +1154,30 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
       )}
       aria-hidden={!integrityStarted}
     >
+      {antiCheatEnabled && (
+        <div
+          className={cn(
+            "px-4 md:px-8 py-2 flex items-center gap-2 text-[12px] font-medium border-b transition-colors",
+            tabLeaveFlash
+              ? "bg-amber-100 dark:bg-amber-950/50 text-amber-800 dark:text-amber-200 border-amber-200 dark:border-amber-900"
+              : "bg-violet-50 dark:bg-violet-950/40 text-violet-800 dark:text-violet-200 border-violet-100 dark:border-violet-900/50"
+          )}
+        >
+          <ShieldAlert size={14} className="shrink-0" />
+          <span className="flex-1 min-w-0">
+            {p.antiCheatBanner}
+            {tabLeaveCount > 0
+              ? ` (${tabLeaveCount}/${antiCheatMaxTabLeaves})`
+              : ""}
+          </span>
+        </div>
+      )}
+      {isCoachMode && (
+        <div className="px-4 md:px-8 py-2 flex items-center gap-2 text-[12px] font-medium border-b bg-violet-50 dark:bg-violet-950/40 text-violet-800 dark:text-violet-200 border-violet-100 dark:border-violet-900/50">
+          <Target size={14} className="shrink-0" />
+          <span className="flex-1 min-w-0">{p.coachModeBanner}</span>
+        </div>
+      )}
       {/* ── Top bar ─────────────────────────────────────────────────── */}
       <header className={cn("hr-topbar px-4 md:px-8 h-14 flex items-center justify-between shrink-0 border-b gap-2", portalDivider)}>
         {/* Left: set info */}
@@ -1154,10 +1250,16 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
               transition={{ duration: 0.25, ease: "easeInOut" }}
               className="hr-glass-card p-5 sm:p-8 border-l-[3px] border-l-violet-400/40 dark:border-l-violet-500/30"
             >
-              {/* Category + difficulty badges */}
-              <div className="flex items-center gap-2 mb-5">
+              {/* Category + difficulty badges (+ skill đang được đo khi ở chế độ coach) */}
+              <div className="flex items-center gap-2 mb-5 flex-wrap">
                 <CategoryPill category={question.category} label={formatCategoryLabel(question.category)} />
                 <DifficultyPill difficulty={question.difficulty} label={question.difficulty} />
+                {isCoachMode && question.skill && (
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-violet-300/60 dark:border-violet-700/60 bg-violet-50 dark:bg-violet-950/30 px-2.5 py-1 text-[11px] font-semibold text-violet-700 dark:text-violet-300">
+                    <Target size={11} />
+                    {question.skill}
+                  </span>
+                )}
               </div>
 
               {/* Question text */}

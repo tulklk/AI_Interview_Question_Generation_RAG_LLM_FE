@@ -426,7 +426,7 @@ export function SetDetail({ set }: SetDetailProps) {
     <div>
       {/* Back link */}
       <Link
-        href="/candidate"
+        href="/candidate/practice"
         className={cn("inline-flex items-center gap-1.5 text-[13px] font-medium hover:text-primary transition-colors mb-5", portalSubtextAlt)}
       >
         <ArrowLeft size={14} />
@@ -600,6 +600,8 @@ export function SetDetail({ set }: SetDetailProps) {
           transition={{ duration: 0.28, delay: 0.06 }}
           className="order-2 lg:order-1 hr-glass-card overflow-hidden"
         >
+          {/* SCRUM-470: hiring sets redirect tới /candidate/jobs/[id] — không render JD ở đây */}
+
           {/* ── Section: Interview Structure ─────────────────────────────── */}
           <div className={cn("px-5 py-3.5 border-b", portalDivider)}>
             <p className={cn("text-[14px] font-bold", portalHeadingAlt)}>{p.interviewPlanTitle}</p>

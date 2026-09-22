@@ -4,7 +4,7 @@
  * SCRUM-397 v4: cột giữa — composer đủ field như Studio Save.
  * Chia thành các mục thu gọn được + chip trạng thái để HR biết còn thiếu gì.
  */
-import { useState, type ReactNode } from "react";
+import { useState, type ReactNode, useMemo } from "react";
 import Link from "next/link";
 import {
   BookOpen,
@@ -185,7 +185,8 @@ function Section({
   hint,
   status,
   labels,
-  defaultOpen = true,
+  // SCRUM-477: mặc định đóng accordion khi tạo câu — mở từng mục khi cần
+  defaultOpen = false,
   children,
 }: {
   index: number;
@@ -250,6 +251,11 @@ function Section({
 export function QuestionBuilderComposer(props: Props) {
   const { t } = useLanguage();
   const qb = t.questionBuilder;
+  const re = t.rubricEditor;
+  const rubricLabels = useMemo(
+    () => ({ ...re, sumHint: (sum: number) => re.sumHint.replace("{{sum}}", String(sum)) }),
+    [re]
+  );
   const labels = { ...FALLBACK_TEXT, ...(qb as unknown as Partial<typeof FALLBACK_TEXT>) };
 
   /** Map content mode id → translated label */
@@ -425,7 +431,7 @@ export function QuestionBuilderComposer(props: Props) {
                       </span>
                       <span>
                         <span className={cn(portalHeading, "block text-xs font-semibold")}>
-                          {tpl.label}
+                          {qb.templateNames[tpl.id] ?? tpl.label}
                         </span>
                         <span className={cn(portalSubtext, "mt-0.5 block text-[10px] leading-snug")}>
                           {qb.templateHints[tpl.id]}
@@ -561,7 +567,7 @@ export function QuestionBuilderComposer(props: Props) {
                       : "bg-white text-gray-600 ring-1 ring-gray-200 hover:ring-gray-300 dark:bg-gray-800 dark:text-gray-300 dark:ring-gray-700"
                   )}
                 >
-                  {d}
+                  {qb.difficultyOptions[d]}
                 </button>
               ))}
             </div>
@@ -583,7 +589,7 @@ export function QuestionBuilderComposer(props: Props) {
                       : "bg-white text-gray-600 ring-1 ring-gray-200 hover:ring-gray-300 dark:bg-gray-800 dark:text-gray-300 dark:ring-gray-700"
                   )}
                 >
-                  {qt}
+                  {qb.questionTypeOptions[qt]}
                 </button>
               ))}
             </div>
@@ -649,6 +655,7 @@ export function QuestionBuilderComposer(props: Props) {
             questionType={questionType}
             contentMode={contentMode}
             disabled={saving}
+            labels={rubricLabels}
           />
 
           <div>

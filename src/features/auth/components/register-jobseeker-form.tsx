@@ -177,7 +177,13 @@ export function RegisterJobSeekerForm({ registerRole = "jobseeker" }: RegisterJo
     : password.length < 8 ? 2
     : /[A-Z]/.test(password) && /[0-9]/.test(password) ? 4
     : 3;
-  const strengthLabel = ["", "Weak", "Fair", "Good", "Strong"][passwordStrength];
+  const strengthLabel = [
+    "",
+    rp.passwordStrengthWeak,
+    rp.passwordStrengthFair,
+    rp.passwordStrengthGood,
+    rp.passwordStrengthStrong,
+  ][passwordStrength];
   const strengthColor = ["", "bg-red-400", "bg-amber-400", "bg-yellow-400", "bg-emerald-500"][passwordStrength];
 
   const filteredTech = TECH_OPTIONS.filter(
@@ -191,9 +197,9 @@ export function RegisterJobSeekerForm({ registerRole = "jobseeker" }: RegisterJo
 
   function validateStep1(): boolean {
     const errors: FieldErrors = {};
-    if (!fullName.trim()) errors.fullName = "Họ tên là bắt buộc";
+    if (!fullName.trim()) errors.fullName = rp.fullNameRequired;
     if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()))
-      errors.email = "Vui lòng nhập email hợp lệ";
+      errors.email = rp.emailInvalid;
     if (password.length < 8) {
       errors.password = rp.passwordTooShort;
     } else if (
@@ -225,9 +231,9 @@ export function RegisterJobSeekerForm({ registerRole = "jobseeker" }: RegisterJo
     setFieldErrors({});
 
     const errors: FieldErrors = {};
-    if (!targetRole.trim()) errors.targetRole = "Vị trí mục tiêu là bắt buộc";
-    if (!seniorityLevel) errors.seniorityLevel = "Vui lòng chọn cấp độ kinh nghiệm";
-    if (techStack.length === 0) errors.techStack = "Chọn ít nhất một công nghệ";
+    if (!targetRole.trim()) errors.targetRole = rp.targetRoleRequired;
+    if (!seniorityLevel) errors.seniorityLevel = rp.seniorityRequired;
+    if (techStack.length === 0) errors.techStack = rp.techStackRequired;
     if (Object.keys(errors).length > 0) {
       setFieldErrors(errors);
       return;

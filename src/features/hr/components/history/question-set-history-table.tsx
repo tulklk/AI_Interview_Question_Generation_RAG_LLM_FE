@@ -46,6 +46,7 @@ import {
   withAbandonedToast,
 } from "@/features/interview/services/interview.service";
 import { useHrSubscription } from "@/features/hr/context/hr-subscription-context";
+import { extractErrorMessage } from "@/core/interceptors/error.interceptor";
 import { QuestionSetFeedbackPanel } from "./question-set-feedback-panel";
 import {
   PublishDialog,
@@ -110,8 +111,9 @@ export function QuestionSetHistoryTable({ filter = "all" }: QuestionSetHistoryTa
   const dm = t.historyPage.deleteModal;
   const { addToast } = useToast();
   const router = useRouter();
-  const { planId } = useHrSubscription();
-  const isPremium = planId === "HR_PREMIUM";
+  const { hasFeature } = useHrSubscription();
+  // SCRUM-473: gate theo CanExport (Admin có thể bật/tắt), không hardcode planId
+  const canExport = hasFeature("export");
 
   const [items, setItems] = useState<HistoryQuestionSetItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -126,6 +128,8 @@ export function QuestionSetHistoryTable({ filter = "all" }: QuestionSetHistoryTa
   const [publishTimeLimit, setPublishTimeLimit] = useState<number | null>(null);
   const [publishAutoRecommend, setPublishAutoRecommend] = useState(true);
   const [publishMinScore, setPublishMinScore] = useState(70);
+  const [publishIsHiring, setPublishIsHiring] = useState(false);
+  const [publishHrAntiCheat, setPublishHrAntiCheat] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [sourceFilter, setSourceFilter] = useState<"all" | "studio" | "legacy">("all");
   const [questionFilter, setQuestionFilter] = useState<"all" | "1-5" | "6-10" | "11-20" | "21+">("all");
@@ -262,7 +266,7 @@ export function QuestionSetHistoryTable({ filter = "all" }: QuestionSetHistoryTa
             x.questionSetId === item.questionSetId ? { ...x, status: "DRAFT", publishedAt: null } : x
           )
         );
-        addToast("success", withAbandonedToast(t.historyPage.unpublishSuccess, abandoned));
+        addToast("success", withAbandonedToast(t.historyPage.unpublishSuccess, abandoned, t.historyPage.unpublishAbandoned));
       } catch (err) {
         addToast("error", err instanceof Error && err.message ? err.message : t.historyPage.actionFailed);
       } finally {
@@ -298,6 +302,8 @@ export function QuestionSetHistoryTable({ filter = "all" }: QuestionSetHistoryTa
       setPublishTimeLimit(draft.timeLimitMinutes ?? null);
       setPublishAutoRecommend(draft.autoRecommendEnabled ?? true);
       setPublishMinScore(draft.recommendationMinScore ?? 70);
+      setPublishIsHiring(draft.isHiringAssessment ?? false);
+      setPublishHrAntiCheat(draft.hrAntiCheatEnabled ?? false);
       setPublishTarget(item);
     } catch (err) {
       addToast("error", err instanceof Error && err.message ? err.message : t.historyPage.actionFailed);
@@ -315,6 +321,8 @@ export function QuestionSetHistoryTable({ filter = "all" }: QuestionSetHistoryTa
         timeLimitMinutes: payload.timeLimitMinutes,
         autoRecommendEnabled: payload.autoRecommendEnabled,
         recommendationMinScore: payload.recommendationMinScore,
+        isHiringAssessment: payload.isHiringAssessment,
+        hrAntiCheatEnabled: payload.hrAntiCheatEnabled,
       });
       setItems((prev) =>
         prev.map((x) =>
@@ -341,8 +349,9 @@ export function QuestionSetHistoryTable({ filter = "all" }: QuestionSetHistoryTa
     setBusyId(item.questionSetId);
     try {
       await exportHistoryQuestionSet(item.questionSetId, item.title);
+      addToast("success", ht.exportSuccess);
     } catch (err) {
-      addToast("error", err instanceof Error && err.message ? err.message : ht.exportDisabledTitle);
+      addToast("error", extractErrorMessage(err, lang === "vi" ? "vi" : "en") || ht.exportFailed);
     } finally {
       setBusyId(null);
     }
@@ -408,7 +417,7 @@ export function QuestionSetHistoryTable({ filter = "all" }: QuestionSetHistoryTa
             "focus:border-primary/60"
           )}
         >
-          <option value="all">Nguồn: Tất cả</option>
+          <option value="all">{filters.sourceAll}</option>
           <option value="studio">Studio</option>
           <option value="legacy">Legacy</option>
         </select>
@@ -427,11 +436,11 @@ export function QuestionSetHistoryTable({ filter = "all" }: QuestionSetHistoryTa
             "focus:border-primary/60"
           )}
         >
-          <option value="all">Số câu: Tất cả</option>
-          <option value="1-5">1–5 câu</option>
-          <option value="6-10">6–10 câu</option>
-          <option value="11-20">11–20 câu</option>
-          <option value="21+">21+ câu</option>
+          <option value="all">{filters.questionCountAll}</option>
+          <option value="1-5">{filters.questionCount1to5}</option>
+          <option value="6-10">{filters.questionCount6to10}</option>
+          <option value="11-20">{filters.questionCount11to20}</option>
+          <option value="21+">{filters.questionCount21plus}</option>
         </select>
 
         {/* Ngày */}
@@ -448,8 +457,8 @@ export function QuestionSetHistoryTable({ filter = "all" }: QuestionSetHistoryTa
             "focus:border-primary/60"
           )}
         >
-          <option value="newest">Ngày: Mới nhất</option>
-          <option value="oldest">Ngày: Cũ nhất</option>
+          <option value="newest">{filters.dateNewest}</option>
+          <option value="oldest">{filters.dateOldest}</option>
         </select>
 
         {/* Xóa lọc — chỉ hiện khi có filter đang active */}
@@ -466,7 +475,7 @@ export function QuestionSetHistoryTable({ filter = "all" }: QuestionSetHistoryTa
             className="inline-flex items-center gap-1 rounded-lg border border-gray-200 px-2 py-1.5 text-[12px] text-gray-500 transition-colors hover:border-red-300 hover:text-red-600 dark:border-gray-700 dark:text-gray-400 dark:hover:border-red-800 dark:hover:text-red-400"
           >
             <X size={11} />
-            Xóa lọc
+            {filters.clearFilters}
           </button>
         )}
       </div>
@@ -733,7 +742,8 @@ export function QuestionSetHistoryTable({ filter = "all" }: QuestionSetHistoryTa
             className="w-52 overflow-hidden rounded-lg border border-gray-200 bg-white py-1 shadow-lg dark:border-gray-700 dark:bg-gray-900"
           >
             <Link
-              href={`/hr/question-sets/${openMenuItem.questionSetId}/practitioners`}
+              // Gom về hub published — tránh 2 UI practitioners song song
+              href={`/hr/published/${openMenuItem.questionSetId}?tab=practitioners`}
               role="menuitem"
               className={menuItemCls}
               title={t.historyPage.practitionersTitle}
@@ -765,7 +775,7 @@ export function QuestionSetHistoryTable({ filter = "all" }: QuestionSetHistoryTa
               <MessageSquare size={14} className="shrink-0 opacity-70" />
               <span className="truncate">{t.historyPage.feedbackTitle}</span>
             </button>
-            {isPremium && (
+            {canExport && (
               <button
                 type="button"
                 role="menuitem"
@@ -822,8 +832,42 @@ export function QuestionSetHistoryTable({ filter = "all" }: QuestionSetHistoryTa
           currentTimeLimitMinutes={publishTimeLimit}
           initialAutoRecommendEnabled={publishAutoRecommend}
           initialRecommendationMinScore={publishMinScore}
+          initialIsHiringAssessment={publishIsHiring}
+          initialHrAntiCheatEnabled={publishHrAntiCheat}
           saving={publishing}
           onConfirm={(payload) => void confirmHistoryPublish(payload)}
+          onBeforeConfirm={async (payload) => {
+            if (!payload.isHiringAssessment || !publishTarget) return true;
+            try {
+              const draft = await getDraft(publishTarget.questionSetId);
+              if (!draft) {
+                addToast("error", t.historyPage.actionFailed);
+                return false;
+              }
+              if (!draft.publicJobDescription?.trim()) {
+                addToast("error", t.hiringMode.publicJdRequired);
+                return false;
+              }
+              const locationOk = Boolean(draft.jobLocation?.trim());
+              const expertiseOk = Boolean(draft.jobExpertise?.trim());
+              const domainOk = Boolean(draft.jobDomain?.trim());
+              const salaryOk =
+                draft.salaryNegotiable === true ||
+                draft.salaryMin != null ||
+                draft.salaryMax != null;
+              if (!locationOk || !expertiseOk || !domainOk || !salaryOk) {
+                addToast("error", t.hiringMode.postingIncomplete);
+                return false;
+              }
+              return true;
+            } catch (err) {
+              addToast(
+                "error",
+                err instanceof Error && err.message ? err.message : t.hiringMode.postingIncomplete
+              );
+              return false;
+            }
+          }}
           onClose={() => {
             if (!publishing) setPublishTarget(null);
           }}

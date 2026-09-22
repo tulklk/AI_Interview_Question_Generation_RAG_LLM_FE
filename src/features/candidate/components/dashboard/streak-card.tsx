@@ -3,9 +3,11 @@
 import { Flame, Trophy, CalendarDays, Clock, Target } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { portalHeadingAlt, portalSubtextAlt } from "@/shared/utils/portal-ui";
+import { useLanguage } from "@/shared/providers/language-context";
 import type { PracticeHeatmapResult } from "@/features/candidate/utils/dashboard-analytics";
 
-const WEEK_LABELS = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
+/** Labels for this card, resolved from the active language. */
+type StreakLabels = ReturnType<typeof useLanguage>["t"]["jobseekerDashboardPage"]["streakCard"];
 
 function toLocalDateStr(d: Date): string {
   const y = d.getFullYear();
@@ -14,19 +16,19 @@ function toLocalDateStr(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 
-function getMotivation(streak: number): { text: string; color: string } {
-  if (streak === 0) return { text: "Cố gắng lên nào! 🔥", color: "text-red-500 dark:text-red-400" };
-  if (streak < 3)   return { text: "Khởi động tốt! ⚡", color: "text-amber-500 dark:text-amber-400" };
-  if (streak < 7)   return { text: "Đang bứt phá! 🚀", color: "text-orange-500 dark:text-orange-400" };
-  if (streak < 14)  return { text: "Xuất sắc! Giữ vững! 🔥", color: "text-orange-500 dark:text-orange-400" };
-  return { text: "Huyền thoại rồi! 🏆", color: "text-violet-600 dark:text-violet-400" };
+function getMotivation(streak: number, s: StreakLabels): { text: string; color: string } {
+  if (streak === 0) return { text: s.motivation0, color: "text-red-500 dark:text-red-400" };
+  if (streak < 3)   return { text: s.motivation1, color: "text-amber-500 dark:text-amber-400" };
+  if (streak < 7)   return { text: s.motivation2, color: "text-orange-500 dark:text-orange-400" };
+  if (streak < 14)  return { text: s.motivation3, color: "text-orange-500 dark:text-orange-400" };
+  return { text: s.motivation4, color: "text-violet-600 dark:text-violet-400" };
 }
 
-function getNextMilestone(streak: number): { days: number; label: string } | null {
+function getNextMilestone(streak: number, s: StreakLabels): { days: number; label: string } | null {
   const milestones = [3, 7, 14, 30, 60, 100];
   const next = milestones.find((m) => m > streak);
   if (!next) return null;
-  return { days: next - streak, label: `${next} ngày` };
+  return { days: next - streak, label: s.milestoneDays.replace("{{n}}", String(next)) };
 }
 
 interface StreakCardProps {
@@ -35,6 +37,9 @@ interface StreakCardProps {
 }
 
 export function StreakCard({ heatmap, loading }: StreakCardProps) {
+  const { t } = useLanguage();
+  const s = t.jobseekerDashboardPage.streakCard;
+
   // ── Loading skeleton ────────────────────────────────────────────────────────
   if (loading) {
     return (
@@ -62,8 +67,8 @@ export function StreakCard({ heatmap, loading }: StreakCardProps) {
   }
 
   const { currentStreak, longestStreak, days } = heatmap;
-  const motivation = getMotivation(currentStreak);
-  const nextMilestone = getNextMilestone(currentStreak);
+  const motivation = getMotivation(currentStreak, s);
+  const nextMilestone = getNextMilestone(currentStreak, s);
 
   // Build activity map từ heatmap days
   const activityMap = new Map<string, boolean>();
@@ -85,7 +90,7 @@ export function StreakCard({ heatmap, loading }: StreakCardProps) {
     d.setDate(monday.getDate() + i);
     const dateStr = toLocalDateStr(d);
     return {
-      label: WEEK_LABELS[i],
+      label: s.weekdays[i],
       dateStr,
       isToday: dateStr === todayStr,
       isActive: activityMap.get(dateStr) ?? false,
@@ -108,11 +113,13 @@ export function StreakCard({ heatmap, loading }: StreakCardProps) {
 
       {/* ── Header ─────────────────────────────────────────────────────────── */}
       <div className="flex items-center justify-between">
-        <h3 className={cn("text-[15px] font-bold", portalHeadingAlt)}>Streak của bạn</h3>
+        <h3 className={cn("text-[15px] font-bold", portalHeadingAlt)}>{s.title}</h3>
         {nextMilestone && (
           <span className="flex items-center gap-1 text-[10px] font-semibold text-orange-500 dark:text-orange-400">
             <Target size={9} className="text-orange-500 dark:text-orange-400" />
-            Còn {nextMilestone.days} ngày → {nextMilestone.label}
+            {s.nextMilestone
+              .replace("{{days}}", String(nextMilestone.days))
+              .replace("{{label}}", nextMilestone.label)}
           </span>
         )}
       </div>
@@ -128,7 +135,7 @@ export function StreakCard({ heatmap, loading }: StreakCardProps) {
           <p className={cn("leading-none tabular-nums", portalHeadingAlt)}>
             <span className="text-[32px] font-extrabold">{currentStreak}</span>
             <span className="text-[13px] font-semibold text-gray-400 dark:text-gray-500 ml-1.5">
-              ngày liên tiếp
+              {s.daysInARow}
             </span>
           </p>
           <p className={cn("text-[12px] font-semibold mt-1.5", motivation.color)}>
@@ -141,10 +148,10 @@ export function StreakCard({ heatmap, loading }: StreakCardProps) {
       <div>
         <div className="flex items-center justify-between mb-2">
           <span className={cn("text-[10px] font-semibold uppercase tracking-wide", portalSubtextAlt)}>
-            Tuần này
+            {s.thisWeek}
           </span>
           <span className="text-[10px] font-bold text-amber-500 dark:text-amber-400">
-            {weekActiveDays}/7 ngày
+            {s.weekProgress.replace("{{n}}", String(weekActiveDays))}
           </span>
         </div>
 
@@ -192,9 +199,9 @@ export function StreakCard({ heatmap, loading }: StreakCardProps) {
         <div className="flex items-center gap-2">
           <CalendarDays size={13} className="text-orange-500 dark:text-orange-400 shrink-0" />
           <div className="min-w-0">
-            <p className="text-[10px] text-gray-500 dark:text-gray-400 leading-none mb-0.5">Tháng này</p>
+            <p className="text-[10px] text-gray-500 dark:text-gray-400 leading-none mb-0.5">{s.thisMonth}</p>
             <p className={cn("text-[13px] font-bold leading-none", portalHeadingAlt)}>
-              {monthActiveDays} <span className="text-[10px] font-medium text-gray-400">ngày</span>
+              {monthActiveDays} <span className="text-[10px] font-medium text-gray-400">{s.monthUnit}</span>
             </p>
           </div>
         </div>
@@ -202,9 +209,9 @@ export function StreakCard({ heatmap, loading }: StreakCardProps) {
         <div className="flex items-center gap-2">
           <Clock size={13} className="text-orange-500 dark:text-orange-400 shrink-0" />
           <div className="min-w-0">
-            <p className="text-[10px] text-gray-500 dark:text-gray-400 leading-none mb-0.5">Tổng luyện tập</p>
+            <p className="text-[10px] text-gray-500 dark:text-gray-400 leading-none mb-0.5">{s.totalPractice}</p>
             <p className={cn("text-[13px] font-bold leading-none", portalHeadingAlt)}>
-              {totalHours} <span className="text-[10px] font-medium text-gray-400">giờ</span>
+              {totalHours} <span className="text-[10px] font-medium text-gray-400">{s.hoursUnit}</span>
             </p>
           </div>
         </div>
@@ -214,11 +221,11 @@ export function StreakCard({ heatmap, loading }: StreakCardProps) {
       <div className="flex items-center gap-2 pt-3 border-t border-gray-100 dark:border-gray-800/80">
         <Trophy size={13} className="text-amber-500 shrink-0" />
         <span className={cn("text-[12px] font-semibold", portalSubtextAlt)}>
-          Kỷ lục:{" "}
+          {s.recordLabel}{" "}
           <span className={cn("font-extrabold", portalHeadingAlt)}>
             {longestStreak}
           </span>{" "}
-          ngày
+          {s.recordUnit}
         </span>
       </div>
     </div>

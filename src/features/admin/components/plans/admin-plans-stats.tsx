@@ -479,6 +479,7 @@ export function AdminPlansStats({ refreshToken = 0 }: AdminPlansStatsProps) {
                 type="button"
                 disabled={txPage === 1 || txFading}
                 onClick={() => goToPage(txPage - 1)}
+                aria-label={t.common.prevPageShort}
                 className="inline-flex items-center justify-center w-7 h-7 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors duration-150"
               >
                 <ChevronLeft size={13} />
@@ -515,6 +516,7 @@ export function AdminPlansStats({ refreshToken = 0 }: AdminPlansStatsProps) {
                 type="button"
                 disabled={txPage === totalTxPages || txFading}
                 onClick={() => goToPage(txPage + 1)}
+                aria-label={t.common.nextPageShort}
                 className="inline-flex items-center justify-center w-7 h-7 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors duration-150"
               >
                 <ChevronRight size={13} />

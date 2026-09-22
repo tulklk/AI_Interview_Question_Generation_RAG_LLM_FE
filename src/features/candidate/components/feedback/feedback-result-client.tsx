@@ -1,7 +1,8 @@
 ﻿"use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useParams } from "next/navigation";
+import Link from "next/link";
+import { useParams, useSearchParams } from "next/navigation";
 import { AlertCircle, RefreshCw, Lock } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { JobseekerAppShell } from "@/features/candidate/components/layout/jobseeker-app-shell";
@@ -28,7 +29,7 @@ import { useLanguage } from "@/shared/providers/language-context";
 import { portalSubtextAlt } from "@/shared/utils/portal-ui";
 import { registerScoringSession, markScoringDone, removeScoringEntry } from "@/features/candidate/components/ui/scoring-progress-badge";
 import { cleanTitle } from "@/features/candidate/utils/clean-title";
-import { isCoachGeneratedSetId } from "@/features/candidate/utils/coach-job-storage";
+import { isCoachGeneratedSetId, isCoachDrillTitle, looksLikeCoachSet } from "@/features/candidate/utils/coach-job-storage";
 import type { XpReward } from "@/features/gamification/types/gamification.types";
 
 // AI scoring can still be in progress right after "complete" — the score comes
@@ -40,6 +41,9 @@ const SCORE_POLL_MAX_ATTEMPTS = 8;
 export function FeedbackResultClient() {
   const params = useParams<{ id: string }>();
   const sessionId = params.id ?? "";
+  const searchParams = useSearchParams();
+  /** Practice session gắn ?mode=coach khi điều hướng sang đây — nguồn tin cậy hơn heuristic theo title. */
+  const coachModeParam = searchParams.get("mode") === "coach";
   const { t } = useLanguage();
   const p = t.jobseekerFeedbackPage;
 
@@ -53,6 +57,7 @@ export function FeedbackResultClient() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [forbidden, setForbidden] = useState(false);
+  const [notFound, setNotFound] = useState(false);
   const [scoring, setScoring] = useState(false);
   /** P4: true when the score poll exhausted all attempts and still no score. */
   const [scoringTimedOut, setScoringTimedOut] = useState(false);
@@ -115,6 +120,7 @@ export function FeedbackResultClient() {
     setLoading(true);
     setError(false);
     setForbidden(false);
+    setNotFound(false);
     setSet(null);
     setFeedback({});
     setAiInsight(null);
@@ -165,7 +171,9 @@ export function FeedbackResultClient() {
       .then((s) => {
         if (cancelled) return;
         if (!s) {
-          setError(true);
+          // getPracticeSession only resolves to null on a 404 — a permanent miss,
+          // so show "no longer exists" instead of the retryable "not ready yet".
+          setNotFound(true);
           return;
         }
         setSession(s);
@@ -285,16 +293,35 @@ export function FeedbackResultClient() {
     <JobseekerAppShell
       pageTitle={p.pageTitle}
       fullWidth
-      breadcrumb={[
-        { label: "jobseeker", href: "/candidate/dashboard" },
-        { label: "history", href: "/candidate/history" },
-        { label: "feedback" },
-      ]}
+      breadcrumb={
+        isCoachGeneratedSetId(session?.questionSetId ?? "") ||
+        looksLikeCoachSet(set?.title, set?.company)
+          ? [
+              { label: "jobseeker", href: "/candidate/dashboard" },
+              { label: "AI Coach", href: "/candidate/coach" },
+              { label: "feedback" },
+            ]
+          : [
+              { label: "jobseeker", href: "/candidate/dashboard" },
+              { label: "history", href: "/candidate/history" },
+              { label: "feedback" },
+            ]
+      }
     >
       {loading && (
         /* Centre within the content pane (sidebar is w-62.5 = 250 px on lg+) */
         <div className="fixed inset-0 lg:left-62.5 flex items-center justify-center z-10 pointer-events-none">
           <AiLoadingSpinner text={p.loadingFeedback} subtext={p.loadingFeedbackSub} />
+        </div>
+      )}
+
+      {!loading && notFound && (
+        <div className="flex flex-col items-center gap-3 py-20 text-center">
+          <AlertCircle size={28} className="text-gray-400 dark:text-gray-500" />
+          <p className={cn("text-[14px] max-w-sm", portalSubtextAlt)}>{p.feedbackNotFound}</p>
+          <Link href="/candidate/history" className="text-[13px] font-semibold text-primary hover:underline">
+            {p.backToHistoryBtn}
+          </Link>
         </div>
       )}
 
@@ -305,7 +332,7 @@ export function FeedbackResultClient() {
         </div>
       )}
 
-      {!loading && !forbidden && error && (
+      {!loading && !forbidden && !notFound && error && (
         <div className="flex flex-col items-center gap-3 py-20 text-center">
           <AlertCircle size={28} className="text-red-500" />
           <p className={cn("text-[14px]", portalSubtextAlt)}>{p.feedbackLoadFailed}</p>
@@ -320,8 +347,15 @@ export function FeedbackResultClient() {
         </div>
       )}
 
-      {!loading && !error && !forbidden && session && (
+      {!loading && !error && !forbidden && !notFound && session && (
         <>
+          {(() => {
+            const coach =
+              coachModeParam ||
+              Boolean(session.questionSetId && isCoachGeneratedSetId(session.questionSetId)) ||
+              looksLikeCoachSet(set?.title, set?.company);
+            const drill = coach && isCoachDrillTitle(set?.title);
+            return (
           <FeedbackPage
             session={session}
             feedback={feedback}
@@ -334,14 +368,19 @@ export function FeedbackResultClient() {
             companyName={set?.company}
             companyLogoUrl={set?.companyLogoUrl}
             previousScore={previousScore}
-            xpReward={xpReward}
+            xpReward={coach ? null : xpReward}
+            isCoachSession={coach}
+            isCoachDrill={drill}
           />
+            );
+          })()}
 
           {/* Rating dialog — shows once after completion if no prior feedback.
               Hidden for drill sets and AI Coach-generated sets. */}
           {session.questionSetId &&
             !/^drill\b/i.test(set?.title?.trim() ?? "") &&
-            !isCoachGeneratedSetId(session.questionSetId) && (
+            !isCoachGeneratedSetId(session.questionSetId) &&
+            !looksLikeCoachSet(set?.title, set?.company) && (
             <QuestionSetFeedbackDialog
               open={showFeedbackDialog}
               questionSetId={session.questionSetId}

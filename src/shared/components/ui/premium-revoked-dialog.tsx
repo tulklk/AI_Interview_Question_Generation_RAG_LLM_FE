@@ -44,13 +44,13 @@ export function PremiumRevokedDialog({
   const hrLost = isVi
     ? [
         "Tạo bộ câu hỏi không giới hạn",
-        "Export PDF / DOCX",
+        "Xuất Excel",
         "Ask-AI trong Studio",
         "Publish lên Marketplace",
       ]
     : [
         "Unlimited question set generation",
-        "Export PDF / DOCX",
+        "Export Excel",
         "Ask-AI in Studio",
         "Publish to Marketplace",
       ];

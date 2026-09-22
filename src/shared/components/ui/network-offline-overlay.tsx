@@ -3,10 +3,12 @@
 import { useEffect, useState } from "react";
 import { WifiOff, RefreshCw } from "lucide-react";
 import { AiLoadingSpinner } from "@/shared/components/common/ai-loading-spinner";
+import { useLanguage } from "@/shared/providers/language-context";
 
 type Phase = "online" | "offline" | "reconnecting";
 
 export function NetworkOfflineOverlay() {
+  const { t } = useLanguage();
   const [phase, setPhase] = useState<Phase>("online");
 
   useEffect(() => {
@@ -47,11 +49,10 @@ export function NetworkOfflineOverlay() {
           </div>
 
           <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-2">
-            Mất kết nối internet
+            {t.common.offlineTitle}
           </h2>
           <p className="text-sm text-gray-500 dark:text-gray-400 text-center max-w-xs leading-relaxed mb-6">
-            Vui lòng kiểm tra kết nối Wi-Fi hoặc dữ liệu di động của bạn. Trang
-            sẽ tự động tải lại khi có kết nối.
+            {t.common.offlineBody}
           </p>
 
           <button
@@ -65,13 +66,13 @@ export function NetworkOfflineOverlay() {
             className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-800 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
           >
             <RefreshCw size={14} />
-            Thử lại
+            {t.common.offlineRetry}
           </button>
         </>
       ) : (
         <AiLoadingSpinner
-          text="Đang kết nối lại..."
-          subtext="Kết nối đã được khôi phục. Đang tải lại trang..."
+          text={t.common.offlineReconnecting}
+          subtext={t.common.offlineReconnectingSub}
         />
       )}
     </div>

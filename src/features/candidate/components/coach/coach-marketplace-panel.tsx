@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { AlertCircle, ArrowRight, RefreshCw, Sparkles, Store } from "lucide-react";
 import { cn } from "@/lib/cn";
@@ -8,6 +8,7 @@ import { portalHeadingAlt, portalSubtextAlt } from "@/shared/utils/portal-ui";
 import { useLanguage } from "@/shared/providers/language-context";
 import { listQuestionSets } from "@/features/candidate/services/question-set.service";
 import { cleanTitle } from "@/features/candidate/utils/clean-title";
+import { fillTemplate } from "@/features/candidate/utils/dashboard-analytics";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import type { QuestionSet } from "@/features/candidate/types/jobseeker";
 
@@ -23,24 +24,23 @@ function difficultyClass(d: string) {
 function SetRow({ set, rank }: { set: QuestionSet; rank: number }) {
   const { t } = useLanguage();
   const p = t.jobseekerCoachPage;
-
   const matchPct = set.matchPercent ?? 0;
   const hasMatch = matchPct > 0;
-  /** Top-ranked AND highest match — show a "best fit" highlight strip */
   const isBest = rank === 0 && hasMatch;
+  const diffLabel =
+    set.difficulty === "Easy" ? p.easy : set.difficulty === "Hard" ? p.hard : p.medium;
 
   return (
     <Link
-      href={`/candidate/sets/${set.id}`}
+      href={set.isHiringAssessment ? `/candidate/jobs/${set.id}` : `/candidate/sets/${set.id}`}
       className={cn(
-        "flex items-center gap-3 px-4 py-3 transition-colors group",
+        "flex items-center gap-2.5 px-3 py-2.5 transition-colors group",
         "border-b border-gray-100 dark:border-gray-800 last:border-0",
         isBest
           ? "bg-violet-50/60 dark:bg-violet-950/20 hover:bg-violet-50 dark:hover:bg-violet-950/30"
           : "hover:bg-gray-50 dark:hover:bg-gray-800/60"
       )}
     >
-      {/* Company logo / avatar */}
       {set.companyLogoUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
@@ -49,7 +49,7 @@ function SetRow({ set, rank }: { set: QuestionSet; rank: number }) {
           loading="lazy"
           decoding="async"
           className={cn(
-            "w-9 h-9 rounded-lg object-cover shrink-0 border",
+            "w-8 h-8 rounded-lg object-cover shrink-0 border",
             isBest
               ? "border-violet-200 dark:border-violet-800"
               : "border-gray-100 dark:border-gray-700"
@@ -58,7 +58,7 @@ function SetRow({ set, rank }: { set: QuestionSet; rank: number }) {
       ) : (
         <div
           className={cn(
-            "w-9 h-9 rounded-lg text-white text-[11px] font-bold flex items-center justify-center shrink-0",
+            "w-8 h-8 rounded-lg text-white text-[10px] font-bold flex items-center justify-center shrink-0",
             set.companyColor
           )}
         >
@@ -66,150 +66,174 @@ function SetRow({ set, rank }: { set: QuestionSet; rank: number }) {
         </div>
       )}
 
-      {/* Title + meta */}
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-1.5 min-w-0">
-          <p className={cn("text-[13px] font-semibold truncate leading-snug", portalHeadingAlt)}>
-            {cleanTitle(set.title)}
-          </p>
-        </div>
-
-        <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-          {/* CV match badge */}
+        <p className={cn("text-[12px] font-semibold truncate leading-snug", portalHeadingAlt)}>
+          {cleanTitle(set.title)}
+        </p>
+        <div className="flex items-center gap-1 mt-0.5 min-w-0">
           {hasMatch && (
             <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-violet-600 dark:text-violet-400 shrink-0">
-              <Sparkles size={9} />
-              Khớp CV {Math.round(matchPct)}%
+              <Sparkles size={8} />
+              {fillTemplate(t.jobseekerMarketplacePage.matchPercent, {
+                n: String(Math.round(matchPct)),
+              })}
             </span>
           )}
-          {hasMatch && (
-            <span className={cn("text-[10px]", portalSubtextAlt)}>·</span>
-          )}
-          <p className={cn("text-[11px] truncate", portalSubtextAlt)}>
-            {set.company || p.marketplaceCardTitle}
+          <p className={cn("text-[10px] truncate", portalSubtextAlt)}>
+            {set.company || p.marketplaceSectionTitle}
             {set.totalQuestions > 0 && (
-              <span className="before:content-['·'] before:mx-1">{set.totalQuestions} {p.questionsUnit}</span>
+              <span className="before:content-['·'] before:mx-1">
+                {set.totalQuestions} {p.questionsUnit}
+              </span>
             )}
           </p>
         </div>
       </div>
 
-      {/* Right: difficulty */}
-      <span className={cn(
-        "shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded-md",
-        difficultyClass(set.difficulty)
-      )}>
-        {set.difficulty === "Easy" ? p.easy : set.difficulty === "Hard" ? p.hard : p.medium}
+      <span
+        className={cn(
+          "shrink-0 text-[9px] font-semibold px-1.5 py-0.5 rounded-md",
+          difficultyClass(set.difficulty)
+        )}
+      >
+        {diffLabel}
       </span>
     </Link>
   );
 }
 
-export function CoachMarketplacePanel() {
+interface CoachMarketplacePanelProps {
+  /** Skill trong lộ trình — ưu tiên bộ đề khớp các skill này. */
+  skills?: string[];
+}
+
+export function CoachMarketplacePanel({ skills = [] }: CoachMarketplacePanelProps) {
   const { t } = useLanguage();
   const p = t.jobseekerCoachPage;
+
+  const skillKey = useMemo(() => {
+    const seen = new Set<string>();
+    const out: string[] = [];
+    for (const raw of skills) {
+      const key = raw.trim();
+      if (!key) continue;
+      const norm = key.toLowerCase();
+      if (seen.has(norm)) continue;
+      seen.add(norm);
+      out.push(key);
+      if (out.length >= 8) break;
+    }
+    return out.join("|");
+  }, [skills]);
 
   const [sets, setSets] = useState<QuestionSet[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
-
-  const cancelledRef = useRef(false);
-
-  function fetchSets() {
-    cancelledRef.current = false;
-    setLoading(true);
-    setError(false);
-
-    listQuestionSets({ pageSize: PANEL_SIZE, sortBy: "best_match" })
-      .then((res) => {
-        if (cancelledRef.current) return;
-        // Sort: highest matchPercent first; missing/zero fall to the end
-        const sorted = [...res.items].sort((a, b) => {
-          const pa = typeof a.matchPercent === "number" ? a.matchPercent : -1;
-          const pb = typeof b.matchPercent === "number" ? b.matchPercent : -1;
-          return pb - pa;
-        });
-        setSets(sorted);
-      })
-      .catch(() => {
-        if (!cancelledRef.current) setError(true);
-      })
-      .finally(() => {
-        if (!cancelledRef.current) setLoading(false);
-      });
-  }
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
-    fetchSets();
+    let cancelled = false;
+    setLoading(true);
+    setError(false);
+    const currentSkills = skillKey ? skillKey.split("|") : [];
+
+    async function load() {
+      try {
+        const params = {
+          pageSize: PANEL_SIZE,
+          sortBy: "best_match" as const,
+          isHiringAssessment: false,
+          ...(currentSkills.length > 0 ? { skills: currentSkills } : { chip: "cv" as const }),
+        };
+        let res = await listQuestionSets(params);
+        if (res.items.length === 0 && currentSkills.length > 0) {
+          res = await listQuestionSets({
+            pageSize: PANEL_SIZE,
+            sortBy: "best_match",
+            chip: "cv",
+            isHiringAssessment: false,
+          });
+        }
+        if (cancelled) return;
+        const sorted = [...res.items].sort((a, b) => (b.matchPercent ?? 0) - (a.matchPercent ?? 0));
+        setSets(sorted.slice(0, PANEL_SIZE));
+      } catch {
+        if (!cancelled) setError(true);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    void load();
     return () => {
-      cancelledRef.current = true;
+      cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [skillKey, reloadKey]);
 
   return (
     <div className="hr-glass-card overflow-hidden flex flex-col">
-      {/* Header */}
-      <div className="px-5 py-3.5 border-b border-gray-100 dark:border-gray-800 flex items-center gap-2">
-        <div className="w-6 h-6 rounded-md bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 flex items-center justify-center shrink-0">
-          <Store size={12} className="text-charcoal dark:text-gray-100" />
+      <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800 flex items-center gap-2">
+        <div className="w-6 h-6 rounded-md bg-violet-100 dark:bg-violet-950/50 flex items-center justify-center shrink-0">
+          <Store size={12} className="text-violet-600 dark:text-violet-400" />
         </div>
-        <p className={cn("text-[12px] font-semibold", portalHeadingAlt)}>{p.marketplaceCardTitle}</p>
+        <div className="min-w-0">
+          <p className={cn("text-[12px] font-semibold", portalHeadingAlt)}>
+            {p.marketplaceSectionTitle}
+          </p>
+          <p className={cn("text-[10px] leading-snug", portalSubtextAlt)}>
+            {p.marketplaceLinkDesc}
+          </p>
+        </div>
       </div>
 
-      {/* Body */}
       <div className="flex flex-col">
-        {/* ── Loading ── */}
         {loading && (
-          <div className="px-5 py-3 space-y-3">
-            {Array.from({ length: PANEL_SIZE }).map((_, i) => (
-              <div key={i} className="flex items-center gap-3">
-                <Skeleton className="w-9 h-9 rounded-lg shrink-0" />
+          <div className="px-4 py-3 space-y-3">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="flex items-center gap-2.5">
+                <Skeleton className="w-8 h-8 rounded-lg shrink-0" />
                 <div className="flex-1 space-y-1.5">
                   <Skeleton className="h-3 w-3/4" />
                   <Skeleton className="h-2.5 w-1/2" />
                 </div>
-                <Skeleton className="h-4 w-12 rounded-md shrink-0" />
               </div>
             ))}
           </div>
         )}
 
-        {/* ── Error ── */}
         {!loading && error && (
-          <div className="flex flex-col items-center gap-2 py-8 px-5 text-center">
-            <AlertCircle size={20} className="text-red-400" />
-            <p className={cn("text-[12px]", portalSubtextAlt)}>Không tải được bộ đề</p>
+          <div className="flex flex-col items-center gap-2 py-6 px-4 text-center">
+            <AlertCircle size={18} className="text-red-400" />
+            <p className={cn("text-[11px]", portalSubtextAlt)}>{p.marketplaceLoadFailed}</p>
             <button
               type="button"
-              onClick={fetchSets}
-              className="flex items-center gap-1 text-[12px] font-semibold text-primary hover:underline"
+              onClick={() => setReloadKey((k) => k + 1)}
+              className="inline-flex items-center gap-1 text-[11px] font-semibold text-primary hover:underline"
             >
               <RefreshCw size={11} />
-              Thử lại
+              {p.marketplaceRetry}
             </button>
           </div>
         )}
 
-        {/* ── Set list ── */}
-        {!loading && !error && (
-          <>
-            {sets.length === 0 ? (
-              <p className={cn("px-5 py-6 text-[12px] text-center", portalSubtextAlt)}>
-                Chưa có bộ đề nào.
-              </p>
-            ) : (
-              sets.map((set, i) => <SetRow key={set.id} set={set} rank={i} />)
-            )}
+        {!loading && !error && sets.length === 0 && (
+          <p className={cn("px-4 py-6 text-[11px] text-center", portalSubtextAlt)}>
+            {p.marketplaceEmpty}
+          </p>
+        )}
 
-            {/* Footer CTA */}
-            <div className="px-5 py-3 border-t border-gray-100 dark:border-gray-800 flex justify-end">
+        {!loading && !error && sets.length > 0 && (
+          <>
+            {sets.map((set, i) => (
+              <SetRow key={set.id} set={set} rank={i} />
+            ))}
+            <div className="px-4 py-2.5 border-t border-gray-100 dark:border-gray-800 flex justify-end">
               <Link
-                href="/candidate/practice"
-                className="inline-flex items-center gap-1 text-[12px] font-semibold text-primary hover:underline"
+                href="/candidate/jobs"
+                className="inline-flex items-center gap-1 text-[11px] font-semibold text-primary hover:underline"
               >
-                Xem tất cả
-                <ArrowRight size={12} />
+                {p.marketplaceSeeAll}
+                <ArrowRight size={11} />
               </Link>
             </div>
           </>

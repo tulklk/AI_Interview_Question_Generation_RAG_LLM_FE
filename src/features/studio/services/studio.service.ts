@@ -47,6 +47,11 @@ export async function updateProject(projectId: string, name: string, description
   return mapProjectDetail(data);
 }
 
+/** Soft-delete project Studio (IsActive=false) — dùng cho xóa phiên trên HR dashboard. */
+export async function deleteProject(projectId: string): Promise<void> {
+  await apiClient.delete(`/api/studio/projects/${projectId}`);
+}
+
 export async function saveDraft(projectId: string): Promise<{ questionSetId?: string | null; status?: string; questionCount?: number }> {
   const { data } = await apiClient.post<{
     questionSetId?: string;
@@ -335,7 +340,7 @@ export async function approvePlan(projectId: string, planId: string, revision: n
 /** SCRUM-393: đổi tiêu đề / tên công việc trên plan — BE lưu Title (+ sync roleTitle JSON). */
 export async function renamePlanTitle(projectId: string, planId: string, title: string): Promise<PlanSummary> {
   const trimmed = title.trim();
-  if (!trimmed) throw new Error("Tiêu đề không được để trống.");
+  if (!trimmed) throw new Error("Title cannot be empty.");
   const { data } = await apiClient.put<PlanSummary>(
     `/api/studio/projects/${projectId}/plans/${planId}/title`,
     { title: trimmed }
@@ -512,7 +517,7 @@ export async function listGenerationRuns(projectId: string): Promise<GenerationR
   return data;
 }
 
-/** SCRUM-439: publish từ Studio — chọn interview question ids + time limit + recommend. */
+/** SCRUM-439 + SCRUM-464: publish từ Studio — chọn câu + time limit + recommend + hiring. */
 export async function publishProject(
   projectId: string,
   body?: {
@@ -520,6 +525,8 @@ export async function publishProject(
     timeLimitMinutes?: number | null;
     autoRecommendEnabled?: boolean;
     recommendationMinScore?: number;
+    isHiringAssessment?: boolean;
+    hrAntiCheatEnabled?: boolean;
   }
 ): Promise<void> {
   await apiClient.post(`/api/studio/projects/${projectId}/publish`, {
@@ -527,6 +534,8 @@ export async function publishProject(
     timeLimitMinutes: body?.timeLimitMinutes ?? null,
     autoRecommendEnabled: body?.autoRecommendEnabled ?? null,
     recommendationMinScore: body?.recommendationMinScore ?? null,
+    isHiringAssessment: body?.isHiringAssessment ?? null,
+    hrAntiCheatEnabled: body?.hrAntiCheatEnabled ?? null,
   });
 }
 

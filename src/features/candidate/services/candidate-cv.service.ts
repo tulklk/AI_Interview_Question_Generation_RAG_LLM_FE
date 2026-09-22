@@ -56,8 +56,32 @@ function normalizeCv(raw: unknown): CvInfo | null {
   };
 }
 
-/** Thrown for 400s (wrong format / too large) — the server never saves the file in this case. */
+/** Thrown for 400/422s (wrong format / too large / non-IT CV) — the server never saves the file in this case. */
 export class CvValidationError extends Error {}
+
+function isCvDomainReject(status?: number, data?: Record<string, unknown>): boolean {
+  if (status !== 400 && status !== 422) return false;
+  if (!data || typeof data !== "object") return false;
+  const stage = typeof data.stage === "string" ? data.stage : "";
+  const detail = typeof data.detail === "string" ? data.detail : "";
+  const error = typeof data.error === "string" ? data.error : "";
+  const blob = `${stage} ${detail} ${error}`.toLowerCase();
+  if (
+    stage === "CV_CLASSIFY" ||
+    stage === "DOC_CLASSIFY" ||
+    stage === "JdValidation" ||
+    stage === "JD_VALIDATION"
+  ) {
+    return true;
+  }
+  return (
+    blob.includes("không thuộc") ||
+    blob.includes("phần mềm") ||
+    blob.includes("not it") ||
+    blob.includes("cv không") ||
+    blob.includes("kỹ năng it")
+  );
+}
 
 export async function getCv(): Promise<CvInfo | null> {
   try {
@@ -77,9 +101,9 @@ export interface UploadCvResult {
 }
 
 /**
- * Uploads (or replaces) the candidate's CV. Per the BE contract, if the AI
- * analysis step fails/times out the request still errors, but the file itself
- * is saved — so on any non-400 error we re-check via GET before giving up.
+ * Uploads (or replaces) the candidate's CV.
+ * SCRUM-466: classify reject (422) — nothing saved; throw CvValidationError.
+ * Infra/AI failure after pass is rare now (save happens after classify).
  */
 export async function uploadCv(file: File): Promise<UploadCvResult> {
   const form = new FormData();
@@ -92,19 +116,26 @@ export async function uploadCv(file: File): Promise<UploadCvResult> {
     });
   } catch (err) {
     const response = (err as {
-      response?: { status?: number; data?: { error?: string; detail?: string; stage?: string; source?: string } };
+      response?: { status?: number; data?: Record<string, unknown> };
     }).response;
-    const message = response?.data?.error ?? response?.data?.detail;
-    // BE returns 400 for two different situations: a true validation rejection
-    // (wrong format/size — nothing saved) and a CV_PARSE/RAG failure, where the
-    // file IS saved server-side despite the 400. Only the former is a real
-    // CvValidationError; the latter must go through the same "saved but analysis
-    // failed" recovery as non-400 errors, or the UI wrongly looks like nothing
-    // happened (verified live: BE saves the file and GET reflects it).
-    const isParseFailure = Boolean(response?.data?.stage || response?.data?.source);
+    const data = response?.data;
+    const message =
+      (typeof data?.error === "string" && data.error) ||
+      (typeof data?.detail === "string" && data.detail) ||
+      undefined;
+
+    // SCRUM-466: domain/format reject — file không được lưu
+    if (isCvDomainReject(response?.status, data) || response?.status === 422) {
+      throw new CvValidationError(message || "CV không hợp lệ cho hệ thống IT");
+    }
+
+    // True validation (sai định dạng/size) — 400 không có stage classify
+    const isParseFailure = Boolean(data?.stage || data?.source);
     if (response?.status === 400 && !isParseFailure) {
       throw new CvValidationError(message || "Invalid file");
     }
+
+    // Legacy recovery: nếu BE cũ đã lưu file dù lỗi
     const cv = await getCv().catch(() => null);
     if (cv) return { cv, analysisFailed: true };
     throw new Error(message || "Upload failed");

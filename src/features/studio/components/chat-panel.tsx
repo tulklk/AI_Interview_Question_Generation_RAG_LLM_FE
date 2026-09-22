@@ -27,6 +27,11 @@ import { AvatarCircle } from "@/shared/components/common/avatar-circle";
 import { getCachedUserProfile } from "@/core/storage/user-profile-cache";
 import { portalCard, portalHeading, portalSubtext } from "@/shared/utils/portal-ui";
 import { QuestionReviewWorkspace } from "@/features/studio/components/question-review-workspace";
+import type {
+  HiringPostingDraft,
+  HiringPostingInitial,
+  HiringPostingSaved,
+} from "@/features/hr/components/public-jd-editor-panel";
 import {
   planSourceDisplayName,
   ProvenanceOriginBadge,
@@ -842,6 +847,14 @@ function PlanWorkspace({
                     {planSections.length} {c.sectionUnit}
                   </span>
                 </div>
+                {/* These sections are whatever the plan generated — naming that on
+                    screen stops the structure from reading like a fixed template. */}
+                <p className="flex items-center gap-1 text-[10px] leading-snug text-gray-400 dark:text-gray-500">
+                  <Sparkles size={10} className="shrink-0 text-primary/70" />
+                  {typeof plan?.revision === "number"
+                    ? c.structureProvenance.replace("{{rev}}", String(plan.revision))
+                    : c.structureProvenanceNoRev}
+                </p>
                 <div className="space-y-1.5">
                   {planSections.map((section, idx) => (
                     <div key={`${section.id}-${idx}`}>
@@ -1067,7 +1080,7 @@ function AiAssistantTab({
             return (
             <button key={item} type="button"
               disabled={composerLocked || isStreaming || atMax}
-              title={atMax ? "Số câu đã đạt tối đa 50" : undefined}
+              title={atMax ? c.maxQuestionsTitle : undefined}
               onClick={() => void onRefinePlan(item)}
               className="rounded-full border border-gray-200 bg-white px-2.5 py-1 text-[11px] text-gray-600 transition-colors hover:border-primary/40 hover:text-primary disabled:cursor-not-allowed disabled:opacity-40 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300">
               {item}
@@ -1156,6 +1169,30 @@ interface Props {
   isSavingDraft?: boolean;
   isDraftSaved?: boolean;
   isPublished?: boolean;
+  /** SCRUM-464 */
+  hiringMode?: { isHiringAssessment: boolean; hrAntiCheatEnabled: boolean };
+  onHiringModeChange?: (next: {
+    isHiringAssessment: boolean;
+    hrAntiCheatEnabled: boolean;
+  }) => void | Promise<void>;
+  /** SCRUM-470: JD công khai + posting khi Tuyển */
+  questionSetId?: string | null;
+  publicJd?: {
+    initialPublicJobDescription?: string | null;
+    initialPosting?: HiringPostingInitial | null;
+    fullJobDescription?: string | null;
+    jdSourceType?: "PastedText" | "UploadedFile" | null;
+    jdOriginalFileName?: string | null;
+    jdFileUrl?: string | null;
+    needsAttention?: boolean;
+    onAttentionCleared?: () => void;
+    onDraftChange?: (text: string) => void;
+    onPostingDraftChange?: (draft: HiringPostingDraft) => void;
+    onSaved?: (
+      publicJobDescription: string,
+      posting: HiringPostingSaved
+    ) => void | Promise<void>;
+  } | null;
 }
 
 type TabId = "plan" | "ai" | "questions";
@@ -1204,6 +1241,10 @@ export function ChatPanel({
   isSavingDraft = false,
   isDraftSaved = false,
   isPublished = false,
+  hiringMode,
+  onHiringModeChange,
+  questionSetId = null,
+  publicJd = null,
 }: Props) {
   const { t } = useLanguage();
   const c = t.studioPage.chat;
@@ -1429,6 +1470,10 @@ export function ChatPanel({
             isSavingDraft={isSavingDraft}
             isDraftSaved={isDraftSaved}
             isPublished={isPublished}
+            hiringMode={hiringMode}
+            onHiringModeChange={onHiringModeChange}
+            questionSetId={questionSetId}
+            publicJd={publicJd}
           />
         )}
       </div>

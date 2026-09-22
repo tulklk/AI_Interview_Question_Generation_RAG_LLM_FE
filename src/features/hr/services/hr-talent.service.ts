@@ -9,6 +9,8 @@ export interface HrTalentItem {
   seniorityLevel: string | null;
   questionSetId: string;
   questionSetTitle: string;
+  /** true = bộ Tuyển dụng; false = bộ Luyện tập */
+  isHiringAssessment: boolean;
   sessionStatus: string;
   overallScore: number | null;
   startedAt: string | null;
@@ -73,6 +75,14 @@ function extractTotal(res: unknown, fallback: number): number {
   return typeof v === "number" ? v : fallback;
 }
 
+function pickBool(obj: Record<string, unknown>, ...keys: string[]): boolean {
+  for (const k of keys) {
+    const v = obj[k];
+    if (typeof v === "boolean") return v;
+  }
+  return false;
+}
+
 function normalizeItem(raw: unknown): HrTalentItem | null {
   const src = asRecord(raw);
   if (!src) return null;
@@ -89,6 +99,7 @@ function normalizeItem(raw: unknown): HrTalentItem | null {
     seniorityLevel: pickNullableStr(src, "seniorityLevel", "SeniorityLevel"),
     questionSetId,
     questionSetTitle: pickStr(src, "questionSetTitle", "QuestionSetTitle"),
+    isHiringAssessment: pickBool(src, "isHiringAssessment", "IsHiringAssessment"),
     sessionStatus: pickStr(src, "sessionStatus", "SessionStatus") || "IN_PROGRESS",
     overallScore: pickNullableNum(src, "overallScore", "OverallScore"),
     startedAt: pickNullableStr(src, "startedAt", "StartedAt"),
@@ -122,9 +133,17 @@ export async function invitePractitioner(
   questionSetId: string,
   candidateUserId: string,
   message?: string
-): Promise<void> {
-  await apiClient.post(
+): Promise<{ recommendationId: string }> {
+  const res = await apiClient.post(
     `/api/hr/question-sets/${questionSetId}/practitioners/${candidateUserId}/invite`,
     { message: message?.trim() || null }
   );
+  const root = (res.data as { data?: unknown })?.data ?? res.data;
+  const src =
+    root && typeof root === "object" ? (root as Record<string, unknown>) : {};
+  const recommendationId =
+    (typeof src.recommendationId === "string" && src.recommendationId) ||
+    (typeof src.RecommendationId === "string" && src.RecommendationId) ||
+    "";
+  return { recommendationId };
 }

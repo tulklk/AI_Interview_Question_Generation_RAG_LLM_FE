@@ -130,5 +130,20 @@ export interface DraftQuestionSet {
   autoRecommendEnabled?: boolean;
   /** SCRUM-424: min OverallScore (50–95) to create recommendation. */
   recommendationMinScore?: number;
+  /** SCRUM-464: bộ Tuyển vs Practice. */
+  isHiringAssessment?: boolean;
+  hrAntiCheatEnabled?: boolean;
+  /** SCRUM-465: bản JD ngắn cho candidate. */
+  publicJobDescription?: string | null;
+  /** SCRUM-468: metadata tin tuyển. */
+  jobLocation?: string | null;
+  workplaceType?: "AtOffice" | "Hybrid" | "Remote" | null;
+  salaryMin?: number | null;
+  salaryMax?: number | null;
+  salaryNegotiable?: boolean;
+  jobExpertise?: string | null;
+  jobDomain?: string | null;
+  /** SCRUM-465: SAS URL file JD gốc. */
+  jdFileUrl?: string | null;
   questions: GeneratedQuestion[];
 }

@@ -40,6 +40,8 @@ export default function AdminMarketplacePage() {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [sortBy, setSortBy] = useState<MarketplaceSortBy>("featured");
+  /** SCRUM-472: "all" | "practice" | "hiring" */
+  const [modeFilter, setModeFilter] = useState<"all" | "practice" | "hiring">("all");
 
   const [items, setItems] = useState<AdminMarketplaceListItem[]>([]);
   const [totalCount, setTotalCount] = useState(0);
@@ -63,7 +65,7 @@ export default function AdminMarketplacePage() {
 
   useEffect(() => {
     setPage(1);
-  }, [debouncedSearch, sortBy]);
+  }, [debouncedSearch, sortBy, modeFilter]);
 
   const fetchStats = useCallback(async () => {
     setStatsLoading(true);
@@ -84,6 +86,8 @@ export default function AdminMarketplacePage() {
         pageSize: PAGE_SIZE,
         keyword: debouncedSearch || undefined,
         sortBy,
+        isHiringAssessment:
+          modeFilter === "all" ? undefined : modeFilter === "hiring",
       });
       setItems(result.items);
       setTotalCount(result.totalCount);
@@ -94,7 +98,7 @@ export default function AdminMarketplacePage() {
     } finally {
       setLoading(false);
     }
-  }, [page, debouncedSearch, sortBy, addToast, m.loadError]);
+  }, [page, debouncedSearch, sortBy, modeFilter, addToast, m.loadError]);
 
   useEffect(() => {
     fetchStats();
@@ -148,7 +152,7 @@ export default function AdminMarketplacePage() {
     setUnpublishingId(item.id);
     try {
       const abandoned = await unpublishMarketplaceQuestionSet(item.id);
-      addToast("success", withAbandonedToast(m.unpublishSuccess, abandoned));
+      addToast("success", withAbandonedToast(m.unpublishSuccess, abandoned, m.unpublishAbandoned));
       await Promise.all([fetchList(), fetchStats()]);
       if (selectedId === item.id) {
         setDetailOpen(false);
@@ -208,16 +212,39 @@ export default function AdminMarketplacePage() {
                 className={cn(portalInput, "w-full rounded-lg py-2.5 pl-9 pr-3 text-sm")}
               />
             </div>
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as MarketplaceSortBy)}
-              className={cn(portalInput, "rounded-lg px-3 py-2.5 text-sm")}
-            >
-              <option value="featured">{m.filters.sortFeatured}</option>
-              <option value="newest">{m.filters.sortNewest}</option>
-              <option value="most_practiced">{m.filters.sortMostPracticed}</option>
-              <option value="highest_rated">{m.filters.sortHighestRated}</option>
-            </select>
+            <div className="flex flex-wrap items-center gap-2">
+              {(
+                [
+                  { key: "all" as const, label: m.filters.modeAll },
+                  { key: "practice" as const, label: m.filters.modePractice },
+                  { key: "hiring" as const, label: m.filters.modeHiring },
+                ] as const
+              ).map((opt) => (
+                <button
+                  key={opt.key}
+                  type="button"
+                  onClick={() => setModeFilter(opt.key)}
+                  className={cn(
+                    "rounded-lg border px-3 py-2 text-xs font-semibold transition-colors",
+                    modeFilter === opt.key
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-gray-200 text-gray-600 hover:border-primary/30 hover:text-primary dark:border-gray-700 dark:text-gray-300"
+                  )}
+                >
+                  {opt.label}
+                </button>
+              ))}
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as MarketplaceSortBy)}
+                className={cn(portalInput, "rounded-lg px-3 py-2.5 text-sm")}
+              >
+                <option value="featured">{m.filters.sortFeatured}</option>
+                <option value="newest">{m.filters.sortNewest}</option>
+                <option value="most_practiced">{m.filters.sortMostPracticed}</option>
+                <option value="highest_rated">{m.filters.sortHighestRated}</option>
+              </select>
+            </div>
           </div>
 
           <AdminMarketplaceCardGrid
@@ -235,6 +262,8 @@ export default function AdminMarketplacePage() {
             cardLabels={{
               badgePinned: m.badgePinned,
               badgeTrending: m.badgeTrending,
+              badgeHiring: m.badgeHiring,
+              badgePractice: m.badgePractice,
               questions: m.questionsUnit,
               estimatedTimePrefix: m.estimatedTimePrefix,
               attempts: m.attemptsUnit,
@@ -306,6 +335,8 @@ export default function AdminMarketplacePage() {
             unpublish: m.unpublish,
             emptyPractitioners: m.detail.emptyPractitioners,
             retry: m.retry,
+            badgeHiring: m.badgeHiring,
+            badgePractice: m.badgePractice,
           }}
         />
 

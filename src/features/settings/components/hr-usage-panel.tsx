@@ -24,6 +24,7 @@ const FALLBACK = {
   exhausted: "All used",
   generateTitle: "Question sets & JD review",
   generateScope: "Within a {{h}}h window",
+  generateScopeUnlimited: "Unlimited",
   generateResetAt: "Unlocks at {{time}}",
   generateReady: "Ready to use",
   askAiTitle: "Ask-AI",
@@ -35,7 +36,7 @@ const FALLBACK = {
   refineScope: "Max per Studio session",
   refineDetail: "{{drafts}} session(s) · {{total}} run(s) total",
   totalGenerate: "Question sets created this period",
-  premiumHint: "Premium: generate and regeneration are unlimited.",
+  unlimitedGenerateHint: "Question-set generation is unlimited on your plan configuration.",
   noneYet: "You have not used any AI run in this period yet.",
 };
 
@@ -134,7 +135,6 @@ export function HrUsagePanel() {
   const {
     subscription,
     limits,
-    isPremium,
     canGenerateNow,
     cooldownEndsAt,
     generateWindowUsed,
@@ -181,12 +181,16 @@ export function HrUsagePanel() {
   const regen = summarize("HrQuestionRegen");
   const refine = summarize("HrPlanRegenerate");
 
-  const cooldownHours = limits?.generateCooldownHours ?? 24;
+  // Khớp BE: cooldown hiệu lực tối thiểu 1 giờ khi có hạn mức
+  const cooldownHours = Math.max(1, limits?.generateCooldownHours ?? 24);
   const generateUnlimited = limits?.generateUnlimited ?? false;
   const regenLimit = limits?.questionRegenPerPlan ?? 0;
   const refineLimit = limits?.planRegeneratePerDraft ?? 0;
   const askAiLimit = subscription?.askAiLimit ?? 0;
   const askAiUsed = subscription?.askAiUsed ?? 0;
+  const generateScope = generateUnlimited
+    ? text.generateScopeUnlimited
+    : fill(text.generateScope, { h: cooldownHours });
 
   const periodLabel = subscription
     ? `${new Date(subscription.periodStart).toLocaleDateString(locale, {
@@ -239,7 +243,7 @@ export function HrUsagePanel() {
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <MetricCard
               title={text.generateTitle}
-              scope={fill(text.generateScope, { h: cooldownHours })}
+              scope={generateScope}
               used={generateWindowUsed}
               limit={generateWindowLimit}
               unlimited={generateUnlimited}
@@ -295,10 +299,10 @@ export function HrUsagePanel() {
                 {subscription?.generateSetUsed ?? 0}
               </span>
             </p>
-            {isPremium ? (
+            {generateUnlimited ? (
               <p className="inline-flex items-center gap-1.5 text-xs font-medium text-[#6c47ff]">
                 <InfinityIcon size={13} />
-                {text.premiumHint}
+                {text.unlimitedGenerateHint}
               </p>
             ) : (
               !canGenerateNow &&

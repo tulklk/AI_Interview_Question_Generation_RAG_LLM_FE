@@ -1,5 +1,10 @@
 "use client";
 
+/**
+ * SCRUM-476: Kho ứng viên — layout khớp recommendations-list
+ * (header sạch + hr-glass-card filter + list row, không bảng dày).
+ */
+
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
@@ -8,17 +13,23 @@ import {
   ChevronRight,
   ExternalLink,
   FileText,
-  Inbox,
-  Loader2,
-  SearchX,
+  RefreshCw,
+  Search,
+  SlidersHorizontal,
   User,
+  Users,
   X,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/cn";
 import { useLanguage } from "@/shared/providers/language-context";
 import { formatRelativeTime } from "@/shared/utils/relative-time";
-import { portalHeading, portalSubtext, portalHeadingAlt, portalSubtextAlt } from "@/shared/utils/portal-ui";
+import {
+  portalHeading,
+  portalSubtext,
+  portalHeadingAlt,
+  portalSubtextAlt,
+} from "@/shared/utils/portal-ui";
 import { AppShell } from "@/features/hr/components/layout/app-shell";
 import {
   listHrTalent,
@@ -26,24 +37,25 @@ import {
 } from "@/features/hr/services/hr-talent.service";
 import { listHistoryQuestionSets } from "@/features/hr/services/hr-history.service";
 import type { HistoryQuestionSetItem } from "@/features/hr/types/history-question-set";
-
-// ---------------------------------------------------------------------------
-// Constants — same class tokens as question-set-history-table
-// ---------------------------------------------------------------------------
+import {
+  getScoreBandLabel,
+  getScoreBandRingClass,
+  scoreBandBadgeClassName,
+} from "@/features/hr/utils/score-band";
+import type { ScoreLevelLabels } from "@/features/candidate/components/ui/pill";
 
 const PAGE_SIZE = 20;
 
-const iconBtn =
-  "inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700 disabled:opacity-40 dark:hover:bg-gray-800 dark:hover:text-gray-200";
+type StatusFilter = "" | "COMPLETED" | "IN_PROGRESS" | "ABANDONED";
+type ScoreFilter = "" | "70" | "80" | "90";
+type DateSort = "newest" | "oldest";
 
-const thCls =
-  "h-10 px-3 align-middle text-[11px] font-semibold tracking-wide text-gray-500 dark:text-gray-400";
-
-const tdCls = "h-12 px-3 align-middle";
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
+const STATUS_TABS: { key: StatusFilter; labelKey: "allStatuses" | "completed" | "inProgress" | "abandoned" }[] = [
+  { key: "", labelKey: "allStatuses" },
+  { key: "COMPLETED", labelKey: "completed" },
+  { key: "IN_PROGRESS", labelKey: "inProgress" },
+  { key: "ABANDONED", labelKey: "abandoned" },
+];
 
 function getInitials(name: string): string {
   return name
@@ -56,13 +68,13 @@ function getInitials(name: string): string {
 
 const AVATAR_COLORS = [
   "bg-amber-500",
-  "bg-violet-500",
   "bg-blue-500",
   "bg-emerald-500",
-  "bg-pink-500",
   "bg-cyan-500",
   "bg-indigo-500",
   "bg-rose-500",
+  "bg-teal-500",
+  "bg-sky-500",
 ];
 
 function avatarColor(seed: string): string {
@@ -71,7 +83,6 @@ function avatarColor(seed: string): string {
   return AVATAR_COLORS[Math.abs(h) % AVATAR_COLORS.length];
 }
 
-/** Attempt # within (candidate, questionSet) on the loaded page, oldest → newest. */
 function buildAttemptMap(rows: HrTalentItem[]): Map<string, number> {
   const groups = new Map<string, HrTalentItem[]>();
   for (const row of rows) {
@@ -92,9 +103,34 @@ function buildAttemptMap(rows: HrTalentItem[]): Map<string, number> {
   return map;
 }
 
-// ---------------------------------------------------------------------------
-// Sub-components
-// ---------------------------------------------------------------------------
+function ScoreBadge({ score, pendingTitle, labels }: { score: number | null; pendingTitle: string; labels: ScoreLevelLabels }) {
+  if (score === null) {
+    return (
+      <div
+        className="h-10 min-w-14 px-2 rounded-full ring-2 ring-gray-200 dark:ring-gray-700 bg-gray-50 dark:bg-gray-900 flex items-center justify-center shrink-0"
+        title={pendingTitle}
+      >
+        <span className="text-[13px] font-bold text-gray-400 leading-none">—</span>
+      </div>
+    );
+  }
+  const { text } = getScoreBandRingClass(score);
+  const label = getScoreBandLabel(score, labels);
+  const compact = label.length > 6;
+  return (
+    <div className={scoreBandBadgeClassName(score)} title={label}>
+      <span
+        className={cn(
+          "font-bold leading-tight text-center tracking-tight",
+          compact ? "text-[9px]" : "text-[10px]",
+          text,
+        )}
+      >
+        {label}
+      </span>
+    </div>
+  );
+}
 
 function SessionStatusChip({
   status,
@@ -117,58 +153,167 @@ function SessionStatusChip({
         ? labels.inProgress
         : labels.abandoned;
   return (
+    <span className={cn("inline-flex text-[11px] font-semibold px-2.5 py-0.5 rounded-full whitespace-nowrap", cls)}>
+      {label}
+    </span>
+  );
+}
+
+function ModeChip({
+  isHiringAssessment,
+  labels,
+}: {
+  isHiringAssessment: boolean;
+  labels: { practice: string; hiring: string };
+}) {
+  return (
     <span
       className={cn(
-        "inline-flex items-center rounded-md px-1.5 py-0.5 text-[11px] font-semibold whitespace-nowrap",
-        cls,
+        "inline-flex text-[11px] font-semibold px-2.5 py-0.5 rounded-full whitespace-nowrap",
+        isHiringAssessment
+          ? "bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300"
+          : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300",
+      )}
+      title={isHiringAssessment ? labels.hiring : labels.practice}
+    >
+      {isHiringAssessment ? labels.hiring : labels.practice}
+    </span>
+  );
+}
+
+function TalentRow({
+  item,
+  attemptNo,
+  index,
+  lang,
+  labels,
+  scoreLabels,
+}: {
+  item: HrTalentItem;
+  attemptNo: number;
+  index: number;
+  lang: "en" | "vi";
+  labels: ReturnType<typeof useLanguage>["t"]["hrTalentPage"];
+  scoreLabels: ScoreLevelLabels;
+}) {
+  const seed = item.candidateName || item.candidateEmail;
+  const initials = getInitials(seed);
+  const profileHref = `/hr/candidates/${item.candidateUserId}`;
+  const sessionHref = `/hr/candidates/${item.candidateUserId}/sessions/${item.sessionId}`;
+  const isInvited = item.invitationStatus?.toUpperCase() === "INVITED";
+  const score = item.overallScore;
+  const accentBar =
+    score == null
+      ? "bg-gray-300"
+      : (() => {
+          const { ring } = getScoreBandRingClass(score);
+          if (ring.includes("emerald")) return "bg-emerald-400";
+          if (ring.includes("violet")) return "bg-violet-400";
+          if (ring.includes("amber")) return "bg-amber-400";
+          return "bg-red-400";
+        })();
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: Math.min(index, 12) * 0.03 }}
+      className={cn(
+        "group relative flex flex-col sm:flex-row sm:items-center gap-4 pl-5 pr-4 sm:pr-5 py-4",
+        "border-b border-gray-100 dark:border-gray-800 last:border-b-0",
+        "hover:bg-gray-50/70 dark:hover:bg-gray-800/30 transition-colors duration-150",
       )}
     >
-      {label}
-    </span>
+      <div
+        className={cn(
+          "absolute left-0 top-3 bottom-3 w-0.75 rounded-full opacity-0 group-hover:opacity-100 transition-opacity",
+          accentBar,
+        )}
+      />
+
+      <div
+        className={cn(
+          "w-11 h-11 rounded-xl text-white text-[13px] font-bold flex items-center justify-center shrink-0 shadow-sm",
+          avatarColor(seed),
+        )}
+      >
+        {initials || <User size={14} />}
+      </div>
+
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2 flex-wrap">
+          <p className={cn("text-sm font-bold leading-tight", portalHeadingAlt)}>
+            {item.candidateName || item.candidateEmail || "—"}
+          </p>
+          <SessionStatusChip status={item.sessionStatus} labels={labels.statusLabels} />
+          <ModeChip
+            isHiringAssessment={item.isHiringAssessment}
+            labels={{ practice: labels.modePractice, hiring: labels.modeHiring }}
+          />
+          {isInvited && (
+            <span className="inline-flex text-[11px] font-semibold px-2.5 py-0.5 rounded-full whitespace-nowrap bg-teal-50 text-teal-700 dark:bg-teal-950/40 dark:text-teal-400">
+              {labels.invitedBadge}
+            </span>
+          )}
+          <span className={cn("text-[11px] font-medium tabular-nums", portalSubtextAlt)}>
+            {labels.attempt} #{attemptNo}
+          </span>
+        </div>
+
+        {item.candidateName && (
+          <p className={cn("text-[11px] truncate mt-0.5", portalSubtextAlt)}>{item.candidateEmail}</p>
+        )}
+
+        <p className={cn("text-[11px] truncate mt-0.5", portalSubtextAlt)}>
+          <span className="font-medium text-gray-600 dark:text-gray-300">
+            {item.questionSetTitle || "—"}
+          </span>
+          {item.completedAt ? (
+            <span className="text-gray-400 dark:text-gray-500">
+              {" · "}
+              {formatRelativeTime(item.completedAt, lang)}
+            </span>
+          ) : (
+            <span className="text-gray-400 dark:text-gray-500" title={labels.dateIncompleteTitle}>
+              {" · —"}
+            </span>
+          )}
+          {(item.targetRole || item.seniorityLevel) && (
+            <span className="text-primary font-semibold">
+              {" · "}
+              {[item.targetRole, item.seniorityLevel].filter(Boolean).join(" · ")}
+            </span>
+          )}
+        </p>
+      </div>
+
+      <ScoreBadge
+        score={item.overallScore}
+        pendingTitle={labels.scorePendingTitle}
+        labels={scoreLabels}
+      />
+
+      <div className="flex items-center gap-1.5 shrink-0">
+        <Link
+          href={sessionHref}
+          className="h-8 px-2.5 inline-flex items-center gap-1.5 rounded-lg text-[11px] font-semibold border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:border-primary hover:text-primary bg-white dark:bg-gray-900 transition-colors"
+          title={labels.viewAnswersBtn}
+        >
+          <ExternalLink size={12} />
+          <span className="hidden sm:inline">{labels.viewAnswersBtn}</span>
+        </Link>
+        <Link
+          href={profileHref}
+          className="h-8 px-2.5 inline-flex items-center gap-1.5 rounded-lg text-[11px] font-semibold border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:border-primary hover:text-primary bg-white dark:bg-gray-900 transition-colors"
+          title={labels.overviewBtn}
+        >
+          <FileText size={12} />
+          <span className="hidden sm:inline">{labels.overviewBtn}</span>
+        </Link>
+      </div>
+    </motion.div>
   );
 }
-
-function InvitedBadge({ label }: { label: string }) {
-  return (
-    <span className="inline-flex items-center rounded-md px-1.5 py-0.5 text-[11px] font-semibold whitespace-nowrap bg-teal-50 text-teal-700 dark:bg-teal-950/40 dark:text-teal-400">
-      {label}
-    </span>
-  );
-}
-
-function ScoreCell({
-  score,
-  pendingTitle,
-}: {
-  score: number | null;
-  pendingTitle: string;
-}) {
-  if (score === null)
-    return (
-      <span className={cn("tabular-nums", portalSubtext)} title={pendingTitle}>
-        —
-      </span>
-    );
-  const color =
-    score >= 85
-      ? "text-emerald-600 dark:text-emerald-400"
-      : score >= 70
-        ? "text-amber-600 dark:text-amber-400"
-        : "text-red-600 dark:text-red-400";
-  return (
-    <span className={cn("text-[14px] font-bold tabular-nums", color)}>
-      {Math.round(score)}
-    </span>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Main page
-// ---------------------------------------------------------------------------
-
-type StatusFilter = "" | "COMPLETED" | "IN_PROGRESS" | "ABANDONED";
-type ScoreFilter = "" | "50" | "70" | "85";
-type DateSort = "newest" | "oldest";
 
 export function HrTalentPage() {
   const { t, lang } = useLanguage();
@@ -181,14 +326,14 @@ export function HrTalentPage() {
   const [error, setError] = useState(false);
   const [questionSets, setQuestionSets] = useState<HistoryQuestionSetItem[]>([]);
 
-  // Filters
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("COMPLETED");
   const [scoreFilter, setScoreFilter] = useState<ScoreFilter>("");
   const [dateSort, setDateSort] = useState<DateSort>("newest");
   const [questionSetId, setQuestionSetId] = useState("");
 
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
+  const minScoreNum = scoreFilter ? Number(scoreFilter) : null;
 
   const fetchData = useCallback(
     async (
@@ -220,8 +365,6 @@ export function HrTalentPage() {
     [],
   );
 
-  const minScoreNum = scoreFilter ? Number(scoreFilter) : null;
-
   useEffect(() => {
     void listHistoryQuestionSets()
       .then(setQuestionSets)
@@ -233,12 +376,10 @@ export function HrTalentPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fetchData, page, search, statusFilter, scoreFilter, questionSetId]);
 
-  // Reset page when filters change
   useEffect(() => {
     setPage(1);
   }, [search, statusFilter, scoreFilter, dateSort, questionSetId]);
 
-  // Client-side date sort (server returns most-recent by default; we flip for oldest)
   const sorted =
     dateSort === "oldest"
       ? [...items].sort(
@@ -257,25 +398,17 @@ export function HrTalentPage() {
     dateSort !== "newest" ||
     questionSetId !== "";
 
-  const filterDropdownCls = (active: boolean) =>
-    cn(
-      "cursor-pointer rounded-lg border px-2.5 py-1.5 text-[12px] font-medium outline-none transition-colors bg-white dark:bg-gray-900 focus:border-primary/60",
-      active
-        ? "border-primary/50 text-primary dark:border-primary/40 dark:text-primary"
-        : "border-gray-200 text-gray-600 dark:border-gray-700 dark:text-gray-300",
-    );
-
-  function handlePageChange(next: number) {
-    setPage(next);
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  }
-
   function handleClearFilters() {
     setSearch("");
     setStatusFilter("");
     setScoreFilter("");
     setDateSort("newest");
     setQuestionSetId("");
+  }
+
+  function statusTabLabel(key: (typeof STATUS_TABS)[number]["labelKey"]): string {
+    if (key === "allStatuses") return p.allStatuses;
+    return p.statusLabels[key];
   }
 
   return (
@@ -285,46 +418,49 @@ export function HrTalentPage() {
       fullWidth
     >
       <div>
-        {/* ── Page header ── */}
+        {/* Header — giống recommendations-list */}
         <motion.div
           initial={{ opacity: 0, y: -8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.38, ease: "easeOut" }}
-          className="relative overflow-hidden rounded-2xl border border-amber-100 dark:border-amber-900/30 bg-linear-to-r from-amber-50 via-white to-violet-50 dark:from-amber-950/10 dark:via-gray-900 dark:to-violet-950/10 px-5 py-2.5 sm:px-6 mb-3"
+          className="mb-6"
         >
-          <div className="absolute top-0 left-0 right-0 h-0.5 bg-linear-to-r from-amber-400 via-primary to-violet-500 opacity-70" />
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-xl bg-linear-to-br from-amber-400 to-primary flex items-center justify-center shrink-0 shadow-md shadow-amber-200 dark:shadow-amber-900/30">
-              <User size={14} className="text-white" />
-            </div>
-            <div>
-              <h2 className={cn("text-[15px] font-bold leading-tight tracking-tight", portalHeadingAlt)}>
-                {p.heading}
-              </h2>
-              <p className={cn("text-[11px] mt-0.5", portalSubtextAlt)}>
-                {p.subtext}
-              </p>
-            </div>
-          </div>
+          <h2 className={cn("text-[17px] font-bold leading-tight tracking-tight", portalHeadingAlt)}>
+            {p.heading}
+          </h2>
+          <p className={cn("text-[11px] mt-0.5", portalSubtextAlt)}>{p.subtext}</p>
+          <p className={cn("text-[11px] mt-1.5 max-w-2xl", portalSubtext)}>{p.candidatesNote}</p>
         </motion.div>
 
-        {/* ── Filter bar ── */}
-        <div
-          className="mb-3 flex flex-wrap items-center gap-2"
-          style={{ animation: "slideUpFade 0.32s cubic-bezier(0.25,0.46,0.45,0.94) both 0.08s" }}
-        >
-          <input
-            type="search"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder={p.searchPlaceholder}
-            className="w-full sm:w-72 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-[13px] outline-none focus:border-primary/40 dark:border-gray-700 dark:bg-gray-900"
-          />
+        {/* Filter bar */}
+        <div className="hr-glass-card px-4 py-3 mb-5 flex flex-wrap items-center gap-3">
+          <SlidersHorizontal size={14} className="text-gray-400 shrink-0" />
+
+          <div className="flex items-center gap-0.5 bg-gray-100 dark:bg-gray-800 rounded-lg p-0.5 overflow-x-auto">
+            {STATUS_TABS.map((tab) => {
+              const active = statusFilter === tab.key;
+              return (
+                <button
+                  key={tab.key || "all"}
+                  type="button"
+                  onClick={() => setStatusFilter(tab.key)}
+                  className={cn(
+                    "whitespace-nowrap px-2.5 py-1.5 rounded-md text-[11px] font-medium transition-all",
+                    active
+                      ? "bg-white dark:bg-gray-700 shadow-sm text-gray-900 dark:text-gray-100 font-semibold"
+                      : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300",
+                  )}
+                >
+                  {statusTabLabel(tab.labelKey)}
+                </button>
+              );
+            })}
+          </div>
 
           <select
             value={questionSetId}
             onChange={(e) => setQuestionSetId(e.target.value)}
-            className={filterDropdownCls(questionSetId !== "")}
+            className="h-8 max-w-48 px-3 text-[12px] font-medium bg-gray-100 dark:bg-gray-800 border-0 rounded-lg text-gray-700 dark:text-gray-300 outline-none focus:ring-2 focus:ring-primary/20 transition-colors cursor-pointer"
           >
             <option value="">
               {p.questionSetFilter}: {p.allQuestionSets}
@@ -337,267 +473,146 @@ export function HrTalentPage() {
           </select>
 
           <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
-            className={filterDropdownCls(statusFilter !== "")}
-          >
-            <option value="">Trạng thái: {p.allStatuses}</option>
-            <option value="COMPLETED">{p.statusLabels.completed}</option>
-            <option value="IN_PROGRESS">{p.statusLabels.inProgress}</option>
-            <option value="ABANDONED">{p.statusLabels.abandoned}</option>
-          </select>
-
-          <select
             value={scoreFilter}
             onChange={(e) => setScoreFilter(e.target.value as ScoreFilter)}
-            className={filterDropdownCls(scoreFilter !== "")}
+            className="h-8 px-3 text-[12px] font-medium bg-gray-100 dark:bg-gray-800 border-0 rounded-lg text-gray-700 dark:text-gray-300 outline-none focus:ring-2 focus:ring-primary/20 transition-colors cursor-pointer"
           >
-            <option value="">Điểm: Tất cả</option>
-            <option value="50">≥ 50</option>
-            <option value="70">≥ 70</option>
-            <option value="85">≥ 85</option>
+            <option value="">{t.historyPage.filters.scoreAll}</option>
+            <option value="70">{t.historyPage.filters.scoreFairPlus}</option>
+            <option value="80">{t.historyPage.filters.scoreGoodPlus}</option>
+            <option value="90">{t.historyPage.filters.scoreExcellentPlus}</option>
           </select>
 
           <select
             value={dateSort}
             onChange={(e) => setDateSort(e.target.value as DateSort)}
-            className={filterDropdownCls(dateSort !== "newest")}
+            className="h-8 px-3 text-[12px] font-medium bg-gray-100 dark:bg-gray-800 border-0 rounded-lg text-gray-700 dark:text-gray-300 outline-none focus:ring-2 focus:ring-primary/20 transition-colors cursor-pointer"
           >
-            <option value="newest">Ngày: Mới nhất</option>
-            <option value="oldest">Ngày: Cũ nhất</option>
+            <option value="newest">{t.historyPage.filters.dateNewest}</option>
+            <option value="oldest">{t.historyPage.filters.dateOldest}</option>
           </select>
+
+          <div className="relative flex-1 min-w-40 max-w-xs ml-auto">
+            <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input
+              type="search"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder={p.searchPlaceholder}
+              className="w-full h-8 pl-7 pr-3 text-[12px] bg-gray-100 dark:bg-gray-800 border-0 rounded-lg text-gray-700 dark:text-gray-300 placeholder:text-gray-400 outline-none focus:ring-2 focus:ring-primary/20 transition-colors"
+            />
+          </div>
 
           {hasFilters && (
             <button
               type="button"
               onClick={handleClearFilters}
-              style={{ animation: "scaleInFade 0.3s cubic-bezier(0.34,1.56,0.64,1) both" }}
-              className="inline-flex items-center gap-1 rounded-lg border border-gray-200 px-2 py-1.5 text-[12px] text-gray-500 transition-colors hover:border-red-300 hover:text-red-600 dark:border-gray-700 dark:text-gray-400 dark:hover:border-red-800 dark:hover:text-red-400"
+              className="h-8 px-2.5 inline-flex items-center gap-1 rounded-lg text-[11px] font-medium text-gray-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400 transition-colors"
             >
-              <X size={11} />
-              Xóa lọc
+              <X size={12} />
+              {t.historyPage.filters.clearFilters}
             </button>
           )}
+
+          <button
+            type="button"
+            onClick={() => void fetchData(page, search, statusFilter, minScoreNum, questionSetId)}
+            disabled={loading}
+            className="h-8 w-8 flex items-center justify-center rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:text-primary hover:bg-primary/5 dark:hover:bg-primary/10 transition-colors disabled:opacity-50"
+            aria-label={p.retryBtn}
+          >
+            <RefreshCw size={12} className={loading ? "animate-spin" : ""} />
+          </button>
         </div>
 
-        {/* ── Content ── */}
-        <div style={{ animation: "fadeIn 0.42s ease-out both 0.12s" }}>
-          {loading ? (
-            <div className="flex justify-center py-14">
-              <Loader2 className="h-5 w-5 animate-spin text-primary" />
+        {/* List */}
+        {loading ? (
+          <div className="hr-glass-card overflow-hidden">
+            <div className="flex flex-col">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="flex items-center gap-3 px-5 py-3.5 border-b border-gray-100 dark:border-gray-800 last:border-b-0"
+                >
+                  <div className="w-11 h-11 rounded-xl bg-gray-200 dark:bg-gray-700 animate-pulse shrink-0" />
+                  <div className="flex-1 flex flex-col gap-2">
+                    <div className="h-3.5 w-40 rounded bg-gray-200 dark:bg-gray-700 animate-pulse" />
+                    <div className="h-2.5 w-56 rounded bg-gray-100 dark:bg-gray-800 animate-pulse" />
+                    <div className="h-2.5 w-32 rounded bg-gray-100 dark:bg-gray-800 animate-pulse" />
+                  </div>
+                  <div className="h-12 w-12 rounded-full bg-gray-200 dark:bg-gray-700 animate-pulse" />
+                </div>
+              ))}
             </div>
-          ) : error ? (
-            <div className="flex flex-col items-center gap-3 py-14 text-center">
-              <AlertCircle size={26} className="text-red-500" />
-              <p className={cn("text-[13px]", portalSubtext)}>{p.loadFailed}</p>
-              <button
-                type="button"
-                onClick={() => void fetchData(page, search, statusFilter, minScoreNum, questionSetId)}
-                className="rounded-lg bg-primary px-3 py-1.5 text-[12px] font-semibold text-white"
-              >
-                {p.retryBtn}
-              </button>
-            </div>
-          ) : items.length === 0 && !hasFilters ? (
-            <div className="rounded-xl border border-dashed border-gray-200 px-6 py-12 text-center dark:border-gray-700">
-              <Inbox className="mx-auto mb-2 h-8 w-8 text-gray-300" />
-              <p className={cn("text-sm font-medium", portalHeading)}>{p.emptyTitle}</p>
-              <p className={cn("mt-1 text-[12px]", portalSubtext)}>{p.emptySubtext}</p>
-            </div>
-          ) : items.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-gray-200 px-6 py-10 text-center dark:border-gray-700">
-              <SearchX className="mx-auto mb-2 h-7 w-7 text-gray-300" />
-              <p className={cn("text-[13px]", portalSubtext)}>
-                Không tìm thấy ứng viên phù hợp với bộ lọc hiện tại.
-              </p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-950/40">
-              <table className="w-full min-w-200 table-fixed text-[13px]">
-                <colgroup>
-                  <col style={{ width: "22%" }} />
-                  <col style={{ width: "10%" }} />
-                  <col style={{ width: "24%" }} />
-                  <col style={{ width: "8%" }} />
-                  <col style={{ width: "18%" }} />
-                  <col style={{ width: "10%" }} />
-                  <col style={{ width: "8%" }} />
-                </colgroup>
-                <thead>
-                  <tr className="border-b border-gray-100 bg-gray-50/90 dark:border-gray-800 dark:bg-gray-900/60">
-                    <th scope="col" className={cn(thCls, "text-left")}>{p.candidate}</th>
-                    <th scope="col" className={cn(thCls, "text-center")}>{p.attempt}</th>
-                    <th scope="col" className={cn(thCls, "text-left")}>{p.questionSet}</th>
-                    <th scope="col" className={cn(thCls, "text-center")}>{p.score}</th>
-                    <th scope="col" className={cn(thCls, "text-left")}>{p.status}</th>
-                    <th scope="col" className={cn(thCls, "text-left")}>{p.date}</th>
-                    <th scope="col" className={cn(thCls, "text-center")}>{p.actions}</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100 dark:divide-gray-800/70">
-                  {sorted.map((item, rowIdx) => {
-                    const seed = item.candidateName || item.candidateEmail;
-                    const initials = getInitials(seed);
-                    const profileHref = `/hr/candidates/${item.candidateUserId}`;
-                    const sessionHref = `/hr/candidates/${item.candidateUserId}/sessions/${item.sessionId}`;
-                    const isInvited = item.invitationStatus?.toUpperCase() === "INVITED";
-                    const attemptNo = attemptMap.get(item.sessionId) ?? 1;
-
-                    return (
-                      <tr
-                        key={item.sessionId}
-                        className="hover:bg-gray-50/70 dark:hover:bg-gray-900/40"
-                        style={{
-                          animation: `fadeIn 0.28s ease-out both ${rowIdx * 0.04}s`,
-                        }}
-                      >
-                        <td className={cn(tdCls, "overflow-hidden")}>
-                          <div className="flex items-center gap-2.5 min-w-0">
-                            <div
-                              className={cn(
-                                "w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-white text-[11px] font-bold",
-                                avatarColor(seed),
-                              )}
-                            >
-                              {initials || <User size={13} />}
-                            </div>
-                            <div className="min-w-0">
-                              <p
-                                className={cn("truncate font-medium leading-tight", portalHeading)}
-                                title={item.candidateName || item.candidateEmail}
-                              >
-                                {item.candidateName || item.candidateEmail}
-                              </p>
-                              {item.candidateName && (
-                                <p className={cn("truncate text-[11px] leading-tight mt-0.5", portalSubtext)}>
-                                  {item.candidateEmail}
-                                </p>
-                              )}
-                            </div>
-                          </div>
-                        </td>
-
-                        <td className={cn(tdCls, "text-center tabular-nums", portalSubtext)}>
-                          #{attemptNo}
-                        </td>
-
-                        <td className={cn(tdCls, "overflow-hidden")}>
-                          <span
-                            className={cn("block truncate", portalSubtext)}
-                            title={item.questionSetTitle}
-                          >
-                            {item.questionSetTitle || "—"}
-                          </span>
-                        </td>
-
-                        <td className={cn(tdCls, "text-center")}>
-                          <ScoreCell
-                            score={item.overallScore}
-                            pendingTitle={p.scorePendingTitle}
-                          />
-                        </td>
-
-                        <td className={cn(tdCls, "overflow-hidden")}>
-                          <div className="flex flex-wrap gap-1">
-                            <SessionStatusChip
-                              status={item.sessionStatus}
-                              labels={p.statusLabels}
-                            />
-                            {isInvited && <InvitedBadge label={p.invitedBadge} />}
-                          </div>
-                        </td>
-
-                        <td className={cn(tdCls, "overflow-hidden whitespace-nowrap", portalSubtext)}>
-                          {item.completedAt ? (
-                            formatRelativeTime(item.completedAt, lang)
-                          ) : (
-                            <span title={p.dateIncompleteTitle}>—</span>
-                          )}
-                        </td>
-
-                        <td className={tdCls}>
-                          <div className="flex flex-nowrap items-center justify-center gap-0.5">
-                            <Link
-                              href={sessionHref}
-                              className={iconBtn}
-                              title={p.viewAnswersBtn}
-                            >
-                              <ExternalLink size={14} />
-                            </Link>
-                            <Link
-                              href={profileHref}
-                              className={iconBtn}
-                              title={p.overviewBtn}
-                            >
-                              <FileText size={14} />
-                            </Link>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
+          </div>
+        ) : error ? (
+          <div className="hr-glass-card flex flex-col items-center gap-3 py-16 text-center">
+            <AlertCircle size={28} className="text-red-500" />
+            <p className={cn("text-[14px]", portalSubtext)}>{p.loadFailed}</p>
+            <button
+              type="button"
+              onClick={() => void fetchData(page, search, statusFilter, minScoreNum, questionSetId)}
+              className="flex items-center gap-1.5 text-[13px] font-semibold text-primary hover:underline"
+            >
+              <RefreshCw size={13} /> {p.retryBtn}
+            </button>
+          </div>
+        ) : items.length === 0 && !hasFilters ? (
+          <div className="hr-glass-card flex flex-col items-center gap-3 py-16 text-center">
+            <Users size={32} className="text-gray-300 dark:text-gray-600" />
+            <p className={cn("text-sm font-semibold", portalHeading)}>{p.emptyTitle}</p>
+            <p className={cn("text-[12px] max-w-sm", portalSubtext)}>{p.emptySubtext}</p>
+          </div>
+        ) : items.length === 0 ? (
+          <div className="hr-glass-card flex flex-col items-center gap-3 py-16 text-center">
+            <Search size={28} className="text-gray-300 dark:text-gray-600" />
+            <p className={cn("text-[14px]", portalSubtext)}>{t.historyPage.filters.noCandidateMatch}</p>
+            <button
+              type="button"
+              onClick={handleClearFilters}
+              className="text-[13px] font-semibold text-primary hover:underline"
+            >
+              {t.historyPage.filters.clearFilters}
+            </button>
+          </div>
+        ) : (
+          <div className="hr-glass-card overflow-hidden">
+            {sorted.map((item, i) => (
+              <TalentRow
+                key={item.sessionId}
+                item={item}
+                attemptNo={attemptMap.get(item.sessionId) ?? 1}
+                index={i}
+                lang={lang}
+                labels={p}
+                scoreLabels={t.jobseekerFeedbackPage.scoreLevels}
+              />
+            ))}
+          </div>
+        )}
 
         {!loading && !error && totalPages > 1 && (
-          <div
-            className="flex items-center justify-between gap-4 px-1 py-3"
-            style={{ animation: "fadeIn 0.35s ease-out both 0.15s" }}
-          >
-            <p className={cn("text-xs", portalSubtext)}>
-              {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, totalCount)} / {totalCount}
+          <div className="flex items-center justify-between mt-5">
+            <p className={cn("text-[12px]", portalSubtextAlt)}>
+              {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, totalCount)} / {totalCount}{" "}
+              {p.peopleLabel}
             </p>
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-2">
               <button
                 type="button"
-                onClick={() => handlePageChange(page - 1)}
+                onClick={() => setPage((n) => Math.max(1, n - 1))}
                 disabled={page === 1}
-                className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                className="h-8 px-3 flex items-center gap-1 text-[12px] font-medium border border-gray-200 dark:border-gray-700 rounded-lg text-gray-600 dark:text-gray-300 hover:border-primary hover:text-primary disabled:opacity-40 transition-colors bg-white dark:bg-gray-900"
               >
-                <ChevronLeft size={14} />
+                <ChevronLeft size={13} /> {p.prevPage}
               </button>
-
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map((pg) => {
-                const isFirst = pg === 1;
-                const isLast = pg === totalPages;
-                const nearCurrent = Math.abs(pg - page) <= 1;
-                if (!isFirst && !isLast && !nearCurrent) {
-                  if (pg === 2 || pg === totalPages - 1) {
-                    return (
-                      <span key={pg} className={cn("text-xs px-0.5", portalSubtext)}>
-                        …
-                      </span>
-                    );
-                  }
-                  return null;
-                }
-                return (
-                  <button
-                    key={pg}
-                    type="button"
-                    onClick={() => handlePageChange(pg)}
-                    className={cn(
-                      "inline-flex h-7 min-w-7 px-1.5 items-center justify-center rounded-lg text-xs font-medium transition-colors",
-                      pg === page
-                        ? "bg-primary text-white shadow-sm"
-                        : "border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800",
-                    )}
-                  >
-                    {pg}
-                  </button>
-                );
-              })}
-
               <button
                 type="button"
-                onClick={() => handlePageChange(page + 1)}
+                onClick={() => setPage((n) => Math.min(totalPages, n + 1))}
                 disabled={page === totalPages}
-                className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                className="h-8 px-3 flex items-center gap-1 text-[12px] font-medium border border-gray-200 dark:border-gray-700 rounded-lg text-gray-600 dark:text-gray-300 hover:border-primary hover:text-primary disabled:opacity-40 transition-colors bg-white dark:bg-gray-900"
               >
-                <ChevronRight size={14} />
+                {p.nextPage} <ChevronRight size={13} />
               </button>
             </div>
           </div>

@@ -38,7 +38,7 @@ function getBotReply(
     return responses.features;
   if (/how|work|step|hoạt động|cách|bước/.test(q))
     return responses.howItWorks;
-  if (/export|pdf|download|xuất/.test(q))
+  if (/export|pdf|excel|download|xuất/.test(q))
     return responses.export;
   if (/vietnam|việt|tiếng việt|vi/.test(q))
     return responses.vietnamese;
@@ -154,7 +154,7 @@ function ChatPanel({
         </button>
         <button
           onClick={onClose}
-          aria-label="Đóng trợ lý AI"
+          aria-label={t.common.closeAiAssistant}
           className="text-white/60 hover:text-white transition-colors p-1 rounded-lg hover:bg-white/10"
         >
           <X size={16} aria-hidden="true" />
@@ -250,7 +250,7 @@ function ChatPanel({
         <button
           onClick={() => sendMessage(input)}
           disabled={!input.trim() || isTyping}
-          aria-label="Gửi tin nhắn"
+          aria-label={t.common.sendMessage}
           className={cn(
             "w-9 h-9 rounded-lg flex items-center justify-center transition-colors shrink-0",
             input.trim() && !isTyping

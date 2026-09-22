@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   AlertCircle, ArrowLeft, ChevronLeft, ChevronRight,
   ExternalLink, FileText, Globe, GlobeOff, Loader2, Mail, RefreshCw, Users,
@@ -108,6 +109,7 @@ export function PractitionersPage({ questionSetId }: { questionSetId: string }) 
   const p = t.practitionersPage;
   const rp = t.reviewPage;
   const { addToast } = useToast();
+  const router = useRouter();
 
   const [set, setSet] = useState<DraftQuestionSet | null>(null);
   const [items, setItems] = useState<Practitioner[]>([]);
@@ -118,30 +120,41 @@ export function PractitionersPage({ questionSetId }: { questionSetId: string }) 
   const [showPublishDialog, setShowPublishDialog] = useState(false);
   const [page, setPage] = useState(1);
   const [inviteTarget, setInviteTarget] = useState<Practitioner | null>(null);
+  /** SCRUM-471: bộ Tuyển — xem thêm phiên luyện */
+  const [includePractice, setIncludePractice] = useState(false);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
     setError(false);
     try {
-      const [setData, practitioners] = await Promise.all([
-        getDraft(questionSetId),
-        getPractitioners(questionSetId),
-      ]);
-      if (!setData) { setError(true); return; }
+      const setData = await getDraft(questionSetId);
+      if (!setData) {
+        setError(true);
+        return;
+      }
       setSet(setData);
+      const hiring = Boolean(setData.isHiringAssessment);
+      const practitioners = await getPractitioners(questionSetId, {
+        includePractice: hiring && includePractice,
+      });
       setItems(practitioners);
     } catch {
       setError(true);
     } finally {
       setLoading(false);
     }
-  }, [questionSetId]);
+  }, [questionSetId, includePractice]);
 
-  useEffect(() => { void fetchData(); }, [fetchData]);
+  useEffect(() => {
+    void fetchData();
+  }, [fetchData]);
 
   // Reset to page 1 whenever the item list refreshes
-  useEffect(() => { setPage(1); }, [items]);
+  useEffect(() => {
+    setPage(1);
+  }, [items]);
 
+  const isHiring = Boolean(set?.isHiringAssessment);
   const totalPages = Math.max(1, Math.ceil(items.length / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
   const paginated = items.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
@@ -152,7 +165,7 @@ export function PractitionersPage({ questionSetId }: { questionSetId: string }) 
     try {
       const abandoned = await unpublishQuestionSet(questionSetId);
       setSet((s) => (s ? { ...s, status: "DRAFT" } : s));
-      addToast("success", withAbandonedToast(rp.unpublishSuccess, abandoned));
+      addToast("success", withAbandonedToast(rp.unpublishSuccess, abandoned, rp.unpublishAbandoned));
     } catch (err) {
       addToast("error", err instanceof Error && err.message ? err.message : rp.unpublishFailed);
     } finally {
@@ -170,6 +183,8 @@ export function PractitionersPage({ questionSetId }: { questionSetId: string }) 
         timeLimitMinutes: payload.timeLimitMinutes,
         autoRecommendEnabled: payload.autoRecommendEnabled,
         recommendationMinScore: payload.recommendationMinScore,
+        isHiringAssessment: payload.isHiringAssessment,
+        hrAntiCheatEnabled: payload.hrAntiCheatEnabled,
       });
       setSet((s) =>
         s
@@ -179,6 +194,8 @@ export function PractitionersPage({ questionSetId }: { questionSetId: string }) 
               autoRecommendEnabled: payload.autoRecommendEnabled,
               recommendationMinScore: payload.recommendationMinScore,
               timeLimitMinutes: payload.timeLimitMinutes,
+              isHiringAssessment: payload.isHiringAssessment,
+              hrAntiCheatEnabled: payload.hrAntiCheatEnabled,
             }
           : s
       );
@@ -243,8 +260,20 @@ export function PractitionersPage({ questionSetId }: { questionSetId: string }) 
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div className="flex items-start gap-2.5">
           <div>
-            <h2 className={cn("text-2xl font-bold", portalHeading)}>{set.jobTitle}</h2>
-            <p className={cn("text-sm mt-1", portalSubtext)}>{p.subtext}</p>
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className={cn("text-2xl font-bold", portalHeading)}>{set.jobTitle}</h2>
+              {isHiring && (
+                <span className="inline-flex items-center rounded-md bg-violet-50 px-2 py-0.5 text-[11px] font-semibold text-violet-700 dark:bg-violet-950/40 dark:text-violet-300">
+                  {t.hiringMode.hiringBadge}
+                </span>
+              )}
+            </div>
+            <p className={cn("text-sm mt-1", portalSubtext)}>
+              {isHiring ? p.subtextHiring : p.subtext}
+            </p>
+            <p className={cn("text-xs mt-0.5 font-semibold", portalHeading)}>
+              {isHiring ? p.headingHiring : p.heading}
+            </p>
           </div>
         </div>
         <button
@@ -269,13 +298,32 @@ export function PractitionersPage({ questionSetId }: { questionSetId: string }) 
         </button>
       </div>
 
+      {isHiring && (
+        <label className="flex cursor-pointer items-start gap-2.5 rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 dark:border-gray-800 dark:bg-gray-950/40">
+          <input
+            type="checkbox"
+            checked={includePractice}
+            onChange={(e) => setIncludePractice(e.target.checked)}
+            className="mt-0.5 accent-primary"
+          />
+          <span>
+            <span className={cn("block text-xs font-semibold", portalHeading)}>{p.showPracticeToggle}</span>
+            <span className={cn("block text-[11px] mt-0.5", portalSubtext)}>{p.showPracticeHint}</span>
+          </span>
+        </label>
+      )}
+
       {items.length === 0 ? (
         <div className="hr-glass-card p-12 flex flex-col items-center gap-3 text-center">
           <div className="w-12 h-12 rounded-xl hr-icon-box flex items-center justify-center">
             <Users size={22} className="text-[#7C3AED] dark:text-[#a78bff]" />
           </div>
-          <p className={cn("text-sm font-medium", portalHeading)}>{p.emptyTitle}</p>
-          <p className={cn("text-xs", portalSubtext)}>{p.emptySubtext}</p>
+          <p className={cn("text-sm font-medium", portalHeading)}>
+            {isHiring ? p.emptyTitleHiring : p.emptyTitle}
+          </p>
+          <p className={cn("text-xs", portalSubtext)}>
+            {isHiring ? p.emptySubtextHiring : p.emptySubtext}
+          </p>
         </div>
       ) : (
         <>
@@ -339,7 +387,19 @@ export function PractitionersPage({ questionSetId }: { questionSetId: string }) 
 
                       {/* Trạng thái */}
                       <td className={cn(tdCls, "overflow-hidden")}>
-                        <StatusBadge status={item.status} labels={p.statusLabels} />
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <StatusBadge status={item.status} labels={p.statusLabels} />
+                          {item.isOfficialTest && (
+                            <span className="inline-flex items-center rounded-md bg-violet-50 px-1.5 py-0.5 text-[10px] font-semibold text-violet-700 dark:bg-violet-950/40 dark:text-violet-300">
+                              {t.hiringMode.officialTestBadge}
+                            </span>
+                          )}
+                          {isHiring && !item.isOfficialTest && item.status === "COMPLETED" && (
+                            <span className="inline-flex items-center rounded-md bg-gray-100 px-1.5 py-0.5 text-[10px] font-semibold text-gray-600 dark:bg-gray-800 dark:text-gray-300">
+                              {p.practiceOnlyBadge}
+                            </span>
+                          )}
+                        </div>
                       </td>
 
                       {/* Hoàn thành */}
@@ -478,6 +538,8 @@ export function PractitionersPage({ questionSetId }: { questionSetId: string }) 
           currentTimeLimitMinutes={set.timeLimitMinutes ?? null}
           initialAutoRecommendEnabled={set.autoRecommendEnabled ?? true}
           initialRecommendationMinScore={set.recommendationMinScore ?? 70}
+          initialIsHiringAssessment={set.isHiringAssessment ?? false}
+          initialHrAntiCheatEnabled={set.hrAntiCheatEnabled ?? false}
           saving={publishing}
           onConfirm={(payload) => void handleSelectivePublish(payload)}
           onClose={() => {
@@ -496,7 +558,18 @@ export function PractitionersPage({ questionSetId }: { questionSetId: string }) 
           }}
           onClose={() => setInviteTarget(null)}
           onSend={async (message) => {
-            await invitePractitioner(questionSetId, inviteTarget.candidateUserId, message);
+            const { recommendationId } = await invitePractitioner(
+              questionSetId,
+              inviteTarget.candidateUserId,
+              message
+            );
+            setInviteTarget(null);
+            addToast("success", p.inviteSuccessOfferCta);
+            if (recommendationId) {
+              router.push(`/hr/candidate-recommendations/${recommendationId}`);
+            } else {
+              router.push("/hr/candidate-recommendations");
+            }
           }}
         />
       )}

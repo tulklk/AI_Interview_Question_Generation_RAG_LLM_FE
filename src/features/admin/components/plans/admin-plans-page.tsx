@@ -38,7 +38,7 @@ const FALLBACK_EDITOR = {
   loading: "Loading subscription plans…",
   loadError: "Could not load the plan list.",
   subtitle:
-    "Edit price / limits. Existing subscribers get new limits from their next billing period; new subscribers get them immediately.",
+    "Edit price / limits. Generate: Unlimited, or N runs per H-hour window. New limits apply immediately to Active subscribers.",
   refresh: "Refresh",
   active: "Active",
   inactive: "Inactive",
@@ -50,10 +50,10 @@ const FALLBACK_EDITOR = {
   questionRegenPerPlanLabel: "Question regen / plan (0 = unlimited)",
   regenerateLabel: "Regenerate / draft",
   freeVisibleLabel: "Free visible %",
-  canExportLabel: "Can export",
+  canExportLabel: "Can export Excel",
   generateUnlimitedLabel: "Generate unlimited",
   saveBtn: "Save plan",
-  saveSuccess: "Saved. New limits apply from the next billing period for existing subscribers.",
+  saveSuccess: "Saved. New limits apply immediately to Active subscribers on this plan; usage counts are unchanged.",
   saveError: "Failed to save the plan.",
   groupQuota: "AI quotas",
   groupAccess: "Visibility & permissions",
@@ -63,14 +63,16 @@ const FALLBACK_EDITOR = {
   freeTier: "Free tier",
   premiumTier: "Premium tier",
   hintPrice: "Free must stay at 0. Premium requires at least 10,000.",
+  freePriceMustBeZero: "The Free plan must have a price of 0 VND.",
+  premiumMinPrice: "The Premium plan must cost at least 10,000 VND.",
   hintAskAi: "Ask-AI requests allowed per billing period.",
-  hintCooldown: "Length of one generate window.",
-  hintGeneratePerWindow: "Successful question-set / JD-fit runs per window.",
+  hintCooldown: "Length of one generate window. Min 1 hour when Unlimited is off.",
+  hintGeneratePerWindow: "Successful question-set / JD-fit runs per window. Ignored while Unlimited is on.",
   hintQuestionRegen: "Per-question regenerations per plan. 0 = unlimited.",
   hintRegenerate: "Plan refine runs allowed per draft.",
   hintFreeVisible: "Share of questions publicly visible to Free candidates.",
-  hintCanExport: "Allow exporting question sets to a file.",
-  hintGenerateUnlimited: "Bypass every generate quota on this plan.",
+  hintCanExport: "Allow exporting question sets to Excel.",
+  hintGenerateUnlimited: "On: unlimited generate. Off: use N runs per H-hour window below.",
   unitTimes: "times",
   unitHours: "hours",
 };
@@ -157,16 +159,20 @@ function Switch({
   checked,
   onChange,
   onDark = false,
+  ariaLabel,
 }: {
   checked: boolean;
   onChange: (next: boolean) => void;
   onDark?: boolean;
+  /** The switch renders no text — without a name it reads as a bare "switch". */
+  ariaLabel?: string;
 }) {
   return (
     <button
       type="button"
       role="switch"
       aria-checked={checked}
+      aria-label={ariaLabel}
       onClick={() => onChange(!checked)}
       className={cn(
         "relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors",
@@ -212,6 +218,7 @@ function NumberField({
   unit,
   value,
   badge,
+  disabled,
   onChange,
   onBlur,
 }: {
@@ -221,11 +228,17 @@ function NumberField({
   unit?: string;
   value: string;
   badge?: string;
+  disabled?: boolean;
   onChange: (raw: string) => void;
   onBlur: () => void;
 }) {
   return (
-    <div className="rounded-xl border border-gray-100 bg-gray-50/60 p-3 transition-colors focus-within:border-[#6c47ff]/50 focus-within:bg-white dark:border-gray-800 dark:bg-gray-800/40 dark:focus-within:bg-gray-900">
+    <div
+      className={cn(
+        "rounded-xl border border-gray-100 bg-gray-50/60 p-3 transition-colors focus-within:border-[#6c47ff]/50 focus-within:bg-white dark:border-gray-800 dark:bg-gray-800/40 dark:focus-within:bg-gray-900",
+        disabled && "opacity-60"
+      )}
+    >
       <div className="mb-1.5 flex items-start gap-2">
         <Icon size={14} className="mt-0.5 shrink-0 text-[#6c47ff]" />
         <span className={cn("text-xs font-semibold leading-snug", portalHeading)}>{label}</span>
@@ -235,8 +248,9 @@ function NumberField({
           type="text"
           inputMode="numeric"
           pattern="[0-9]*"
+          disabled={disabled}
           className={cn(
-            "w-20 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-center text-base font-bold tabular-nums outline-none focus:border-[#6c47ff] dark:border-gray-700 dark:bg-gray-900",
+            "w-20 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-center text-base font-bold tabular-nums outline-none focus:border-[#6c47ff] disabled:cursor-not-allowed disabled:bg-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:disabled:bg-gray-800",
             portalHeading
           )}
           value={value}
@@ -286,7 +300,7 @@ function ToggleField({
         <p className={cn("text-xs font-semibold leading-snug", portalHeading)}>{label}</p>
         <p className={cn("mt-1 text-[11px] leading-snug", portalSubtext)}>{hint}</p>
       </div>
-      <Switch checked={checked} onChange={onChange} />
+      <Switch checked={checked} onChange={onChange} ariaLabel={label} />
     </div>
   );
 }
@@ -338,6 +352,11 @@ export function AdminPlansPage() {
       const d = plan ? (drafts[planId] ?? toEditable(plan)) : undefined;
       if (!d?.generateUnlimited) n = 1;
     }
+    if (field === "generateCooldownHours") {
+      const plan = plans.find((p) => p.id === planId);
+      const d = plan ? (drafts[planId] ?? toEditable(plan)) : undefined;
+      if (!d?.generateUnlimited && n < 1) n = 1;
+    }
     const clamped = max !== undefined ? Math.min(max, n) : n;
     patchDraft(planId, { [field]: clamped } as Partial<Editable>);
     setRawValues((prev) => ({ ...prev, [numKey(planId, field)]: String(clamped) }));
@@ -374,6 +393,31 @@ export function AdminPlansPage() {
     setDrafts((prev) => ({ ...prev, [id]: { ...prev[id], ...patch } }));
   }
 
+  /** Tắt Unlimited → ép N≥1 và H≥1 (mặc định 24 nếu đang 0) để khớp BE. */
+  function handleGenerateUnlimitedChange(planId: string, next: boolean) {
+    const current = drafts[planId];
+    if (!current) {
+      patchDraft(planId, { generateUnlimited: next });
+      return;
+    }
+    if (next) {
+      patchDraft(planId, { generateUnlimited: true });
+      return;
+    }
+    const generatePerWindow = Math.max(1, current.generatePerWindow || 1);
+    const generateCooldownHours = Math.max(1, current.generateCooldownHours || 24);
+    patchDraft(planId, {
+      generateUnlimited: false,
+      generatePerWindow,
+      generateCooldownHours,
+    });
+    setRawValues((prev) => ({
+      ...prev,
+      [numKey(planId, "generatePerWindow")]: String(generatePerWindow),
+      [numKey(planId, "generateCooldownHours")]: String(generateCooldownHours),
+    }));
+  }
+
   /** Trả draft về đúng giá trị đang lưu trên server. */
   function handleReset(plan: SubscriptionPlan) {
     const e = toEditable(plan);
@@ -390,11 +434,11 @@ export function AdminPlansPage() {
     if (!d) return;
     const code = (plan.code ?? "").toUpperCase();
     if (code.includes("FREE") && d.priceMonthly !== 0) {
-      addToast("error", "Gói Free phải có giá 0 VNĐ.");
+      addToast("error", ed.freePriceMustBeZero);
       return;
     }
     if (code.includes("PREMIUM") && d.priceMonthly < 10000) {
-      addToast("error", "Gói Premium phải có giá tối thiểu 10.000 VNĐ.");
+      addToast("error", ed.premiumMinPrice);
       return;
     }
     setSavingId(plan.id);
@@ -491,6 +535,7 @@ export function AdminPlansPage() {
                         checked={d.isActive}
                         onChange={(next) => patchDraft(plan.id, { isActive: next })}
                         onDark
+                        ariaLabel={d.isActive ? ed.active : ed.inactive}
                       />
                       <span className="text-[10px] font-bold uppercase tracking-wider text-white/85">
                         {d.isActive ? ed.active : ed.inactive}
@@ -545,6 +590,7 @@ export function AdminPlansPage() {
                       unit={ed.unitTimes}
                       value={getRaw(plan.id, "generatePerWindow", d.generatePerWindow)}
                       badge={d.generateUnlimited ? ed.unlimitedBadge : undefined}
+                      disabled={d.generateUnlimited}
                       onChange={(raw) => handleNumChange(plan.id, "generatePerWindow", raw)}
                       onBlur={() => handleNumBlur(plan.id, "generatePerWindow")}
                     />
@@ -564,6 +610,8 @@ export function AdminPlansPage() {
                       hint={ed.hintCooldown}
                       unit={ed.unitHours}
                       value={getRaw(plan.id, "generateCooldownHours", d.generateCooldownHours)}
+                      badge={d.generateUnlimited ? ed.unlimitedBadge : undefined}
+                      disabled={d.generateUnlimited}
                       onChange={(raw) => handleNumChange(plan.id, "generateCooldownHours", raw)}
                       onBlur={() => handleNumBlur(plan.id, "generateCooldownHours")}
                     />
@@ -613,7 +661,7 @@ export function AdminPlansPage() {
                       label={ed.generateUnlimitedLabel}
                       hint={ed.hintGenerateUnlimited}
                       checked={d.generateUnlimited}
-                      onChange={(next) => patchDraft(plan.id, { generateUnlimited: next })}
+                      onChange={(next) => handleGenerateUnlimitedChange(plan.id, next)}
                     />
                   </div>
                 </div>

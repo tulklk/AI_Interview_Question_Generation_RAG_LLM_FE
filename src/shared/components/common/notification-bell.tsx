@@ -71,6 +71,9 @@ export function NotificationBell({ items, emptyLabel, title = "Notifications", m
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen((v) => !v)}
+        // Icon-only trigger — reuse the panel title as its accessible name.
+        aria-label={title}
+        aria-expanded={open}
         className="relative w-8 h-8 flex items-center justify-center rounded-lg bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:border-gray-300 dark:hover:border-gray-600 transition-colors"
       >
         <Bell size={15} />

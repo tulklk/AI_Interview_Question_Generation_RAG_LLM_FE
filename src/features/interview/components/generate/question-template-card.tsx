@@ -48,7 +48,11 @@ export function QuestionTemplateCard({
   bare = false,
 }: Props) {
   const { t } = useLanguage();
-  const templateLabel = templateId ? (TEMPLATE_LABELS[templateId] ?? templateId) : null;
+  const templateLabel = templateId
+    ? ((t.questionBuilder.templateNames as Record<string, string>)[templateId]
+        ?? TEMPLATE_LABELS[templateId]
+        ?? templateId)
+    : null;
 
   const body = (
     <>
@@ -57,7 +61,7 @@ export function QuestionTemplateCard({
           {/* eslint-disable-next-line @next/next/no-img-element -- SAS Azure Blob URL động */}
           <img
             src={attachedImageUrl}
-            alt="Ảnh đính kèm câu hỏi"
+            alt={t.common.questionImageAlt}
             className="max-h-72 w-full object-contain bg-gray-50 dark:bg-gray-950"
           />
         </div>

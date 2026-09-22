@@ -161,10 +161,12 @@ function SavedRow({
       {/* Actions */}
       <div className="flex items-center gap-2 shrink-0">
         <Link
-          href={`/candidate/sets/${set.id}`}
+          href={set.isHiringAssessment ? `/candidate/jobs/${set.id}` : `/candidate/sets/${set.id}`}
           className="flex items-center gap-1 px-3 py-1.5 text-[12px] font-semibold text-white bg-primary hover:bg-primary-hover rounded-lg transition-colors"
         >
-          {t.jobseekerMarketplacePage.startPractice}
+          {set.isHiringAssessment
+            ? t.hiringJobsPage.applyCta
+            : t.jobseekerMarketplacePage.startPractice}
           <ChevronRight size={12} />
         </Link>
         <button
@@ -313,7 +315,7 @@ export function SavedSetsPage() {
                 disabled={page <= 1}
                 onClick={() => goToPage(page - 1)}
                 className={navBtnCls}
-                aria-label="Trang trước"
+                aria-label={t.common.prevPage}
               >
                 <ChevronLeft size={15} />
               </button>
