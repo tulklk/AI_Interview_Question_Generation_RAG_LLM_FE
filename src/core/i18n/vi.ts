@@ -5101,6 +5101,7 @@ Yêu cầu:
       wordCount: "{{words}} từ · {{chars}} ký tự",
       noContent: "Chưa có nội dung",
       saveAndAnalyze: "Lưu & Phân tích",
+      savingAnalyzing: "Đang lưu & phân tích…",
       uploadedInfo: "Đã tải lên & phân tích · {{words}} từ",
       replaceFile: "Thay file",
       dropToReplace: "Kéo thả file mới để thay thế",

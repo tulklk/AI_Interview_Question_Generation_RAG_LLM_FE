@@ -174,6 +174,11 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
       } catch {
         /* ignore */
       }
+      try {
+        window.dispatchEvent(new Event("hr-sidebar-collapsed-changed"));
+      } catch {
+        /* ignore */
+      }
       return next;
     });
   }

@@ -39,7 +39,7 @@ export function HeroSection() {
   return (
     <section
       id="home"
-      className="relative px-4 sm:px-6 pt-8 sm:pt-10 lg:pt-12 pb-[clamp(0.5rem,2vh,1.5rem)] lg:pb-10 overflow-hidden bg-white/92 dark:bg-gray-950/85 min-h-0 lg:min-h-[calc(100dvh-4rem)]"
+      className="relative px-4 sm:px-6 pt-6 sm:pt-8 lg:pt-0 pb-[clamp(0.5rem,2vh,1.5rem)] lg:pb-6 overflow-hidden bg-white/92 dark:bg-gray-950/85 min-h-0 lg:min-h-[calc(100dvh-4rem)] lg:flex lg:flex-col lg:justify-center"
     >
       {/* ── Hero holographic accents: grid, aurora beams, glows, stars ── */}
       <div className="light-hero-bg absolute inset-0 pointer-events-none" aria-hidden="true">
