@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { createPortal } from "react-dom";
 import {
   ArrowRight,
   Loader2,
@@ -54,8 +55,56 @@ export function CoachPage() {
     router.push(`/candidate/practice/${w.job.questionSetId}?mode=coach`);
   }
 
+  const generatingOverlay =
+    showGeneratingOverlay && typeof document !== "undefined"
+      ? createPortal(
+          <div className="fixed inset-0 z-9999 flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" aria-hidden />
+            <div className="relative z-10 w-full max-w-md rounded-2xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 shadow-xl p-5 space-y-3">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <Loader2 size={18} className="animate-spin text-primary" />
+                  <p className={cn("text-[14px] font-semibold", portalHeadingAlt)}>
+                    {p.generatingBackground}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => w.setOverlayDismissed(true)}
+                  className="p-1 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800"
+                  aria-label="Dismiss"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+              <p className={cn("text-[12px]", portalSubtextAlt)}>{p.pollingStay}</p>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  disabled={w.cancelling || !w.job?.id || w.job.id === "__pending__"}
+                  onClick={() => void w.cancelJob()}
+                  className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg text-[12px] font-semibold border border-red-200 text-red-600 disabled:opacity-50"
+                >
+                  {w.cancelling ? <Loader2 size={12} className="animate-spin" /> : null}
+                  {p.cancelGeneration}
+                </button>
+                <Link
+                  href="/candidate/practice"
+                  className="inline-flex items-center h-9 px-3 rounded-lg text-[12px] font-semibold text-primary hover:underline"
+                >
+                  {p.browseWhileWaiting} →
+                </Link>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )
+      : null;
+
   return (
     <div className="space-y-5 pb-10">
+      {generatingOverlay}
+
       <CoachHero
         isPremium={w.isPremium}
         onUpgrade={() => w.setUpgradeOpen(true)}
@@ -70,47 +119,6 @@ export function CoachPage() {
         minSelectableStep={w.minSelectableStep}
         onSelect={w.selectStep}
       />
-
-      {showGeneratingOverlay && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 backdrop-blur-[2px] px-4">
-          <div className="w-full max-w-md rounded-2xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 shadow-xl p-5 space-y-3">
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex items-center gap-2">
-                <Loader2 size={18} className="animate-spin text-primary" />
-                <p className={cn("text-[14px] font-semibold", portalHeadingAlt)}>
-                  {p.generatingBackground}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => w.setOverlayDismissed(true)}
-                className="p-1 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800"
-                aria-label="Dismiss"
-              >
-                <X size={16} />
-              </button>
-            </div>
-            <p className={cn("text-[12px]", portalSubtextAlt)}>{p.pollingStay}</p>
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                disabled={w.cancelling || !w.job?.id || w.job.id === "__pending__"}
-                onClick={() => void w.cancelJob()}
-                className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg text-[12px] font-semibold border border-red-200 text-red-600 disabled:opacity-50"
-              >
-                {w.cancelling ? <Loader2 size={12} className="animate-spin" /> : null}
-                {p.cancelGeneration}
-              </button>
-              <Link
-                href="/candidate/practice"
-                className="inline-flex items-center h-9 px-3 rounded-lg text-[12px] font-semibold text-primary hover:underline"
-              >
-                {p.browseWhileWaiting} →
-              </Link>
-            </div>
-          </div>
-        </div>
-      )}
 
       <div className="grid lg:grid-cols-[1fr_280px] gap-5">
         <div className="space-y-5 min-w-0">

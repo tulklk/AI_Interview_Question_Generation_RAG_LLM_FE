@@ -42,7 +42,7 @@ export function normalizeStudioSettings(s: StudioSettings | null): StudioSetting
     ...s,
     interviewLengthMinutes: Number.isFinite(minutes) && minutes >= 15 && minutes <= 180 ? minutes : 60,
     numberOfQuestions: Number.isFinite(questions)
-      ? Math.min(50, Math.max(5, questions))
+      ? Math.min(50, Math.max(1, questions))
       : 15,
     difficulty: normalizeStudioDifficulty(s.difficulty),
     questionTone: "Professional",
@@ -58,7 +58,7 @@ export function normalizeStudioSettings(s: StudioSettings | null): StudioSetting
     enabledCodeTemplates,
     focusAreas: normalizeFocusAreas(s.focusAreas),
     questionDistribution: Array.isArray(s.questionDistribution)
-      ? syncDistributionCounts(s.questionDistribution, Number.isFinite(questions) ? Math.min(50, Math.max(5, questions)) : 15)
+      ? syncDistributionCounts(s.questionDistribution, Number.isFinite(questions) ? Math.min(50, Math.max(1, questions)) : 15)
       : [],
     questionStyles: Array.isArray(s.questionStyles) ? s.questionStyles : [],
     recommendedConfiguration: s.recommendedConfiguration

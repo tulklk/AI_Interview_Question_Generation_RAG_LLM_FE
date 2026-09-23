@@ -133,7 +133,7 @@ export function attachAuthInterceptor(client: AxiosInstance): void {
       if (!original) return Promise.reject(error);
 
       const status = error.response?.status;
-      if (status !== 401) return Promise.reject(error);
+      if (status !== 401 && status !== 403) return Promise.reject(error);
 
       if (isPublicAuthRequest(original)) {
         return Promise.reject(error);
@@ -142,6 +142,19 @@ export function attachAuthInterceptor(client: AxiosInstance): void {
       if (isRefreshRequest(original)) {
         clearAuth();
         redirectToLogin();
+        return Promise.reject(error);
+      }
+
+      // 403: stale session after logout often surfaces as Forbidden (not 401).
+      // Only force login when there is no token or /me rejects — do not treat
+      // feature-permission 403s as logout.
+      if (status === 403) {
+        const url = (original.url ?? "").toLowerCase();
+        const isMe = url.includes("/api/users/me") || url.endsWith("/users/me");
+        if (!getAccessToken() || isMe) {
+          clearAuth();
+          redirectToLogin();
+        }
         return Promise.reject(error);
       }
 

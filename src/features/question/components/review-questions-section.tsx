@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useMemo } from "react";
 import { AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
-import { Plus, BookMarked, Loader2, AlertCircle, RefreshCw, ChevronLeft, ChevronRight, X, Check, Rocket, Undo2, Clock, Pencil, UserCheck } from "lucide-react";
+import { Plus, BookMarked, Loader2, AlertCircle, RefreshCw, ChevronLeft, ChevronRight, X, Check, Rocket, Clock, Pencil, UserCheck } from "lucide-react";
 import { AiLoadingSpinner } from "@/shared/components/common/ai-loading-spinner";
 import { QuestionSetStatusBanner } from "@/features/question/components/question-set-status-banner";
 import {
@@ -886,23 +886,7 @@ export function ReviewQuestionsSection({
             </button>
           )}
 
-          {questionSetId && (
-            publishStatus === "PUBLISHED" ? (
-              <button
-                type="button"
-                onClick={() => setPublishConfirmAction("unpublish")}
-                disabled={publishing}
-                className={cn(
-                  "flex-1 sm:flex-none flex items-center justify-center gap-2 text-sm font-semibold px-3.5 py-2 rounded-lg border transition-colors disabled:opacity-60",
-                  portalCard,
-                  portalHeading,
-                  "hover:bg-gray-50 dark:hover:bg-gray-800"
-                )}
-              >
-                {publishing ? <Loader2 size={14} className="animate-spin" /> : <Undo2 size={14} />}
-                {rp.unpublish}
-              </button>
-            ) : (
+          {questionSetId && publishStatus !== "PUBLISHED" && (
               <button
                 type="button"
                 onClick={() => setShowPublishDialog(true)}
@@ -912,7 +896,6 @@ export function ReviewQuestionsSection({
                 {publishing ? <Loader2 size={14} className="animate-spin" /> : <Rocket size={14} />}
                 {rp.publish}
               </button>
-            )
           )}
         </div>
       </div>

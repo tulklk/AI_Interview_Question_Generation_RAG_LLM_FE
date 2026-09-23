@@ -1,7 +1,7 @@
 ﻿"use client";
 
-import { useEffect } from "react";
-import { AlertTriangle, Check, ChevronDown, ChevronUp, Plus, Trash2 } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { AlertTriangle, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Plus, Trash2 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { useLanguage } from "@/shared/providers/language-context";
 import { portalSubtext } from "@/shared/utils/portal-ui";
@@ -19,6 +19,8 @@ import {
   matchJdSkill,
   normalizeFocusAreasToJdSkills,
 } from "@/features/studio/utils/focus-area-jd";
+
+const PAGE_SIZE = 5;
 
 interface Props {
   focusAreas: StudioFocusAreaItem[];
@@ -52,6 +54,21 @@ export function FocusAreasEditor({ focusAreas, disabled, allowedSkillNames, onCh
     (s) => !focusAreas.some((fa) => fa.name.toLowerCase() === s.toLowerCase())
   );
   const allSkillsUsed = useCatalog && unusedSkills.length === 0;
+
+  const totalPages = Math.max(1, Math.ceil(focusAreas.length / PAGE_SIZE));
+  const [page, setPage] = useState(0);
+
+  useEffect(() => {
+    if (page > totalPages - 1) setPage(Math.max(0, totalPages - 1));
+  }, [page, totalPages]);
+
+  const pageItems = useMemo(() => {
+    const start = page * PAGE_SIZE;
+    return focusAreas.slice(start, start + PAGE_SIZE).map((fa, localIdx) => ({
+      fa,
+      idx: start + localIdx,
+    }));
+  }, [focusAreas, page]);
 
   useEffect(() => {
     if (!useCatalog || focusAreas.length === 0) return;
@@ -95,24 +112,24 @@ export function FocusAreasEditor({ focusAreas, disabled, allowedSkillNames, onCh
     if (useCatalog) {
       const unused = unusedSkills[0];
       if (!unused) return;
-      onChange(
-        equalSplitFocusWeightsTo100([
-          ...focusAreas,
-          { name: unused, weight: 0, orderIndex: focusAreas.length },
-        ])
-      );
+      const next = equalSplitFocusWeightsTo100([
+        ...focusAreas,
+        { name: unused, weight: 0, orderIndex: focusAreas.length },
+      ]);
+      onChange(next);
+      setPage(Math.floor((next.length - 1) / PAGE_SIZE));
       return;
     }
-    onChange(
-      equalSplitFocusWeightsTo100([
-        ...focusAreas,
-        {
-          name: cfg.newFocusName,
-          weight: 0,
-          orderIndex: focusAreas.length,
-        },
-      ])
-    );
+    const next = equalSplitFocusWeightsTo100([
+      ...focusAreas,
+      {
+        name: cfg.newFocusName,
+        weight: 0,
+        orderIndex: focusAreas.length,
+      },
+    ]);
+    onChange(next);
+    setPage(Math.floor((next.length - 1) / PAGE_SIZE));
   };
 
   const remove = (index: number) => {
@@ -141,7 +158,7 @@ export function FocusAreasEditor({ focusAreas, disabled, allowedSkillNames, onCh
       </div>
 
       <ul className="space-y-1">
-        {focusAreas.map((fa, idx) => {
+        {pageItems.map(({ fa, idx }) => {
           const usedElsewhere = new Set(
             focusAreas
               .filter((_, i) => i !== idx)
@@ -248,6 +265,30 @@ export function FocusAreasEditor({ focusAreas, disabled, allowedSkillNames, onCh
           );
         })}
       </ul>
+
+      {focusAreas.length > PAGE_SIZE && (
+        <div className="flex items-center justify-between gap-2 pt-0.5">
+          <button
+            type="button"
+            disabled={page <= 0}
+            onClick={() => setPage((p) => Math.max(0, p - 1))}
+            className="inline-flex items-center gap-0.5 rounded-md px-1.5 py-1 text-[10px] font-medium text-gray-500 hover:bg-gray-100 hover:text-gray-800 disabled:opacity-30 dark:hover:bg-gray-800 dark:hover:text-gray-200"
+          >
+            <ChevronLeft className="h-3 w-3" />
+          </button>
+          <span className={cn("text-[10px] tabular-nums", portalSubtext)}>
+            {page + 1}/{totalPages}
+          </span>
+          <button
+            type="button"
+            disabled={page >= totalPages - 1}
+            onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+            className="inline-flex items-center gap-0.5 rounded-md px-1.5 py-1 text-[10px] font-medium text-gray-500 hover:bg-gray-100 hover:text-gray-800 disabled:opacity-30 dark:hover:bg-gray-800 dark:hover:text-gray-200"
+          >
+            <ChevronRight className="h-3 w-3" />
+          </button>
+        </div>
+      )}
 
       {!valid && focusAreas.length > 0 && (
         <p className="text-[10px] font-medium text-amber-700 dark:text-amber-300">{cfg.focusInvalid}</p>
