@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { useLanguage } from "@/shared/providers/language-context";
-import { MIN_QUESTIONS_TO_PUBLISH } from "@/features/interview/components/generate/question-builder-set-panel";
+import { DEFAULT_MIN_QUESTIONS_TO_PUBLISH } from "@/features/hr/services/hr-platform-flags.service";
 import type { PlanDetail } from "@/features/studio/types/studio.types";
 import {
   hrSidebarLeftOffsetClass,
@@ -28,6 +28,8 @@ interface StudioActionBarProps {
   questionCount: number;
   /** Questions that have both sample answer + scoring rubric. */
   readyCount?: number;
+  /** Admin platform-settings — số câu tối thiểu để publish. */
+  minQuestionsToPublish?: number;
   isStreaming: boolean;
   isGeneratingQuestions: boolean;
   canCreatePlan: boolean;
@@ -53,6 +55,7 @@ export function StudioActionBar({
   plan,
   questionCount,
   readyCount = 0,
+  minQuestionsToPublish = DEFAULT_MIN_QUESTIONS_TO_PUBLISH,
   isStreaming,
   isGeneratingQuestions,
   canCreatePlan,
@@ -231,9 +234,9 @@ export function StudioActionBar({
                   : "border border-gray-200 bg-white text-gray-400 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-500"
               )}
               title={
-                readyCount < MIN_QUESTIONS_TO_PUBLISH
+                readyCount < minQuestionsToPublish
                   ? s.publishMinToast
-                      .replace("{{min}}", String(MIN_QUESTIONS_TO_PUBLISH))
+                      .replaceAll("{{min}}", String(minQuestionsToPublish))
                       .replace("{{count}}", String(readyCount))
                   : allReady
                     ? s.publish
