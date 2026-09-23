@@ -220,7 +220,7 @@ export function PractitionersPage({ questionSetId }: { questionSetId: string }) 
       addToast(
         "error",
         rp.publishMinHint
-          .replace("{{min}}", String(minQuestionsToPublish))
+          .replaceAll("{{min}}", String(minQuestionsToPublish))
           .replace("{{count}}", String(readyN))
       );
       return;
