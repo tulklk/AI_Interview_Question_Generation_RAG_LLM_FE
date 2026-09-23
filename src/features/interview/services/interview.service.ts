@@ -1071,6 +1071,9 @@ export interface Practitioner {
   startedAt: string | null;
   /** SCRUM-464: bài test chính thức trên bộ Tuyển */
   isOfficialTest?: boolean;
+  /** Offer/invite status when BE returns it (SENT / ACCEPTED / INVITED / …) */
+  latestOfferStatus?: string | null;
+  invitationStatus?: string | null;
 }
 
 function normalizePractitionerStatus(raw: string): PractitionerSessionStatus {
@@ -1097,6 +1100,10 @@ function normalizePractitioner(raw: unknown, index: number): Practitioner | null
     completedAt: typeof src.completedAt === "string" ? src.completedAt : pickStr(src, "completedAt", "CompletedAt") || null,
     startedAt,
     isOfficialTest: Boolean(src.isOfficialTest ?? src.IsOfficialTest),
+    latestOfferStatus:
+      pickStr(src, "latestOfferStatus", "LatestOfferStatus", "offerStatus", "OfferStatus") || null,
+    invitationStatus:
+      pickStr(src, "invitationStatus", "InvitationStatus") || null,
   };
 }
 

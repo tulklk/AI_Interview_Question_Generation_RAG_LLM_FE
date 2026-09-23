@@ -121,8 +121,16 @@ export function PractitionersPage({ questionSetId }: { questionSetId: string }) 
   const [showPublishDialog, setShowPublishDialog] = useState(false);
   const [page, setPage] = useState(1);
   const [inviteTarget, setInviteTarget] = useState<Practitioner | null>(null);
+  const [invitedIds, setInvitedIds] = useState<Set<string>>(() => new Set());
   /** SCRUM-471: bộ Tuyển — xem thêm phiên luyện */
   const [includePractice, setIncludePractice] = useState(false);
+
+  function alreadyOffered(item: Practitioner): boolean {
+    if (invitedIds.has(item.candidateUserId)) return true;
+    const offer = (item.latestOfferStatus ?? "").toUpperCase();
+    const invite = (item.invitationStatus ?? "").toUpperCase();
+    return ["SENT", "ACCEPTED", "INVITED"].includes(offer) || invite === "INVITED";
+  }
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -433,7 +441,7 @@ export function PractitionersPage({ questionSetId }: { questionSetId: string }) 
                           ) : (
                             <span className="h-7 w-7" aria-hidden />
                           )}
-                          {item.status === "COMPLETED" ? (
+                          {item.status === "COMPLETED" && !alreadyOffered(item) ? (
                             <button
                               type="button"
                               onClick={() => setInviteTarget(item)}
@@ -442,6 +450,13 @@ export function PractitionersPage({ questionSetId }: { questionSetId: string }) 
                             >
                               <Mail size={14} />
                             </button>
+                          ) : item.status === "COMPLETED" && alreadyOffered(item) ? (
+                            <span
+                              className="inline-flex h-7 items-center rounded-md px-1.5 text-[10px] font-semibold text-emerald-700 bg-emerald-50 dark:bg-emerald-950/40 dark:text-emerald-300"
+                              title={p.inviteBtn}
+                            >
+                              ✓
+                            </span>
                           ) : (
                             <span className="h-7 w-7" aria-hidden />
                           )}
@@ -564,6 +579,7 @@ export function PractitionersPage({ questionSetId }: { questionSetId: string }) 
               inviteTarget.candidateUserId,
               message
             );
+            setInvitedIds((prev) => new Set(prev).add(inviteTarget.candidateUserId));
             setInviteTarget(null);
             addToast("success", p.inviteSuccessOfferCta);
             if (recommendationId) {

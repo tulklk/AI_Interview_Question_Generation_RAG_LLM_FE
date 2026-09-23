@@ -165,9 +165,9 @@ export function PlanInterviewConfigBlock({
             label={s.questionCount}
             value={numberOfQuestions}
             unit={s.unitQuestions}
-            min={5}
+            min={1}
             max={50}
-            presets={[5, 10, 15, 20, 25, 30]}
+            presets={[1, 3, 5, 10, 15, 20, 25, 30]}
             disabled={!editable}
             onChange={(v) => onDraftChange({ numberOfQuestions: v })}
           />

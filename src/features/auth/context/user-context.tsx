@@ -65,7 +65,16 @@ export function UserProvider({ children }: { children: ReactNode }) {
       cacheFromUser(profile);
       setUser(profile);
       return profile;
-    } catch {
+    } catch (err) {
+      const status =
+        err && typeof err === "object" && "response" in err
+          ? (err as { response?: { status?: number } }).response?.status
+          : undefined;
+      // Stale cache after logout / expired session must not keep a fake logged-in shell
+      if (status === 401 || status === 403) {
+        clearUser();
+        return null;
+      }
       const cached = userFromCache();
       if (cached) setUser(cached);
       return cached;

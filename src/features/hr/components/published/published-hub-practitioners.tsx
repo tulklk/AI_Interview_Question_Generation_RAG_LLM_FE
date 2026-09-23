@@ -105,6 +105,15 @@ export function PublishedHubPractitioners({
   const router = useRouter();
   const [page, setPage] = useState(1);
   const [inviteTarget, setInviteTarget] = useState<Practitioner | null>(null);
+  /** In-session: hide invite after success even before BE refetch */
+  const [invitedIds, setInvitedIds] = useState<Set<string>>(() => new Set());
+
+  function alreadyOffered(item: Practitioner): boolean {
+    if (invitedIds.has(item.candidateUserId)) return true;
+    const offer = (item.latestOfferStatus ?? "").toUpperCase();
+    const invite = (item.invitationStatus ?? "").toUpperCase();
+    return ["SENT", "ACCEPTED", "INVITED"].includes(offer) || invite === "INVITED";
+  }
 
   const list = useMemo(() => {
     if (limit != null) return items.slice(0, limit);
@@ -212,10 +221,17 @@ export function PublishedHubPractitioners({
                       ) : (
                         <span className="h-7 w-7" aria-hidden />
                       )}
-                      {item.status === "COMPLETED" ? (
+                      {item.status === "COMPLETED" && !alreadyOffered(item) ? (
                         <button type="button" onClick={() => setInviteTarget(item)} className={iconBtn} title={p.inviteBtn}>
                           <Mail size={14} />
                         </button>
+                      ) : item.status === "COMPLETED" && alreadyOffered(item) ? (
+                        <span
+                          className="inline-flex h-7 items-center rounded-md px-1.5 text-[10px] font-semibold text-emerald-700 bg-emerald-50 dark:bg-emerald-950/40 dark:text-emerald-300"
+                          title={p.inviteBtn}
+                        >
+                          ✓
+                        </span>
                       ) : (
                         <span className="h-7 w-7" aria-hidden />
                       )}
@@ -269,6 +285,7 @@ export function PublishedHubPractitioners({
               inviteTarget.candidateUserId,
               message
             );
+            setInvitedIds((prev) => new Set(prev).add(inviteTarget.candidateUserId));
             setInviteTarget(null);
             addToast("success", h.inviteSuccessOfferCta);
             if (recommendationId) {

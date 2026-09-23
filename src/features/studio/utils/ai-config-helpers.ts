@@ -92,7 +92,7 @@ export function buildApplyRecommendationPatch(
   rec: RecommendedConfiguration
 ): Partial<StudioSettings> {
   const questionStyles = rec.questionStyles ?? [];
-  const total = Math.min(50, Math.max(5, rec.numberOfQuestions || 15));
+  const total = Math.min(50, Math.max(1, rec.numberOfQuestions || 15));
   const rawDist = rec.questionDistribution ?? [];
   // Đồng bộ count với số câu AI đề xuất (tránh lệch %/count từ RAG)
   const questionDistribution =

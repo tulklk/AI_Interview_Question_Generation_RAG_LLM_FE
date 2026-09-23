@@ -1501,7 +1501,11 @@ export function StudioPage() {
           }))}
           minQuestions={minQuestionsToPublish}
           saving={publishing}
-          currentTimeLimitMinutes={null}
+          currentTimeLimitMinutes={
+            studio.currentPlan?.interviewLengthMinutes
+            ?? studio.settings?.interviewLengthMinutes
+            ?? null
+          }
           initialAutoRecommendEnabled={true}
           initialRecommendationMinScore={70}
           initialIsHiringAssessment={Boolean(studio.settings?.isHiringAssessment)}
