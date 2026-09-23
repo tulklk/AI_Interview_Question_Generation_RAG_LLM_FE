@@ -236,7 +236,7 @@ export function StudioActionBar({
               title={
                 readyCount < minQuestionsToPublish
                   ? s.publishMinToast
-                      .replace("{{min}}", String(minQuestionsToPublish))
+                      .replaceAll("{{min}}", String(minQuestionsToPublish))
                       .replace("{{count}}", String(readyCount))
                   : allReady
                     ? s.publish
