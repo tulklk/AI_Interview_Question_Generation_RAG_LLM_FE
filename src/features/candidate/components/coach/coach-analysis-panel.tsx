@@ -5,6 +5,7 @@ import { Loader2, Plus, X } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { portalHeadingAlt, portalSubtextAlt } from "@/shared/utils/portal-ui";
 import { useLanguage } from "@/shared/providers/language-context";
+import { getSkillIcon } from "@/features/candidate/utils/skill-icons";
 import type { CoachContext } from "@/features/candidate/services/coach.service";
 import type { CvInfo } from "@/features/candidate/services/candidate-cv.service";
 
@@ -95,23 +96,28 @@ export function CoachAnalysisPanel({
         <p className={cn("text-[11px] font-semibold", portalHeadingAlt)}>{p.skillsEditLabel}</p>
         <p className={cn("text-[11px]", portalSubtextAlt)}>{p.skillsEditHint}</p>
         <div className="flex flex-wrap gap-1.5">
-          {skills.map((s) => (
-            <span
-              key={s}
-              className="inline-flex items-center gap-1 text-[11px] font-semibold pl-2 pr-1 py-1 rounded-full bg-primary/10 text-primary"
-            >
-              {s}
-              <button
-                type="button"
-                disabled={savingSkills}
-                onClick={() => removeSkill(s)}
-                className="w-4 h-4 rounded-full hover:bg-primary/20 flex items-center justify-center disabled:opacity-50"
-                aria-label={`${p.skillsRemoveAria}: ${s}`}
+          {skills.map((s) => {
+            const si = getSkillIcon(s);
+            const SIcon = si?.icon;
+            return (
+              <span
+                key={s}
+                className="inline-flex items-center gap-1 text-[11px] font-semibold pl-2 pr-1 py-1 rounded-full bg-primary/10 text-primary"
               >
-                <X size={10} />
-              </button>
-            </span>
-          ))}
+                {SIcon ? <SIcon size={11} className={cn("shrink-0", si.className)} /> : null}
+                {s}
+                <button
+                  type="button"
+                  disabled={savingSkills}
+                  onClick={() => removeSkill(s)}
+                  className="w-4 h-4 rounded-full hover:bg-primary/20 flex items-center justify-center disabled:opacity-50"
+                  aria-label={`${p.skillsRemoveAria}: ${s}`}
+                >
+                  <X size={10} />
+                </button>
+              </span>
+            );
+          })}
         </div>
         <div className="flex gap-2">
           <input

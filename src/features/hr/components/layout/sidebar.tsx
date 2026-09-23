@@ -241,7 +241,7 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
                 : isHrNavActive(item.href, pathname);
               const label = s.nav[item.href as keyof typeof s.nav] ?? item.label;
               const isNew = newBadgeReady && !seenTabs.has(item.href);
-              const badgeLabel = isNew ? "New" : typeof item.badge === "number" ? String(item.badge) : null;
+              const badgeLabel = typeof item.badge === "number" ? String(item.badge) : null;
 
               if (isHistory && !rail) {
                 return (
@@ -268,7 +268,7 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
                       >
                         <div
                           className={cn(
-                            "w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-all duration-200",
+                            "relative w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-all duration-200",
                             isActive ? "hr-icon-box" : "bg-gray-100 dark:bg-gray-800"
                           )}
                         >
@@ -278,6 +278,12 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
                               isActive ? "text-[#7C3AED] dark:text-[#a78bff]" : "text-[#9ca3af] dark:text-gray-500"
                             )}
                           />
+                          {isNew && (
+                            <span
+                              className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-red-500 ring-2 ring-white dark:ring-gray-950"
+                              aria-label="New"
+                            />
+                          )}
                         </div>
                         <span className="text-sm font-medium flex-1 truncate">{label}</span>
                         {badgeLabel && (
@@ -370,7 +376,7 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
                       >
                         <div
                           className={cn(
-                            "w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-all duration-200",
+                            "relative w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-all duration-200",
                             isActive ? "hr-icon-box" : "bg-gray-100 dark:bg-gray-800"
                           )}
                         >
@@ -380,6 +386,12 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
                               isActive ? "text-[#7C3AED] dark:text-[#a78bff]" : "text-[#9ca3af] dark:text-gray-500"
                             )}
                           />
+                          {isNew && (
+                            <span
+                              className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-red-500 ring-2 ring-white dark:ring-gray-950"
+                              aria-label="New"
+                            />
+                          )}
                         </div>
                         <span className="text-sm font-medium flex-1 truncate">{label}</span>
                         {badgeLabel && (
@@ -455,7 +467,7 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
                   >
                     <div
                       className={cn(
-                        "w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-all duration-200",
+                        "relative w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-all duration-200",
                         isActive ? "hr-icon-box" : "bg-gray-100 dark:bg-gray-800"
                       )}
                     >
@@ -465,6 +477,12 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
                           isActive ? "text-[#7C3AED] dark:text-[#a78bff]" : "text-[#9ca3af] dark:text-gray-500"
                         )}
                       />
+                      {isNew && (
+                        <span
+                          className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-red-500 ring-2 ring-white dark:ring-gray-950"
+                          aria-label="New"
+                        />
+                      )}
                     </div>
                     {!rail && (
                       <>

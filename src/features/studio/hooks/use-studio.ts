@@ -1015,7 +1015,7 @@ export function useStudio() {
     const rawQuestions = Number(patch.numberOfQuestions ?? base.numberOfQuestions ?? 15);
     const next = {
       interviewLengthMinutes: Number.isFinite(rawMinutes) ? Math.min(180, Math.max(15, rawMinutes)) : 60,
-      numberOfQuestions: Number.isFinite(rawQuestions) ? Math.min(50, Math.max(5, rawQuestions)) : 15,
+      numberOfQuestions: Number.isFinite(rawQuestions) ? Math.min(50, Math.max(1, rawQuestions)) : 15,
       difficulty: patch.difficulty ?? base.difficulty ?? "Medium",
       // Tone/format đã bỏ khỏi UI — luôn gửi default cố định
       questionTone: "Professional",

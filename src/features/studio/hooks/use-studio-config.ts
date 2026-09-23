@@ -89,7 +89,7 @@ export function mergeConfigDraft(
   // Preview outline: số câu = số slot còn lại
   if (patch.outlineItems != null) {
     next.outlineItems = normalizeOutlineItems(patch.outlineItems);
-    next.numberOfQuestions = Math.max(5, next.outlineItems.length);
+    next.numberOfQuestions = Math.max(1, next.outlineItems.length);
     if ((next.questionDistribution ?? []).length > 0) {
       next.questionDistribution = syncDistributionCounts(
         next.questionDistribution ?? [],
