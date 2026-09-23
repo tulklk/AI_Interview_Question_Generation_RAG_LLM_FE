@@ -759,6 +759,20 @@ export function HrBillingSubscription() {
                                 </a>
                               </>
                             )}
+                            {!item.receiptUrl && (
+                              <button
+                                type="button"
+                                disabled
+                                title={t.common.comingSoon}
+                                className={cn(
+                                  "flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-md opacity-50 cursor-not-allowed",
+                                  portalSubtext,
+                                )}
+                              >
+                                <Download size={11} />
+                                {ph.downloadBtn}
+                              </button>
+                            )}
                           </div>
                         </td>
                       </tr>

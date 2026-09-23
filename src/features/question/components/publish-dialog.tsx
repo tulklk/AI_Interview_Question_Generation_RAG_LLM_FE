@@ -299,7 +299,7 @@ export function PublishDialog({
               <p className="shrink-0 px-4 pb-2 text-xs font-medium text-amber-700 dark:text-amber-300 sm:px-5">
                 <AlertTriangle className="mr-1 inline h-3 w-3" />
                 {d.minHint
-                  .replace("{{min}}", String(minQuestions))
+                  .replaceAll("{{min}}", String(minQuestions))
                   .replace("{{count}}", String(selectedReadyCount))}
               </p>
             )}
@@ -596,7 +596,7 @@ export function PublishDialog({
               <p className="flex items-center gap-1.5 font-medium text-amber-700 dark:text-amber-300">
                 <AlertTriangle size={14} />
                 {d.minHint
-                  .replace("{{min}}", String(minQuestions))
+                  .replaceAll("{{min}}", String(minQuestions))
                   .replace("{{count}}", String(selectedReadyCount))}
               </p>
             )}
