@@ -67,8 +67,10 @@ describe("RAG027 — Studio Sample JD modal", () => {
     // The backdrop is the semi-transparent overlay div with the onClick=close
     // handler, a CHILD of the outer z-[200] wrapper — not the wrapper itself
     // (which also contains the card, so clicking the wrapper node directly
-    // never bubbles into the backdrop's own onClick).
-    const backdrop = document.querySelector("div.absolute.inset-0.bg-black\\/50")!;
+    // never bubbles into the backdrop's own onClick). It's laid out with flex
+    // (not absolute/inset-0) so it can leave room for the HR sidebar spacer -
+    // see sample-jd-modal.tsx's outer <div className="fixed inset-0 z-[200] ...">.
+    const backdrop = document.querySelector("div.bg-black\\/50")!;
     await user.click(backdrop);
     await vi.waitFor(
       () => expect(document.querySelector("div.fixed.inset-0.z-\\[200\\]")).not.toBeInTheDocument(),

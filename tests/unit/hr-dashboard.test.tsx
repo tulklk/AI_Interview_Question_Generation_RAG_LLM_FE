@@ -96,7 +96,8 @@ describe("HR Dashboard — KPIs and sections", () => {
       renderStudio(<HrDashboard />);
 
       expect(await findFirstText("Nguyen Van A")).toBeInTheDocument();
-      expect(await findFirstText("88%")).toBeInTheDocument();
+      // score is now rendered as a band label (getScoreBandLabel), not a raw "NN%" - 88 falls in [80,90) -> "Good"
+      expect(await findFirstText("Good")).toBeInTheDocument();
     },
     25000
   );

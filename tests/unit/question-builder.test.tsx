@@ -35,6 +35,16 @@ function mockQuestionSets(drafts: unknown[] = [DRAFT_SET]) {
   vi.mocked(hrHistoryApi.listHistoryQuestionSets).mockResolvedValue(drafts as never);
 }
 
+// SCRUM-477: every composer step is now a collapsible accordion section,
+// closed by default ("mặc định đóng accordion khi tạo câu") - a field inside
+// a given step isn't queryable until that step's header has been clicked open.
+async function openSection(user: ReturnType<typeof userEvent.setup>, namePattern: RegExp) {
+  const header = screen.getByRole("button", { name: namePattern });
+  if (header.getAttribute("aria-expanded") === "false") {
+    await user.click(header);
+  }
+}
+
 beforeEach(() => {
   vi.mocked(hrHistoryApi.listHistoryQuestionSets).mockReset();
   vi.mocked(interviewApi.addQuestionSetQuestion).mockReset();
@@ -44,12 +54,19 @@ beforeEach(() => {
 
 describe("MQ — Question Builder", () => {
   test("MQ001: with an existing DRAFT set, the composer is enabled and shows the set in the left panel", async () => {
+    // Selecting an existing draft is no longer automatic on load (page opens
+    // the create-set form by default) - the set must be clicked first.
     mockQuestionSets();
+    const user = userEvent.setup();
     renderWithProviders(<QuestionBuilderPage />);
 
     expect(await screen.findByRole("heading", { name: "Create questions manually" }, { timeout: 10000 })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Backend Mid-level/ })).toBeInTheDocument();
-    expect(screen.getByPlaceholderText("Enter question content...")).toBeEnabled();
+    const setBtn = screen.getByRole("button", { name: /Backend Mid-level/ });
+    expect(setBtn).toBeInTheDocument();
+    await user.click(setBtn);
+
+    await openSection(user, /Question content/i);
+    expect(await screen.findByPlaceholderText("Enter question content...")).toBeEnabled();
     expect(screen.getByRole("button", { name: "Save & add next" })).toBeInTheDocument();
   });
 
@@ -107,6 +124,7 @@ describe("MQ — Question Builder", () => {
     mockQuestionSets();
     const user = userEvent.setup();
     renderWithProviders(<QuestionBuilderPage />);
+    await user.click(await screen.findByRole("button", { name: /Backend Mid-level/ }, { timeout: 10000 }));
 
     const saveBtn = await screen.findByRole("button", { name: "Save & add next" }, { timeout: 10000 });
     expect(saveBtn).toBeDisabled();
@@ -128,12 +146,16 @@ describe("MQ — Question Builder", () => {
       } as never;
     });
     renderWithProviders(<QuestionBuilderPage />);
+    await user.click(await screen.findByRole("button", { name: /Backend Mid-level/ }, { timeout: 10000 }));
 
+    await openSection(user, /Question content/i);
     await user.type(await screen.findByPlaceholderText("Enter question content...", {}, { timeout: 10000 }), "Explain closures in JavaScript.");
+    await openSection(user, /Classification/i);
     await user.click(screen.getByRole("button", { name: "Hard" }));
     await user.click(screen.getByRole("button", { name: "Behavioral" }));
     await user.type(screen.getByPlaceholderText("e.g. React, SQL, Redis"), "JavaScript");
     await user.type(screen.getByPlaceholderText("e.g. Frontend, Database"), "Frontend");
+    await openSection(user, /Answer & Scoring/i);
     await user.type(screen.getByPlaceholderText(/Sample answer for HR/), "A closure is a function bundled with its lexical scope.");
     // Rubric editing is now the shared RubricEditor (criteria + weight +
     // anchors, shared/rubric/components/rubric-editor.tsx) rather than a
@@ -174,9 +196,12 @@ describe("MQ — Question Builder", () => {
       return { id: "q-new", question: payload.question } as never;
     });
     renderWithProviders(<QuestionBuilderPage />);
+    await user.click(await screen.findByRole("button", { name: /Backend Mid-level/ }, { timeout: 10000 }));
 
     await screen.findByRole("button", { name: "Save & add next" }, { timeout: 10000 });
+    await openSection(user, /Content type/i);
     expect(screen.getByText("Find and explain bugs in code")).toBeInTheDocument();
+    await openSection(user, /Question content/i);
     await user.type(screen.getByPlaceholderText("Enter question content..."), "Find the bug in this loop.");
     await user.click(screen.getByRole("button", { name: "Save & add next" }));
 
@@ -193,10 +218,13 @@ describe("MQ — Question Builder", () => {
       return { id: "q-new", question: payload.question } as never;
     });
     renderWithProviders(<QuestionBuilderPage />);
+    await user.click(await screen.findByRole("button", { name: /Backend Mid-level/ }, { timeout: 10000 }));
 
     await screen.findByRole("button", { name: "Save & add next" }, { timeout: 10000 });
+    await openSection(user, /Content type/i);
     await user.click(screen.getByRole("button", { name: "Theory" }));
     expect(screen.queryByText("Code template")).not.toBeInTheDocument();
+    await openSection(user, /Question content/i);
     await user.type(screen.getByPlaceholderText("Enter question content..."), "What is the CAP theorem?");
     await user.click(screen.getByRole("button", { name: "Save & add next" }));
 
@@ -208,18 +236,19 @@ describe("MQ — Question Builder", () => {
     mockQuestionSets();
     const user = userEvent.setup();
     renderWithProviders(<QuestionBuilderPage />);
+    await user.click(await screen.findByRole("button", { name: /Backend Mid-level/ }, { timeout: 10000 }));
 
     await screen.findByRole("button", { name: "Save & add next" }, { timeout: 10000 });
-    // Two controls now share the label "System design": the content-mode
-    // toggle (Theory/Code/System design — what this test wants) and the
-    // question-type chip (Technical/.../System design), which started
-    // rendering "System design" instead of the raw "System-design" enum
-    // value once question-builder-composer.tsx began translating it. The
-    // content-mode toggle renders first in the composer.
-    const [contentModeBtn] = screen.getAllByRole("button", { name: "System design" });
+    // The content-mode toggle (Theory/Code/System design) lives in the
+    // "Content type" accordion step, closed by default; the question-type
+    // classification control is now a <select>, not a same-labelled button,
+    // so there's a single unambiguous "System design" button once open.
+    await openSection(user, /Content type/i);
+    const contentModeBtn = screen.getByRole("button", { name: "System design" });
     await user.click(contentModeBtn);
 
     expect(await screen.findByText(/System design template/)).toBeInTheDocument();
+    await openSection(user, /Question content/i);
     expect(screen.getByPlaceholderText(/architecture overview, sequence diagram/)).toBeInTheDocument();
     expect(screen.queryByText("Code template")).not.toBeInTheDocument();
   });
@@ -231,7 +260,9 @@ describe("MQ — Question Builder", () => {
     // -> addQuestionSetQuestion() -> null -> onSave() surfaces toastSaveFailed.
     vi.mocked(interviewApi.addQuestionSetQuestion).mockResolvedValue(null);
     renderWithProviders(<QuestionBuilderPage />);
+    await user.click(await screen.findByRole("button", { name: /Backend Mid-level/ }, { timeout: 10000 }));
 
+    await openSection(user, /Question content/i);
     await user.type(await screen.findByPlaceholderText("Enter question content...", {}, { timeout: 10000 }), "This save will fail.");
     await user.click(screen.getByRole("button", { name: "Save & add next" }));
 
@@ -245,7 +276,9 @@ describe("MQ — Question Builder", () => {
     const user = userEvent.setup();
     vi.mocked(interviewApi.addQuestionSetQuestion).mockResolvedValue({ id: "q-new", question: "A saved question." } as never);
     renderWithProviders(<QuestionBuilderPage />);
+    await user.click(await screen.findByRole("button", { name: /Backend Mid-level/ }, { timeout: 10000 }));
 
+    await openSection(user, /Question content/i);
     await user.type(await screen.findByPlaceholderText("Enter question content...", {}, { timeout: 10000 }), "A saved question.");
     await user.click(screen.getByRole("button", { name: "Save & add next" }));
     expect(await screen.findByText("Added this session", { exact: true }, { timeout: 10000 })).toBeInTheDocument();

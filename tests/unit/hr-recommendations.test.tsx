@@ -38,7 +38,8 @@ describe("HR Recommendations — listing and filtering", () => {
     renderWithProviders(<RecommendationsList />);
 
     expect(await screen.findByText("Nguyen Van A", {}, { timeout: 10000 })).toBeInTheDocument();
-    expect(screen.getByText("88")).toBeInTheDocument();
+    // ScoreBadge now renders the score-band label (getScoreBandLabel), not the raw number - 88 -> "Good"
+    expect(screen.getByText("Good")).toBeInTheDocument();
   });
 
   test("REC-2: switching to the Shortlisted status tab re-fetches with that status filter", async () => {

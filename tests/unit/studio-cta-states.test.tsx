@@ -104,8 +104,11 @@ describe("RAG037/RAG039 — Studio CTA + empty states", () => {
     // to isBusy) — "not ready" is communicated via muted styling + a hint
     // title instead; clicking it still runs handlePublishClick's own
     // not-ready guard rather than actually publishing.
+    // minQuestionsToPublish now comes from useMinQuestionsToPublish() (admin
+    // platform-flags, fix bd47e61) — the test doesn't mock that endpoint, so
+    // it falls back to DEFAULT_MIN_QUESTIONS_TO_PUBLISH (10).
     const publishBtn = await within(actionBar).findByRole("button", { name: "Publish" });
-    expect(publishBtn).toHaveAttribute("title", "Add a sample answer and scoring rubric to every question before publishing (0/1 ready).");
+    expect(publishBtn).toHaveAttribute("title", "Need at least 10 questions with sample answer and scoring rubric to publish (0/10).");
     expect(within(actionBar).queryByRole("status", { name: "Completed" })).not.toBeInTheDocument();
   });
 });

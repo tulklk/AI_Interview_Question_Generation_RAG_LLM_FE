@@ -129,20 +129,21 @@ describe("pill.tsx — pure helpers", () => {
     expect(formatCategoryLabel("technical" as never)).toBe("Technical");
   });
 
-  test("getScoreBadgeClass thresholds at 80 and 65", () => {
-    expect(getScoreBadgeClass(85)).toContain("emerald");
-    expect(getScoreBadgeClass(80)).toContain("emerald");
-    expect(getScoreBadgeClass(70)).toContain("violet");
-    expect(getScoreBadgeClass(65)).toContain("violet");
-    expect(getScoreBadgeClass(40)).toContain("amber");
+  test("getScoreBadgeClass thresholds at 90, 80, and 70", () => {
+    expect(getScoreBadgeClass(95)).toContain("emerald");
+    expect(getScoreBadgeClass(90)).toContain("emerald");
+    expect(getScoreBadgeClass(85)).toContain("violet");
+    expect(getScoreBadgeClass(80)).toContain("violet");
+    expect(getScoreBadgeClass(75)).toContain("amber");
+    expect(getScoreBadgeClass(40)).toContain("red");
   });
 
   const LEVEL_LABELS = { excellent: "Excellent", good: "Good", fair: "Fair", needsWork: "Needs work" };
 
-  test("getScoreLevel derives label and badge color from the same thresholds (80/65/50)", () => {
+  test("getScoreLevel derives label and badge color from the same thresholds (90/80/70)", () => {
     expect(getScoreLevel(90, LEVEL_LABELS)).toEqual({ label: "Excellent", badgeClass: expect.stringContaining("emerald") });
-    expect(getScoreLevel(70, LEVEL_LABELS)).toEqual({ label: "Good", badgeClass: expect.stringContaining("violet") });
-    expect(getScoreLevel(55, LEVEL_LABELS)).toEqual({ label: "Fair", badgeClass: expect.stringContaining("amber") });
+    expect(getScoreLevel(80, LEVEL_LABELS)).toEqual({ label: "Good", badgeClass: expect.stringContaining("violet") });
+    expect(getScoreLevel(70, LEVEL_LABELS)).toEqual({ label: "Fair", badgeClass: expect.stringContaining("amber") });
     expect(getScoreLevel(30, LEVEL_LABELS)).toEqual({ label: "Needs work", badgeClass: expect.stringContaining("red") });
   });
 });

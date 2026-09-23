@@ -406,6 +406,8 @@ test('RAG008-1: a generation run stuck "Generating" for the full 5-minute deadli
   await user.click(generateBtn);
   expect(await screen.findByText("Started generating questions…")).toBeInTheDocument();
 
-  expect(await screen.findByText(/Job vẫn Generating sau 5 phút/, {}, { timeout: 20000 })).toBeInTheDocument();
-  expect(screen.getByText(/bấm Làm mới trạng thái/)).toBeInTheDocument();
+  // tx.generationStaleJob (English locale, the test's default) - see
+  // src/core/i18n/en.ts's generationStaleJob template.
+  expect(await screen.findByText(/Job still Generating after 5 minutes/, {}, { timeout: 20000 })).toBeInTheDocument();
+  expect(screen.getByText(/click Refresh status/)).toBeInTheDocument();
 });
