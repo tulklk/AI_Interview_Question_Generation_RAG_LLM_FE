@@ -351,7 +351,7 @@ module.exports = [
           { key: "RAG037-4", file: "studio-cta-states.test.tsx", desc: "Verify Publish is not ready while questions lack answers/rubrics.",
             pre: "Project has an approved plan and one question without sample answer or rubric.",
             steps: ["Open Studio and look at the action bar."],
-            exp: "\"Publish\" shows the hint \"Add a sample answer and scoring rubric to every question before publishing (0/1 ready).\" and no \"Completed\" badge is shown." },
+            exp: "\"Publish\" shows the hint \"Need at least 10 questions with sample answer and scoring rubric to publish (0/10).\" and no \"Completed\" badge is shown." },
           { key: "UI016-1", file: "ui-studio-interactions.test.tsx", desc: "Verify the AI loading state while a plan is being created.",
             pre: "Project has a JD with position and seniority; plan creation takes about 0.5 s.",
             steps: ["Click \"Create Plan\" in the action bar.", "Wait until the plan is loaded."],
@@ -390,7 +390,7 @@ module.exports = [
           { key: "RAG008-1", file: "studio-flow.test.tsx", desc: "Verify the recovery message when generation stays Generating past 5 minutes.",
             pre: "The generation run stays in status Generating beyond the 5-minute deadline.",
             steps: ["Click \"Generate Questions\".", "Wait until the deadline passes."],
-            exp: "\"Started generating questions…\" is shown, then the timeout message \"Job vẫn Generating sau 5 phút ... bấm Làm mới trạng thái\" is displayed." },
+            exp: "\"Started generating questions…\" is shown, then the timeout message \"Job still Generating after 5 minutes ... click Refresh status\" is displayed." },
         ],
       },
       {

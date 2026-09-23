@@ -269,6 +269,12 @@ async function buildR5() {
       "SU26SE102-GSU26SE52",
       "Re-verified the test artifacts after the AI Configuration page was rebuilt as read-only and the Jobs board, public JD and hiring assessment mode feature was merged. The frontend suite was re-run: 10 test files needed updating - one test file's import broke because the page it tested had lost the service it used to call (rewritten from 5 to 1 test case), a shared HR subscription fixture was missing a field that let a Free-plan test silently pass with Premium-level export access, two mock factories were missing fields required by their updated types (caught by a separate tsc --noEmit pass, not by Vitest itself), and the rest asserted stale Vietnamese or superseded UI text - and the suite passed 466/466 (62 files, -4 from the AI Configuration module). Report5_Test_Report.xlsx rebuilt as 344 functional test cases in 10 feature modules, all Passed (305 Vitest UI test cases and the unchanged 39 RAG Service API pytest test cases); the Administration module dropped from 47 to 43 cases. Added feature FT-16 to the scope table: the Jobs board, public JD and hiring assessment mode feature is out of scope for this test cycle and is covered by manual system testing only. SU26SE102-GSU26SE52_QA_TestCases.xlsx is unchanged because none of the functions it documents were modified.",
     ];
+    const texts23 = [
+      "23/09/2026",
+      "M",
+      "SU26SE102-GSU26SE52",
+      "Re-verified the test artifacts after a merge brought in the AI Coach roadmap accept/reset/context flow, IT-domain classification gates, the Hiring Assessment mode helpers and several other backend business rules, and removed the HR Settings Notifications tab. The frontend suite was re-run: 18 of 463 test cases failed - two asserted the pre-merge score-badge thresholds (80/65/50 instead of the new 90/80/70), five asserted stale UI text or values (a score shown as a raw percentage instead of the new band label, a publish-readiness tooltip whose minimum question count now comes from an admin setting, a timeout-recovery toast whose expected text was in the wrong language, a modal backdrop selector for an updated layout class), two covered the removed Notifications tab and were retired, and eleven needed each composer step's now-collapsed-by-default accordion section opened first. Fixing the threshold assertions also surfaced a real bug: a publish-readiness message template repeats the same placeholder twice but was only substituting its first occurrence; fixed at the six call sites that use it. The suite passed 464/464 (62 files, -2 from retiring the Notifications tab). The backend unit suite was re-run and passed 431/431 (was 232/232). Report5_Test_Report.xlsx rebuilt as 342 functional test cases in 10 feature modules, all Passed (303 Vitest UI test cases and the unchanged 39 RAG Service API pytest test cases); the HR Operations module dropped from 32 to 30 cases. SU26SE102-GSU26SE52_QA_TestCases.xlsx rebuilt with 36 new backend function sheets (199 net new test cases), taking it to 93 function sheets and 592 unit test cases; features FT-15 and FT-16 in the scope table updated from out-of-scope to partially covered, since their backend business logic is now unit-tested even though their frontend UI and end-to-end flow remain manual-only.",
+    ];
     const cloneRow = (vals) => {
       let i = 0;
       const out = src
@@ -277,10 +283,13 @@ async function buildR5() {
       if (i !== 4) throw new Error("Report5: change row has " + i + " text runs, expected 4");
       return out;
     };
-    xml = xml.replace(src, src + cloneRow(texts) + cloneRow(texts15) + cloneRow(texts19) + cloneRow(texts21));
-    summary.push("Record of changes: added 13/09/2026, 15/09/2026, 19/09/2026 and 21/09/2026 rows");
+    xml = xml.replace(src, src + cloneRow(texts) + cloneRow(texts15) + cloneRow(texts19) + cloneRow(texts21) + cloneRow(texts23));
+    summary.push("Record of changes: added 13/09/2026, 15/09/2026, 19/09/2026, 21/09/2026 and 23/09/2026 rows");
   }
 
+  // Cover page title carries a literal en-dash from the original template, outside any
+  // section this script rewrites - normalize it here rather than leaving a long dash in the doc.
+  xml = xml.replace("Report 5 – Software Test Documentation", "Report 5: Software Test Documentation");
   zip.file("word/document.xml", xml);
   fs.mkdirSync(OUT, { recursive: true });
   const out = OUT + path.basename(R5);

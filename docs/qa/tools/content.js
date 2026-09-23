@@ -8,22 +8,33 @@
 // Re-verified 21/09/2026 after route guards, an i18n pass, the AI Configuration page becoming
 // read-only, and a merged Jobs board / public JD / hiring assessment mode feature: Vitest JSON
 // run 466/466 in 62 files (unchanged file count; -4 from AI Configuration losing its editable
-// form, see AICFG-1 in tc-data-3.js). Backend, RAG and integration figures above are unchanged —
+// form, see AICFG-1 in tc-data-3.js). Backend, RAG and integration figures above are unchanged,
 // not touched this pass. FT-16 added below for the newly merged, still-uncovered feature.
+//
+// Re-verified 23/09/2026 after a merge brought in the AI Coach roadmap accept/reset/context flow,
+// IT-domain classification gates, the Hiring Assessment mode helpers and several other backend
+// business rules (commit 5ad979a): the merge also removed the HR Settings Notifications tab.
+// Vitest JSON run 464/464 in 62 files (-2: the two Notifications-tab test cases, HRNOTIF-1/2,
+// were retired with the feature; the other 16 originally-failing cases were updated to match
+// intentional UI changes - see 2.1 Regression Testing). dotnet test TRX run 431/431 in 65 files,
+// 69 test classes (was 232/232 in 32 files, 38 classes): 36 new function sheets were added to
+// SU26SE102-GSU26SE52_QA_TestCases.xlsx, taking it to 93 sheets and 592 UTCIDs. RAG service API
+// and backend integration figures are unchanged, not re-run this pass.
 const KHOA = "Hoàng Đăng Khoa";
 const TU = "Phan Thanh Tú";
 const NAM = "Nguyễn Minh Nam";
 const HIEN = "Nguyễn Trung Hiền";
 
-// Frontend results by area: [area, test files, test cases] - sums: 62 files, 466 cases
-// (was 470; Administration dropped 47->43, see the 21/09/2026 note above).
+// Frontend results by area: [area, test files, test cases] - sums: 62 files, 464 cases
+// (was 466; HR Operations dropped 32->30 when the HR Settings Notifications tab was removed,
+// see the 23/09/2026 note above).
 // The first nine rows are the functional modules of Report5_Test_Report.xlsx (UI component tests);
 // the last row is the logic-only test files documented in the Unit Test workbook.
 const FE_GROUPS = [
   ["Authentication & Access Control", 8, 51],
   ["HR Interview Plan Studio", 7, 42],
   ["Question Set Management", 3, 24],
-  ["HR Operations", 5, 32],
+  ["HR Operations", 5, 30],
   ["Candidate Experience", 8, 51],
   ["Subscription & Payment", 5, 34],
   ["Gamification", 4, 20],
@@ -38,19 +49,19 @@ const FEATURES = [
   ["FT-01", "Authentication & Access Control", "Login, HR and Job Seeker registration, e-mail OTP verification, forgot/reset and change password, token refresh and error interceptors, role-based page access", "Yes", "Functional: 51 test cases; unit: 4 frontend functions (30 test cases)"],
   ["FT-02", "HR Interview Plan Studio", "Job description input and samples, knowledge sources, plan creation and approval, question generation, editing and regeneration, save/publish/share, Free-plan quota", "Yes", "Functional: 42 test cases; unit: 4 frontend functions (35 test cases)"],
   ["FT-03", "Question Set Management", "Manual question builder, question set history (search, filters, publish, bookmark, export, delete), edit lock on published sets", "Yes", "Functional: 24 test cases"],
-  ["FT-04", "HR Operations", "HR dashboard, candidate recommendations, HR knowledge documents, HR profile, preference and notification settings", "Yes", "Functional: 32 test cases"],
+  ["FT-04", "HR Operations", "HR dashboard, candidate recommendations, HR knowledge documents, HR profile, preference settings", "Yes", "Functional: 30 test cases"],
   ["FT-05", "Candidate Experience", "Candidate dashboard, marketplace, practice session and score result, interview invitations, profile, settings", "Partial - anti-cheat monitors are stubbed", "Functional: 51 test cases; unit: 2 frontend functions (17 test cases)"],
   ["FT-06", "Subscription & Payment", "HR and candidate billing, upgrade and payment confirmation, user-scoped plan cache, realtime plan updates, premium revocation", "Partial - payment gateway and SignalR server are mocked", "Functional: 34 test cases; unit: 2 frontend functions (10 test cases)"],
   ["FT-07", "Gamification", "Progress card, daily goal, XP history, achievements", "Yes", "Functional: 20 test cases; unit: 2 frontend functions (24 test cases)"],
   ["FT-08", "Administration", "Admin dashboard, users, companies, marketplace moderation, subscription plans, AI configuration (read-only status panel), knowledge base, platform settings", "Yes", "Functional: 43 test cases; unit: 1 frontend function (13 test cases)"],
   ["FT-09", "Shared UI & Layout", "Toasts, dark mode, navigation drawer, brand logo, horizontal overflow, tooltips, shared formatting utilities", "Partial - layout is checked through CSS classes, not measured pixels", "Functional: 8 test cases; unit: 4 frontend functions (32 test cases)"],
   ["FT-10", "RAG Service API", "Health and internal API-key gate, knowledge ingestion validation and real embedding ingestion, chat and question generation request validation, interview plan flow with a live LLM, API contract and platform behaviour", "Yes", "Functional: 39 test cases (pytest, RAG_IQGS repository)"],
-  ["FT-11", "Backend business rules", "Gamification engine, Studio plan and question helpers, JD validation and IT-domain gate, HR recommendations and JD fit, knowledge document types, profile validation, subscription gates", "Yes", "Unit: 38 backend functions (232 test cases, xUnit)"],
+  ["FT-11", "Backend business rules", "Gamification engine, Studio plan and question helpers, JD validation and IT-domain gate, HR recommendations and JD fit, knowledge document types and folders, profile validation, subscription gates, AI Coach and candidate roadmap logic, Hiring Assessment mode helpers", "Yes", "Unit: 74 backend functions (431 test cases, xUnit)"],
   ["FT-12", "Backend integration", "Gamification persistence on a real PostgreSQL database; Studio smoke flow and HR funnel endpoints through the hosted API", "Partial - 6 of 12 tests executed", "Integration: 3 xUnit test classes, 12 tests"],
   ["FT-13", "End-to-end flows in a browser", "Complete business flows on the running product", "No - covered by manual system testing only", "-"],
   ["FT-14", "AI output quality and anti-cheat detection accuracy", "Relevance of generated plans, questions and feedback; face, head-pose and phone detection", "No", "-"],
-  ["FT-15", "AI Coach workflow, candidate roadmaps and knowledge-folder import", "Seven-phase AI Coach journey (CV upload, context, analysis, insight cards, report, roadmap preview and roadmap list), the candidate roadmap page, and the admin roadmap-node import with folder-based knowledge browsing", "No - merged on 19/09/2026, after this test cycle; covered by manual system testing only", "-"],
-  ["FT-16", "Jobs board, public job description and hiring assessment mode", "Candidate-facing job browsing at /candidate/jobs (public JD preview, skills and domain tags, \"Take/Continue assessment\"), the HR public JD editor separate from the internal generation JD, hiring-mode controls that mark a question set as a hiring assessment, and HR platform feature flags", "No - merged on 21/09/2026, after this test cycle; covered by manual system testing only", "-"],
+  ["FT-15", "AI Coach workflow, candidate roadmaps and knowledge-folder import", "Seven-phase AI Coach journey (CV upload, context, analysis, insight cards, report, roadmap preview and roadmap list), the candidate roadmap page, and the admin roadmap-node import with folder-based knowledge browsing", "Partial - the backend business logic (roadmap accept/reset/context, competency scoring and resolution, IT-domain gates, knowledge-folder resolution) is unit-tested, see FT-11; the frontend UI and end-to-end flow are still covered by manual system testing only", "Unit: 29 backend functions (135 test cases, xUnit; part of FT-11's total)"],
+  ["FT-16", "Jobs board, public job description and hiring assessment mode", "Candidate-facing job browsing at /candidate/jobs (public JD preview, skills and domain tags, \"Take/Continue assessment\"), the HR public JD editor separate from the internal generation JD, hiring-mode controls that mark a question set as a hiring assessment, and HR platform feature flags", "Partial - the backend business logic (hiring posting field/salary/workplace rules, anti-cheat and first-official-completion rules, public JD exposure rules) is unit-tested, see FT-11; the frontend UI and end-to-end flow are still covered by manual system testing only", "Unit: 5 backend functions (47 test cases, xUnit; part of FT-11's total)"],
 ];
 
 // Functional test case list, generated from the same data as Report5_Test_Report.xlsx.
@@ -76,7 +87,7 @@ FUNCTION_ROWS.push(["Total", "", `${tcNo} functions`, String(TC_TOTAL), ""]);
 
 const sections = {
   "1. Scope of Testing": [
-    { p: "This testing cycle covers the three code bases of the IQGS system that the team develops and can execute locally: the web frontend (Next.js 16, React 19), the main backend API (.NET 8, Clean Architecture) and the RAG service API (Python, FastAPI, repository RAG_IQGS). The frontend suite (466 test cases) was last executed on 21/09/2026, after the AI Configuration page was rebuilt as read-only and the Jobs board, public JD and hiring assessment mode feature was merged into the main branch; the backend unit tests (commit 27a84a8) and the RAG service API tests (39 test cases, commit 145f796, run against a live local Ollama) were executed on 15/09/2026 and the backend integration tests on 13/09/2026, after the anti-cheat feature was merged into the main branch on 10/09/2026." },
+    { p: "This testing cycle covers the three code bases of the IQGS system that the team develops and can execute locally: the web frontend (Next.js 16, React 19), the main backend API (.NET 8, Clean Architecture) and the RAG service API (Python, FastAPI, repository RAG_IQGS). The frontend suite (464 test cases) and the backend unit tests (431 test cases, commit 5ad979a) were last executed on 23/09/2026, after a merge brought in the AI Coach roadmap accept/reset/context flow, IT-domain classification gates, the Hiring Assessment mode helpers and several other backend business rules, and removed the HR Settings Notifications tab; the RAG service API tests (39 test cases, commit 145f796, run against a live local Ollama) were executed on 15/09/2026 and the backend integration tests on 13/09/2026, after the anti-cheat feature was merged into the main branch on 10/09/2026." },
   ],
   "1.1 In-Scope Items": [
     { p: "The table below lists the features of the system under test, whether each one is in scope for this cycle, and the test cases that cover it. Functional test cases are in Report5_Test_Report.xlsx, where the test case ID starts with the feature number (for example F1-01 for FT-01); unit test cases are in SU26SE102-GSU26SE52_QA_TestCases.xlsx." },
@@ -117,11 +128,11 @@ const sections = {
     { types: [
       ["Unit Testing (backend)", "Verify Application-layer business rules in isolation.", "xUnit tests on helpers, mappers, validators, gamification rules and the subscription gate, without a database.", "All test cases pass; each new or changed rule has a corresponding test case."],
       ["Unit Testing (frontend)", "Verify pure functions and service-level logic.", "Vitest tests that call formatting, permission, citation and template-inference functions, the axios authentication/error interceptors, the subscription realtime hook and the plan-cache provider directly (9 test files, 161 test cases, documented per function in the Unit Test workbook).", "All test cases pass."],
-      ["UI Component Testing (frontend)", "Verify that pages and components render the right states and react correctly to user actions.", "Vitest with React Testing Library and user-event renders pages and components in jsdom (53 test files, 305 test cases, documented as functional test cases in the Test Report); service modules are replaced with vi.mock so each test controls the loading, success and error responses.", "Default, error and successful-interaction states are covered for every tested page; all test cases pass."],
+      ["UI Component Testing (frontend)", "Verify that pages and components render the right states and react correctly to user actions.", "Vitest with React Testing Library and user-event renders pages and components in jsdom (53 test files, 303 test cases, documented as functional test cases in the Test Report); service modules are replaced with vi.mock so each test controls the loading, success and error responses.", "Default, error and successful-interaction states are covered for every tested page; all test cases pass."],
       ["Integration Testing (backend)", "Verify services and endpoints working together with a real database.", "The gamification tests build the gamification services directly against PostgreSQL (connection string from ConnectionStrings__DefaultConnection) and check the rows they write; the Studio and HR smoke tests host the full API with WebApplicationFactory and call its endpoints over HTTP.", "All tests pass. In this cycle 6 of 12 were executed and passed; the 6 smoke tests were not executed (see 1.4)."],
       ["API Testing (RAG service)", "Verify the HTTP API of the RAG service that the backend calls.", "pytest with FastAPI TestClient on the RAG_IQGS application: 25 tests check authentication, request validation, error formats and platform behaviour without an LLM; 14 tests ingest real documents and run the interview plan flow against a live local Ollama (gemma3:4b, nomic-embed-text) with an isolated ChromaDB.", "All test cases pass; behaviour that differs from the API contract is recorded as a finding."],
       ["Security Testing (automated, application level)", "Verify authentication and authorisation behaviour in the client.", "Tests cover 401 refresh-and-retry, forced logout, 403 handling, role-based page access and per-user isolation of the cached subscription plan.", "Behaviour matches the specification, or the gap is reported as a finding. No penetration testing was performed."],
-      ["Regression Testing", "Ensure that merged changes do not break behaviour that previously passed.", "The full frontend suite and the backend unit suite are re-run after significant merges. After the 10/09/2026 anti-cheat merge, 17 frontend test cases failed and were updated to the new UI on 12/09/2026 until all 529 passed. On 13/09/2026 the suite was reduced to 470 test cases - tests for code the app no longer uses were removed and parameterized tables were cut to one row per branch - and re-run with every test passing. On 15/09/2026 both the frontend suite (470/470) and the backend unit tests (232/232) were run again to produce the test reports. After the AI Coach, candidate roadmap and knowledge-folder import merge, the frontend suite was re-run on 19/09/2026: 20 test cases in 6 files failed because the code under test had changed (the practice and feedback screens now read a query parameter through next/navigation, the admin knowledge service gained folder and document-type functions, the HR upload callback gained two arguments, the admin knowledge page now opens on a folder browser, and the plan-limit save message was reworded). The six test files were updated to the new behaviour and the suite passed 470/470. After the AI Configuration page was rebuilt as read-only and the Jobs board, public JD and hiring assessment mode feature was merged, the suite was re-run on 21/09/2026: 10 frontend test files needed updating - one test file's import broke because the page it tested had lost the service it used to call (rewritten from 5 to 1 test case), a shared HR subscription fixture was missing a field that let a Free-plan test silently pass with Premium-level export access, two mock factories were missing fields required by their updated types (caught by a separate tsc --noEmit pass, not by Vitest itself), and the rest asserted stale Vietnamese or superseded UI text. All ten were updated to the current behaviour and the suite passed 466/466.", "No previously passing test case is left failing."],
+      ["Regression Testing", "Ensure that merged changes do not break behaviour that previously passed.", "The full frontend suite and the backend unit suite are re-run after significant merges. After the 10/09/2026 anti-cheat merge, 17 frontend test cases failed and were updated to the new UI on 12/09/2026 until all 529 passed. On 13/09/2026 the suite was reduced to 470 test cases - tests for code the app no longer uses were removed and parameterized tables were cut to one row per branch - and re-run with every test passing. On 15/09/2026 both the frontend suite (470/470) and the backend unit tests (232/232) were run again to produce the test reports. After the AI Coach, candidate roadmap and knowledge-folder import merge, the frontend suite was re-run on 19/09/2026: 20 test cases in 6 files failed because the code under test had changed (the practice and feedback screens now read a query parameter through next/navigation, the admin knowledge service gained folder and document-type functions, the HR upload callback gained two arguments, the admin knowledge page now opens on a folder browser, and the plan-limit save message was reworded). The six test files were updated to the new behaviour and the suite passed 470/470. After the AI Configuration page was rebuilt as read-only and the Jobs board, public JD and hiring assessment mode feature was merged, the suite was re-run on 21/09/2026: 10 frontend test files needed updating - one test file's import broke because the page it tested had lost the service it used to call (rewritten from 5 to 1 test case), a shared HR subscription fixture was missing a field that let a Free-plan test silently pass with Premium-level export access, two mock factories were missing fields required by their updated types (caught by a separate tsc --noEmit pass, not by Vitest itself), and the rest asserted stale Vietnamese or superseded UI text. All ten were updated to the current behaviour and the suite passed 466/466. After the 23/09/2026 merge (AI Coach roadmap accept/reset/context, IT-domain gates, Hiring Assessment mode helpers, and removal of the HR Settings Notifications tab), the frontend suite failed 18 of 463 test cases: two score-badge test cases still asserted the pre-merge 80/65/50 thresholds instead of the new 90/80/70 thresholds, five test cases asserted stale UI text or values (a score badge shown as a raw percentage instead of the new band label, a publish-readiness tooltip whose minimum question count now comes from an admin setting instead of a hardcoded value, a timeout-recovery toast whose expected text was in the wrong language, a modal backdrop selector that no longer matched its updated layout class), two test cases covered the now-removed Notifications tab and were retired rather than fixed, and the remaining eleven test cases needed each composer step's now-collapsed-by-default accordion section opened before its fields could be reached. Fixing the two stale threshold assertions also surfaced a real production bug: a publish-readiness message template that repeats the same placeholder twice was only substituting its first occurrence, so the tooltip could show the literal placeholder text to users; this was fixed at the six call sites that use that template. The backend unit suite was re-run the same day and rebuilt in the workbook: 431 of 431 test cases passed, adding 36 new function sheets (199 net new test cases) for the newly merged business rules. All frontend and backend unit test cases pass after these fixes.", "No previously passing test case is left failing."],
       ["System Testing (manual)", "Verify complete business flows on the running product.", "Team members use the product end to end and cross-check the UI against real database data; each defect is recorded with its location, root cause and fixing commit.", "No open P0/P1 defect before a delivery milestone."],
     ] },
   ],
@@ -155,7 +166,7 @@ const sections = {
   ],
   "3.1 Human Resources": [
     { table: { widths: [0.22, 0.24, 0.54], head: ["Worker/Doer", "Role", "Specific Responsibilities/Comments"], rows: [
-      [KHOA, "Test lead, frontend test automation", "Wrote and maintains the Vitest suite (16 of the 17 commits under tests/), rebuilt the unit test workbook and the functional test report, and ran the 12-15/09/2026, 19/09/2026 and 21/09/2026 regression cycles."],
+      [KHOA, "Test lead, frontend test automation", "Wrote and maintains the Vitest suite (16 of the 17 commits under tests/), rebuilt the unit test workbook and the functional test report, and ran the 12-15/09/2026, 19/09/2026, 21/09/2026 and 23/09/2026 regression cycles."],
       [HIEN, "Backend test automation", "Main author of the backend xUnit unit tests and integration tests (13 commits); designed manual test cases for the RAG/Studio and backend API modules."],
       [NAM, "Backend test automation, manual test design", "Co-author of the backend unit and integration tests (6 commits); designed and reviewed manual test cases for the Auth, Admin and UI modules."],
       [TU, "Fix verification", "Verified fixes and reproduced edge cases during development; implemented the practice anti-cheat feature."],
@@ -186,15 +197,16 @@ const sections = {
       ["Run the RAG service API tests (39 pytest test cases) against a live local Ollama and record them in the test report", "15/09/2026", "15/09/2026"],
       ["Regression cycle after the AI Coach, candidate roadmap and knowledge-folder import merge: update 6 frontend test files to the changed code and re-run the suite (470/470)", "19/09/2026", "19/09/2026"],
       ["Regression cycle after the AI Configuration page became read-only and the Jobs board, public JD and hiring assessment mode feature merged: update 10 frontend test files to the changed code and re-run the suite (466/466)", "21/09/2026", "21/09/2026"],
+      ["Regression cycle after the AI Coach roadmap accept/reset/context, IT-domain gates and Hiring Assessment mode merge: fix 18 frontend test cases (466/466 to 464/464 after retiring the removed Notifications tab), fix a real publish-readiness placeholder bug found in the process, and add 36 backend function sheets (199 new test cases) to the unit test workbook (431/431)", "23/09/2026", "23/09/2026"],
     ] } },
   ],
   "4. Test Cases": [
     { p: "Test cases are documented in the following artifacts:" },
     { bullets: [
-      "Functional test cases and test report: Report5_Test_Report.xlsx - 344 test cases in 10 feature modules (305 UI test cases run with Vitest and 39 RAG Service API test cases run with pytest), all Passed - the 305 frontend test cases on 21/09/2026 and the 39 RAG Service API test cases on 15/09/2026 - each with its procedure, expected result, pre-conditions, round results, test date and tester, summarised in the Test Cases and Test Statistics sheets.",
-      "Unit test cases: SU26SE102-GSU26SE52_QA_TestCases.xlsx - 57 function sheets with 393 test cases (203 Normal, 68 Abnormal, 122 Boundary): 19 frontend logic functions (161 test cases) and 38 backend application-layer functions (232 test cases), each with lines of code, conditions, confirmations, result and executed date, summarised in the Functions and Statistics sheets.",
+      "Functional test cases and test report: Report5_Test_Report.xlsx - 342 test cases in 10 feature modules (303 UI test cases run with Vitest and 39 RAG Service API test cases run with pytest), all Passed - the 303 frontend test cases on 23/09/2026 and the 39 RAG Service API test cases on 15/09/2026 - each with its procedure, expected result, pre-conditions, round results, test date and tester, summarised in the Test Cases and Test Statistics sheets.",
+      "Unit test cases: SU26SE102-GSU26SE52_QA_TestCases.xlsx - 93 function sheets with 592 test cases (295 Normal, 118 Abnormal, 179 Boundary): 19 frontend logic functions (161 test cases) and 74 backend application-layer functions (431 test cases), each with lines of code, conditions, confirmations, result and executed date, summarised in the Functions and Statistics sheets.",
       "Defect log: QA_Bug_Summary_Report (Markdown, Excel and Word versions) - 28 defects with location, root cause, fixing commit and regression test.",
-      "Automated test sources: tests/unit/ in the frontend repository (62 files: 53 UI component, 9 logic); ApplicationLayer.UnitTests (38 test classes in 32 files) and WebAPI.IntegrationTests (3 test classes) in the backend repository; tests/test_e2e_api.py and tests/test_ollama_integration.py (39 tests) in the RAG_IQGS repository.",
+      "Automated test sources: tests/unit/ in the frontend repository (62 files: 53 UI component, 9 logic); ApplicationLayer.UnitTests (69 test classes in 65 files) and WebAPI.IntegrationTests (3 test classes) in the backend repository; tests/test_e2e_api.py and tests/test_ollama_integration.py (39 tests) in the RAG_IQGS repository.",
     ] },
     { p: "The functional test cases in Report5_Test_Report.xlsx are grouped by feature and function as follows (the feature codes are those of the scope table in 1.1):" },
     { table: { widths: [0.07, 0.11, 0.37, 0.1, 0.35], head: ["No", "Feature Code", "Function", "Test cases", "Automated test files (tests/unit)"], rows: FUNCTION_ROWS } },
@@ -209,17 +221,17 @@ const sections = {
   ],
   "5.1 Test Statistics": [
     { table: { widths: [0.34, 0.12, 0.11, 0.1, 0.11, 0.22], head: ["Suite", "Test cases", "Passed", "Failed", "Not run", "Executed"], rows: [
-      ["Frontend unit and component tests (Vitest)", "466", "466", "0", "0", "21/09/2026"],
-      ["Backend unit tests (xUnit)", "232", "232", "0", "0", "15/09/2026"],
+      ["Frontend unit and component tests (Vitest)", "464", "464", "0", "0", "23/09/2026"],
+      ["Backend unit tests (xUnit)", "431", "431", "0", "0", "23/09/2026"],
       ["RAG service API tests (pytest, live local Ollama)", "39", "39", "0", "0", "15/09/2026"],
       ["Backend integration - gamification persistence (PostgreSQL)", "6", "6", "0", "0", "13/09/2026"],
       ["Backend integration - Studio and HR smoke flows (WebApplicationFactory)", "6", "0", "0", "6", "Not run (needs SePay settings; default configuration targets the shared database)"],
-      ["Total", "749", "743", "0", "6", ""],
+      ["Total", "946", "940", "0", "6", ""],
     ] } },
     { p: "Frontend results by functional area:" },
     { table: { widths: [0.46, 0.18, 0.18, 0.18], head: ["Functional area", "Test files", "Passed", "Failed"], rows: [
       ...FE_GROUPS.map(([a, files, cases]) => [a, String(files), String(cases), "0"]),
-      ["Total", "62", "466", "0"],
+      ["Total", "62", "464", "0"],
     ] } },
   ],
   "5.2 Test Analysis": [
@@ -251,7 +263,7 @@ const sections = {
     { lead: "Limitations of the test approach.", p: "No automated end-to-end tests exist; jsdom cannot measure layout; mocked services cannot catch contract or configuration mismatches (the refresh-token path defect was caused by a wrong environment value that no unit test can see); no coverage threshold is enforced; six backend integration tests (Studio and HR smoke flows) were not executed in this cycle; and the anti-cheat monitors are stubbed." },
   ],
   "5.3 Conclusion": [
-    { p: "All automated tests that were executed in this cycle pass: 466 of 466 frontend test cases, 232 of 232 backend unit test cases, 39 of 39 RAG service API test cases and 6 of 6 executed backend integration tests. The defect log contains no open P0 or P1 defect. The main remaining risks are the absence of automated end-to-end tests, the six Studio and HR smoke tests that were not executed, the 10 fixed defects without a regression test, and the open findings listed in 5.2." },
+    { p: "All automated tests that were executed in this cycle pass: 464 of 464 frontend test cases, 431 of 431 backend unit test cases, 39 of 39 RAG service API test cases and 6 of 6 executed backend integration tests. The defect log contains no open P0 or P1 defect. The main remaining risks are the absence of automated end-to-end tests, the six Studio and HR smoke tests that were not executed, the 10 fixed defects without a regression test, and the open findings listed in 5.2." },
     { p: "Recommendations for the next cycle, in order of impact:" },
     { bullets: [
       "Give the Studio and HR smoke tests an isolated test configuration (a local database and test SePay values) so that they can run without touching the shared Azure database, and make the gamification tests fail instead of returning early when no database is reachable.",

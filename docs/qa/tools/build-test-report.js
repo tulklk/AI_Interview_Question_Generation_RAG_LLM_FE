@@ -17,7 +17,7 @@ const TESTER = "Hoàng Đăng Khoa";
 const RUN_DATE = "21/09/2026";
 const RAG_RUN_DATE = "15/09/2026";
 const VERSION = "v7.3";
-const PROJECT_NAME = "IQGS – AI-Powered Interview Question Generation System Using RAG and LLM";
+const PROJECT_NAME = "IQGS: AI-Powered Interview Question Generation System Using RAG and LLM";
 const PROJECT_CODE = "SU26SE102";
 const CREATOR = "NamNM";
 const LAST_ROW = 2000;
@@ -280,6 +280,15 @@ function estHeight(texts, widths, base = 15) {
   st.getCell("E24").value = { formula: "D21*100/(H21-G21)" };
   st.getCell("E23").numFmt = "0.00";
   st.getCell("E24").numFmt = "0.00";
+
+  // Normalize font family site-wide. The capstone sample template mixes Tahoma (headers,
+  // labels, chrome) with Calibri (data rows, cloned from the template's own row 12) - same
+  // family everywhere reads as one consistent document instead of two different templates.
+  wb.worksheets.forEach((ws) => ws.eachRow((row) => row.eachCell((cell) => {
+    if (cell.font && cell.font.name && cell.font.name !== "Tahoma") {
+      cell.font = { ...cell.font, name: "Tahoma" };
+    }
+  })));
 
   wb.calcProperties = { ...(wb.calcProperties || {}), fullCalcOnLoad: true };
   wb.creator = CREATOR;

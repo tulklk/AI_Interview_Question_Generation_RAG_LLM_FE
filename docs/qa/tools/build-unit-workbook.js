@@ -6,7 +6,7 @@ const fs = require("fs");
 const path = require("path");
 
 const FE_ROOT = require("path").resolve(__dirname, "../../..") + "/";
-const BE_ROOT = "C:/Users/dangk/AppData/Local/Temp/claude/c--FPT-SEP490-AI-Interview-Question-Generation-RAG-LLM-FE/e201ab22-7790-4328-939f-e2eb19873139/scratchpad/IQGS-SEP490-Backend/";
+const BE_ROOT = "C:/FPT/SEP490/BE_repo_check/";
 const SAMPLE = FE_ROOT + "docs/qa/Report5mau/Report5_Unit Test(mau).xlsx";
 const CURRENT = "C:/tmp/qa-backup-0915/SU26SE102-GSU26SE52_QA_TestCases.xlsx";
 const [feFile, beFile, outFile] = process.argv.slice(2);
@@ -16,7 +16,7 @@ const RUN_DATE = "15/09/2026";
 const EXECUTOR = "Hoàng Đăng Khoa";
 const CREATOR = "NamNM";
 const VERSION = "0.3.0";
-const PROJECT_NAME = "IQGS – AI-Powered Interview Question Generation System Using RAG and LLM – A Dual-Sided Platform for HR and Job Seekers";
+const PROJECT_NAME = "IQGS: AI-Powered Interview Question Generation System Using RAG and LLM (A Dual-Sided Platform for HR and Job Seekers)";
 const PROJECT_CODE = "SU26SE102";
 const NORM_PER_KLOC = 100;
 const MAX_UTCID = 15; // template columns F..T
@@ -352,6 +352,15 @@ const txt = (v) => (v == null ? "" : typeof v === "object" ? (v.richText ? v.ric
     st.getCell(r, 4).numFmt = "0.00";
     st.getCell(r, 5).value = "%";
   });
+
+  // Normalize font family site-wide. The capstone sample template mixes Tahoma (most cells)
+  // with Calibri and MS PGothic (a few cover/header cells) - same family everywhere reads as
+  // one consistent document instead of a patchwork of the template's own inconsistencies.
+  wb.worksheets.forEach((ws) => ws.eachRow((row) => row.eachCell((cell) => {
+    if (cell.font && cell.font.name && cell.font.name !== "Tahoma") {
+      cell.font = { ...cell.font, name: "Tahoma" };
+    }
+  })));
 
   wb.calcProperties = { ...(wb.calcProperties || {}), fullCalcOnLoad: true };
   await wb.xlsx.writeFile(outFile);

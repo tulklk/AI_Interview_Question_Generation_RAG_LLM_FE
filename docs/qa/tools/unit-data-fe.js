@@ -214,8 +214,8 @@ module.exports = [
       ["getCompanyColor is deterministic for the same seed and picks from the fixed palette", "Same seed \"Acme Corp\" twice", "Same colour class bg-*-500 both times", "N"],
       ["getCompanyColor generally differs for different seeds", "Seeds \"Acme\" and \"Zephyr Industries\"", "Different colour classes", "N"],
       ["formatCategoryLabel title-cases hyphen/underscore/space-separated words", "\"problem-solving\", \"system_design\", \"technical\"", "\"Problem Solving\", \"System Design\", \"Technical\"", "N"],
-      ["getScoreBadgeClass thresholds at 80 and 65", "Scores 85, 80, 70, 65, 40", "emerald, emerald, violet, violet, amber", "B"],
-      ["getScoreLevel derives label and badge color from the same thresholds (80/65/50)", "Scores 90, 70, 55, 30", "Excellent/emerald, Good/violet, Fair/amber, Needs work/red", "B"],
+      ["getScoreBadgeClass thresholds at 90, 80, and 70", "Scores 95, 90, 85, 80, 75, 40", "emerald, emerald, violet, violet, amber, red", "B"],
+      ["getScoreLevel derives label and badge color from the same thresholds (90/80/70)", "Scores 90, 80, 70, 30", "Excellent/emerald, Good/violet, Fair/amber, Needs work/red", "B"],
     ],
   }),
   base({
