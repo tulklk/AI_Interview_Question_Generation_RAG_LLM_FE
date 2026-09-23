@@ -294,7 +294,7 @@ export function QuestionSetHistoryTable({ filter = "all" }: QuestionSetHistoryTa
         addToast(
           "error",
           t.reviewPage.publishMinHint
-            .replace("{{min}}", String(minQuestionsToPublish))
+            .replaceAll("{{min}}", String(minQuestionsToPublish))
             .replace("{{count}}", String(readyN))
         );
         return;
