@@ -281,6 +281,8 @@ export type PracticeFeedbackAccessLevel = "FreeTeaser" | "Full";
 export interface SessionFeedback {
   overallScore: number | null;
   accessLevel: PracticeFeedbackAccessLevel;
+  /** SCRUM-479: Premium còn câu chưa AI Succeeded — hiện nút chấm full. */
+  needsFullEvaluation: boolean;
   aiInsight: SessionAiInsight | null;
   evaluations: Record<string, AnswerEvaluation>;
 }
@@ -300,35 +302,51 @@ function normalizeAiInsight(raw: unknown): SessionAiInsight | null {
   };
 }
 
+function parseSessionFeedbackPayload(raw: unknown): SessionFeedback | null {
+  const src = extractData(raw);
+  if (!src) return null;
+  const items = Array.isArray(src.items) ? src.items : [];
+  const evaluations: Record<string, AnswerEvaluation> = {};
+  for (const item of items) {
+    const itemSrc = asRecord(item);
+    if (!itemSrc) continue;
+    const questionId = pickString(itemSrc, "questionId");
+    const evaluation = normalizeAnswerEvaluation(item);
+    if (questionId && evaluation) evaluations[questionId] = evaluation;
+  }
+  const accessRaw = pickString(src, "accessLevel");
+  const accessLevel: PracticeFeedbackAccessLevel =
+    accessRaw === "Full" ? "Full" : "FreeTeaser";
+  return {
+    overallScore: pickNullableNumber(src, "overallScore"),
+    accessLevel,
+    needsFullEvaluation: Boolean(src.needsFullEvaluation ?? src.NeedsFullEvaluation),
+    aiInsight: normalizeAiInsight(src.aiInsight),
+    evaluations,
+  };
+}
+
 /**
  * Fetches the persisted feedback for a completed session.
  */
 export async function getSessionFeedback(sessionId: string): Promise<SessionFeedback | null> {
   try {
     const res = await apiClient.get(`${BASE}/${sessionId}/feedback`);
-    const src = extractData(res.data);
-    if (!src) return null;
-    const items = Array.isArray(src.items) ? src.items : [];
-    const evaluations: Record<string, AnswerEvaluation> = {};
-    for (const item of items) {
-      const itemSrc = asRecord(item);
-      if (!itemSrc) continue;
-      const questionId = pickString(itemSrc, "questionId");
-      const evaluation = normalizeAnswerEvaluation(item);
-      if (questionId && evaluation) evaluations[questionId] = evaluation;
-    }
-    const accessRaw = pickString(src, "accessLevel");
-    const accessLevel: PracticeFeedbackAccessLevel =
-      accessRaw === "Full" ? "Full" : "FreeTeaser";
-    return {
-      overallScore: pickNullableNumber(src, "overallScore"),
-      accessLevel,
-      aiInsight: normalizeAiInsight(src.aiInsight),
-      evaluations,
-    };
+    return parseSessionFeedbackPayload(res.data);
   } catch {
     return null;
   }
+}
+
+/**
+ * SCRUM-479: Premium chấm AI đầy đủ on-demand (bù session Free teaser).
+ * Free → 403. Trả cùng shape GET feedback.
+ */
+export async function evaluateFullSessionFeedback(sessionId: string): Promise<SessionFeedback> {
+  const res = await apiClient.post(`${BASE}/${sessionId}/feedback/evaluate-full`);
+  const parsed = parseSessionFeedbackPayload(res.data);
+  if (!parsed) throw new Error("Invalid evaluate-full response");
+  return parsed;
 }
 
 function extractList(raw: unknown): unknown[] {

@@ -5,6 +5,7 @@ import { Zap, ChevronDown, ChevronUp } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/cn";
 import type { RankedUser, LeaderboardTab } from "@/features/candidate/data/leaderboard-dummy";
+import { useLeaderboardText } from "./leaderboard-text";
 
 const INITIAL_VISIBLE = 7;
 
@@ -56,12 +57,13 @@ function AvatarCircle({ initials, highlight }: { initials: string; highlight?: b
 
 // ── Score display ───────────────────────────────────────────────────────────
 function Score({ user, tab }: { user: RankedUser; tab: LeaderboardTab }) {
+  const lb = useLeaderboardText();
   if (tab === "streak") {
     return (
       <div className="flex items-center gap-1 shrink-0">
         <span className="text-orange-400">🔥</span>
         <span className="text-sm font-bold text-[#111827] dark:text-gray-100">{user.streak}</span>
-        <span className="text-xs text-[#9CA3AF] dark:text-gray-500">ngày</span>
+        <span className="text-xs text-[#9CA3AF] dark:text-gray-500">{lb.days}</span>
       </div>
     );
   }
@@ -70,7 +72,7 @@ function Score({ user, tab }: { user: RankedUser; tab: LeaderboardTab }) {
     <div className="flex items-center gap-1 shrink-0">
       <Zap size={13} className="text-amber-400" />
       <span className="text-sm font-bold text-[#111827] dark:text-gray-100">
-        {xp.toLocaleString("vi-VN")}
+        {xp.toLocaleString(lb.numberLocale)}
       </span>
     </div>
   );
@@ -88,6 +90,7 @@ function LeaderboardRow({
   displayName?: string;
   index: number;
 }) {
+  const lb = useLeaderboardText();
   const isMe = user.isCurrentUser;
   const name = isMe && displayName ? displayName : user.name;
 
@@ -117,14 +120,14 @@ function LeaderboardRow({
           </span>
           {isMe && (
             <span className="shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded bg-primary/10 dark:bg-primary/20 text-primary dark:text-[#a78bff] leading-none">
-              Bạn
+              {lb.you}
             </span>
           )}
         </div>
-        <p className="text-xs text-[#9CA3AF] dark:text-gray-500">Cấp {user.level}</p>
+        <p className="text-xs text-[#9CA3AF] dark:text-gray-500">{lb.level} {user.level}</p>
       </div>
       <span className="hidden sm:block text-xs text-[#9CA3AF] dark:text-gray-500 shrink-0 w-16 text-right">
-        {user.sessions} phiên
+        {user.sessions} {lb.sessions}
       </span>
       <Score user={user} tab={tab} />
     </motion.div>
@@ -140,6 +143,7 @@ interface LeaderboardListProps {
 }
 
 export function LeaderboardList({ rest, all, tab, currentUserName }: LeaderboardListProps) {
+  const lb = useLeaderboardText();
   const [expanded, setExpanded] = useState(false);
   const visible     = expanded ? rest : rest.slice(0, INITIAL_VISIBLE);
   const canExpand   = rest.length > INITIAL_VISIBLE;
@@ -151,11 +155,11 @@ export function LeaderboardList({ rest, all, tab, currentUserName }: Leaderboard
     <div className="flex flex-col">
       {/* Column header */}
       <div className="flex items-center gap-3 px-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-[#9CA3AF] dark:text-gray-600">
-        <span className="w-8 text-center">Hạng</span>
+        <span className="w-8 text-center">{lb.colRank}</span>
         <span className="w-10 shrink-0" />
-        <span className="flex-1">Ứng viên</span>
-        <span className="hidden sm:block w-16 text-right">Phiên</span>
-        <span className="shrink-0">Điểm</span>
+        <span className="flex-1">{lb.colCandidate}</span>
+        <span className="hidden sm:block w-16 text-right">{lb.colSessions}</span>
+        <span className="shrink-0">{lb.colScore}</span>
       </div>
 
       <div className="divide-y divide-gray-50 dark:divide-gray-800/60">
@@ -183,7 +187,7 @@ export function LeaderboardList({ rest, all, tab, currentUserName }: Leaderboard
           >
             <div className="flex items-center gap-2 my-1.5 px-2">
               <div className="flex-1 border-t border-dashed border-gray-200 dark:border-gray-700" />
-              <span className="text-[10px] text-[#9CA3AF] shrink-0">vị trí của bạn</span>
+              <span className="text-[10px] text-[#9CA3AF] shrink-0">{lb.yourPosition}</span>
               <div className="flex-1 border-t border-dashed border-gray-200 dark:border-gray-700" />
             </div>
             <LeaderboardRow user={currentUser!} tab={tab} displayName={currentUserName} index={0} />
@@ -206,7 +210,7 @@ export function LeaderboardList({ rest, all, tab, currentUserName }: Leaderboard
             "transition-colors"
           )}
         >
-          {expanded ? <><ChevronUp size={15} /> Thu gọn</> : <><ChevronDown size={15} /> Xem thêm</>}
+          {expanded ? <><ChevronUp size={15} /> {lb.collapse}</> : <><ChevronDown size={15} /> {lb.seeMore}</>}
         </motion.button>
       )}
     </div>

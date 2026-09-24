@@ -16,6 +16,8 @@ import { localStorageService } from "@/core/storage/local-storage.service";
 
 interface CandidateSubscriptionContextValue {
   planType: CandidatePlanType;
+  /** When the current plan started (ISO) — lets the UI tell a fresh upgrade from a long-time subscriber. */
+  planStartedAt: string | null;
   refreshSubscription: () => Promise<void>;
 }
 
@@ -47,11 +49,13 @@ export function CandidateSubscriptionProvider({ children }: { children: ReactNod
   // Luôn khởi tạo FREE ở cả SSR và hydrate đầu tiên — không đọc localStorage trong
   // useState initializer (tránh hydration mismatch: server FREE vs client PREMIUM).
   const [planType, setPlanType] = useState<CandidatePlanType>("FREE");
+  const [planStartedAt, setPlanStartedAt] = useState<string | null>(null);
 
   const refreshSubscription = useCallback(async () => {
     try {
       const sub = await getCandidateSubscription();
       setPlanType(sub.planType);
+      setPlanStartedAt(sub.startedAt ?? null);
       if (userId) {
         localStorageService.set(PLAN_CACHE_KEY, sub.planType);
         localStorageService.set(PLAN_CACHE_USER_KEY, userId);
@@ -84,8 +88,8 @@ export function CandidateSubscriptionProvider({ children }: { children: ReactNod
   }, [userId, refreshSubscription]);
 
   const value = useMemo(
-    () => ({ planType, refreshSubscription }),
-    [planType, refreshSubscription]
+    () => ({ planType, planStartedAt, refreshSubscription }),
+    [planType, planStartedAt, refreshSubscription]
   );
 
   return (

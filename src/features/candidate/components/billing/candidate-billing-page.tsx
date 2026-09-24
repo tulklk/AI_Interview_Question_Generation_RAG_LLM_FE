@@ -288,9 +288,7 @@ export function CandidateBillingPage() {
     {
       icon: BarChart2,
       label: b.questionAccessLabel,
-      limited: !isPremium,
-      used: usage.visibleQuestionsPerSet,
-      perSet: true,
+      locked: false,
     },
     {
       icon: Send,
@@ -347,7 +345,7 @@ export function CandidateBillingPage() {
                   <div className="flex items-center gap-1.5">
                     <Calendar size={13} className="text-gray-400 dark:text-gray-500 shrink-0" />
                     <span className={portalSubtext}>
-                      {subscription.cancelAtPeriodEnd ? `${b.renewalLabel} (đã hủy gia hạn):` : `${b.renewalLabel}:`}
+                      {subscription.cancelAtPeriodEnd ? `${b.renewalCancelled}:` : `${b.renewalLabel}:`}
                       &nbsp;
                     </span>
                     <span className={cn("font-semibold", portalHeading)}>{formatDate(subscription.renewalDate, locale)}</span>
@@ -380,7 +378,7 @@ export function CandidateBillingPage() {
                 {[
                   { label: b.practiceAttemptsLabel, value: `${usage.practiceUsed}/${usage.practiceLimit}` },
                   { label: b.aiFeedbackLabel, value: b.basicLevel },
-                  { label: b.questionAccessLabel, value: `${usage.visibleQuestionsPerSet}/set` },
+                  { label: b.questionAccessLabel, value: b.questionAccessFullValue },
                   { label: b.scorecardLabel, value: b.lockedStatus, locked: true },
                 ].map((item) => (
                   <div key={item.label} className="rounded-lg bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700 p-3">
@@ -542,7 +540,7 @@ export function CandidateBillingPage() {
                     <span className={cn("text-sm font-medium", portalHeading)}>{item.label}</span>
                     {!isPremium && item.limited && typeof item.used === "number" && typeof item.limit === "number" ? (
                       <span className="text-[11px] text-gray-500 dark:text-gray-400 tabular-nums">
-                        {item.used}/{item.limit}{item.perSet ? ` ${b.perSet}` : ""}
+                        {item.used}/{item.limit}
                       </span>
                     ) : item.level ? (
                       <span className={cn(
