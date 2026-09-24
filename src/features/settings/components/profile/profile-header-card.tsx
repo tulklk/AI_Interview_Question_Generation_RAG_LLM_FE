@@ -90,10 +90,13 @@ export function ProfileHeaderCard({
             aria-valuemax={100}
             aria-label={sp.completeness.replace("{{percent}}", String(completeness))}
           >
+            {/* overflow-hidden để beam chỉ quét trong phần đã fill */}
             <div
-              className="h-full rounded-full bg-[#6c47ff] transition-[width] duration-500"
+              className="relative h-full overflow-hidden rounded-full bg-[#6c47ff] transition-[width] duration-500"
               style={{ width: `${completeness}%` }}
-            />
+            >
+              <div aria-hidden className="xp-shimmer-beam pointer-events-none absolute inset-0" />
+            </div>
           </div>
         </div>
       )}

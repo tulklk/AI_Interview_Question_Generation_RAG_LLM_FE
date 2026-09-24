@@ -10,7 +10,6 @@ import {
   ArrowLeft,
   BookOpen,
   Flame,
-  Loader2,
   RefreshCw,
   TrendingUp,
   Trophy,
@@ -27,6 +26,7 @@ import {
   type HrCandidateOverview,
 } from "@/features/hr/services/hr-candidate.service";
 import { AppShell } from "@/features/hr/components/layout/app-shell";
+import { HrCandidateOverviewSkeleton } from "./hr-candidate-overview-skeleton";
 import { buildPracticeHeatmapFromBuckets } from "@/features/candidate/utils/dashboard-analytics";
 import { PracticeHeatmap } from "@/features/candidate/components/dashboard/practice-heatmap";
 import { SectionCard } from "@/features/candidate/components/ui/section-card";
@@ -155,12 +155,7 @@ export function HrCandidateOverviewPage({ candidateUserId }: { candidateUserId: 
 
   const content = (() => {
     if (loading) {
-      return (
-        <div className="flex flex-col items-center gap-3 py-24">
-          <Loader2 size={28} className="animate-spin text-primary" />
-          <p className={cn("text-[14px]", portalSubtext)}>{p.loading}</p>
-        </div>
-      );
+      return <HrCandidateOverviewSkeleton />;
     }
 
     if (error || !data) {

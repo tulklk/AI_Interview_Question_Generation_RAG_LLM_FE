@@ -33,6 +33,7 @@ import type { HrDashboardRecentSession } from "@/features/hr/services/hr-dashboa
 import { HrActivityChart } from "./hr-activity-chart";
 import { HrTypeChart } from "./hr-type-chart";
 import type { CandidateRecommendation, RecommendationStatus } from "@/features/hr/services/recommendation.service";
+import { Skeleton } from "@/shared/components/ui/skeleton";
 
 // ---------------------------------------------------------------------------
 // KPI animated value
@@ -164,7 +165,7 @@ function KpiCard({ icon: Icon, iconBg, iconColor, label, value, loading, sparkli
 
       {/* Row 2: value — large, prominent */}
       {loading ? (
-        <div className="h-7 w-16 rounded-lg bg-gray-100 dark:bg-gray-800 animate-pulse" />
+        <Skeleton className="h-7 w-16 rounded-lg" />
       ) : (
         <p
           title={isNumeric ? undefined : String(value)}
@@ -359,8 +360,12 @@ function ChartCard({ title, subtitle, icon: Icon, iconBg = "bg-gray-100 dark:bg-
       </div>
       <div className="px-4 pt-4 pb-3">
         {loading ? (
-          <div className="h-55 flex items-center justify-center">
-            <Loader2 size={22} className="text-primary animate-spin" />
+          <div className="flex h-55 flex-col justify-end gap-2 px-2" aria-busy>
+            <Skeleton className="h-32 w-full rounded-lg" />
+            <div className="flex gap-2">
+              <Skeleton className="h-3 w-16" />
+              <Skeleton className="h-3 w-20" />
+            </div>
           </div>
         ) : empty ? (
           <div className="h-55 flex flex-col items-center justify-center gap-2">
@@ -379,9 +384,9 @@ function ChartCard({ title, subtitle, icon: Icon, iconBg = "bg-gray-100 dark:bg-
 
 function SkeletonRows({ count }: { count: number }) {
   return (
-    <div className="flex flex-col gap-3 p-4">
+    <div className="flex flex-col gap-3 p-4" aria-busy>
       {Array.from({ length: count }).map((_, i) => (
-        <div key={i} className="h-11 rounded-lg bg-gray-100 dark:bg-gray-800 animate-pulse" />
+        <Skeleton key={i} className="h-11 w-full rounded-lg" />
       ))}
     </div>
   );

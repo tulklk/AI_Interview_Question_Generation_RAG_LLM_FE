@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Check, Copy, ExternalLink, FileText, ImageIcon, Loader2 } from "lucide-react";
+import { Check, Copy, ExternalLink, FileText, ImageIcon, Loader2, Lock, Shield, ShieldOff } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { useLanguage } from "@/shared/providers/language-context";
 import { portalCard, portalHeading, portalInput, portalSubtext } from "@/shared/utils/portal-ui";
@@ -10,6 +10,7 @@ import {
   setQuestionSetPublicJobDescription,
   type HiringPostingPayload,
 } from "@/features/interview/services/interview.service";
+import { getHrPlatformFlags } from "@/features/hr/services/hr-platform-flags.service";
 import { useToast } from "@/shared/providers/toast-context";
 
 export type HiringPostingDraft = {
@@ -62,6 +63,12 @@ type Props = {
   onDraftChange?: (text: string) => void;
   /** Text posting đang soạn — để bật Tuyển / publish tự lưu. */
   onPostingDraftChange?: (draft: HiringPostingDraft) => void;
+  /** SCRUM-464: AC chip cạnh «Chép từ JD gốc» (chỉ hiện khi chế độ Tuyển). */
+  antiCheat?: {
+    enabled: boolean;
+    onChange: (enabled: boolean) => void | Promise<void>;
+    busy?: boolean;
+  } | null;
   className?: string;
 };
 
@@ -129,6 +136,7 @@ export function PublicJdEditorPanel({
   onAttentionCleared,
   onDraftChange,
   onPostingDraftChange,
+  antiCheat = null,
   className,
 }: Props) {
   const { t } = useLanguage();
@@ -138,12 +146,29 @@ export function PublicJdEditorPanel({
   const [posting, setPosting] = useState<HiringPostingDraft>(() => postingFromInitial(initialPosting));
   const [saving, setSaving] = useState(false);
   const [didPrefill, setDidPrefill] = useState(false);
+  const [adminAntiCheat, setAdminAntiCheat] = useState<boolean | null>(null);
+  const [acBusy, setAcBusy] = useState(false);
   /**
    * Highlight cảnh báo (ring + text vàng) — local only.
    * Không gọi onAttentionCleared khi user gõ: parent dùng needsAttention để
    * giữ panel mở khi chưa bật Tuyển; clear parent sớm → panel biến mất giữa chừng.
    */
   const [attentionUi, setAttentionUi] = useState(needsAttention);
+
+  useEffect(() => {
+    if (!antiCheat) return;
+    let cancelled = false;
+    getHrPlatformFlags()
+      .then((f) => {
+        if (!cancelled) setAdminAntiCheat(f.antiCheatEnabled);
+      })
+      .catch(() => {
+        if (!cancelled) setAdminAntiCheat(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [antiCheat]);
 
   useEffect(() => {
     setText(initialPublicJobDescription?.trim() ?? "");
@@ -267,6 +292,25 @@ export function PublicJdEditorPanel({
     portalInput
   );
 
+  const adminOff = adminAntiCheat === false;
+  const acOn = Boolean(antiCheat?.enabled) && adminAntiCheat === true;
+  const acDisabled = Boolean(antiCheat?.busy) || acBusy || adminOff;
+
+  async function toggleAntiCheat() {
+    if (!antiCheat || adminOff || acDisabled) return;
+    setAcBusy(true);
+    try {
+      await antiCheat.onChange(!antiCheat.enabled);
+    } catch (err) {
+      addToast(
+        "error",
+        err instanceof Error && err.message ? err.message : h.publicJdRequired
+      );
+    } finally {
+      setAcBusy(false);
+    }
+  }
+
   return (
     <div
       id="public-jd-editor"
@@ -287,17 +331,53 @@ export function PublicJdEditorPanel({
             </p>
           )}
         </div>
-        <button
-          type="button"
-          onClick={copyFromFull}
-          className={cn(
-            "inline-flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-[11px] font-semibold",
-            "border-gray-200 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300"
+        <div className="flex flex-wrap items-center justify-end gap-1.5">
+          {antiCheat && (
+            <button
+              type="button"
+              disabled={acDisabled && !adminOff}
+              onClick={() => void toggleAntiCheat()}
+              title={
+                adminOff
+                  ? h.adminOffHint
+                  : acOn
+                    ? h.antiCheatOnHint
+                    : h.antiCheatOffHint
+              }
+              className={cn(
+                "inline-flex h-[26px] items-center gap-1 rounded-md border px-2 text-[11px] font-semibold transition-colors",
+                adminOff
+                  ? "cursor-not-allowed border-amber-200/80 bg-amber-50 text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-200"
+                  : acOn
+                    ? "border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-300"
+                    : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300",
+                (antiCheat.busy || acBusy) && "opacity-60"
+              )}
+            >
+              {adminOff ? (
+                <Lock size={11} className="shrink-0" />
+              ) : acOn ? (
+                <Shield size={11} className="shrink-0" />
+              ) : (
+                <ShieldOff size={11} className="shrink-0" />
+              )}
+              <span className="whitespace-nowrap">
+                {adminOff ? h.antiCheatLocked : acOn ? h.antiCheatOn : h.antiCheatOff}
+              </span>
+            </button>
           )}
-        >
-          <Copy size={12} />
-          {h.publicJdCopyFromSource}
-        </button>
+          <button
+            type="button"
+            onClick={copyFromFull}
+            className={cn(
+              "inline-flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-[11px] font-semibold",
+              "border-gray-200 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300"
+            )}
+          >
+            <Copy size={12} />
+            {h.publicJdCopyFromSource}
+          </button>
+        </div>
       </div>
 
       {fromFile && (

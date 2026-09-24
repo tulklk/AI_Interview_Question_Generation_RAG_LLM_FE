@@ -515,7 +515,7 @@ export const vi: Translations = {
       "/hr/generate": "Tạo bộ câu hỏi nhanh",
       "/hr/generate/manual": "Tạo câu hỏi thủ công",
       "/hr/generate-question": "Tạo bộ câu hỏi",
-      "/hr/generate-question/manual": "Soạn câu hỏi (Builder)",
+      "/hr/generate-question/manual": "Tạo bộ câu hỏi thủ công",
       "/hr/history": "Bộ câu hỏi",
       "/hr/published": "Luyện tập & đánh giá",
       "/hr/knowledge": "Tài liệu kiến thức",
@@ -5515,7 +5515,7 @@ Yêu cầu:
   },
 
   questionBuilder: {
-    pageTitle: "Tạo câu hỏi thủ công",
+    pageTitle: "Tạo bộ câu hỏi thủ công",
     pageSubtext: "Đủ field như Studio: sample answer, rubric, skill, focus area — sẵn sàng publish marketplace",
     backToGenerateBtn: "Tạo bằng AI",
     refreshBtn: "Làm mới",
