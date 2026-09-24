@@ -37,6 +37,7 @@ import {
 } from "@/features/hr/services/hr-talent.service";
 import { listHistoryQuestionSets } from "@/features/hr/services/hr-history.service";
 import type { HistoryQuestionSetItem } from "@/features/hr/types/history-question-set";
+import { HrTalentListSkeleton } from "./hr-talent-list-skeleton";
 import {
   getScoreBandLabel,
   getScoreBandRingClass,
@@ -527,24 +528,7 @@ export function HrTalentPage() {
 
         {/* List */}
         {loading ? (
-          <div className="hr-glass-card overflow-hidden">
-            <div className="flex flex-col">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <div
-                  key={i}
-                  className="flex items-center gap-3 px-5 py-3.5 border-b border-gray-100 dark:border-gray-800 last:border-b-0"
-                >
-                  <div className="w-11 h-11 rounded-xl bg-gray-200 dark:bg-gray-700 animate-pulse shrink-0" />
-                  <div className="flex-1 flex flex-col gap-2">
-                    <div className="h-3.5 w-40 rounded bg-gray-200 dark:bg-gray-700 animate-pulse" />
-                    <div className="h-2.5 w-56 rounded bg-gray-100 dark:bg-gray-800 animate-pulse" />
-                    <div className="h-2.5 w-32 rounded bg-gray-100 dark:bg-gray-800 animate-pulse" />
-                  </div>
-                  <div className="h-12 w-12 rounded-full bg-gray-200 dark:bg-gray-700 animate-pulse" />
-                </div>
-              ))}
-            </div>
-          </div>
+          <HrTalentListSkeleton />
         ) : error ? (
           <div className="hr-glass-card flex flex-col items-center gap-3 py-16 text-center">
             <AlertCircle size={28} className="text-red-500" />

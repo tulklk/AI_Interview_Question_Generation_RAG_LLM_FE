@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Briefcase, Building2, CheckCircle2, Link2, Pencil, Save, SlidersHorizontal, User, X } from "lucide-react";
 import { FaGithub, FaLinkedinIn } from "react-icons/fa";
-import { AiLoadingSpinner } from "@/shared/components/common/ai-loading-spinner";
+import { ProfileSectionSkeleton } from "./settings-skeletons";
 import { cn } from "@/lib/cn";
 import { FormField } from "@/shared/components/ui/form-field";
 import { useLanguage } from "@/shared/providers/language-context";
@@ -266,11 +266,7 @@ export function ProfileSection() {
   );
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[calc(100vh-16rem)]">
-        <AiLoadingSpinner text={sp.loading} />
-      </div>
-    );
+    return <ProfileSectionSkeleton />;
   }
 
   const avatarSlot = (

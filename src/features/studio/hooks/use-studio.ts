@@ -7,6 +7,7 @@ import { extractErrorMessage } from "@/core/interceptors/error.interceptor";
 import { isJdInputRejectError } from "@/features/studio/utils/jd-input-error";
 import { pollGenerationRun } from "@/features/studio/utils/poll-generation-run";
 import * as studioApi from "@/features/studio/services/studio.service";
+import { setQuestionSetTimeLimit } from "@/features/interview/services/interview.service";
 import type {
   AnalyzeJobDescriptionResponse,
   ChatMessage,
@@ -1231,13 +1232,24 @@ export function useStudio() {
     try {
       const result = await studioApi.saveDraft(project.id);
       const updated = await studioApi.getProject(project.id);
+      const questionSetId = result.questionSetId ?? updated.questionSetId ?? null;
       // Gắn fingerprint TRƯỚC setProject để effect đổi project?.id (nếu có) không xoá nhầm —
       // thực tế id không đổi; fingerprint giữ "Đã lưu" dù questions re-fetch cùng nội dung.
       savedQuestionsFingerprintRef.current = questionsDraftFingerprint(questions);
       setProject({
         ...updated,
-        questionSetId: result.questionSetId ?? updated.questionSetId ?? null,
+        questionSetId,
       });
+      // Sync practice time limit từ độ dài phỏng vấn Studio — history detail không còn “Không giới hạn” mặc định.
+      if (questionSetId) {
+        const mins =
+          currentPlan?.interviewLengthMinutes
+          ?? settings?.interviewLengthMinutes
+          ?? null;
+        if (mins != null && mins >= 1 && mins <= 480) {
+          await setQuestionSetTimeLimit(questionSetId, mins).catch(() => undefined);
+        }
+      }
       setIsDraftSaved(true);
       addToast("success", tx.saved ?? tx.draftSaved);
     } catch (error) {
@@ -1245,7 +1257,19 @@ export function useStudio() {
     } finally {
       setIsSavingDraft(false);
     }
-  }, [addToast, isDraftSaved, isSavingDraft, project, questions, lang, tx.draftSaveFailed, tx.draftSaved, tx.saved]);
+  }, [
+    addToast,
+    currentPlan?.interviewLengthMinutes,
+    isDraftSaved,
+    isSavingDraft,
+    project,
+    questions,
+    settings?.interviewLengthMinutes,
+    lang,
+    tx.draftSaveFailed,
+    tx.draftSaved,
+    tx.saved,
+  ]);
 
   const togglePublish = useCallback(async (opts?: {
     interviewQuestionIds?: string[];

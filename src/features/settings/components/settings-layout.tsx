@@ -13,6 +13,7 @@ import { ProfileSection } from "./profile-section";
 import { PreferencesSection } from "./preferences-section";
 import { SecuritySection } from "./security-section";
 import { BillingSection } from "./billing-section";
+import { SettingsLayoutSkeleton } from "./settings-skeletons";
 import type { SettingsTab } from "@/features/settings/types/settings";
 import { useLanguage } from "@/shared/providers/language-context";
 import { portalHeading } from "@/shared/utils/portal-ui";
@@ -165,7 +166,7 @@ function SettingsLayoutInner() {
 
 export function SettingsLayout() {
   return (
-    <Suspense>
+    <Suspense fallback={<SettingsLayoutSkeleton />}>
       <SettingsLayoutInner />
     </Suspense>
   );

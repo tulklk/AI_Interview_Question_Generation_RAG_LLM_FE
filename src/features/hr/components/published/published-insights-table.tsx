@@ -26,6 +26,7 @@ import {
   type PublishedOverviewItem,
 } from "@/features/interview/services/interview.service";
 import { QuestionSetFeedbackPanel } from "@/features/hr/components/history/question-set-feedback-panel";
+import { PublishedInsightsTableSkeleton } from "./published-skeletons";
 
 function formatDate(iso: string | null, lang: "en" | "vi"): string {
   if (!iso) return "—";
@@ -280,11 +281,7 @@ export function PublishedInsightsTable() {
   }
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center py-24">
-        <Loader2 className="h-6 w-6 animate-spin text-primary" />
-      </div>
-    );
+    return <PublishedInsightsTableSkeleton />;
   }
 
   if (error) {

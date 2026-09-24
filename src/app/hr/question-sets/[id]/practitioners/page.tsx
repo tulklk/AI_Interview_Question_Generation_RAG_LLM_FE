@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { AiLoadingSpinner } from "@/shared/components/common/ai-loading-spinner";
+import { PublishedSetHubSkeleton } from "@/features/hr/components/published/published-skeletons";
 
 /**
  * Legacy route — redirect về hub published (tab practitioners).
@@ -19,8 +19,8 @@ export default function HrPractitionersRoute() {
   }, [id, router]);
 
   return (
-    <div className="flex min-h-[40vh] items-center justify-center">
-      <AiLoadingSpinner />
+    <div className="px-4 py-6">
+      <PublishedSetHubSkeleton />
     </div>
   );
 }

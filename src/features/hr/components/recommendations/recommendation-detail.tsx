@@ -33,6 +33,7 @@ import {
 } from "@/features/hr/services/recommendation.service";
 import { getCurrentUser } from "@/features/auth/services/user.service";
 import { InviteScheduleFields, defaultInviteSchedule, toInvitePayload } from "./invite-schedule-fields";
+import { RecommendationDetailSkeleton } from "./recommendations-skeletons";
 import {
   getScoreBandLabel,
   scoreBandTextClass,
@@ -488,12 +489,7 @@ export function RecommendationDetail({ id }: { id: string }) {
   }
 
   // Loading
-  if (loading) return (
-    <div className="flex flex-col items-center gap-3 py-24">
-      <Loader2 size={28} className="animate-spin text-primary" />
-      <p className={cn("text-[14px]", portalSubtext)}>{p.loading}</p>
-    </div>
-  );
+  if (loading) return <RecommendationDetailSkeleton />;
 
   // Error
   if (error || !rec) return (

@@ -37,6 +37,7 @@ import {
 } from "@/features/hr/services/hr-feedback.service";
 import { PublishedHubPractitioners } from "./published-hub-practitioners";
 import { PublishedHubFeedback } from "./published-hub-feedback";
+import { PublishedSetHubSkeleton } from "./published-skeletons";
 
 export type HubTab = "overview" | "questions" | "practitioners" | "feedback";
 
@@ -157,11 +158,7 @@ export function PublishedSetHub({ questionSetId }: { questionSetId: string }) {
   }
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center py-24">
-        <Loader2 className="h-7 w-7 animate-spin text-primary" />
-      </div>
-    );
+    return <PublishedSetHubSkeleton />;
   }
 
   if (error || !draft) {

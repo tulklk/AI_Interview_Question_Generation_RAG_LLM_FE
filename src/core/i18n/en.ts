@@ -513,7 +513,7 @@
       "/hr/generate": "Quick question set",
       "/hr/generate/manual": "Create manually",
       "/hr/generate-question": "Generate question set",
-      "/hr/generate-question/manual": "Question Builder",
+      "/hr/generate-question/manual": "Create question set manually",
       "/hr/history": "Question Sets",
       "/hr/published": "Practice & ratings",
       "/hr/knowledge": "Knowledge Documents",
@@ -5533,7 +5533,7 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
 
   questionBuilder: {
     // Page header
-    pageTitle: "Create questions manually",
+    pageTitle: "Create question set manually",
     pageSubtext: "All fields like Studio: sample answer, rubric, skill, focus area — ready for Marketplace",
     backToGenerateBtn: "Generate with AI",
     refreshBtn: "Refresh",

@@ -8,7 +8,6 @@ import {
   Award,
   BookOpen,
   Flame,
-  Loader2,
   RefreshCw,
   TrendingUp,
   Trophy,
@@ -24,6 +23,7 @@ import {
 } from "@/features/hr/services/hr-candidate.service";
 import { buildPracticeHeatmapFromBuckets } from "@/features/candidate/utils/dashboard-analytics";
 import { PracticeHeatmap } from "@/features/candidate/components/dashboard/practice-heatmap";
+import { HrCandidatePracticePanelSkeleton } from "./hr-candidate-overview-skeleton";
 
 function achievementMeta(
   id: string,
@@ -91,9 +91,8 @@ export function HrCandidatePracticePanel({ candidateUserId }: { candidateUserId:
 
   if (loading) {
     return (
-      <div className="hr-glass-card p-8 flex flex-col items-center gap-2">
-        <Loader2 size={22} className="animate-spin text-primary" />
-        <p className={cn("text-[13px]", portalSubtext)}>{p.loading}</p>
+      <div className="hr-glass-card p-4">
+        <HrCandidatePracticePanelSkeleton />
       </div>
     );
   }

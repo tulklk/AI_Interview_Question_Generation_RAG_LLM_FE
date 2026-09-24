@@ -3,6 +3,7 @@
 import { Suspense } from "react";
 import { AppShell } from "@/features/hr/components/layout/app-shell";
 import { CompareRecommendationsPage } from "@/features/hr/components/recommendations/compare-recommendations";
+import { CompareRecommendationsSkeleton } from "@/features/hr/components/recommendations/recommendations-skeletons";
 import { useLanguage } from "@/shared/providers/language-context";
 
 export default function HrComparePage() {
@@ -19,7 +20,7 @@ export default function HrComparePage() {
         { label: t.hrRecommendationsPage.compareTitle },
       ]}
     >
-      <Suspense>
+      <Suspense fallback={<CompareRecommendationsSkeleton />}>
         <CompareRecommendationsPage />
       </Suspense>
     </AppShell>

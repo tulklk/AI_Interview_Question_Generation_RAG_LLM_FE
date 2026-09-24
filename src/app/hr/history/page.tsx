@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { Plus } from "lucide-react";
 import { AppShell } from "@/features/hr/components/layout/app-shell";
 import { QuestionSetHistoryTable } from "@/features/hr/components/history/question-set-history-table";
+import { HistoryPageSkeleton } from "@/features/hr/components/history/history-page-skeleton";
 import type { QuestionSetsFilterKey } from "@/features/hr/types/history-question-set";
 import { useLanguage } from "@/shared/providers/language-context";
 import { cn } from "@/lib/cn";
@@ -68,7 +69,7 @@ export default function HrHistoryPage() {
       breadcrumb={[{ label: "HR", href: "/hr/dashboard" }, { label: t.historyPage.heading }]}
       fullWidth
     >
-      <Suspense fallback={null}>
+      <Suspense fallback={<HistoryPageSkeleton />}>
         <HistoryPageBody />
       </Suspense>
     </AppShell>

@@ -5,7 +5,6 @@ import {
   AlertCircle,
   ChevronLeft,
   ChevronRight,
-  Loader2,
   MessageSquare,
   RefreshCw,
   Star,
@@ -18,6 +17,7 @@ import {
   type HrFeedbackEntry,
 } from "@/features/hr/services/hr-feedback.service";
 import { useLanguage } from "@/shared/providers/language-context";
+import { PublishedHubFeedbackSkeleton } from "./published-skeletons";
 
 const PAGE_SIZE = 10;
 
@@ -108,12 +108,7 @@ export function PublishedHubFeedback({
   const totalPages = Math.max(1, Math.ceil(displayTotal / PAGE_SIZE));
 
   if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center py-16 gap-3">
-        <Loader2 size={22} className="animate-spin text-violet-500" />
-        <p className={cn("text-[13px]", portalSubtext)}>{h.feedbackLoading}</p>
-      </div>
-    );
+    return <PublishedHubFeedbackSkeleton />;
   }
 
   if (error) {
