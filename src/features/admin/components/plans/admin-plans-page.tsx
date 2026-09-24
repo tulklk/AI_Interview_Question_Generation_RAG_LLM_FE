@@ -49,7 +49,7 @@ const FALLBACK_EDITOR = {
   generatePerWindowLabel: "Generate set / JD-fit / window",
   questionRegenPerPlanLabel: "Question regen / plan (0 = unlimited)",
   regenerateLabel: "Regenerate / draft",
-  freeVisibleLabel: "Free visible %",
+  freeVisibleLabel: "Free visible % (legacy)",
   canExportLabel: "Can export Excel",
   generateUnlimitedLabel: "Generate unlimited",
   saveBtn: "Save plan",
@@ -70,7 +70,7 @@ const FALLBACK_EDITOR = {
   hintGeneratePerWindow: "Successful question-set / JD-fit runs per window. Ignored while Unlimited is on.",
   hintQuestionRegen: "Per-question regenerations per plan. 0 = unlimited.",
   hintRegenerate: "Plan refine runs allowed per draft.",
-  hintFreeVisible: "Share of questions publicly visible to Free candidates.",
+  hintFreeVisible: "Legacy — Free practices the full set; field unused for hiding questions (BE keeps 100).",
   hintCanExport: "Allow exporting question sets to Excel.",
   hintGenerateUnlimited: "On: unlimited generate. Off: use N runs per H-hour window below.",
   unitTimes: "times",
@@ -123,8 +123,7 @@ type NumField =
   | "generateCooldownHours"
   | "generatePerWindow"
   | "questionRegenPerPlan"
-  | "planRegeneratePerDraft"
-  | "freeVisiblePercent";
+  | "planRegeneratePerDraft";
 
 const NUM_FIELDS: NumField[] = [
   "priceMonthly",
@@ -133,7 +132,6 @@ const NUM_FIELDS: NumField[] = [
   "generatePerWindow",
   "questionRegenPerPlan",
   "planRegeneratePerDraft",
-  "freeVisiblePercent",
 ];
 
 /** Premium dùng tím theme (#6c47ff), Free dải xám — nhìn phát biết ngay gói nào. */
@@ -451,7 +449,7 @@ export function AdminPlansPage() {
         generatePerWindow: d.generatePerWindow,
         questionRegenPerPlan: d.questionRegenPerPlan,
         planRegeneratePerDraft: d.planRegeneratePerDraft,
-        freeVisiblePercent: d.freeVisiblePercent,
+        freeVisiblePercent: 100, // SCRUM-478: legacy — luôn 100; Free làm full bộ, không che câu
         canExport: d.canExport,
         generateUnlimited: d.generateUnlimited,
       };
@@ -633,15 +631,7 @@ export function AdminPlansPage() {
                       onChange={(raw) => handleNumChange(plan.id, "planRegeneratePerDraft", raw)}
                       onBlur={() => handleNumBlur(plan.id, "planRegeneratePerDraft")}
                     />
-                    <NumberField
-                      icon={Eye}
-                      label={ed.freeVisibleLabel}
-                      hint={ed.hintFreeVisible}
-                      unit="%"
-                      value={getRaw(plan.id, "freeVisiblePercent", d.freeVisiblePercent)}
-                      onChange={(raw) => handleNumChange(plan.id, "freeVisiblePercent", raw, 100)}
-                      onBlur={() => handleNumBlur(plan.id, "freeVisiblePercent", 100)}
-                    />
+                    {/* SCRUM-478: freeVisiblePercent ẩn — legacy, save luôn gửi 100 */}
                   </div>
                 </div>
 

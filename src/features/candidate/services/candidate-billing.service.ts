@@ -41,7 +41,7 @@ function mapUsage(sub: MySubscription): CandidateBillingUsage {
   return {
     practiceUsed: feedbackUsed,
     practiceLimit: premium ? null : 5,
-    visibleQuestionsPerSet: premium ? null : Math.max(1, Math.ceil(30 * (sub.limits.freeVisiblePercent / 100))),
+    // SCRUM-478: Free làm full bộ — không còn metric “câu visible theo %”
     aiFeedbackLevel: premium ? "ADVANCED" : "BASIC",
     practiceHistoryLimit: premium ? null : 10,
     canSendScorecardToHR: sub.entitlements.canPersistHrRecommendation,
