@@ -192,6 +192,65 @@ describe("Practice Session — answering and finishing", () => {
     15000
   );
 
+  test(
+    "PRACTICE-11: a typed answer is saved to the server shortly after typing stops, without leaving the question",
+    async () => {
+      window.sessionStorage.clear(); // drafts from earlier cases would resume this session past question 1
+      practiceApi.startPracticeSession.mockResolvedValue(sessionDetail() as never);
+      const user = userEvent.setup({ delay: null }); // no per-key delay: the 1.5s debounce must not elapse mid-typing under load
+      renderCandidate(<PracticeSession set={questionSet()} />);
+      await screen.findByText("Question 1 of 2", {}, { timeout: 10000 });
+
+      await user.type(
+        screen.getByPlaceholderText("Type your answer here. Be specific and use concrete examples where possible..."),
+        "REST models resources as URLs with HTTP verbs; GraphQL exposes one typed endpoint."
+      );
+      await waitFor(
+        () =>
+          expect(practiceApi.submitAnswer).toHaveBeenCalledWith(
+            "session-1",
+            expect.objectContaining({ answerText: "REST models resources as URLs with HTTP verbs; GraphQL exposes one typed endpoint." })
+          ),
+        { timeout: 10000 }
+      );
+      expect(screen.getByText("Question 1 of 2")).toBeInTheDocument();
+    },
+    30000
+  );
+
+  test(
+    "PRACTICE-12: with every question answered, a non-final question still offers Next and Finish only appears on the last one",
+    async () => {
+      window.sessionStorage.clear();
+      practiceApi.startPracticeSession.mockResolvedValue(
+        sessionDetail({
+          questions: [
+            { id: "q-1", order: 0, question: "Explain the difference between REST and GraphQL.", questionType: "Technical", difficulty: "Medium", answerText: "REST vs GraphQL: resource-based vs typed query language, with different caching tradeoffs." },
+            { id: "q-2", order: 1, question: "Describe a disagreement you resolved.", questionType: "Behavioral", difficulty: "Medium", answerText: "I mediated a disagreement between two teammates about API ownership using a shared RFC." },
+          ],
+        }) as never
+      );
+      const user = userEvent.setup();
+      renderCandidate(
+        <PracticeSession
+          set={questionSet({ questions: [question({ id: "q-1" }), question({ id: "q-2", text: "Describe a disagreement you resolved." })] })}
+        />
+      );
+      // A fully answered session resumes on the last question — step back to the first one
+      await screen.findByText(/Question \d of 2/, {}, { timeout: 10000 });
+      await user.click(screen.getByRole("button", { name: "Previous" }));
+      await screen.findByText("Question 1 of 2");
+
+      expect(screen.getByRole("button", { name: "Next" })).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Finish & Get Feedback" })).not.toBeInTheDocument();
+
+      await user.click(screen.getByRole("button", { name: "Next" }));
+
+      expect(await screen.findByRole("button", { name: "Finish & Get Feedback" })).toBeInTheDocument();
+    },
+    15000
+  );
+
   test("PRACTICE-7: clicking Finish opens a review-confirmation dialog rather than submitting immediately", async () => {
     practiceApi.startPracticeSession.mockResolvedValue(
       sessionDetail({
