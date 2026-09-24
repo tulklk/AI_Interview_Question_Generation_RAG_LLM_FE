@@ -41,11 +41,11 @@ beforeEach(() => {
 test("UI012-1: the mobile sidebar drawer starts hidden, opens via the hamburger, and closes via the backdrop", async () => {
   const user = userEvent.setup();
   renderWithAppShell(
-    <AppShell pageTitle="Create questions manually">
+    <AppShell pageTitle="Create question set manually">
       <QuestionBuilderPage />
     </AppShell>
   );
-  await screen.findByRole("heading", { name: "Create questions manually" }, { timeout: 10000 });
+  await screen.findByRole("heading", { name: "Create question set manually" }, { timeout: 10000 });
 
   const drawer = document.querySelector<HTMLElement>("div.lg\\:hidden.fixed.inset-0.z-40")!;
   expect(drawer).toHaveAttribute("aria-hidden", "true");
@@ -75,11 +75,11 @@ describe("UI018 — brand logo consistency", () => {
     unmount();
 
     renderWithAppShell(
-      <AppShell pageTitle="Create questions manually">
+      <AppShell pageTitle="Create question set manually">
         <QuestionBuilderPage />
       </AppShell>
     );
-    await screen.findByRole("heading", { name: "Create questions manually" }, { timeout: 10000 });
+    await screen.findByRole("heading", { name: "Create question set manually" }, { timeout: 10000 });
     // Both the desktop sidebar and the (CSS-hidden) mobile drawer render
     // their own copy of BrandLogo simultaneously — scope to the first.
     const sidebarLogo = screen.getAllByAltText("HireGen AI")[0];

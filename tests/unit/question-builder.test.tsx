@@ -60,7 +60,7 @@ describe("MQ — Question Builder", () => {
     const user = userEvent.setup();
     renderWithProviders(<QuestionBuilderPage />);
 
-    expect(await screen.findByRole("heading", { name: "Create questions manually" }, { timeout: 10000 })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Create question set manually" }, { timeout: 10000 })).toBeInTheDocument();
     const setBtn = screen.getByRole("button", { name: /Backend Mid-level/ });
     expect(setBtn).toBeInTheDocument();
     await user.click(setBtn);

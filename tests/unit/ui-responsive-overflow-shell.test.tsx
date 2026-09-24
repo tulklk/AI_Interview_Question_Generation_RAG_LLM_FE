@@ -48,11 +48,11 @@ test("UI003/UI007: the AppShell page frame clips horizontal overflow at any cont
   localStorage.setItem("interviewai_user_role", "HR_MANAGER");
 
   renderWithAppShell(
-    <AppShell pageTitle="Create questions manually">
+    <AppShell pageTitle="Create question set manually">
       <QuestionBuilderPage />
     </AppShell>
   );
-  const heading = await screen.findByRole("heading", { name: "Create questions manually" }, { timeout: 10000 });
+  const heading = await screen.findByRole("heading", { name: "Create question set manually" }, { timeout: 10000 });
 
   const outerShell = document.querySelector<HTMLElement>("div.flex.h-screen.overflow-hidden")!;
   expect(outerShell).toBeInTheDocument();

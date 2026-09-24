@@ -90,7 +90,12 @@ describe("UI004 — toast stacking and dismissal", () => {
     await findActionBarButton("Generate Questions");
     await user.click(await findActionBarButton("Save"));
 
-    const toastContainer = document.querySelector<HTMLElement>("div.fixed.bottom-6.right-6")!;
+    // The container only mounts once the first toast exists, which is a tick after the click.
+    const toastContainer = await vi.waitFor(() => {
+      const el = document.querySelector<HTMLElement>("div.fixed.bottom-6.right-6");
+      if (!el) throw new Error("toast container not mounted yet");
+      return el;
+    }, { timeout: 10000 });
     const firstToast = await within(toastContainer).findByText("Question set saved.", {}, { timeout: 10000 });
     const toastRow = firstToast.closest("div.pointer-events-auto")!;
 

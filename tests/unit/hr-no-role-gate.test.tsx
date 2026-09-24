@@ -50,7 +50,7 @@ describe("RGA008 — HR routes have no role gate", () => {
 
     renderWithProviders(<QuestionBuilderPage />);
 
-    expect(await screen.findByRole("heading", { name: "Create questions manually" }, { timeout: 10000 })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Create question set manually" }, { timeout: 10000 })).toBeInTheDocument();
     expect(push).not.toHaveBeenCalled();
   });
 });

@@ -126,7 +126,7 @@ describe("HR Billing — payment history", () => {
   );
 
   test(
-    "BILL-4b: an invoice WITH a receiptUrl renders a real Download link instead of a disabled placeholder",
+    "BILL-4b: an invoice WITH a receiptUrl renders a real View link that opens the receipt in a new tab",
     async () => {
       (await getMockedGetMySubscription()).mockResolvedValue(premiumSubscription() as never);
       hrBillingApi.getHrPaymentHistory.mockResolvedValue([
@@ -143,15 +143,15 @@ describe("HR Billing — payment history", () => {
       renderStudio(<HrBillingSubscription />);
       await screen.findByText("HR-2026-01-01", {}, { timeout: 10000 });
 
-      const downloadLink = screen.getByRole("link", { name: /Download/ });
-      expect(downloadLink).toHaveAttribute("href", "https://example.com/receipts/hr-2026-01-01.pdf");
-      expect(downloadLink).toHaveAttribute("download");
+      const viewLink = screen.getByRole("link", { name: /View/ });
+      expect(viewLink).toHaveAttribute("href", "https://example.com/receipts/hr-2026-01-01.pdf");
+      expect(viewLink).toHaveAttribute("target", "_blank");
     },
     15000
   );
 
   test(
-    "BILL-4c: an invoice WITHOUT a receiptUrl shows a disabled Download button with a Coming soon tooltip, not a dead link",
+    "BILL-4c: an invoice WITHOUT a receiptUrl shows no receipt link or download control at all",
     async () => {
       (await getMockedGetMySubscription()).mockResolvedValue(premiumSubscription() as never);
       hrBillingApi.getHrPaymentHistory.mockResolvedValue([
@@ -167,10 +167,8 @@ describe("HR Billing — payment history", () => {
       renderStudio(<HrBillingSubscription />);
       await screen.findByText("HR-2026-01-01", {}, { timeout: 10000 });
 
-      expect(screen.queryByRole("link", { name: /Download/ })).not.toBeInTheDocument();
-      const downloadBtn = screen.getByRole("button", { name: /Download/ });
-      expect(downloadBtn).toBeDisabled();
-      expect(downloadBtn).toHaveAttribute("title", "Coming soon");
+      expect(screen.queryByRole("link", { name: /View|Download/ })).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: /Download/ })).not.toBeInTheDocument();
     },
     15000
   );

@@ -37,11 +37,11 @@ beforeEach(() => {
 async function renderPage() {
   const user = userEvent.setup();
   renderWithAppShell(
-    <AppShell pageTitle="Create questions manually">
+    <AppShell pageTitle="Create question set manually">
       <QuestionBuilderPage />
     </AppShell>
   );
-  await screen.findByRole("heading", { name: "Create questions manually" }, { timeout: 10000 });
+  await screen.findByRole("heading", { name: "Create question set manually" }, { timeout: 10000 });
   return user;
 }
 
