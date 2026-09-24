@@ -28,6 +28,7 @@ import { cn } from "@/lib/cn";
 import { useLanguage } from "@/shared/providers/language-context";
 import { useToast } from "@/shared/providers/toast-context";
 import { portalHeading, portalSubtext } from "@/shared/utils/portal-ui";
+import { QuestionSetHistoryTableSkeleton } from "./history-page-skeleton";
 import type {
   HistoryQuestionSetItem,
   HistoryPublishStatus,
@@ -380,11 +381,7 @@ export function QuestionSetHistoryTable({ filter = "all" }: QuestionSetHistoryTa
   }
 
   if (loading) {
-    return (
-      <div className="flex justify-center py-14">
-        <Loader2 className="h-5 w-5 animate-spin text-primary" />
-      </div>
-    );
+    return <QuestionSetHistoryTableSkeleton />;
   }
 
   if (error) {

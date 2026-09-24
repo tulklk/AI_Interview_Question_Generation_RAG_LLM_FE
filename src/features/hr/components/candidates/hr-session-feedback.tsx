@@ -10,7 +10,6 @@ import {
   CheckCircle2,
   ChevronDown,
   Lightbulb,
-  Loader2,
   RefreshCw,
   Target,
 } from "lucide-react";
@@ -27,7 +26,7 @@ import {
   type HrSessionFeedback,
   type HrSessionFeedbackItem,
 } from "@/features/hr/services/hr-candidate.service";
-import { AiLoadingSpinner } from "@/shared/components/common/ai-loading-spinner";
+import { HrSessionFeedbackSkeleton } from "./hr-session-feedback-skeleton";
 
 function getSkillColor(score: number) {
   if (score >= 80) return { bar: "bg-emerald-500", text: "text-emerald-700 dark:text-emerald-400", bg: "bg-emerald-50 dark:bg-emerald-950/40" };
@@ -93,11 +92,7 @@ export function HrSessionFeedbackPage({ candidateUserId, sessionId }: { candidat
 
   const content = (() => {
     if (loading) {
-      return (
-        <div className="flex items-center justify-center min-h-[calc(100vh-16rem)]">
-          <AiLoadingSpinner text={p.loading} />
-        </div>
-      );
+      return <HrSessionFeedbackSkeleton />;
     }
     if (error || !data) {
       return (
@@ -303,9 +298,7 @@ export function HrSessionFeedbackPage({ candidateUserId, sessionId }: { candidat
       fullWidth
     >
       {loading && !data ? (
-        <div className="flex items-center justify-center min-h-[12rem]">
-          <Loader2 className="animate-spin text-primary" size={22} />
-        </div>
+        <HrSessionFeedbackSkeleton />
       ) : content}
     </AppShell>
   );

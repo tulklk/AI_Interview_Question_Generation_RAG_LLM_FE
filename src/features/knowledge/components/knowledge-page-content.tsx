@@ -30,6 +30,7 @@ import { useLanguage } from "@/shared/providers/language-context";
 import { useToast } from "@/shared/providers/toast-context";
 import { extractErrorMessage } from "@/core/interceptors/error.interceptor";
 import { AdminRoadmapNodeImportPanel } from "@/features/knowledge/components/admin-roadmap-node-import-panel";
+import { KnowledgeListSkeleton } from "@/features/knowledge/components/knowledge-list-skeleton";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -1352,9 +1353,7 @@ export function KnowledgePageContent({
           {/* Document / folder list */}
           <div className="flex flex-col overflow-y-auto max-h-[calc(100vh-340px)]">
             {loading ? (
-              <div className="flex justify-center py-10">
-                <Loader2 size={22} className="text-violet-500 animate-spin" />
-              </div>
+              <KnowledgeListSkeleton />
             ) : showFolderBrowser ? (
               folders.length === 0 ? (
                 <div className="flex flex-col items-center gap-2 py-10 text-center">

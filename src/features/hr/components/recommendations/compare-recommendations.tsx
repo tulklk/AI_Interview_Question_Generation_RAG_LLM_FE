@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { AlertCircle, ArrowLeft, Loader2, Users } from "lucide-react";
+import { AlertCircle, ArrowLeft, Users } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { useLanguage } from "@/shared/providers/language-context";
 import { portalHeading, portalSubtext } from "@/shared/utils/portal-ui";
@@ -12,6 +12,7 @@ import {
   type RecommendationCompareResponse,
 } from "@/features/hr/services/recommendation.service";
 import { useEffect } from "react";
+import { CompareRecommendationsSkeleton } from "./recommendations-skeletons";
 
 export function CompareRecommendationsPage() {
   const { t } = useLanguage();
@@ -56,12 +57,7 @@ export function CompareRecommendationsPage() {
   }, [ids]);
 
   if (loading) {
-    return (
-      <div className="flex flex-col items-center gap-3 py-24">
-        <Loader2 size={28} className="animate-spin text-primary" />
-        <p className={cn("text-[14px]", portalSubtext)}>{p.loading}</p>
-      </div>
-    );
+    return <CompareRecommendationsSkeleton />;
   }
 
   if (ids.length === 0) {
