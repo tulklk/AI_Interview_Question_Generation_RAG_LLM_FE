@@ -324,7 +324,7 @@ export function SourcesPanel({
     return { words, chars: jdContent.length };
   }, [jdContent]);
 
-  const hasJd = Boolean(jdContent.trim()) || Boolean(jdFileName);
+  const hasJd = Boolean(summary) && (Boolean(jdContent.trim()) || Boolean(jdFileName));
   const selectedDocCount = documents.filter((d) => d.isSelected).length;
 
   const loadLibrary = useCallback(async () => {
