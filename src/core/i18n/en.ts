@@ -3446,6 +3446,12 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
       lockedPreviewTitle: "AI details locked",
       lockedQuestionText: "AI details locked — upgrade to Premium for the full analysis.",
       practiceOther: "Practice another set",
+      evaluateFullHeadline: "You're on Premium — some answers still need AI scoring",
+      evaluateFullBody: "This session was completed on Free, so only one sample was scored. Run full AI feedback when you need it.",
+      evaluateFullCta: "Score all with AI",
+      evaluateFullLoading: "Scoring with AI…",
+      evaluateFullError: "Could not score. Please try again.",
+      evaluateFullDone: "Full AI feedback is ready for this session.",
     },
   },
 

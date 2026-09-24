@@ -13,6 +13,7 @@ import {
   getPracticeSession,
   readAnswerEvaluations,
   getSessionFeedback,
+  evaluateFullSessionFeedback,
   listCompletedSessions,
   ForbiddenError,
   type PracticeSessionDetail,
@@ -51,6 +52,7 @@ export function FeedbackResultClient() {
   const [feedback, setFeedback] = useState<Record<string, AnswerEvaluation>>({});
   const [aiInsight, setAiInsight] = useState<SessionAiInsight | null>(null);
   const [accessLevel, setAccessLevel] = useState<PracticeFeedbackAccessLevel>("Full");
+  const [needsFullEvaluation, setNeedsFullEvaluation] = useState(false);
   const [set, setSet] = useState<QuestionSet | null>(null);
   const [previousScore, setPreviousScore] = useState<number | null | undefined>(undefined);
   const [xpReward, setXpReward] = useState<XpReward | null>(null);
@@ -125,6 +127,7 @@ export function FeedbackResultClient() {
     setFeedback({});
     setAiInsight(null);
     setAccessLevel("Full");
+    setNeedsFullEvaluation(false);
     setPreviousScore(undefined);
     setScoringTimedOut(false);
     pollAttemptsRef.current = 0;
@@ -186,6 +189,7 @@ export function FeedbackResultClient() {
           if (Object.keys(fb.evaluations).length > 0) setFeedback(fb.evaluations);
           setAiInsight(fb.aiInsight);
           setAccessLevel(fb.accessLevel);
+          setNeedsFullEvaluation(fb.needsFullEvaluation);
           if (fb.overallScore !== null) {
             setSession((prev) => (prev ? { ...prev, overallScore: fb.overallScore } : prev));
           }
@@ -278,15 +282,27 @@ export function FeedbackResultClient() {
             }
           })
           .catch(() => {
-            // Same guard as the .then() above — a stale rejection from a
-            // cancelled/superseded retry cycle must not touch current state.
-            if (pollCancelledRef.current) return;
-            setScoring(false);
-            setScoringTimedOut(true);
+            if (!pollCancelledRef.current) {
+              setScoring(false);
+              setScoringTimedOut(true);
+            }
           });
       }, SCORE_POLL_INTERVAL_MS);
     }
     doPoll(session.id);
+  }
+
+  /** SCRUM-479: Premium chấm full AI on-demand cho session Free cũ. */
+  async function handleEvaluateFull() {
+    if (!session) return;
+    const fb = await evaluateFullSessionFeedback(session.id);
+    setFeedback(fb.evaluations);
+    setAiInsight(fb.aiInsight);
+    setAccessLevel(fb.accessLevel);
+    setNeedsFullEvaluation(fb.needsFullEvaluation);
+    if (fb.overallScore !== null) {
+      setSession((prev) => (prev ? { ...prev, overallScore: fb.overallScore } : prev));
+    }
   }
 
   return (
@@ -361,6 +377,8 @@ export function FeedbackResultClient() {
             feedback={feedback}
             aiInsight={aiInsight}
             accessLevel={accessLevel}
+            needsFullEvaluation={needsFullEvaluation}
+            onEvaluateFull={handleEvaluateFull}
             scoring={scoring}
             scoringTimedOut={scoringTimedOut}
             onRetryScore={retryScoring}

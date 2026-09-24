@@ -3449,6 +3449,12 @@ Yêu cầu:
       lockedPreviewTitle: "Chi tiết AI bị khóa",
       lockedQuestionText: "Chi tiết AI bị khóa — nâng Premium để xem phân tích đầy đủ.",
       practiceOther: "Luyện set khác",
+      evaluateFullHeadline: "Bạn đã là Premium — còn câu chưa được AI chấm",
+      evaluateFullBody: "Bài này nộp lúc Free nên chỉ có 1 câu mẫu. Bấm để chấm AI đầy đủ (chỉ chạy khi bạn cần).",
+      evaluateFullCta: "Chấm AI đầy đủ",
+      evaluateFullLoading: "Đang chấm AI…",
+      evaluateFullError: "Không chấm được. Vui lòng thử lại.",
+      evaluateFullDone: "Đã chấm AI đầy đủ cho bài này.",
     },
   },
 
