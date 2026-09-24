@@ -8,7 +8,7 @@ import {
   ArrowLeft, Clock, BarChart2, Users, Star, X,
   ChevronRight, Zap, RotateCcw, Bookmark, Loader2, RefreshCw, EyeOff,
   Code2, MessageSquare, Compass, Bug, Network, Layers,
-  CheckCircle2, Lock, BrainCircuit, type LucideIcon,
+  CheckCircle2, BrainCircuit, type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { useLanguage } from "@/shared/providers/language-context";
@@ -279,7 +279,6 @@ export function SetDetail({ set }: SetDetailProps) {
   const difficultyLabel: string =
     ({ Easy: mp.easy, Medium: mp.medium, Hard: mp.hard } as Record<string, string>)[set.difficulty] ?? set.difficulty;
   const questionGroups = groupQuestionsForInterviewPlan(set.questions);
-  const lockedCount = set.questions.filter((q) => q.isLocked).length;
   const isSingleCategory = questionGroups.length === 1;
 
   const catNames = p.categoryNames as Record<string, string>;
@@ -533,7 +532,7 @@ export function SetDetail({ set }: SetDetailProps) {
             <div className={cn("flex flex-wrap items-center gap-x-1 gap-y-1 text-[12px]", portalSubtextAlt)}>
               <span className="flex items-center gap-1">
                 <BarChart2 size={12} className="text-primary/70" />
-                {set.totalQuestions} {p.questions}
+                {set.totalQuestions} {set.totalQuestions === 1 ? p.question : p.questions}
               </span>
               {estimatedTimeDisplay && (
                 <>
@@ -678,7 +677,7 @@ export function SetDetail({ set }: SetDetailProps) {
                               </p>
                             </div>
                             <span className={cn("shrink-0 text-[12px] font-bold tabular-nums whitespace-nowrap", portalHeadingAlt)}>
-                              {group.count} {p.questions}
+                              {group.count} {group.count === 1 ? p.question : p.questions}
                             </span>
                           </div>
                           {/* Animated progress bar + shimmer sweep */}
@@ -793,14 +792,6 @@ export function SetDetail({ set }: SetDetailProps) {
                   {p.beforeItems.progressSaved}
                 </span>
               </div>
-              {lockedCount > 0 && (
-                <div className="flex items-center gap-2 sm:col-span-2">
-                  <Lock size={12} className="shrink-0 text-amber-500 dark:text-amber-400" />
-                  <span className="text-[12px] leading-snug font-medium text-amber-700 dark:text-amber-300">
-                    {p.beforeItems.premiumLocked.replace("{{count}}", String(lockedCount))}
-                  </span>
-                </div>
-              )}
             </div>
           </div>
         </motion.div>

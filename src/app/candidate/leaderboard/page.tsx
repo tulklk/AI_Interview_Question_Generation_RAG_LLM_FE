@@ -4,7 +4,7 @@ import { CandidateLeaderboardPage } from "@/features/candidate/components/leader
 export default function LeaderboardPage() {
   return (
     <JobseekerAppShell
-      pageTitle="Bảng xếp hạng"
+      pageTitle="Leaderboard"
       breadcrumb={[{ label: "Jobseeker" }, { label: "Leaderboard" }]}
     >
       <CandidateLeaderboardPage />

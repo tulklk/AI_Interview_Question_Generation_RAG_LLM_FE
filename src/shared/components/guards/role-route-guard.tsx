@@ -8,7 +8,7 @@ import { useToast } from "@/shared/providers/toast-context";
 import { useLanguage } from "@/shared/providers/language-context";
 import { getUserRole, isAuthenticated, getRoleRedirect } from "@/core/auth/permissions";
 
-export type GuardedRole = "ADMIN" | "HR";
+export type GuardedRole = "ADMIN" | "HR" | "CANDIDATE";
 
 interface RoleRouteGuardProps {
   /** Role required to view anything under this route segment. */
@@ -20,6 +20,13 @@ function hasRole(role: string | null, required: GuardedRole): boolean {
   const r = (role ?? "").toUpperCase();
   // Admins reach the HR area too; an HR account never reaches /admin.
   if (required === "HR") return r.includes("HR") || r.includes("ADMIN");
+  if (required === "CANDIDATE") {
+    return (
+      r.includes("JOB_SEEKER") ||
+      r.includes("CANDIDATE") ||
+      r.includes("JOBSEEKER")
+    );
+  }
   return r.includes("ADMIN");
 }
 
@@ -54,6 +61,16 @@ export function RoleRouteGuard({ role, children }: RoleRouteGuardProps) {
       router.replace(getRoleRedirect(current));
     }
   }, [loading, current, role, router, addToast, deniedMsg]);
+
+  // Back/forward can restore a page from the bfcache without re-running the effect
+  // above, which would show a logged-out user the previous account's screen.
+  useEffect(() => {
+    function onPageShow(e: PageTransitionEvent) {
+      if (e.persisted && !isAuthenticated()) router.replace("/login");
+    }
+    window.addEventListener("pageshow", onPageShow);
+    return () => window.removeEventListener("pageshow", onPageShow);
+  }, [router]);
 
   if (loading) {
     return (

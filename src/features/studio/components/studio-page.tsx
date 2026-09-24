@@ -672,7 +672,7 @@ export function StudioPage() {
     studioConfig.acceptServerSettings();
   }, [studio, studioConfig, addToast, s.outlineMinItemsToast]);
 
-  const hasJd = Boolean(studio.jdContent?.trim()) || Boolean(studio.settings?.readiness?.hasJobDescription);
+  const hasJd = Boolean(studio.jdSummary) || Boolean(studio.settings?.readiness?.hasJobDescription);
   const skillCount = studio.jdSummary?.skills?.length ?? 0;
   const readyCount = useMemo(
     () =>
@@ -735,11 +735,9 @@ export function StudioPage() {
   // (Position/Level vẫn cần để bấm Tạo kế hoạch; Knowledge là tùy chọn)
   const sourcesStepReady = useMemo(
     () =>
-      Boolean(studio.jdContent?.trim()) ||
       Boolean(studio.settings?.readiness?.hasJobDescription) ||
       Boolean(studio.jdSummary),
     [
-      studio.jdContent,
       studio.settings?.readiness?.hasJobDescription,
       studio.jdSummary,
     ]
@@ -1501,7 +1499,11 @@ export function StudioPage() {
           }))}
           minQuestions={minQuestionsToPublish}
           saving={publishing}
-          currentTimeLimitMinutes={null}
+          currentTimeLimitMinutes={
+            studio.currentPlan?.interviewLengthMinutes
+            ?? studio.settings?.interviewLengthMinutes
+            ?? null
+          }
           initialAutoRecommendEnabled={true}
           initialRecommendationMinScore={70}
           initialIsHiringAssessment={Boolean(studio.settings?.isHiringAssessment)}

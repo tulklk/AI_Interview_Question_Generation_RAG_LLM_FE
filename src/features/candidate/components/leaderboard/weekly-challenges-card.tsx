@@ -3,8 +3,10 @@
 import { Trophy } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { portalCard } from "@/shared/utils/portal-ui";
+import { useLeaderboardText } from "./leaderboard-text";
 
 export function WeeklyChallengesCard() {
+  const lb = useLeaderboardText();
   return (
     <section className={cn(portalCard, "p-6 shadow-sm")}>
       {/* Header */}
@@ -13,28 +15,15 @@ export function WeeklyChallengesCard() {
           <Trophy size={18} className="text-amber-500" />
         </div>
         <h2 className="text-base font-bold text-[#111827] dark:text-gray-100">
-          Thi đua luyện tập mỗi tuần
+          {lb.challengesTitle}
         </h2>
       </div>
 
       {/* Explanation */}
       <div className="space-y-3 text-sm text-[#6B7280] dark:text-gray-300 leading-relaxed">
-        <p>
-          Bảng xếp hạng biến việc luyện tập phỏng vấn thành một cuộc thi nhẹ nhàng và đầy động lực.
-          Mỗi tuần, top ứng viên có XP cao nhất được vinh danh, nhờ đó bạn có thêm lý do để luyện tập
-          đều đặn thay vì để kỹ năng bị mai một.
-        </p>
-        <p>
-          Bên cạnh bảng xếp hạng tuần, HireGen còn có hệ thống liên đoàn từ Đồng, Bạc, Vàng, Bạch kim
-          đến Kim cương. Bạn thi đua với những người cùng bậc — nhóm dẫn đầu thăng hạng lên liên đoàn
-          cao hơn, còn nhóm cuối bảng có thể rớt xuống — một vòng cạnh tranh công bằng và hấp dẫn.
-        </p>
-        <p>
-          Mọi hoạt động luyện tập đều cộng XP: hoàn thành phiên thử, đạt điểm cao, duy trì chuỗi hàng
-          ngày hay hoàn thành lộ trình. Bảng và liên đoàn reset vào 00:00 UTC Thứ Hai mỗi tuần, nên ai
-          cũng có cơ hội làm lại từ đầu. Hãy biến áp lực thi đua thành thói quen luyện tập phỏng vấn
-          mỗi ngày.
-        </p>
+        <p>{lb.challenges[0]}</p>
+        <p>{lb.challenges[1]}</p>
+        <p>{lb.challenges[2]}</p>
       </div>
     </section>
   );

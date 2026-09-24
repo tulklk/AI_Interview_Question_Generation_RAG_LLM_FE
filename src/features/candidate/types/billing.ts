@@ -17,7 +17,6 @@ export interface CandidateSubscription {
 export interface CandidateBillingUsage {
   practiceUsed: number;
   practiceLimit: number | null;
-  visibleQuestionsPerSet: number | null;
   aiFeedbackLevel: "BASIC" | "ADVANCED";
   practiceHistoryLimit: number | null;
   canSendScorecardToHR: boolean;

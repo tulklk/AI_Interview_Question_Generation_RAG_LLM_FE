@@ -657,8 +657,8 @@ export function HrDashboard() {
               <div className="flex items-center gap-4 px-5 py-2.5 border-b border-gray-100 dark:border-gray-800/60">
                 <span className={cn("flex-1 text-[10px] font-semibold uppercase tracking-wider", portalSubtextAlt)}>{p.recentSessions.role}</span>
                 <span className={cn("w-28 shrink-0 text-[10px] font-semibold uppercase tracking-wider", portalSubtextAlt)}>{p.recentSessions.status}</span>
-                <span className={cn("w-8 shrink-0 text-right text-[10px] font-semibold uppercase tracking-wider", portalSubtextAlt)}>{p.recentSessions.questions}</span>
-                <span className={cn("w-14 shrink-0 text-right text-[10px] font-semibold uppercase tracking-wider", portalSubtextAlt)}>{p.recentSessions.created}</span>
+                <span className={cn("w-20 shrink-0 text-right text-[10px] font-semibold uppercase tracking-wider", portalSubtextAlt)}>{p.recentSessions.questions}</span>
+                <span className={cn("w-16 shrink-0 text-right text-[10px] font-semibold uppercase tracking-wider", portalSubtextAlt)}>{p.recentSessions.created}</span>
                 <span className={cn("w-8 shrink-0 text-right text-[10px] font-semibold uppercase tracking-wider", portalSubtextAlt)}>{p.recentSessions.actions}</span>
               </div>
               {/* Rows */}
@@ -698,10 +698,10 @@ export function HrDashboard() {
                         <div className="w-28 shrink-0">
                           {sessionStatusBadge(session.status, p.recentSessions.statusLabel)}
                         </div>
-                        <div className={cn("w-8 shrink-0 text-right tabular-nums font-semibold text-[13px]", portalHeadingAlt)}>
+                        <div className={cn("w-20 shrink-0 text-right tabular-nums font-semibold text-[13px]", portalHeadingAlt)}>
                           {qCount > 0 ? qCount : "—"}
                         </div>
-                        <div className={cn("w-14 shrink-0 text-right text-[11px] whitespace-nowrap", portalSubtextAlt)}>
+                        <div className={cn("w-16 shrink-0 text-right text-[11px] whitespace-nowrap", portalSubtextAlt)}>
                           {dateStr}
                         </div>
                       </Link>
@@ -861,9 +861,11 @@ export function HrDashboard() {
           <span className={cn("text-[12px]", portalSubtextAlt)}>{p.subscription.title}:</span>
           <span className="text-[12px] font-bold text-primary">{planLabel}</span>
         </div>
-        <Link href="/hr/settings?tab=billing" className="text-[12px] font-semibold text-primary hover:underline flex items-center gap-1">
+        {planId !== "HR_PREMIUM" && (
+          <Link href="/hr/settings?tab=billing" className="text-[12px] font-semibold text-primary hover:underline flex items-center gap-1">
           {p.subscription.upgrade} <ArrowRight size={12} />
         </Link>
+        )}
       </div>
 
       {/* Confirm xóa phiên Studio */}

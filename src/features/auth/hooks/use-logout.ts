@@ -1,14 +1,13 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { useRouter } from "next/navigation";
 import { logout } from "@/features/auth/services/logout.service";
 import { getRefreshToken } from "@/core/auth/token.service";
 import { clearAuth } from "@/core/auth/permissions";
+import { getLoginPath } from "@/core/config/env";
 import { useUser } from "@/features/auth/context/user-context";
 
 export function useLogout() {
-  const router = useRouter();
   const { clearUser } = useUser();
   const [loggingOut, setLoggingOut] = useState(false);
 
@@ -16,15 +15,16 @@ export function useLogout() {
     if (loggingOut) return;
     setLoggingOut(true);
     const refreshToken = getRefreshToken();
-    // Optimistic: clear local session + navigate immediately (do not wait on API timeout)
+    // Optimistic: clear local session immediately; hard redirect clears in-memory UI state
     clearAuth();
     clearUser();
-    router.push("/login");
     if (refreshToken) {
       void logout(refreshToken).catch(() => undefined);
     }
-    setLoggingOut(false);
-  }, [clearUser, loggingOut, router]);
+    if (typeof window !== "undefined") {
+      window.location.assign(getLoginPath());
+    }
+  }, [clearUser, loggingOut]);
 
   return { logout: logoutFn, loggingOut };
 }

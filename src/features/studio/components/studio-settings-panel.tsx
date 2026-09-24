@@ -149,7 +149,8 @@ export function StudioSettingsPanel({ settings, plan, locked = false, configDirt
   const s = t.studioPage;
   const planApproved = plan?.status === "Approved";
   const canEdit = !locked && (!plan || plan.status === "AwaitingApproval" || plan.status === "Draft" || plan.status === "Rejected");
-  const prefsDisabled = !canEdit || planApproved;
+  // Without server settings (fresh project, JD not accepted yet) there is no draft to edit.
+  const prefsDisabled = !canEdit || planApproved || !settings;
   const totalQ = settings?.numberOfQuestions ?? 15;
   const minutes = settings?.interviewLengthMinutes ?? 60;
 
@@ -227,9 +228,9 @@ export function StudioSettingsPanel({ settings, plan, locked = false, configDirt
               label={s.settings.questionCount}
               value={totalQ}
               unit={s.settings.unitQuestions}
-              min={5}
+              min={1}
               max={50}
-              presets={[5, 10, 15, 20, 25, 30]}
+              presets={[1, 3, 5, 10, 15, 20, 25, 30]}
               disabled={prefsDisabled}
               onChange={(v) => onChangeSetting({ numberOfQuestions: v })}
             />

@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { animate, motion } from "framer-motion";
 import { useAdminInView } from "@/features/admin/hooks/use-admin-in-view";
-import { Users, UserCheck, UserSearch, Building2, Zap, MonitorPlay } from "lucide-react";
+import { Users, UserCheck, UserSearch, Building2 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { portalHeadingAlt, portalSubtextAlt } from "@/shared/utils/portal-ui";
 import { useLanguage } from "@/shared/providers/language-context";
@@ -108,28 +108,10 @@ export function AdminKpiGrid({ data, loading }: AdminKpiGridProps) {
       value: data?.totalCompanies ?? 0,
       loading,
     },
-    {
-      icon: Zap,
-      iconBg: "bg-gray-50 dark:bg-gray-800",
-      iconColor: "text-gray-400 dark:text-gray-600",
-      label: k.questionsGenerated,
-      value: 0,
-      loading: false,
-      pending: true,
-    },
-    {
-      icon: MonitorPlay,
-      iconBg: "bg-gray-50 dark:bg-gray-800",
-      iconColor: "text-gray-400 dark:text-gray-600",
-      label: k.practiceSessions,
-      value: 0,
-      loading: false,
-      pending: true,
-    },
   ];
 
   return (
-    <div ref={ref} className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-4">
+    <div ref={ref} className="grid grid-cols-2 sm:grid-cols-2 xl:grid-cols-4 gap-4">
       {kpis.map((kpi, index) => (
         <motion.div
           key={kpi.label}

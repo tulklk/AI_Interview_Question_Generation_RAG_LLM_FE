@@ -79,7 +79,7 @@ export function JobseekerSidebar({ open, onClose, onOpenUpgrade }: JobseekerSide
                 >
                   <div
                     className={cn(
-                      "w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-all duration-200",
+                      "relative w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-all duration-200",
                       isActive
                         ? "hr-icon-box"
                         : "bg-gray-100 dark:bg-gray-800 group-hover:bg-[rgba(124,58,237,0.08)] dark:group-hover:bg-[rgba(124,58,237,0.12)]"
@@ -94,6 +94,14 @@ export function JobseekerSidebar({ open, onClose, onOpenUpgrade }: JobseekerSide
                           : "text-[#9ca3af] dark:text-gray-500 group-hover:text-[#7C3AED] dark:group-hover:text-[#a78bff]"
                       )}
                     />
+                    {item.href === "/candidate/invitations" &&
+                      pendingInvitations != null &&
+                      pendingInvitations > 0 && (
+                        <span
+                          className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-red-500 ring-2 ring-white dark:ring-gray-950"
+                          aria-hidden
+                        />
+                      )}
                   </div>
 
                   <span className="text-sm font-medium flex-1">{label}</span>
@@ -175,7 +183,7 @@ export function JobseekerSidebar({ open, onClose, onOpenUpgrade }: JobseekerSide
   return (
     <>
       {/* Desktop sidebar */}
-      <aside className="hidden lg:flex flex-col w-68 shrink-0 h-screen hr-sidebar overflow-y-auto">
+      <aside className="hidden lg:flex flex-col w-68 shrink-0 h-screen hr-sidebar overflow-y-auto scrollbar-hide">
         {sidebarContent}
       </aside>
 
@@ -194,7 +202,7 @@ export function JobseekerSidebar({ open, onClose, onOpenUpgrade }: JobseekerSide
         {/* Drawer */}
         <aside
           className={cn(
-            "absolute left-0 top-0 h-full w-72 max-w-[82vw] hr-sidebar overflow-y-auto transition-transform duration-300 ease-in-out flex flex-col",
+            "absolute left-0 top-0 h-full w-72 max-w-[82vw] hr-sidebar overflow-y-auto scrollbar-hide transition-transform duration-300 ease-in-out flex flex-col",
             open ? "translate-x-0" : "-translate-x-full"
           )}
         >
