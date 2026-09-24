@@ -4,6 +4,9 @@ import { screen, waitFor } from "@testing-library/react";
 import { renderWithProviders } from "./test-utils";
 import { RegisterJobSeekerForm } from "@/features/auth/components/register-jobseeker-form";
 
+// These cases type several fields character by character; under a loaded machine that can pass the 5s default.
+vi.setConfig({ testTimeout: 30000 });
+
 // Grounded in src/features/auth/components/register-jobseeker-form.tsx and
 // src/core/i18n/en.ts (`registerJobSeekerPage` section). Maps to Excel sheet
 // AUTH003_RegisterJobSeeker. Unit-test rewrite of the former

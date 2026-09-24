@@ -1,0 +1,86 @@
+{
+  "EnvFile": ".env.local (local) or Vercel Project Settings > Environment Variables (Production, Preview, Development)",
+  "Note": "Every NEXT_PUBLIC_* value is inlined into the browser bundle at build time, so none of them may be a secret. Values have no trailing slash. Restart npm run dev after a change.",
+
+  "ApiSettings": {
+    "NEXT_PUBLIC_API_BASE_URL": "https://iqgs-be-e2eefsdvd9fydtfx.eastasia-01.azurewebsites.net",
+    "LocalBackendAlternative": "http://localhost:8080"
+  },
+
+  "AuthSettings": {
+    "NEXT_PUBLIC_AUTH_REFRESH_PATH": "/api/auth/refresh-token",
+    "NEXT_PUBLIC_APP_LOGIN_PATH": "/login",
+    "RefreshRequestBody": "{ \"refreshToken\": \"<jwt>\" }"
+  },
+
+  "GoogleOAuth": {
+    "NEXT_PUBLIC_GOOGLE_CLIENT_ID": "593842710212-vg9t701m2prpeh0g4sq5maspreuvjmm7.apps.googleusercontent.com"
+  },
+
+  "GithubOAuth": {
+    "NEXT_PUBLIC_GITHUB_CLIENT_ID": "Ov23liAMq3YDtKqDu6c6",
+    "ClientSecret": "kept on the backend only (GithubOAuth:ClientSecret in BE_CONFIG)"
+  },
+
+  "Cloudinary": {
+    "NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME": "dtt358ri7",
+    "NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET": "hiregen",
+    "Usage": "Unsigned upload of avatars and company logos"
+  },
+
+  "RagProxy": {
+    "NEXT_PUBLIC_RAG_BASE_URL": "https://iqgsrag.cloud",
+    "RAG_API_KEY": "",
+    "NEXT_PUBLIC_RAG_API_KEY": "",
+    "Usage": "Only the Next.js proxy routes under /api/rag use these. The backend reaches RAG on its own (RagService:BaseUrl in BE_CONFIG).",
+    "Warning": "Set the real key only in the hosting environment and only as RAG_API_KEY. A NEXT_PUBLIC_ key would be shipped to every browser."
+  },
+
+  "Hosting": {
+    "Framework": "Next.js 16 (App Router), React 19, TypeScript 5, Tailwind CSS 4",
+    "Node": "current LTS or newer (development machine uses v24)",
+    "Vercel": { "framework": "nextjs", "buildCommand": "npm run build" },
+    "FrontendUrl": "https://ai-interview-question-generation-rag-llm-fe.pages.dev",
+    "VercelUrl": "https://ai-interview-question-generation-ra.vercel.app"
+  },
+
+  "Cors": {
+    "Note": "The backend must allow the origin the site is served from (Cors:AllowedOrigins in BE_CONFIG)",
+    "AllowedOrigins": [
+      "https://ai-interview-question-generation-rag-llm-fe.pages.dev",
+      "https://ai-interview-question-generation-ra.vercel.app",
+      "http://localhost:3000",
+      "http://localhost:5173",
+      "http://localhost:4200"
+    ]
+  },
+
+  "Scripts": {
+    "Install": "npm install",
+    "Dev": "npm run dev (http://localhost:3000)",
+    "Build": "npm run build",
+    "Start": "npm run start",
+    "TypeCheck": "npm run typecheck",
+    "UnitTests": "npx vitest run (Vitest 4, jsdom)"
+  },
+
+  "Realtime": {
+    "Library": "@microsoft/signalr",
+    "Note": "Connects to the backend payment hub, so the API base URL must be reachable over WebSocket"
+  },
+
+  "BrowserStorageKeys": [
+    "interviewai_access_token",
+    "interviewai_refresh_token",
+    "interviewai_auth",
+    "interviewai_user_role",
+    "hiregena-lang",
+    "hiregena-theme-resolved"
+  ],
+
+  "OptionalTestOnly": {
+    "TEST_HR_EMAIL": "",
+    "TEST_HR_PASSWORD": "",
+    "Note": "Only for automated tests. Never commit real values."
+  }
+}
