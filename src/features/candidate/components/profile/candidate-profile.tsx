@@ -616,8 +616,16 @@ export function CandidateProfile() {
           </div>
 
           {cvLoading ? (
-            <div className="aspect-210/297 flex items-center justify-center bg-gray-50 dark:bg-gray-900/40">
-              <Loader2 size={20} className="animate-spin text-primary" />
+            <div className="aspect-210/297 space-y-3 bg-gray-50 p-4 dark:bg-gray-900/40" aria-busy>
+              <Skeleton className="h-3 w-1/3" />
+              <Skeleton className="h-3 w-full" />
+              <Skeleton className="h-3 w-[92%]" />
+              <Skeleton className="h-3 w-[88%]" />
+              <Skeleton className="mt-4 h-24 w-full rounded-lg" />
+              <Skeleton className="h-3 w-full" />
+              <Skeleton className="h-3 w-[95%]" />
+              <Skeleton className="h-3 w-[70%]" />
+              <Skeleton className="mt-4 h-32 w-full rounded-lg" />
             </div>
           ) : cv && isImageCv(cv.fileName) && cv.downloadUrl ? (
             /* Image CV — container is exactly 1 A4 page tall, scroll to see more */

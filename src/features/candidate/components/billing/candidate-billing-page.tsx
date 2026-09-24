@@ -13,7 +13,6 @@ import { cn } from "@/lib/cn";
 import { useLanguage } from "@/shared/providers/language-context";
 import { useToast } from "@/shared/providers/toast-context";
 import { useUser } from "@/features/auth/context/user-context";
-import { AiLoadingSpinner } from "@/shared/components/common/ai-loading-spinner";
 import { portalHeading, portalSubtext } from "@/shared/utils/portal-ui";
 import type {
   CandidateSubscription,
@@ -261,11 +260,7 @@ export function CandidateBillingPage() {
   }, [contextPlanType, loadBillingData]);
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[calc(100vh-16rem)]">
-        <AiLoadingSpinner text={b.loading} />
-      </div>
-    );
+    return <BillingSkeleton />;
   }
 
   const isPremium = subscription?.planType === "PREMIUM";

@@ -58,7 +58,7 @@ export function PlanCreatingLoading({ startedAt = null, completedSteps, forceAll
 
   return (
     <div className="flex min-h-[280px] w-full flex-1 flex-col items-center justify-center gap-5 px-6 py-16 text-center">
-      <AiLoadingSpinner />
+      <AiLoadingSpinner text="" />
       <div>
         <p className="text-base font-semibold text-gray-900 dark:text-gray-50">{c.streamingTitle}</p>
         <p className="mt-1 text-sm ai-status-text">{PLAN_STEPS[activeIdx].sub}</p>

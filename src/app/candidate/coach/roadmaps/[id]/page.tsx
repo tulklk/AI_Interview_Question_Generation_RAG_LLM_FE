@@ -11,6 +11,7 @@ import {
   roadmapScoreProgress,
   roadmapTopicProgress,
 } from "@/features/candidate/components/coach/coach-journey-path";
+import { CoachRoadmapDetailSkeleton } from "@/features/candidate/components/coach/coach-roadmap-detail-skeleton";
 import { getSkillIcon } from "@/features/candidate/utils/skill-icons";
 import { fillTemplate } from "@/features/candidate/utils/dashboard-analytics";
 import { useLanguage } from "@/shared/providers/language-context";
@@ -48,7 +49,7 @@ function CoachRoadmapDetail() {
   }, [id, p.roadmapStartFailed]);
 
   if (error) return <p className="text-[13px] text-red-600">{error}</p>;
-  if (!roadmap) return <p className={cn("text-[13px]", portalSubtextAlt)}>{p.loadingPlan}</p>;
+  if (!roadmap) return <CoachRoadmapDetailSkeleton />;
 
   const si = getSkillIcon(roadmap.skill);
   const SIcon = si?.icon;
