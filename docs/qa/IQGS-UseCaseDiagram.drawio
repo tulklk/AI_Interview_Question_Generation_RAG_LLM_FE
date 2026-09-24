@@ -1,0 +1,236 @@
+<mxfile host="app.diagrams.net"><diagram name="Use Case Diagram - IQGS" id="iqgs-uc-diagram-v3"><mxGraphModel dx="800" dy="600" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1440" pageHeight="1922" math="0" shadow="0"><root><mxCell id="0"/><mxCell id="1" parent="0"/>
+<mxCell id="boundary" value="IQGS" style="rounded=0;whiteSpace=wrap;html=1;verticalAlign=top;fontStyle=1;fontSize=15;align=center;" vertex="1" parent="1"><mxGeometry x="280" y="30" width="900" height="1852" as="geometry"/></mxCell>
+<mxCell id="hdr_Authentication" value="Authentication" style="text;html=1;fontStyle=1;fontSize=12;align=left;" vertex="1" parent="1"><mxGeometry x="330" y="70" width="250" height="26" as="geometry"/></mxCell>
+<mxCell id="UC-G01" value="UC-G01
+View Home Page" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1"><mxGeometry x="320.52" y="90.576" width="250" height="46" as="geometry"/></mxCell>
+<mxCell id="UC-G02" value="UC-G02
+View Subscription Plans" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1"><mxGeometry x="320.544" y="148.948" width="250" height="46" as="geometry"/></mxCell>
+<mxCell id="UC-G03" value="UC-G03
+Register as Job Seeker" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1"><mxGeometry x="320.568" y="207.32" width="250" height="46" as="geometry"/></mxCell>
+<mxCell id="UC-G04" value="UC-G04
+Register as HR Manager" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1"><mxGeometry x="320.592" y="265.692" width="250" height="46" as="geometry"/></mxCell>
+<mxCell id="UC-G05" value="UC-G05
+Login" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1"><mxGeometry x="320.616" y="324.064" width="250" height="46" as="geometry"/></mxCell>
+<mxCell id="UC-G06" value="UC-G06
+Forgot Password" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1"><mxGeometry x="320.64" y="382.436" width="250" height="46" as="geometry"/></mxCell>
+<mxCell id="UC-A01" value="UC-A01
+Verify Email" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1"><mxGeometry x="326.136" y="441.624" width="250" height="46" as="geometry"/></mxCell>
+<mxCell id="UC-A02" value="UC-A02
+Reset Password" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1"><mxGeometry x="326.16" y="499.996" width="250" height="46" as="geometry"/></mxCell>
+<mxCell id="UC-A03" value="UC-A03
+Logout" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1"><mxGeometry x="326.184" y="558.368" width="250" height="46" as="geometry"/></mxCell>
+<mxCell id="hdr_Profile Management" value="Profile Management" style="text;html=1;fontStyle=1;fontSize=12;align=left;" vertex="1" parent="1"><mxGeometry x="330" y="636" width="250" height="26" as="geometry"/></mxCell>
+<mxCell id="UC-A04" value="UC-A04
+Update Profile" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1"><mxGeometry x="326.208" y="660.74" width="250" height="46" as="geometry"/></mxCell>
+<mxCell id="UC-A05" value="UC-A05
+Change Password" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1"><mxGeometry x="326.232" y="719.112" width="250" height="46" as="geometry"/></mxCell>
+<mxCell id="hdr_HR Question Generation" value="HR Question Generation" style="text;html=1;fontStyle=1;fontSize=12;align=left;" vertex="1" parent="1"><mxGeometry x="330" y="796" width="250" height="26" as="geometry"/></mxCell>
+<mxCell id="UC-HR01" value="UC-HR01
+Input Job Description" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1"><mxGeometry x="327.84" y="825.972" width="250" height="46" as="geometry"/></mxCell>
+<mxCell id="UC-HR02" value="UC-HR02
+Configure Generation" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1"><mxGeometry x="327.864" y="884.344" width="250" height="46" as="geometry"/></mxCell>
+<mxCell id="UC-HR03" value="UC-HR03
+Generate Questions" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1"><mxGeometry x="327.888" y="942.716" width="250" height="46" as="geometry"/></mxCell>
+<mxCell id="UC-HR04" value="UC-HR04
+View Generated Questions" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1"><mxGeometry x="327.912" y="1001.088" width="250" height="46" as="geometry"/></mxCell>
+<mxCell id="hdr_Question Set Management" value="Question Set Management" style="text;html=1;fontStyle=1;fontSize=12;align=left;" vertex="1" parent="1"><mxGeometry x="330" y="1072" width="250" height="26" as="geometry"/></mxCell>
+<mxCell id="UC-HR05" value="UC-HR05
+Edit Generated Questions" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1"><mxGeometry x="327.936" y="1103.46" width="250" height="46" as="geometry"/></mxCell>
+<mxCell id="UC-HR06" value="UC-HR06
+Save to Question Set" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1"><mxGeometry x="327.96" y="1161.832" width="250" height="46" as="geometry"/></mxCell>
+<mxCell id="UC-HR07" value="UC-HR07
+Manage Question Sets" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1"><mxGeometry x="327.984" y="1208.204" width="250" height="46" as="geometry"/></mxCell>
+<mxCell id="UC-HR08" value="UC-HR08
+Publish Question Set" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1"><mxGeometry x="330" y="1272" width="250" height="46" as="geometry"/></mxCell>
+<mxCell id="UC-HR09" value="UC-HR09
+Unpublish Question Set" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1"><mxGeometry x="330" y="1330" width="250" height="46" as="geometry"/></mxCell>
+<mxCell id="UC-HR10" value="UC-HR10
+Export Question Set" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1"><mxGeometry x="330" y="1388" width="250" height="46" as="geometry"/></mxCell>
+<mxCell id="UC-HR11" value="UC-HR11
+View Recruitment Analytics" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1"><mxGeometry x="328.584" y="1449.504" width="250" height="46" as="geometry"/></mxCell>
+<mxCell id="UC-HR12" value="UC-HR12
+Manage Contact Inbox" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1"><mxGeometry x="328.608" y="1507.876" width="250" height="46" as="geometry"/></mxCell>
+<mxCell id="UC-HR13" value="UC-HR13
+View Generation History" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1"><mxGeometry x="328.632" y="1566.248" width="250" height="46" as="geometry"/></mxCell>
+<mxCell id="UC-HR14" value="UC-HR14
+Cancel Generation Job" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1"><mxGeometry x="330" y="1620" width="250" height="46" as="geometry"/></mxCell>
+<mxCell id="hdr_Marketplace and Practice Management" value="Marketplace and Practice Management" style="text;html=1;fontStyle=1;fontSize=12;align=left;" vertex="1" parent="1"><mxGeometry x="900" y="70" width="250" height="26" as="geometry"/></mxCell>
+<mxCell id="UC-JS01" value="UC-JS01
+Browse Question Sets" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1"><mxGeometry x="910.872" y="97.968" width="250" height="46" as="geometry"/></mxCell>
+<mxCell id="UC-JS02" value="UC-JS02
+Search and Filter Sets" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1"><mxGeometry x="900" y="154" width="250" height="46" as="geometry"/></mxCell>
+<mxCell id="UC-JS03" value="UC-JS03
+View Question Set Detail" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1"><mxGeometry x="910.92" y="214.712" width="250" height="46" as="geometry"/></mxCell>
+<mxCell id="UC-JS04" value="UC-JS04
+Bookmark Question Set" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1"><mxGeometry x="900" y="270" width="250" height="46" as="geometry"/></mxCell>
+<mxCell id="UC-JS05" value="UC-JS05
+Start Practice Session" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1"><mxGeometry x="900" y="328" width="250" height="46" as="geometry"/></mxCell>
+<mxCell id="UC-JS06" value="UC-JS06
+Submit Answers" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1"><mxGeometry x="910.992" y="389.828" width="250" height="46" as="geometry"/></mxCell>
+<mxCell id="UC-JS07" value="UC-JS07
+View AI Feedback" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1"><mxGeometry x="911.016" y="448.2" width="250" height="46" as="geometry"/></mxCell>
+<mxCell id="UC-JS08" value="UC-JS08
+View Interview Summary" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1"><mxGeometry x="911.04" y="506.572" width="250" height="46" as="geometry"/></mxCell>
+<mxCell id="UC-JS09" value="UC-JS09
+View Practice History" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1"><mxGeometry x="911.064" y="564.944" width="250" height="46" as="geometry"/></mxCell>
+<mxCell id="UC-JS10" value="UC-JS10
+Contact HR" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1"><mxGeometry x="900" y="618" width="250" height="46" as="geometry"/></mxCell>
+<mxCell id="hdr_AI Evaluation and Feedback Management" value="AI Evaluation and Feedback Management" style="text;html=1;fontStyle=1;fontSize=12;align=left;" vertex="1" parent="1"><mxGeometry x="900" y="694" width="250" height="26" as="geometry"/></mxCell>
+<mxCell id="UC-JS06b" value="UC-JS06b
+Trigger AI Evaluation (system-side)" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1"><mxGeometry x="907.104" y="724.524" width="250" height="46" as="geometry"/></mxCell>
+<mxCell id="UC-JS07b" value="UC-JS07b
+Compute Overall Score and Skill Breakdown" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1"><mxGeometry x="907.848" y="782.056" width="250" height="46" as="geometry"/></mxCell>
+<mxCell id="hdr_Knowledge Base Management" value="Knowledge Base Management" style="text;html=1;fontStyle=1;fontSize=12;align=left;" vertex="1" parent="1"><mxGeometry x="900" y="854" width="250" height="26" as="geometry"/></mxCell>
+<mxCell id="UC-AD02" value="UC-AD02
+Manage Knowledge Base" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1"><mxGeometry x="900" y="880" width="250" height="46" as="geometry"/></mxCell>
+<mxCell id="UC-AD03" value="UC-AD03
+View Ingestion Status" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1"><mxGeometry x="898.104" y="934.064" width="250" height="46" as="geometry"/></mxCell>
+<mxCell id="hdr_RAG Evaluation Management" value="RAG Evaluation Management" style="text;html=1;fontStyle=1;fontSize=12;align=left;" vertex="1" parent="1"><mxGeometry x="900" y="1014" width="250" height="26" as="geometry"/></mxCell>
+<mxCell id="UC-AD04" value="UC-AD04
+Trigger RAG Evaluation" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1"><mxGeometry x="898.128" y="1036.436" width="250" height="46" as="geometry"/></mxCell>
+<mxCell id="UC-AD05" value="UC-AD05
+View Evaluation Report" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1"><mxGeometry x="898.152" y="1094.808" width="250" height="46" as="geometry"/></mxCell>
+<mxCell id="hdr_Subscription and Payment Management" value="Subscription and Payment Management" style="text;html=1;fontStyle=1;fontSize=12;align=left;" vertex="1" parent="1"><mxGeometry x="900" y="1174" width="250" height="26" as="geometry"/></mxCell>
+<mxCell id="UC-P01" value="UC-P01
+View Subscription Plans" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1"><mxGeometry x="906.096" y="1196.004" width="250" height="46" as="geometry"/></mxCell>
+<mxCell id="UC-P02" value="UC-P02
+Upgrade Subscription" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1"><mxGeometry x="900" y="1258" width="250" height="46" as="geometry"/></mxCell>
+<mxCell id="UC-P03" value="UC-P03
+Verify Payment" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1"><mxGeometry x="906.144" y="1312.748" width="250" height="46" as="geometry"/></mxCell>
+<mxCell id="UC-P04" value="UC-P04
+View Transaction History" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1"><mxGeometry x="906.168" y="1371.12" width="250" height="46" as="geometry"/></mxCell>
+<mxCell id="UC-P05" value="UC-P05
+Enforce Feature Access" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1"><mxGeometry x="906.192" y="1429.492" width="250" height="46" as="geometry"/></mxCell>
+<mxCell id="hdr_Admin Management" value="Admin Management" style="text;html=1;fontStyle=1;fontSize=12;align=left;" vertex="1" parent="1"><mxGeometry x="900" y="1508" width="250" height="26" as="geometry"/></mxCell>
+<mxCell id="UC-AD01" value="UC-AD01
+Manage Users" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1"><mxGeometry x="898.056" y="1529.32" width="250" height="46" as="geometry"/></mxCell>
+<mxCell id="UC-AD06" value="UC-AD06
+Moderate Content" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1"><mxGeometry x="898.176" y="1589.18" width="250" height="46" as="geometry"/></mxCell>
+<mxCell id="UC-AD07" value="UC-AD07
+View System Analytics" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1"><mxGeometry x="898.2" y="1647.552" width="250" height="46" as="geometry"/></mxCell>
+<mxCell id="UC-AD08" value="UC-AD08
+Manage Subscription Plans" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1"><mxGeometry x="898.224" y="1705.924" width="250" height="46" as="geometry"/></mxCell>
+<mxCell id="UC-AD09" value="UC-AD09
+Manage System Config" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1"><mxGeometry x="898.248" y="1764.296" width="250" height="46" as="geometry"/></mxCell>
+<mxCell id="aGuest" value="Guest" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fontSize=11;fillColor=#f5f5f5;strokeColor=#333333;" vertex="1" parent="1"><mxGeometry x="90" y="229.50600000000003" width="30" height="60" as="geometry"/></mxCell>
+<mxCell id="aHR" value="HR Manager /
+Recruiter" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fontSize=11;fillColor=#f5f5f5;strokeColor=#333333;" vertex="1" parent="1"><mxGeometry x="90" y="1082.373090909091" width="30" height="60" as="geometry"/></mxCell>
+<mxCell id="aJS" value="Job Seeker /
+Candidate" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fontSize=11;fillColor=#f5f5f5;strokeColor=#333333;" vertex="1" parent="1"><mxGeometry x="1270" y="565.0659999999999" width="30" height="60" as="geometry"/></mxCell>
+<mxCell id="aAdmin" value="Administrator" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fontSize=11;fillColor=#f5f5f5;strokeColor=#333333;" vertex="1" parent="1"><mxGeometry x="1270" y="1068.8157142857142" width="30" height="60" as="geometry"/></mxCell>
+<mxCell id="e1" style="edgeStyle=none;html=1;endArrow=none;fontSize=10;" edge="1" parent="1" source="aGuest" target="UC-G01"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="e2" style="edgeStyle=none;html=1;endArrow=none;fontSize=10;" edge="1" parent="1" source="aGuest" target="UC-G02"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="e3" style="edgeStyle=none;html=1;endArrow=none;fontSize=10;" edge="1" parent="1" source="aGuest" target="UC-G03"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="e4" style="edgeStyle=none;html=1;endArrow=none;fontSize=10;" edge="1" parent="1" source="aGuest" target="UC-G04"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="e5" style="edgeStyle=none;html=1;endArrow=none;fontSize=10;" edge="1" parent="1" source="aGuest" target="UC-G05"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="e6" style="edgeStyle=none;html=1;endArrow=none;fontSize=10;" edge="1" parent="1" source="aGuest" target="UC-G06"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="e7" style="edgeStyle=none;html=1;endArrow=none;fontSize=10;" edge="1" parent="1" source="aHR" target="UC-A01"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="e8" style="edgeStyle=none;html=1;endArrow=none;fontSize=10;" edge="1" parent="1" source="aJS" target="UC-A01"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="e9" style="edgeStyle=none;html=1;endArrow=none;fontSize=10;" edge="1" parent="1" source="aAdmin" target="UC-A01"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="e10" style="edgeStyle=none;html=1;endArrow=none;fontSize=10;" edge="1" parent="1" source="aHR" target="UC-A02"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="e11" style="edgeStyle=none;html=1;endArrow=none;fontSize=10;" edge="1" parent="1" source="aJS" target="UC-A02"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="e12" style="edgeStyle=none;html=1;endArrow=none;fontSize=10;" edge="1" parent="1" source="aAdmin" target="UC-A02"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="e13" style="edgeStyle=none;html=1;endArrow=none;fontSize=10;" edge="1" parent="1" source="aHR" target="UC-A03"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="e14" style="edgeStyle=none;html=1;endArrow=none;fontSize=10;" edge="1" parent="1" source="aJS" target="UC-A03"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="e15" style="edgeStyle=none;html=1;endArrow=none;fontSize=10;" edge="1" parent="1" source="aAdmin" target="UC-A03"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="e16" style="edgeStyle=none;html=1;endArrow=none;fontSize=10;" edge="1" parent="1" source="aHR" target="UC-A04"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="e17" style="edgeStyle=none;html=1;endArrow=none;fontSize=10;" edge="1" parent="1" source="aJS" target="UC-A04"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="e18" style="edgeStyle=none;html=1;endArrow=none;fontSize=10;" edge="1" parent="1" source="aAdmin" target="UC-A04"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="e19" style="edgeStyle=none;html=1;endArrow=none;fontSize=10;" edge="1" parent="1" source="aHR" target="UC-A05"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="e20" style="edgeStyle=none;html=1;endArrow=none;fontSize=10;" edge="1" parent="1" source="aJS" target="UC-A05"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="e21" style="edgeStyle=none;html=1;endArrow=none;fontSize=10;" edge="1" parent="1" source="aAdmin" target="UC-A05"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="e22" style="edgeStyle=none;html=1;endArrow=none;fontSize=10;" edge="1" parent="1" source="aHR" target="UC-HR01"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="e23" style="edgeStyle=none;html=1;endArrow=none;fontSize=10;" edge="1" parent="1" source="aHR" target="UC-HR02"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="e24" style="edgeStyle=none;html=1;endArrow=none;fontSize=10;" edge="1" parent="1" source="aHR" target="UC-HR03"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="e25" style="edgeStyle=none;html=1;endArrow=none;fontSize=10;" edge="1" parent="1" source="aHR" target="UC-HR04"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="e26" style="edgeStyle=none;html=1;endArrow=none;fontSize=10;" edge="1" parent="1" source="aHR" target="UC-HR05"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="e27" style="edgeStyle=none;html=1;endArrow=none;fontSize=10;" edge="1" parent="1" source="aHR" target="UC-HR06"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="e28" style="edgeStyle=none;html=1;endArrow=none;fontSize=10;" edge="1" parent="1" source="aHR" target="UC-HR07"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="e29" style="edgeStyle=none;html=1;endArrow=none;fontSize=10;" edge="1" parent="1" source="aHR" target="UC-HR08"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="e30" style="edgeStyle=none;html=1;endArrow=none;fontSize=10;" edge="1" parent="1" source="aHR" target="UC-HR09"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="e31" style="edgeStyle=none;html=1;endArrow=none;fontSize=10;" edge="1" parent="1" source="aHR" target="UC-HR10"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="e32" style="edgeStyle=none;html=1;endArrow=none;fontSize=10;" edge="1" parent="1" source="aHR" target="UC-HR11"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="e33" style="edgeStyle=none;html=1;endArrow=none;fontSize=10;" edge="1" parent="1" source="aHR" target="UC-HR12"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="e34" style="edgeStyle=none;html=1;endArrow=none;fontSize=10;" edge="1" parent="1" source="aHR" target="UC-HR13"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="e35" style="edgeStyle=none;html=1;endArrow=none;fontSize=10;" edge="1" parent="1" source="aHR" target="UC-HR14"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="e36" style="edgeStyle=none;html=1;endArrow=none;fontSize=10;" edge="1" parent="1" source="aJS" target="UC-JS01"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="e37" style="edgeStyle=none;html=1;endArrow=none;fontSize=10;" edge="1" parent="1" source="aJS" target="UC-JS02"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="e38" style="edgeStyle=none;html=1;endArrow=none;fontSize=10;" edge="1" parent="1" source="aJS" target="UC-JS03"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="e39" style="edgeStyle=none;html=1;endArrow=none;fontSize=10;" edge="1" parent="1" source="aJS" target="UC-JS04"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="e40" style="edgeStyle=none;html=1;endArrow=none;fontSize=10;" edge="1" parent="1" source="aJS" target="UC-JS05"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="e41" style="edgeStyle=none;html=1;endArrow=none;fontSize=10;" edge="1" parent="1" source="aJS" target="UC-JS06"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="e42" style="edgeStyle=none;html=1;endArrow=none;fontSize=10;" edge="1" parent="1" source="aJS" target="UC-JS07"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="e43" style="edgeStyle=none;html=1;endArrow=none;fontSize=10;" edge="1" parent="1" source="aJS" target="UC-JS08"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="e44" style="edgeStyle=none;html=1;endArrow=none;fontSize=10;" edge="1" parent="1" source="aJS" target="UC-JS09"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="e45" style="edgeStyle=none;html=1;endArrow=none;fontSize=10;" edge="1" parent="1" source="aJS" target="UC-JS10"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="e46" style="edgeStyle=none;html=1;endArrow=none;fontSize=10;" edge="1" parent="1" source="aAdmin" target="UC-AD02"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="e47" style="edgeStyle=none;html=1;endArrow=none;fontSize=10;" edge="1" parent="1" source="aAdmin" target="UC-AD03"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="e48" style="edgeStyle=none;html=1;endArrow=none;fontSize=10;" edge="1" parent="1" source="aAdmin" target="UC-AD04"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="e49" style="edgeStyle=none;html=1;endArrow=none;fontSize=10;" edge="1" parent="1" source="aAdmin" target="UC-AD05"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="e50" style="edgeStyle=none;html=1;endArrow=none;fontSize=10;" edge="1" parent="1" source="aHR" target="UC-P01"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="e51" style="edgeStyle=none;html=1;endArrow=none;fontSize=10;" edge="1" parent="1" source="aJS" target="UC-P01"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="e52" style="edgeStyle=none;html=1;endArrow=none;fontSize=10;" edge="1" parent="1" source="aHR" target="UC-P02"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="e53" style="edgeStyle=none;html=1;endArrow=none;fontSize=10;" edge="1" parent="1" source="aJS" target="UC-P02"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="e54" style="edgeStyle=none;html=1;endArrow=none;fontSize=10;" edge="1" parent="1" source="aHR" target="UC-P04"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="e55" style="edgeStyle=none;html=1;endArrow=none;fontSize=10;" edge="1" parent="1" source="aJS" target="UC-P04"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="e56" style="edgeStyle=none;html=1;endArrow=none;fontSize=10;" edge="1" parent="1" source="aAdmin" target="UC-AD01"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="e57" style="edgeStyle=none;html=1;endArrow=none;fontSize=10;" edge="1" parent="1" source="aAdmin" target="UC-AD06"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="e58" style="edgeStyle=none;html=1;endArrow=none;fontSize=10;" edge="1" parent="1" source="aAdmin" target="UC-AD07"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="e59" style="edgeStyle=none;html=1;endArrow=none;fontSize=10;" edge="1" parent="1" source="aAdmin" target="UC-AD08"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="e60" style="edgeStyle=none;html=1;endArrow=none;fontSize=10;" edge="1" parent="1" source="aAdmin" target="UC-AD09"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="e61" value="&lt;&lt;include&gt;&gt;" style="edgeStyle=none;html=1;dashed=1;endArrow=open;endSize=10;fontSize=9;" edge="1" parent="1" source="UC-G03" target="UC-A01"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="e62" value="&lt;&lt;include&gt;&gt;" style="edgeStyle=none;html=1;dashed=1;endArrow=open;endSize=10;fontSize=9;" edge="1" parent="1" source="UC-G04" target="UC-A01"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="e63" value="&lt;&lt;include&gt;&gt;" style="edgeStyle=none;html=1;dashed=1;endArrow=open;endSize=10;fontSize=9;" edge="1" parent="1" source="UC-JS06" target="UC-JS06b"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="e64" value="&lt;&lt;include&gt;&gt;" style="edgeStyle=none;html=1;dashed=1;endArrow=open;endSize=10;fontSize=9;" edge="1" parent="1" source="UC-JS06b" target="UC-JS07b"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="e65" value="&lt;&lt;include&gt;&gt;" style="edgeStyle=none;html=1;dashed=1;endArrow=open;endSize=10;fontSize=9;" edge="1" parent="1" source="UC-P02" target="UC-P03"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="e66" value="&lt;&lt;include&gt;&gt;" style="edgeStyle=none;html=1;dashed=1;endArrow=open;endSize=10;fontSize=9;" edge="1" parent="1" source="UC-HR03" target="UC-P05"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="e67" value="&lt;&lt;include&gt;&gt;" style="edgeStyle=none;html=1;dashed=1;endArrow=open;endSize=10;fontSize=9;" edge="1" parent="1" source="UC-JS05" target="UC-P05"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="e68" value="&lt;&lt;extend&gt;&gt;" style="edgeStyle=none;html=1;dashed=1;endArrow=open;endSize=10;fontSize=9;" edge="1" parent="1" source="UC-HR08" target="UC-HR07"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="note_UC-HR08_0" value="Condition: User wants to publish a Draft set
+Extension Point: Publish button (Question Sets list)" style="rounded=0;whiteSpace=wrap;html=1;fontSize=8;align=left;verticalAlign=top;spacing=4;" vertex="1" parent="1"><mxGeometry x="605" y="1272" width="125" height="46" as="geometry"/></mxCell>
+<mxCell id="e69" style="edgeStyle=none;html=1;endArrow=none;dashed=1;fontSize=8;" edge="1" parent="1" source="UC-HR08" target="note_UC-HR08_0"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="e70" value="&lt;&lt;extend&gt;&gt;" style="edgeStyle=none;html=1;dashed=1;endArrow=open;endSize=10;fontSize=9;" edge="1" parent="1" source="UC-HR09" target="UC-HR07"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="note_UC-HR09_0" value="Condition: User wants to unpublish a Published set
+Extension Point: Unpublish button (Question Sets list)" style="rounded=0;whiteSpace=wrap;html=1;fontSize=8;align=left;verticalAlign=top;spacing=4;" vertex="1" parent="1"><mxGeometry x="605" y="1330" width="125" height="46" as="geometry"/></mxCell>
+<mxCell id="e71" style="edgeStyle=none;html=1;endArrow=none;dashed=1;fontSize=8;" edge="1" parent="1" source="UC-HR09" target="note_UC-HR09_0"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="e72" value="&lt;&lt;extend&gt;&gt;" style="edgeStyle=none;html=1;dashed=1;endArrow=open;endSize=10;fontSize=9;" edge="1" parent="1" source="UC-HR14" target="UC-HR03"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="note_UC-HR14_0" value="Condition: Job is Queued or Processing
+Extension Point: Cancel button (job status view)" style="rounded=0;whiteSpace=wrap;html=1;fontSize=8;align=left;verticalAlign=top;spacing=4;" vertex="1" parent="1"><mxGeometry x="605" y="1620" width="125" height="46" as="geometry"/></mxCell>
+<mxCell id="e73" style="edgeStyle=none;html=1;endArrow=none;dashed=1;fontSize=8;" edge="1" parent="1" source="UC-HR14" target="note_UC-HR14_0"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="e74" value="&lt;&lt;extend&gt;&gt;" style="edgeStyle=none;html=1;dashed=1;endArrow=open;endSize=10;fontSize=9;" edge="1" parent="1" source="UC-JS04" target="UC-JS01"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="note_UC-JS04_0" value="Condition: User wants to save a set for later
+Extension Point: Bookmark icon (set card)" style="rounded=0;whiteSpace=wrap;html=1;fontSize=8;align=left;verticalAlign=top;spacing=4;" vertex="1" parent="1"><mxGeometry x="755" y="270" width="125" height="46" as="geometry"/></mxCell>
+<mxCell id="e75" style="edgeStyle=none;html=1;endArrow=none;dashed=1;fontSize=8;" edge="1" parent="1" source="UC-JS04" target="note_UC-JS04_0"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="e76" value="&lt;&lt;extend&gt;&gt;" style="edgeStyle=none;html=1;dashed=1;endArrow=open;endSize=10;fontSize=9;" edge="1" parent="1" source="UC-JS10" target="UC-JS07"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="note_UC-JS10_0" value="Condition: User wants to share their scorecard with HR
+Extension Point: Share with HR button (feedback report)" style="rounded=0;whiteSpace=wrap;html=1;fontSize=8;align=left;verticalAlign=top;spacing=4;" vertex="1" parent="1"><mxGeometry x="755" y="618" width="125" height="46" as="geometry"/></mxCell>
+<mxCell id="e77" style="edgeStyle=none;html=1;endArrow=none;dashed=1;fontSize=8;" edge="1" parent="1" source="UC-JS10" target="note_UC-JS10_0"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="e78" value="&lt;&lt;extend&gt;&gt;" style="edgeStyle=none;html=1;dashed=1;endArrow=open;endSize=10;fontSize=9;" edge="1" parent="1" source="UC-P02" target="UC-P01"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="note_UC-P02_0" value="Condition: User wants to upgrade to Premium
+Extension Point: Upgrade to Premium button" style="rounded=0;whiteSpace=wrap;html=1;fontSize=8;align=left;verticalAlign=top;spacing=4;" vertex="1" parent="1"><mxGeometry x="755" y="1258" width="125" height="46" as="geometry"/></mxCell>
+<mxCell id="e79" style="edgeStyle=none;html=1;endArrow=none;dashed=1;fontSize=8;" edge="1" parent="1" source="UC-P02" target="note_UC-P02_0"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="e80" value="&lt;&lt;extend&gt;&gt;" style="edgeStyle=none;html=1;dashed=1;endArrow=open;endSize=10;fontSize=9;" edge="1" parent="1" source="UC-JS02" target="UC-JS01"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="note_UC-JS02_0" value="Condition: User wants to narrow the result list
+Extension Point: Search/filter bar (Marketplace)" style="rounded=0;whiteSpace=wrap;html=1;fontSize=8;align=left;verticalAlign=top;spacing=4;" vertex="1" parent="1"><mxGeometry x="755" y="154" width="125" height="46" as="geometry"/></mxCell>
+<mxCell id="e81" style="edgeStyle=none;html=1;endArrow=none;dashed=1;fontSize=8;" edge="1" parent="1" source="UC-JS02" target="note_UC-JS02_0"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="e82" value="&lt;&lt;extend&gt;&gt;" style="edgeStyle=none;html=1;dashed=1;endArrow=open;endSize=10;fontSize=9;" edge="1" parent="1" source="UC-JS05" target="UC-JS03"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="note_UC-JS05_0" value="Condition: User confirms Start Practice
+Extension Point: Start Practice button (Detail page)" style="rounded=0;whiteSpace=wrap;html=1;fontSize=8;align=left;verticalAlign=top;spacing=4;" vertex="1" parent="1"><mxGeometry x="755" y="328" width="125" height="46" as="geometry"/></mxCell>
+<mxCell id="e83" style="edgeStyle=none;html=1;endArrow=none;dashed=1;fontSize=8;" edge="1" parent="1" source="UC-JS05" target="note_UC-JS05_0"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="e84" value="&lt;&lt;extend&gt;&gt;" style="edgeStyle=none;html=1;dashed=1;endArrow=open;endSize=10;fontSize=9;" edge="1" parent="1" source="UC-JS05" target="UC-JS09"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="note_UC-JS05_1" value="Condition: User clicks Retry on a past session
+Extension Point: Retry button (History row)" style="rounded=0;whiteSpace=wrap;html=1;fontSize=8;align=left;verticalAlign=top;spacing=4;" vertex="1" parent="1"><mxGeometry x="755" y="384" width="125" height="46" as="geometry"/></mxCell>
+<mxCell id="e85" style="edgeStyle=none;html=1;endArrow=none;dashed=1;fontSize=8;" edge="1" parent="1" source="UC-JS05" target="note_UC-JS05_1"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="e86" value="&lt;&lt;extend&gt;&gt;" style="edgeStyle=none;html=1;dashed=1;endArrow=open;endSize=10;fontSize=9;" edge="1" parent="1" source="UC-HR10" target="UC-HR07"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="note_UC-HR10_0" value="Condition: User wants to download the set
+Extension Point: Export button (Question Sets list)" style="rounded=0;whiteSpace=wrap;html=1;fontSize=8;align=left;verticalAlign=top;spacing=4;" vertex="1" parent="1"><mxGeometry x="605" y="1388" width="125" height="46" as="geometry"/></mxCell>
+<mxCell id="e87" style="edgeStyle=none;html=1;endArrow=none;dashed=1;fontSize=8;" edge="1" parent="1" source="UC-HR10" target="note_UC-HR10_0"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="e88" value="&lt;&lt;extend&gt;&gt;" style="edgeStyle=none;html=1;dashed=1;endArrow=open;endSize=10;fontSize=9;" edge="1" parent="1" source="UC-AD02" target="UC-AD03"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="note_UC-AD02_0" value="Condition: Document Status = Failed
+Extension Point: Re-ingest action (document list)" style="rounded=0;whiteSpace=wrap;html=1;fontSize=8;align=left;verticalAlign=top;spacing=4;" vertex="1" parent="1"><mxGeometry x="755" y="880" width="125" height="46" as="geometry"/></mxCell>
+<mxCell id="e89" style="edgeStyle=none;html=1;endArrow=none;dashed=1;fontSize=8;" edge="1" parent="1" source="UC-AD02" target="note_UC-AD02_0"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="e90" value="&lt;&lt;extend&gt;&gt;" style="edgeStyle=none;html=1;dashed=1;endArrow=open;endSize=10;fontSize=9;" edge="1" parent="1" source="UC-P02" target="UC-JS05"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="note_UC-P02_1" value="Condition: Free-tier candidate hits a locked question
+Extension Point: Upgrade prompt on locked question" style="rounded=0;whiteSpace=wrap;html=1;fontSize=8;align=left;verticalAlign=top;spacing=4;" vertex="1" parent="1"><mxGeometry x="755" y="1314" width="125" height="46" as="geometry"/></mxCell>
+<mxCell id="e91" style="edgeStyle=none;html=1;endArrow=none;dashed=1;fontSize=8;" edge="1" parent="1" source="UC-P02" target="note_UC-P02_1"><mxGeometry relative="1" as="geometry"/></mxCell>
+</root></mxGraphModel></diagram></mxfile>
