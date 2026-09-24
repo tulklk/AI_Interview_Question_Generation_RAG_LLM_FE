@@ -220,7 +220,7 @@ interface FeedbackPageProps {
   feedback: Record<string, AnswerEvaluation>;
   /** BE-generated overall takeaway (GET .../feedback) — null while unavailable, falls back to a canned score-bucket message. */
   aiInsight?: SessionAiInsight | null;
-  /** FreeTeaser = blur locked questions + upsell; Full = Premium. */
+  /** FreeTeaser = khóa panel AI (+ 1 câu mẫu); Full = Premium. SCRUM-478: không blur câu hỏi. */
   accessLevel?: PracticeFeedbackAccessLevel;
   scoring: boolean;
   /** P4: true when the score poll timed out — shows a retry button instead of "score not available". */
@@ -745,14 +745,9 @@ export function FeedbackPage({
                 className={cn("hr-glass-card p-6", isLocked && "relative overflow-hidden")}
               >
                 {/* Question header — always-visible summary, click to expand */}
+                {/* SCRUM-478: Free vẫn expand xem câu + answer; isLocked chỉ khóa panel AI */}
                 <button
-                  onClick={() => {
-                    if (isLocked) {
-                      setUpgradeOpen(true);
-                      return;
-                    }
-                    toggleExpanded(q.id);
-                  }}
+                  onClick={() => toggleExpanded(q.id)}
                   className="w-full flex items-start justify-between gap-4 text-left cursor-pointer"
                 >
                   <div className="flex-1">
@@ -776,26 +771,15 @@ export function FeedbackPage({
                         </Pill>
                       )}
                     </div>
-                    {/* Never put paywalled text in the DOM: a CSS blur is cosmetic and
-                        readable via devtools. The practice page already renders only the
-                        placeholder for locked questions — match it here. */}
                     <QuestionContent
-                      text={isLocked ? p.freemium.lockedQuestionText : q.question}
-                      className={cn(
-                        "text-[15px] font-bold leading-6",
-                        portalHeadingAlt,
-                        isLocked && "blur-[2px] select-none"
-                      )}
+                      text={q.question}
+                      className={cn("text-[15px] font-bold leading-6", portalHeadingAlt)}
                     />
                   </div>
-                  {isLocked ? (
-                    <Lock size={16} className="text-[#6c47ff] shrink-0 mt-1" />
-                  ) : (
-                    <ChevronDown
-                      size={16}
-                      className={cn("text-gray-400 dark:text-gray-500 transition-transform duration-200 shrink-0 mt-1", isExpanded && "rotate-180")}
-                    />
-                  )}
+                  <ChevronDown
+                    size={16}
+                    className={cn("text-gray-400 dark:text-gray-500 transition-transform duration-200 shrink-0 mt-1", isExpanded && "rotate-180")}
+                  />
                 </button>
 
                 {isLocked && (
@@ -814,7 +798,7 @@ export function FeedbackPage({
                 )}
 
                 <AnimatePresence initial={false}>
-                  {isExpanded && !isLocked && (
+                  {isExpanded && (
                     <motion.div
                       initial={{ height: 0, opacity: 0 }}
                       animate={{ height: "auto", opacity: 1 }}
@@ -823,7 +807,7 @@ export function FeedbackPage({
                       className="overflow-hidden"
                     >
                       <div className="pt-5 flex flex-col gap-4">
-                        {/* Your answer — kể cả để trống vẫn hiện card */}
+                        {/* Your answer — Free vẫn xem được; chỉ AI bị khóa (SCRUM-478) */}
                         <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4 border border-gray-100 dark:border-gray-700/50">
                           <p className={cn("text-[11px] font-[700] uppercase tracking-wide mb-2", portalSubtextAlt)}>{p.yourAnswer}</p>
                           {q.answerText?.trim() ? (
@@ -833,7 +817,7 @@ export function FeedbackPage({
                           )}
                         </div>
 
-                        {/* AI evaluation — only when this question's evaluation actually succeeded */}
+                        {/* AI evaluation — Free chỉ có teaser; hasEval false khi IsLocked */}
                         {hasEval && (
                           <div className="flex flex-col gap-3">
                             <p className={cn("text-[11px] font-[700] uppercase tracking-wide", portalSubtextAlt)}>{p.aiEvaluation}</p>

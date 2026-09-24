@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ChevronLeft, ChevronRight, X,
-  Loader2, Sparkles, AlertCircle, RefreshCw, Lock, Save, Crown, ShieldAlert, Target,
+  Loader2, AlertCircle, RefreshCw, Lock, Save, ShieldAlert, Target,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { useLanguage } from "@/shared/providers/language-context";
@@ -31,8 +31,6 @@ import {
   reportTabLeave,
   ForbiddenError,
 } from "@/features/candidate/services/practice-session.service";
-import { UpgradeModal } from "@/features/candidate/components/billing/upgrade-modal";
-import { useCandidateSubscription } from "@/features/candidate/context/candidate-subscription-context";
 import { useAntiCheat } from "@/features/candidate/anti-cheat/useAntiCheat";
 import {
   PracticeCameraPanel,
@@ -115,9 +113,9 @@ interface QuestionNavProps {
 }
 
 function QuestionNav({ questions, currentIdx, answered, onSelect, onRequestFinish, finishing, isCountdown, timerSeconds, isTimerWarning, isTimerAmber, labels }: QuestionNavProps) {
-  const answerable = questions.filter((q) => !q.isLocked);
-  const answeredCount = answerable.filter((q) => answered[q.id]).length;
-  const total = answerable.length;
+  // SCRUM-478: Free làm full bộ — mọi câu đều answerable
+  const answeredCount = questions.filter((q) => answered[q.id]).length;
+  const total = questions.length;
   const allAnswered = total === 0 || answeredCount === total;
 
   return (
@@ -155,7 +153,6 @@ function QuestionNav({ questions, currentIdx, answered, onSelect, onRequestFinis
           {questions.map((q, idx) => {
             const isActive = idx === currentIdx;
             const isDone = answered[q.id] ?? false;
-            const isLocked = q.isLocked === true;
             return (
               <motion.button
                 key={q.id}
@@ -165,28 +162,24 @@ function QuestionNav({ questions, currentIdx, answered, onSelect, onRequestFinis
                 transition={{ duration: 0.15, ease: "easeOut" }}
                 whileTap={{ scale: 0.9 }}
                 title={
-                  isLocked
-                    ? "Premium"
-                    : isActive
-                      ? labels.current
-                      : isDone
-                        ? labels.answered
-                        : labels.unanswered
+                  isActive
+                    ? labels.current
+                    : isDone
+                      ? labels.answered
+                      : labels.unanswered
                 }
                 className={cn(
                   "w-9 h-9 rounded-full text-[13px] font-bold",
                   "transition-[background-color,border-color,color,box-shadow] duration-150",
                   "flex items-center justify-center",
-                  isLocked
-                    ? "bg-amber-100 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 border border-amber-300/60 dark:border-amber-700"
-                    : isActive
+                  isActive
                     ? "bg-primary text-white shadow-md shadow-primary/30"
                     : isDone
                     ? "bg-emerald-500 dark:bg-emerald-600 text-white hover:bg-emerald-600 dark:hover:bg-emerald-500"
                     : "border-2 border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-primary/50 hover:text-primary"
                 )}
               >
-                {isLocked ? <Lock size={12} /> : idx + 1}
+                {idx + 1}
               </motion.button>
             );
           })}
@@ -234,11 +227,11 @@ function QuestionNav({ questions, currentIdx, answered, onSelect, onRequestFinis
 
 interface PracticeSessionProps {
   set: QuestionSet;
-  /** Re-fetches this question set's data in place (e.g. after upgrading mid-session) without a full page reload. */
+  /** @deprecated SCRUM-478 — Free không còn khóa câu giữa phiên; giữ prop để không phá caller. */
   onQuestionsUnlocked?: () => Promise<void> | void;
 }
 
-export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionProps) {
+export function PracticeSession({ set }: PracticeSessionProps) {
   const { t } = useLanguage();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -254,7 +247,6 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
       ? `/candidate/practice/${sid}/result?mode=coach`
       : `/candidate/practice/${sid}/result`;
   const { addToast } = useToast();
-  const { refreshSubscription } = useCandidateSubscription();
   const p = t.jobseekerPracticePage;
   const [hydratedQuestions, setHydratedQuestions] = useState<QuestionSet["questions"] | null>(null);
   const questions = hydratedQuestions ?? set.questions;
@@ -267,7 +259,6 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
   const [exitOpen, setExitOpen] = useState(false);
   const [abandoning, setAbandoning] = useState(false);
   const [reviewOpen, setReviewOpen] = useState(false);
-  const [upgradeOpen, setUpgradeOpen] = useState(false);
   const [headerLogoError, setHeaderLogoError] = useState(false);
 
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -503,7 +494,6 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
   const currentAnswer = answers[question.id] ?? "";
   // SCRUM-399: tách UX trả lời code vs lý thuyết
   const isCodeAnswer = needsCodeAnswer(question);
-  const isQuestionLocked = question.isLocked === true;
 
   const answeredFlags: Record<string, boolean> = {};
   for (const q of questions) {
@@ -527,16 +517,14 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
             answersMap[q.id] = q.answerText;
           }
         });
-        // session.questions (BE) không có isLocked — lấy lại trạng thái khóa Premium
-        // gốc từ set.questions (marketplace listing) theo id để không mất paywall.
-        const lockedById = new Map(set.questions.map((q) => [q.id, q.isLocked === true]));
+        // SCRUM-478: Free làm full bộ — không merge isLocked paywall từ set listing
         setHydratedQuestions(session.questions.map((q) => ({
           id: q.id,
           text: q.question,
           category: q.questionType,
           difficulty: q.difficulty,
           skill: q.skill,
-          isLocked: lockedById.get(q.id) ?? false,
+          isLocked: false,
           codeTemplateType: q.codeTemplateType,
           codeSnippet: q.codeSnippet,
           attachedImageUrl: q.attachedImageUrl,
@@ -748,13 +736,11 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
       // P0 fix: gate on hasAnswerText (same as UI "answered" check) so any non-empty
       // answer typed by the candidate is persisted, matching what the UI shows as "answered".
       if (!sid || !hasAnswerText(text)) return;
-      const q = questions.find((x) => x.id === questionId);
-      if (!q || q.isLocked) return;
       void submitAnswerApi(sid, { questionId, answerText: text }).catch(() => {
         // Im lặng — draft vẫn còn ở sessionStorage; Finish sẽ flush lại
       });
     },
-    [questions]
+    []
   );
 
   function goToQuestion(idx: number) {
@@ -762,7 +748,7 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
     const clamped = Math.min(Math.max(0, idx), totalQuestions - 1);
     if (clamped === currentIdx) return;
     // Persist câu đang xem trước khi chuyển (không chờ / không block)
-    if (!isQuestionLocked && currentAnswer.trim()) {
+    if (currentAnswer.trim()) {
       persistAnswerBestEffort(question.id, currentAnswer);
     }
     setDirection(clamped > currentIdx ? 1 : -1);
@@ -809,7 +795,6 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
       // P0 fix: gate on hasAnswerText (same as UI "answered" check) — any non-empty
       // answer that shows a filled dot must be submitted, never silently skipped.
       for (const q of questions) {
-        if (q.isLocked) continue;
         let text = answersSnapshot[q.id] ?? "";
         // Ưu tiên text đang gõ trên câu hiện tại
         if (q.id === questions[idx]?.id) {
@@ -916,7 +901,7 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
       });
   }
 
-  const answerableQuestions = questions.filter((q) => !q.isLocked);
+  const answerableQuestions = questions;
 
   // ── Timer display helpers ─────────────────────────────────────────────────
   // isCountdown: true for both BE-enforced (expiresAt) and estimate-based countdowns
@@ -951,7 +936,7 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
 
   function goToFirstUnanswered() {
     if (integrityTerminatedRef.current) return;
-    const idx = questions.findIndex((q) => !q.isLocked && !hasAnswerText(answers[q.id]));
+    const idx = questions.findIndex((q) => !hasAnswerText(answers[q.id]));
     if (idx === -1) return;
     goToQuestion(idx);
   }
@@ -1262,90 +1247,39 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
                 )}
               </div>
 
-              {/* Question text */}
-              {isQuestionLocked ? (
-                <div className="relative rounded-xl overflow-hidden border border-[#6c47ff]/20 dark:border-[#6c47ff]/25 bg-gradient-to-br from-[#6c47ff]/[0.05] via-transparent to-transparent min-h-[180px]">
-                  {/* Blurred placeholder */}
-                  <div className="blur-xl select-none pointer-events-none opacity-10 p-6">
-                    <p className={cn("text-[17px] sm:text-[20px] font-bold leading-7", portalHeadingAlt)}>
-                      {p.lockedQuestion.blurredPlaceholder}
-                    </p>
-                  </div>
-                  {/* Fade-in overlay */}
-                  <div className="absolute inset-0 bg-gradient-to-b from-transparent via-white/50 to-white/95 dark:via-gray-900/50 dark:to-gray-900/95" />
-                  {/* Content */}
-                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-3.5 px-6 py-8 text-center">
-                    <div className="inline-flex items-center gap-1.5 rounded-full border border-[#6c47ff]/25 bg-[#6c47ff]/10 px-3 py-1">
-                      <Crown size={11} className="text-[#6c47ff]" />
-                      <span className="text-[10px] font-bold tracking-widest uppercase text-[#6c47ff]">Premium</span>
-                    </div>
-                    <div>
-                      <p className={cn("text-[15px] font-bold", portalHeadingAlt)}>
-                        {p.lockedQuestion.title}
-                      </p>
-                      <p className={cn("mt-1.5 text-[12px] max-w-xs mx-auto leading-relaxed", portalSubtextAlt)}>
-                        {p.lockedQuestion.body}
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setUpgradeOpen(true)}
-                      className="shimmer-button inline-flex items-center gap-2 h-9 px-5 text-[13px] font-semibold text-white hr-cta-btn rounded-xl"
-                    >
-                      <Sparkles size={13} />
-                      {p.lockedQuestion.upgradeBtn}
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  <QuestionContent
-                    text={question.text}
-                    className={cn("text-[17px] sm:text-[20px] font-bold leading-6.5 sm:leading-7.5", portalHeadingAlt)}
+              {/* Question text — SCRUM-478: Free luôn xem full nội dung */}
+              <div className="space-y-4">
+                <QuestionContent
+                  text={question.text}
+                  className={cn("text-[17px] sm:text-[20px] font-bold leading-6.5 sm:leading-7.5", portalHeadingAlt)}
+                />
+                {/* SCRUM-399: starter code từ template HR */}
+                {question.codeSnippet?.trim() ? (
+                  <CodeSnippetBlock
+                    code={question.codeSnippet}
+                    variant="question"
+                    className="mt-1"
                   />
-                  {/* SCRUM-399: starter code từ template HR */}
-                  {question.codeSnippet?.trim() ? (
-                    <CodeSnippetBlock
-                      code={question.codeSnippet}
-                      variant="question"
-                      className="mt-1"
+                ) : null}
+                {/* SCRUM-399: ảnh đính kèm HR (SAS) */}
+                {question.attachedImageUrl ? (
+                  <div className="overflow-hidden rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/40">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={question.attachedImageUrl}
+                      alt={question.codeTemplateType
+                        ? `Question attachment (${question.codeTemplateType})`
+                        : "Question attachment"}
+                      className="max-h-80 w-full object-contain"
                     />
-                  ) : null}
-                  {/* SCRUM-399: ảnh đính kèm HR (SAS) */}
-                  {question.attachedImageUrl ? (
-                    <div className="overflow-hidden rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/40">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={question.attachedImageUrl}
-                        alt={question.codeTemplateType
-                          ? `Question attachment (${question.codeTemplateType})`
-                          : "Question attachment"}
-                        className="max-h-80 w-full object-contain"
-                      />
-                    </div>
-                  ) : null}
-                </div>
-              )}
+                  </div>
+                ) : null}
+              </div>
             </motion.div>
           </AnimatePresence>
 
           {/* Answer area — luôn editable; chỉ nộp khi Finish (SCRUM-333) */}
           <div className="hr-glass-card p-4 sm:p-6">
-            {isQuestionLocked ? (
-              <div className="flex items-center justify-center gap-2 py-5 text-center">
-                <p className={cn("text-[13px]", portalSubtextAlt)}>
-                  {p.lockedQuestion.answerLocked}
-                </p>
-                <button
-                  type="button"
-                  onClick={() => setUpgradeOpen(true)}
-                  className="shrink-0 text-[13px] font-semibold text-primary hover:underline"
-                >
-                  {p.lockedQuestion.upgradeBtn} →
-                </button>
-              </div>
-            ) : (
-              <>
                 {isCodeAnswer ? (
                   <div className="overflow-hidden rounded-lg border border-violet-200 dark:border-violet-900 bg-violet-50 dark:bg-gray-950">
                     <div className="flex items-center justify-between gap-2 border-b border-violet-200 dark:border-violet-900/60 bg-violet-100 dark:bg-violet-950 px-3 py-1.5">
@@ -1413,8 +1347,6 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
                     )}
                   </div>
                 </div>
-              </>
-            )}
           </div>
 
           {/* Navigation buttons — pushed below the stats panel on mobile */}
@@ -1524,7 +1456,6 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
                 {questions.map((q, idx) => {
                   const isActive = idx === currentIdx;
                   const isDone = answeredFlags[q.id] ?? false;
-                  const isLocked = q.isLocked === true;
                   return (
                     <motion.button
                       key={q.id}
@@ -1534,8 +1465,7 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
                       transition={{ duration: 0.15, ease: "easeOut" }}
                       whileTap={{ scale: 0.88 }}
                       title={
-                        isLocked ? "Premium"
-                          : isActive ? p.questionCurrent
+                        isActive ? p.questionCurrent
                           : isDone ? p.questionAnswered
                           : p.questionUnanswered
                       }
@@ -1543,16 +1473,14 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
                         "w-8 h-8 rounded-full text-[12px] font-bold shrink-0",
                         "transition-[background-color,border-color,color,box-shadow] duration-150",
                         "flex items-center justify-center",
-                        isLocked
-                          ? "bg-amber-100 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 border border-amber-300/60 dark:border-amber-700"
-                          : isActive
+                        isActive
                           ? "bg-primary text-white shadow-md shadow-primary/30"
                           : isDone
                           ? "bg-emerald-500 dark:bg-emerald-600 text-white"
                           : "border-2 border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400"
                       )}
                     >
-                      {isLocked ? <Lock size={11} /> : idx + 1}
+                      {idx + 1}
                     </motion.button>
                   );
                 })}
@@ -1610,17 +1538,6 @@ export function PracticeSession({ set, onQuestionsUnlocked }: PracticeSessionPro
       </div>{/* end content row */}
       </div>{/* end body wrapper */}
     </div>
-    {upgradeOpen && (
-      <UpgradeModal
-        onClose={() => setUpgradeOpen(false)}
-        onDone={async () => {
-          setUpgradeOpen(false);
-          await refreshSubscription();
-          await onQuestionsUnlocked?.();
-          addToast("success", p.lockedQuestion.upgradedToast);
-        }}
-      />
-    )}
     </>
   );
 }
