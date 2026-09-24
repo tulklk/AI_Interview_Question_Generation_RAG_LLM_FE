@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { Briefcase, Building2, DollarSign, MapPin, Users } from "lucide-react";
+import { Building2, DollarSign } from "lucide-react";
+import { motion, useReducedMotion } from "framer-motion";
 import { cn } from "@/lib/cn";
 import { useLanguage } from "@/shared/providers/language-context";
 import type { QuestionSet } from "@/features/candidate/types/jobseeker";
@@ -15,6 +16,7 @@ import {
   workplaceLabel,
 } from "@/features/candidate/utils/hiring-posting-format";
 import { portalHeadingAlt, portalSubtextAlt } from "@/shared/utils/portal-ui";
+import { hiringTransitionFast } from "@/features/candidate/components/jobs/hiring-jobs-motion";
 
 type Props = {
   set: QuestionSet;
@@ -23,14 +25,16 @@ type Props = {
   onSelect?: (id: string) => void;
 };
 
-const SKILLS_SHOWN = 5;
+const SKILLS_SHOWN = 3;
 
 /**
- * SCRUM-467 / SCRUM-468: card list Tuyển dụng — composition kiểu ITViec.
+ * SCRUM-467 / SCRUM-468: compact job card for Tuyển dụng list.
  */
 export function HiringJobCard({ set, selected = false, onSelect }: Props) {
   const { t, lang } = useLanguage();
   const h = t.hiringJobsPage;
+  const reduced = useReducedMotion();
+  const hoverLift = reduced ? undefined : { y: -1 };
   const title = cleanTitle(set.title) || set.title;
   const company = set.company?.trim() || "—";
   const initials = set.companyInitials || getCompanyInitials(company);
@@ -54,10 +58,19 @@ export function HiringJobCard({ set, selected = false, onSelect }: Props) {
   });
   const hot = set.isPinned || set.isTrending;
 
+  const metaParts = [
+    set.jobExpertise?.trim() || null,
+    workplace || null,
+    set.jobLocation?.trim() || null,
+    set.attempts != null && set.attempts > 0
+      ? h.attempts.replace("{{count}}", String(set.attempts))
+      : null,
+  ].filter(Boolean) as string[];
+
   const body = (
     <>
       <div className="flex items-start justify-between gap-2">
-        <p className={cn("text-[11px]", portalSubtextAlt)}>
+        <p className={cn("text-[11px] leading-none", portalSubtextAlt)}>
           {posted ? h.postedAgo.replace("{{time}}", posted) : "\u00a0"}
         </p>
         {hot ? (
@@ -74,10 +87,8 @@ export function HiringJobCard({ set, selected = false, onSelect }: Props) {
 
       <h3
         className={cn(
-          "mt-1 text-[15px] font-bold leading-snug",
-          selected
-            ? "text-primary"
-            : "group-hover:text-primary",
+          "mt-1.5 line-clamp-2 text-[15px] font-semibold leading-snug",
+          selected ? "text-primary" : "group-hover:text-primary",
           portalHeadingAlt
         )}
       >
@@ -86,7 +97,7 @@ export function HiringJobCard({ set, selected = false, onSelect }: Props) {
 
       <div className="mt-2 flex items-center gap-2">
         <div
-          className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded text-[10px] font-bold text-white"
+          className="flex h-6 w-6 shrink-0 items-center justify-center overflow-hidden rounded-md text-[9px] font-bold text-white"
           style={{ background: logo ? undefined : color }}
         >
           {logo ? (
@@ -96,39 +107,22 @@ export function HiringJobCard({ set, selected = false, onSelect }: Props) {
             initials
           )}
         </div>
-        <p className={cn("truncate text-[12px] font-medium uppercase tracking-wide", portalSubtextAlt)}>
-          {company}
-        </p>
+        <p className={cn("truncate text-[12px] font-medium", portalSubtextAlt)}>{company}</p>
       </div>
 
-      <p className="mt-2 inline-flex items-center gap-1.5 text-[13px] font-semibold text-sky-600 dark:text-sky-400">
-        <DollarSign size={13} className="shrink-0" />
+      <p className="mt-2 inline-flex items-center gap-1 text-[13px] font-semibold text-sky-600 dark:text-sky-400">
+        <DollarSign size={12} className="shrink-0" />
         {salary}
       </p>
 
-      <div className={cn("mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px]", portalSubtextAlt)}>
-        {set.jobExpertise?.trim() ? (
-          <span className="inline-flex items-center gap-1">
-            <Briefcase size={11} />
-            {set.jobExpertise.trim()}
-          </span>
-        ) : null}
-        {(workplace || set.jobLocation?.trim()) && (
-          <span className="inline-flex items-center gap-1">
-            <MapPin size={11} />
-            {[workplace, set.jobLocation?.trim()].filter(Boolean).join(" · ")}
-          </span>
-        )}
-        {set.attempts != null && set.attempts > 0 ? (
-          <span className="inline-flex items-center gap-1">
-            <Users size={11} />
-            {h.attempts.replace("{{count}}", String(set.attempts))}
-          </span>
-        ) : null}
-      </div>
+      {metaParts.length > 0 ? (
+        <p className={cn("mt-1.5 truncate text-[11px] leading-snug", portalSubtextAlt)}>
+          {metaParts.join(" · ")}
+        </p>
+      ) : null}
 
       {set.skills.length > 0 ? (
-        <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+        <div className="mt-2 flex flex-wrap items-center gap-1.5">
           {visSkills.map((skill) => {
             const si = getSkillIcon(skill);
             const SIcon = si?.icon;
@@ -136,7 +130,7 @@ export function HiringJobCard({ set, selected = false, onSelect }: Props) {
               <span
                 key={skill}
                 className={cn(
-                  "inline-flex max-w-28 items-center gap-1 rounded-md border px-2 py-0.5 text-[10.5px] font-medium",
+                  "inline-flex max-w-24 items-center gap-1 rounded-md border px-1.5 py-0.5 text-[10px] font-medium",
                   "border-gray-200/80 bg-gray-50 text-gray-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
                 )}
               >
@@ -152,16 +146,16 @@ export function HiringJobCard({ set, selected = false, onSelect }: Props) {
   );
 
   const cardCls = cn(
-    "group block rounded-xl border bg-white p-4 transition-all dark:bg-gray-900/80",
+    "group block rounded-xl border bg-white p-3.5 transition-colors dark:bg-gray-900/80",
     selected
-      ? "border-primary/40 shadow-[0_0_0_1px_rgba(124,58,237,0.25)] border-l-[3px] border-l-primary"
-      : "border-gray-200/90 hover:border-primary/30 hover:shadow-md dark:border-gray-700"
+      ? "border-primary/35 border-l-2 border-l-primary bg-primary/5 shadow-none"
+      : "border-gray-200/90 hover:border-primary/25 dark:border-gray-700"
   );
 
   // Desktop split: div (không dùng <button>) vì SkillsOverflowChip cũng là button — tránh nested button.
   if (onSelect) {
     return (
-      <div
+      <motion.div
         role="button"
         tabIndex={0}
         onClick={() => onSelect(set.id)}
@@ -171,17 +165,24 @@ export function HiringJobCard({ set, selected = false, onSelect }: Props) {
             onSelect(set.id);
           }
         }}
-        className={cn(cardCls, "w-full cursor-pointer text-left outline-none focus-visible:ring-2 focus-visible:ring-primary/40")}
+        className={cn(
+          cardCls,
+          "w-full cursor-pointer text-left outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+        )}
+        whileHover={hoverLift}
+        transition={hiringTransitionFast}
       >
         {body}
-      </div>
+      </motion.div>
     );
   }
 
   return (
-    <Link href={`/candidate/jobs/${set.id}`} className={cardCls}>
-      {body}
-    </Link>
+    <motion.div whileHover={hoverLift} transition={hiringTransitionFast}>
+      <Link href={`/candidate/jobs/${set.id}`} className={cardCls}>
+        {body}
+      </Link>
+    </motion.div>
   );
 }
 

@@ -29,8 +29,8 @@ import { useLanguage } from "@/shared/providers/language-context";
 import { StatCard } from "@/features/candidate/components/ui/stat-card";
 import { Pill, PendingScorePill, getScoreBadgeClass } from "@/features/candidate/components/ui/pill";
 import { EmptyState } from "@/features/candidate/components/ui/empty-state";
-import { AiLoadingSpinner } from "@/shared/components/common/ai-loading-spinner";
 import { useToast } from "@/shared/providers/toast-context";
+import { Skeleton } from "@/shared/components/ui/skeleton";
 import {
   portalHeadingAlt,
   portalInput,
@@ -576,17 +576,28 @@ export function HistoryBoard() {
   return (
     <div ref={topRef}>
       {/* Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
-        {statCards.map((s, i) => (
-          <motion.div
-            key={s.label}
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.06 }}
-          >
-            <StatCard icon={s.icon} iconBg={s.bg} iconColor={s.color} value={s.value} label={s.label} chart={s.chart} countUp={s.countUp} />
-          </motion.div>
-        ))}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 mb-6" aria-busy={loading}>
+        {loading
+          ? Array.from({ length: 6 }).map((_, i) => (
+              <div
+                key={i}
+                className="hr-glass-card space-y-2 p-4"
+              >
+                <Skeleton className="h-8 w-8 rounded-lg" />
+                <Skeleton className="h-6 w-16" />
+                <Skeleton className="h-3 w-20" />
+              </div>
+            ))
+          : statCards.map((s, i) => (
+              <motion.div
+                key={s.label}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.06 }}
+              >
+                <StatCard icon={s.icon} iconBg={s.bg} iconColor={s.color} value={s.value} label={s.label} chart={s.chart} countUp={s.countUp} />
+              </motion.div>
+            ))}
       </div>
 
       {/* Nudge once unfinished attempts pile up. The FE can only surface this —
@@ -687,8 +698,25 @@ export function HistoryBoard() {
             transition={{ duration: 0.16, ease: "easeOut" }}
           >
             {loading ? (
-              <div className="flex items-center justify-center py-16">
-                <AiLoadingSpinner text={p.loading} />
+              <div className="divide-y divide-gray-200 dark:divide-gray-800" aria-busy>
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="grid grid-cols-[2.5fr_1fr_1fr_1fr_200px] items-center gap-4 px-6 py-4"
+                  >
+                    <div className="flex items-center gap-3">
+                      <Skeleton className="h-8 w-8 shrink-0 rounded-lg" />
+                      <div className="min-w-0 flex-1 space-y-1.5">
+                        <Skeleton className="h-3.5 w-40" />
+                        <Skeleton className="h-2.5 w-24" />
+                      </div>
+                    </div>
+                    <Skeleton className="h-3 w-16" />
+                    <Skeleton className="h-5 w-12 rounded-full" />
+                    <Skeleton className="h-3 w-14" />
+                    <Skeleton className="h-7 w-24 rounded-lg" />
+                  </div>
+                ))}
               </div>
             ) : sessions.length === 0 ? (
               <EmptyState icon={HistoryIcon} title={p.noHistory} className="py-12" />
@@ -767,8 +795,21 @@ export function HistoryBoard() {
             className="flex flex-col gap-3"
           >
             {loading ? (
-              <div className="flex items-center justify-center py-16">
-                <AiLoadingSpinner text={p.loading} />
+              <div className="flex flex-col gap-3" aria-busy>
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <div key={i} className="hr-glass-card space-y-3 p-4">
+                    <div className="flex items-start gap-3">
+                      <Skeleton className="h-9 w-9 shrink-0 rounded-lg" />
+                      <div className="min-w-0 flex-1 space-y-1.5">
+                        <Skeleton className="h-3.5 w-3/4" />
+                        <Skeleton className="h-2.5 w-1/2" />
+                      </div>
+                      <Skeleton className="h-5 w-12 rounded-full" />
+                    </div>
+                    <Skeleton className="h-3 w-full" />
+                    <Skeleton className="h-8 w-full rounded-lg" />
+                  </div>
+                ))}
               </div>
             ) : sessions.length === 0 ? (
               <EmptyState icon={HistoryIcon} title={p.noHistory} className="py-12" />

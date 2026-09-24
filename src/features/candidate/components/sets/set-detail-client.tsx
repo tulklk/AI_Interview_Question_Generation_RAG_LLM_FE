@@ -6,8 +6,8 @@ import Link from "next/link";
 import { AlertCircle, RefreshCw, SearchX, ArrowLeft, EyeOff } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { JobseekerAppShell } from "@/features/candidate/components/layout/jobseeker-app-shell";
-import { AiLoadingSpinner } from "@/shared/components/common/ai-loading-spinner";
 import { SetDetail } from "./set-detail";
+import { SetDetailPageSkeleton } from "./set-detail-skeleton";
 import { getQuestionSetById, NotFoundError } from "@/features/candidate/services/question-set.service";
 import type { QuestionSet } from "@/features/candidate/types/jobseeker";
 import { useLanguage } from "@/shared/providers/language-context";
@@ -120,11 +120,7 @@ export function SetDetailClient() {
         { label: displayTitle ?? "" },
       ]}
     >
-      {loading && (
-        <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center">
-          <AiLoadingSpinner text={p.loading} />
-        </div>
-      )}
+      {loading && <SetDetailPageSkeleton />}
 
       {/* Set not found — friendly in-app message */}
       {!loading && isNotFound && (

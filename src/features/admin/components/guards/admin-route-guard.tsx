@@ -39,7 +39,7 @@ export function AdminRouteGuard({ children }: AdminRouteGuardProps) {
 
   if (loading) {
     return (
-      <div className="flex min-h-[60vh] items-center justify-center">
+      <div className="flex min-h-[calc(100dvh-4rem)] w-full items-center justify-center">
         <AiLoadingSpinner />
       </div>
     );

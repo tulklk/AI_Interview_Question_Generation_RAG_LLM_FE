@@ -349,7 +349,7 @@ function QuestionGenerationLoading({
     >
       {/* Spinner */}
       <div style={{ animation: "popIn 0.5s cubic-bezier(0.34,1.56,0.64,1) 0.1s both" }}>
-        <AiLoadingSpinner />
+        <AiLoadingSpinner text="" />
       </div>
 
       {/* Title + animated subtitle */}

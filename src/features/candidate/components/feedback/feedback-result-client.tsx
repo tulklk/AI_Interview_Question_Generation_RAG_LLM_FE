@@ -6,8 +6,8 @@ import { useParams, useSearchParams } from "next/navigation";
 import { AlertCircle, RefreshCw, Lock } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { JobseekerAppShell } from "@/features/candidate/components/layout/jobseeker-app-shell";
-import { AiLoadingSpinner } from "@/shared/components/common/ai-loading-spinner";
 import { FeedbackPage } from "./feedback-page";
+import { FeedbackResultPageSkeleton } from "./feedback-result-skeleton";
 import { QuestionSetFeedbackDialog } from "./question-set-feedback-dialog";
 import {
   getPracticeSession,
@@ -324,12 +324,7 @@ export function FeedbackResultClient() {
             ]
       }
     >
-      {loading && (
-        /* Centre within the content pane (sidebar is w-62.5 = 250 px on lg+) */
-        <div className="fixed inset-0 lg:left-62.5 flex items-center justify-center z-10 pointer-events-none">
-          <AiLoadingSpinner text={p.loadingFeedback} subtext={p.loadingFeedbackSub} />
-        </div>
-      )}
+      {loading && <FeedbackResultPageSkeleton />}
 
       {!loading && notFound && (
         <div className="flex flex-col items-center gap-3 py-20 text-center">
