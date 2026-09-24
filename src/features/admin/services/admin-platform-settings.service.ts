@@ -13,32 +13,66 @@ export interface PlatformSettings {
   sessionTimeout?: number;
 }
 
+function asRecord(val: unknown): Record<string, unknown> | null {
+  return val && typeof val === "object" ? (val as Record<string, unknown>) : null;
+}
+
+/** SuccessResp có thể trả `data` hoặc `Data` tùy serializer. */
+function unwrapEnvelope(raw: unknown): Record<string, unknown> {
+  const root = asRecord(raw);
+  if (!root) return {};
+  return asRecord(root.data) ?? asRecord(root.Data) ?? root;
+}
+
+function pickNumber(obj: Record<string, unknown>, ...keys: string[]): number | undefined {
+  for (const k of keys) {
+    const v = obj[k];
+    if (typeof v === "number" && Number.isFinite(v)) return v;
+  }
+  return undefined;
+}
+
 function normalize(raw: unknown): PlatformSettings {
-  if (!raw || typeof raw !== "object") return {};
-  const d = raw as Record<string, unknown>;
-  const data = (d.data && typeof d.data === "object" ? d.data : d) as Record<string, unknown>;
+  const data = unwrapEnvelope(raw);
 
   return {
-    minQuestionsToPublish:
-      typeof data.minQuestionsToPublish === "number" ? data.minQuestionsToPublish :
-      typeof data.minQuestionToPublish === "number" ? data.minQuestionToPublish :
-      typeof data.minimumQuestionsToPublish === "number" ? data.minimumQuestionsToPublish :
-      undefined,
-    maxPinnedSets: typeof data.maxPinnedSets === "number" ? data.maxPinnedSets : undefined,
-    minAttemptsForTrending:
-      typeof data.minAttemptsForTrending === "number" ? data.minAttemptsForTrending : undefined,
+    minQuestionsToPublish: pickNumber(
+      data,
+      "minQuestionsToPublish",
+      "MinQuestionsToPublish",
+      "minQuestionToPublish",
+      "minimumQuestionsToPublish"
+    ),
+    maxPinnedSets: pickNumber(data, "maxPinnedSets", "MaxPinnedSets"),
+    minAttemptsForTrending: pickNumber(
+      data,
+      "minAttemptsForTrending",
+      "MinAttemptsForTrending"
+    ),
     antiCheatEnabled:
-      typeof data.antiCheatEnabled === "boolean" ? data.antiCheatEnabled : undefined,
-    antiCheatMaxTabLeaves:
-      typeof data.antiCheatMaxTabLeaves === "number" ? data.antiCheatMaxTabLeaves : undefined,
-    platformName: typeof data.platformName === "string" ? data.platformName : undefined,
-    defaultQuestionCount:
-      typeof data.defaultQuestionCount === "number" ? data.defaultQuestionCount : undefined,
-    maxJdsPerDay:
-      typeof data.maxJdsPerDay === "number" ? data.maxJdsPerDay :
-      typeof data.maxJDsPerDay === "number" ? data.maxJDsPerDay :
-      undefined,
-    sessionTimeout: typeof data.sessionTimeout === "number" ? data.sessionTimeout : undefined,
+      typeof data.antiCheatEnabled === "boolean"
+        ? data.antiCheatEnabled
+        : typeof data.AntiCheatEnabled === "boolean"
+          ? data.AntiCheatEnabled
+          : undefined,
+    antiCheatMaxTabLeaves: pickNumber(
+      data,
+      "antiCheatMaxTabLeaves",
+      "AntiCheatMaxTabLeaves"
+    ),
+    platformName:
+      typeof data.platformName === "string"
+        ? data.platformName
+        : typeof data.PlatformName === "string"
+          ? data.PlatformName
+          : undefined,
+    defaultQuestionCount: pickNumber(
+      data,
+      "defaultQuestionCount",
+      "DefaultQuestionCount"
+    ),
+    maxJdsPerDay: pickNumber(data, "maxJdsPerDay", "maxJDsPerDay", "MaxJdsPerDay"),
+    sessionTimeout: pickNumber(data, "sessionTimeout", "SessionTimeout"),
   };
 }
 
