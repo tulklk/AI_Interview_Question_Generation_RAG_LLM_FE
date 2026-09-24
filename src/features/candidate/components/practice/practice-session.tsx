@@ -729,6 +729,8 @@ export function PracticeSession({ set }: PracticeSessionProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId, question.id]);
 
+  const serverSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   /** Best-effort POST lên BE khi rời câu — không chặn UI, không hiện "AI đang nghĩ". */
   const persistAnswerBestEffort = useCallback(
     (questionId: string, text: string) => {
@@ -763,6 +765,11 @@ export function PracticeSession({ set }: PracticeSessionProps) {
   function handleAnswerChange(value: string) {
     if (integrityTerminatedRef.current) return;
     setAnswers((prev) => ({ ...prev, [question.id]: value }));
+    // Persist to the server shortly after typing stops, so a reload or another device
+    // never loses an answer the candidate did not navigate away from.
+    const qid = question.id;
+    if (serverSaveTimer.current) clearTimeout(serverSaveTimer.current);
+    serverSaveTimer.current = setTimeout(() => persistAnswerBestEffort(qid, value), 1500);
     if (sessionId && typeof window !== "undefined") {
       window.sessionStorage.setItem(draftKey(sessionId, question.id), value);
       // Debounced visual save status (600ms after last keystroke → show "saved" for 2s)
@@ -1360,7 +1367,7 @@ export function PracticeSession({ set }: PracticeSessionProps) {
               {p.prevBtn}
             </button>
 
-            {allAnswered || finishing || finishError ? (
+            {(allAnswered && currentIdx === totalQuestions - 1) || finishing || finishError ? (
               <div className="flex flex-col items-end gap-1.5">
                 <motion.div
                   className="relative rounded-xl"

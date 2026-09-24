@@ -62,6 +62,16 @@ export function RoleRouteGuard({ role, children }: RoleRouteGuardProps) {
     }
   }, [loading, current, role, router, addToast, deniedMsg]);
 
+  // Back/forward can restore a page from the bfcache without re-running the effect
+  // above, which would show a logged-out user the previous account's screen.
+  useEffect(() => {
+    function onPageShow(e: PageTransitionEvent) {
+      if (e.persisted && !isAuthenticated()) router.replace("/login");
+    }
+    window.addEventListener("pageshow", onPageShow);
+    return () => window.removeEventListener("pageshow", onPageShow);
+  }, [router]);
+
   if (loading) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">

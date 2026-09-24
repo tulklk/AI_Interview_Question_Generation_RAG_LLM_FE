@@ -345,7 +345,7 @@ export function CandidateBillingPage() {
                   <div className="flex items-center gap-1.5">
                     <Calendar size={13} className="text-gray-400 dark:text-gray-500 shrink-0" />
                     <span className={portalSubtext}>
-                      {subscription.cancelAtPeriodEnd ? `${b.renewalLabel} (đã hủy gia hạn):` : `${b.renewalLabel}:`}
+                      {subscription.cancelAtPeriodEnd ? `${b.renewalCancelled}:` : `${b.renewalLabel}:`}
                       &nbsp;
                     </span>
                     <span className={cn("font-semibold", portalHeading)}>{formatDate(subscription.renewalDate, locale)}</span>

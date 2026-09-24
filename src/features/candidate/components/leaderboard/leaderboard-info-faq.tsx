@@ -5,29 +5,9 @@ import { HelpCircle, ChevronDown } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/cn";
 import { portalCard } from "@/shared/utils/portal-ui";
+import { useLeaderboardText } from "./leaderboard-text";
 
-const FAQ_ITEMS = [
-  {
-    q: "Bảng xếp hạng được tính như thế nào?",
-    a: "XP được tích lũy từ các phiên luyện tập, kết quả phỏng vấn thử, chuỗi luyện tập hàng ngày và tiến độ lộ trình học. Tổng XP quyết định thứ hạng dài hạn, còn tab Tuần này chỉ tính XP kiếm được trong 7 ngày gần nhất.",
-  },
-  {
-    q: "Làm sao để kiếm thêm XP?",
-    a: "Hoàn thành phiên luyện tập (+100 XP), đạt điểm cao: ≥70 (+20 XP), ≥80 (+40 XP), ≥90 (+70 XP bonus); duy trì chuỗi hàng ngày (+10 XP/ngày); hoàn thành thử thách tuần và tiến trình lộ trình (+50 XP).",
-  },
-  {
-    q: "Chuỗi luyện tập được tính như thế nào?",
-    a: "Bạn cần hoàn thành ít nhất 1 phiên luyện tập mỗi ngày để duy trì chuỗi. Bỏ qua 1 ngày sẽ mất chuỗi. Chuỗi được tính theo ngày dương lịch (00:00–23:59 giờ Việt Nam).",
-  },
-  {
-    q: "Khi nào bảng xếp hạng và liên đoàn được reset?",
-    a: "Bảng xếp hạng tuần và liên đoàn làm mới vào 00:00 UTC Thứ Hai mỗi tuần. XP tổng và chuỗi ngày không bị reset — chỉ XP tuần về 0 mỗi chu kỳ mới.",
-  },
-  {
-    q: "XP có ảnh hưởng đến kết quả tuyển dụng không?",
-    a: "Không. XP và bảng xếp hạng chỉ phục vụ mục đích luyện tập và tạo động lực cá nhân. Đây không phải điểm tuyển dụng chính thức và không được chia sẻ với nhà tuyển dụng.",
-  },
-];
+
 
 // ── Single accordion item ───────────────────────────────────────────────────
 function FaqItem({
@@ -36,7 +16,7 @@ function FaqItem({
   onToggle,
   index,
 }: {
-  item: (typeof FAQ_ITEMS)[0];
+  item: { q: string; a: string };
   isOpen: boolean;
   onToggle: () => void;
   index: number;
@@ -97,6 +77,8 @@ function FaqItem({
 
 // ── Main ────────────────────────────────────────────────────────────────────
 export function LeaderboardInfoFaq() {
+  const lb = useLeaderboardText();
+  const FAQ_ITEMS = lb.faq;
   const [openIdx, setOpenIdx] = useState<number | null>(0);
 
   return (
@@ -110,7 +92,7 @@ export function LeaderboardInfoFaq() {
       <div className="flex items-center gap-2 mb-4">
         <HelpCircle size={16} className="text-primary dark:text-[#a78bff] shrink-0" />
         <h2 className="text-sm font-bold text-[#111827] dark:text-gray-100">
-          Câu hỏi thường gặp
+          {lb.faqTitle}
         </h2>
       </div>
 
