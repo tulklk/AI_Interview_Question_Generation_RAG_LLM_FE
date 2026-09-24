@@ -162,7 +162,7 @@ describe("RGA — auth interceptor", () => {
     expect(clearAuth).not.toHaveBeenCalled();
   });
 
-  test("RGA005-1a: a 403 response is not special-cased — no refresh attempt, no redirect", async () => {
+  test("RGA005-1a: a 403 on /users/me clears auth without a refresh attempt", async () => {
     const { client, mock } = makeClient();
     mock.onGet("/api/users/me").reply(403, { message: "Forbidden" });
     let refreshCalled = false;
@@ -173,7 +173,7 @@ describe("RGA — auth interceptor", () => {
 
     await expect(client.get("/api/users/me")).rejects.toMatchObject({ response: { status: 403 } });
     expect(refreshCalled).toBe(false);
-    expect(clearAuth).not.toHaveBeenCalled();
+    expect(clearAuth).toHaveBeenCalledTimes(1); // stale session after logout surfaces as 403 on /users/me
   });
 
   test("RGA005-1b: a 401 on an already-retried request clears auth and redirects, without a second refresh", async () => {

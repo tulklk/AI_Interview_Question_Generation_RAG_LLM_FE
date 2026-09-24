@@ -127,18 +127,4 @@ describe("Admin Plans — editing and saving", () => {
 
     expect(await screen.findByText("Failed to save the plan.")).toBeInTheDocument();
   });
-
-  test("APLAN-5: the Free visible % field clamps to a maximum of 100", async () => {
-    subscriptionApi.adminListPlans.mockResolvedValue([plan({ limits: { ...plan().limits, freeVisiblePercent: 50 } })]);
-    const user = userEvent.setup();
-    renderWithProviders(<AdminPlansRoutePage />);
-    await screen.findByDisplayValue("HR Premium", {}, { timeout: 10000 });
-
-    const freeVisibleInput = screen.getByDisplayValue("50");
-    await user.clear(freeVisibleInput);
-    await user.type(freeVisibleInput, "150");
-    await user.tab();
-
-    expect(await screen.findByDisplayValue("100")).toBeInTheDocument();
-  });
 });

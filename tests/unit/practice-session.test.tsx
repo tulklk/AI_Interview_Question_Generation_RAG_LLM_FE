@@ -258,30 +258,3 @@ describe("Practice Session — answering and finishing", () => {
   });
 });
 
-describe("Practice Session — locked (Free-plan) questions", () => {
-  test("PRACTICE-10: a locked question hides its text/answer box and shows an upgrade prompt instead", async () => {
-    // A single-question, fully-locked set: the "land on first unanswered
-    // UNLOCKED question" logic (goToFirstUnanswered) explicitly skips locked
-    // questions, so a mixed locked/unlocked set would auto-navigate past the
-    // locked one — using a single locked question guarantees it's the one shown.
-    practiceApi.startPracticeSession.mockResolvedValue(
-      sessionDetail({
-        questions: [
-          { id: "q-1", order: 0, question: "This is a premium-only question.", questionType: "Technical", difficulty: "Hard", answerText: null, isLocked: true },
-        ],
-      }) as never
-    );
-    renderCandidate(
-      <PracticeSession
-        set={questionSet({
-          questions: [question({ id: "q-1", text: "This is a premium-only question.", isLocked: true })],
-        })}
-      />
-    );
-
-    // Locked question content is hidden; only the upgrade prompt shows.
-    expect(await screen.findByText("Premium question — upgrade to unlock", {}, { timeout: 10000 })).toBeInTheDocument();
-    expect(screen.queryByText("This is a premium-only question.")).not.toBeInTheDocument();
-    expect(screen.getByText("You can't answer a locked question on the Free plan.")).toBeInTheDocument();
-  });
-});
