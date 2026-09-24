@@ -11,11 +11,17 @@ import {
   Play,
   RefreshCw,
 } from "lucide-react";
+import { motion, useReducedMotion } from "framer-motion";
 import { cn } from "@/lib/cn";
 import { portalHeadingAlt, portalSubtextAlt } from "@/shared/utils/portal-ui";
 import { useLanguage } from "@/shared/providers/language-context";
 import { fillTemplate } from "@/features/candidate/utils/dashboard-analytics";
 import type { CoachRoadmap, CoachRoadmapItem } from "@/features/candidate/services/coach.service";
+import {
+  motionSafe,
+  staggerContainer,
+  staggerItem,
+} from "@/features/candidate/components/coach/coach-motion";
 
 export type JourneyNodeVisual = "completed" | "current" | "locked" | "upcoming" | "gate";
 
@@ -82,6 +88,8 @@ export function CoachJourneyPath({
 }: CoachJourneyPathProps) {
   const { t } = useLanguage();
   const p = t.jobseekerCoachPage;
+  const reduced = useReducedMotion();
+  const safe = motionSafe(reduced);
   const suggested = roadmap.status === "Suggested";
   const items = [...roadmap.items].sort((a, b) => a.sortOrder - b.sortOrder);
 
@@ -94,7 +102,11 @@ export function CoachJourneyPath({
   }
 
   return (
-    <ol className="relative space-y-0 pl-0 list-none">
+    <motion.ol
+      className="relative list-none space-y-0 pl-0"
+      variants={staggerContainer}
+      {...safe}
+    >
       {items.map((item, idx) => {
         const visual = resolveJourneyNode(item, idx, items);
         const isLast = idx === items.length - 1;
@@ -107,14 +119,13 @@ export function CoachJourneyPath({
         const lineDone = visual === "completed";
 
         return (
-          <li key={item.id} className="flex gap-3 sm:gap-4">
+          <motion.li key={item.id} className="flex gap-3 sm:gap-4" variants={staggerItem}>
             {/* Spine */}
-            <div className="flex flex-col items-center shrink-0 w-7">
+            <div className="flex w-7 shrink-0 flex-col items-center">
               <div
                 className={cn(
-                  "w-7 h-7 rounded-full border-2 flex items-center justify-center z-[1] shrink-0",
-                  nodeCfg.dotClass,
-                  visual === "current" && "animate-pulse"
+                  "z-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2",
+                  nodeCfg.dotClass
                 )}
                 aria-hidden
               >
@@ -123,7 +134,7 @@ export function CoachJourneyPath({
               {!isLast && (
                 <div
                   className={cn(
-                    "w-0.5 flex-1 min-h-[28px] my-1 rounded-full",
+                    "my-1 min-h-7 w-0.5 flex-1 rounded-full",
                     lineDone
                       ? "bg-emerald-300 dark:bg-emerald-800"
                       : "bg-gray-200 dark:bg-gray-700"
@@ -135,7 +146,7 @@ export function CoachJourneyPath({
             {/* Card */}
             <div
               className={cn(
-                "flex-1 rounded-xl border px-3.5 py-3 mb-3 transition-colors min-w-0",
+                "mb-3 min-w-0 flex-1 rounded-xl border px-3.5 py-3 transition-colors",
                 nodeCfg.cardClass,
                 visual === "current" && "shadow-sm shadow-primary/10"
               )}
@@ -154,7 +165,7 @@ export function CoachJourneyPath({
                         : visual === "completed"
                           ? p.roadmapStatusCompleted
                           : visual === "current"
-                            ? p.currentStep
+                            ? p.journeyCurrentBadge
                             : visual === "locked"
                               ? p.gateLocked
                               : p.roadmapStatusSuggested}
@@ -245,10 +256,10 @@ export function CoachJourneyPath({
                 )}
               </div>
             </div>
-          </li>
+          </motion.li>
         );
       })}
-    </ol>
+    </motion.ol>
   );
 }
 
@@ -268,23 +279,24 @@ function nodeStyle(visual: JourneyNodeVisual): {
       };
     case "current":
       return {
-        dotClass: "bg-primary border-primary ring-4 ring-primary/20",
-        badgeClass: "bg-primary/10 text-primary",
-        cardClass: "border-primary/30 bg-violet-50/40 dark:bg-violet-950/15",
+        dotClass: "bg-violet-600 border-violet-600 ring-4 ring-violet-500/25",
+        badgeClass: "bg-violet-100 dark:bg-violet-950 text-violet-700 dark:text-violet-300",
+        cardClass:
+          "border-2 border-violet-400 dark:border-violet-500 bg-violet-50/50 dark:bg-violet-950/20",
         icon: <span className="w-2 h-2 rounded-full bg-white block" />,
       };
     case "gate":
       return {
         dotClass: "bg-amber-500 border-amber-500",
         badgeClass: "bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300",
-        cardClass: "border-amber-100 dark:border-amber-900/40 bg-amber-50/40 dark:bg-amber-950/15",
+        cardClass: "border-amber-200 dark:border-amber-800/50 bg-amber-50/50 dark:bg-amber-950/20",
         icon: <Flag size={11} className="text-white" />,
       };
     case "locked":
       return {
         dotClass: "bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700",
         badgeClass: "bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500",
-        cardClass: "border-gray-100 dark:border-gray-800 opacity-75",
+        cardClass: "border-gray-100 dark:border-gray-800 opacity-55",
         icon: <Lock size={11} className="text-gray-400 dark:text-gray-500" />,
       };
     default:

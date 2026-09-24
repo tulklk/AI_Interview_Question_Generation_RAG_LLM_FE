@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { AlertCircle, ArrowRight, RefreshCw, Sparkles, Store } from "lucide-react";
+import { motion, useReducedMotion } from "framer-motion";
 import { cn } from "@/lib/cn";
 import { portalHeadingAlt, portalSubtextAlt } from "@/shared/utils/portal-ui";
 import { useLanguage } from "@/shared/providers/language-context";
@@ -11,8 +12,9 @@ import { cleanTitle } from "@/features/candidate/utils/clean-title";
 import { fillTemplate } from "@/features/candidate/utils/dashboard-analytics";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import type { QuestionSet } from "@/features/candidate/types/jobseeker";
+import { fadeUp, motionSafe } from "@/features/candidate/components/coach/coach-motion";
 
-const PANEL_SIZE = 6;
+const PANEL_SIZE = 2;
 
 function difficultyClass(d: string) {
   const v = d.toLowerCase();
@@ -34,10 +36,10 @@ function SetRow({ set, rank }: { set: QuestionSet; rank: number }) {
     <Link
       href={set.isHiringAssessment ? `/candidate/jobs/${set.id}` : `/candidate/sets/${set.id}`}
       className={cn(
-        "flex items-center gap-2.5 px-3 py-2.5 transition-colors group",
+        "group flex items-start gap-2.5 px-3 py-3 transition-colors",
         "border-b border-gray-100 dark:border-gray-800 last:border-0",
         isBest
-          ? "bg-violet-50/60 dark:bg-violet-950/20 hover:bg-violet-50 dark:hover:bg-violet-950/30"
+          ? "bg-violet-50/60 hover:bg-violet-50 dark:bg-violet-950/20 dark:hover:bg-violet-950/30"
           : "hover:bg-gray-50 dark:hover:bg-gray-800/60"
       )}
     >
@@ -49,7 +51,7 @@ function SetRow({ set, rank }: { set: QuestionSet; rank: number }) {
           loading="lazy"
           decoding="async"
           className={cn(
-            "w-8 h-8 rounded-lg object-cover shrink-0 border",
+            "mt-0.5 h-9 w-9 shrink-0 rounded-lg border object-cover",
             isBest
               ? "border-violet-200 dark:border-violet-800"
               : "border-gray-100 dark:border-gray-700"
@@ -58,7 +60,7 @@ function SetRow({ set, rank }: { set: QuestionSet; rank: number }) {
       ) : (
         <div
           className={cn(
-            "w-8 h-8 rounded-lg text-white text-[10px] font-bold flex items-center justify-center shrink-0",
+            "mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-[10px] font-bold text-white",
             set.companyColor
           )}
         >
@@ -66,38 +68,29 @@ function SetRow({ set, rank }: { set: QuestionSet; rank: number }) {
         </div>
       )}
 
-      <div className="flex-1 min-w-0">
-        <p className={cn("text-[12px] font-semibold truncate leading-snug", portalHeadingAlt)}>
+      <div className="min-w-0 flex-1">
+        <p className={cn("line-clamp-2 text-[12px] font-semibold leading-snug", portalHeadingAlt)}>
           {cleanTitle(set.title)}
         </p>
-        <div className="flex items-center gap-1 mt-0.5 min-w-0">
+        <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
           {hasMatch && (
-            <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-violet-600 dark:text-violet-400 shrink-0">
+            <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-violet-600 dark:text-violet-400">
               <Sparkles size={8} />
               {fillTemplate(t.jobseekerMarketplacePage.matchPercent, {
                 n: String(Math.round(matchPct)),
               })}
             </span>
           )}
-          <p className={cn("text-[10px] truncate", portalSubtextAlt)}>
-            {set.company || p.marketplaceSectionTitle}
-            {set.totalQuestions > 0 && (
-              <span className="before:content-['·'] before:mx-1">
-                {set.totalQuestions} {p.questionsUnit}
-              </span>
+          <span
+            className={cn(
+              "text-[9px] font-semibold px-1.5 py-0.5 rounded-md",
+              difficultyClass(set.difficulty)
             )}
-          </p>
+          >
+            {diffLabel}
+          </span>
         </div>
       </div>
-
-      <span
-        className={cn(
-          "shrink-0 text-[9px] font-semibold px-1.5 py-0.5 rounded-md",
-          difficultyClass(set.difficulty)
-        )}
-      >
-        {diffLabel}
-      </span>
     </Link>
   );
 }
@@ -110,6 +103,8 @@ interface CoachMarketplacePanelProps {
 export function CoachMarketplacePanel({ skills = [] }: CoachMarketplacePanelProps) {
   const { t } = useLanguage();
   const p = t.jobseekerCoachPage;
+  const reduced = useReducedMotion();
+  const safe = motionSafe(reduced);
 
   const skillKey = useMemo(() => {
     const seen = new Set<string>();
@@ -171,25 +166,20 @@ export function CoachMarketplacePanel({ skills = [] }: CoachMarketplacePanelProp
   }, [skillKey, reloadKey]);
 
   return (
-    <div className="hr-glass-card overflow-hidden flex flex-col">
-      <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800 flex items-center gap-2">
-        <div className="w-6 h-6 rounded-md bg-violet-100 dark:bg-violet-950/50 flex items-center justify-center shrink-0">
-          <Store size={12} className="text-violet-600 dark:text-violet-400" />
+    <motion.div className="hr-glass-card flex flex-col overflow-hidden" variants={fadeUp} {...safe}>
+      <div className="flex items-center gap-2 border-b border-gray-100 px-3 py-2 dark:border-gray-800">
+        <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-primary/10">
+          <Store size={12} className="text-primary" />
         </div>
-        <div className="min-w-0">
-          <p className={cn("text-[12px] font-semibold", portalHeadingAlt)}>
-            {p.marketplaceSectionTitle}
-          </p>
-          <p className={cn("text-[10px] leading-snug", portalSubtextAlt)}>
-            {p.marketplaceLinkDesc}
-          </p>
-        </div>
+        <p className={cn("min-w-0 text-[12px] font-semibold", portalHeadingAlt)}>
+          {p.marketplaceSectionTitle}
+        </p>
       </div>
 
       <div className="flex flex-col">
         {loading && (
           <div className="px-4 py-3 space-y-3">
-            {Array.from({ length: 4 }).map((_, i) => (
+            {Array.from({ length: 2 }).map((_, i) => (
               <div key={i} className="flex items-center gap-2.5">
                 <Skeleton className="w-8 h-8 rounded-lg shrink-0" />
                 <div className="flex-1 space-y-1.5">
@@ -227,9 +217,9 @@ export function CoachMarketplacePanel({ skills = [] }: CoachMarketplacePanelProp
             {sets.map((set, i) => (
               <SetRow key={set.id} set={set} rank={i} />
             ))}
-            <div className="px-4 py-2.5 border-t border-gray-100 dark:border-gray-800 flex justify-end">
+            <div className="flex justify-end border-t border-gray-100 px-4 py-2 dark:border-gray-800">
               <Link
-                href="/candidate/jobs"
+                href="/candidate/practice"
                 className="inline-flex items-center gap-1 text-[11px] font-semibold text-primary hover:underline"
               >
                 {p.marketplaceSeeAll}
@@ -239,6 +229,6 @@ export function CoachMarketplacePanel({ skills = [] }: CoachMarketplacePanelProp
           </>
         )}
       </div>
-    </div>
+    </motion.div>
   );
 }

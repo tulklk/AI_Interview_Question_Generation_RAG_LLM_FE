@@ -5,20 +5,17 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
-  Bookmark,
   Briefcase,
   Building2,
   ChevronRight,
-  Clock,
   DollarSign,
   ExternalLink,
+  Heart,
   ListOrdered,
   Loader2,
-  MapPin,
   RefreshCw,
   RotateCcw,
   Star,
-  Users,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { useLanguage } from "@/shared/providers/language-context";
@@ -62,7 +59,7 @@ type Props = {
 };
 
 /**
- * SCRUM-467 / SCRUM-468: detail bộ Tuyển — layout ITViec (header + CTA + JD + meta).
+ * SCRUM-467 / SCRUM-468: detail bộ Tuyển — hierarchy + compact meta.
  */
 export function HiringJobDetail({ set, variant = "page" }: Props) {
   const { t, lang } = useLanguage();
@@ -119,6 +116,17 @@ export function HiringJobDetail({ set, variant = "page" }: Props) {
     ? formatRelativeTime(set.publishedAt, lang)
     : "";
 
+  const locationMeta = [
+    set.jobLocation?.trim() || null,
+    workplace || null,
+    posted ? h.postedAgo.replace("{{time}}", posted) : null,
+  ].filter(Boolean) as string[];
+
+  const assessmentMeta = [
+    h.questionsMeta.replace("{{count}}", String(set.totalQuestions)),
+    mins != null && mins > 0 ? h.timeMeta.replace("{{min}}", String(mins)) : null,
+  ].filter(Boolean) as string[];
+
   async function checkAndNavigate(destination: string) {
     if (navigating) return;
     setNavigating(true);
@@ -171,7 +179,7 @@ export function HiringJobDetail({ set, variant = "page" }: Props) {
   const pill = (label: string) => (
     <span
       className={cn(
-        "inline-flex rounded-full border px-2.5 py-0.5 text-[11px] font-medium",
+        "inline-flex rounded-md border px-2 py-0.5 text-[11px] font-medium",
         "border-gray-200 bg-gray-50 text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
       )}
     >
@@ -179,11 +187,125 @@ export function HiringJobDetail({ set, variant = "page" }: Props) {
     </span>
   );
 
+  const stickyHeader = (
+    <div
+      className={cn(
+        "space-y-3 bg-white/95 pb-3 backdrop-blur-sm dark:bg-gray-900/95",
+        variant === "panel" && "sticky top-0 z-10 -mx-1 px-1 pt-0.5"
+      )}
+    >
+      <div className="flex gap-3.5">
+        <div
+          className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl text-sm font-bold text-white sm:h-14 sm:w-14 sm:rounded-2xl sm:text-base"
+          style={{ background: logo ? undefined : color }}
+        >
+          {logo ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={logo} alt="" className="h-full w-full object-cover" />
+          ) : (
+            initials
+          )}
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-start gap-2">
+            <h1 className={cn("text-xl font-bold leading-snug sm:text-2xl", portalHeadingAlt)}>
+              {title}
+            </h1>
+            {variant === "panel" && (
+              <Link
+                href={`/candidate/jobs/${set.id}`}
+                className="mt-1.5 inline-flex text-gray-400 transition-colors hover:text-primary"
+                title={h.openFullPage}
+              >
+                <ExternalLink size={14} />
+              </Link>
+            )}
+          </div>
+          <p className={cn("mt-1 flex items-center gap-1.5 text-sm", portalSubtextAlt)}>
+            <Building2 size={13} className="shrink-0" />
+            <span className="truncate">{company}</span>
+          </p>
+          <p className="mt-1.5 inline-flex items-center gap-1 text-[14px] font-semibold text-sky-600 dark:text-sky-400">
+            <DollarSign size={13} />
+            {salary}
+          </p>
+        </div>
+      </div>
+
+      <div className="flex w-full items-center gap-2">
+        <button
+          type="button"
+          disabled={navigating}
+          onClick={() => void checkAndNavigate(practiceUrl)}
+          className={cn(
+            "shimmer-button group flex h-11 flex-1 items-center justify-center gap-2 rounded-xl",
+            "text-[13px] font-semibold text-white hr-cta-btn",
+            "transition-transform duration-150 hover:-translate-y-px active:scale-[0.985]",
+            "disabled:cursor-not-allowed disabled:opacity-70"
+          )}
+        >
+          {navigating ? (
+            <Loader2 size={15} className="animate-spin" />
+          ) : inProgressSessionId ? (
+            <>
+              <RotateCcw size={14} />
+              {h.continueCta}
+            </>
+          ) : (
+            <>
+              {h.applyCta}
+              <ChevronRight
+                size={14}
+                className="transition-transform group-hover:translate-x-0.5"
+              />
+            </>
+          )}
+        </button>
+        <button
+          type="button"
+          onClick={handleToggleBookmark}
+          disabled={bookmarking}
+          className={cn(
+            "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border",
+            bookmarked
+              ? "border-primary/40 bg-primary/10 text-primary"
+              : "border-primary/50 bg-transparent text-primary hover:bg-primary/5"
+          )}
+          title={bookmarked ? h.bookmarkSaved : h.bookmarkSave}
+          aria-label={bookmarked ? h.bookmarkSaved : h.bookmarkSave}
+        >
+          {bookmarking ? (
+            <Loader2 size={16} className="animate-spin" />
+          ) : (
+            <Heart size={16} className={bookmarked ? "fill-current" : undefined} />
+          )}
+        </button>
+      </div>
+
+      {inProgressSessionId && (
+        <button
+          type="button"
+          onClick={() => setStartNewConfirmOpen(true)}
+          disabled={startingNew}
+          className={cn(
+            "flex h-9 w-full items-center justify-center gap-2 rounded-xl border text-[12px] font-semibold sm:w-auto sm:px-4",
+            portalMutedBg,
+            portalHeadingAlt,
+            "border-gray-200 dark:border-gray-700 disabled:opacity-60"
+          )}
+        >
+          {startingNew ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />}
+          {h.startOver}
+        </button>
+      )}
+    </div>
+  );
+
   return (
     <div
       className={cn(
         "space-y-4",
-        variant === "page" ? "mx-auto w-full max-w-6xl px-1 pb-12" : "pb-4"
+        variant === "page" ? "mx-auto w-full max-w-6xl px-1 pb-12" : "pb-2"
       )}
     >
       {variant === "page" && (
@@ -205,218 +327,103 @@ export function HiringJobDetail({ set, variant = "page" }: Props) {
           variant === "page" ? "lg:grid-cols-[1fr_280px] lg:items-start" : ""
         )}
       >
-        <div className="space-y-4">
-          {/* Header */}
-          <div className="hr-glass-card overflow-hidden p-5 sm:p-6">
-            <div className="flex gap-4">
-              <div
-                className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl text-base font-bold text-white"
-                style={{ background: logo ? undefined : color }}
-              >
-                {logo ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={logo} alt="" className="h-full w-full object-cover" />
-                ) : (
-                  initials
-                )}
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-start gap-2">
-                  <h1 className={cn("text-xl font-bold leading-snug sm:text-2xl", portalHeadingAlt)}>
-                    {title}
-                  </h1>
-                  {variant === "panel" && (
-                    <Link
-                      href={`/candidate/jobs/${set.id}`}
-                      className="mt-1 inline-flex text-primary hover:underline"
-                      title={h.openFullPage}
-                    >
-                      <ExternalLink size={14} />
-                    </Link>
-                  )}
-                </div>
-                <p className={cn("mt-1 flex items-center gap-1.5 text-sm", portalSubtextAlt)}>
-                  <Building2 size={14} />
-                  {company}
-                </p>
-                <p className="mt-2 inline-flex items-center gap-1.5 text-[14px] font-semibold text-sky-600 dark:text-sky-400">
-                  <DollarSign size={14} />
-                  {salary}
-                </p>
-              </div>
-            </div>
-
-            {/* CTA row */}
-            <div className="mt-4 flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                disabled={navigating}
-                onClick={() => void checkAndNavigate(practiceUrl)}
-                className={cn(
-                  "shimmer-button group flex h-11 min-w-[180px] flex-1 items-center justify-center gap-2 rounded-xl sm:flex-none",
-                  "text-[14px] font-semibold text-white hr-cta-btn",
-                  "transition-transform duration-150 hover:-translate-y-px active:scale-[0.985]",
-                  "disabled:cursor-not-allowed disabled:opacity-70"
-                )}
-              >
-                {navigating ? (
-                  <Loader2 size={15} className="animate-spin" />
-                ) : inProgressSessionId ? (
-                  <>
-                    <RotateCcw size={14} />
-                    {h.continueCta}
-                  </>
-                ) : (
-                  <>
-                    {h.applyCta}
-                    <ChevronRight
-                      size={14}
-                      className="transition-transform group-hover:translate-x-0.5"
-                    />
-                  </>
-                )}
-              </button>
-              <button
-                type="button"
-                onClick={handleToggleBookmark}
-                disabled={bookmarking}
-                className={cn(
-                  "flex h-11 w-11 items-center justify-center rounded-xl border",
-                  bookmarked
-                    ? "border-violet-300 bg-violet-50 text-violet-700 dark:border-violet-700 dark:bg-violet-950/40 dark:text-violet-300"
-                    : cn(portalMutedBg, portalHeadingAlt, "border-gray-200 dark:border-gray-700")
-                )}
-                title={bookmarked ? h.bookmarked : h.bookmark}
-              >
-                {bookmarking ? (
-                  <Loader2 size={15} className="animate-spin" />
-                ) : (
-                  <Bookmark size={15} className={bookmarked ? "fill-current" : undefined} />
-                )}
-              </button>
-            </div>
-
-            {inProgressSessionId && (
-              <button
-                type="button"
-                onClick={() => setStartNewConfirmOpen(true)}
-                disabled={startingNew}
-                className={cn(
-                  "mt-2 flex h-9 w-full items-center justify-center gap-2 rounded-xl border text-[13px] font-semibold sm:w-auto sm:px-4",
-                  portalMutedBg,
-                  portalHeadingAlt,
-                  "border-gray-200 dark:border-gray-700 disabled:opacity-60"
-                )}
-              >
-                {startingNew ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />}
-                {h.startOver}
-              </button>
+        <div className="space-y-0">
+          <div
+            className={cn(
+              "overflow-hidden rounded-2xl border border-gray-200/90 bg-white dark:border-gray-700 dark:bg-gray-900/80",
+              "px-4 py-4 sm:px-5 sm:py-5"
             )}
+          >
+            {stickyHeader}
 
-            {/* Logistics */}
-            <ul className={cn("mt-4 space-y-2 border-t pt-4 text-[13px]", portalDivider)}>
-              {set.jobLocation?.trim() && (
-                <li className={cn("flex items-start gap-2", portalSubtextAlt)}>
-                  <MapPin size={14} className="mt-0.5 shrink-0 text-primary" />
-                  <span>{set.jobLocation.trim()}</span>
-                </li>
+            {/* Compact location + assessment */}
+            <div className={cn("mt-3 space-y-1.5 border-t pt-3 text-[12px]", portalDivider)}>
+              {locationMeta.length > 0 && (
+                <p className={cn("leading-snug", portalSubtextAlt)}>{locationMeta.join(" · ")}</p>
               )}
-              {workplace && (
-                <li className={cn("flex items-center gap-2", portalSubtextAlt)}>
-                  <Users size={14} className="shrink-0 text-primary" />
-                  <span>{workplace}</span>
-                </li>
-              )}
-              {posted && (
-                <li className={cn("flex items-center gap-2", portalSubtextAlt)}>
-                  <Clock size={14} className="shrink-0 text-primary" />
-                  <span>{h.postedAgo.replace("{{time}}", posted)}</span>
-                </li>
-              )}
-              <li className={cn("flex flex-wrap items-center gap-3", portalSubtextAlt)}>
-                <span className="inline-flex items-center gap-1">
-                  <ListOrdered size={13} />
-                  {h.questionsMeta.replace("{{count}}", String(set.totalQuestions))}
-                </span>
-                {mins != null && mins > 0 && (
+              <p className={cn("flex flex-wrap items-center gap-x-2.5 gap-y-1", portalSubtextAlt)}>
+                {assessmentMeta.length > 0 && (
                   <span className="inline-flex items-center gap-1">
-                    <Clock size={13} />
-                    {h.timeMeta.replace("{{min}}", String(mins))}
+                    <ListOrdered size={12} className="shrink-0 opacity-70" />
+                    {assessmentMeta.join(" · ")}
                   </span>
                 )}
                 {set.rating != null && (
                   <span className="inline-flex items-center gap-1">
-                    <Star size={13} className="fill-amber-400 text-amber-400" />
+                    <Star size={12} className="fill-amber-400 text-amber-400" />
                     {set.rating.toFixed(1)}
                   </span>
                 )}
-              </li>
-            </ul>
+              </p>
+            </div>
 
-            {/* Skills / expertise / domain */}
-            {(set.skills.length > 0 || set.jobExpertise || set.jobDomain) && (
-              <div className={cn("mt-4 space-y-3 border-t border-dashed pt-4", portalDivider)}>
-                {set.skills.length > 0 && (
-                  <div>
-                    <p className={cn("mb-1.5 text-[11px] font-semibold uppercase", portalSubtextAlt)}>
-                      {h.skillsLabel}
-                    </p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {visSkills.map((skill) => {
-                        const si = getSkillIcon(skill);
-                        const SIcon = si?.icon;
-                        return (
-                          <span
-                            key={skill}
-                            className={cn(
-                              "inline-flex max-w-36 items-center gap-1 rounded-full border px-2.5 py-0.5 text-[11px] font-medium",
-                              "border-gray-200 bg-gray-50 text-gray-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
-                            )}
-                          >
-                            {SIcon && <SIcon size={10} className={cn("shrink-0", si.className)} />}
-                            <span className="truncate">{skill}</span>
-                          </span>
-                        );
-                      })}
-                      <SkillsOverflowChip skills={hiddenSkills} />
+            {/* Skills */}
+            {set.skills.length > 0 && (
+              <div className={cn("mt-4 border-t border-dashed pt-4", portalDivider)}>
+                <p className={cn("mb-1.5 text-[11px] font-semibold uppercase tracking-wide", portalSubtextAlt)}>
+                  {h.skillsLabel}
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {visSkills.map((skill) => {
+                    const si = getSkillIcon(skill);
+                    const SIcon = si?.icon;
+                    return (
+                      <span
+                        key={skill}
+                        className={cn(
+                          "inline-flex max-w-36 items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] font-medium",
+                          "border-gray-200 bg-gray-50 text-gray-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
+                        )}
+                      >
+                        {SIcon && <SIcon size={10} className={cn("shrink-0", si.className)} />}
+                        <span className="truncate">{skill}</span>
+                      </span>
+                    );
+                  })}
+                  <SkillsOverflowChip skills={hiddenSkills} />
+                </div>
+              </div>
+            )}
+
+            {/* Position info: expertise + domain */}
+            {(set.jobExpertise?.trim() || set.jobDomain?.trim()) && (
+              <div className={cn("mt-4 border-t border-dashed pt-4", portalDivider)}>
+                <p className={cn("mb-2 text-[11px] font-semibold uppercase tracking-wide", portalSubtextAlt)}>
+                  {h.positionInfo}
+                </p>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  {set.jobExpertise?.trim() && (
+                    <div>
+                      <p className={cn("mb-1 text-[11px]", portalSubtextAlt)}>{h.expertiseLabel}</p>
+                      <div className="flex flex-wrap gap-1.5">{pill(set.jobExpertise.trim())}</div>
                     </div>
-                  </div>
-                )}
-                {set.jobExpertise?.trim() && (
-                  <div>
-                    <p className={cn("mb-1.5 text-[11px] font-semibold uppercase", portalSubtextAlt)}>
-                      {h.expertiseLabel}
-                    </p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {pill(set.jobExpertise.trim())}
+                  )}
+                  {set.jobDomain?.trim() && (
+                    <div>
+                      <p className={cn("mb-1 text-[11px]", portalSubtextAlt)}>{h.domainLabel}</p>
+                      <div className="flex flex-wrap gap-1.5">{pill(set.jobDomain.trim())}</div>
                     </div>
-                  </div>
-                )}
-                {set.jobDomain?.trim() && (
-                  <div>
-                    <p className={cn("mb-1.5 text-[11px] font-semibold uppercase", portalSubtextAlt)}>
-                      {h.domainLabel}
-                    </p>
-                    <div className="flex flex-wrap gap-1.5">{pill(set.jobDomain.trim())}</div>
-                  </div>
-                )}
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* JD inside same card */}
+            {(set.jobDescription?.trim() || set.jdFileUrl) && (
+              <div className={cn("mt-4 border-t pt-1", portalDivider)}>
+                <HiringJdPreview
+                  jobDescription={set.jobDescription}
+                  jdSourceType={set.jdSourceType}
+                  jdOriginalFileName={set.jdOriginalFileName}
+                  jdFileUrl={set.jdFileUrl}
+                  className="-mx-1"
+                />
               </div>
             )}
           </div>
 
-          {(set.jobDescription?.trim() || set.jdFileUrl) && (
-            <div className="hr-glass-card overflow-hidden">
-              <HiringJdPreview
-                jobDescription={set.jobDescription}
-                jdSourceType={set.jdSourceType}
-                jdOriginalFileName={set.jdOriginalFileName}
-                jdFileUrl={set.jdFileUrl}
-              />
-            </div>
-          )}
-
           {groups.length > 0 && (
-            <div className="hr-glass-card overflow-hidden">
+            <div className="mt-4 overflow-hidden rounded-2xl border border-gray-200/90 bg-white dark:border-gray-700 dark:bg-gray-900/80">
               <div className={cn("border-b px-5 py-3.5", portalDivider)}>
                 <p className={cn("text-[14px] font-bold", portalHeadingAlt)}>{h.interviewPlanTitle}</p>
                 <p className={cn("mt-0.5 text-[11px]", portalSubtextAlt)}>{h.interviewPlanSub}</p>
@@ -451,7 +458,7 @@ export function HiringJobDetail({ set, variant = "page" }: Props) {
           <aside className="space-y-4 lg:sticky lg:top-24">
             <CompanyInfoCard name={company} logoUrl={logo} />
             {set.jobExpertise?.trim() && (
-              <div className="hr-glass-card space-y-2 p-4">
+              <div className="space-y-2 rounded-2xl border border-gray-200/90 bg-white p-4 dark:border-gray-700 dark:bg-gray-900/80">
                 <p className={cn("flex items-center gap-1.5 text-[12px] font-semibold", portalHeadingAlt)}>
                   <Briefcase size={13} />
                   {h.expertiseLabel}

@@ -1,5 +1,6 @@
 "use client";
 
+import { Check, type LucideIcon } from "lucide-react";
 import {
   FileText,
   Map,
@@ -8,13 +9,14 @@ import {
   Target,
   Upload,
   BarChart3,
-  type LucideIcon,
 } from "lucide-react";
+import { motion, useReducedMotion } from "framer-motion";
 import { cn } from "@/lib/cn";
 import { portalHeadingAlt, portalSubtextAlt } from "@/shared/utils/portal-ui";
 import { useLanguage } from "@/shared/providers/language-context";
+import { coachTransitionFast } from "@/features/candidate/components/coach/coach-motion";
 
-    /** 7 phase wizard: CV → Analysis → Goal → Diagnostic → Report → Roadmap → Reassess */
+/** 7 phase wizard: CV → Analysis → Goal → Diagnostic → Report → Roadmap → Reassess */
 export type CoachStepIndex = 1 | 2 | 3 | 4 | 5 | 6 | 7;
 
 interface CoachStepsProps {
@@ -45,6 +47,7 @@ export function CoachSteps({
 }: CoachStepsProps) {
   const { t } = useLanguage();
   const p = t.jobseekerCoachPage;
+  const reduced = useReducedMotion();
   const steps = [
     { title: p.phaseCvTitle, desc: p.phaseCvDesc },
     { title: p.phaseAnalysisTitle, desc: p.phaseAnalysisDesc },
@@ -58,121 +61,103 @@ export function CoachSteps({
   const pct = PROGRESS_PCT[activeStep];
   const barColor = pct === 100 ? "bg-emerald-500" : "bg-primary";
   const earlierLocked = minSelectableStep > 1;
+  const activeDesc = steps[activeStep - 1]?.desc;
 
   return (
-    <>
-      <style>{`
-        @keyframes _cs_shimmer {
-          0%   { transform: translateX(-100%) skewX(-12deg); }
-          100% { transform: translateX(450%)  skewX(-12deg); }
-        }
-        ._cs_shimmer_stripe {
-          position: absolute;
-          top: 0; bottom: 0;
-          width: 35%;
-          background: linear-gradient(
-            90deg,
-            transparent            0%,
-            rgba(255,255,255,0.55) 50%,
-            transparent            100%
-          );
-          animation: _cs_shimmer 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-        }
-      `}</style>
+    <div className="hr-glass-card px-3 py-3 sm:px-4">
+      <p className={cn("mb-2 text-[10px] font-bold uppercase tracking-widest", portalSubtextAlt)}>
+        {p.howTitle}
+      </p>
 
-      <div className="hr-glass-card px-4 sm:px-6 py-5">
-        <p className={cn("text-[10px] font-bold uppercase tracking-widest mb-5", portalSubtextAlt)}>
-          {p.howTitle}
-        </p>
+      {earlierLocked && (
+        <p className={cn("mb-1.5 text-[11px]", portalSubtextAlt)}>{p.stepsLockedAfterRoadmap}</p>
+      )}
 
-        {earlierLocked && (
-          <p className={cn("text-[11px] mb-3 -mt-2", portalSubtextAlt)}>{p.stepsLockedAfterRoadmap}</p>
-        )}
+      <div className="flex items-center gap-0 overflow-x-auto pb-0.5">
+        {steps.map((step, i) => {
+          const n = (i + 1) as CoachStepIndex;
+          const isLast = i === steps.length - 1;
+          const Icon = ICONS[i];
+          const isActive = n === activeStep;
+          const isPast = n < activeStep;
+          const unlocked = n >= minSelectableStep && n <= maxUnlockedStep;
 
-        <div className="flex items-start overflow-x-auto pb-1 gap-0">
-          {steps.map((step, i) => {
-            const n = (i + 1) as CoachStepIndex;
-            const isLast = i === steps.length - 1;
-            const Icon = ICONS[i];
-            const isActive = n === activeStep;
-            const isPast = n < activeStep;
-            const unlocked = n >= minSelectableStep && n <= maxUnlockedStep;
-
-            return (
-              <div
-                key={n}
+          return (
+            <div
+              key={n}
+              className={cn(
+                "flex items-center gap-1",
+                isLast ? "shrink-0" : "min-w-22 flex-1 sm:min-w-0"
+              )}
+            >
+              <button
+                type="button"
+                disabled={!unlocked}
+                title={!unlocked && n < minSelectableStep ? p.stepsLockedAfterRoadmap : undefined}
+                onClick={() => onSelect(n)}
                 className={cn(
-                  "flex items-start gap-2 sm:gap-3",
-                  isLast ? "shrink-0" : "flex-1 min-w-[120px] sm:min-w-0"
+                  "flex min-w-0 flex-col items-center gap-0.5 text-center transition-colors",
+                  unlocked ? "cursor-pointer" : "cursor-not-allowed"
                 )}
+                aria-current={isActive ? "step" : undefined}
+                aria-label={step.title}
               >
-                <button
-                  type="button"
-                  disabled={!unlocked}
-                  title={!unlocked && n < minSelectableStep ? p.stepsLockedAfterRoadmap : undefined}
-                  onClick={() => onSelect(n)}
+                <motion.span
+                  layout={!reduced}
                   className={cn(
-                    "w-8 h-8 sm:w-9 sm:h-9 rounded-full shrink-0 flex items-center justify-center border-2 transition-all duration-300",
-                    unlocked ? "cursor-pointer hover:scale-105" : "cursor-not-allowed opacity-50",
+                    "flex h-6 w-6 shrink-0 items-center justify-center rounded-full border transition-colors",
+                    unlocked ? "" : "opacity-60",
                     isActive
-                      ? "bg-primary/10 border-primary text-primary"
+                      ? "border-primary bg-primary/10 text-primary"
                       : isPast && unlocked
-                        ? "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-400 text-emerald-600 dark:text-emerald-400"
-                        : isPast && !unlocked
-                          ? "bg-gray-100 dark:bg-gray-800/80 border-gray-300 dark:border-gray-600 text-gray-400"
-                          : "bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400"
+                        ? "border-emerald-400 bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400"
+                        : "border-gray-200 bg-gray-50 text-gray-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400"
                   )}
-                  aria-current={isActive ? "step" : undefined}
-                  aria-label={step.title}
+                  animate={
+                    reduced
+                      ? undefined
+                      : isActive
+                        ? { scale: 1.08 }
+                        : { scale: 1 }
+                  }
+                  transition={coachTransitionFast}
                 >
-                  <Icon size={14} />
-                </button>
-
-                <button
-                  type="button"
-                  disabled={!unlocked}
-                  title={!unlocked && n < minSelectableStep ? p.stepsLockedAfterRoadmap : undefined}
-                  onClick={() => onSelect(n)}
+                  {isPast && unlocked ? <Check size={12} strokeWidth={2.5} /> : <Icon size={11} />}
+                </motion.span>
+                <span
                   className={cn(
-                    "min-w-0 pt-0.5 text-left",
-                    unlocked ? "cursor-pointer" : "cursor-not-allowed opacity-50"
+                    "max-w-22 truncate text-[10px] font-semibold leading-tight sm:max-w-none sm:text-[11px]",
+                    isActive ? "text-primary" : unlocked ? portalHeadingAlt : portalSubtextAlt
                   )}
                 >
-                  <p
-                    className={cn(
-                      "text-[12px] sm:text-[13px] font-semibold leading-tight",
-                      isActive ? "text-primary" : portalHeadingAlt
-                    )}
-                  >
-                    {step.title}
-                  </p>
-                  <p
-                    className={cn(
-                      "text-[10px] sm:text-[11px] mt-0.5 leading-4 hidden sm:block",
-                      !isLast && "pr-3",
-                      portalSubtextAlt
-                    )}
-                  >
-                    {step.desc}
-                  </p>
-                </button>
-              </div>
-            );
-          })}
-        </div>
-
-        <div className="mt-5 h-1.5 rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden">
-          <div
-            className={cn(
-              "relative h-full rounded-full transition-[width] duration-700 overflow-hidden",
-              barColor
-            )}
-            style={{ width: `${pct}%` }}
-          >
-            {pct > 0 && <div className="_cs_shimmer_stripe" />}
-          </div>
-        </div>
+                  {step.title}
+                </span>
+              </button>
+            </div>
+          );
+        })}
       </div>
-    </>
+
+      <div className="mt-2 h-1 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800">
+        <motion.div
+          className={cn("h-full rounded-full", barColor)}
+          initial={false}
+          animate={{ width: `${pct}%` }}
+          transition={reduced ? { duration: 0 } : { duration: 0.45, ease: [0.2, 0, 0, 1] }}
+        />
+      </div>
+
+      {activeDesc && (
+        <motion.p
+          key={activeStep}
+          className={cn("mt-2 text-[11px] leading-snug sm:text-[12px]", portalSubtextAlt)}
+          initial={reduced ? false : { opacity: 0, y: 4 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={coachTransitionFast}
+        >
+          {activeDesc}
+        </motion.p>
+      )}
+    </div>
   );
 }
