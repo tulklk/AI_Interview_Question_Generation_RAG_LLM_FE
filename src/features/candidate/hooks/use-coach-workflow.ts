@@ -413,7 +413,6 @@ export function useCoachWorkflow() {
   /** SCRUM-459: soft-reset BE + clear state FE → Confirm Goal. */
   async function startNewRun() {
     if (resetting) return;
-    if (typeof window !== "undefined" && !window.confirm(p.newCoachRunConfirm)) return;
 
     setResetting(true);
     setError(null);

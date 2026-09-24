@@ -6,8 +6,8 @@ import Link from "next/link";
 import { AlertCircle, RefreshCw, SearchX, ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { JobseekerAppShell } from "@/features/candidate/components/layout/jobseeker-app-shell";
-import { AiLoadingSpinner } from "@/shared/components/common/ai-loading-spinner";
 import { HiringJobDetail } from "@/features/candidate/components/jobs/hiring-job-detail";
+import { HiringJobDetailSkeleton } from "@/features/candidate/components/jobs/hiring-job-skeletons";
 import { getQuestionSetById, NotFoundError } from "@/features/candidate/services/question-set.service";
 import type { QuestionSet } from "@/features/candidate/types/jobseeker";
 import { useLanguage } from "@/shared/providers/language-context";
@@ -72,11 +72,7 @@ export function HiringJobDetailClient() {
         { label: displayTitle ?? "" },
       ]}
     >
-      {loading && (
-        <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center">
-          <AiLoadingSpinner text={p.loading} />
-        </div>
-      )}
+      {loading && <HiringJobDetailSkeleton />}
 
       {!loading && isNotFound && (
         <div className="flex flex-col items-center gap-4 px-4 py-24 text-center">

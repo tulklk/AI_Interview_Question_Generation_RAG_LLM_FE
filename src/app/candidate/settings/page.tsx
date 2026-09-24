@@ -3,6 +3,7 @@
 import { Suspense } from "react";
 import { JobseekerAppShell } from "@/features/candidate/components/layout/jobseeker-app-shell";
 import { SettingsPage } from "@/features/candidate/components/settings/settings-page";
+import { SettingsPageSkeleton } from "@/features/candidate/components/settings/settings-page-skeleton";
 import { useLanguage } from "@/shared/providers/language-context";
 import { cn } from "@/lib/cn";
 import { portalHeading, portalSubtext } from "@/shared/utils/portal-ui";
@@ -22,7 +23,7 @@ export default function JobseekerSettingsPage() {
       </div>
 
       <div className="animate-fade-up" style={{ animationDelay: "80ms" }}>
-        <Suspense>
+        <Suspense fallback={<SettingsPageSkeleton />}>
           <SettingsPage />
         </Suspense>
       </div>

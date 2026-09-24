@@ -5,6 +5,7 @@ import { ChevronDown, ChevronUp, Download, ExternalLink, FileText, ImageIcon } f
 import { cn } from "@/lib/cn";
 import { useLanguage } from "@/shared/providers/language-context";
 import { portalDivider, portalHeadingAlt, portalSubtextAlt } from "@/shared/utils/portal-ui";
+import { JobDescriptionContent } from "@/features/candidate/utils/job-description-format";
 
 type Props = {
   jobDescription?: string | null;
@@ -57,14 +58,14 @@ export function HiringJdPreview({
 
   return (
     <div className={cn("overflow-hidden", className)}>
-      <div className={cn("px-5 py-3.5 border-b", portalDivider)}>
-        <p className={cn("text-[14px] font-bold", portalHeadingAlt)}>
+      <div className={cn("border-b px-4 py-3 sm:px-5", portalDivider)}>
+        <p className={cn("text-[13px] font-semibold", portalHeadingAlt)}>
           {h.candidateJdTitle}
         </p>
         <p className={cn("mt-0.5 text-[11px]", portalSubtextAlt)}>{h.candidateJdSub}</p>
       </div>
 
-      <div className="space-y-3 px-5 py-4">
+      <div className="space-y-3 px-4 py-3.5 sm:px-5">
         {fromFile && hasFile && (
           <div className="rounded-xl border border-gray-200 bg-gray-50/80 p-3 dark:border-gray-700 dark:bg-gray-900/50">
             <div className="flex flex-wrap items-center gap-2">
@@ -102,9 +103,7 @@ export function HiringJdPreview({
 
         {hasText && (
           <div>
-            <p className={cn("whitespace-pre-wrap text-[13px] leading-relaxed", portalSubtextAlt)}>
-              {displayText}
-            </p>
+            <JobDescriptionContent text={displayText} />
             {needsCollapse && (
               <button
                 type="button"
