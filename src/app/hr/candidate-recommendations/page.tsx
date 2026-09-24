@@ -3,6 +3,7 @@
 import { Suspense } from "react";
 import { AppShell } from "@/features/hr/components/layout/app-shell";
 import { RecommendationsList } from "@/features/hr/components/recommendations/recommendations-list";
+import { RecommendationsPageSkeleton } from "@/features/hr/components/recommendations/recommendations-skeletons";
 import { useLanguage } from "@/shared/providers/language-context";
 
 export default function CandidateRecommendationsPage() {
@@ -17,7 +18,7 @@ export default function CandidateRecommendationsPage() {
         { label: title },
       ]}
     >
-      <Suspense>
+      <Suspense fallback={<RecommendationsPageSkeleton />}>
         <RecommendationsList />
       </Suspense>
     </AppShell>

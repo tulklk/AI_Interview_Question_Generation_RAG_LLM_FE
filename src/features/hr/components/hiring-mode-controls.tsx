@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Briefcase, Dumbbell, Loader2, Lock, Shield, ShieldOff } from "lucide-react";
+import { Briefcase, Dumbbell, Loader2, Lock, Shield } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { Toggle } from "@/shared/components/ui/toggle";
 import { useLanguage } from "@/shared/providers/language-context";
@@ -26,6 +26,7 @@ type Props = {
 /**
  * SCRUM-464: chọn Practice vs Tuyển + anti-cheat HR (sau khi gen xong / lúc publish).
  * Compact: segmented control + chip AC (hint admin qua tooltip — không phá toolbar).
+ * Pill slide: CSS transform giống landing pricing tabs (không dùng Framer layoutId).
  */
 export function HiringModeControls({
   value,
@@ -39,6 +40,12 @@ export function HiringModeControls({
   const { addToast } = useToast();
   const [adminAntiCheat, setAdminAntiCheat] = useState<boolean | null>(null);
   const [saving, setSaving] = useState(false);
+  /** Optimistic highlight — slide ngay khi click, không chờ API. */
+  const [visualHiring, setVisualHiring] = useState(value.isHiringAssessment);
+
+  useEffect(() => {
+    setVisualHiring(value.isHiringAssessment);
+  }, [value.isHiringAssessment]);
 
   useEffect(() => {
     let cancelled = false;
@@ -56,10 +63,13 @@ export function HiringModeControls({
 
   async function apply(next: HiringModeValue) {
     if (disabled || saving) return;
+    const prev = visualHiring;
+    setVisualHiring(next.isHiringAssessment);
     setSaving(true);
     try {
       await onChange(next);
     } catch (err) {
+      setVisualHiring(prev);
       // Backend gate (thiếu PublicJobDescription / JD gốc) — toast, không để Next.js overlay.
       addToast(
         "error",
@@ -75,34 +85,40 @@ export function HiringModeControls({
   const acOn = value.isHiringAssessment && value.hrAntiCheatEnabled && adminAntiCheat === true;
   const acDisabled = busy || !value.isHiringAssessment || adminOff;
 
-  const segmentBtn = (active: boolean) =>
-    cn(
-      "inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold transition-colors disabled:opacity-50",
-      active
-        ? "bg-primary text-white shadow-sm"
-        : "bg-transparent text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
-    );
-
   const modeSegment = (
     <div
-      className={cn(
-        "inline-flex items-center rounded-lg border border-gray-200 bg-gray-50 p-0.5 dark:border-gray-700 dark:bg-gray-900/80",
-        busy && "opacity-70"
-      )}
+      className="relative grid w-54 grid-cols-2 rounded-lg border border-gray-200 bg-gray-50 p-0.5 dark:border-gray-700 dark:bg-gray-900/80"
       role="group"
       aria-label={h.sectionLabel}
     >
+      {/* Pill trượt riêng — không overshoot (bezier y≤1) để tránh giật khi về Luyện tập */}
+      <span
+        aria-hidden="true"
+        className="pointer-events-none absolute top-0.5 bottom-0.5 left-0.5 z-0 w-[calc(50%-2px)] rounded-md bg-primary shadow-sm will-change-transform"
+        style={{
+          transform: visualHiring
+            ? "translate3d(100%, 0, 0)"
+            : "translate3d(0, 0, 0)",
+          transition: "transform 280ms cubic-bezier(0.4, 0, 0.2, 1)",
+        }}
+      />
+
       <button
         type="button"
         disabled={busy}
         onClick={() =>
           void apply({ isHiringAssessment: false, hrAntiCheatEnabled: false })
         }
-        className={cn(segmentBtn(!value.isHiringAssessment), "rounded-md")}
+        className={cn(
+          "relative z-10 flex min-w-0 items-center justify-center gap-1 rounded-md px-2 py-1 text-[11px] font-semibold whitespace-nowrap transition-colors duration-200 disabled:opacity-50",
+          !visualHiring
+            ? "text-white"
+            : "text-gray-600 hover:text-gray-800 dark:text-gray-300 dark:hover:text-gray-100"
+        )}
         title={h.practiceHint}
       >
-        <Dumbbell size={12} strokeWidth={2.2} />
-        {h.practice}
+        <Dumbbell size={12} strokeWidth={2.2} className="shrink-0" aria-hidden />
+        <span>{h.practice}</span>
       </button>
       <button
         type="button"
@@ -113,64 +129,28 @@ export function HiringModeControls({
             hrAntiCheatEnabled: adminAntiCheat === true ? value.hrAntiCheatEnabled : false,
           })
         }
-        className={cn(segmentBtn(value.isHiringAssessment), "rounded-md")}
+        className={cn(
+          "relative z-10 flex min-w-0 items-center justify-center gap-1 rounded-md px-2 py-1 text-[11px] font-semibold whitespace-nowrap transition-colors duration-200 disabled:opacity-50",
+          visualHiring
+            ? "text-white"
+            : "text-gray-600 hover:text-gray-800 dark:text-gray-300 dark:hover:text-gray-100"
+        )}
         title={h.hiringHint}
       >
-        <Briefcase size={12} strokeWidth={2.2} />
-        {h.hiring}
+        <Briefcase size={12} strokeWidth={2.2} className="shrink-0" aria-hidden />
+        <span>{h.hiring}</span>
       </button>
     </div>
   );
 
-  /** Chip AC gọn trên toolbar — click bật/tắt; admin off → khóa + tooltip */
-  const compactAcChip =
-    value.isHiringAssessment && (
-      <button
-        type="button"
-        disabled={acDisabled && !adminOff}
-        onClick={() => {
-          if (adminOff || busy) return;
-          void apply({
-            isHiringAssessment: true,
-            hrAntiCheatEnabled: !value.hrAntiCheatEnabled,
-          });
-        }}
-        title={
-          adminOff
-            ? h.adminOffHint
-            : acOn
-              ? h.antiCheatOnHint
-              : h.antiCheatOffHint
-        }
-        className={cn(
-          "inline-flex h-[26px] items-center gap-1 rounded-md border px-2 text-[11px] font-semibold transition-colors",
-          adminOff
-            ? "cursor-not-allowed border-amber-200/80 bg-amber-50 text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-200"
-            : acOn
-              ? "border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-300"
-              : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300",
-          busy && "opacity-60"
-        )}
-      >
-        {adminOff ? (
-          <Lock size={11} className="shrink-0" />
-        ) : acOn ? (
-          <Shield size={11} className="shrink-0" />
-        ) : (
-          <ShieldOff size={11} className="shrink-0" />
-        )}
-        <span className="whitespace-nowrap">
-          {adminOff ? h.antiCheatLocked : acOn ? h.antiCheatOn : h.antiCheatOff}
-        </span>
-      </button>
-    );
-
   if (variant === "compact") {
     return (
-      <div className={cn("inline-flex flex-wrap items-center gap-1.5", className)}>
+      <div className={cn("inline-flex items-center gap-1.5", className)}>
         {modeSegment}
-        {compactAcChip}
-        {saving && <Loader2 size={12} className="animate-spin text-gray-400" />}
+        {/* Ô cố định: spinner không được làm co/giãn hàng toolbar → segment đứng im */}
+        <span className="inline-flex w-3 shrink-0 items-center justify-center" aria-hidden>
+          {saving && <Loader2 size={12} className="animate-spin text-gray-400" />}
+        </span>
       </div>
     );
   }
@@ -193,7 +173,7 @@ export function HiringModeControls({
       <div className="mt-2">{modeSegment}</div>
 
       <p className={cn("mt-2 text-[11px] leading-snug", portalSubtext)}>
-        {value.isHiringAssessment ? h.hiringHint : h.practiceHint}
+        {visualHiring ? h.hiringHint : h.practiceHint}
       </p>
 
       {value.isHiringAssessment && (

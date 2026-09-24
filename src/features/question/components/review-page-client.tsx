@@ -97,6 +97,13 @@ export function ReviewPageClient({
 
   const [bookmarked, setBookmarked] = useState(false);
   const [bookmarkBusy, setBookmarkBusy] = useState(false);
+  const [timeLimitMinutes, setTimeLimitMinutes] = useState<number | null>(
+    initialTimeLimitMinutes ?? null
+  );
+
+  useEffect(() => {
+    setTimeLimitMinutes(initialTimeLimitMinutes ?? null);
+  }, [initialTimeLimitMinutes]);
 
   useEffect(() => {
     setJobDescription(jobDescriptionProp ?? session.jdContent);
@@ -213,8 +220,8 @@ export function ReviewPageClient({
     draftQuestions?.length ?? session.generatedQuestions?.length ?? 0;
   const metaParts = [
     rp.questionCount.replace("{{count}}", String(questionCount)),
-    initialTimeLimitMinutes != null
-      ? rp.timeLimitLabel.replace("{{min}}", String(initialTimeLimitMinutes))
+    timeLimitMinutes != null
+      ? rp.timeLimitLabel.replace("{{min}}", String(timeLimitMinutes))
       : rp.noTimeLimitLabel,
     initialAutoRecommendEnabled
       ? rp.recSettingsLabelOn.replace(
@@ -462,7 +469,8 @@ export function ReviewPageClient({
                 publishStatus={publishStatus}
                 onPublishStatusChange={onPublishStatusChange}
                 onDraftSaved={onDraftSaved}
-                initialTimeLimitMinutes={initialTimeLimitMinutes}
+                initialTimeLimitMinutes={timeLimitMinutes}
+                onTimeLimitChange={setTimeLimitMinutes}
                 initialAutoRecommendEnabled={initialAutoRecommendEnabled}
                 initialRecommendationMinScore={initialRecommendationMinScore}
                 initialIsHiringAssessment={initialIsHiringAssessment}
@@ -504,8 +512,8 @@ export function ReviewPageClient({
                 {
                   label: rp.setInfoTimeLimit,
                   value:
-                    initialTimeLimitMinutes != null
-                      ? rp.timeLimitLabel.replace("{{min}}", String(initialTimeLimitMinutes))
+                    timeLimitMinutes != null
+                      ? rp.timeLimitLabel.replace("{{min}}", String(timeLimitMinutes))
                       : rp.noTimeLimitLabel,
                 },
                 {

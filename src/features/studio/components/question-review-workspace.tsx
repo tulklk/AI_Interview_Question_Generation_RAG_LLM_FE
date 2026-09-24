@@ -1297,6 +1297,19 @@ export function QuestionReviewWorkspace({
                   onDraftChange={publicJd.onDraftChange}
                   onPostingDraftChange={publicJd.onPostingDraftChange}
                   onSaved={publicJd.onSaved}
+                  antiCheat={
+                    hiringMode && onHiringModeChange
+                      ? {
+                          enabled: hiringMode.hrAntiCheatEnabled,
+                          onChange: async (enabled) => {
+                            await onHiringModeChange({
+                              isHiringAssessment: true,
+                              hrAntiCheatEnabled: enabled,
+                            });
+                          },
+                        }
+                      : null
+                  }
                 />
               </div>
             )}

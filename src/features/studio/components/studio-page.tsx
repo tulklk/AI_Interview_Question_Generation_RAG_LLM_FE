@@ -1321,10 +1321,14 @@ export function StudioPage() {
             isDraftSaved={studio.isDraftSaved}
             isPublished={studio.project?.isPublished ?? false}
             hiringMode={{
-              isHiringAssessment: Boolean(studio.settings?.isHiringAssessment),
+              isHiringAssessment:
+                Boolean(studio.settings?.isHiringAssessment) || publicJdNeedsAttention,
               hrAntiCheatEnabled: Boolean(studio.settings?.hrAntiCheatEnabled),
             }}
             onHiringModeChange={async (next) => {
+              if (!next.isHiringAssessment) {
+                setPublicJdNeedsAttention(false);
+              }
               if (next.isHiringAssessment) {
                 if (!questionSetId) {
                   addToast("error", t.reviewPage.saveDraftFirstHint);

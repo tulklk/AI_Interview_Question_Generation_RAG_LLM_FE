@@ -28,6 +28,7 @@ import {
 } from "@/features/subscription/services/subscription.service";
 import { getHrPaymentHistory } from "@/features/hr/services/hr-billing.service";
 import { printPaymentInvoice } from "@/features/subscription/utils/print-payment-invoice";
+import { HrBillingPlansSkeleton } from "./settings-skeletons";
 import { HrUsagePanel } from "@/features/settings/components/hr-usage-panel";
 import type { PaymentHistoryItem } from "@/features/candidate/types/billing";
 import {
@@ -411,9 +412,7 @@ export function HrBillingSubscription() {
       <div ref={plansRef} className="space-y-4">
         <h3 className={cn("text-base font-semibold", portalHeading)}>{sub.plansTitle}</h3>
         {plansLoading ? (
-          <div className="flex justify-center py-10">
-            <Loader2 size={22} className="animate-spin text-[#6c47ff]" />
-          </div>
+          <HrBillingPlansSkeleton />
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-stretch min-w-0">
             {HR_PLAN_IDS.map((id) => {
@@ -737,41 +736,15 @@ export function HrBillingSubscription() {
                               </button>
                             )}
                             {item.receiptUrl && (
-                              <>
-                                <a
-                                  href={item.receiptUrl}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className={cn("flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors", portalSubtext)}
-                                >
-                                  <ExternalLink size={11} />
-                                  {ph.viewBtn}
-                                </a>
-                                <a
-                                  href={item.receiptUrl}
-                                  download
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className={cn("flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors", portalSubtext)}
-                                >
-                                  <Download size={11} />
-                                  {ph.downloadBtn}
-                                </a>
-                              </>
-                            )}
-                            {!item.receiptUrl && (
-                              <button
-                                type="button"
-                                disabled
-                                title={t.common.comingSoon}
-                                className={cn(
-                                  "flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-md opacity-50 cursor-not-allowed",
-                                  portalSubtext,
-                                )}
+                              <a
+                                href={item.receiptUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className={cn("flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors", portalSubtext)}
                               >
-                                <Download size={11} />
-                                {ph.downloadBtn}
-                              </button>
+                                <ExternalLink size={11} />
+                                {ph.viewBtn}
+                              </a>
                             )}
                           </div>
                         </td>

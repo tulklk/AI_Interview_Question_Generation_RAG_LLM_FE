@@ -3,14 +3,17 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { AlertCircle } from "lucide-react";
-import { AiLoadingSpinner } from "@/shared/components/common/ai-loading-spinner";
 import { AppShell } from "@/features/hr/components/layout/app-shell";
+import { HistoryReviewSkeleton } from "@/features/hr/components/history/history-review-skeleton";
 import { ReviewPageClient } from "@/features/question/components/review-page-client";
 import {
   getDraft,
   renameQuestionSetTitle,
+  setQuestionSetTimeLimit,
 } from "@/features/interview/services/interview.service";
 import type { DraftQuestionSet, GenerationSession } from "@/features/interview/types/generation-session";
+import { getSettings } from "@/features/studio/services/studio.service";
+import { normalizeStudioSettings } from "@/features/studio/utils/normalize-studio-settings";
 import { cn } from "@/lib/cn";
 import { portalHeading, portalSubtext } from "@/shared/utils/portal-ui";
 import { useLanguage } from "@/shared/providers/language-context";
@@ -18,7 +21,31 @@ import { useToast } from "@/shared/providers/toast-context";
 
 /**
  * SCRUM-391: /hr/history/[id] với id = questionSetId (không còn V1 jobId).
+ *
+ * Studio save-draft không ghi timeLimitMinutes lên question set — chỉ có lúc
+ * publish hoặc PUT /time-limit. Với DRAFT từ Studio còn null, sync một lần từ
+ * interviewLengthMinutes để chip/sidebar không kẹt “Không giới hạn”.
  */
+async function resolveTimeLimitMinutes(draft: DraftQuestionSet): Promise<number | null> {
+  if (draft.timeLimitMinutes != null && draft.timeLimitMinutes >= 1) {
+    return draft.timeLimitMinutes;
+  }
+  if (draft.status !== "DRAFT" || !draft.sourceProjectId) {
+    return draft.timeLimitMinutes ?? null;
+  }
+  try {
+    const raw = await getSettings(draft.sourceProjectId);
+    const settings = normalizeStudioSettings(raw);
+    const mins = settings?.interviewLengthMinutes;
+    if (mins == null || mins < 1 || mins > 480) return draft.timeLimitMinutes ?? null;
+    // Persist so candidate practice khớp UI; nếu PUT lỗi vẫn hiển thị đúng trên trang này.
+    await setQuestionSetTimeLimit(draft.id, mins).catch(() => undefined);
+    return mins;
+  } catch {
+    return draft.timeLimitMinutes ?? null;
+  }
+}
+
 export function HrReviewPageClient() {
   const params = useParams();
   const id = typeof params?.id === "string" ? params.id : "";
@@ -46,7 +73,9 @@ export function HrReviewPageClient() {
         setNotFound(true);
         setDraft(null);
       } else {
-        setDraft(d);
+        const timeLimitMinutes = await resolveTimeLimitMinutes(d);
+        if (cancelled) return;
+        setDraft({ ...d, timeLimitMinutes });
         setPublishStatus(d.status);
         setNotFound(false);
       }
@@ -59,17 +88,27 @@ export function HrReviewPageClient() {
 
   if (loading) {
     return (
-      <AppShell pageTitle={t.historyPage.heading}>
-        <div className="flex justify-center py-20">
-          <AiLoadingSpinner />
-        </div>
+      <AppShell
+        pageTitle={t.historyPage.heading}
+        breadcrumb={[
+          { label: "HR", href: "/hr/dashboard" },
+          { label: t.historyPage.heading, href: "/hr/history" },
+        ]}
+      >
+        <HistoryReviewSkeleton />
       </AppShell>
     );
   }
 
   if (notFound || !draft) {
     return (
-      <AppShell pageTitle={t.historyPage.heading}>
+      <AppShell
+        pageTitle={t.historyPage.heading}
+        breadcrumb={[
+          { label: "HR", href: "/hr/dashboard" },
+          { label: t.historyPage.heading, href: "/hr/history" },
+        ]}
+      >
         <div className="mx-auto max-w-lg rounded-xl border border-amber-200 bg-amber-50 p-6 dark:border-amber-900 dark:bg-amber-950/40">
           <div className="flex items-start gap-3">
             <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
@@ -107,8 +146,18 @@ export function HrReviewPageClient() {
     isFromStudio: true,
   };
 
+  const detailTitle = draft.jobTitle || t.historyPage.heading;
+
   return (
-    <AppShell pageTitle={draft.jobTitle || t.historyPage.heading} fullWidth>
+    <AppShell
+      pageTitle={detailTitle}
+      breadcrumb={[
+        { label: "HR", href: "/hr/dashboard" },
+        { label: t.historyPage.heading, href: "/hr/history" },
+        { label: detailTitle },
+      ]}
+      fullWidth
+    >
       <ReviewPageClient
         session={session}
         draftQuestions={draft.questions}

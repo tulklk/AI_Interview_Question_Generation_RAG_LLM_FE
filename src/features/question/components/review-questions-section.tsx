@@ -167,6 +167,8 @@ interface ReviewQuestionsSectionProps {
   onPublishStatusChange?: (status: "DRAFT" | "PUBLISHED") => void;
   onDraftSaved?: (questionSetId: string) => void;
   initialTimeLimitMinutes?: number | null;
+  /** Keep header / sidebar in sync when HR edits the practice time limit. */
+  onTimeLimitChange?: (minutes: number | null) => void;
   /** SCRUM-424 */
   initialAutoRecommendEnabled?: boolean;
   initialRecommendationMinScore?: number;
@@ -200,6 +202,7 @@ export function ReviewQuestionsSection({
   onPublishStatusChange,
   onDraftSaved,
   initialTimeLimitMinutes,
+  onTimeLimitChange,
   initialAutoRecommendEnabled = true,
   initialRecommendationMinScore = 70,
   initialIsHiringAssessment = false,
@@ -238,6 +241,15 @@ export function ReviewQuestionsSection({
   const [timeLimitMinutes, setTimeLimitMinutes] = useState<number | null>(initialTimeLimitMinutes ?? null);
   const [showTimeLimitDialog, setShowTimeLimitDialog] = useState(false);
   const [savingTimeLimit, setSavingTimeLimit] = useState(false);
+
+  useEffect(() => {
+    setTimeLimitMinutes(initialTimeLimitMinutes ?? null);
+  }, [initialTimeLimitMinutes]);
+
+  function updateTimeLimitMinutes(minutes: number | null) {
+    setTimeLimitMinutes(minutes);
+    onTimeLimitChange?.(minutes);
+  }
   const [autoRecommendEnabled, setAutoRecommendEnabled] = useState(initialAutoRecommendEnabled);
   const [recommendationMinScore, setRecommendationMinScore] = useState(initialRecommendationMinScore);
   const [isHiringAssessment, setIsHiringAssessment] = useState(initialIsHiringAssessment);
@@ -647,7 +659,7 @@ export function ReviewQuestionsSection({
         hrAntiCheatEnabled: payload.hrAntiCheatEnabled,
       });
       if (payload.timeLimitMinutes !== timeLimitMinutes) {
-        setTimeLimitMinutes(payload.timeLimitMinutes);
+        updateTimeLimitMinutes(payload.timeLimitMinutes);
       }
       setAutoRecommendEnabled(payload.autoRecommendEnabled);
       setRecommendationMinScore(payload.recommendationMinScore);
@@ -672,7 +684,7 @@ export function ReviewQuestionsSection({
     setSavingTimeLimit(true);
     try {
       await setQuestionSetTimeLimit(questionSetId, minutes);
-      setTimeLimitMinutes(minutes);
+      updateTimeLimitMinutes(minutes);
       setShowTimeLimitDialog(false);
       addToast("success", rp.timeLimitSaveSuccess);
     } catch (err) {
@@ -824,8 +836,14 @@ export function ReviewQuestionsSection({
           {!readOnly && questionSetId && (
             <HiringModeControls
               variant="compact"
-              value={{ isHiringAssessment, hrAntiCheatEnabled }}
+              value={{
+                isHiringAssessment: isHiringAssessment || publicJdNeedsAttention,
+                hrAntiCheatEnabled,
+              }}
               onChange={async (next) => {
+                if (!next.isHiringAssessment) {
+                  setPublicJdNeedsAttention(false);
+                }
                 if (next.isHiringAssessment) {
                   try {
                     const ok = await ensureHiringPostingReady();
@@ -940,6 +958,19 @@ export function ReviewQuestionsSection({
           jdSourceType={jdSourceType}
           jdOriginalFileName={jdOriginalFileName}
           jdFileUrl={jdFileUrl}
+          antiCheat={{
+            enabled: hrAntiCheatEnabled,
+            onChange: async (enabled) => {
+              if (!questionSetId) return;
+              const saved = await setQuestionSetHiringAssessment(
+                questionSetId,
+                true,
+                enabled
+              );
+              setIsHiringAssessment(saved.isHiringAssessment);
+              setHrAntiCheatEnabled(saved.hrAntiCheatEnabled);
+            },
+          }}
         />
       )}
 

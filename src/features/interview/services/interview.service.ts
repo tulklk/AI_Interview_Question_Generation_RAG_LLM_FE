@@ -204,6 +204,29 @@ function normalizeDraftQuestion(raw: unknown, index: number): GeneratedQuestion 
   };
 }
 
+/** Practice time limit: 1–480; null/0/absent = unlimited. Coerce string numbers from BE. */
+function pickTimeLimitMinutes(src: Record<string, unknown>): number | null {
+  const nested =
+    src.settings && typeof src.settings === "object"
+      ? (src.settings as Record<string, unknown>)
+      : src.Settings && typeof src.Settings === "object"
+        ? (src.Settings as Record<string, unknown>)
+        : null;
+  const pools = nested ? [src, nested] : [src];
+  for (const obj of pools) {
+    for (const key of ["timeLimitMinutes", "TimeLimitMinutes", "timeLimit", "TimeLimit"]) {
+      const v = obj[key];
+      if (v == null || v === "") continue;
+      const n = typeof v === "number" ? v : typeof v === "string" ? Number(v) : NaN;
+      if (!Number.isFinite(n)) continue;
+      const mins = Math.trunc(n);
+      // Some payloads use seconds under `timeLimit` — only treat as minutes when in 1–480.
+      if (mins >= 1 && mins <= 480) return mins;
+    }
+  }
+  return null;
+}
+
 function normalizeDraft(raw: unknown): DraftQuestionSet | null {
   const src = raw as Record<string, unknown> | null;
   if (!src || typeof src !== "object") return null;
@@ -241,12 +264,7 @@ function normalizeDraft(raw: unknown): DraftQuestionSet | null {
           ? src.GeneratedAt
           : "",
     status,
-    timeLimitMinutes:
-      typeof src.timeLimitMinutes === "number"
-        ? src.timeLimitMinutes
-        : typeof src.TimeLimitMinutes === "number"
-          ? src.TimeLimitMinutes
-          : null,
+    timeLimitMinutes: pickTimeLimitMinutes(src),
     autoRecommendEnabled:
       typeof src.autoRecommendEnabled === "boolean"
         ? src.autoRecommendEnabled
