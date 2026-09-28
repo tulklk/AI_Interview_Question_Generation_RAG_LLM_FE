@@ -27,7 +27,7 @@ import type {
 
 export const adminNavItems: AdminNavItem[] = [
   { label: "Dashboard", href: "/admin/dashboard", icon: LayoutDashboard },
-  { label: "User Management", href: "/admin/users", icon: Users, badge: 3 },
+  { label: "User Management", href: "/admin/users", icon: Users },
   { label: "System Analytics", href: "/admin/analytics", icon: BarChart3 },
   { label: "Marketplace", href: "/admin/marketplace", icon: Store },
   { label: "Knowledge Base", href: "/admin/knowledge", icon: BookOpen },
