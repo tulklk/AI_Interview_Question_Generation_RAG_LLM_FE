@@ -30,6 +30,10 @@ const settingsApi = settingsApiTyped as unknown as {
   updatePlatformSettings: ReturnType<typeof vi.fn>;
 };
 
+const MIN_QUESTIONS_LABEL = "Minimum questions for HR to publish a set to the marketplace";
+const MAX_PINNED_LABEL = "Maximum sets pinned on the Marketplace";
+const TRENDING_LABEL = "Practice attempts needed to show the Trending badge";
+
 beforeEach(() => {
   settingsApi.getPlatformSettings.mockReset();
   settingsApi.updatePlatformSettings.mockReset();
@@ -38,19 +42,15 @@ beforeEach(() => {
 describe("Admin Platform Settings — General", () => {
   test("APS-1: loads and displays platform settings from the API", async () => {
     settingsApi.getPlatformSettings.mockResolvedValue({
-      platformName: "HireGen AI Prod",
-      defaultQuestionCount: 20,
-      maxJdsPerDay: 30,
-      sessionTimeout: 45,
       minQuestionsToPublish: 8,
       maxPinnedSets: 3,
       minAttemptsForTrending: 15,
     });
     renderWithProviders(<AdminSettingsPage />);
 
-    expect(await screen.findByDisplayValue("HireGen AI Prod", {}, { timeout: 10000 })).toBeInTheDocument();
-    expect(screen.getByLabelText("Default Question Count")).toHaveValue(20);
-    expect(screen.getByLabelText("Session Timeout (minutes)")).toHaveValue(45);
+    expect(await screen.findByLabelText(MIN_QUESTIONS_LABEL, {}, { timeout: 10000 })).toHaveValue(8);
+    expect(screen.getByLabelText(MAX_PINNED_LABEL)).toHaveValue(3);
+    expect(screen.getByLabelText(TRENDING_LABEL)).toHaveValue(15);
   });
 
   test("APS-2: a load failure shows Retry, and Retry re-fetches", async () => {
@@ -59,30 +59,29 @@ describe("Admin Platform Settings — General", () => {
     renderWithProviders(<AdminSettingsPage />);
 
     const retryBtn = await screen.findByRole("button", { name: "Retry" }, { timeout: 10000 });
-    settingsApi.getPlatformSettings.mockResolvedValue({ platformName: "HireGen AI Prod" });
+    settingsApi.getPlatformSettings.mockResolvedValue({ minQuestionsToPublish: 8 });
     await user.click(retryBtn);
 
-    expect(await screen.findByDisplayValue("HireGen AI Prod", {}, { timeout: 10000 })).toBeInTheDocument();
+    expect(await screen.findByLabelText(MIN_QUESTIONS_LABEL, {}, { timeout: 10000 })).toHaveValue(8);
   });
 
-  test("APS-3: saving calls updatePlatformSettings with the edited platform name", async () => {
-    settingsApi.getPlatformSettings.mockResolvedValue({ platformName: "HireGen AI" });
+  test("APS-3: saving calls updatePlatformSettings with the edited minimum-questions value", async () => {
+    settingsApi.getPlatformSettings.mockResolvedValue({ minQuestionsToPublish: 8 });
     settingsApi.updatePlatformSettings.mockResolvedValue(undefined);
     const user = userEvent.setup();
     renderWithProviders(<AdminSettingsPage />);
-    await screen.findByDisplayValue("HireGen AI", {}, { timeout: 10000 });
 
-    const nameInput = screen.getByLabelText("Platform Name");
-    await user.clear(nameInput);
-    await user.type(nameInput, "HireGen AI v2");
+    const minInput = await screen.findByLabelText(MIN_QUESTIONS_LABEL, {}, { timeout: 10000 });
+    await user.clear(minInput);
+    await user.type(minInput, "12");
     await user.click(screen.getByRole("button", { name: "Save Changes" }));
 
     await vi.waitFor(() =>
       expect(settingsApi.updatePlatformSettings).toHaveBeenCalledWith(
-        expect.objectContaining({ platformName: "HireGen AI v2" })
+        expect.objectContaining({ minQuestionsToPublish: 12 })
       )
     );
-    expect(await screen.findByText("Settings saved locally.")).toBeInTheDocument();
+    expect(await screen.findByText("Settings saved.")).toBeInTheDocument();
   });
 });
 
