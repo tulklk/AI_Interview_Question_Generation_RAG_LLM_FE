@@ -112,7 +112,8 @@ export async function listCompanies(params: ListCompaniesParams = {}): Promise<P
   if (params.page) query.page = params.page;
   if (params.pageSize) query.pageSize = params.pageSize;
 
-  const res = await apiClient.get("/api/companies", { params: query });
+  // SCRUM-480: Admin dùng endpoint phân trang; /api/companies public vẫn cho HR register
+  const res = await apiClient.get("/api/admin/companies", { params: query });
   const rawItems = extractItems(res.data);
   const items = rawItems.map(normalizeCompany).filter((c): c is Company => c !== null);
 

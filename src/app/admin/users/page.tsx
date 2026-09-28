@@ -10,7 +10,7 @@ import {
 } from "@/features/admin/components/users/user-table";
 import { UserDetailPanel } from "@/features/admin/components/users/user-detail-panel";
 import { UserPagination } from "@/features/admin/components/users/user-pagination";
-import { getUserById, listUsers, updateUserStatus } from "@/features/admin/services/admin-users.service";
+import { getUserById, getUserStats, listUsers, updateUserStatus, type AdminUserStats } from "@/features/admin/services/admin-users.service";
 import { UserFilters } from "@/features/admin/components/users/user-filters";
 import { Users as UsersIcon } from "lucide-react";
 import { useLanguage } from "@/shared/providers/language-context";
@@ -45,6 +45,8 @@ export default function UserManagementPage() {
 
   const [users, setUsers] = useState<AdminUserListItem[]>([]);
   const [totalCount, setTotalCount] = useState(0);
+  const [userStats, setUserStats] = useState<AdminUserStats | null>(null);
+  const [statsLoading, setStatsLoading] = useState(true);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -108,6 +110,17 @@ export default function UserManagementPage() {
     }
   }, [listParams, u.loadError]);
 
+  const fetchStats = useCallback(async () => {
+    setStatsLoading(true);
+    try {
+      setUserStats(await getUserStats());
+    } catch {
+      setUserStats(null);
+    } finally {
+      setStatsLoading(false);
+    }
+  }, []);
+
   // Silent background refresh — no loading skeleton, just swaps data when ready
   const refreshUsersQuietly = useCallback(async () => {
     try {
@@ -125,6 +138,10 @@ export default function UserManagementPage() {
   useEffect(() => {
     void fetchUsers();
   }, [fetchUsers]);
+
+  useEffect(() => {
+    void fetchStats();
+  }, [fetchStats]);
 
   // ── Real-time: SignalR subscription events ────────────────────────────────
   // When a user pays or admin grants/revokes premium from another session,
@@ -194,6 +211,7 @@ export default function UserManagementPage() {
       await updateUserStatus(user.id, nextActive);
       addToast("success", u.statusUpdateSuccess);
       await fetchUsers();
+      await fetchStats();
       await fetchDetail(user.id);
     } catch {
       addToast("error", u.statusUpdateError);
@@ -221,7 +239,7 @@ export default function UserManagementPage() {
         <AdminPageHeader heading={u.heading} subtext={u.subtext} icon={UsersIcon} />
 
         <div className="animate-fade-up" style={{ animationDelay: "80ms" }}>
-          <UserStats users={users} totalCount={totalCount} loading={loading} />
+          <UserStats stats={userStats} loading={statsLoading} />
         </div>
 
         <div className="mt-6 animate-fade-up" style={{ animationDelay: "160ms" }}>
