@@ -3,8 +3,7 @@
 import { useAdminInView } from "@/features/admin/hooks/use-admin-in-view";
 import { Users2, UserCheck, Clock, Loader2 } from "lucide-react";
 import { useLanguage } from "@/shared/providers/language-context";
-import { getAdminUserStatus } from "@/features/admin/utils/admin-user-display";
-import type { AdminUserListItem } from "@/features/admin/types/admin-user";
+import type { AdminUserStats } from "@/features/admin/services/admin-users.service";
 import { cn } from "@/lib/cn";
 import { portalHeadingAlt, portalSubtextAlt } from "@/shared/utils/portal-ui";
 import { useCountUp } from "@/shared/hooks/use-count-up";
@@ -15,37 +14,34 @@ function StatNumber({ value, active }: { value: number; active: boolean }) {
 }
 
 interface UserStatsProps {
-  users: AdminUserListItem[];
-  totalCount: number;
+  /** SCRUM-480: KPI từ GET /api/admin/users/stats — không đếm trên trang hiện tại. */
+  stats: AdminUserStats | null;
   loading?: boolean;
 }
 
-export function UserStats({ users, totalCount, loading = false }: UserStatsProps) {
+export function UserStats({ stats, loading = false }: UserStatsProps) {
   const { t } = useLanguage();
   const s = t.adminPages.users.stats;
   const { ref, isInView } = useAdminInView();
 
-  const active = users.filter((u) => getAdminUserStatus(u) === "Active").length;
-  const pending = users.filter((u) => getAdminUserStatus(u) === "Pending").length;
-
-  const stats = [
+  const cards = [
     {
       label: s.totalUsers,
-      numericValue: totalCount,
+      numericValue: stats?.totalUsers ?? 0,
       icon: Users2,
       iconBg: "bg-violet-50 dark:bg-violet-950/40",
       iconColor: "text-[#7C3AED] dark:text-[#a78bff]",
     },
     {
       label: s.activeUsers,
-      numericValue: active,
+      numericValue: stats?.byStatus.active ?? 0,
       icon: UserCheck,
       iconBg: "bg-emerald-50 dark:bg-emerald-950/40",
       iconColor: "text-emerald-600 dark:text-emerald-400",
     },
     {
       label: s.pendingApproval,
-      numericValue: pending,
+      numericValue: stats?.byStatus.pending ?? 0,
       icon: Clock,
       iconBg: "bg-amber-50 dark:bg-amber-950/40",
       iconColor: "text-amber-600 dark:text-amber-400",
@@ -54,7 +50,7 @@ export function UserStats({ users, totalCount, loading = false }: UserStatsProps
 
   return (
     <div ref={ref} className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
-      {stats.map((st, i) => {
+      {cards.map((st, i) => {
         const Icon = st.icon;
         return (
           <div

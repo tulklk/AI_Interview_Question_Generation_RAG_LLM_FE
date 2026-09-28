@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { AlertCircle, RefreshCw, Lock } from "lucide-react";
@@ -293,7 +293,7 @@ export function FeedbackResultClient() {
   }
 
   /** SCRUM-479: Premium chấm full AI on-demand cho session Free cũ. */
-  async function handleEvaluateFull() {
+  const handleEvaluateFull = useCallback(async () => {
     if (!session) return;
     const fb = await evaluateFullSessionFeedback(session.id);
     setFeedback(fb.evaluations);
@@ -303,7 +303,21 @@ export function FeedbackResultClient() {
     if (fb.overallScore !== null) {
       setSession((prev) => (prev ? { ...prev, overallScore: fb.overallScore } : prev));
     }
-  }
+  }, [session]);
+
+  /** SCRUM-479: Admin grant Premium — refetch GET feedback (FreeTeaser → Full). */
+  const handlePremiumAccessRefresh = useCallback(async () => {
+    if (!session) return;
+    const fb = await getSessionFeedback(session.id);
+    if (!fb) return;
+    if (Object.keys(fb.evaluations).length > 0) setFeedback(fb.evaluations);
+    setAiInsight(fb.aiInsight);
+    setAccessLevel(fb.accessLevel);
+    setNeedsFullEvaluation(fb.needsFullEvaluation);
+    if (fb.overallScore !== null) {
+      setSession((prev) => (prev ? { ...prev, overallScore: fb.overallScore } : prev));
+    }
+  }, [session]);
 
   return (
     <JobseekerAppShell
@@ -374,6 +388,7 @@ export function FeedbackResultClient() {
             accessLevel={accessLevel}
             needsFullEvaluation={needsFullEvaluation}
             onEvaluateFull={handleEvaluateFull}
+            onPremiumAccessRefresh={handlePremiumAccessRefresh}
             scoring={scoring}
             scoringTimedOut={scoringTimedOut}
             onRetryScore={retryScoring}

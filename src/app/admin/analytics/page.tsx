@@ -8,6 +8,7 @@ import { RoleDistribution } from "@/features/admin/components/analytics/role-dis
 import { BarChart2 } from "lucide-react";
 import { useLanguage } from "@/shared/providers/language-context";
 import { AdminPageHeader } from "@/features/admin/components/layout/admin-page-header";
+import { AdminPreviewNotice } from "@/features/admin/components/layout/admin-preview-notice";
 
 export default function SystemAnalyticsPage() {
   const { t } = useLanguage();
@@ -28,6 +29,8 @@ export default function SystemAnalyticsPage() {
         cardBorder="border-blue-100 dark:border-blue-900/30"
         iconShadow="shadow-blue-200 dark:shadow-blue-900/30"
       />
+
+      <AdminPreviewNotice message={a.sampleNote} />
 
       <div className="animate-fade-up" style={{ animationDelay: "80ms" }}>
         <AnalyticsStats />

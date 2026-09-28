@@ -149,10 +149,11 @@ function normalizeListItem(raw: unknown): AdminMarketplaceListItem | null {
     title: pickString(src, "title") || id,
     description: pickOptionalString(src, "description"),
     hrUserId: pickString(src, "hrUserId"),
-    hrName: pickString(src, "hrName"),
+    // SCRUM-480: LEFT JOIN — thiếu HR/company thì hiện fallback
+    hrName: pickString(src, "hrName") || "Unknown HR",
     hrEmail: pickString(src, "hrEmail"),
     companyId: pickString(src, "companyId"),
-    companyName: pickString(src, "companyName"),
+    companyName: pickString(src, "companyName") || "—",
     companyLogo: pickOptionalString(src, "companyLogo"),
     difficulty: pickString(src, "difficulty") || "Medium",
     skills: pickStringArray(src, "skills"),
