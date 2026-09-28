@@ -29,10 +29,6 @@ export function GeneralSettings() {
   const { addToast } = useToast();
   const g = t.adminPages.settings.general;
 
-  const [platformName, setPlatformName] = useState("HireGen AI");
-  const [defaultQuestionCount, setDefaultQuestionCount] = useState("15");
-  const [maxJdsPerDay, setMaxJdsPerDay] = useState("50");
-  const [sessionTimeout, setSessionTimeout] = useState("60");
   const [minQuestionsToPublish, setMinQuestionsToPublish] = useState("10");
   const [maxPinnedSets, setMaxPinnedSets] = useState("5");
   const [minAttemptsForTrending, setMinAttemptsForTrending] = useState("10");
@@ -48,10 +44,6 @@ export function GeneralSettings() {
     setLoadError(false);
     try {
       const s = await getPlatformSettings();
-      if (s.platformName) setPlatformName(s.platformName);
-      if (s.defaultQuestionCount != null) setDefaultQuestionCount(String(s.defaultQuestionCount));
-      if (s.maxJdsPerDay != null) setMaxJdsPerDay(String(s.maxJdsPerDay));
-      if (s.sessionTimeout != null) setSessionTimeout(String(s.sessionTimeout));
       if (s.minQuestionsToPublish != null) setMinQuestionsToPublish(String(s.minQuestionsToPublish));
       if (s.maxPinnedSets != null) setMaxPinnedSets(String(s.maxPinnedSets));
       if (s.minAttemptsForTrending != null) setMinAttemptsForTrending(String(s.minAttemptsForTrending));
@@ -71,10 +63,6 @@ export function GeneralSettings() {
     try {
       const maxLeaves = Math.min(20, Math.max(1, Number(antiCheatMaxTabLeaves) || 3));
       await updatePlatformSettings({
-        platformName,
-        defaultQuestionCount: Number(defaultQuestionCount) || undefined,
-        maxJdsPerDay: Number(maxJdsPerDay) || undefined,
-        sessionTimeout: Number(sessionTimeout) || undefined,
         minQuestionsToPublish: Number(minQuestionsToPublish) || undefined,
         maxPinnedSets: Number(maxPinnedSets) || 0,
         minAttemptsForTrending: Number(minAttemptsForTrending) || undefined,
@@ -212,51 +200,6 @@ export function GeneralSettings() {
             <p className={cn("mt-1 text-[11px]", portalSubtextAlt)}>{g.antiCheatMaxTabLeavesHint}</p>
           </FormField>
         </div>
-
-        <FormField label={g.platformName} htmlFor="platform-name">
-          <input
-            id="platform-name"
-            value={platformName}
-            onChange={(e) => setPlatformName(e.target.value)}
-            className={inputCls}
-          />
-        </FormField>
-
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <FormField label={g.defaultQuestionCount} htmlFor="question-count">
-            <input
-              id="question-count"
-              type="number"
-              min={5}
-              max={50}
-              value={defaultQuestionCount}
-              onChange={(e) => setDefaultQuestionCount(e.target.value)}
-              className={inputCls}
-            />
-          </FormField>
-
-          <FormField label={g.maxJDs} htmlFor="max-jds">
-            <input
-              id="max-jds"
-              type="number"
-              min={1}
-              value={maxJdsPerDay}
-              onChange={(e) => setMaxJdsPerDay(e.target.value)}
-              className={inputCls}
-            />
-          </FormField>
-        </div>
-
-        <FormField label={g.sessionTimeout} htmlFor="session-timeout">
-          <input
-            id="session-timeout"
-            type="number"
-            min={15}
-            value={sessionTimeout}
-            onChange={(e) => setSessionTimeout(e.target.value)}
-            className={inputCls}
-          />
-        </FormField>
 
         <div className={cn("border-t pt-2", portalDivider)}>
           <p className={cn("mb-3 text-xs font-semibold uppercase tracking-wide", portalSubtextAlt)}>
