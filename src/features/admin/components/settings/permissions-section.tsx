@@ -6,6 +6,7 @@ import { Toggle } from "@/shared/components/ui/toggle";
 import { useLanguage } from "@/shared/providers/language-context";
 import { cn } from "@/lib/cn";
 import { portalDivider, portalHeading, portalSubtext, portalTableRow } from "@/shared/utils/portal-ui";
+import { AdminPreviewNotice } from "@/features/admin/components/layout/admin-preview-notice";
 
 type Role = "Admin" | "Recruiter" | "Guest";
 
@@ -47,6 +48,8 @@ export function PermissionsSection() {
   return (
     <div>
       <h3 className={cn("text-base font-semibold mb-5", portalHeading)}>{p.title}</h3>
+
+      <AdminPreviewNotice message={t.adminPages.settings.previewNote} />
 
       <div className={cn("overflow-hidden rounded-lg border", portalDivider)}>
         <table className="w-full text-sm">

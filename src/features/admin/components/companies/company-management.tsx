@@ -463,7 +463,10 @@ export function CompanyManagement() {
         {!error && totalCount > PAGE_SIZE && (
           <div className="flex items-center justify-between mt-4 px-1">
             <p className="text-xs text-gray-400 dark:text-gray-500 tabular-nums">
-              {totalCount} công ty · Trang {page}/{totalPages}
+              {c.pageSummary
+                .replace("{{total}}", String(totalCount))
+                .replace("{{page}}", String(page))
+                .replace("{{pages}}", String(totalPages))}
             </p>
             <div className="flex items-center gap-2">
               <button
@@ -480,7 +483,7 @@ export function CompanyManagement() {
                 disabled={page >= totalPages || loading}
                 className="px-3 py-1.5 text-xs font-medium rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors disabled:opacity-40"
               >
-                Sau
+                {c.nextPage}
               </button>
             </div>
           </div>

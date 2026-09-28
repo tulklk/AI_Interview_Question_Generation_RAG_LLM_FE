@@ -293,7 +293,7 @@ export function AdminMarketplaceSetCard({
           </span>
         </div>
 
-        {item.rating != null ? (
+        {item.rating != null && item.rating > 0 ? (
           <div className="flex items-center gap-1.5" title={labels.ratingTooltip}>
             {[1, 2, 3, 4, 5].map((star) => (
               <Star

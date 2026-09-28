@@ -2441,6 +2441,8 @@ Yêu cầu:
       createError: "Không thể tạo công ty. Vui lòng thử lại.",
       createBulkSuccess: "Đã tạo thành công {{count}} công ty.",
       createBulkError: "Không thể tạo các công ty. Vui lòng thử lại.",
+      pageSummary: "{{total}} công ty · Trang {{page}}/{{pages}}",
+      nextPage: "Sau",
       updateSuccess: "Cập nhật công ty thành công.",
       updateError: "Không thể cập nhật công ty. Vui lòng thử lại.",
       deleteSuccess: "Xóa công ty thành công.",
@@ -2549,6 +2551,7 @@ Yêu cầu:
     analytics: {
       heading: "Phân tích hệ thống",
       subtext: "Hiệu suất và thông tin sử dụng toàn nền tảng.",
+      sampleNote: "Dữ liệu mẫu: trang này là bản xem trước giao diện, chưa kết nối dữ liệu thật của nền tảng. Số liệu thật xem ở trang Tổng quan.",
       weeklyUsage: {
         title: "Sử dụng nền tảng theo tuần",
         subtitle: "Người dùng hoạt động so với lượt nộp JD",
@@ -2665,6 +2668,7 @@ Yêu cầu:
     settings: {
       heading: "Cài đặt quản trị",
       subtext: "Cấu hình hành vi nền tảng, quyền truy cập và thông báo.",
+      previewNote: "Chỉ xem trước: thay đổi ở tab này không được lưu và chưa ảnh hưởng đến nền tảng.",
       tabs: {
         general: "Chung",
         permissions: "Quyền hạn",
@@ -2698,7 +2702,7 @@ Yêu cầu:
         resetDesc: "Xóa tất cả phiên và phân tích đã tạo. Không thể hoàn tác.",
         resetBtn: "Đặt lại",
         saveBtn: "Lưu thay đổi",
-        saveSuccess: "Đã lưu cài đặt trên trình duyệt.",
+        saveSuccess: "Đã lưu cài đặt.",
       },
       aiConfig: {
         title: "Cấu hình AI",

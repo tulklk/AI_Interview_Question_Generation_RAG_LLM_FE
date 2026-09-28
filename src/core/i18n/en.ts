@@ -2445,6 +2445,8 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
       deleteSuccess: "Company deleted successfully.",
       deleteError: "Failed to delete company. Please try again.",
       emptyState: "No companies found.",
+      pageSummary: "{{total}} companies · Page {{page}}/{{pages}}",
+      nextPage: "Next",
       filters: {
         searchPlaceholder: "Search by company name...",
       },
@@ -2548,6 +2550,7 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
     analytics: {
       heading: "System Analytics",
       subtext: "Platform-wide performance and usage insights.",
+      sampleNote: "Sample data: this page is a design preview and is not connected to live platform data yet. See the Dashboard for real figures.",
       weeklyUsage: {
         title: "Weekly Platform Usage",
         subtitle: "Active users vs JD submissions",
@@ -2664,6 +2667,7 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
     settings: {
       heading: "Admin Settings",
       subtext: "Configure platform behavior, access permissions, and notifications.",
+      previewNote: "Preview only: changes on this tab are not saved and do not affect the platform yet.",
       tabs: {
         general: "General",
         permissions: "Permissions",
@@ -2697,7 +2701,7 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
         resetDesc: "Clear all generated sessions and analytics. This cannot be undone.",
         resetBtn: "Reset",
         saveBtn: "Save Changes",
-        saveSuccess: "Settings saved locally.",
+        saveSuccess: "Settings saved.",
       },
       aiConfig: {
         title: "AI Configuration",
