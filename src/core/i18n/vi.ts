@@ -2997,6 +2997,7 @@ Yêu cầu:
     drillItem: "Luyện",
     takeDrill: "Làm bài",
     itemDrillScore: "Lần luyện gần nhất: {{score}}",
+    drillPassHint: "Đạt {{score}} điểm — cần > {{min}} để mở bước tiếp. Hãy luyện lại.",
     startReassessment: "Bắt đầu đánh giá lại",
     takeReassessment: "Làm bài đánh giá lại",
     purposeReassessment: "Đánh giá lại",

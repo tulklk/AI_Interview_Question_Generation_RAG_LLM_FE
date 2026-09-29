@@ -193,6 +193,18 @@ export function CoachJourneyPath({
                       {fillTemplate(p.itemDrillScore, { score: String(Math.round(item.drillScore)) })}
                     </p>
                   )}
+                  {/* SCRUM-487: chưa đạt > 70 — nhắc làm lại, chưa mở topic sau */}
+                  {!item.isReassessmentGate &&
+                    item.status === "InProgress" &&
+                    item.drillScore != null &&
+                    item.drillScore <= 70 && (
+                      <p className="mt-1 text-[11px] font-medium text-amber-700 dark:text-amber-300">
+                        {fillTemplate(p.drillPassHint, {
+                          score: String(Math.round(item.drillScore)),
+                          min: "70",
+                        })}
+                      </p>
+                    )}
                   {item.canViewSource && item.knowledgeDocumentId ? (
                     <button
                       type="button"
