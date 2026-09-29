@@ -3040,9 +3040,9 @@ Yêu cầu:
     newCoachRun: "Chạy Coach mới",
     newCoachRunConfirmTitle: "Chạy Coach mới?",
     newCoachRunConfirm:
-      "Bắt đầu lại từ Confirm Goal? Báo cáo/lộ trình hiện tại sẽ được thay (lịch sử vẫn giữ). CV không mất.",
+      "Bắt đầu lại từ bước CV? Bạn có thể dùng lại CV hiện tại hoặc tải CV mới. Báo cáo/lộ trình hiện tại sẽ được thay (lịch sử vẫn giữ).",
     newCoachRunConfirmYes: "Bắt đầu lại",
-    newCoachRunDone: "Đã reset Coach — hãy xác nhận mục tiêu rồi chạy chẩn đoán mới.",
+    newCoachRunDone: "Đã reset Coach — hãy dùng lại hoặc tải CV mới, rồi tiếp tục vòng mới.",
     newCoachRunFailed: "Không reset được vòng Coach. Thử lại sau.",
     frameworkMissing:
       "Chưa có competency framework cho vai trò này. Chọn một vai trò đang hỗ trợ hoặc liên hệ Admin.",
@@ -3107,6 +3107,9 @@ Yêu cầu:
     phaseAnalysisDesc: "Xem tóm tắt, kỹ năng và vai trò gợi ý trước khi xác nhận mục tiêu.",
     phaseGoalTitle: "Xác nhận mục tiêu",
     phaseGoalDesc: "Chọn vai trò/level để sinh khung đề phù hợp.",
+    continueWithExistingCv: "Tiếp tục với CV này",
+    uploadNewCv: "Tải CV mới",
+    cvExistingOnProfile: "Đã có CV trên hồ sơ của bạn.",
     uploadCvHere: "Tải CV lên",
     cvUploaded: "Đã tải CV — chuyển sang bước phân tích.",
     cvAnalysisFailed: "Đã lưu file nhưng phân tích AI chưa xong — bạn vẫn có thể tiếp tục.",

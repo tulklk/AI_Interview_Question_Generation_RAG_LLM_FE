@@ -3039,9 +3039,9 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
     newCoachRun: "Start a new Coach run",
     newCoachRunConfirmTitle: "Start a new Coach run?",
     newCoachRunConfirm:
-      "Restart from Confirm Goal? The current report/roadmaps will be replaced (history is kept). Your CV stays.",
+      "Start again from the CV step? You can reuse your current CV or upload a new one. Current report/roadmap will be replaced (history kept).",
     newCoachRunConfirmYes: "Start over",
-    newCoachRunDone: "Coach reset — confirm your goals, then start a new diagnostic.",
+    newCoachRunDone: "Coach reset — confirm or replace your CV, then continue the new run.",
     newCoachRunFailed: "Could not reset the Coach run. Try again later.",
     frameworkMissing:
       "No competency framework for this role yet. Pick a supported role or ask Admin to add one.",
@@ -3106,6 +3106,9 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
     phaseAnalysisDesc: "Review summary, skills, and suggested role before confirming goals.",
     phaseGoalTitle: "Confirm goals",
     phaseGoalDesc: "Pick role/level to generate the right blueprint.",
+    continueWithExistingCv: "Continue with this CV",
+    uploadNewCv: "Upload a new CV",
+    cvExistingOnProfile: "A CV is already on your profile.",
     uploadCvHere: "Upload CV",
     cvUploaded: "CV uploaded — continue to analysis.",
     cvAnalysisFailed: "File saved but AI analysis did not finish — you can still continue.",
