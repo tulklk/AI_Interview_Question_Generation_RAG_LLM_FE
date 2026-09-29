@@ -275,6 +275,8 @@ export interface CoachRoadmap {
   outsideCvReason?: string | null;
   /** SCRUM-484: thứ tự luyện skill (0 = trước) */
   displayOrder?: number;
+  /** SCRUM-488: điểm phải > giá trị này mới qua topic */
+  drillPassScoreExclusiveMin?: number;
   items: CoachRoadmapItem[];
 }
 
@@ -489,6 +491,8 @@ function mapRoadmap(src: Record<string, unknown>): CoachRoadmap {
     })(),
     outsideCvReason: pickString(src, "outsideCvReason", "OutsideCvReason") || null,
     displayOrder: pickNumber(src, "displayOrder", "DisplayOrder") ?? 0,
+    drillPassScoreExclusiveMin:
+      pickNumber(src, "drillPassScoreExclusiveMin", "DrillPassScoreExclusiveMin") ?? 70,
     items,
   };
 }

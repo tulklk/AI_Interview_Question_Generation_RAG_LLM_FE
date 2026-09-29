@@ -193,15 +193,15 @@ export function CoachJourneyPath({
                       {fillTemplate(p.itemDrillScore, { score: String(Math.round(item.drillScore)) })}
                     </p>
                   )}
-                  {/* SCRUM-487: chưa đạt > 70 — nhắc làm lại, chưa mở topic sau */}
+                  {/* SCRUM-487/488: chưa đạt ngưỡng Admin — nhắc làm lại */}
                   {!item.isReassessmentGate &&
                     item.status === "InProgress" &&
                     item.drillScore != null &&
-                    item.drillScore <= 70 && (
+                    item.drillScore <= (roadmap.drillPassScoreExclusiveMin ?? 70) && (
                       <p className="mt-1 text-[11px] font-medium text-amber-700 dark:text-amber-300">
                         {fillTemplate(p.drillPassHint, {
                           score: String(Math.round(item.drillScore)),
-                          min: "70",
+                          min: String(Math.round(roadmap.drillPassScoreExclusiveMin ?? 70)),
                         })}
                       </p>
                     )}

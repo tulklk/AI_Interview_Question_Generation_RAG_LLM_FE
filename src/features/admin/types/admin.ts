@@ -62,7 +62,7 @@ export interface WeeklyUsagePoint {
   submissions: number;
 }
 
-export type AdminSettingsTab = "general" | "permissions" | "notifications";
+export type AdminSettingsTab = "general" | "coach" | "permissions" | "notifications";
 
 /** Leaderboard row for admin dashboard (mock). */
 export interface DashboardTopRecruiter {
