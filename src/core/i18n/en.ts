@@ -1032,9 +1032,16 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
     dragDropOr: "or",
     dragDropClick: "click to choose file",
     dragDropHint: "PDF, DOCX, DOC, TXT · Max {{n}} MB per file",
-    dragDropHintAdmin: "PDF, DOCX, DOC, TXT, JSONL · Max {{n}} MB per file",
+    dragDropHintAdmin: "PDF, DOCX, DOC, TXT, JSONL, MD · Max {{n}} MB per file",
     jsonlUploadHint:
-      "JSONL (Admin): one object per line with {\"question\",\"answer\"}. Prefer Tech/InternalStack. Upload per-repo files (flask.jsonl…) instead of default.jsonl if already split.",
+      "JSONL (Admin): one object per line with {\"question\",\"answer\"}. Prefer Tech/InternalStack. Upload per-repo files (flask.jsonl…) instead of default.jsonl if already split. MD is allowed for roadmap/tech seed.",
+    allowCandidateViewLabel: "Allow Candidate to view",
+    allowCandidateViewHint:
+      "When enabled, candidates can open this file from Coach roadmap if the node is linked.",
+    candidateViewBadge: "Candidate view",
+    linkRoadmapNodesBtn: "Link roadmap nodes by filename",
+    linkRoadmapNodesSuccess: "Linked {{n}} roadmap node(s).",
+    linkRoadmapNodesFailed: "Could not link roadmap nodes.",
     fileTooLarge: "File \"{{name}}\" exceeds {{n}} MB.",
     uploadFailed: "Could not upload \"{{name}}\". Please try again.",
     loadFailed: "Failed to load documents.",

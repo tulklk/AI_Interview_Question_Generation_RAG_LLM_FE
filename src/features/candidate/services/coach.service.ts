@@ -248,6 +248,9 @@ export interface CoachRoadmapItem {
   drillSessionId?: string | null;
   sourceUrl?: string | null;
   sourceTitle?: string | null;
+  /** SCRUM-486 */
+  knowledgeDocumentId?: string | null;
+  canViewSource?: boolean;
   prerequisites: string[];
   nextTopics: string[];
 }
@@ -446,6 +449,8 @@ function mapRoadmapItem(src: Record<string, unknown>): CoachRoadmapItem {
     drillSessionId: pickString(src, "drillSessionId", "DrillSessionId") || null,
     sourceUrl: pickString(src, "sourceUrl", "SourceUrl") || null,
     sourceTitle: pickString(src, "sourceTitle", "SourceTitle") || null,
+    knowledgeDocumentId: pickString(src, "knowledgeDocumentId", "KnowledgeDocumentId") || null,
+    canViewSource: pickBool(src, "canViewSource", "CanViewSource"),
     prerequisites: pickStringList(src, "prerequisites", "Prerequisites"),
     nextTopics: pickStringList(src, "nextTopics", "NextTopics"),
   };
@@ -607,6 +612,39 @@ export async function startRoadmapReassessment(roadmapId: string): Promise<Coach
     { timeout: 180_000 }
   );
   return mapJob(extractData(res.data));
+}
+
+/** SCRUM-486: xem tài liệu nguồn KB gắn roadmap. */
+export interface CoachKnowledgeView {
+  documentId: string;
+  fileName: string;
+  contentType: "markdown" | "text" | "pdf" | "docx" | string;
+  content?: string | null;
+  url?: string | null;
+  expiresAt?: string | null;
+  sourceTitle?: string | null;
+  previewText?: string | null;
+}
+
+export async function getCoachKnowledgeSourceView(documentId: string): Promise<CoachKnowledgeView> {
+  const res = await apiClient.get(`/api/candidate/coach/knowledge-documents/${documentId}/view`);
+  const root = asRecord(res.data);
+  const raw =
+    asRecord(root?.data) ??
+    asRecord(root?.Data) ??
+    extractData(res.data) ??
+    root ??
+    {};
+  return {
+    documentId: pickString(raw, "documentId", "DocumentId") || documentId,
+    fileName: pickString(raw, "fileName", "FileName"),
+    contentType: pickString(raw, "contentType", "ContentType") || "text",
+    content: pickString(raw, "content", "Content") || null,
+    url: pickString(raw, "url", "Url") || null,
+    expiresAt: pickString(raw, "expiresAt", "ExpiresAt") || null,
+    sourceTitle: pickString(raw, "sourceTitle", "SourceTitle") || null,
+    previewText: pickString(raw, "previewText", "PreviewText") || null,
+  };
 }
 
 export function coachResolutionMode(context: CoachContext | null | undefined): string {

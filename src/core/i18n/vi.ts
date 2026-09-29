@@ -1034,9 +1034,16 @@ Yêu cầu:
     dragDropOr: "hoặc",
     dragDropClick: "nhấp để chọn file",
     dragDropHint: "PDF, DOCX, DOC, TXT · Tối đa {{n}} MB mỗi file",
-    dragDropHintAdmin: "PDF, DOCX, DOC, TXT, JSONL · Tối đa {{n}} MB mỗi file",
+    dragDropHintAdmin: "PDF, DOCX, DOC, TXT, JSONL, MD · Tối đa {{n}} MB mỗi file",
     jsonlUploadHint:
-      "JSONL (Admin): mỗi dòng {\"question\",\"answer\"}. Nên chọn loại Tech/InternalStack. Upload theo từng repo (flask.jsonl…) thay vì default.jsonl nếu đã tách file.",
+      "JSONL (Admin): mỗi dòng {\"question\",\"answer\"}. Nên chọn loại Tech/InternalStack. Upload theo từng repo (flask.jsonl…) thay vì default.jsonl nếu đã tách file. MD dùng cho seed roadmap/tech.",
+    allowCandidateViewLabel: "Cho phép Candidate xem",
+    allowCandidateViewHint:
+      "Khi bật, ứng viên có thể mở file này từ lộ trình Coach nếu node đã được gắn.",
+    candidateViewBadge: "Candidate xem",
+    linkRoadmapNodesBtn: "Gắn roadmap nodes theo tên file",
+    linkRoadmapNodesSuccess: "Đã gắn {{n}} roadmap node.",
+    linkRoadmapNodesFailed: "Không gắn được roadmap nodes.",
     fileTooLarge: "File \"{{name}}\" vượt quá {{n}} MB.",
     uploadFailed: "Không thể tải lên \"{{name}}\". Vui lòng thử lại.",
     loadFailed: "Không tải được danh sách tài liệu.",

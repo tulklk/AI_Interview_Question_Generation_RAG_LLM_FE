@@ -1,8 +1,9 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import Link from "next/link";
 import {
+  BookOpen,
   Check,
   Circle,
   Eye,
@@ -23,6 +24,7 @@ import {
   staggerContainer,
   staggerItem,
 } from "@/features/candidate/components/coach/coach-motion";
+import { CoachSourceViewerModal } from "@/features/candidate/components/coach/coach-source-viewer-modal";
 
 export type JourneyNodeVisual = "completed" | "current" | "locked" | "upcoming" | "gate";
 
@@ -93,6 +95,8 @@ export function CoachJourneyPath({
   const safe = motionSafe(reduced);
   const suggested = roadmap.status === "Suggested";
   const items = [...roadmap.items].sort((a, b) => a.sortOrder - b.sortOrder);
+  const [viewerDocId, setViewerDocId] = useState<string | null>(null);
+  const [viewerTitle, setViewerTitle] = useState<string | null>(null);
 
   function requirePremium(action: () => void) {
     if (!isPremium) {
@@ -103,6 +107,7 @@ export function CoachJourneyPath({
   }
 
   return (
+    <>
     <motion.ol
       className="relative list-none space-y-0 pl-0"
       variants={staggerContainer}
@@ -188,16 +193,21 @@ export function CoachJourneyPath({
                       {fillTemplate(p.itemDrillScore, { score: String(Math.round(item.drillScore)) })}
                     </p>
                   )}
-                  {item.sourceUrl && (
-                    <a
-                      href={item.sourceUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-block mt-1 text-[11px] font-semibold text-primary hover:underline"
+                  {item.canViewSource && item.knowledgeDocumentId ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setViewerDocId(item.knowledgeDocumentId!);
+                        setViewerTitle(item.sourceTitle || item.topic);
+                      }}
+                      className="inline-flex items-center gap-1 mt-1 text-[11px] font-semibold text-primary hover:underline"
                     >
-                      {item.sourceTitle || p.sourceLink}
-                    </a>
-                  )}
+                      <BookOpen size={11} />
+                      {item.sourceTitle || p.sourceLink || "Xem tài liệu"}
+                    </button>
+                  ) : item.sourceTitle ? (
+                    <p className={cn("text-[11px] mt-1", portalSubtextAlt)}>{item.sourceTitle}</p>
+                  ) : null}
                 </div>
 
                 {interactive && !suggested && (
@@ -303,6 +313,17 @@ export function CoachJourneyPath({
         );
       })}
     </motion.ol>
+    {viewerDocId ? (
+      <CoachSourceViewerModal
+        documentId={viewerDocId}
+        title={viewerTitle}
+        onClose={() => {
+          setViewerDocId(null);
+          setViewerTitle(null);
+        }}
+      />
+    ) : null}
+    </>
   );
 }
 
