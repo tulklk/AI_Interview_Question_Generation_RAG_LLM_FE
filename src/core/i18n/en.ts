@@ -2987,6 +2987,7 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
     roadmapAcceptFailed: "Could not accept the roadmap.",
     roadmapDraftFailed: "Could not update topic selection.",
     drillItem: "Drill",
+    takeDrill: "Take drill",
     itemDrillScore: "Last drill: {{score}}",
     startReassessment: "Start re-assessment",
     takeReassessment: "Take re-assessment",

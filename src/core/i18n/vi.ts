@@ -2988,6 +2988,7 @@ Yêu cầu:
     roadmapAcceptFailed: "Không chấp nhận được lộ trình.",
     roadmapDraftFailed: "Không cập nhật được lựa chọn topic.",
     drillItem: "Luyện",
+    takeDrill: "Làm bài",
     itemDrillScore: "Lần luyện gần nhất: {{score}}",
     startReassessment: "Bắt đầu đánh giá lại",
     takeReassessment: "Làm bài đánh giá lại",

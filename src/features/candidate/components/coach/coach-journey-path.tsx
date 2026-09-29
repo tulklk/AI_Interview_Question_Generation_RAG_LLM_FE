@@ -202,19 +202,35 @@ export function CoachJourneyPath({
 
                 {interactive && !suggested && (
                   <div className="shrink-0 flex flex-col items-end gap-1.5">
-                    {!item.isReassessmentGate && item.status !== "Completed" && visual !== "locked" && (
-                      <button
-                        type="button"
-                        disabled={busy}
-                        onClick={() =>
-                          requirePremium(() => onDrillItem?.(roadmap.id, item.id))
-                        }
-                        className="inline-flex items-center gap-1 h-7 px-2.5 rounded-md text-[11px] font-semibold border border-primary/25 text-primary disabled:opacity-50 hover:bg-primary/5"
-                      >
-                        {busy ? <Loader2 size={10} className="animate-spin" /> : <Play size={10} />}
-                        {p.drillItem}
-                      </button>
-                    )}
+                    {/* SCRUM-485: đã có bộ drill → mở practice; chưa có → sinh đề (Luyện) */}
+                    {!item.isReassessmentGate &&
+                      item.status !== "Completed" &&
+                      visual !== "locked" &&
+                      itemSetId && (
+                        <Link
+                          href={`/candidate/practice/${itemSetId}?mode=coach`}
+                          className="inline-flex items-center gap-1 h-7 px-2.5 rounded-md text-[11px] font-semibold border border-primary/25 text-primary hover:bg-primary/5"
+                        >
+                          <Play size={10} />
+                          {p.takeDrill}
+                        </Link>
+                      )}
+                    {!item.isReassessmentGate &&
+                      item.status !== "Completed" &&
+                      visual !== "locked" &&
+                      !itemSetId && (
+                        <button
+                          type="button"
+                          disabled={busy}
+                          onClick={() =>
+                            requirePremium(() => onDrillItem?.(roadmap.id, item.id))
+                          }
+                          className="inline-flex items-center gap-1 h-7 px-2.5 rounded-md text-[11px] font-semibold border border-primary/25 text-primary disabled:opacity-50 hover:bg-primary/5"
+                        >
+                          {busy ? <Loader2 size={10} className="animate-spin" /> : <Play size={10} />}
+                          {p.drillItem}
+                        </button>
+                      )}
                     {item.isReassessmentGate && item.status === "ReadyForReassessment" && (
                       <button
                         type="button"
