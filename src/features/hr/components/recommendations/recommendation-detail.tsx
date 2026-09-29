@@ -24,6 +24,8 @@ import {
   markRecommendationViewed,
   restoreRecommendation,
   isCandidateAccepted,
+  isCandidateRejected,
+  isAwaitingCandidateResponse,
   type CandidateRecommendationDetail,
   type RecommendationCvDownload,
   type RecommendationStatus,
@@ -150,6 +152,17 @@ export function RecommendationDetail({ id }: { id: string }) {
   }, [id]);
 
   useEffect(() => { void fetchData(); }, [fetchData]);
+
+  // SCRUM-482: soft refetch khi quay lại tab để thấy phản hồi mới.
+  useEffect(() => {
+    function onFocus() {
+      void getRecommendation(id)
+        .then((data) => { if (data) setRec(data); })
+        .catch(() => undefined);
+    }
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, [id]);
 
   useEffect(() => {
     if (!rec?.hasCv) {
@@ -303,6 +316,18 @@ export function RecommendationDetail({ id }: { id: string }) {
                     {p.card.accepted}
                   </span>
                 )}
+                {isCandidateRejected(rec) && (
+                  <span title={p.card.rejectedHint}
+                    className="inline-flex text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300 whitespace-nowrap">
+                    {p.card.rejected}
+                  </span>
+                )}
+                {isAwaitingCandidateResponse(rec) && (
+                  <span title={p.card.awaitingResponseHint}
+                    className="inline-flex text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-400 whitespace-nowrap">
+                    {p.card.awaitingResponse}
+                  </span>
+                )}
               </div>
               <p className={cn("text-[13px] truncate", portalSubtext)}>{rec.candidateEmail}</p>
               {rec.targetRole && (
@@ -373,11 +398,17 @@ export function RecommendationDetail({ id }: { id: string }) {
                 </button>
               )}
 
-              {/* Xem CV */}
+              {/* Xem CV — PDF/ảnh: lightbox; docx và định dạng khác: mở/tải file */}
               {rec.hasCv && (
                 <button
                   type="button"
-                  onClick={() => cvPreview ? setCvLightbox(true) : void handleDownloadCv()}
+                  onClick={() => {
+                    if (cvPreview && (cvIsImage || cvIsPdf)) {
+                      setCvLightbox(true);
+                      return;
+                    }
+                    void handleDownloadCv();
+                  }}
                   disabled={cvBusy || cvPreviewLoading}
                   className="flex items-center justify-center gap-1.5 h-8 px-3 text-[12px] font-semibold text-primary hover:bg-violet-50 dark:hover:bg-violet-950/40 rounded-lg transition-colors border border-violet-200 dark:border-violet-800 disabled:opacity-50">
                   {cvPreviewLoading ? <Loader2 size={12} className="animate-spin" /> : <Maximize2 size={12} />}
@@ -709,6 +740,16 @@ export function RecommendationDetail({ id }: { id: string }) {
               {isCandidateAccepted(rec) && (
                 <span className="inline-flex text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400">
                   {p.card.accepted}
+                </span>
+              )}
+              {isCandidateRejected(rec) && (
+                <span className="inline-flex text-[10px] font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300">
+                  {p.card.rejected}
+                </span>
+              )}
+              {isAwaitingCandidateResponse(rec) && (
+                <span className="inline-flex text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-400">
+                  {p.card.awaitingResponse}
                 </span>
               )}
             </div>

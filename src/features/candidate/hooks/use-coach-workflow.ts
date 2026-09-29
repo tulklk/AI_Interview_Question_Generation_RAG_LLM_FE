@@ -66,15 +66,13 @@ export function useCoachWorkflow() {
   const p = t.jobseekerCoachPage;
   const { addToast } = useToast();
   const { planType } = useCandidateSubscription();
-  const { user } = useUser();
+  const { user, refreshUser } = useUser();
   const isPremium = planType === "PREMIUM";
-  const profileSkills = user?.candidateProfile?.techStack ?? [];
+  // SCRUM-483: hasCv chỉ theo file CV — không coi TechStack là đã có CV
   const profileHasCvFile = Boolean(user?.candidateProfile?.cvFileName);
 
   const [cv, setCv] = useState<CvInfo | null>(null);
-  const [hasCv, setHasCv] = useState<boolean | null>(
-    profileHasCvFile || profileSkills.length > 0 ? true : null
-  );
+  const [hasCv, setHasCv] = useState<boolean | null>(profileHasCvFile ? true : null);
   const [context, setContext] = useState<CoachContext | null>(null);
   const [report, setReport] = useState<CoachAssessment | null>(null);
   const [roadmaps, setRoadmaps] = useState<CoachRoadmap[]>([]);
@@ -120,16 +118,11 @@ export function useCoachWorkflow() {
       .then((next) => {
         if (cancelled) return;
         setCv(next);
-        const fromFile = Boolean(next);
-        const fromSkills = Boolean(
-          (next?.skills.length ?? 0) > 0 ||
-            (next?.techStack.length ?? 0) > 0 ||
-            profileSkills.length > 0
-        );
-        setHasCv(fromFile || fromSkills || profileHasCvFile);
+        // SCRUM-483: chỉ file CV (getCv hoặc cvFileName trên profile)
+        setHasCv(Boolean(next) || profileHasCvFile);
       })
       .catch(() => {
-        if (!cancelled) setHasCv(profileHasCvFile || profileSkills.length > 0);
+        if (!cancelled) setHasCv(profileHasCvFile);
       });
 
     Promise.allSettled([
@@ -159,7 +152,7 @@ export function useCoachWorkflow() {
     return () => {
       cancelled = true;
     };
-  }, [profileHasCvFile, profileSkills.length]);
+  }, [profileHasCvFile]);
 
   useEffect(() => {
     if (!job?.id || !jobBusy(job)) return;
@@ -443,6 +436,8 @@ export function useCoachWorkflow() {
       const result = await uploadCv(file);
       setCv(result.cv);
       setHasCv(true);
+      // SCRUM-483: sync UserContext để Profile / header thấy cùng CV + techStack
+      await refreshUser().catch(() => null);
       const ctx = await getCoachContext().catch(() => null);
       if (ctx) setContext(ctx);
       addToast("success", result.analysisFailed ? p.cvAnalysisFailed : p.cvUploaded);

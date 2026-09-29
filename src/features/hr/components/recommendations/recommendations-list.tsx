@@ -20,6 +20,8 @@ import {
   dismissRecommendation,
   restoreRecommendation,
   isCandidateAccepted,
+  isCandidateRejected,
+  isAwaitingCandidateResponse,
   type CandidateRecommendation,
   type RecommendationStatus,
   type RecommendationSortBy,
@@ -363,6 +365,22 @@ function CandidateRow({ rec, lang, labels, index, selected, onToggleSelect, onSt
                 className="inline-flex text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400 whitespace-nowrap"
               >
                 {c.accepted}
+              </span>
+            )}
+            {isCandidateRejected(rec) && (
+              <span
+                title={c.rejectedHint}
+                className="inline-flex text-[10px] font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300 whitespace-nowrap"
+              >
+                {c.rejected}
+              </span>
+            )}
+            {isAwaitingCandidateResponse(rec) && (
+              <span
+                title={c.awaitingResponseHint}
+                className="inline-flex text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-400 whitespace-nowrap"
+              >
+                {c.awaitingResponse}
               </span>
             )}
             {hasContact && (
@@ -756,6 +774,29 @@ export function RecommendationsList() {
     void fetchData();
   }, [fetchData, prefsReady]);
   useEffect(() => { setPage(1); }, [statusFilter, minScore, sortKey]);
+
+  // SCRUM-482: quay lại tab → soft refetch để thấy Accepted/Rejected mới (không bật skeleton).
+  useEffect(() => {
+    if (!prefsReady) return;
+    function onFocus() {
+      void listRecommendations({
+        page,
+        pageSize: PAGE_SIZE,
+        status: statusFilter && statusFilter !== "UNVIEWED" ? statusFilter : undefined,
+        unviewed: statusFilter === "UNVIEWED" || undefined,
+        minScore,
+        sortBy: sortOption.sortBy,
+        sortDir: sortOption.sortDir,
+      })
+        .then((res) => {
+          setItems(res.items);
+          setTotalCount(res.totalCount);
+        })
+        .catch(() => undefined);
+    }
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, [prefsReady, page, statusFilter, minScore, sortOption.sortBy, sortOption.sortDir]);
 
   function handleStatusChange(id: string, status: RecommendationStatus) {
     setItems((prev) => prev.map((r) => (r.id === id ? { ...r, status } : r)));

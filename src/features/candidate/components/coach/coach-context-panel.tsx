@@ -11,6 +11,7 @@ import type {
   CoachFrameworkOption,
   UpdateCoachContextPayload,
 } from "@/features/candidate/services/coach.service";
+import { CoachStepHeader } from "@/features/candidate/components/coach/coach-step-header";
 
 const LEVELS = ["Fresher", "Junior", "Middle", "Senior"] as const;
 
@@ -142,23 +143,23 @@ export function CoachContextPanel({
   if (context?.contextConfirmed && !editing) {
     return (
       <div className="hr-glass-card overflow-hidden">
-        <div className="flex items-center gap-2.5 border-b border-gray-100 px-4 py-3 dark:border-gray-800 sm:px-5">
-          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-950/50">
-            <CheckCircle2 size={14} className="text-emerald-600 dark:text-emerald-400" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className={cn("text-[13px] font-semibold", portalHeadingAlt)}>{p.contextTitle}</p>
-            <p className={cn("text-[11px]", portalSubtextAlt)}>{p.contextConfirmedBadge}</p>
-          </div>
-          <button
-            type="button"
-            onClick={onEdit}
-            className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-gray-200 px-3 text-[12px] font-semibold transition-colors hover:border-primary/40 dark:border-gray-700"
-          >
-            <Pencil size={12} />
-            {p.editGoal}
-          </button>
-        </div>
+        <CoachStepHeader
+          icon={CheckCircle2}
+          title={p.contextTitle}
+          subtitle={p.contextConfirmedBadge}
+          iconWrapClassName="bg-emerald-100 dark:bg-emerald-950/50"
+          iconClassName="text-emerald-600 dark:text-emerald-400"
+          trailing={
+            <button
+              type="button"
+              onClick={onEdit}
+              className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-gray-200 px-3 text-[12px] font-semibold transition-colors hover:border-primary/40 dark:border-gray-700"
+            >
+              <Pencil size={12} />
+              {p.editGoal}
+            </button>
+          }
+        />
         <div className="grid gap-3 px-4 py-4 text-[12px] sm:grid-cols-2 sm:px-5">
           <div>
             <p className={cn("text-[10px] font-semibold uppercase tracking-wide", portalSubtextAlt)}>
@@ -218,24 +219,22 @@ export function CoachContextPanel({
 
   return (
     <div className="hr-glass-card overflow-hidden">
-      <div className="flex items-center gap-2.5 border-b border-gray-100 px-4 py-3 dark:border-gray-800 sm:px-5">
-        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-          <Target size={14} className="text-primary" />
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className={cn("text-[15px] font-semibold", portalHeadingAlt)}>{p.contextTitle}</p>
-          <p className={cn("text-[12px] leading-snug", portalSubtextAlt)}>{p.contextSubtitle}</p>
-        </div>
-        {context?.contextConfirmed && (
-          <button
-            type="button"
-            onClick={onCancelEdit}
-            className="text-[12px] font-semibold text-gray-500 hover:text-gray-800 dark:hover:text-gray-200"
-          >
-            {p.cancelEdit}
-          </button>
-        )}
-      </div>
+      <CoachStepHeader
+        icon={Target}
+        title={p.contextTitle}
+        subtitle={p.contextSubtitle}
+        trailing={
+          context?.contextConfirmed ? (
+            <button
+              type="button"
+              onClick={onCancelEdit}
+              className="text-[12px] font-semibold text-gray-500 hover:text-gray-800 dark:hover:text-gray-200"
+            >
+              {p.cancelEdit}
+            </button>
+          ) : undefined
+        }
+      />
 
       <form onSubmit={handleSubmit} className="space-y-4 px-4 py-4 sm:px-5">
         {goalChanged && (
