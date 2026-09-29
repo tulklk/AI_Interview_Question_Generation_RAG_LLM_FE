@@ -121,6 +121,14 @@ export function CoachJourneyPath({
             ? item.drillQuestionSetId || gateFallbackSetId
             : item.drillQuestionSetId;
 
+        // SCRUM-489: ưu tiên list attempts; fallback 1 session nếu API cũ
+        const attempts =
+          item.drillAttempts && item.drillAttempts.length > 0
+            ? item.drillAttempts
+            : item.drillSessionId
+              ? [{ sessionId: item.drillSessionId, score: item.drillScore ?? null }]
+              : [];
+
         const nodeCfg = nodeStyle(visual);
         const lineDone = visual === "completed";
 
@@ -272,42 +280,63 @@ export function CoachJourneyPath({
                         {p.takeReassessment}
                       </Link>
                     )}
-                    {!item.isReassessmentGate &&
-                      item.status === "Completed" &&
-                      (item.drillSessionId || item.drillQuestionSetId) && (
-                        <div className="flex flex-col items-end gap-1">
-                          {item.drillSessionId && (
-                            <Link
-                              href={`/candidate/practice/${item.drillSessionId}/result?mode=coach`}
-                              className="inline-flex items-center gap-1 text-[11px] font-semibold text-primary hover:underline"
-                            >
-                              <Eye size={10} />
-                              {p.reviewDrillResult}
-                            </Link>
-                          )}
-                          {item.drillQuestionSetId && (
-                            <a
-                              href={`/candidate/sets/${item.drillQuestionSetId}`}
-                              className="text-[11px] font-semibold text-primary/80 hover:underline"
-                            >
-                              {p.openSet}
-                            </a>
-                          )}
-                        </div>
-                      )}
+                    {/* SCRUM-489: xem lại mọi lần luyện (InProgress chưa pass + Completed) */}
+                    {!item.isReassessmentGate && attempts.length > 0 && (
+                      <div className="flex flex-col items-end gap-0.5">
+                        <span className={cn("text-[10px] font-medium", portalSubtextAlt)}>
+                          {p.drillAttemptsTitle}
+                        </span>
+                        {attempts.map((a, n) => (
+                          <Link
+                            key={a.sessionId}
+                            href={`/candidate/practice/${a.sessionId}/result?mode=coach`}
+                            className="inline-flex items-center gap-1 text-[11px] font-semibold text-primary hover:underline"
+                          >
+                            <Eye size={10} />
+                            {fillTemplate(p.reviewDrillAttempt, {
+                              n: String(n + 1),
+                              score:
+                                a.score != null ? String(Math.round(a.score)) : "—",
+                            })}
+                          </Link>
+                        ))}
+                        {item.status === "Completed" && item.drillQuestionSetId && (
+                          <a
+                            href={`/candidate/sets/${item.drillQuestionSetId}`}
+                            className="text-[11px] font-semibold text-primary/80 hover:underline"
+                          >
+                            {p.openSet}
+                          </a>
+                        )}
+                      </div>
+                    )}
                   </div>
                 )}
 
-                {!interactive && (item.drillSessionId || item.drillQuestionSetId) && (
-                  <div className="flex shrink-0 flex-col items-end gap-1">
-                    {item.drillSessionId && (
-                      <Link
-                        href={`/candidate/practice/${item.drillSessionId}/result?mode=coach`}
-                        className="inline-flex items-center gap-1 text-[11px] font-semibold text-primary hover:underline"
-                      >
-                        <Eye size={10} />
-                        {p.reviewDrillResult}
-                      </Link>
+                {!interactive &&
+                  !item.isReassessmentGate &&
+                  (attempts.length > 0 || item.drillQuestionSetId) && (
+                  <div className="flex shrink-0 flex-col items-end gap-0.5">
+                    {attempts.length > 0 && (
+                      <>
+                        <span className={cn("text-[10px] font-medium", portalSubtextAlt)}>
+                          {p.drillAttemptsTitle}
+                        </span>
+                        {attempts.map((a, n) => (
+                          <Link
+                            key={a.sessionId}
+                            href={`/candidate/practice/${a.sessionId}/result?mode=coach`}
+                            className="inline-flex items-center gap-1 text-[11px] font-semibold text-primary hover:underline"
+                          >
+                            <Eye size={10} />
+                            {fillTemplate(p.reviewDrillAttempt, {
+                              n: String(n + 1),
+                              score:
+                                a.score != null ? String(Math.round(a.score)) : "—",
+                            })}
+                          </Link>
+                        ))}
+                      </>
                     )}
                     {item.drillQuestionSetId && (
                       <a

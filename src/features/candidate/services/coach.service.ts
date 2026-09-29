@@ -232,6 +232,12 @@ export interface CoachSkillGap {
   priorityScore: number;
 }
 
+export interface CoachDrillAttempt {
+  sessionId: string;
+  score?: number | null;
+  completedAt?: string | null;
+}
+
 export interface CoachRoadmapItem {
   id: string;
   topic: string;
@@ -246,6 +252,8 @@ export interface CoachRoadmapItem {
   drillQuestionSetId?: string | null;
   /** SCRUM-484: session đã nộp — xem lại feedback */
   drillSessionId?: string | null;
+  /** SCRUM-489: mọi phiên COMPLETED trên cùng set (cũ → mới) */
+  drillAttempts?: CoachDrillAttempt[];
   sourceUrl?: string | null;
   sourceTitle?: string | null;
   /** SCRUM-486 */
@@ -430,7 +438,23 @@ function mapAssessment(src: Record<string, unknown> | null): CoachAssessment | n
   };
 }
 
+function mapDrillAttempt(src: Record<string, unknown>): CoachDrillAttempt | null {
+  const sessionId = pickString(src, "sessionId", "SessionId");
+  if (!sessionId) return null;
+  return {
+    sessionId,
+    score: pickNumber(src, "score", "Score") ?? null,
+    completedAt: pickString(src, "completedAt", "CompletedAt") || null,
+  };
+}
+
 function mapRoadmapItem(src: Record<string, unknown>): CoachRoadmapItem {
+  const attemptsRaw = src.drillAttempts ?? src.DrillAttempts;
+  const drillAttempts = Array.isArray(attemptsRaw)
+    ? attemptsRaw
+        .map((x) => mapDrillAttempt(asRecord(x) ?? {}))
+        .filter((a): a is CoachDrillAttempt => Boolean(a?.sessionId))
+    : [];
   return {
     id: pickString(src, "id", "Id"),
     topic: pickString(src, "topic", "Topic"),
@@ -449,6 +473,7 @@ function mapRoadmapItem(src: Record<string, unknown>): CoachRoadmapItem {
     drillScore: pickNumber(src, "drillScore", "DrillScore") ?? null,
     drillQuestionSetId: pickString(src, "drillQuestionSetId", "DrillQuestionSetId") || null,
     drillSessionId: pickString(src, "drillSessionId", "DrillSessionId") || null,
+    drillAttempts,
     sourceUrl: pickString(src, "sourceUrl", "SourceUrl") || null,
     sourceTitle: pickString(src, "sourceTitle", "SourceTitle") || null,
     knowledgeDocumentId: pickString(src, "knowledgeDocumentId", "KnowledgeDocumentId") || null,

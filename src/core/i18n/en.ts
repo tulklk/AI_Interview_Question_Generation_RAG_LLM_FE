@@ -3024,6 +3024,8 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
     takeDrill: "Take drill",
     itemDrillScore: "Last drill: {{score}}",
     drillPassHint: "Scored {{score}} — need > {{min}} to unlock the next step. Try again.",
+    drillAttemptsTitle: "Practice history",
+    reviewDrillAttempt: "Review attempt {{n}} · {{score}}",
     startReassessment: "Start re-assessment",
     takeReassessment: "Take re-assessment",
     purposeReassessment: "Re-assessment",

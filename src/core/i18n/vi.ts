@@ -3025,6 +3025,8 @@ Yêu cầu:
     takeDrill: "Làm bài",
     itemDrillScore: "Lần luyện gần nhất: {{score}}",
     drillPassHint: "Đạt {{score}} điểm — cần > {{min}} để mở bước tiếp. Hãy luyện lại.",
+    drillAttemptsTitle: "Lịch sử luyện",
+    reviewDrillAttempt: "Xem lại lần {{n}} · {{score}}",
     startReassessment: "Bắt đầu đánh giá lại",
     takeReassessment: "Làm bài đánh giá lại",
     purposeReassessment: "Đánh giá lại",
