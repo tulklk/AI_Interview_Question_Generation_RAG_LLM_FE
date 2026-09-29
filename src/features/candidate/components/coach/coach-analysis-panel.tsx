@@ -78,6 +78,8 @@ export function CoachAnalysisPanel({
         return p.skillsFormatInvalidChars;
       case "no_letter":
         return p.skillsFormatNoLetter;
+      case "non_it":
+        return p.skillsFormatNonIt;
       default:
         return p.skillsFormatInvalidChars;
     }

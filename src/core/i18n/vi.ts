@@ -2945,6 +2945,8 @@ Yêu cầu:
     skillsFormatInvalidChars:
       "Chỉ dùng chữ, số và các ký tự . # + / - (không emoji / ký tự đặc biệt).",
     skillsFormatNoLetter: "Tên công nghệ cần có ít nhất một chữ cái.",
+    skillsFormatNonIt:
+      "Chỉ thêm công nghệ / kỹ năng IT. Marketing, sales, kế toán… không được hỗ trợ.",
     skillsCatalogSoftWarn:
       "Công nghệ này không có trong danh sách gợi ý — vẫn thêm được, kiểm tra chính tả nếu cần.",
     skillsSaved: "Đã cập nhật danh sách công nghệ.",

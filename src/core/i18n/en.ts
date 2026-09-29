@@ -2944,6 +2944,8 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
     skillsFormatInvalidChars:
       "Use letters, digits, and . # + / - only (no emoji / special symbols).",
     skillsFormatNoLetter: "Technology name must include at least one letter.",
+    skillsFormatNonIt:
+      "Only IT technologies/skills are allowed. Marketing, sales, accounting, etc. are not supported.",
     skillsCatalogSoftWarn:
       "This technology is not in the suggestion list — you can still add it; double-check spelling if needed.",
     skillsSaved: "Skills list updated.",

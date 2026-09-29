@@ -1,6 +1,6 @@
 /**
- * SCRUM-491: catalog gợi ý + format hybrid cho ô "Thêm công nghệ" trên Phân tích CV.
- * Free-text vẫn được nếu đúng format; soft-warn khi không khớp catalog.
+ * SCRUM-491 + SCRUM-492: catalog gợi ý + format hybrid + chặn non-IT từng skill.
+ * Free-text IT vẫn được nếu đúng format; soft-warn khi không khớp catalog.
  */
 
 export const COACH_SKILL_MIN_LEN = 2;
@@ -8,6 +8,72 @@ export const COACH_SKILL_MAX_LEN = 40;
 
 /** Charset: chữ/số + khoảng trắng + . # + / - */
 const SKILL_CHAR_RE = /^[A-Za-z0-9 .#+/\-]+$/;
+
+/**
+ * SCRUM-492: deny-list non-IT (mirror JobDescriptionValidator.NonItKeywords + soft phổ biến).
+ * Exact: tránh false-positive (vd. "sales" ≠ "Salesforce").
+ */
+const NON_IT_EXACT: readonly string[] = [
+  "marketing",
+  "marketting",
+  "sales",
+  "seo",
+  "finance",
+  "accounting",
+  "accountant",
+  "bookkeeper",
+  "auditor",
+  "lawyer",
+  "teacher",
+  "nurse",
+  "cashier",
+  "receptionist",
+  "communication",
+  "leadership",
+  "teamwork",
+  "collaboration",
+  "excel",
+  "hr",
+  "recruiting",
+  "recruitment",
+];
+
+/** Cụm dài — khớp contain trên key đã normalize. */
+const NON_IT_PHRASES: readonly string[] = [
+  "digitalmarketing",
+  "contentmarketing",
+  "socialmedia",
+  "seospecialist",
+  "salesexecutive",
+  "salesmanager",
+  "accountexecutive",
+  "businessdevelopment",
+  "ketoan",
+  "kiemtoan",
+  "luatsu",
+  "legalcounsel",
+  "phapche",
+  "giaovien",
+  "giangvien",
+  "nhanvienyte",
+  "bacsi",
+  "dieuduong",
+  "nhahang",
+  "restaurant",
+  "phache",
+  "bartender",
+  "khachsan",
+  "hotelreceptionist",
+  "batdongsan",
+  "realestate",
+  "moigioi",
+  "nhanvienbanhang",
+  "khovan",
+  "warehousepicker",
+  "fashiondesigner",
+  "thietkethoitang",
+  "makeupartist",
+];
 
 /**
  * Danh sách công nghệ phổ biến — casing chuẩn để autocomplete.
@@ -100,7 +166,8 @@ export type CoachSkillFormatError =
   | "too_short"
   | "too_long"
   | "invalid_chars"
-  | "no_letter";
+  | "no_letter"
+  | "non_it";
 
 export function normalizeSkillKey(value: string): string {
   return value
@@ -108,6 +175,21 @@ export function normalizeSkillKey(value: string): string {
     .toLowerCase()
     .replace(/[\s_\-]+/g, "")
     .replace(/\.+/g, ".");
+}
+
+/** SCRUM-492: true nếu skill thuộc lĩnh vực ngoài IT (marketing, sales…). */
+export function isNonItCoachSkill(raw: string): boolean {
+  const key = normalizeSkillKey(raw);
+  if (!key) return false;
+  // "marketing" / typo "marketting" luôn chặn (kể cả cụm)
+  if (key.includes("marketing") || key.includes("marketting")) return true;
+  for (const needle of NON_IT_EXACT) {
+    if (key === normalizeSkillKey(needle)) return true;
+  }
+  for (const phrase of NON_IT_PHRASES) {
+    if (key.includes(phrase)) return true;
+  }
+  return false;
 }
 
 /** Exact / fuzzy catalog match → trả casing chuẩn nếu có. */
@@ -126,7 +208,7 @@ export function isInSkillCatalog(raw: string): boolean {
 }
 
 /**
- * Validate format free-text (hybrid).
+ * Validate format free-text (hybrid) + chặn non-IT (SCRUM-492).
  * @returns null nếu hợp lệ, hoặc mã lỗi.
  */
 export function validateCoachSkillFormat(raw: string): CoachSkillFormatError | null {
@@ -136,6 +218,7 @@ export function validateCoachSkillFormat(raw: string): CoachSkillFormatError | n
   if (trimmed.length > COACH_SKILL_MAX_LEN) return "too_long";
   if (!SKILL_CHAR_RE.test(trimmed)) return "invalid_chars";
   if (!/[A-Za-z]/.test(trimmed)) return "no_letter";
+  if (isNonItCoachSkill(trimmed)) return "non_it";
   return null;
 }
 
