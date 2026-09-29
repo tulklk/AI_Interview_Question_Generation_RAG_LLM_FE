@@ -229,6 +229,7 @@ export function CoachPage() {
             busy={w.busy}
             accepting={w.acceptingRoadmaps}
             onToggleItem={(itemId, isIncluded) => void w.handleUpdateDraftItem(itemId, isIncluded)}
+            onUpdateDraft={(payload) => void w.handleUpdateDraft(payload)}
             onAccept={() => void w.handleAcceptRoadmaps()}
           />
         ) : w.roadmaps.some((r) => Boolean(r.acceptedAt) || r.status === "Active") ? (

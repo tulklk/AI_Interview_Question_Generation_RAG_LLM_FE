@@ -537,12 +537,22 @@ export async function getCoachAssessment(id: string): Promise<CoachAssessment | 
   return mapAssessment(extractData(res.data));
 }
 
+function sortRoadmaps(list: CoachRoadmap[]): CoachRoadmap[] {
+  return list
+    .filter((r) => r.id && r.skill)
+    .sort(
+      (a, b) =>
+        (a.displayOrder ?? 0) - (b.displayOrder ?? 0) ||
+        b.priorityScore - a.priorityScore
+    );
+}
+
 export async function getCoachRoadmaps(): Promise<CoachRoadmap[]> {
   const res = await apiClient.get("/api/candidate/coach/roadmaps");
   const root = asRecord(res.data);
   const raw = root?.data ?? root?.Data ?? res.data;
   const list = Array.isArray(raw) ? raw : [];
-  return list.map((x) => mapRoadmap(asRecord(x) ?? {})).filter((r) => r.id && r.skill);
+  return sortRoadmaps(list.map((x) => mapRoadmap(asRecord(x) ?? {})));
 }
 
 export async function getCoachRoadmap(id: string): Promise<CoachRoadmap | null> {
@@ -569,14 +579,7 @@ export async function updateCoachRoadmapDraft(payload: {
   const root = asRecord(res.data);
   const raw = root?.data ?? root?.Data ?? res.data;
   const list = Array.isArray(raw) ? raw : [];
-  return list
-    .map((x) => mapRoadmap(asRecord(x) ?? {}))
-    .filter((r) => r.id && r.skill)
-    .sort(
-      (a, b) =>
-        (a.displayOrder ?? 0) - (b.displayOrder ?? 0) ||
-        b.priorityScore - a.priorityScore
-    );
+  return sortRoadmaps(list.map((x) => mapRoadmap(asRecord(x) ?? {})));
 }
 
 /** SCRUM-462: Accept toàn bộ draft → Active. */
@@ -585,7 +588,7 @@ export async function acceptCoachRoadmaps(): Promise<CoachRoadmap[]> {
   const root = asRecord(res.data);
   const raw = root?.data ?? root?.Data ?? res.data;
   const list = Array.isArray(raw) ? raw : [];
-  return list.map((x) => mapRoadmap(asRecord(x) ?? {})).filter((r) => r.id && r.skill);
+  return sortRoadmaps(list.map((x) => mapRoadmap(asRecord(x) ?? {})));
 }
 
 export async function startRoadmapItemDrill(roadmapId: string, itemId: string): Promise<CoachJob> {

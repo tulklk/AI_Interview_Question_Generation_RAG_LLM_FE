@@ -5,6 +5,7 @@ import Link from "next/link";
 import {
   Check,
   Circle,
+  Eye,
   Flag,
   Loader2,
   Lock,
@@ -234,25 +235,51 @@ export function CoachJourneyPath({
                       </Link>
                     )}
                     {!item.isReassessmentGate &&
-                      item.drillQuestionSetId &&
-                      item.status === "Completed" && (
-                        <a
-                          href={`/candidate/sets/${item.drillQuestionSetId}`}
-                          className="text-[11px] font-semibold text-primary hover:underline"
-                        >
-                          {p.openSet}
-                        </a>
+                      item.status === "Completed" &&
+                      (item.drillSessionId || item.drillQuestionSetId) && (
+                        <div className="flex flex-col items-end gap-1">
+                          {item.drillSessionId && (
+                            <Link
+                              href={`/candidate/practice/${item.drillSessionId}/result?mode=coach`}
+                              className="inline-flex items-center gap-1 text-[11px] font-semibold text-primary hover:underline"
+                            >
+                              <Eye size={10} />
+                              {p.reviewDrillResult}
+                            </Link>
+                          )}
+                          {item.drillQuestionSetId && (
+                            <a
+                              href={`/candidate/sets/${item.drillQuestionSetId}`}
+                              className="text-[11px] font-semibold text-primary/80 hover:underline"
+                            >
+                              {p.openSet}
+                            </a>
+                          )}
+                        </div>
                       )}
                   </div>
                 )}
 
-                {!interactive && item.drillQuestionSetId && (
-                  <a
-                    href={`/candidate/sets/${item.drillQuestionSetId}`}
-                    className="shrink-0 text-[11px] font-semibold text-primary hover:underline"
-                  >
-                    {p.openSet}
-                  </a>
+                {!interactive && (item.drillSessionId || item.drillQuestionSetId) && (
+                  <div className="flex shrink-0 flex-col items-end gap-1">
+                    {item.drillSessionId && (
+                      <Link
+                        href={`/candidate/practice/${item.drillSessionId}/result?mode=coach`}
+                        className="inline-flex items-center gap-1 text-[11px] font-semibold text-primary hover:underline"
+                      >
+                        <Eye size={10} />
+                        {p.reviewDrillResult}
+                      </Link>
+                    )}
+                    {item.drillQuestionSetId && (
+                      <a
+                        href={`/candidate/sets/${item.drillQuestionSetId}`}
+                        className="text-[11px] font-semibold text-primary/80 hover:underline"
+                      >
+                        {p.openSet}
+                      </a>
+                    )}
+                  </div>
                 )}
               </div>
             </div>
