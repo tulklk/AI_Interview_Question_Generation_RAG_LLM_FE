@@ -2937,6 +2937,15 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
     skillsAddBtn: "Add",
     skillsRemoveAria: "Remove",
     skillsMinOne: "Keep at least one technology.",
+    // SCRUM-491: hybrid validate + soft warn
+    skillsFormatEmpty: "Enter a technology name before adding.",
+    skillsFormatTooShort: "Technology name needs at least 2 characters.",
+    skillsFormatTooLong: "Technology name is limited to 40 characters.",
+    skillsFormatInvalidChars:
+      "Use letters, digits, and . # + / - only (no emoji / special symbols).",
+    skillsFormatNoLetter: "Technology name must include at least one letter.",
+    skillsCatalogSoftWarn:
+      "This technology is not in the suggestion list — you can still add it; double-check spelling if needed.",
     skillsSaved: "Skills list updated.",
     skillsSaveFailed: "Could not save the skills list.",
     suggestedRoleLabel: "Suggested role (from CV)",

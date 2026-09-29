@@ -2938,6 +2938,15 @@ Yêu cầu:
     skillsAddBtn: "Thêm",
     skillsRemoveAria: "Xóa",
     skillsMinOne: "Cần giữ ít nhất 1 công nghệ.",
+    // SCRUM-491: hybrid validate + soft warn
+    skillsFormatEmpty: "Nhập tên công nghệ trước khi thêm.",
+    skillsFormatTooShort: "Tên công nghệ cần ít nhất 2 ký tự.",
+    skillsFormatTooLong: "Tên công nghệ tối đa 40 ký tự.",
+    skillsFormatInvalidChars:
+      "Chỉ dùng chữ, số và các ký tự . # + / - (không emoji / ký tự đặc biệt).",
+    skillsFormatNoLetter: "Tên công nghệ cần có ít nhất một chữ cái.",
+    skillsCatalogSoftWarn:
+      "Công nghệ này không có trong danh sách gợi ý — vẫn thêm được, kiểm tra chính tả nếu cần.",
     skillsSaved: "Đã cập nhật danh sách công nghệ.",
     skillsSaveFailed: "Không lưu được danh sách công nghệ.",
     suggestedRoleLabel: "Vị trí gợi ý (từ CV)",
