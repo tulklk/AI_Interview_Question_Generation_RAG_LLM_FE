@@ -359,21 +359,54 @@ export function useCoachWorkflow() {
     }
   }
 
-  /** SCRUM-462: toggle topic trên draft — optimistic local rồi sync PATCH. */
-  async function handleUpdateDraftItem(itemId: string, isIncluded: boolean) {
-    setRoadmaps((prev) =>
-      prev.map((r) => ({
-        ...r,
-        items: r.items.map((i) => (i.id === itemId ? { ...i, isIncluded } : i)),
-      }))
-    );
+  /** SCRUM-462 / SCRUM-484: patch draft (include / sortOrder / displayOrder). */
+  async function handleUpdateDraft(payload: {
+    items?: Array<{ itemId: string; isIncluded?: boolean; sortOrder?: number }>;
+    roadmaps?: Array<{ roadmapId: string; displayOrder: number }>;
+  }) {
+    // Optimistic local: apply include + sortOrder + displayOrder trước khi sync.
+    setRoadmaps((prev) => {
+      let next = prev.map((r) => {
+        const roadmapPatch = payload.roadmaps?.find((x) => x.roadmapId === r.id);
+        let items = r.items;
+        if (payload.items?.length) {
+          items = r.items.map((i) => {
+            const ip = payload.items!.find((x) => x.itemId === i.id);
+            if (!ip) return i;
+            return {
+              ...i,
+              isIncluded: ip.isIncluded ?? i.isIncluded,
+              sortOrder: ip.sortOrder ?? i.sortOrder,
+            };
+          });
+        }
+        return {
+          ...r,
+          displayOrder: roadmapPatch?.displayOrder ?? r.displayOrder,
+          items: [...items].sort((a, b) => a.sortOrder - b.sortOrder),
+        };
+      });
+      if (payload.roadmaps?.length) {
+        next = [...next].sort(
+          (a, b) =>
+            (a.displayOrder ?? 0) - (b.displayOrder ?? 0) ||
+            b.priorityScore - a.priorityScore
+        );
+      }
+      return next;
+    });
     try {
-      const next = await updateCoachRoadmapDraft([{ itemId, isIncluded }]);
-      setRoadmaps(next);
+      const synced = await updateCoachRoadmapDraft(payload);
+      setRoadmaps(synced);
     } catch (e) {
       addToast("error", apiError(e, p.roadmapDraftFailed, lang));
       await refreshCompetencyData();
     }
+  }
+
+  /** SCRUM-462: toggle topic — wrapper quanh handleUpdateDraft. */
+  async function handleUpdateDraftItem(itemId: string, isIncluded: boolean) {
+    await handleUpdateDraft({ items: [{ itemId, isIncluded }] });
   }
 
   async function handleAcceptRoadmaps() {
@@ -687,6 +720,7 @@ export function useCoachWorkflow() {
     startNewRun,
     handleStartRoadmap,
     handleUpdateDraftItem,
+    handleUpdateDraft,
     handleAcceptRoadmaps,
     handleDrillItem,
     handleReassessment,
