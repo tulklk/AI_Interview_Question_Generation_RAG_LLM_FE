@@ -1,6 +1,7 @@
 "use client";
 
 import type { InvitePayload } from "@/features/hr/services/recommendation.service";
+import { toAbsoluteHttpUrl } from "@/shared/utils/absolute-url";
 
 export interface InviteScheduleState {
   scheduledLocal: string;
@@ -24,12 +25,15 @@ export function toInvitePayload(message: string, s: InviteScheduleState): Invite
   const scheduledAtUtc = s.scheduledLocal
     ? new Date(s.scheduledLocal).toISOString()
     : null;
+  // SCRUM-482: normalize trước khi gửi BE — tránh relative href trên candidate UI.
+  const meetingLink =
+    s.meetingMode === "ONLINE" ? toAbsoluteHttpUrl(s.meetingLink.trim()) : null;
   return {
     message,
     scheduledAtUtc,
     timeZoneId: scheduledAtUtc ? s.timeZoneId : null,
     meetingMode: s.meetingMode || null,
-    meetingLink: s.meetingMode === "ONLINE" ? s.meetingLink.trim() || null : null,
+    meetingLink,
     location: s.meetingMode === "ONSITE" ? s.location.trim() || null : null,
   };
 }

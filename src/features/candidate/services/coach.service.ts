@@ -244,6 +244,8 @@ export interface CoachRoadmapItem {
   topicReason?: string | null;
   drillScore?: number | null;
   drillQuestionSetId?: string | null;
+  /** SCRUM-484: session đã nộp — xem lại feedback */
+  drillSessionId?: string | null;
   sourceUrl?: string | null;
   sourceTitle?: string | null;
   prerequisites: string[];
@@ -268,8 +270,21 @@ export interface CoachRoadmap {
   /** cv | outsideCv */
   skillSource?: "cv" | "outsideCv" | string | null;
   outsideCvReason?: string | null;
+  /** SCRUM-484: thứ tự luyện skill (0 = trước) */
+  displayOrder?: number;
   items: CoachRoadmapItem[];
 }
+
+export type CoachRoadmapDraftItemPatch = {
+  itemId: string;
+  isIncluded?: boolean;
+  sortOrder?: number;
+};
+
+export type CoachRoadmapDraftRoadmapPatch = {
+  roadmapId: string;
+  displayOrder: number;
+};
 
 function pickBool(obj: Record<string, unknown>, ...keys: string[]): boolean {
   for (const k of keys) {
@@ -428,6 +443,7 @@ function mapRoadmapItem(src: Record<string, unknown>): CoachRoadmapItem {
     topicReason: pickString(src, "topicReason", "TopicReason") || null,
     drillScore: pickNumber(src, "drillScore", "DrillScore") ?? null,
     drillQuestionSetId: pickString(src, "drillQuestionSetId", "DrillQuestionSetId") || null,
+    drillSessionId: pickString(src, "drillSessionId", "DrillSessionId") || null,
     sourceUrl: pickString(src, "sourceUrl", "SourceUrl") || null,
     sourceTitle: pickString(src, "sourceTitle", "SourceTitle") || null,
     prerequisites: pickStringList(src, "prerequisites", "Prerequisites"),
@@ -467,6 +483,7 @@ function mapRoadmap(src: Record<string, unknown>): CoachRoadmap {
       return raw;
     })(),
     outsideCvReason: pickString(src, "outsideCvReason", "OutsideCvReason") || null,
+    displayOrder: pickNumber(src, "displayOrder", "DisplayOrder") ?? 0,
     items,
   };
 }
@@ -540,15 +557,26 @@ export async function startCoachRoadmap(id: string): Promise<CoachRoadmap> {
   return mapRoadmap(extractData(res.data) ?? {});
 }
 
-/** SCRUM-462: toggle IsIncluded trên draft Suggested. */
-export async function updateCoachRoadmapDraft(
-  items: Array<{ itemId: string; isIncluded: boolean }>
-): Promise<CoachRoadmap[]> {
-  const res = await apiClient.patch("/api/candidate/coach/roadmaps/draft", { items });
+/** SCRUM-462 / SCRUM-484: toggle + reorder topic/skill trên draft Suggested. */
+export async function updateCoachRoadmapDraft(payload: {
+  items?: CoachRoadmapDraftItemPatch[];
+  roadmaps?: CoachRoadmapDraftRoadmapPatch[];
+}): Promise<CoachRoadmap[]> {
+  const res = await apiClient.patch("/api/candidate/coach/roadmaps/draft", {
+    items: payload.items ?? [],
+    roadmaps: payload.roadmaps ?? [],
+  });
   const root = asRecord(res.data);
   const raw = root?.data ?? root?.Data ?? res.data;
   const list = Array.isArray(raw) ? raw : [];
-  return list.map((x) => mapRoadmap(asRecord(x) ?? {})).filter((r) => r.id && r.skill);
+  return list
+    .map((x) => mapRoadmap(asRecord(x) ?? {}))
+    .filter((r) => r.id && r.skill)
+    .sort(
+      (a, b) =>
+        (a.displayOrder ?? 0) - (b.displayOrder ?? 0) ||
+        b.priorityScore - a.priorityScore
+    );
 }
 
 /** SCRUM-462: Accept toàn bộ draft → Active. */

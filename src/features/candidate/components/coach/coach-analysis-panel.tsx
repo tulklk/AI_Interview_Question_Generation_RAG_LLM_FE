@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Loader2, Plus, X } from "lucide-react";
+import { Loader2, Plus, ScanSearch, X } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { portalHeadingAlt, portalSubtextAlt } from "@/shared/utils/portal-ui";
 import { useLanguage } from "@/shared/providers/language-context";
 import { getSkillIcon } from "@/features/candidate/utils/skill-icons";
 import type { CoachContext } from "@/features/candidate/services/coach.service";
 import type { CvInfo } from "@/features/candidate/services/candidate-cv.service";
+import { CoachStepHeader } from "@/features/candidate/components/coach/coach-step-header";
 
 interface CoachAnalysisPanelProps {
   context: CoachContext | null;
@@ -57,12 +58,15 @@ export function CoachAnalysisPanel({
   const canContinue = skills.length >= 1 && !savingSkills;
 
   return (
-    <div className="hr-glass-card px-5 py-6 space-y-4">
-      <div>
-        <p className={cn("text-[13px] font-semibold", portalHeadingAlt)}>{p.cvAnalysisHint}</p>
-        <p className={cn("text-[12px] mt-1", portalSubtextAlt)}>{p.phaseAnalysisDesc}</p>
-      </div>
-
+    <div className="hr-glass-card overflow-hidden">
+      <CoachStepHeader
+        icon={ScanSearch}
+        title={p.cvAnalysisHint}
+        subtitle={p.phaseAnalysisDesc}
+        iconWrapClassName="bg-violet-100 dark:bg-violet-950/50"
+        iconClassName="text-violet-600 dark:text-violet-400"
+      />
+      <div className="space-y-4 px-5 py-5">
       <p
         className={cn(
           "text-[11px] rounded-lg border border-amber-200/80 bg-amber-50/70 px-3 py-2",
@@ -159,6 +163,7 @@ export function CoachAnalysisPanel({
         {savingSkills ? <Loader2 size={14} className="animate-spin" /> : null}
         {p.continueToGoal} →
       </button>
+      </div>
     </div>
   );
 }
