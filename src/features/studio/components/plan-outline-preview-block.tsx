@@ -94,6 +94,8 @@ export function PlanOutlinePreviewBlock({
           jobDescription: c.sourceJobDescription,
           whyAsked: cfg.outlineWhyAsked,
           whyAskedPlaceholder: cfg.outlineWhyAskedPlaceholder,
+          relabeledHint: cfg.outlineRelabeledHint,
+          whyAskedAutoPlaceholder: cfg.outlineWhyAskedAutoPlaceholder,
         }}
         difficultyLabels={{
           Easy: s.easyDesc,

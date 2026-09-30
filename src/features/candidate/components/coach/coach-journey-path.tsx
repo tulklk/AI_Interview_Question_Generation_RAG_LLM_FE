@@ -1,10 +1,12 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import Link from "next/link";
 import {
+  BookOpen,
   Check,
   Circle,
+  Eye,
   Flag,
   Loader2,
   Lock,
@@ -22,6 +24,7 @@ import {
   staggerContainer,
   staggerItem,
 } from "@/features/candidate/components/coach/coach-motion";
+import { CoachSourceViewerModal } from "@/features/candidate/components/coach/coach-source-viewer-modal";
 
 export type JourneyNodeVisual = "completed" | "current" | "locked" | "upcoming" | "gate";
 
@@ -92,6 +95,8 @@ export function CoachJourneyPath({
   const safe = motionSafe(reduced);
   const suggested = roadmap.status === "Suggested";
   const items = [...roadmap.items].sort((a, b) => a.sortOrder - b.sortOrder);
+  const [viewerDocId, setViewerDocId] = useState<string | null>(null);
+  const [viewerTitle, setViewerTitle] = useState<string | null>(null);
 
   function requirePremium(action: () => void) {
     if (!isPremium) {
@@ -102,6 +107,7 @@ export function CoachJourneyPath({
   }
 
   return (
+    <>
     <motion.ol
       className="relative list-none space-y-0 pl-0"
       variants={staggerContainer}
@@ -114,6 +120,14 @@ export function CoachJourneyPath({
           item.isReassessmentGate && item.status === "InProgress"
             ? item.drillQuestionSetId || gateFallbackSetId
             : item.drillQuestionSetId;
+
+        // SCRUM-489: ưu tiên list attempts; fallback 1 session nếu API cũ
+        const attempts =
+          item.drillAttempts && item.drillAttempts.length > 0
+            ? item.drillAttempts
+            : item.drillSessionId
+              ? [{ sessionId: item.drillSessionId, score: item.drillScore ?? null }]
+              : [];
 
         const nodeCfg = nodeStyle(visual);
         const lineDone = visual === "completed";
@@ -187,33 +201,66 @@ export function CoachJourneyPath({
                       {fillTemplate(p.itemDrillScore, { score: String(Math.round(item.drillScore)) })}
                     </p>
                   )}
-                  {item.sourceUrl && (
-                    <a
-                      href={item.sourceUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-block mt-1 text-[11px] font-semibold text-primary hover:underline"
+                  {/* SCRUM-487/488: chưa đạt ngưỡng Admin — nhắc làm lại */}
+                  {!item.isReassessmentGate &&
+                    item.status === "InProgress" &&
+                    item.drillScore != null &&
+                    item.drillScore <= (roadmap.drillPassScoreExclusiveMin ?? 70) && (
+                      <p className="mt-1 text-[11px] font-medium text-amber-700 dark:text-amber-300">
+                        {fillTemplate(p.drillPassHint, {
+                          score: String(Math.round(item.drillScore)),
+                          min: String(Math.round(roadmap.drillPassScoreExclusiveMin ?? 70)),
+                        })}
+                      </p>
+                    )}
+                  {item.canViewSource && item.knowledgeDocumentId ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setViewerDocId(item.knowledgeDocumentId!);
+                        setViewerTitle(item.sourceTitle || item.topic);
+                      }}
+                      className="inline-flex items-center gap-1 mt-1 text-[11px] font-semibold text-primary hover:underline"
                     >
-                      {item.sourceTitle || p.sourceLink}
-                    </a>
-                  )}
+                      <BookOpen size={11} />
+                      {item.sourceTitle || p.sourceLink || "Xem tài liệu"}
+                    </button>
+                  ) : item.sourceTitle ? (
+                    <p className={cn("text-[11px] mt-1", portalSubtextAlt)}>{item.sourceTitle}</p>
+                  ) : null}
                 </div>
 
                 {interactive && !suggested && (
                   <div className="shrink-0 flex flex-col items-end gap-1.5">
-                    {!item.isReassessmentGate && item.status !== "Completed" && visual !== "locked" && (
-                      <button
-                        type="button"
-                        disabled={busy}
-                        onClick={() =>
-                          requirePremium(() => onDrillItem?.(roadmap.id, item.id))
-                        }
-                        className="inline-flex items-center gap-1 h-7 px-2.5 rounded-md text-[11px] font-semibold border border-primary/25 text-primary disabled:opacity-50 hover:bg-primary/5"
-                      >
-                        {busy ? <Loader2 size={10} className="animate-spin" /> : <Play size={10} />}
-                        {p.drillItem}
-                      </button>
-                    )}
+                    {/* SCRUM-485: đã có bộ drill → mở practice; chưa có → sinh đề (Luyện) */}
+                    {!item.isReassessmentGate &&
+                      item.status !== "Completed" &&
+                      visual !== "locked" &&
+                      itemSetId && (
+                        <Link
+                          href={`/candidate/practice/${itemSetId}?mode=coach`}
+                          className="inline-flex items-center gap-1 h-7 px-2.5 rounded-md text-[11px] font-semibold border border-primary/25 text-primary hover:bg-primary/5"
+                        >
+                          <Play size={10} />
+                          {p.takeDrill}
+                        </Link>
+                      )}
+                    {!item.isReassessmentGate &&
+                      item.status !== "Completed" &&
+                      visual !== "locked" &&
+                      !itemSetId && (
+                        <button
+                          type="button"
+                          disabled={busy}
+                          onClick={() =>
+                            requirePremium(() => onDrillItem?.(roadmap.id, item.id))
+                          }
+                          className="inline-flex items-center gap-1 h-7 px-2.5 rounded-md text-[11px] font-semibold border border-primary/25 text-primary disabled:opacity-50 hover:bg-primary/5"
+                        >
+                          {busy ? <Loader2 size={10} className="animate-spin" /> : <Play size={10} />}
+                          {p.drillItem}
+                        </button>
+                      )}
                     {item.isReassessmentGate && item.status === "ReadyForReassessment" && (
                       <button
                         type="button"
@@ -233,26 +280,73 @@ export function CoachJourneyPath({
                         {p.takeReassessment}
                       </Link>
                     )}
-                    {!item.isReassessmentGate &&
-                      item.drillQuestionSetId &&
-                      item.status === "Completed" && (
-                        <a
-                          href={`/candidate/sets/${item.drillQuestionSetId}`}
-                          className="text-[11px] font-semibold text-primary hover:underline"
-                        >
-                          {p.openSet}
-                        </a>
-                      )}
+                    {/* SCRUM-489: xem lại mọi lần luyện (InProgress chưa pass + Completed) */}
+                    {!item.isReassessmentGate && attempts.length > 0 && (
+                      <div className="flex flex-col items-end gap-0.5">
+                        <span className={cn("text-[10px] font-medium", portalSubtextAlt)}>
+                          {p.drillAttemptsTitle}
+                        </span>
+                        {attempts.map((a, n) => (
+                          <Link
+                            key={a.sessionId}
+                            href={`/candidate/practice/${a.sessionId}/result?mode=coach`}
+                            className="inline-flex items-center gap-1 text-[11px] font-semibold text-primary hover:underline"
+                          >
+                            <Eye size={10} />
+                            {fillTemplate(p.reviewDrillAttempt, {
+                              n: String(n + 1),
+                              score:
+                                a.score != null ? String(Math.round(a.score)) : "—",
+                            })}
+                          </Link>
+                        ))}
+                        {item.status === "Completed" && item.drillQuestionSetId && (
+                          <a
+                            href={`/candidate/sets/${item.drillQuestionSetId}`}
+                            className="text-[11px] font-semibold text-primary/80 hover:underline"
+                          >
+                            {p.openSet}
+                          </a>
+                        )}
+                      </div>
+                    )}
                   </div>
                 )}
 
-                {!interactive && item.drillQuestionSetId && (
-                  <a
-                    href={`/candidate/sets/${item.drillQuestionSetId}`}
-                    className="shrink-0 text-[11px] font-semibold text-primary hover:underline"
-                  >
-                    {p.openSet}
-                  </a>
+                {!interactive &&
+                  !item.isReassessmentGate &&
+                  (attempts.length > 0 || item.drillQuestionSetId) && (
+                  <div className="flex shrink-0 flex-col items-end gap-0.5">
+                    {attempts.length > 0 && (
+                      <>
+                        <span className={cn("text-[10px] font-medium", portalSubtextAlt)}>
+                          {p.drillAttemptsTitle}
+                        </span>
+                        {attempts.map((a, n) => (
+                          <Link
+                            key={a.sessionId}
+                            href={`/candidate/practice/${a.sessionId}/result?mode=coach`}
+                            className="inline-flex items-center gap-1 text-[11px] font-semibold text-primary hover:underline"
+                          >
+                            <Eye size={10} />
+                            {fillTemplate(p.reviewDrillAttempt, {
+                              n: String(n + 1),
+                              score:
+                                a.score != null ? String(Math.round(a.score)) : "—",
+                            })}
+                          </Link>
+                        ))}
+                      </>
+                    )}
+                    {item.drillQuestionSetId && (
+                      <a
+                        href={`/candidate/sets/${item.drillQuestionSetId}`}
+                        className="text-[11px] font-semibold text-primary/80 hover:underline"
+                      >
+                        {p.openSet}
+                      </a>
+                    )}
+                  </div>
                 )}
               </div>
             </div>
@@ -260,6 +354,17 @@ export function CoachJourneyPath({
         );
       })}
     </motion.ol>
+    {viewerDocId ? (
+      <CoachSourceViewerModal
+        documentId={viewerDocId}
+        title={viewerTitle}
+        onClose={() => {
+          setViewerDocId(null);
+          setViewerTitle(null);
+        }}
+      />
+    ) : null}
+    </>
   );
 }
 

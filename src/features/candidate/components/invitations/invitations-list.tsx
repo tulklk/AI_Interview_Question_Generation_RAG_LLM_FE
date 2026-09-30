@@ -29,6 +29,7 @@ import {
   portalSubtext,
   portalSubtextAlt,
 } from "@/shared/utils/portal-ui";
+import { toAbsoluteHttpUrl } from "@/shared/utils/absolute-url";
 
 const PAGE_SIZE = 6;
 
@@ -396,11 +397,20 @@ function InvitationDetailDialog({ invitation, onClose, onStatusChange }: DetailD
                   {invitation.timeZoneId ? ` (${invitation.timeZoneId})` : ""}
                 </p>
               )}
-              {invitation.meetingLink && (
-                <a href={invitation.meetingLink} target="_blank" rel="noopener noreferrer" className="text-[13px] text-primary font-semibold">
-                  {p.detailDialog.meetingLink}
-                </a>
-              )}
+              {invitation.meetingLink && (() => {
+                const href = toAbsoluteHttpUrl(invitation.meetingLink) ?? invitation.meetingLink;
+                return (
+                  <a
+                    href={href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[13px] text-primary font-semibold break-all"
+                    title={href}
+                  >
+                    {href}
+                  </a>
+                );
+              })()}
               {invitation.location && (
                 <p className={cn("text-[13px] mt-1", portalHeadingAlt)}>
                   {p.detailDialog.location}: {invitation.location}

@@ -13,7 +13,6 @@ import type { CoachJob, CoachRoadmap } from "@/features/candidate/services/coach
 import { jobDone } from "@/features/candidate/hooks/use-coach-workflow";
 import {
   CoachJourneyPath,
-  roadmapScoreProgress,
   roadmapTopicProgress,
 } from "@/features/candidate/components/coach/coach-journey-path";
 import { expandVariants } from "@/features/candidate/components/coach/coach-motion";
@@ -103,7 +102,6 @@ export function CoachRoadmapsPanel({
           const statusKey = ROADMAP_STATUS[roadmap.status];
           const gate = roadmap.items.find((i) => i.isReassessmentGate);
           const topicProg = roadmapTopicProgress(roadmap);
-          const scoreProg = roadmapScoreProgress(roadmap);
           const kbSystem = (roadmap.kbSource ?? "inferred") === "system";
           const readyForReassessment = roadmap.items.some(
             (i) =>
@@ -183,17 +181,18 @@ export function CoachRoadmapsPanel({
                   <div className="mt-1.5 flex items-center gap-2">
                     <div
                       role="progressbar"
-                      aria-valuenow={scoreProg}
+                      aria-valuenow={topicProg.percent}
                       aria-valuemin={0}
                       aria-valuemax={100}
                       className="h-1 flex-1 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800"
                     >
+                      {/* Width theo topic done/total — đồng bộ với nhãn 0/N bên phải */}
                       <div
                         className={cn(
                           "h-full rounded-full transition-all duration-500",
                           roadmap.status === "Completed" ? "bg-emerald-500" : "bg-violet-500"
                         )}
-                        style={{ width: `${scoreProg}%` }}
+                        style={{ width: `${topicProg.percent}%` }}
                       />
                     </div>
                     <span className={cn("shrink-0 text-[10px] font-medium tabular-nums", portalSubtextAlt)}>

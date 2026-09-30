@@ -52,6 +52,8 @@ export interface KnowledgeDocument {
   adminNote?: string | null;
   /** SCRUM-450: nhóm folder UI (null = unsorted) */
   folder?: string | null;
+  /** SCRUM-486: Admin cho phép Candidate xem file gốc */
+  allowCandidateView?: boolean;
   /** Đường dẫn lưu trữ (nếu BE trả về) — không liệt kê Azure blob trực tiếp */
   storagePath?: string;
 }

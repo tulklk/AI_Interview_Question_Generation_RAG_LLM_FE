@@ -221,7 +221,7 @@ export function CandidateProfile() {
     }
     setCvUploading(true);
     uploadCv(file)
-      .then(({ cv: next, analysisFailed }) => {
+      .then(async ({ cv: next, analysisFailed }) => {
         setCv(next);
         // BE overwrites the profile's TechStack from the new CV analysis — mirror
         // that here so "Skills & Expertise" reflects it without a page reload.
@@ -229,6 +229,8 @@ export function CandidateProfile() {
           setForm((prev) => ({ ...prev, skills: next.techStack }));
           setSnapshot((prev) => ({ ...prev, skills: next.techStack }));
         }
+        // SCRUM-483: sync UserContext để AI Coach / header thấy cùng CV
+        await refreshUser().catch(() => null);
         // A 200 with parsedAt set but no summary/skills means BE ran the parser
         // and found nothing (e.g. the file isn't actually a resume) — that's not
         // "analyzed successfully" and shouldn't be announced as such. The file
@@ -267,7 +269,7 @@ export function CandidateProfile() {
   function handleCvDelete() {
     setCvDeleting(true);
     deleteCv()
-      .then(() => {
+      .then(async () => {
         setCv(null);
         // Clear CV-derived skills from both form and snapshot so the
         // "Kỹ năng chuyên môn" section empties along with the CV.
@@ -288,6 +290,8 @@ export function CandidateProfile() {
           githubUrl: form.githubUrl.trim() || undefined,
           avatarUrl: form.avatarUrl.trim() || undefined,
         }).catch(() => {/* non-critical — local state already cleared */});
+        // SCRUM-483: sync UserContext — Coach phải thấy hasCv=false ngay
+        await refreshUser().catch(() => null);
         addToast("success", p.cv.deleteSuccess);
       })
       .catch(() => addToast("error", p.cv.deleteFailed))

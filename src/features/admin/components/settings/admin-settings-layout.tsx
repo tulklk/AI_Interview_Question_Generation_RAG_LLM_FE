@@ -1,28 +1,24 @@
 "use client";
 
 import { useState } from "react";
-import { Settings, ShieldCheck, Bell } from "lucide-react";
+import { Settings, GraduationCap } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { GeneralSettings } from "./general-settings";
-import { PermissionsSection } from "./permissions-section";
-import { AdminNotificationsSection } from "./admin-notifications-section";
+import { CoachDrillSettings } from "./coach-drill-settings";
 import type { AdminSettingsTab } from "@/features/admin/types/admin";
 import { useLanguage } from "@/shared/providers/language-context";
 
 const tabIcons: Record<AdminSettingsTab, typeof Settings> = {
   general: Settings,
-  permissions: ShieldCheck,
-  notifications: Bell,
+  coach: GraduationCap,
 };
 
 function TabContent({ tab }: { tab: AdminSettingsTab }) {
   switch (tab) {
     case "general":
       return <GeneralSettings />;
-    case "permissions":
-      return <PermissionsSection />;
-    case "notifications":
-      return <AdminNotificationsSection />;
+    case "coach":
+      return <CoachDrillSettings />;
   }
 }
 
@@ -34,8 +30,7 @@ export function AdminSettingsLayout() {
 
   const tabList: { id: AdminSettingsTab; label: string }[] = [
     { id: "general", label: tabs.general },
-    { id: "permissions", label: tabs.permissions },
-    { id: "notifications", label: tabs.notifications },
+    { id: "coach", label: tabs.coach },
   ];
 
   return (
@@ -79,8 +74,7 @@ export function AdminSettingsLayout() {
           })}
         </ul>
       </nav>
-
-      <div key={activeTab} className="hr-glass-card animate-scale-in p-6">
+      <div className="min-w-0">
         <TabContent tab={activeTab} />
       </div>
     </div>
