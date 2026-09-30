@@ -24,10 +24,6 @@ import { cn } from "@/lib/cn";
 import { useLanguage } from "@/shared/providers/language-context";
 import { useToast } from "@/shared/providers/toast-context";
 import { portalHeading, portalSubtext } from "@/shared/utils/portal-ui";
-import {
-  hrSidebarSpacerClass,
-  useHrSidebarCollapsed,
-} from "@/features/hr/hooks/use-hr-sidebar-collapsed";
 
 const MODAL_ANIM_MS = 220;
 
@@ -195,7 +191,7 @@ function RoleCombobox({
           open && "border-primary/40 ring-1 ring-primary/20"
         )}
       >
-        <Search size={14} className="shrink-0 text-gray-400" aria-hidden />
+        <Search size={14} className="shrink-0 text-black dark:text-gray-100" aria-hidden />
         {open ? (
           <input
             ref={inputRef}
@@ -244,7 +240,7 @@ function RoleCombobox({
           tabIndex={-1}
           aria-hidden
           onClick={() => (open ? setOpenSafe(false) : openList())}
-          className="shrink-0 text-gray-400"
+          className="shrink-0 text-black dark:text-gray-100"
         >
           <ChevronDown
             size={15}
@@ -308,7 +304,6 @@ export function SampleJdModal({
 }) {
   const { t, lang } = useLanguage();
   const { addToast } = useToast();
-  const sidebarCollapsed = useHrSidebarCollapsed();
   const src = t.studioPage.sources;
   const locale = lang === "en" ? "en" : "vi";
   const titleId = useId();
@@ -393,19 +388,15 @@ export function SampleJdModal({
   }
 
   return createPortal(
-    <div className="fixed inset-0 z-[200] flex pointer-events-none">
-      <div className={cn("hidden shrink-0 lg:block", hrSidebarSpacerClass(sidebarCollapsed))} aria-hidden />
-      <div className="flex min-w-0 flex-1 flex-col">
-        <div className="h-14 shrink-0" aria-hidden />
-        <div
-          className={cn(
-            "pointer-events-auto relative flex flex-1 items-end justify-center sm:items-center sm:p-4",
-            "bg-black/50 backdrop-blur-sm transition-opacity",
-            visible ? "opacity-100" : "opacity-0"
-          )}
-          style={{ transitionDuration: `${MODAL_ANIM_MS}ms` }}
-          onClick={close}
-        >
+    <div
+      className={cn(
+        "pointer-events-auto fixed inset-0 z-[200] flex items-center justify-center p-4",
+        "bg-black/50 backdrop-blur-sm transition-opacity",
+        visible ? "opacity-100" : "opacity-0"
+      )}
+      style={{ transitionDuration: `${MODAL_ANIM_MS}ms` }}
+      onClick={close}
+    >
       <div
         ref={dialogRef}
         role="dialog"
@@ -426,7 +417,7 @@ export function SampleJdModal({
         <div className="flex shrink-0 items-start justify-between gap-3 px-5 pb-0 pt-5">
           <div className="flex min-w-0 items-start gap-2.5">
             <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-violet-50 dark:bg-violet-950/40">
-              <BookOpen size={15} className="text-violet-600 dark:text-violet-400" />
+              <BookOpen size={15} className="text-black dark:text-gray-100" />
             </div>
             <div className="min-w-0">
               <p id={titleId} className={cn("text-sm font-semibold leading-tight", portalHeading)}>
@@ -442,7 +433,7 @@ export function SampleJdModal({
             onClick={close}
             aria-label={src.close}
             className={cn(
-              "mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-gray-400 transition-colors",
+              "mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-black transition-colors dark:text-gray-100",
               "hover:bg-gray-100 hover:text-gray-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30",
               "dark:hover:bg-gray-800 dark:hover:text-gray-300"
             )}
@@ -467,7 +458,7 @@ export function SampleJdModal({
 
           {selected && (
             <div className="flex items-start gap-2">
-              <Briefcase size={14} className="mt-0.5 shrink-0 text-violet-500" aria-hidden />
+              <Briefcase size={14} className="mt-0.5 shrink-0 text-black dark:text-gray-100" aria-hidden />
               <div className="min-w-0">
                 <p className={cn("text-sm font-semibold leading-tight", portalHeading)}>
                   {selected.title[locale]}
@@ -517,7 +508,7 @@ export function SampleJdModal({
               portalHeading
             )}
           >
-            {copied ? <Check size={13} className="text-emerald-500" /> : <Copy size={13} />}
+            {copied ? <Check size={13} className="text-black dark:text-gray-100" /> : <Copy size={13} className="text-black dark:text-gray-100" />}
             {copied ? src.copied : "Copy"}
           </button>
           <div className="hidden flex-1 sm:block" />
@@ -546,8 +537,6 @@ export function SampleJdModal({
               {src.useSample}
             </button>
           </div>
-        </div>
-      </div>
         </div>
       </div>
     </div>,

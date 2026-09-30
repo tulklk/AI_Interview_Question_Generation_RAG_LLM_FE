@@ -945,10 +945,10 @@ export function StudioPage() {
           onNewSession={handleNewSession}
           onCreateManually={() => router.push("/hr/generate-question/manual")}
           onSaveDraft={studio.saveDraftAction}
-          onShare={studio.createShare}
           isGenerating={studio.isGeneratingQuestions}
           isSaving={studio.isSavingDraft}
           isSaved={studio.isDraftSaved}
+          isPublished={studio.project?.isPublished ?? false}
           questionCount={studio.questions.length}
           hasJd={hasJd}
         />
@@ -1490,7 +1490,6 @@ export function StudioPage() {
         onGenerateQuestions={handleGenerateQuestions}
         onSaveDraft={studio.saveDraftAction}
         onTogglePublish={requestPublish}
-        onCopyShareLink={() => void studio.createShare()}
         onPublishBlocked={requestPublish}
       />
 

@@ -303,11 +303,11 @@ function InvitationDetailDialog({ invitation, onClose, onStatusChange }: DetailD
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 14 }}
           transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-          className="relative z-10 w-full max-w-lg bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-100 dark:border-gray-800 overflow-hidden"
+          className="relative z-10 flex w-full max-w-lg max-h-[min(720px,90vh)] flex-col bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-100 dark:border-gray-800 overflow-hidden"
           onClick={(e) => e.stopPropagation()}
         >
           {/* ── Gradient header ── */}
-          <div className={cn("relative px-6 pt-6 pb-5", headerBg)}>
+          <div className={cn("relative shrink-0 px-6 pt-6 pb-5", headerBg)}>
             {/* X close */}
             <button
               type="button"
@@ -386,6 +386,7 @@ function InvitationDetailDialog({ invitation, onClose, onStatusChange }: DetailD
             </div>
           </div>
 
+          <div className="min-h-0 flex-1 overflow-y-auto">
           {(invitation.scheduledAtUtc || invitation.meetingLink || invitation.location) && (
             <div className="px-6 py-4 border-t border-gray-100 dark:border-gray-800">
               <p className={cn("text-[10px] font-bold uppercase tracking-widest mb-2", portalSubtextAlt)}>
@@ -435,10 +436,11 @@ function InvitationDetailDialog({ invitation, onClose, onStatusChange }: DetailD
               </p>
             </div>
           </div>
+          </div>
 
           {/* ── Footer — only for PENDING ── */}
           {canAct && (
-            <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/50">
+            <div className="flex shrink-0 items-center justify-end gap-2 px-6 py-4 border-t border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/50">
               <button
                 type="button"
                 onClick={() => setShowRejectConfirm(true)}

@@ -10,7 +10,8 @@ import {
 import { cn } from "@/lib/cn";
 import { useLanguage } from "@/shared/providers/language-context";
 import type { QuestionSet } from "@/features/candidate/types/jobseeker";
-import { CategoryPill, DifficultyPill, formatCategoryLabel } from "@/features/candidate/components/ui/pill";
+import { CategoryPill, DifficultyPill } from "@/features/candidate/components/ui/pill";
+import { formatStudioDifficultyLabel, formatStudioQuestionTypeLabel } from "@/features/studio/utils/format-question-type-label";
 import { QuestionContent } from "@/shared/components/ui/question-content";
 import { CodeSnippetBlock } from "@/shared/components/ui/code-snippet-block";
 import {
@@ -232,7 +233,7 @@ interface PracticeSessionProps {
 }
 
 export function PracticeSession({ set }: PracticeSessionProps) {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const router = useRouter();
   const searchParams = useSearchParams();
   /**
@@ -1244,8 +1245,8 @@ export function PracticeSession({ set }: PracticeSessionProps) {
             >
               {/* Category + difficulty badges (+ skill đang được đo khi ở chế độ coach) */}
               <div className="flex items-center gap-2 mb-5 flex-wrap">
-                <CategoryPill category={question.category} label={formatCategoryLabel(question.category)} />
-                <DifficultyPill difficulty={question.difficulty} label={question.difficulty} />
+                <CategoryPill category={question.category} label={formatStudioQuestionTypeLabel(question.category, lang === "vi" ? "vi" : "en")} />
+                <DifficultyPill difficulty={question.difficulty} label={formatStudioDifficultyLabel(question.difficulty, lang === "vi" ? "vi" : "en")} />
                 {isCoachMode && question.skill && (
                   <span className="inline-flex items-center gap-1.5 rounded-full border border-violet-300/60 dark:border-violet-700/60 bg-violet-50 dark:bg-violet-950/30 px-2.5 py-1 text-[11px] font-semibold text-violet-700 dark:text-violet-300">
                     <Target size={11} />

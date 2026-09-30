@@ -103,9 +103,23 @@ const tdCls = "h-12 px-3 align-middle";
 
 interface QuestionSetHistoryTableProps {
   filter?: QuestionSetsFilterKey;
+  /** Published sets only: practice vs hiring. null = both. */
+  mode?: "practice" | "hiring" | null;
 }
 
-export function QuestionSetHistoryTable({ filter = "all" }: QuestionSetHistoryTableProps) {
+function startOfDay(iso: string): number {
+  const dateOnly = iso.slice(0, 10);
+  const parts = dateOnly.split("-").map(Number);
+  if (parts.length === 3 && parts.every((n) => Number.isFinite(n))) {
+    return new Date(parts[0], parts[1] - 1, parts[2]).getTime();
+  }
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return NaN;
+  d.setHours(0, 0, 0, 0);
+  return d.getTime();
+}
+
+export function QuestionSetHistoryTable({ filter = "all", mode = null }: QuestionSetHistoryTableProps) {
   const { t, lang } = useLanguage();
   const ht = t.historyPage.table;
   const filters = t.historyPage.filters;
@@ -136,6 +150,8 @@ export function QuestionSetHistoryTable({ filter = "all" }: QuestionSetHistoryTa
   const [sourceFilter, setSourceFilter] = useState<"all" | "studio" | "legacy">("all");
   const [questionFilter, setQuestionFilter] = useState<"all" | "1-5" | "6-10" | "11-20" | "21+">("all");
   const [dateSort, setDateSort] = useState<"newest" | "oldest">("newest");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [menuPos, setMenuPos] = useState({ top: 0, right: 0 });
   const menuBtnRef = useRef<HTMLButtonElement | null>(null);
@@ -200,6 +216,17 @@ export function QuestionSetHistoryTable({ filter = "all" }: QuestionSetHistoryTa
       // Source filter
       if (sourceFilter === "studio" && !item.sourceProjectId) return false;
       if (sourceFilter === "legacy" && item.sourceProjectId) return false;
+      if (mode === "practice" && item.isHiringAssessment !== false) return false;
+      if (mode === "hiring" && item.isHiringAssessment !== true) return false;
+      const itemDay = startOfDay(item.publishedAt || item.savedAt);
+      if (dateFrom) {
+        const from = startOfDay(dateFrom);
+        if (!Number.isNaN(from) && (Number.isNaN(itemDay) || itemDay < from)) return false;
+      }
+      if (dateTo) {
+        const to = startOfDay(dateTo);
+        if (!Number.isNaN(to) && (Number.isNaN(itemDay) || itemDay > to)) return false;
+      }
       // Question count filter
       const count = item.questionCount;
       if (questionFilter === "1-5"   && (count < 1  || count > 5))  return false;
@@ -214,10 +241,10 @@ export function QuestionSetHistoryTable({ filter = "all" }: QuestionSetHistoryTa
       const dB = new Date(b.publishedAt ?? b.savedAt).getTime();
       return dateSort === "newest" ? dB - dA : dA - dB;
     });
-  }, [items, search, filter, sourceFilter, questionFilter, dateSort]);
+  }, [items, search, filter, sourceFilter, questionFilter, dateSort, dateFrom, dateTo, mode]);
 
   // Reset to page 1 when any filter / search changes
-  useEffect(() => { setPage(1); }, [filter, search, sourceFilter, questionFilter, dateSort]);
+  useEffect(() => { setPage(1); }, [filter, search, sourceFilter, questionFilter, dateSort, dateFrom, dateTo, mode]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
@@ -416,8 +443,32 @@ export function QuestionSetHistoryTable({ filter = "all" }: QuestionSetHistoryTa
           )}
         >
           <option value="all">{filters.sourceAll}</option>
-          <option value="studio">Studio</option>
-          <option value="legacy">Legacy</option>
+          <option value="studio">{filters.sourceStudio}</option>
+          <option value="legacy">{filters.sourceManual}</option>
+        </select>
+
+        <select
+          value={mode ?? "all"}
+          onChange={(e) => {
+            const next = e.target.value;
+            const params = new URLSearchParams(typeof window !== "undefined" ? window.location.search : "");
+            if (!params.get("filter")) params.set("filter", filter === "all" ? "PUBLISHED" : filter);
+            if (next === "all") params.delete("mode");
+            else params.set("mode", next);
+            router.replace(`/hr/history?${params.toString()}`);
+          }}
+          className={cn(
+            "cursor-pointer rounded-lg border px-2.5 py-1.5 text-[12px] font-medium outline-none transition-colors",
+            "bg-white dark:bg-gray-900",
+            mode
+              ? "border-primary/50 text-primary dark:border-primary/40 dark:text-primary"
+              : "border-gray-200 text-gray-600 dark:border-gray-700 dark:text-gray-300",
+            "focus:border-primary/60"
+          )}
+        >
+          <option value="all">{filters.modeAll}</option>
+          <option value="practice">{filters.modePractice}</option>
+          <option value="hiring">{filters.modeHiring}</option>
         </select>
 
         {/* Số câu hỏi */}
@@ -459,15 +510,44 @@ export function QuestionSetHistoryTable({ filter = "all" }: QuestionSetHistoryTa
           <option value="oldest">{filters.dateOldest}</option>
         </select>
 
+        <label className="inline-flex items-center gap-1.5 text-[12px] text-gray-500 dark:text-gray-400">
+          <span>{filters.dateFrom}</span>
+          <input
+            type="date"
+            value={dateFrom}
+            max={dateTo || undefined}
+            onChange={(e) => setDateFrom(e.target.value)}
+            className="rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-[12px] text-gray-700 outline-none focus:border-primary/40 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"
+          />
+        </label>
+        <label className="inline-flex items-center gap-1.5 text-[12px] text-gray-500 dark:text-gray-400">
+          <span>{filters.dateTo}</span>
+          <input
+            type="date"
+            value={dateTo}
+            min={dateFrom || undefined}
+            onChange={(e) => setDateTo(e.target.value)}
+            className="rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-[12px] text-gray-700 outline-none focus:border-primary/40 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"
+          />
+        </label>
+
         {/* Xóa lọc — chỉ hiện khi có filter đang active */}
-        {(sourceFilter !== "all" || questionFilter !== "all" || dateSort !== "newest" || search.trim()) && (
+        {(sourceFilter !== "all" || questionFilter !== "all" || dateSort !== "newest" || dateFrom || dateTo || search.trim() || mode) && (
           <button
             type="button"
             onClick={() => {
               setSourceFilter("all");
               setQuestionFilter("all");
               setDateSort("newest");
+              setDateFrom("");
+              setDateTo("");
               setSearch("");
+              if (mode) {
+                const params = new URLSearchParams(window.location.search);
+                params.delete("mode");
+                const q = params.toString();
+                router.replace(q ? `/hr/history?${q}` : "/hr/history");
+              }
             }}
             style={{ animation: "scaleInFade 0.3s cubic-bezier(0.34,1.56,0.64,1) both" }}
             className="inline-flex items-center gap-1 rounded-lg border border-gray-200 px-2 py-1.5 text-[12px] text-gray-500 transition-colors hover:border-red-300 hover:text-red-600 dark:border-gray-700 dark:text-gray-400 dark:hover:border-red-800 dark:hover:text-red-400"
@@ -557,13 +637,27 @@ export function QuestionSetHistoryTable({ filter = "all" }: QuestionSetHistoryTa
                       </div>
                     </td>
                     <td className={cn(tdCls, "overflow-hidden")}>
-                      <PublishBadge
-                        status={item.status}
-                        labels={{
-                          published: t.historyPage.badgePublished,
-                          draft: t.historyPage.badgeDraft,
-                        }}
-                      />
+                      <div className="flex min-w-0 flex-wrap items-center gap-1">
+                        <PublishBadge
+                          status={item.status}
+                          labels={{
+                            published: t.historyPage.badgePublished,
+                            draft: t.historyPage.badgeDraft,
+                          }}
+                        />
+                        {item.status === "PUBLISHED" && item.isHiringAssessment != null && (
+                          <span
+                            className={cn(
+                              "inline-flex truncate rounded-md px-1.5 py-0.5 text-[11px] font-semibold whitespace-nowrap",
+                              item.isHiringAssessment
+                                ? "bg-violet-50 text-violet-700 dark:bg-violet-950/40 dark:text-violet-300"
+                                : "bg-sky-50 text-sky-700 dark:bg-sky-950/40 dark:text-sky-300"
+                            )}
+                          >
+                            {item.isHiringAssessment ? filters.modeHiring : filters.modePractice}
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className={cn(tdCls, "text-center tabular-nums", portalSubtext)}>
                       {item.questionCount}
@@ -578,10 +672,10 @@ export function QuestionSetHistoryTable({ filter = "all" }: QuestionSetHistoryTa
                           onClick={() => openStudio(item.sourceProjectId!)}
                           className="text-[12px] font-semibold text-primary hover:underline"
                         >
-                          Studio
+                          {filters.sourceStudio}
                         </button>
                       ) : (
-                        <span className={cn("text-[12px]", portalSubtext)}>Legacy</span>
+                        <span className={cn("text-[12px]", portalSubtext)}>{filters.sourceManual}</span>
                       )}
                     </td>
                     <td className={tdCls}>

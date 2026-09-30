@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { animate, motion } from "framer-motion";
 import {
@@ -121,6 +121,83 @@ function HrSparkline({ data, color = "#7C3AED" }: { data: number[]; color?: stri
   );
 }
 
+function HrDonut({ value, total, color }: { value: number; total: number; color: string }) {
+  const size = 28;
+  const stroke = 4;
+  const r = (size - stroke) / 2;
+  const c = 2 * Math.PI * r;
+  const ratio = total > 0 ? Math.min(1, Math.max(0, value / total)) : 0;
+  const dash = +(c * ratio).toFixed(2);
+  return (
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-hidden>
+      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={color} strokeOpacity="0.18" strokeWidth={stroke} />
+      <circle
+        cx={size / 2}
+        cy={size / 2}
+        r={r}
+        fill="none"
+        stroke={color}
+        strokeWidth={stroke}
+        strokeLinecap="round"
+        strokeDasharray={`${dash} ${+(c - dash).toFixed(2)}`}
+        transform={`rotate(-90 ${size / 2} ${size / 2})`}
+      />
+    </svg>
+  );
+}
+
+function HrBars({ values, color }: { values: number[]; color: string }) {
+  const W = 60;
+  const H = 28;
+  const gap = 3;
+  const bars = values.filter((v) => v > 0).slice(0, 5);
+  if (bars.length === 0) return null;
+  const max = Math.max(...bars, 1);
+  const barW = (W - gap * (bars.length - 1)) / bars.length;
+  return (
+    <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} aria-hidden>
+      {bars.map((v, i) => {
+        const h = Math.max(2, (v / max) * (H - 2));
+        return (
+          <rect
+            key={i}
+            x={i * (barW + gap)}
+            y={H - h}
+            width={barW}
+            height={h}
+            rx={1.5}
+            fill={color}
+            opacity={0.4 + 0.6 * (v / max)}
+          />
+        );
+      })}
+    </svg>
+  );
+}
+
+function HrGauge({ percent, color }: { percent: number; color: string }) {
+  const W = 60;
+  const H = 28;
+  const cx = 30;
+  const cy = 24;
+  const r = 18;
+  const pct = Math.max(0, Math.min(100, percent)) / 100;
+  const arc = (ratio: number) => {
+    const angle = Math.PI * (1 - ratio);
+    const x = +(cx + r * Math.cos(angle)).toFixed(2);
+    const y = +(cy - r * Math.sin(angle)).toFixed(2);
+    return `M ${cx - r} ${cy} A ${r} ${r} 0 0 0 ${x} ${y}`;
+  };
+  return (
+    <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} aria-hidden>
+      <path d={arc(1)} fill="none" stroke={color} strokeOpacity="0.18" strokeWidth="4" strokeLinecap="round" />
+      {pct > 0 && (
+        <path d={arc(pct)} fill="none" stroke={color} strokeWidth="4" strokeLinecap="round" />
+      )}
+    </svg>
+  );
+}
+
 // ---------------------------------------------------------------------------
 // KPI Card
 // ---------------------------------------------------------------------------
@@ -134,29 +211,31 @@ interface KpiCardProps {
   loading: boolean;
   sparkline?: number[];
   sparklineColor?: string;
+  chart?: ReactNode;
 }
 
-function KpiCard({ icon: Icon, iconBg, iconColor, label, value, loading, sparkline, sparklineColor = "#7C3AED" }: KpiCardProps) {
+function KpiCard({ icon: Icon, iconBg, iconColor, label, value, loading, sparkline, sparklineColor = "#7C3AED", chart }: KpiCardProps) {
   const isNumeric = typeof value === "number" || /^\d+(?:\.\d+)?%?$/.test(String(value));
-  const hasChart = !loading && sparkline && sparkline.length >= 2 && sparkline.some(v => v > 0);
+  const hasSpark = !loading && sparkline && sparkline.length >= 2 && sparkline.some((v) => v > 0);
+  const hasChart = Boolean(hasSpark || (!loading && chart));
   return (
     <div className="hr-glass-card p-4 flex flex-col gap-3 h-full min-h-28">
 
-      {/* Row 1: icon (left) + sparkline (right) */}
+      {/* Row 1: icon (left) + chart (right) */}
       <div className="flex items-start justify-between">
         <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center shrink-0", iconBg)}>
           <Icon size={18} className={iconColor} />
         </div>
         {hasChart ? (
           <motion.div
-            key={sparkline!.join(",")}
-            className="w-15 h-7 shrink-0"
-            style={{ opacity: 0.7 }}
+            key={hasSpark ? sparkline!.join(",") : label}
+            className="flex h-7 shrink-0 items-center"
+            style={{ opacity: 0.85 }}
             initial={{ opacity: 0, y: 4 }}
-            animate={{ opacity: 0.7, y: 0 }}
+            animate={{ opacity: 0.85, y: 0 }}
             transition={{ duration: 0.45, ease: "easeOut" }}
           >
-            <HrSparkline data={sparkline!} color={sparklineColor} />
+            {hasSpark ? <HrSparkline data={sparkline!} color={sparklineColor} /> : chart}
           </motion.div>
         ) : (
           <div className="h-7" />
@@ -470,6 +549,11 @@ export function HrDashboard() {
     .filter((d) => d.date.startsWith(currentMonthStr + "/"))
     .map((d) => d.sessions);
 
+  const questionBars = data.questionTypeDistribution
+    .slice(0, 5)
+    .map((item) => item.count)
+    .filter((count) => count > 0);
+
   const kpis: KpiCardProps[] = [
     {
       icon: Zap,
@@ -488,6 +572,9 @@ export function HrDashboard() {
       label: p.kpi.completedSessions,
       value: data.completedSessions,
       loading: data.loading,
+      chart: data.totalSessions > 0 ? (
+        <HrDonut value={data.completedSessions} total={data.totalSessions} color="#10B981" />
+      ) : undefined,
     },
     {
       icon: MessageSquareText,
@@ -496,6 +583,7 @@ export function HrDashboard() {
       label: p.kpi.totalQuestions,
       value: data.totalQuestionsGenerated,
       loading: data.loading,
+      chart: questionBars.length > 0 ? <HrBars values={questionBars} color="#3B82F6" /> : undefined,
     },
     {
       icon: TrendingUp,
@@ -504,6 +592,7 @@ export function HrDashboard() {
       label: p.kpi.successRate,
       value: `${data.successRate}%`,
       loading: data.loading,
+      chart: data.totalSessions > 0 ? <HrGauge percent={data.successRate} color="#F59E0B" /> : undefined,
     },
     {
       icon: CalendarDays,

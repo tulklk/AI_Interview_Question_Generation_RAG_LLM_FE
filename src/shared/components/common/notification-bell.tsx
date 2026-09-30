@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { Bell, BellOff } from "lucide-react";
 
 const NOTIF_READ_KEY = "hiregen-notifications-read";
@@ -67,6 +68,14 @@ export function NotificationBell({ items, emptyLabel, title = "Notifications", m
     setLocalItems((prev) => prev.map((n) => ({ ...n, read: true })));
   }
 
+  function markRead(id: string) {
+    const readIds = getReadIds();
+    readIds.add(id);
+    persistReadIds(readIds);
+    setLocalItems((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
+    setOpen(false);
+  }
+
   return (
     <div ref={ref} className="relative">
       <button
@@ -105,24 +114,40 @@ export function NotificationBell({ items, emptyLabel, title = "Notifications", m
             </div>
           ) : (
             <ul className="py-1 max-h-80 overflow-y-auto">
-              {localItems.map((n) => (
-                <li
-                  key={n.id}
-                  className="flex items-start gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer"
-                >
-                  <span
-                    className={`mt-1.5 w-2 h-2 rounded-full shrink-0 ${
-                      n.read ? "bg-gray-300 dark:bg-gray-600" : "bg-[#6c47ff]"
-                    }`}
-                  />
-                  <div className="flex-1 min-w-0">
-                    <p className={`text-sm leading-snug ${n.read ? "text-gray-500 dark:text-gray-400" : "text-gray-800 dark:text-gray-100 font-medium"}`}>
-                      {n.message}
-                    </p>
-                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{n.time}</p>
-                  </div>
-                </li>
-              ))}
+              {localItems.map((n) => {
+                const body = (
+                  <>
+                    <span
+                      className={`mt-1.5 w-2 h-2 rounded-full shrink-0 ${
+                        n.read ? "bg-gray-300 dark:bg-gray-600" : "bg-[#6c47ff]"
+                      }`}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-sm leading-snug ${n.read ? "text-gray-500 dark:text-gray-400" : "text-gray-800 dark:text-gray-100 font-medium"}`}>
+                        {n.message}
+                      </p>
+                      <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{n.time}</p>
+                    </div>
+                  </>
+                );
+                return (
+                  <li key={n.id}>
+                    {n.href ? (
+                      <Link
+                        href={n.href}
+                        onClick={() => markRead(n.id)}
+                        className="flex items-start gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                      >
+                        {body}
+                      </Link>
+                    ) : (
+                      <div className="flex items-start gap-3 px-4 py-3">
+                        {body}
+                      </div>
+                    )}
+                  </li>
+                );
+              })}
             </ul>
           )}
         </div>

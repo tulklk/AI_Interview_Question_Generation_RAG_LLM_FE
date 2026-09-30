@@ -23,6 +23,15 @@ function spacePascalCase(raw: string): string {
     .trim();
 }
 
+function lookupLabel(map: Record<string, string>, raw: string): string | undefined {
+  if (map[raw]) return map[raw];
+  const compact = raw.toLowerCase().replace(/[\s_-]/g, "");
+  for (const [key, label] of Object.entries(map)) {
+    if (key.toLowerCase() === compact) return label;
+  }
+  return undefined;
+}
+
 export function formatStudioQuestionTypeLabel(
   type: string | null | undefined,
   lang: "en" | "vi" = "en"
@@ -30,5 +39,27 @@ export function formatStudioQuestionTypeLabel(
   const key = (type || "").trim();
   if (!key) return "";
   const map = lang === "vi" ? VI_LABELS : EN_LABELS;
-  return map[key] ?? spacePascalCase(key);
+  return lookupLabel(map, key) ?? spacePascalCase(key);
+}
+
+const DIFFICULTY_EN: Record<string, string> = {
+  easy: "Easy",
+  medium: "Medium",
+  hard: "Hard",
+};
+
+const DIFFICULTY_VI: Record<string, string> = {
+  easy: "Dễ",
+  medium: "Trung bình",
+  hard: "Khó",
+};
+
+export function formatStudioDifficultyLabel(
+  difficulty: string | null | undefined,
+  lang: "en" | "vi" = "en"
+): string {
+  const key = (difficulty || "").trim().toLowerCase();
+  if (!key) return "";
+  const map = lang === "vi" ? DIFFICULTY_VI : DIFFICULTY_EN;
+  return map[key] ?? (difficulty || "").trim();
 }

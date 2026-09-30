@@ -3,6 +3,7 @@
 import { cn } from "@/lib/cn";
 import { CodeSnippetBlock } from "@/shared/components/ui/code-snippet-block";
 import { useLanguage } from "@/shared/providers/language-context";
+import { formatStudioDifficultyLabel } from "@/features/studio/utils/format-question-type-label";
 
 // Human-readable short labels for template IDs shown in the card badge
 const TEMPLATE_LABELS: Record<string, string> = {
@@ -47,7 +48,8 @@ export function QuestionTemplateCard({
   attachedImageUrl,
   bare = false,
 }: Props) {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
+  const difficultyKey = difficulty.toLowerCase();
   const templateLabel = templateId
     ? ((t.questionBuilder.templateNames as Record<string, string>)[templateId]
         ?? TEMPLATE_LABELS[templateId]
@@ -116,12 +118,12 @@ export function QuestionTemplateCard({
           <span
             className={cn(
               "rounded px-1.5 py-0.5 text-[9px] font-bold",
-              difficulty === "Easy" && "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300",
-              difficulty === "Medium" && "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300",
-              difficulty === "Hard" && "bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300"
+              difficultyKey === "easy" && "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300",
+              difficultyKey === "medium" && "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300",
+              difficultyKey === "hard" && "bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300"
             )}
           >
-            {difficulty}
+            {formatStudioDifficultyLabel(difficulty, lang === "vi" ? "vi" : "en")}
           </span>
         </div>
       </div>

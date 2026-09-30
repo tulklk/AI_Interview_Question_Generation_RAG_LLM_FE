@@ -516,6 +516,8 @@ export interface CompletedSessionSummary {
   status: PracticeSessionStatus;
   startedAt?: string;
   completedAt?: string;
+  /** null when the session payload does not say Practice vs Hiring. */
+  isHiringAssessment: boolean | null;
 }
 
 function normalizeCompletedSession(raw: unknown): CompletedSessionSummary | null {
@@ -552,7 +554,18 @@ function normalizeCompletedSession(raw: unknown): CompletedSessionSummary | null
     status: normalizeSessionStatus(pickString(src, "status")),
     startedAt: pickOptionalString(src, "startedAt"),
     completedAt: pickOptionalString(src, "completedAt"),
+    isHiringAssessment:
+      pickBoolOrNull(src, "isHiringAssessment", "IsHiringAssessment")
+      ?? pickBoolOrNull(nested, "isHiringAssessment", "IsHiringAssessment"),
   };
+}
+
+function pickBoolOrNull(obj: Record<string, unknown> | null, ...keys: string[]): boolean | null {
+  if (!obj) return null;
+  for (const k of keys) {
+    if (typeof obj[k] === "boolean") return obj[k] as boolean;
+  }
+  return null;
 }
 
 export interface PaginatedCompletedSessions {
