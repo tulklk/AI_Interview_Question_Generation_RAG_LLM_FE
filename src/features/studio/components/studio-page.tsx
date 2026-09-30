@@ -18,7 +18,7 @@ import { ChatPanel } from "@/features/studio/components/chat-panel";
 import { PlanCreatingLoading } from "@/features/studio/components/plan-creating-loading";
 import { portalCard } from "@/shared/utils/portal-ui";
 import { StudioSettingsPanel } from "@/features/studio/components/studio-settings-panel";
-import { useStudioConfig } from "@/features/studio/hooks/use-studio-config";
+import { buildConfigDraft, useStudioConfig } from "@/features/studio/hooks/use-studio-config";
 import { StudioActionBar } from "@/features/studio/components/studio-action-bar";
 import {
   hrSidebarSpacerClass,
@@ -580,13 +580,27 @@ export function StudioPage() {
   /** Lưu draft settings (ngôn ngữ / advanced / …) lên BE — silent. Tránh lệch UI sau duyệt. */
   const flushConfigDraftSilent = useCallback(async (): Promise<boolean> => {
     if (!studioConfig.isDirty) {
-      studioConfig.acceptServerSettings();
+      studioConfig.acceptServerSettings(
+        buildConfigDraft(studio.settings, studio.currentPlan, studioConfig.draft?.outlineItems)
+      );
       return true;
     }
     const payload = studioConfig.buildApplyPayload();
     if (!payload) return true;
     const ok = await studio.applyConfiguration(payload, false);
-    if (ok) studioConfig.acceptServerSettings();
+    if (ok) {
+      // settings state có thể chưa re-render — dùng payload vừa apply + plan hiện tại
+      const mergedSettings = studio.settings
+        ? ({ ...studio.settings, ...payload } as StudioSettings)
+        : (payload as StudioSettings);
+      studioConfig.acceptServerSettings(
+        buildConfigDraft(
+          mergedSettings,
+          studio.currentPlan,
+          (payload as { outlineItems?: PlanOutlineItem[] }).outlineItems
+        )
+      );
+    }
     return ok;
   }, [studio, studioConfig]);
 
@@ -644,10 +658,13 @@ export function StudioPage() {
       const ok = await studio.applyConfiguration(settingsOnly);
       if (!ok) return;
     }
-    await studio.applySettingsToPlan(undefined);
+    const refreshed = await studio.applySettingsToPlan(undefined);
+    if (!refreshed) return;
     setPlanConfigAppliedOnce(true);
-    // Draft lấy outline mới từ plan đã patch
-    studioConfig.acceptServerSettings();
+    // Snapshot từ plan/settings vừa refresh — giữ đúng difficulty (không đọc ref stale)
+    studioConfig.acceptServerSettings(
+      buildConfigDraft(refreshed.settings, refreshed.plan)
+    );
   }, [studio, studioConfig]);
 
   /** Bước 2: Áp dụng Live Preview outline vào plan. */
@@ -668,8 +685,16 @@ export function StudioPage() {
       });
       if (!ok) return;
     }
-    await studio.applySettingsToPlan(outlineItems);
-    studioConfig.acceptServerSettings();
+    const refreshed = await studio.applySettingsToPlan(outlineItems);
+    if (!refreshed) return;
+    // Ưu tiên outline từ server; fallback outline vừa gửi để không mất Hard trên UI
+    studioConfig.acceptServerSettings(
+      buildConfigDraft(
+        refreshed.settings,
+        refreshed.plan,
+        refreshed.plan?.outlineItems?.length ? undefined : outlineItems
+      )
+    );
   }, [studio, studioConfig, addToast, s.outlineMinItemsToast]);
 
   const hasJd = Boolean(studio.jdSummary) || Boolean(studio.settings?.readiness?.hasJobDescription);
