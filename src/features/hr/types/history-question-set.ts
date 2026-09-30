@@ -14,4 +14,6 @@ export interface HistoryQuestionSetItem {
   jobId?: string | null;
   savedAt: string;
   publishedAt?: string | null;
+  /** null = list payload omitted the flag — do not guess Practice vs Hiring. */
+  isHiringAssessment: boolean | null;
 }

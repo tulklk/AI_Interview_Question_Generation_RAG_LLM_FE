@@ -739,7 +739,19 @@ export function HistoryBoard() {
                         </div>
                       )}
                       <div className="min-w-0">
-                        <p className={cn("text-[13px] font-semibold truncate", portalHeadingAlt)}>{cleanTitle(session.setTitle ?? "")}</p>
+                        <div className="flex min-w-0 items-center gap-1.5">
+                          <p className={cn("min-w-0 truncate text-[13px] font-semibold", portalHeadingAlt)}>{cleanTitle(session.setTitle ?? "")}</p>
+                          {session.isHiringAssessment != null && (
+                            <span className={cn(
+                              "shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-semibold",
+                              session.isHiringAssessment
+                                ? "bg-violet-50 text-violet-700 dark:bg-violet-950/40 dark:text-violet-300"
+                                : "bg-sky-50 text-sky-700 dark:bg-sky-950/40 dark:text-sky-300"
+                            )}>
+                              {session.isHiringAssessment ? p.modeHiring : p.modePractice}
+                            </span>
+                          )}
+                        </div>
                         <p className={cn("text-[11px]", portalSubtextAlt)}>{session.company}</p>
                       </div>
                     </div>
@@ -827,7 +839,19 @@ export function HistoryBoard() {
                       </div>
                     )}
                     <div className="flex-1 min-w-0">
-                      <p className={cn("text-[13px] font-semibold truncate", portalHeadingAlt)}>{cleanTitle(session.setTitle ?? "")}</p>
+                      <div className="flex min-w-0 items-center gap-1.5">
+                        <p className={cn("min-w-0 truncate text-[13px] font-semibold", portalHeadingAlt)}>{cleanTitle(session.setTitle ?? "")}</p>
+                        {session.isHiringAssessment != null && (
+                          <span className={cn(
+                            "shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-semibold",
+                            session.isHiringAssessment
+                              ? "bg-violet-50 text-violet-700 dark:bg-violet-950/40 dark:text-violet-300"
+                              : "bg-sky-50 text-sky-700 dark:bg-sky-950/40 dark:text-sky-300"
+                          )}>
+                            {session.isHiringAssessment ? p.modeHiring : p.modePractice}
+                          </span>
+                        )}
+                      </div>
                       <p className={cn("text-[11px] mt-0.5", portalSubtextAlt)}>{session.company}</p>
                     </div>
                     <ScorePill score={session.score} pendingTooltip={p.pendingScoreTooltip} />
