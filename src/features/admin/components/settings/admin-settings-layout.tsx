@@ -1,20 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import { Settings, ShieldCheck, Bell, GraduationCap } from "lucide-react";
+import { Settings, GraduationCap } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { GeneralSettings } from "./general-settings";
 import { CoachDrillSettings } from "./coach-drill-settings";
-import { PermissionsSection } from "./permissions-section";
-import { AdminNotificationsSection } from "./admin-notifications-section";
 import type { AdminSettingsTab } from "@/features/admin/types/admin";
 import { useLanguage } from "@/shared/providers/language-context";
 
 const tabIcons: Record<AdminSettingsTab, typeof Settings> = {
   general: Settings,
   coach: GraduationCap,
-  permissions: ShieldCheck,
-  notifications: Bell,
 };
 
 function TabContent({ tab }: { tab: AdminSettingsTab }) {
@@ -23,10 +19,6 @@ function TabContent({ tab }: { tab: AdminSettingsTab }) {
       return <GeneralSettings />;
     case "coach":
       return <CoachDrillSettings />;
-    case "permissions":
-      return <PermissionsSection />;
-    case "notifications":
-      return <AdminNotificationsSection />;
   }
 }
 
@@ -39,8 +31,6 @@ export function AdminSettingsLayout() {
   const tabList: { id: AdminSettingsTab; label: string }[] = [
     { id: "general", label: tabs.general },
     { id: "coach", label: tabs.coach },
-    { id: "permissions", label: tabs.permissions },
-    { id: "notifications", label: tabs.notifications },
   ];
 
   return (

@@ -30,8 +30,6 @@ const EMPTY_FILTERS: UserTableColumnFilters = {
   role: "all",
   status: "all",
   plan: "all",
-  createdFrom: "",
-  createdTo: "",
 };
 
 export default function UserManagementPage() {
@@ -67,16 +65,16 @@ export default function UserManagementPage() {
   // Any filter change resets to page 1
   useEffect(() => {
     setPage(1);
-  }, [debouncedSearch, filters.role, filters.status, filters.plan, filters.createdFrom, filters.createdTo]);
+  }, [debouncedSearch, filters.role, filters.status, filters.plan]);
 
   const listParams = useMemo(() => {
     let isActive: boolean | undefined;
     if (filters.status === "Active") isActive = true;
     else if (filters.status === "Suspended") isActive = false;
 
-    let isPremium: boolean | undefined;
-    if (filters.plan === "PREMIUM") isPremium = true;
-    else if (filters.plan === "FREE") isPremium = false;
+    let plan: "Premium" | "Free" | undefined;
+    if (filters.plan === "PREMIUM") plan = "Premium";
+    else if (filters.plan === "FREE") plan = "Free";
 
     return {
       page,
@@ -84,22 +82,16 @@ export default function UserManagementPage() {
       search: debouncedSearch || undefined,
       role: filters.role === "all" ? undefined : filters.role,
       isActive,
-      isPremium,
-      createdFrom: filters.createdFrom || undefined,
-      createdTo: filters.createdTo || undefined,
+      plan,
     };
-  }, [page, debouncedSearch, filters.role, filters.status, filters.plan, filters.createdFrom, filters.createdTo]);
+  }, [page, debouncedSearch, filters.role, filters.status, filters.plan]);
 
   const fetchUsers = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
       const result = await listUsers(listParams);
-      // Client-side plan filter fallback in case backend ignores IsPremium param
-      let items = result.items;
-      if (listParams.isPremium === true) items = items.filter((u) => !!u.isPremium);
-      else if (listParams.isPremium === false) items = items.filter((u) => !u.isPremium);
-      setUsers(items);
+      setUsers(result.items);
       setTotalCount(result.totalCount);
     } catch {
       setUsers([]);
@@ -125,10 +117,7 @@ export default function UserManagementPage() {
   const refreshUsersQuietly = useCallback(async () => {
     try {
       const result = await listUsers(listParams);
-      let items = result.items;
-      if (listParams.isPremium === true) items = items.filter((u) => !!u.isPremium);
-      else if (listParams.isPremium === false) items = items.filter((u) => !u.isPremium);
-      setUsers(items);
+      setUsers(result.items);
       setTotalCount(result.totalCount);
     } catch {
       // Silently ignore — table keeps showing existing data
