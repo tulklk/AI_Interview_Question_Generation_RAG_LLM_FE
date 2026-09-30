@@ -374,6 +374,9 @@ export interface StudioQuestion {
   /** SCRUM-436: skill/tech từ outline TagsJson — badge UI */
   skill?: string | null;
   focusArea?: string | null;
+  /** SCRUM-495 / HG01: lệch config HR — chỉ đánh dấu, không chặn lưu */
+  needsReview?: boolean;
+  mismatchReasons?: string[] | null;
 }
 
 export interface StudioQuestionListResponse {

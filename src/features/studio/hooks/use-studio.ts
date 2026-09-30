@@ -975,7 +975,17 @@ export function useStudio() {
       savedQuestionsFingerprintRef.current = null;
       setQuestions(result.items);
       setIsDraftSaved(false);
-      addToast("success", tx.generationDone.replace("{{count}}", String(result.items.length)));
+      const flaggedAfterGen = result.items.filter((q) => q.needsReview).length;
+      if (flaggedAfterGen > 0) {
+        addToast(
+          "success",
+          lang === "vi"
+            ? `${tx.generationDone.replace("{{count}}", String(result.items.length))} Có ${flaggedAfterGen} câu lệch kế hoạch (đã đánh dấu) — có thể regen.`
+            : `${tx.generationDone.replace("{{count}}", String(result.items.length))} ${flaggedAfterGen} flagged vs HR plan — you can regenerate.`
+        );
+      } else {
+        addToast("success", tx.generationDone.replace("{{count}}", String(result.items.length)));
+      }
     } catch (error) {
       if (generateCancelledRef.current) return;
       // Detect BE quota / cooldown error codes (COOLDOWN_ACTIVE, QUOTA_EXCEEDED).
@@ -1251,7 +1261,18 @@ export function useStudio() {
         }
       }
       setIsDraftSaved(true);
-      addToast("success", tx.saved ?? tx.draftSaved);
+      // SCRUM-495: cảnh báo nhẹ trong toast success nếu còn câu lệch — vẫn cho lưu
+      const flaggedCount = questions.filter((q) => q.needsReview).length;
+      if (flaggedCount > 0) {
+        addToast(
+          "success",
+          lang === "vi"
+            ? `Đã lưu. Có ${flaggedCount} câu lệch kế hoạch HR (đã đánh dấu) — nên regen nếu cần.`
+            : `Saved. ${flaggedCount} question(s) flagged vs HR plan — consider regenerating.`
+        );
+      } else {
+        addToast("success", tx.saved ?? tx.draftSaved);
+      }
     } catch (error) {
       addToast("error", extractErrorMessage(error, lang) || tx.draftSaveFailed);
     } finally {
