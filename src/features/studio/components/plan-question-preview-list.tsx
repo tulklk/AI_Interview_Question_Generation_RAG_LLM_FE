@@ -35,6 +35,10 @@ export interface PlanQuestionPreviewLabels {
   /** SCRUM-427: label «Lý do hỏi» từ goal */
   whyAsked: string;
   whyAskedPlaceholder: string;
+  /** HG01: slot vừa đổi skill — Why ask/nguồn đi theo skill mới */
+  relabeledHint?: string;
+  /** HG01: placeholder khi HR vừa đổi skill (để trống → BE tự viết theo skill mới) */
+  whyAskedAutoPlaceholder?: string;
 }
 
 const DIFF_OPTIONS: { value: string; labelKey: StudioQuestionDifficulty }[] = [
@@ -120,6 +124,9 @@ export function normalizeOutlineItems(items: PlanOutlineItem[] | null | undefine
       goal: it.goal || "",
       answerMethod: normalizeAnswerMethod(it.answerMethod, it.type || "technical"),
       citations: Array.isArray(it.citations) ? it.citations : undefined,
+      // HG01: giữ 2 dấu này khi gửi lại BE — thiếu là BE không biết slot nào vừa đổi skill
+      plannedSkill: it.plannedSkill ?? undefined,
+      relabeled: it.relabeled ?? undefined,
     }))
     .sort((a, b) => a.order - b.order)
     .map((it, i) => ({ ...it, order: i + 1 }));
@@ -170,7 +177,12 @@ export function PlanQuestionPreviewList({
         (patch.skill != null && patch.skill !== r.skill) ||
         (patch.focusArea != null && patch.focusArea !== r.focusArea)
       ) {
+        // HG01: đổi skill là đổi cả slot — bỏ nguồn cũ VÀ Why ask cũ (đang nói về skill trước).
+        // Để trống thì BE viết lại theo skill mới khi Áp dụng; HR vẫn tự gõ được.
         merged.citations = undefined;
+        merged.goal = "";
+        merged.plannedSkill = merged.skill || merged.focusArea;
+        merged.relabeled = true;
       }
       return merged;
     });
@@ -271,11 +283,20 @@ export function PlanQuestionPreviewList({
                   disabled={locked}
                   value={row.goal}
                   onChange={(e) => updateAt(index, { goal: e.target.value })}
-                  placeholder={labels.whyAskedPlaceholder}
+                  placeholder={
+                    row.relabeled && !row.goal && labels.whyAskedAutoPlaceholder
+                      ? labels.whyAskedAutoPlaceholder
+                      : labels.whyAskedPlaceholder
+                  }
                   rows={2}
                   className="mt-0.5 w-full resize-y rounded border-0 bg-transparent p-0 text-[11px] font-medium leading-snug text-violet-950 placeholder:text-violet-400 focus:outline-none focus:ring-0 disabled:opacity-60 dark:text-violet-50 dark:placeholder:text-violet-500"
                   aria-label={labels.whyAsked}
                 />
+                {row.relabeled && labels.relabeledHint ? (
+                  <p className="mt-0.5 text-[9px] leading-snug text-violet-600 dark:text-violet-300">
+                    {labels.relabeledHint}
+                  </p>
+                ) : null}
               </div>
               {lockedCits.length > 0 ? (
                 <div className="mt-1 space-y-0.5">

@@ -5216,6 +5216,8 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
         outlineApplyCta: "Apply outline",
         outlineWhyAsked: "Why ask",
         outlineWhyAskedPlaceholder: "Assessment goal for this slot…",
+        outlineRelabeledHint: "Skill changed — Why ask and sources now follow the new skill.",
+        outlineWhyAskedAutoPlaceholder: "Leave empty to auto-write it for the new skill on Apply, or type your own…",
         focusFromSourcesHint:
           "Pick only tech saved on the JD. Missing a skill? Add it in the sources column first.",
         frameSection: "Interview frame",
