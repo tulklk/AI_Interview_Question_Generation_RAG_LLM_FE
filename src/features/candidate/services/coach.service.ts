@@ -161,6 +161,8 @@ export interface CoachContext {
   resolutionConfidence?: number;
   resolutionReason?: string | null;
   supportedRoles: string[];
+  /** SCRUM-494: catalog Role Family cho dropdown Vị trí mục tiêu */
+  availableRoleFamilies: CoachRoleFamilyOption[];
   detectedSkills: string[];
 }
 
@@ -170,6 +172,13 @@ export interface CoachFrameworkOption {
   technology?: string | null;
   levels: string[];
   provenance: string;
+}
+
+/** SCRUM-494 */
+export interface CoachRoleFamilyOption {
+  familyKey: string;
+  displayName: string;
+  groupName?: string | null;
 }
 
 export interface UpdateCoachContextPayload {
@@ -333,6 +342,20 @@ function mapFrameworkOptions(raw: unknown): CoachFrameworkOption[] {
     .filter((x) => x.roleKey || x.displayRole);
 }
 
+function mapRoleFamilyOptions(raw: unknown): CoachRoleFamilyOption[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((x) => {
+      const src = asRecord(x) ?? {};
+      return {
+        familyKey: pickString(src, "familyKey", "FamilyKey"),
+        displayName: pickString(src, "displayName", "DisplayName"),
+        groupName: pickString(src, "groupName", "GroupName") || null,
+      };
+    })
+    .filter((x) => x.familyKey || x.displayName);
+}
+
 function mapContext(src: Record<string, unknown> | null): CoachContext {
   if (!src) throw new Error("Invalid context payload");
   return {
@@ -364,6 +387,9 @@ function mapContext(src: Record<string, unknown> | null): CoachContext {
     resolutionConfidence: pickNumber(src, "resolutionConfidence", "ResolutionConfidence") ?? 0,
     resolutionReason: pickString(src, "resolutionReason", "ResolutionReason") || null,
     supportedRoles: pickStringList(src, "supportedRoles", "SupportedRoles"),
+    availableRoleFamilies: mapRoleFamilyOptions(
+      src.availableRoleFamilies ?? src.AvailableRoleFamilies
+    ),
     detectedSkills: pickStringList(src, "detectedSkills", "DetectedSkills"),
   };
 }
