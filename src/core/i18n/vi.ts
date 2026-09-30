@@ -2943,7 +2943,7 @@ Yêu cầu:
     skillsFormatTooShort: "Tên công nghệ cần ít nhất 2 ký tự.",
     skillsFormatTooLong: "Tên công nghệ tối đa 40 ký tự.",
     skillsFormatInvalidChars:
-      "Chỉ dùng chữ, số và các ký tự . # + / - (không emoji / ký tự đặc biệt).",
+      "Chỉ dùng chữ, số và các ký tự . # + / - ( ) (không emoji / ký tự đặc biệt).",
     skillsFormatNoLetter: "Tên công nghệ cần có ít nhất một chữ cái.",
     skillsFormatNonIt:
       "Chỉ thêm công nghệ / kỹ năng IT. Marketing, sales, kế toán… không được hỗ trợ.",

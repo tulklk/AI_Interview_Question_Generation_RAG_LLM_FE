@@ -2942,7 +2942,7 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
     skillsFormatTooShort: "Technology name needs at least 2 characters.",
     skillsFormatTooLong: "Technology name is limited to 40 characters.",
     skillsFormatInvalidChars:
-      "Use letters, digits, and . # + / - only (no emoji / special symbols).",
+      "Use letters, digits, and . # + / - ( ) only (no emoji / special symbols).",
     skillsFormatNoLetter: "Technology name must include at least one letter.",
     skillsFormatNonIt:
       "Only IT technologies/skills are allowed. Marketing, sales, accounting, etc. are not supported.",
