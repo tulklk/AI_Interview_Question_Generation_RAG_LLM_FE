@@ -3476,6 +3476,9 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
     startingSession: "Starting your practice session…",
     startFailed: "Failed to start the practice session.",
     startForbidden: "You don't have access to practice this question set.",
+    integrityLockedTitle: "This question set is locked",
+    integrityLocked:
+      "Anti-cheat ended a previous attempt on this set, so you cannot start it again.",
     retryBtn: "Retry",
     submitFailed: "Failed to save your answer. Please try again.",
     finishing: "AI is evaluating your full session…",

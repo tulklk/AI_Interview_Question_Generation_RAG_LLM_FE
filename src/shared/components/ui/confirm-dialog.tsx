@@ -22,6 +22,8 @@ interface ConfirmDialogProps {
   cancelLabel: string;
   variant?: ConfirmDialogVariant;
   loading?: boolean;
+  /** When true, only the confirm button is shown. X and backdrop still call onCancel. */
+  hideCancel?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
   /** Optional tertiary destructive action, rendered as a text link below the main buttons. */
@@ -34,6 +36,7 @@ interface LatchedContent {
   confirmLabel: string;
   cancelLabel: string;
   variant: ConfirmDialogVariant;
+  hideCancel: boolean;
 }
 
 export function ConfirmDialog({
@@ -44,6 +47,7 @@ export function ConfirmDialog({
   cancelLabel,
   variant = "danger",
   loading = false,
+  hideCancel = false,
   onConfirm,
   onCancel,
   extraAction,
@@ -55,13 +59,14 @@ export function ConfirmDialog({
     confirmLabel,
     cancelLabel,
     variant,
+    hideCancel,
   });
 
   useEffect(() => {
     if (open) {
-      setContent({ title, message, confirmLabel, cancelLabel, variant });
+      setContent({ title, message, confirmLabel, cancelLabel, variant, hideCancel });
     }
-  }, [open, title, message, confirmLabel, cancelLabel, variant]);
+  }, [open, title, message, confirmLabel, cancelLabel, variant, hideCancel]);
 
   if (!mounted) return null;
 
@@ -136,14 +141,16 @@ export function ConfirmDialog({
         </div>
 
         <div className="flex gap-3 border-t border-border dark:border-gray-700 px-5 py-3">
-          <button
-            type="button"
-            onClick={handleCancel}
-            disabled={loading}
-            className="inline-flex min-h-10 flex-1 items-center justify-center rounded-lg border border-border dark:border-gray-700 bg-white dark:bg-gray-800 px-4 py-2 text-sm font-semibold text-charcoal dark:text-gray-100 transition-colors hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50"
-          >
-            {content.cancelLabel}
-          </button>
+          {!content.hideCancel && (
+            <button
+              type="button"
+              onClick={handleCancel}
+              disabled={loading}
+              className="inline-flex min-h-10 flex-1 items-center justify-center rounded-lg border border-border dark:border-gray-700 bg-white dark:bg-gray-800 px-4 py-2 text-sm font-semibold text-charcoal dark:text-gray-100 transition-colors hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50"
+            >
+              {content.cancelLabel}
+            </button>
+          )}
           <button
             type="button"
             onClick={onConfirm}
