@@ -3479,6 +3479,9 @@ Yêu cầu:
     startingSession: "Đang bắt đầu phiên luyện tập…",
     startFailed: "Không thể bắt đầu phiên luyện tập.",
     startForbidden: "Bạn không có quyền luyện tập với bộ câu hỏi này.",
+    integrityLockedTitle: "Bộ câu hỏi này đã bị khóa",
+    integrityLocked:
+      "Chống gian lận đã kết thúc một lần làm trước đó, nên bạn không thể làm lại bộ câu hỏi này.",
     retryBtn: "Thử lại",
     submitFailed: "Không thể lưu câu trả lời. Vui lòng thử lại.",
     finishing: "AI đang đánh giá toàn bộ bài làm của bạn…",
