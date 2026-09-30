@@ -12,7 +12,7 @@ import {
   type QuestionSourcesLabels,
 } from "@/features/studio/components/question-sources-panel";
 import { inferStudioTemplate } from "@/features/studio/utils/question-template-infer";
-import { formatStudioQuestionTypeLabel } from "@/features/studio/utils/format-question-type-label";
+import { formatStudioDifficultyLabel, formatStudioQuestionTypeLabel } from "@/features/studio/utils/format-question-type-label";
 import { cn } from "@/lib/cn";
 import { useLanguage } from "@/shared/providers/language-context";
 import { portalCard, portalHeading, portalSubtext } from "@/shared/utils/portal-ui";
@@ -140,11 +140,12 @@ export function QuestionsTab({
         {questions.map((question) => {
           const displayNo = displayNumberById.get(question.id) ?? 0;
           const typeLabel = formatStudioQuestionTypeLabel(question.type, typeLang);
+          const difficultyLabel = formatStudioDifficultyLabel(question.difficulty, typeLang);
           return (
           <div key={question.id} className="rounded-lg border border-gray-200 p-3 dark:border-gray-700">
             <div className="mb-2 flex items-center justify-between gap-2">
               <span className={cn("text-xs", portalSubtext)}>
-                #{displayNo} • {typeLabel} • {question.difficulty}
+                #{displayNo} • {typeLabel} • {difficultyLabel}
                 {question.skill?.trim() ? ` • ${question.skill.trim()}` : ""}
               </span>
               <div className="flex items-center gap-2">

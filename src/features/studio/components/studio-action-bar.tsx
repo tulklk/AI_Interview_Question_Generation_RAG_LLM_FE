@@ -7,7 +7,6 @@ import {
   Check,
   CheckCircle2,
   Clock,
-  Copy,
   ExternalLink,
   Globe,
   Loader2,
@@ -47,7 +46,6 @@ interface StudioActionBarProps {
   onSaveDraft: () => void;
   onTogglePublish: () => void;
   onPublishBlocked?: () => void;
-  onCopyShareLink?: () => void;
 }
 
 export function StudioActionBar({
@@ -72,7 +70,6 @@ export function StudioActionBar({
   onSaveDraft,
   onTogglePublish,
   onPublishBlocked,
-  onCopyShareLink,
 }: StudioActionBarProps) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
@@ -185,6 +182,7 @@ export function StudioActionBar({
           </div>
         )}
 
+        {hasQuestions && !isPublished && (
         <button
           type="button"
           disabled={isBusy || isSavingDraft || isDraftSaved}
@@ -212,6 +210,7 @@ export function StudioActionBar({
             {isSavingDraft ? s.saving : isDraftSaved ? s.saved : s.save}
           </span>
         </button>
+        )}
 
         {hasQuestions && !isPublished && (
           <>
@@ -278,17 +277,6 @@ export function StudioActionBar({
               <ExternalLink className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">{s.viewQuestionSet}</span>
             </Link>
-
-            {onCopyShareLink && (
-              <button
-                type="button"
-                onClick={onCopyShareLink}
-                className="inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 transition-colors hover:border-primary/40 hover:text-primary dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"
-              >
-                <Copy className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">{s.copyShareLink}</span>
-              </button>
-            )}
 
             <button
               type="button"

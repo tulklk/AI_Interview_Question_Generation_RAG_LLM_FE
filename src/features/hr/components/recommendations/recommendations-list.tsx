@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import {
   Users, RefreshCw, AlertCircle, Search,
@@ -400,70 +400,31 @@ function CandidateRow({ rec, lang, labels, index, selected, onToggleSelect, onSt
             )}
           </div>
 
-          {/* Row ngữ cảnh: Fit + link bộ câu hỏi / JD */}
           {(typeof rec.fitPercent === "number" || Boolean(rec.questionSetTitle) || Boolean(rec.questionSetId)) && (
             <div className="flex items-center gap-2 flex-wrap mt-1.5">
               {typeof rec.fitPercent === "number" && (
-                rec.questionSetId ? (
-                  <Link
-                    href={`/hr/history/${rec.questionSetId}?jdFit=1`}
-                    title={c.fitAgainst.replace("{{title}}", rec.questionSetTitle || c.questionSet)}
-                    onClick={(e) => e.stopPropagation()}
-                    className="inline-flex items-center text-xs font-bold px-2.5 py-1 rounded-full bg-cyan-50 text-cyan-700 dark:bg-cyan-950/50 dark:text-cyan-300 whitespace-nowrap ring-1 ring-cyan-200/80 dark:ring-cyan-800/60 hover:bg-cyan-100 dark:hover:bg-cyan-950/70 hover:underline underline-offset-2 transition-colors"
-                  >
-                    {c.fitPercent} {rec.fitPercent}%
-                  </Link>
-                ) : (
-                  <span className="inline-flex items-center text-xs font-bold px-2.5 py-1 rounded-full bg-cyan-50 text-cyan-700 dark:bg-cyan-950/50 dark:text-cyan-300 whitespace-nowrap ring-1 ring-cyan-200/80 dark:ring-cyan-800/60">
-                    {c.fitPercent} {rec.fitPercent}%
-                  </span>
-                )
+                <span
+                  title={c.fitAgainst.replace("{{title}}", rec.questionSetTitle || c.questionSet)}
+                  className="inline-flex items-center text-xs font-bold px-2.5 py-1 rounded-full bg-cyan-50 text-cyan-700 dark:bg-cyan-950/50 dark:text-cyan-300 whitespace-nowrap ring-1 ring-cyan-200/80 dark:ring-cyan-800/60"
+                >
+                  {c.fitPercent} {rec.fitPercent}%
+                </span>
               )}
-              {rec.questionSetId && (
-                <Link
-                  href={`/hr/published/${rec.questionSetId}`}
+              {(rec.questionSetId || rec.questionSetTitle) && (
+                <span
                   title={rec.questionSetTitle || c.questionSet}
-                  onClick={(e) => e.stopPropagation()}
                   className={cn(
                     "inline-flex items-center gap-1.5 min-w-0 max-w-xs sm:max-w-md",
                     "text-[12px] font-semibold px-2.5 py-1 rounded-lg",
                     "bg-violet-50 text-violet-800 dark:bg-violet-950/40 dark:text-violet-200",
                     "ring-1 ring-violet-200/70 dark:ring-violet-800/50",
-                    "hover:bg-violet-100 dark:hover:bg-violet-950/60 hover:underline underline-offset-2 transition-colors",
                   )}
                 >
                   <span className="shrink-0 text-[10px] font-bold uppercase tracking-wide text-violet-500 dark:text-violet-400">
                     {c.questionSet}
                   </span>
                   <span className="truncate">{rec.questionSetTitle || "—"}</span>
-                </Link>
-              )}
-              {!rec.questionSetId && rec.questionSetTitle && (
-                <span
-                  title={rec.questionSetTitle}
-                  className={cn(
-                    "inline-flex items-center gap-1.5 min-w-0 max-w-xs sm:max-w-md",
-                    "text-[12px] font-semibold px-2.5 py-1 rounded-lg",
-                    "bg-violet-50 text-violet-800 dark:bg-violet-950/40 dark:text-violet-200",
-                    "ring-1 ring-violet-200/70 dark:ring-violet-800/50",
-                  )}
-                >
-                  <span className="shrink-0 text-[10px] font-bold uppercase tracking-wide text-violet-500 dark:text-violet-400">
-                    {c.questionSet}
-                  </span>
-                  <span className="truncate">{rec.questionSetTitle}</span>
                 </span>
-              )}
-              {rec.questionSetId && (
-                <Link
-                  // Cùng hub published với tên bộ — tránh 1 set mở 3 trang khác nhau
-                  href={`/hr/published/${rec.questionSetId}`}
-                  title="JD"
-                  onClick={(e) => e.stopPropagation()}
-                  className="inline-flex items-center text-[12px] font-semibold px-2.5 py-1 rounded-lg bg-sky-50 text-sky-800 dark:bg-sky-950/40 dark:text-sky-200 ring-1 ring-sky-200/70 dark:ring-sky-800/50 hover:bg-sky-100 dark:hover:bg-sky-950/60 hover:underline underline-offset-2 transition-colors whitespace-nowrap"
-                >
-                  JD
-                </Link>
               )}
             </div>
           )}
@@ -636,6 +597,7 @@ const STATUS_TABS: Array<{ key: string; value: string }> = [
   { key: "statusUnviewed",    value: "UNVIEWED" },
   { key: "statusShortlisted", value: "SHORTLISTED" },
   { key: "statusInvited",     value: "INVITED" },
+  { key: "statusAccepted",    value: "ACCEPTED" },
   { key: "statusDismissed",   value: "DISMISSED" },
 ];
 
@@ -648,6 +610,32 @@ const SCORE_FILTERS: Array<{ key: string; min?: number }> = [
 
 type SortOption = { key: string; sortBy: RecommendationSortBy; sortDir: RecommendationSortDir };
 
+async function listAcceptedRecommendations(params: {
+  minScore?: number;
+  sortBy: RecommendationSortBy;
+  sortDir: RecommendationSortDir;
+}): Promise<CandidateRecommendation[]> {
+  const pageSize = 50;
+  const accepted: CandidateRecommendation[] = [];
+  let page = 1;
+  let total = Number.POSITIVE_INFINITY;
+  while ((page - 1) * pageSize < total && page <= 8) {
+    const res = await listRecommendations({
+      page,
+      pageSize,
+      status: "INVITED",
+      minScore: params.minScore,
+      sortBy: params.sortBy,
+      sortDir: params.sortDir,
+    });
+    total = res.totalCount;
+    accepted.push(...res.items.filter(isCandidateAccepted));
+    if (res.items.length === 0) break;
+    page += 1;
+  }
+  return accepted;
+}
+
 const SORT_OPTIONS: SortOption[] = [
   { key: "sortScoreDesc", sortBy: "score", sortDir: "desc" },
   { key: "sortScoreAsc", sortBy: "score", sortDir: "asc" },
@@ -658,6 +646,7 @@ const SORT_OPTIONS: SortOption[] = [
 export function RecommendationsList() {
   const { t, lang } = useLanguage();
   const p = t.hrRecommendationsPage;
+  const router = useRouter();
   const searchParams = useSearchParams();
 
   const [items, setItems] = useState<CandidateRecommendation[]>([]);
@@ -678,9 +667,11 @@ export function RecommendationsList() {
   const { addToast } = useToast();
 
   useEffect(() => {
-    if (searchParams.get("unviewed") === "true") setStatusFilter("UNVIEWED");
-    const st = searchParams.get("status");
-    if (st) setStatusFilter(st);
+    if (searchParams.get("unviewed") === "true") {
+      setStatusFilter("UNVIEWED");
+      return;
+    }
+    setStatusFilter(searchParams.get("status") ?? "");
   }, [searchParams]);
 
   // SCRUM-424: khởi tạo filter/sort từ HRProfile (URL status/unviewed vẫn ưu tiên)
@@ -754,17 +745,28 @@ export function RecommendationsList() {
     setLoading(true);
     setError(false);
     try {
-      const res = await listRecommendations({
-        page,
-        pageSize: PAGE_SIZE,
-        status: statusFilter && statusFilter !== "UNVIEWED" ? statusFilter : undefined,
-        unviewed: statusFilter === "UNVIEWED" || undefined,
-        minScore,
-        sortBy: sortOption.sortBy,
-        sortDir: sortOption.sortDir,
-      });
-      setItems(res.items);
-      setTotalCount(res.totalCount);
+      if (statusFilter === "ACCEPTED") {
+        const accepted = await listAcceptedRecommendations({
+          minScore,
+          sortBy: sortOption.sortBy,
+          sortDir: sortOption.sortDir,
+        });
+        const start = (page - 1) * PAGE_SIZE;
+        setItems(accepted.slice(start, start + PAGE_SIZE));
+        setTotalCount(accepted.length);
+      } else {
+        const res = await listRecommendations({
+          page,
+          pageSize: PAGE_SIZE,
+          status: statusFilter && statusFilter !== "UNVIEWED" ? statusFilter : undefined,
+          unviewed: statusFilter === "UNVIEWED" || undefined,
+          minScore,
+          sortBy: sortOption.sortBy,
+          sortDir: sortOption.sortDir,
+        });
+        setItems(res.items);
+        setTotalCount(res.totalCount);
+      }
     } catch { setError(true); }
     finally { setLoading(false); }
   }, [page, statusFilter, minScore, sortOption.sortBy, sortOption.sortDir]);
@@ -779,6 +781,20 @@ export function RecommendationsList() {
   useEffect(() => {
     if (!prefsReady) return;
     function onFocus() {
+      if (statusFilter === "ACCEPTED") {
+        void listAcceptedRecommendations({
+          minScore,
+          sortBy: sortOption.sortBy,
+          sortDir: sortOption.sortDir,
+        })
+          .then((accepted) => {
+            const start = (page - 1) * PAGE_SIZE;
+            setItems(accepted.slice(start, start + PAGE_SIZE));
+            setTotalCount(accepted.length);
+          })
+          .catch(() => undefined);
+        return;
+      }
       void listRecommendations({
         page,
         pageSize: PAGE_SIZE,
@@ -921,7 +937,15 @@ export function RecommendationsList() {
           {STATUS_TABS.map((tab) => {
             const active = statusFilter === tab.value;
             return (
-              <button key={tab.key} type="button" onClick={() => setStatusFilter(tab.value)}
+              <button key={tab.key} type="button" onClick={() => {
+                setStatusFilter(tab.value);
+                const params = new URLSearchParams(searchParams.toString());
+                if (tab.value) params.set("status", tab.value);
+                else params.delete("status");
+                if (tab.value !== "UNVIEWED") params.delete("unviewed");
+                const query = params.toString();
+                router.replace(`/hr/candidate-recommendations${query ? `?${query}` : ""}`, { scroll: false });
+              }}
                 className={cn(
                   "whitespace-nowrap px-2.5 py-1.5 rounded-md text-[11px] font-medium transition-all",
                   active

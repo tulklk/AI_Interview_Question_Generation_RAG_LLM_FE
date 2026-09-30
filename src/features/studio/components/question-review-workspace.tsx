@@ -9,7 +9,6 @@ import {
   ChevronLeft,
   ChevronRight,
   FileText,
-  Globe,
   ImagePlus,
   Lightbulb,
   List,
@@ -17,7 +16,6 @@ import {
   MoreHorizontal,
   Pencil,
   RefreshCw,
-  Save,
   Sparkles,
   Trash2,
   X,
@@ -43,7 +41,7 @@ import {
 import { STUDIO_QUESTION_TEMPLATES } from "@/features/studio/constants/question-templates";
 import { inferStudioTemplate } from "@/features/studio/utils/question-template-infer";
 import { isConceptualTheoryQuestion } from "@/features/studio/utils/question-content-match";
-import { formatStudioQuestionTypeLabel } from "@/features/studio/utils/format-question-type-label";
+import { formatStudioDifficultyLabel, formatStudioQuestionTypeLabel } from "@/features/studio/utils/format-question-type-label";
 import { QuestionContent } from "@/shared/components/ui/question-content";
 import { CodeSnippetBlock } from "@/shared/components/ui/code-snippet-block";
 import { ConfirmDialog } from "@/shared/components/ui/confirm-dialog";
@@ -349,7 +347,7 @@ function QuestionDetail({
             {typeLabel}
           </span>
           <span className={cn("inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold", difficultyBadge(question.difficulty))}>
-            {question.difficulty}
+            {formatStudioDifficultyLabel(question.difficulty, lang === "vi" ? "vi" : "en")}
           </span>
           {/* Same labelling as the review card: name the domain instead of
               leaving a bare tag the reader has to interpret. */}
@@ -922,12 +920,6 @@ export function QuestionReviewWorkspace({
   onUploadQuestionImage,
   onDeleteQuestionImage,
   regeneratingQuestionIds = [],
-  onSaveDraft,
-  onPublish,
-  onPublishBlocked,
-  isSavingDraft = false,
-  isDraftSaved = false,
-  isPublished = false,
   hiringMode,
   onHiringModeChange,
   questionSetId = null,
@@ -935,7 +927,6 @@ export function QuestionReviewWorkspace({
 }: QuestionReviewWorkspaceProps) {
   const { t, lang } = useLanguage();
   const c = t.studioPage.chat;
-  const s = t.studioPage;
   const typeLang = lang === "vi" ? "vi" : "en";
 
   const [filter, setFilter] = useState<ReviewFilter>("all");
@@ -946,11 +937,6 @@ export function QuestionReviewWorkspace({
   const total = questions.length;
 
   const displayNumberById = useMemo(() => buildDisplayNumberMap(questions), [questions]);
-
-  const readyCount = useMemo(
-    () => questions.filter(questionIsReady).length,
-    [questions]
-  );
 
   const ragSourceCount = useMemo(() => {
     const files = new Set<string>();
@@ -1033,15 +1019,6 @@ export function QuestionReviewWorkspace({
       e.preventDefault();
       selectByOffset(-1);
     }
-  };
-
-  const handlePublish = () => {
-    if (isPublished) {
-      onPublish?.();
-      return;
-    }
-    // SCRUM-439: dialog chọn subset — chỉ cần đủ min ready, không bắt buộc all ready
-    onPublish?.();
   };
 
   const filterChipClass = (active: boolean) =>
@@ -1191,46 +1168,6 @@ export function QuestionReviewWorkspace({
             <List className="h-3.5 w-3.5" />
             {c.reviewListToggle}
           </button>
-
-          {!isPublished && (
-            <>
-              <button
-                type="button"
-                disabled={isSavingDraft || isDraftSaved}
-                onClick={() => onSaveDraft?.()}
-                title={isDraftSaved ? s.saved : s.save}
-                aria-label={isDraftSaved ? s.saved : s.save}
-                className={cn(
-                  "inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors",
-                  isDraftSaved
-                    ? "border-emerald-200 bg-emerald-50 text-emerald-700 disabled:cursor-default dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300"
-                    : "border-gray-200 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300"
-                )}
-              >
-                {isSavingDraft ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : isDraftSaved ? (
-                  <Check className="h-3.5 w-3.5" />
-                ) : (
-                  <Save className="h-3.5 w-3.5" />
-                )}
-                {isSavingDraft ? s.saving : isDraftSaved ? s.saved : s.save}
-              </button>
-              <button
-                type="button"
-                onClick={handlePublish}
-                className={cn(
-                  "inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-colors",
-                  readyCount === total && total > 0
-                    ? "bg-primary text-white hover:bg-primary/90"
-                    : "border border-gray-200 bg-white text-gray-400 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-500"
-                )}
-              >
-                <Globe className="h-3.5 w-3.5" />
-                {s.publish}
-              </button>
-            </>
-          )}
         </div>
       </div>
 

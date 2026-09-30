@@ -63,6 +63,8 @@ function SettingsLayoutInner() {
   ];
 
   function handleTabClick(id: SettingsTab) {
+    const main = document.querySelector("main");
+    const scrollTop = main instanceof HTMLElement ? main.scrollTop : 0;
     setActiveTab(id);
     const params = new URLSearchParams(searchParams.toString());
     if (id === "billing") {
@@ -72,6 +74,12 @@ function SettingsLayoutInner() {
     }
     const query = params.toString();
     router.replace(`${pathname}${query ? `?${query}` : ""}`, { scroll: false });
+    const restore = () => {
+      const next = document.querySelector("main");
+      if (next instanceof HTMLElement) next.scrollTop = scrollTop;
+    };
+    requestAnimationFrame(restore);
+    window.setTimeout(restore, 0);
   }
 
   return (
