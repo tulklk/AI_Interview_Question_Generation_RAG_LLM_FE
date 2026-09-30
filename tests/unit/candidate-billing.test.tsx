@@ -52,7 +52,6 @@ function freeUsage(overrides: Partial<CandidateBillingUsage> = {}): CandidateBil
   return {
     practiceUsed: 3,
     practiceLimit: 5,
-    visibleQuestionsPerSet: 3,
     aiFeedbackLevel: "BASIC",
     practiceHistoryLimit: 10,
     canSendScorecardToHR: false,
@@ -64,7 +63,6 @@ function premiumUsage(overrides: Partial<CandidateBillingUsage> = {}): Candidate
   return {
     practiceUsed: 42,
     practiceLimit: null,
-    visibleQuestionsPerSet: null,
     aiFeedbackLevel: "ADVANCED",
     practiceHistoryLimit: null,
     canSendScorecardToHR: true,

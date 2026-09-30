@@ -21,8 +21,10 @@ export async function recommendationServiceMockFactory() {
     restoreRecommendation: vi.fn(),
     // Pure business logic (no API call) — keep the real implementation instead
     // of stubbing it, since recommendations-list.tsx calls it directly to
-    // decide whether to show the "accepted" badge.
+    // decide whether to show the accepted/rejected/awaiting-response badge.
     isCandidateAccepted: actual.isCandidateAccepted,
+    isCandidateRejected: actual.isCandidateRejected,
+    isAwaitingCandidateResponse: actual.isAwaitingCandidateResponse,
   };
 }
 

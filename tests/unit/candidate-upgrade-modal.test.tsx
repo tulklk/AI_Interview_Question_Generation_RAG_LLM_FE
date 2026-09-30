@@ -57,7 +57,6 @@ function premiumUsage(): CandidateBillingUsage {
   return {
     practiceUsed: 0,
     practiceLimit: null,
-    visibleQuestionsPerSet: null,
     aiFeedbackLevel: "ADVANCED",
     practiceHistoryLimit: null,
     canSendScorecardToHR: true,
