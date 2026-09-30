@@ -1,25 +1,57 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Check, ChevronDown, ChevronRight, Loader2, Map } from "lucide-react";
+import {
+  ArrowDown,
+  ArrowUp,
+  Check,
+  ChevronDown,
+  ChevronRight,
+  GripVertical,
+  Loader2,
+  ListOrdered,
+  Map,
+} from "lucide-react";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  arrayMove,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { cn } from "@/lib/cn";
 import { portalHeadingAlt, portalSubtextAlt } from "@/shared/utils/portal-ui";
 import { useLanguage } from "@/shared/providers/language-context";
 import { fillTemplate } from "@/features/candidate/utils/dashboard-analytics";
 import { getSkillIcon } from "@/features/candidate/utils/skill-icons";
-import type { CoachRoadmap } from "@/features/candidate/services/coach.service";
+import type { CoachRoadmap, CoachRoadmapItem } from "@/features/candidate/services/coach.service";
 import {
   expandVariants,
   staggerContainer,
   staggerItem,
 } from "@/features/candidate/components/coach/coach-motion";
+import { CoachStepHeader } from "@/features/candidate/components/coach/coach-step-header";
 
 interface CoachRoadmapPreviewPanelProps {
   roadmaps: CoachRoadmap[];
   busy?: boolean;
   accepting?: boolean;
   onToggleItem: (itemId: string, isIncluded: boolean) => void | Promise<void>;
+  onUpdateDraft: (payload: {
+    items?: Array<{ itemId: string; isIncluded?: boolean; sortOrder?: number }>;
+    roadmaps?: Array<{ roadmapId: string; displayOrder: number }>;
+  }) => void | Promise<void>;
   onAccept: () => void | Promise<void>;
 }
 
@@ -33,32 +65,108 @@ function priorityLabel(
   return labels.medium;
 }
 
-/** SCRUM-462: preview/toggle topic trước khi Accept lộ trình. */
+function learnTopics(items: CoachRoadmapItem[]): CoachRoadmapItem[] {
+  return items
+    .filter((i) => !i.isReassessmentGate)
+    .sort((a, b) => a.sortOrder - b.sortOrder);
+}
+
+function SortableTopicRow({
+  item,
+  disabled,
+  toggling,
+  onToggle,
+}: {
+  item: CoachRoadmapItem;
+  disabled: boolean;
+  toggling: boolean;
+  onToggle: (next: boolean) => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: item.id,
+    disabled,
+  });
+  const checked = item.isIncluded !== false;
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={cn(
+        "flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-gray-50/80 dark:hover:bg-gray-900/30",
+        isDragging && "z-10 bg-white shadow-md dark:bg-gray-900"
+      )}
+    >
+      <button
+        type="button"
+        className="shrink-0 cursor-grab touch-none text-gray-400 active:cursor-grabbing disabled:opacity-40"
+        disabled={disabled}
+        aria-label="Drag"
+        {...attributes}
+        {...listeners}
+      >
+        <GripVertical size={14} />
+      </button>
+      <input
+        type="checkbox"
+        className="h-3.5 w-3.5 shrink-0 rounded border-gray-300 text-primary focus:ring-primary/40"
+        checked={checked}
+        disabled={disabled || toggling}
+        onChange={(e) => onToggle(e.target.checked)}
+        aria-label={item.topic}
+      />
+      <div className="min-w-0 flex-1">
+        <p
+          className={cn(
+            "text-[12px] font-medium leading-snug",
+            checked ? portalHeadingAlt : "text-gray-400 line-through"
+          )}
+        >
+          {item.topic}
+        </p>
+      </div>
+      {toggling && <Loader2 size={12} className="shrink-0 animate-spin text-primary" />}
+    </div>
+  );
+}
+
+/** SCRUM-462 / SCRUM-484: preview + toggle + sắp xếp thứ tự luyện trước Accept. */
 export function CoachRoadmapPreviewPanel({
   roadmaps,
   busy = false,
   accepting = false,
   onToggleItem,
+  onUpdateDraft,
   onAccept,
 }: CoachRoadmapPreviewPanelProps) {
   const { t } = useLanguage();
   const p = t.jobseekerCoachPage;
   const reduced = useReducedMotion();
   const [pendingItemId, setPendingItemId] = useState<string | null>(null);
+  const [reordering, setReordering] = useState(false);
   const [descExpanded, setDescExpanded] = useState<Record<string, boolean>>({});
+  const locked = busy || accepting || reordering;
 
   const draftRoadmaps = useMemo(
-    () => roadmaps.filter((r) => r.status === "Suggested" && !r.acceptedAt),
+    () =>
+      roadmaps
+        .filter((r) => r.status === "Suggested" && !r.acceptedAt)
+        .slice()
+        .sort(
+          (a, b) =>
+            (a.displayOrder ?? 0) - (b.displayOrder ?? 0) ||
+            b.priorityScore - a.priorityScore
+        ),
     [roadmaps]
   );
 
   const defaultExpandedId = useMemo(() => {
     if (draftRoadmaps.length === 0) return null;
-    let best = draftRoadmaps[0];
-    for (const r of draftRoadmaps) {
-      if (r.priorityScore > best.priorityScore) best = r;
-    }
-    return best.id;
+    return draftRoadmaps[0].id;
   }, [draftRoadmaps]);
 
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -77,9 +185,14 @@ export function CoachRoadmapPreviewPanel({
     return { skills, topics };
   }, [draftRoadmaps]);
 
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+
   if (draftRoadmaps.length === 0) return null;
 
-  const canAccept = summary.skills >= 1 && !busy && !accepting;
+  const canAccept = summary.skills >= 1 && !locked;
 
   async function handleToggle(itemId: string, next: boolean) {
     setPendingItemId(itemId);
@@ -90,6 +203,60 @@ export function CoachRoadmapPreviewPanel({
     }
   }
 
+  async function persistSkillOrder(ordered: CoachRoadmap[]) {
+    setReordering(true);
+    try {
+      await onUpdateDraft({
+        roadmaps: ordered.map((r, idx) => ({ roadmapId: r.id, displayOrder: idx })),
+      });
+    } finally {
+      setReordering(false);
+    }
+  }
+
+  async function moveSkill(roadmapId: string, dir: -1 | 1) {
+    const idx = draftRoadmaps.findIndex((r) => r.id === roadmapId);
+    if (idx < 0) return;
+    const nextIdx = idx + dir;
+    if (nextIdx < 0 || nextIdx >= draftRoadmaps.length) return;
+    const ordered = arrayMove(draftRoadmaps, idx, nextIdx);
+    await persistSkillOrder(ordered);
+  }
+
+  async function persistTopicOrder(roadmap: CoachRoadmap, orderedTopics: CoachRoadmapItem[]) {
+    setReordering(true);
+    try {
+      await onUpdateDraft({
+        items: orderedTopics.map((item, idx) => ({
+          itemId: item.id,
+          sortOrder: idx + 1,
+          isIncluded: item.isIncluded !== false,
+        })),
+      });
+    } finally {
+      setReordering(false);
+    }
+  }
+
+  async function moveTopic(roadmap: CoachRoadmap, itemId: string, dir: -1 | 1) {
+    const topics = learnTopics(roadmap.items);
+    const idx = topics.findIndex((t) => t.id === itemId);
+    if (idx < 0) return;
+    const nextIdx = idx + dir;
+    if (nextIdx < 0 || nextIdx >= topics.length) return;
+    await persistTopicOrder(roadmap, arrayMove(topics, idx, nextIdx));
+  }
+
+  async function onTopicDragEnd(roadmap: CoachRoadmap, event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const topics = learnTopics(roadmap.items);
+    const oldIndex = topics.findIndex((t) => t.id === active.id);
+    const newIndex = topics.findIndex((t) => t.id === over.id);
+    if (oldIndex < 0 || newIndex < 0) return;
+    await persistTopicOrder(roadmap, arrayMove(topics, oldIndex, newIndex));
+  }
+
   const priorityLabels = {
     high: p.priorityHighLabel,
     medium: p.priorityMediumLabel,
@@ -98,15 +265,13 @@ export function CoachRoadmapPreviewPanel({
 
   return (
     <div className="hr-glass-card relative">
-      <div className="flex items-center gap-2.5 border-b border-gray-100 px-5 py-3.5 dark:border-gray-800">
-        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-violet-100 dark:bg-violet-950/50">
-          <Map size={14} className="text-violet-600 dark:text-violet-400" />
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className={cn("text-[13px] font-semibold", portalHeadingAlt)}>{p.roadmapPreviewTitle}</p>
-          <p className={cn("text-[11px]", portalSubtextAlt)}>{p.roadmapPreviewSubtitle}</p>
-        </div>
-      </div>
+      <CoachStepHeader
+        icon={Map}
+        title={p.roadmapPreviewTitle}
+        subtitle={p.roadmapPreviewSubtitle}
+        iconWrapClassName="bg-violet-100 dark:bg-violet-950/50"
+        iconClassName="text-violet-600 dark:text-violet-400"
+      />
 
       <div className="border-b border-gray-100 px-5 py-3 dark:border-gray-800">
         <p className={cn("text-[12px] font-semibold", portalHeadingAlt)}>
@@ -117,15 +282,62 @@ export function CoachRoadmapPreviewPanel({
         </p>
       </div>
 
+      {/* SCRUM-484: phần Thứ tự luyện đặt trước / nổi bật */}
+      <div className="border-b border-violet-100 bg-violet-50/40 px-5 py-3 dark:border-violet-900/40 dark:bg-violet-950/20">
+        <div className="mb-2 flex items-center gap-2">
+          <ListOrdered size={14} className="text-violet-600 dark:text-violet-400" />
+          <div>
+            <p className={cn("text-[12px] font-semibold", portalHeadingAlt)}>
+              {p.roadmapPracticeOrderTitle}
+            </p>
+            <p className={cn("text-[11px]", portalSubtextAlt)}>{p.roadmapPracticeOrderHint}</p>
+          </div>
+          {reordering && <Loader2 size={12} className="ml-auto animate-spin text-primary" />}
+        </div>
+        <ol className="space-y-1.5">
+          {draftRoadmaps.map((roadmap, idx) => (
+            <li
+              key={`order-${roadmap.id}`}
+              className="flex items-center gap-2 rounded-lg border border-violet-100/80 bg-white/80 px-2.5 py-1.5 dark:border-violet-900/40 dark:bg-gray-950/40"
+            >
+              <span className="w-5 shrink-0 text-center text-[11px] font-bold tabular-nums text-violet-600 dark:text-violet-400">
+                {idx + 1}
+              </span>
+              <p className={cn("min-w-0 flex-1 truncate text-[12px] font-medium", portalHeadingAlt)}>
+                {roadmap.skill}
+              </p>
+              <div className="flex shrink-0 gap-0.5">
+                <button
+                  type="button"
+                  disabled={locked || idx === 0}
+                  onClick={() => void moveSkill(roadmap.id, -1)}
+                  className="rounded p-1 text-gray-500 hover:bg-violet-100 disabled:opacity-30 dark:hover:bg-violet-950/50"
+                  aria-label={p.roadmapMoveSkillUp}
+                >
+                  <ArrowUp size={12} />
+                </button>
+                <button
+                  type="button"
+                  disabled={locked || idx === draftRoadmaps.length - 1}
+                  onClick={() => void moveSkill(roadmap.id, 1)}
+                  className="rounded p-1 text-gray-500 hover:bg-violet-100 disabled:opacity-30 dark:hover:bg-violet-950/50"
+                  aria-label={p.roadmapMoveSkillDown}
+                >
+                  <ArrowDown size={12} />
+                </button>
+              </div>
+            </li>
+          ))}
+        </ol>
+      </div>
+
       <div className="divide-y divide-gray-100 dark:divide-gray-800">
         {draftRoadmaps.map((roadmap) => {
           const expanded = activeExpandedId === roadmap.id;
           const si = getSkillIcon(roadmap.skill);
           const SIcon = si?.icon;
           const outside = roadmap.skillSource === "outsideCv";
-          const topics = roadmap.items
-            .filter((i) => !i.isReassessmentGate)
-            .sort((a, b) => a.sortOrder - b.sortOrder);
+          const topics = learnTopics(roadmap.items);
           const topicCount = topics.filter((i) => i.isIncluded !== false).length;
           const desc = roadmap.explanation?.trim() || (outside ? roadmap.outsideCvReason : null);
           const showFullDesc = descExpanded[roadmap.id];
@@ -210,49 +422,65 @@ export function CoachRoadmapPreviewPanel({
                         </div>
                       )}
 
-                      <motion.ul
-                        className="space-y-1.5"
-                        variants={staggerContainer}
-                        initial={reduced ? false : "hidden"}
-                        animate="visible"
+                      <p className={cn("text-[11px] font-semibold", portalSubtextAlt)}>
+                        {p.roadmapTopicOrderHint}
+                      </p>
+
+                      <DndContext
+                        sensors={sensors}
+                        collisionDetection={closestCenter}
+                        onDragEnd={(e) => void onTopicDragEnd(roadmap, e)}
                       >
-                        {topics.map((item) => {
-                          const checked = item.isIncluded !== false;
-                          const toggling = pendingItemId === item.id;
-                          return (
-                            <motion.li
-                              key={item.id}
-                              variants={staggerItem}
-                              className="flex items-center gap-2.5 rounded-lg px-2 py-1.5 hover:bg-gray-50/80 dark:hover:bg-gray-900/30"
-                            >
-                              <input
-                                type="checkbox"
-                                className="h-3.5 w-3.5 shrink-0 rounded border-gray-300 text-primary focus:ring-primary/40"
-                                checked={checked}
-                                disabled={busy || accepting || toggling}
-                                onChange={(e) => void handleToggle(item.id, e.target.checked)}
-                                aria-label={item.topic}
-                              />
-                              <div className="min-w-0 flex-1">
-                                <p
-                                  className={cn(
-                                    "text-[12px] font-medium leading-snug",
-                                    checked ? portalHeadingAlt : "text-gray-400 line-through"
-                                  )}
-                                >
-                                  {item.topic}
-                                </p>
-                              </div>
-                              {toggling && (
-                                <Loader2
-                                  size={12}
-                                  className="mt-0.5 shrink-0 animate-spin text-primary"
-                                />
-                              )}
-                            </motion.li>
-                          );
-                        })}
-                      </motion.ul>
+                        <SortableContext
+                          items={topics.map((t) => t.id)}
+                          strategy={verticalListSortingStrategy}
+                        >
+                          <motion.ul
+                            className="space-y-1.5"
+                            variants={staggerContainer}
+                            initial={reduced ? false : "hidden"}
+                            animate="visible"
+                          >
+                            {topics.map((item, tIdx) => {
+                              const toggling = pendingItemId === item.id;
+                              return (
+                                <motion.li key={item.id} variants={staggerItem} className="list-none">
+                                  <div className="flex items-center gap-1">
+                                    <div className="min-w-0 flex-1">
+                                      <SortableTopicRow
+                                        item={item}
+                                        disabled={locked}
+                                        toggling={toggling}
+                                        onToggle={(next) => void handleToggle(item.id, next)}
+                                      />
+                                    </div>
+                                    <div className="flex shrink-0 flex-col gap-0.5 pr-1">
+                                      <button
+                                        type="button"
+                                        disabled={locked || tIdx === 0}
+                                        onClick={() => void moveTopic(roadmap, item.id, -1)}
+                                        className="rounded p-0.5 text-gray-400 hover:bg-gray-100 disabled:opacity-30 dark:hover:bg-gray-800"
+                                        aria-label={p.roadmapMoveTopicUp}
+                                      >
+                                        <ArrowUp size={11} />
+                                      </button>
+                                      <button
+                                        type="button"
+                                        disabled={locked || tIdx === topics.length - 1}
+                                        onClick={() => void moveTopic(roadmap, item.id, 1)}
+                                        className="rounded p-0.5 text-gray-400 hover:bg-gray-100 disabled:opacity-30 dark:hover:bg-gray-800"
+                                        aria-label={p.roadmapMoveTopicDown}
+                                      >
+                                        <ArrowDown size={11} />
+                                      </button>
+                                    </div>
+                                  </div>
+                                </motion.li>
+                              );
+                            })}
+                          </motion.ul>
+                        </SortableContext>
+                      </DndContext>
                     </div>
                   </motion.div>
                 )}

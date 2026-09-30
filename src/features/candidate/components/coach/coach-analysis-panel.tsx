@@ -1,11 +1,19 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Loader2, Plus, ScanSearch, X } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { portalHeadingAlt, portalSubtextAlt } from "@/shared/utils/portal-ui";
 import { useLanguage } from "@/shared/providers/language-context";
 import { getSkillIcon } from "@/features/candidate/utils/skill-icons";
+import {
+  COACH_SKILL_MAX_LEN,
+  isInSkillCatalog,
+  resolveCatalogSkill,
+  suggestCoachSkills,
+  validateCoachSkillFormat,
+  type CoachSkillFormatError,
+} from "@/features/candidate/utils/coach-skill-catalog";
 import type { CoachContext } from "@/features/candidate/services/coach.service";
 import type { CvInfo } from "@/features/candidate/services/candidate-cv.service";
 import { CoachStepHeader } from "@/features/candidate/components/coach/coach-step-header";
@@ -19,7 +27,7 @@ interface CoachAnalysisPanelProps {
 
 const MAX_SKILLS = 40;
 
-/** SCRUM-463: chip công nghệ có thể +/− trước Confirm Goal. */
+/** SCRUM-463 + SCRUM-491: chip công nghệ +/− với hybrid validate / autocomplete. */
 export function CoachAnalysisPanel({
   context,
   cv,
@@ -31,6 +39,10 @@ export function CoachAnalysisPanel({
   const initialSkills = context?.skills?.length ? context.skills : cv?.skills ?? [];
   const [skills, setSkills] = useState<string[]>(initialSkills);
   const [draft, setDraft] = useState("");
+  const [formatError, setFormatError] = useState<CoachSkillFormatError | null>(null);
+  const [softWarn, setSoftWarn] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const inputWrapRef = useRef<HTMLDivElement>(null);
   const summary = context?.summary || cv?.summary;
   const years = context?.yearsOfExperience;
 
@@ -39,16 +51,67 @@ export function CoachAnalysisPanel({
     setSkills(next);
   }, [context?.skills, cv?.skills]);
 
-  function addSkill() {
-    const trimmed = draft.trim().slice(0, 80);
-    if (!trimmed) return;
+  useEffect(() => {
+    function onDocMouseDown(e: MouseEvent) {
+      if (!inputWrapRef.current?.contains(e.target as Node)) {
+        setShowSuggestions(false);
+      }
+    }
+    document.addEventListener("mousedown", onDocMouseDown);
+    return () => document.removeEventListener("mousedown", onDocMouseDown);
+  }, []);
+
+  const suggestions = useMemo(
+    () => suggestCoachSkills(draft, skills, 8),
+    [draft, skills]
+  );
+
+  function formatErrorMessage(code: CoachSkillFormatError): string {
+    switch (code) {
+      case "empty":
+        return p.skillsFormatEmpty;
+      case "too_short":
+        return p.skillsFormatTooShort;
+      case "too_long":
+        return p.skillsFormatTooLong;
+      case "invalid_chars":
+        return p.skillsFormatInvalidChars;
+      case "no_letter":
+        return p.skillsFormatNoLetter;
+      case "non_it":
+        return p.skillsFormatNonIt;
+      default:
+        return p.skillsFormatInvalidChars;
+    }
+  }
+
+  function commitSkill(raw: string) {
+    const catalogHit = resolveCatalogSkill(raw);
+    const trimmed = (catalogHit ?? raw.trim()).slice(0, COACH_SKILL_MAX_LEN);
+    const err = validateCoachSkillFormat(trimmed);
+    if (err) {
+      setFormatError(err);
+      setSoftWarn(false);
+      return;
+    }
     if (skills.length >= MAX_SKILLS) return;
     if (skills.some((s) => s.toLowerCase() === trimmed.toLowerCase())) {
       setDraft("");
+      setFormatError(null);
+      setSoftWarn(false);
+      setShowSuggestions(false);
       return;
     }
+    const fromCatalog = isInSkillCatalog(trimmed);
     setSkills((prev) => [...prev, trimmed]);
     setDraft("");
+    setFormatError(null);
+    setSoftWarn(!fromCatalog);
+    setShowSuggestions(false);
+  }
+
+  function addSkill() {
+    commitSkill(draft);
   }
 
   function removeSkill(name: string) {
@@ -123,32 +186,74 @@ export function CoachAnalysisPanel({
             );
           })}
         </div>
-        <div className="flex gap-2">
-          <input
-            type="text"
-            value={draft}
-            maxLength={80}
-            disabled={savingSkills || skills.length >= MAX_SKILLS}
-            onChange={(e) => setDraft(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                addSkill();
-              }
-            }}
-            placeholder={p.skillsAddPlaceholder}
-            className="flex-1 h-9 px-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-[13px]"
-          />
-          <button
-            type="button"
-            disabled={savingSkills || !draft.trim() || skills.length >= MAX_SKILLS}
-            onClick={addSkill}
-            className="inline-flex items-center gap-1 h-9 px-3 rounded-lg text-[12px] font-semibold border border-primary/30 text-primary hover:bg-primary/5 disabled:opacity-50"
-          >
-            <Plus size={14} />
-            {p.skillsAddBtn}
-          </button>
+        <div className="relative space-y-1.5" ref={inputWrapRef}>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={draft}
+              maxLength={COACH_SKILL_MAX_LEN}
+              disabled={savingSkills || skills.length >= MAX_SKILLS}
+              onChange={(e) => {
+                setDraft(e.target.value);
+                setFormatError(null);
+                setShowSuggestions(true);
+              }}
+              onFocus={() => setShowSuggestions(true)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  if (suggestions.length === 1) commitSkill(suggestions[0]);
+                  else addSkill();
+                } else if (e.key === "Escape") {
+                  setShowSuggestions(false);
+                }
+              }}
+              placeholder={p.skillsAddPlaceholder}
+              className="flex-1 h-9 px-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-[13px]"
+              aria-autocomplete="list"
+              aria-expanded={showSuggestions && suggestions.length > 0}
+            />
+            <button
+              type="button"
+              disabled={savingSkills || !draft.trim() || skills.length >= MAX_SKILLS}
+              onClick={addSkill}
+              className="inline-flex items-center gap-1 h-9 px-3 rounded-lg text-[12px] font-semibold border border-primary/30 text-primary hover:bg-primary/5 disabled:opacity-50"
+            >
+              <Plus size={14} />
+              {p.skillsAddBtn}
+            </button>
+          </div>
+          {showSuggestions && suggestions.length > 0 && (
+            <ul
+              className={cn(
+                "absolute z-20 left-0 right-16 mt-0.5 max-h-48 overflow-auto rounded-lg border",
+                "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-md py-1"
+              )}
+              role="listbox"
+            >
+              {suggestions.map((item) => (
+                <li key={item} role="option">
+                  <button
+                    type="button"
+                    className="w-full text-left px-3 py-1.5 text-[12px] hover:bg-primary/10 text-gray-800 dark:text-gray-100"
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => commitSkill(item)}
+                  >
+                    {item}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
+        {formatError && (
+          <p className="text-[11px] text-red-600 dark:text-red-400">
+            {formatErrorMessage(formatError)}
+          </p>
+        )}
+        {softWarn && !formatError && (
+          <p className="text-[11px] text-amber-700 dark:text-amber-300">{p.skillsCatalogSoftWarn}</p>
+        )}
         {skills.length === 0 && (
           <p className="text-[11px] text-amber-700 dark:text-amber-300">{p.skillsMinOne}</p>
         )}

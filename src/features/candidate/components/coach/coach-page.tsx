@@ -76,7 +76,13 @@ export function CoachPage() {
 
   if (w.activeStep === 1) {
     stepBody = (
-      <CoachCvUploadPanel cv={w.cv} uploading={w.uploadingCv} onUpload={w.handleUploadCv} />
+      <CoachCvUploadPanel
+        cv={w.cv}
+        hasExistingCv={Boolean(w.hasCv || w.context?.hasCv)}
+        uploading={w.uploadingCv}
+        onUpload={w.handleUploadCv}
+        onContinueWithExisting={w.handleContinueWithExistingCv}
+      />
     );
   } else if (w.activeStep === 2) {
     stepBody = (
@@ -229,6 +235,7 @@ export function CoachPage() {
             busy={w.busy}
             accepting={w.acceptingRoadmaps}
             onToggleItem={(itemId, isIncluded) => void w.handleUpdateDraftItem(itemId, isIncluded)}
+            onUpdateDraft={(payload) => void w.handleUpdateDraft(payload)}
             onAccept={() => void w.handleAcceptRoadmaps()}
           />
         ) : w.roadmaps.some((r) => Boolean(r.acceptedAt) || r.status === "Active") ? (

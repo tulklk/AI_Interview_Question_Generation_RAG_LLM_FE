@@ -436,7 +436,7 @@ export function useCoachWorkflow() {
     await enqueueJob(() => startRoadmapReassessment(roadmapId), { stayOnStep: 7 });
   }
 
-  /** SCRUM-459: soft-reset BE + clear state FE → Confirm Goal. */
+  /** SCRUM-459 + SCRUM-490: soft-reset BE + clear state FE → luôn về bước CV. */
   async function startNewRun() {
     if (resetting) return;
 
@@ -453,13 +453,20 @@ export function useCoachWorkflow() {
       setOverlayDismissed(true);
       setContext(next);
       setEditingContext(true);
-      setSelectedStep(3);
+      // SCRUM-490: bắt đầu lại luôn ở step CV (dùng lại / upload mới)
+      setSelectedStep(1);
       addToast("success", p.newCoachRunDone);
     } catch (e) {
       setError(apiError(e, p.newCoachRunFailed, lang));
     } finally {
       setResetting(false);
     }
+  }
+
+  /** SCRUM-490: giữ CV đã upload → sang Phân tích (không upload lại). */
+  function handleContinueWithExistingCv() {
+    if (!hasCv && !context?.hasCv && !cv) return;
+    setSelectedStep(2);
   }
 
   async function handleUploadCv(file: File) {
@@ -541,7 +548,8 @@ export function useCoachWorkflow() {
   const derivedStep: CoachStepIndex = useMemo(() => {
     const cvReady = Boolean(hasCv || context?.hasCv);
     if (!cvReady) return 1;
-    if (!context?.contextConfirmed) return 3;
+    // SCRUM-490: chưa confirm goal → neo CV (dùng lại / upload mới), không skip sang Goal
+    if (!context?.contextConfirmed) return 1;
     // Đã vào lộ trình / re-assessment → neo UI ở đó (không kéo về chẩn đoán
     // chỉ vì job cũ còn COMPLETED trong state).
     if (hasReassessmentPhase) return 7;
@@ -714,6 +722,7 @@ export function useCoachWorkflow() {
     handleSaveContext,
     handleSaveSkills,
     handleUploadCv,
+    handleContinueWithExistingCv,
     runDiagnostic,
     promoteToNextLevel,
     cancelJob,

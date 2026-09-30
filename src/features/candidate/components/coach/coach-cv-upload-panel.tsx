@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef } from "react";
-import { FileUp, Loader2, Upload } from "lucide-react";
+import { CheckCircle2, FileUp, Loader2, Upload } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { portalSubtextAlt } from "@/shared/utils/portal-ui";
 import { useLanguage } from "@/shared/providers/language-context";
@@ -10,14 +10,25 @@ import { CoachStepHeader } from "@/features/candidate/components/coach/coach-ste
 
 interface CoachCvUploadPanelProps {
   cv: CvInfo | null;
+  /** Có file CV trên profile / context dù getCv chưa trả metadata đầy đủ. */
+  hasExistingCv?: boolean;
   uploading: boolean;
   onUpload: (file: File) => Promise<void>;
+  /** SCRUM-490: tiếp tục với CV đã có → bước Phân tích. */
+  onContinueWithExisting?: () => void;
 }
 
-export function CoachCvUploadPanel({ cv, uploading, onUpload }: CoachCvUploadPanelProps) {
+export function CoachCvUploadPanel({
+  cv,
+  hasExistingCv = false,
+  uploading,
+  onUpload,
+  onContinueWithExisting,
+}: CoachCvUploadPanelProps) {
   const { t } = useLanguage();
   const p = t.jobseekerCoachPage;
   const inputRef = useRef<HTMLInputElement>(null);
+  const showReuse = Boolean(cv || hasExistingCv);
 
   return (
     <div className="hr-glass-card overflow-hidden">
@@ -37,9 +48,11 @@ export function CoachCvUploadPanel({ cv, uploading, onUpload }: CoachCvUploadPan
         >
           {p.cvPrepDisclaimer}
         </p>
-        {cv && (
+        {showReuse && (
           <p className={cn("text-[12px]", portalSubtextAlt)}>
-            {p.cvFile.replace("{{name}}", cv.fileName)}
+            {cv
+              ? p.cvFile.replace("{{name}}", cv.fileName)
+              : p.cvExistingOnProfile}
           </p>
         )}
         <input
@@ -53,15 +66,33 @@ export function CoachCvUploadPanel({ cv, uploading, onUpload }: CoachCvUploadPan
             e.target.value = "";
           }}
         />
-        <button
-          type="button"
-          disabled={uploading}
-          onClick={() => inputRef.current?.click()}
-          className="inline-flex h-9 items-center gap-2 rounded-lg bg-primary px-3.5 text-[12px] font-semibold text-white disabled:opacity-50"
-        >
-          {uploading ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
-          {p.uploadCvHere}
-        </button>
+        <div className="flex flex-wrap gap-2">
+          {showReuse && onContinueWithExisting && (
+            <button
+              type="button"
+              disabled={uploading}
+              onClick={onContinueWithExisting}
+              className="inline-flex h-9 items-center gap-2 rounded-lg bg-primary px-3.5 text-[12px] font-semibold text-white disabled:opacity-50"
+            >
+              <CheckCircle2 size={14} />
+              {p.continueWithExistingCv}
+            </button>
+          )}
+          <button
+            type="button"
+            disabled={uploading}
+            onClick={() => inputRef.current?.click()}
+            className={cn(
+              "inline-flex h-9 items-center gap-2 rounded-lg px-3.5 text-[12px] font-semibold disabled:opacity-50",
+              showReuse
+                ? "border border-gray-200 dark:border-gray-700 hover:border-primary/40"
+                : "bg-primary text-white"
+            )}
+          >
+            {uploading ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
+            {showReuse ? p.uploadNewCv : p.uploadCvHere}
+          </button>
+        </div>
       </div>
     </div>
   );

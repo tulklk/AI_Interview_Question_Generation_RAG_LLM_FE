@@ -232,6 +232,12 @@ export interface CoachSkillGap {
   priorityScore: number;
 }
 
+export interface CoachDrillAttempt {
+  sessionId: string;
+  score?: number | null;
+  completedAt?: string | null;
+}
+
 export interface CoachRoadmapItem {
   id: string;
   topic: string;
@@ -246,8 +252,13 @@ export interface CoachRoadmapItem {
   drillQuestionSetId?: string | null;
   /** SCRUM-484: session đã nộp — xem lại feedback */
   drillSessionId?: string | null;
+  /** SCRUM-489: mọi phiên COMPLETED trên cùng set (cũ → mới) */
+  drillAttempts?: CoachDrillAttempt[];
   sourceUrl?: string | null;
   sourceTitle?: string | null;
+  /** SCRUM-486 */
+  knowledgeDocumentId?: string | null;
+  canViewSource?: boolean;
   prerequisites: string[];
   nextTopics: string[];
 }
@@ -272,6 +283,8 @@ export interface CoachRoadmap {
   outsideCvReason?: string | null;
   /** SCRUM-484: thứ tự luyện skill (0 = trước) */
   displayOrder?: number;
+  /** SCRUM-488: điểm phải > giá trị này mới qua topic */
+  drillPassScoreExclusiveMin?: number;
   items: CoachRoadmapItem[];
 }
 
@@ -425,7 +438,23 @@ function mapAssessment(src: Record<string, unknown> | null): CoachAssessment | n
   };
 }
 
+function mapDrillAttempt(src: Record<string, unknown>): CoachDrillAttempt | null {
+  const sessionId = pickString(src, "sessionId", "SessionId");
+  if (!sessionId) return null;
+  return {
+    sessionId,
+    score: pickNumber(src, "score", "Score") ?? null,
+    completedAt: pickString(src, "completedAt", "CompletedAt") || null,
+  };
+}
+
 function mapRoadmapItem(src: Record<string, unknown>): CoachRoadmapItem {
+  const attemptsRaw = src.drillAttempts ?? src.DrillAttempts;
+  const drillAttempts = Array.isArray(attemptsRaw)
+    ? attemptsRaw
+        .map((x) => mapDrillAttempt(asRecord(x) ?? {}))
+        .filter((a): a is CoachDrillAttempt => Boolean(a?.sessionId))
+    : [];
   return {
     id: pickString(src, "id", "Id"),
     topic: pickString(src, "topic", "Topic"),
@@ -444,8 +473,11 @@ function mapRoadmapItem(src: Record<string, unknown>): CoachRoadmapItem {
     drillScore: pickNumber(src, "drillScore", "DrillScore") ?? null,
     drillQuestionSetId: pickString(src, "drillQuestionSetId", "DrillQuestionSetId") || null,
     drillSessionId: pickString(src, "drillSessionId", "DrillSessionId") || null,
+    drillAttempts,
     sourceUrl: pickString(src, "sourceUrl", "SourceUrl") || null,
     sourceTitle: pickString(src, "sourceTitle", "SourceTitle") || null,
+    knowledgeDocumentId: pickString(src, "knowledgeDocumentId", "KnowledgeDocumentId") || null,
+    canViewSource: pickBool(src, "canViewSource", "CanViewSource"),
     prerequisites: pickStringList(src, "prerequisites", "Prerequisites"),
     nextTopics: pickStringList(src, "nextTopics", "NextTopics"),
   };
@@ -484,6 +516,8 @@ function mapRoadmap(src: Record<string, unknown>): CoachRoadmap {
     })(),
     outsideCvReason: pickString(src, "outsideCvReason", "OutsideCvReason") || null,
     displayOrder: pickNumber(src, "displayOrder", "DisplayOrder") ?? 0,
+    drillPassScoreExclusiveMin:
+      pickNumber(src, "drillPassScoreExclusiveMin", "DrillPassScoreExclusiveMin") ?? 70,
     items,
   };
 }
@@ -537,12 +571,22 @@ export async function getCoachAssessment(id: string): Promise<CoachAssessment | 
   return mapAssessment(extractData(res.data));
 }
 
+function sortRoadmaps(list: CoachRoadmap[]): CoachRoadmap[] {
+  return list
+    .filter((r) => r.id && r.skill)
+    .sort(
+      (a, b) =>
+        (a.displayOrder ?? 0) - (b.displayOrder ?? 0) ||
+        b.priorityScore - a.priorityScore
+    );
+}
+
 export async function getCoachRoadmaps(): Promise<CoachRoadmap[]> {
   const res = await apiClient.get("/api/candidate/coach/roadmaps");
   const root = asRecord(res.data);
   const raw = root?.data ?? root?.Data ?? res.data;
   const list = Array.isArray(raw) ? raw : [];
-  return list.map((x) => mapRoadmap(asRecord(x) ?? {})).filter((r) => r.id && r.skill);
+  return sortRoadmaps(list.map((x) => mapRoadmap(asRecord(x) ?? {})));
 }
 
 export async function getCoachRoadmap(id: string): Promise<CoachRoadmap | null> {
@@ -569,14 +613,7 @@ export async function updateCoachRoadmapDraft(payload: {
   const root = asRecord(res.data);
   const raw = root?.data ?? root?.Data ?? res.data;
   const list = Array.isArray(raw) ? raw : [];
-  return list
-    .map((x) => mapRoadmap(asRecord(x) ?? {}))
-    .filter((r) => r.id && r.skill)
-    .sort(
-      (a, b) =>
-        (a.displayOrder ?? 0) - (b.displayOrder ?? 0) ||
-        b.priorityScore - a.priorityScore
-    );
+  return sortRoadmaps(list.map((x) => mapRoadmap(asRecord(x) ?? {})));
 }
 
 /** SCRUM-462: Accept toàn bộ draft → Active. */
@@ -585,7 +622,7 @@ export async function acceptCoachRoadmaps(): Promise<CoachRoadmap[]> {
   const root = asRecord(res.data);
   const raw = root?.data ?? root?.Data ?? res.data;
   const list = Array.isArray(raw) ? raw : [];
-  return list.map((x) => mapRoadmap(asRecord(x) ?? {})).filter((r) => r.id && r.skill);
+  return sortRoadmaps(list.map((x) => mapRoadmap(asRecord(x) ?? {})));
 }
 
 export async function startRoadmapItemDrill(roadmapId: string, itemId: string): Promise<CoachJob> {
@@ -604,6 +641,39 @@ export async function startRoadmapReassessment(roadmapId: string): Promise<Coach
     { timeout: 180_000 }
   );
   return mapJob(extractData(res.data));
+}
+
+/** SCRUM-486: xem tài liệu nguồn KB gắn roadmap. */
+export interface CoachKnowledgeView {
+  documentId: string;
+  fileName: string;
+  contentType: "markdown" | "text" | "pdf" | "docx" | string;
+  content?: string | null;
+  url?: string | null;
+  expiresAt?: string | null;
+  sourceTitle?: string | null;
+  previewText?: string | null;
+}
+
+export async function getCoachKnowledgeSourceView(documentId: string): Promise<CoachKnowledgeView> {
+  const res = await apiClient.get(`/api/candidate/coach/knowledge-documents/${documentId}/view`);
+  const root = asRecord(res.data);
+  const raw =
+    asRecord(root?.data) ??
+    asRecord(root?.Data) ??
+    extractData(res.data) ??
+    root ??
+    {};
+  return {
+    documentId: pickString(raw, "documentId", "DocumentId") || documentId,
+    fileName: pickString(raw, "fileName", "FileName"),
+    contentType: pickString(raw, "contentType", "ContentType") || "text",
+    content: pickString(raw, "content", "Content") || null,
+    url: pickString(raw, "url", "Url") || null,
+    expiresAt: pickString(raw, "expiresAt", "ExpiresAt") || null,
+    sourceTitle: pickString(raw, "sourceTitle", "SourceTitle") || null,
+    previewText: pickString(raw, "previewText", "PreviewText") || null,
+  };
 }
 
 export function coachResolutionMode(context: CoachContext | null | undefined): string {
