@@ -58,6 +58,10 @@ function plan(overrides: Partial<SubscriptionPlan> = {}): SubscriptionPlan {
       freeVisiblePercent: 100,
       canPersistHrRecommendation: true,
       feedbackOnlyOnVisible: false,
+      canDetailedAiFeedback: false,
+      freeTeaserFeedbackCount: 0,
+      canGeneratePersonalSet: false,
+      personalSetPerMonth: 0,
     },
     ...overrides,
   };
