@@ -22,6 +22,13 @@ function pickStr(obj: Record<string, unknown>, ...keys: string[]): string {
   return "";
 }
 
+function pickHiringFlag(src: Record<string, unknown>): boolean | null {
+  for (const key of ["isHiringAssessment", "IsHiringAssessment"]) {
+    if (typeof src[key] === "boolean") return src[key] as boolean;
+  }
+  return null;
+}
+
 function normalizeItem(raw: unknown): HistoryQuestionSetItem | null {
   const src = asRecord(raw);
   if (!src) return null;
@@ -41,10 +48,11 @@ function normalizeItem(raw: unknown): HistoryQuestionSetItem | null {
     status,
     questionCount,
     isBookmarked: Boolean(src.isBookmarked),
-    sourceProjectId: pickStr(src, "sourceProjectId") || null,
+    sourceProjectId: pickStr(src, "sourceProjectId", "SourceProjectId") || null,
     jobId: pickStr(src, "jobId", "sourceJobId") || null,
     savedAt: pickStr(src, "savedAt", "createdAt") || new Date().toISOString(),
-    publishedAt: pickStr(src, "publishedAt") || null,
+    publishedAt: pickStr(src, "publishedAt", "PublishedAt") || null,
+    isHiringAssessment: pickHiringFlag(src),
   };
 }
 

@@ -13,6 +13,7 @@ import {
   Globe,
   Layers,
   BarChart3,
+  UserCheck,
   UserSearch,
   Users,
   X,
@@ -27,11 +28,13 @@ import { SidebarUserFooter } from "@/features/hr/components/layout/sidebar-user-
 import { HrUpgradeModal } from "@/features/hr/components/billing/hr-upgrade-modal";
 import type { HrPlanId } from "@/features/hr/types/hr-subscription";
 import type { QuestionSetsFilterKey } from "@/features/hr/types/history-question-set";
+import { isCandidateAccepted, listRecommendations } from "@/features/hr/services/recommendation.service";
 
 const COLLAPSE_KEY = "hr-sidebar-collapsed";
 const HISTORY_HREF = "/hr/history";
 const PUBLISHED_INSIGHTS_HREF = "/hr/published";
 const CANDIDATES_HREF = "/hr/candidate-recommendations";
+const ACCEPTED_SEEN_KEY = "hg_accepted_seen_count";
 
 interface SidebarProps {
   open?: boolean;
@@ -54,17 +57,28 @@ const QUESTION_SET_SUB: {
 const CANDIDATES_SUB: {
   href: string;
   icon: typeof Users;
-  labelKey: "recommendations" | "talentPool";
-  match: (pathname: string) => boolean;
+  labelKey: "recommendations" | "accepted" | "talentPool";
+  match: (pathname: string, status: string | null) => boolean;
+  showAcceptedDot?: boolean;
 }[] = [
   {
     href: CANDIDATES_HREF,
     icon: Users,
     labelKey: "recommendations",
-    match: (p) =>
-      p === CANDIDATES_HREF ||
-      p.startsWith(`${CANDIDATES_HREF}/`) ||
-      p.startsWith("/hr/candidates/"),
+    match: (p, status) =>
+      status !== "ACCEPTED" &&
+      (p === CANDIDATES_HREF ||
+        p.startsWith(`${CANDIDATES_HREF}/`) ||
+        p.startsWith("/hr/candidates/")),
+  },
+  {
+    href: `${CANDIDATES_HREF}?status=ACCEPTED`,
+    icon: UserCheck,
+    labelKey: "accepted",
+    showAcceptedDot: true,
+    match: (p, status) =>
+      status === "ACCEPTED" &&
+      (p === CANDIDATES_HREF || p.startsWith(`${CANDIDATES_HREF}/`)),
   },
   {
     href: "/hr/talent",
@@ -104,7 +118,10 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
     pathname === PUBLISHED_INSIGHTS_HREF || pathname.startsWith(`${PUBLISHED_INSIGHTS_HREF}/`);
   const activeFilter = onHistoryRoute ? parseFilter(searchParams.get("filter")) : null;
 
-  const onCandidatesRoute = CANDIDATES_SUB.some((sub) => sub.match(pathname));
+  const candidateStatus = searchParams.get("status");
+  const onCandidatesRoute = CANDIDATES_SUB.some((sub) => sub.match(pathname, candidateStatus));
+  const [unviewedCount, setUnviewedCount] = useState(0);
+  const [acceptedUnread, setAcceptedUnread] = useState(false);
 
   // Initialize open when already on that route → no collapsed flash on mount
   const [historyOpen, setHistoryOpen] = useState(onHistoryRoute || onPublishedInsightsRoute);
@@ -130,6 +147,36 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
     }
     setHydrated(true);
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const [unviewed, invited] = await Promise.all([
+          listRecommendations({ unviewed: true, pageSize: 1 }),
+          listRecommendations({ status: "INVITED", pageSize: 100 }),
+        ]);
+        if (cancelled) return;
+        setUnviewedCount(unviewed.totalCount);
+        const acceptedCount = invited.items.filter(isCandidateAccepted).length;
+        const onAcceptedPage =
+          (pathname === CANDIDATES_HREF || pathname.startsWith(`${CANDIDATES_HREF}/`)) &&
+          searchParams.get("status") === "ACCEPTED";
+        if (onAcceptedPage) {
+          localStorage.setItem(ACCEPTED_SEEN_KEY, String(acceptedCount));
+          setAcceptedUnread(false);
+          return;
+        }
+        const seen = Number(localStorage.getItem(ACCEPTED_SEEN_KEY) ?? "0");
+        setAcceptedUnread(acceptedCount > (Number.isFinite(seen) ? seen : 0));
+      } catch {
+        /* badge is optional */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [pathname, searchParams]);
 
   useEffect(() => {
     if (!newBadgeReady) return;
@@ -245,6 +292,7 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
                 : isHrNavActive(item.href, pathname);
               const label = s.nav[item.href as keyof typeof s.nav] ?? item.label;
               const isNew = newBadgeReady && !seenTabs.has(item.href);
+              const showCandidateDot = isCandidates && unviewedCount > 0;
               const badgeLabel = typeof item.badge === "number" ? String(item.badge) : null;
 
               if (isHistory && !rail) {
@@ -325,7 +373,7 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
                               : onHistoryRoute && activeFilter === sub.filter;
                           const SubIcon = sub.icon;
                           return (
-                            <li key={sub.filter}>
+                            <li key={sub.href}>
                               <Link
                                 href={sub.href}
                                 onClick={() =>
@@ -390,7 +438,7 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
                               isActive ? "text-[#7C3AED] dark:text-[#a78bff]" : "text-[#9ca3af] dark:text-gray-500"
                             )}
                           />
-                          {isNew && (
+                          {(isNew || showCandidateDot) && (
                             <span
                               className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-red-500 ring-2 ring-white dark:ring-gray-950"
                               aria-label="New"
@@ -427,13 +475,13 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
                     {candidatesOpen && (
                       <ul className="mt-0.5 mb-1 ml-4 space-y-0.5 border-l border-[rgba(124,58,237,0.12)] dark:border-[rgba(124,58,237,0.2)] pl-2">
                         {CANDIDATES_SUB.map((sub) => {
-                          const subActive = sub.match(pathname);
+                          const subActive = sub.match(pathname, candidateStatus);
                           const SubIcon = sub.icon;
                           return (
                             <li key={sub.href}>
                               <Link
                                 href={sub.href}
-                                onClick={() => handleNavClick(sub.href)}
+                                onClick={() => handleNavClick(CANDIDATES_HREF)}
                                 className={cn(
                                   "flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-[13px] font-medium transition-colors",
                                   subActive
@@ -445,6 +493,12 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
                                 <span className="min-w-0 flex-1 truncate">
                                   {s.candidatesSub[sub.labelKey]}
                                 </span>
+                                {sub.showAcceptedDot && acceptedUnread && (
+                                  <span
+                                    className="h-2 w-2 shrink-0 rounded-full bg-red-500"
+                                    aria-label="New"
+                                  />
+                                )}
                               </Link>
                             </li>
                           );
@@ -481,7 +535,7 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
                           isActive ? "text-[#7C3AED] dark:text-[#a78bff]" : "text-[#9ca3af] dark:text-gray-500"
                         )}
                       />
-                      {isNew && (
+                      {(isNew || showCandidateDot) && (
                         <span
                           className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-red-500 ring-2 ring-white dark:ring-gray-950"
                           aria-label="New"

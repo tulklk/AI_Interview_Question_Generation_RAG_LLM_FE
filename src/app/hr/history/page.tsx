@@ -21,6 +21,8 @@ function HistoryPageBody() {
   const { t } = useLanguage();
   const searchParams = useSearchParams();
   const filter = useMemo(() => parseFilter(searchParams.get("filter")), [searchParams]);
+  const modeRaw = searchParams.get("mode");
+  const mode = modeRaw === "practice" || modeRaw === "hiring" ? modeRaw : null;
 
   return (
     <div>
@@ -53,7 +55,7 @@ function HistoryPageBody() {
       </div>
 
       <div style={{ animation: "fadeIn 0.42s ease-out both 0.12s" }}>
-        <QuestionSetHistoryTable filter={filter} />
+        <QuestionSetHistoryTable filter={filter} mode={mode} />
       </div>
     </div>
   );

@@ -19,6 +19,7 @@ import { formatRelativeTime } from "@/shared/utils/relative-time";
 import type { HrPlanId } from "@/features/hr/types/hr-subscription";
 import type { NotificationItem } from "@/shared/components/common/notification-bell";
 import { listProjects } from "@/features/studio/services/studio.service";
+import { listRecommendations } from "@/features/hr/services/recommendation.service";
 import { PremiumCelebrationDialog } from "@/shared/components/ui/premium-celebration-dialog";
 import { PremiumRevokedDialog } from "@/shared/components/ui/premium-revoked-dialog";
 import { HrUpgradeModal } from "@/features/hr/components/billing/hr-upgrade-modal";
@@ -91,10 +92,11 @@ export function AppShell({ children, breadcrumb, pageTitle, fullWidth = false }:
     return () => document.removeEventListener("visibilitychange", onVisible);
   }, [refresh]);
 
-  // Close sidebar on route change
+  // Close sidebar on route change. Settings tabs only change the query,
+  // and the settings layout already navigates with scroll: false.
   useEffect(() => {
     setSidebarOpen(false);
-    // Reset scroll-to-top when navigating to a new page
+    if (pathname === "/hr/settings") return;
     setScrolledDown(false);
     if (mainRef.current) mainRef.current.scrollTop = 0;
   }, [pathname]);
@@ -102,8 +104,14 @@ export function AppShell({ children, breadcrumb, pageTitle, fullWidth = false }:
   // Notifications từ Studio projects (Generated) — không gọi V1 jobs.
   useEffect(() => {
     let cancelled = false;
-    listProjects()
-      .then((projects) => {
+    Promise.all([
+      listProjects().catch(() => []),
+      listRecommendations({ unviewed: true, pageSize: 1 }).catch(() => ({
+        items: [],
+        totalCount: 0,
+      })),
+    ])
+      .then(([projects, unviewed]) => {
         if (cancelled) return;
         const items: NotificationItem[] = (projects ?? [])
           .filter((p) => String(p.status).toLowerCase() === "generated")
@@ -117,6 +125,15 @@ export function AppShell({ children, breadcrumb, pageTitle, fullWidth = false }:
             time: formatRelativeTime(new Date().toISOString(), lang),
             read: false,
           }));
+        if (unviewed.totalCount > 0) {
+          items.unshift({
+            id: "hr-unviewed-candidates",
+            message: t.notificationMessages.hrNewCandidates,
+            time: formatRelativeTime(new Date().toISOString(), lang),
+            read: false,
+            href: "/hr/candidate-recommendations?status=UNVIEWED",
+          });
+        }
         setNotifications(items);
       })
       .catch(() => {
