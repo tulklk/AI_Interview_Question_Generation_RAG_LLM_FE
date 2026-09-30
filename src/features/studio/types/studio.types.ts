@@ -197,6 +197,10 @@ export interface PlanOutlineItem {
   answerMethod: "Text" | "Code";
   /** SCRUM-426: nguồn JD + Admin đã khóa trên slot */
   citations?: StudioQuestionCitation[];
+  /** HG01: skill mà Why ask + nguồn đang mô tả — BE dùng để phát hiện slot "lai" */
+  plannedSkill?: string | null;
+  /** HG01: slot vừa đổi skill (theo % focus hoặc HR đổi) → Why ask/nguồn đi theo skill mới */
+  relabeled?: boolean | null;
 }
 
 /** SCRUM-419 / SCRUM-420: nguồn plan kèm scope */

@@ -5214,6 +5214,8 @@ Yêu cầu:
         outlineApplyCta: "Áp dụng outline",
         outlineWhyAsked: "Lý do hỏi",
         outlineWhyAskedPlaceholder: "Mục tiêu đánh giá của slot này…",
+        outlineRelabeledHint: "Đã đổi skill — Lý do hỏi và nguồn đi theo skill mới.",
+        outlineWhyAskedAutoPlaceholder: "Để trống để hệ thống tự viết theo skill mới khi Áp dụng, hoặc tự nhập…",
         focusFromSourcesHint:
           "Chỉ chọn tech đã lưu trên JD. Thiếu skill → thêm ở cột nguồn rồi chọn lại.",
         frameSection: "Khung phỏng vấn",
