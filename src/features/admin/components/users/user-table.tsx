@@ -19,8 +19,6 @@ export interface UserTableColumnFilters {
   role: RoleFilterValue;
   status: StatusFilterValue;
   plan: PlanFilterValue;
-  createdFrom: string;
-  createdTo: string;
 }
 
 const roleStyles: Record<AdminUserRoleKey, string> = {

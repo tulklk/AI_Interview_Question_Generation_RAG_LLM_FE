@@ -25,9 +25,7 @@ export function UserFilters({ filters, onFiltersChange, onClearFilters }: UserFi
     filters.search.trim() !== "" ||
     filters.role !== "all" ||
     filters.status !== "all" ||
-    filters.plan !== "all" ||
-    filters.createdFrom !== "" ||
-    filters.createdTo !== "";
+    filters.plan !== "all";
 
   const roles: { value: RoleFilterValue; label: string }[] = [
     { value: "all", label: f.allRoles },
@@ -51,13 +49,6 @@ export function UserFilters({ filters, onFiltersChange, onClearFilters }: UserFi
   const selectCls = cn(
     "h-9 rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none transition-colors",
     "dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200",
-    "focus:border-violet-400 focus:ring-2 focus:ring-violet-400/20"
-  );
-
-  const dateCls = cn(
-    "h-9 rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none transition-colors",
-    "dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200",
-    "[color-scheme:light] dark:[color-scheme:dark]",
     "focus:border-violet-400 focus:ring-2 focus:ring-violet-400/20"
   );
 
@@ -114,27 +105,6 @@ export function UserFilters({ filters, onFiltersChange, onClearFilters }: UserFi
           <option key={p.value} value={p.value}>{p.label}</option>
         ))}
       </select>
-
-      {/* Date range */}
-      <div className="flex items-center gap-1.5">
-        <input
-          type="date"
-          value={filters.createdFrom}
-          max={filters.createdTo || undefined}
-          onChange={(e) => onFiltersChange({ createdFrom: e.target.value })}
-          title={f.createdFrom}
-          className={dateCls}
-        />
-        <span className="text-xs text-slate-400">—</span>
-        <input
-          type="date"
-          value={filters.createdTo}
-          min={filters.createdFrom || undefined}
-          onChange={(e) => onFiltersChange({ createdTo: e.target.value })}
-          title={f.createdTo}
-          className={dateCls}
-        />
-      </div>
 
       {/* Clear */}
       {hasActiveFilters && (

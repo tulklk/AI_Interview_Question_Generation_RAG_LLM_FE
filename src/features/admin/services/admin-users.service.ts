@@ -296,9 +296,7 @@ export async function listUsers(
     query.Role = backendRole;
   }
   if (params.isActive !== undefined) query.IsActive = params.isActive;
-  if (params.isPremium !== undefined) query.IsPremium = params.isPremium;
-  if (params.createdFrom) query.CreatedFrom = params.createdFrom;
-  if (params.createdTo) query.CreatedTo = params.createdTo;
+  if (params.plan) query.Plan = params.plan;
 
   const res = await apiClient.get("/api/users", { params: query });
   const rawItems = extractItemsArray(res.data);
