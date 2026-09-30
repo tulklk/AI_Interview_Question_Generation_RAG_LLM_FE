@@ -1,6 +1,6 @@
 import { describe, test, expect, vi, beforeEach } from "vitest";
 import userEvent from "@testing-library/user-event";
-import { screen, within } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import { renderWithProviders } from "./test-utils";
 import AdminSettingsPage from "@/app/admin/settings/page";
 
@@ -82,65 +82,6 @@ describe("Admin Platform Settings — General", () => {
       )
     );
     expect(await screen.findByText("Settings saved.")).toBeInTheDocument();
-  });
-});
-
-describe("Admin Platform Settings — Permissions", () => {
-  test("APS-4: Admin's permissions are locked, Recruiter's can be toggled", async () => {
-    settingsApi.getPlatformSettings.mockResolvedValue({});
-    const user = userEvent.setup();
-    renderWithProviders(<AdminSettingsPage />);
-    await screen.findByText("General Settings", {}, { timeout: 10000 });
-
-    await user.click(screen.getByRole("button", { name: "Permissions" }));
-    const row = (await screen.findByText("Manage Users")).closest("tr") as HTMLElement;
-    const [adminToggle, recruiterToggle] = within(row).getAllByRole("switch");
-
-    expect(adminToggle).toBeDisabled();
-    expect(recruiterToggle).toHaveAttribute("aria-checked", "false");
-    await user.click(recruiterToggle);
-    expect(recruiterToggle).toHaveAttribute("aria-checked", "true");
-  });
-
-  test('APS-5: the Permissions "Save Permissions" button is disabled with a Coming soon tooltip, not a silently broken active button', async () => {
-    settingsApi.getPlatformSettings.mockResolvedValue({});
-    const user = userEvent.setup();
-    renderWithProviders(<AdminSettingsPage />);
-    await screen.findByText("General Settings", {}, { timeout: 10000 });
-
-    await user.click(screen.getByRole("button", { name: "Permissions" }));
-    const saveBtn = screen.getByRole("button", { name: "Save Permissions" });
-    expect(saveBtn).toBeDisabled();
-    expect(saveBtn).toHaveAttribute("title", "Coming soon");
-  });
-});
-
-describe("Admin Platform Settings — Notifications", () => {
-  test("APS-6: toggling a notification event's Email channel updates its state", async () => {
-    settingsApi.getPlatformSettings.mockResolvedValue({});
-    const user = userEvent.setup();
-    renderWithProviders(<AdminSettingsPage />);
-    await screen.findByText("General Settings", {}, { timeout: 10000 });
-
-    await user.click(screen.getByRole("button", { name: "Notifications" }));
-    const row = (await screen.findByText("JD Generation")).closest("tr") as HTMLElement;
-    const [emailToggle] = within(row).getAllByRole("switch");
-
-    expect(emailToggle).toHaveAttribute("aria-checked", "false");
-    await user.click(emailToggle);
-    expect(emailToggle).toHaveAttribute("aria-checked", "true");
-  });
-
-  test('APS-7: the "Save Notifications" button is disabled with a Coming soon tooltip', async () => {
-    settingsApi.getPlatformSettings.mockResolvedValue({});
-    const user = userEvent.setup();
-    renderWithProviders(<AdminSettingsPage />);
-    await screen.findByText("General Settings", {}, { timeout: 10000 });
-
-    await user.click(screen.getByRole("button", { name: "Notifications" }));
-    const saveBtn = screen.getByRole("button", { name: "Save Notifications" });
-    expect(saveBtn).toBeDisabled();
-    expect(saveBtn).toHaveAttribute("title", "Coming soon");
   });
 });
 

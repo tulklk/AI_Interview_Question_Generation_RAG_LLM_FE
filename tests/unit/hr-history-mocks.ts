@@ -60,6 +60,7 @@ export function historyItem(overrides: Partial<HistoryQuestionSetItem> = {}): Hi
     jobId: null,
     savedAt: new Date().toISOString(),
     publishedAt: null,
+    isHiringAssessment: null,
     ...overrides,
   };
 }

@@ -60,6 +60,7 @@ function session(overrides: Partial<CompletedSessionSummary> = {}): CompletedSes
     startedAt: RECENT_STARTED_AT,
     completedAt: RECENT_COMPLETED_AT,
     status: "COMPLETED",
+    isHiringAssessment: null,
     ...overrides,
   };
 }

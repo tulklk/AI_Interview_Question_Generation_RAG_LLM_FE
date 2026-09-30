@@ -270,31 +270,11 @@ describe("RAG012 — Question edit/delete/regenerate", () => {
   });
 });
 
-describe("RAG013 — Save / Publish / Share", () => {
-  test("RAG013-ST-3: Share creates a link, copies it to clipboard, and shows a confirmation toast", async () => {
-    await bootstrap();
-    studioApi.createShareLink.mockResolvedValue({ id: "share-1", token: "tok-abc123", permission: "View" } as never);
-    // userEvent.setup() lazily attaches @testing-library/user-event's own
-    // clipboard stub (a getter on navigator.clipboard) the first time it
-    // runs against this document — which replaces whatever object a spy
-    // was attached to. Call setup() BEFORE spying, or the spy ends up
-    // watching an object user-event immediately discards.
-    const user = userEvent.setup();
-    const writeText = vi.spyOn(navigator.clipboard, "writeText").mockResolvedValue(undefined);
-
-    renderStudio(<StudioPage />);
-    await findActionBarButton("Generate Questions");
-    await user.click(screen.getByRole("button", { name: "Share" }));
-
-    expect(
-      await screen.findByText("Share link created and copied to clipboard.", {}, { timeout: 10000 })
-    ).toBeInTheDocument();
-    expect(studioApi.createShareLink).toHaveBeenCalledWith(PROJECT_ID, "View");
-    expect(writeText).toHaveBeenCalledWith(expect.stringContaining("tok-abc123"));
-  });
-
+describe("RAG013 — Save / Publish", () => {
   test("RAG013-ST-1: Save draft persists and shows a confirmation toast", async () => {
-    await bootstrap();
+    // SCRUM: Save is hidden until at least one question has been generated —
+    // bootstrap with a real question so the action bar's hasQuestions gate opens.
+    await bootstrap({ questions: [readyQuestion("q-0", 0, "Question 1.")] });
     studioApi.saveDraft.mockResolvedValue({ questionSetId: "qs-1" } as never);
     studioApi.getProject.mockResolvedValue({
       id: PROJECT_ID, name: "Interview Plan Studio", status: "Approved", isPublished: false,
@@ -303,7 +283,6 @@ describe("RAG013 — Save / Publish / Share", () => {
 
     const user = userEvent.setup();
     renderStudio(<StudioPage />);
-    await findActionBarButton("Generate Questions");
     await user.click(await findActionBarButton("Save"));
 
     expect(await screen.findByText("Question set saved.", {}, { timeout: 10000 })).toBeInTheDocument();

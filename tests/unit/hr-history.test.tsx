@@ -1,6 +1,6 @@
 import { describe, test, expect, vi, beforeEach } from "vitest";
 import userEvent from "@testing-library/user-event";
-import { screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import {
   hrHistoryServiceMockFactory,
   interviewServiceMockFactory,
@@ -23,8 +23,9 @@ import { QuestionSetHistoryTable } from "@/features/hr/components/history/questi
 // subscription fixtures/render helper), mocking hr-history.service /
 // interview.service at the module boundary.
 
+const mockRouterReplace = vi.hoisted(() => vi.fn());
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push: vi.fn(), replace: vi.fn(), prefetch: vi.fn() }),
+  useRouter: () => ({ push: vi.fn(), replace: mockRouterReplace, prefetch: vi.fn() }),
 }));
 
 vi.mock("@/features/hr/services/hr-history.service", async () => {
@@ -61,6 +62,7 @@ beforeEach(async () => {
   historyApi.listHistoryQuestionSets.mockResolvedValue(ITEMS as never);
   (await getMockedGetMySubscription()).mockReset();
   (await getMockedGetMySubscription()).mockResolvedValue(premiumSubscription() as never);
+  mockRouterReplace.mockClear();
 });
 
 describe("HR History — listing and filtering", () => {
@@ -69,7 +71,7 @@ describe("HR History — listing and filtering", () => {
 
     expect(await screen.findByText("Backend Developer Set", {}, { timeout: 10000 })).toBeInTheDocument();
     expect(screen.getByText("Frontend React Set")).toBeInTheDocument();
-    expect(screen.getByText("Draft")).toBeInTheDocument();
+    expect(screen.getByText("Saved")).toBeInTheDocument();
     expect(screen.getByText("Published")).toBeInTheDocument();
     expect(screen.getByText("8")).toBeInTheDocument();
     expect(screen.getByText("12")).toBeInTheDocument();
@@ -104,6 +106,55 @@ describe("HR History — listing and filtering", () => {
 
     expect(await screen.findByText("Network error loading sets", {}, { timeout: 10000 })).toBeInTheDocument();
   });
+
+  test("HIST-8: the mode prop (driven by the page's ?mode= URL param) shows only Practice or only Hiring sets", async () => {
+    // mode is a controlled prop from hr/history/page.tsx's ?mode= search
+    // param (the table's own <select> only calls router.replace — it has no
+    // internal mode state), so filtering is exercised the same way HIST-3
+    // exercises the sibling `filter` prop: render once per prop value.
+    historyApi.listHistoryQuestionSets.mockReset();
+    historyApi.listHistoryQuestionSets.mockResolvedValue([
+      historyItem({ questionSetId: "qs-p", title: "Practice Set", isHiringAssessment: false }),
+      historyItem({ questionSetId: "qs-h", title: "Hiring Set", isHiringAssessment: true }),
+    ] as never);
+
+    const { unmount } = renderStudio(<QuestionSetHistoryTable filter="all" mode="practice" />);
+    expect(await screen.findByText("Practice Set", {}, { timeout: 10000 })).toBeInTheDocument();
+    expect(screen.queryByText("Hiring Set")).not.toBeInTheDocument();
+    unmount();
+
+    renderStudio(<QuestionSetHistoryTable filter="all" mode="hiring" />);
+    expect(await screen.findByText("Hiring Set", {}, { timeout: 10000 })).toBeInTheDocument();
+    expect(screen.queryByText("Practice Set")).not.toBeInTheDocument();
+  });
+
+  test("HIST-8b: changing the Mode dropdown updates the URL via router.replace", async () => {
+    historyApi.listHistoryQuestionSets.mockReset();
+    historyApi.listHistoryQuestionSets.mockResolvedValue(ITEMS as never);
+    const user = userEvent.setup();
+    renderStudio(<QuestionSetHistoryTable filter="all" />);
+    await screen.findByText("Backend Developer Set", {}, { timeout: 10000 });
+
+    await user.selectOptions(screen.getByDisplayValue("Mode: All"), "hiring");
+    await waitFor(() => expect(mockRouterReplace).toHaveBeenCalledWith(expect.stringContaining("mode=hiring")));
+  });
+
+  test("HIST-9: the date range filter excludes sets saved outside the from/to window", async () => {
+    historyApi.listHistoryQuestionSets.mockReset();
+    historyApi.listHistoryQuestionSets.mockResolvedValue([
+      historyItem({ questionSetId: "qs-early", title: "January Set", savedAt: "2026-01-15T00:00:00Z" }),
+      historyItem({ questionSetId: "qs-mid", title: "June Set", savedAt: "2026-06-15T00:00:00Z" }),
+    ] as never);
+    renderStudio(<QuestionSetHistoryTable filter="all" />);
+    await screen.findByText("January Set", {}, { timeout: 10000 });
+    expect(screen.getByText("June Set")).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText("From"), { target: { value: "2026-05-01" } });
+    fireEvent.change(screen.getByLabelText("To"), { target: { value: "2026-07-01" } });
+
+    expect(screen.queryByText("January Set")).not.toBeInTheDocument();
+    expect(screen.getByText("June Set")).toBeInTheDocument();
+  });
 });
 
 describe("HR History — publish / unpublish / bookmark", () => {
@@ -128,7 +179,7 @@ describe("HR History — publish / unpublish / bookmark", () => {
     await waitFor(() => expect(screen.getAllByText("Published")).toHaveLength(2));
   });
 
-  test("HIST-6: unpublishing a Published set calls unpublishQuestionSet and flips its badge to Draft", async () => {
+  test("HIST-6: unpublishing a Published set calls unpublishQuestionSet and flips its badge to Saved", async () => {
     interviewApi.unpublishQuestionSet.mockResolvedValue(undefined as never);
     const user = userEvent.setup();
     renderStudio(<QuestionSetHistoryTable filter="all" />);
@@ -137,7 +188,7 @@ describe("HR History — publish / unpublish / bookmark", () => {
     await user.click(screen.getByTitle("Unpublish"));
 
     await waitFor(() => expect(interviewApi.unpublishQuestionSet).toHaveBeenCalledWith("qs-2"));
-    await waitFor(() => expect(screen.getAllByText("Draft")).toHaveLength(2));
+    await waitFor(() => expect(screen.getAllByText("Saved")).toHaveLength(2));
   });
 
   test("HIST-7: toggling the bookmark icon calls toggleHrBookmark and updates the icon's title", async () => {

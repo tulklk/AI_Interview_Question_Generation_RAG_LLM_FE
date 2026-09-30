@@ -10,9 +10,15 @@ import { RecommendationsList } from "@/features/hr/components/recommendations/re
 // them. No prior automated coverage existed. Renders <RecommendationsList>
 // directly, mocking recommendation.service at the module boundary.
 
+// A single stable instance — real Next.js only returns a new URLSearchParams
+// when the URL actually changes. A fresh one on every call would make
+// `useEffect(() => {...}, [searchParams])` in recommendations-list.tsx
+// re-run (and reset statusFilter from the — always empty — mock) on every
+// re-render, fighting any local setStatusFilter() call from a tab click.
+const searchParamsStub = new URLSearchParams();
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn(), prefetch: vi.fn() }),
-  useSearchParams: () => new URLSearchParams(),
+  useSearchParams: () => searchParamsStub,
 }));
 
 vi.mock("@/features/hr/services/recommendation.service", async () => {
@@ -40,6 +46,31 @@ describe("HR Recommendations — listing and filtering", () => {
     expect(await screen.findByText("Nguyen Van A", {}, { timeout: 10000 })).toBeInTheDocument();
     // ScoreBadge now renders the score-band label (getScoreBandLabel), not the raw number - 88 -> "Good"
     expect(screen.getByText("Good")).toBeInTheDocument();
+  });
+
+  test('REC-1b: the Accepted tab client-aggregates INVITED recommendations down to the accepted ones', async () => {
+    // listAcceptedRecommendations() (recommendations-list.tsx) has no direct
+    // backend status=ACCEPTED filter — it pages through status=INVITED and
+    // filters client-side with isCandidateAccepted(). Assert that filtering,
+    // not just that the tab click re-fetches.
+    recommendationApi.listRecommendations.mockResolvedValue({
+      items: [
+        recommendation({ id: "rec-accepted", candidateName: "Accepted Candidate", status: "INVITED", invitationStatus: "ACCEPTED" }),
+        recommendation({ id: "rec-pending", candidateName: "Still Pending", status: "INVITED", invitationStatus: null }),
+      ],
+      totalCount: 2,
+    } as never);
+    const user = userEvent.setup();
+    renderWithProviders(<RecommendationsList />);
+    await screen.findByText("Accepted Candidate", {}, { timeout: 10000 });
+
+    await user.click(screen.getByRole("button", { name: "Accepted" }));
+
+    expect(await screen.findByText("Accepted Candidate", {}, { timeout: 10000 })).toBeInTheDocument();
+    expect(screen.queryByText("Still Pending")).not.toBeInTheDocument();
+    expect(recommendationApi.listRecommendations).toHaveBeenLastCalledWith(
+      expect.objectContaining({ status: "INVITED" })
+    );
   });
 
   test("REC-2: switching to the Shortlisted status tab re-fetches with that status filter", async () => {

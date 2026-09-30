@@ -186,6 +186,29 @@ describe("AUTH008 — Admin manage users", () => {
     expect(screen.getByRole("button", { name: /Prev/i })).toBeEnabled();
   });
 
+  test('AUTH008-8: the Plan filter sends Plan="Premium"/"Free" (backend field), not an IsPremium boolean', async () => {
+    // Regression test: admin-users.service.ts used to send an `IsPremium`
+    // boolean query param that doesn't exist on the backend's UserQueryDto
+    // (only `Plan: "Premium" | "Free"` does), so the filter was silently
+    // ignored server-side. Assert the actual param name/value the service
+    // call receives, not just that the list re-renders.
+    vi.mocked(listUsers).mockResolvedValue({ items: [USER_A, USER_B], totalCount: 2, page: 1, pageSize: 10 });
+    const user = userEvent.setup();
+    renderWithProviders(<UserManagementPage />);
+    await screen.findByText("Nguyen Van A");
+
+    await user.selectOptions(screen.getByDisplayValue("All plans"), "PREMIUM");
+    await waitFor(() =>
+      expect(listUsers).toHaveBeenLastCalledWith(expect.objectContaining({ plan: "Premium" }))
+    );
+    expect(vi.mocked(listUsers).mock.calls.at(-1)?.[0]).not.toHaveProperty("isPremium");
+
+    await user.selectOptions(screen.getByDisplayValue("Premium"), "FREE");
+    await waitFor(() =>
+      expect(listUsers).toHaveBeenLastCalledWith(expect.objectContaining({ plan: "Free" }))
+    );
+  });
+
   test("UI014-1: the users table wraps in its own horizontal scroll container instead of widening the page", async () => {
     // Grounded in user-table.tsx: an overflow-x-auto wrapper around a
     // min-w-205 table-fixed table is the actual CSS mechanism that makes

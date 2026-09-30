@@ -7,6 +7,7 @@ import {
   freeSubscriptionReady,
   readySettings,
   draftPlan,
+  readyQuestion,
   renderStudio,
   getMockedGetMySubscription,
 } from "./studio-test-utils";
@@ -29,12 +30,13 @@ vi.mock("@/features/studio/services/studio.service", () => studioServiceMockFact
 import * as studioApiTyped from "@/features/studio/services/studio.service";
 const studioApi = studioApiTyped as unknown as ReturnType<typeof studioServiceMockFactory>;
 
-async function bootstrap() {
+async function bootstrap(opts: Parameters<typeof bootstrapStudio>[1] = {}) {
   (await getMockedGetMySubscription()).mockResolvedValue(freeSubscriptionReady() as never);
   bootstrapStudio(studioApi as never, {
     plan: draftPlan({ status: "Approved" }),
     hasJd: true,
     settings: readySettings({ appliedPlanId: "plan-1", readiness: { hasJobDescription: true, hasSelectedDocument: false, hasAwaitingApprovalPlan: false, hasApprovedPlan: true, canGenerateQuestions: true } }),
+    ...opts,
   });
 }
 
@@ -52,42 +54,43 @@ async function findActionBarButton(name: string) {
 
 describe("UI004 — toast stacking and dismissal", () => {
   test("UI004-1: multiple toasts stack (no cap, no dedup) instead of replacing each other", async () => {
-    await bootstrap();
+    // Save is hidden until questions exist, and Publish needs
+    // MIN_QUESTIONS_TO_PUBLISH ready questions — bootstrap with 10 so both
+    // action-bar buttons are available as two distinct toast-producing actions.
+    const initialQuestions = Array.from({ length: 10 }, (_, i) => readyQuestion(`q-${i}`, i, `Question ${i + 1}.`));
+    const completedRun = {
+      id: "run-1", planId: "plan-1", status: "Completed", requestedQuestionCount: 10, generatedQuestionCount: 10,
+      startedAt: new Date().toISOString(), completedAt: new Date().toISOString(), errorCode: null, errorMessage: null,
+    };
+    await bootstrap({ generationRuns: [completedRun], questions: initialQuestions });
     studioApi.saveDraft.mockResolvedValue({ questionSetId: "qs-1" } as never);
-    studioApi.createShareLink.mockResolvedValue({ id: "share-1", token: "tok-abc123", permission: "View" } as never);
-    // userEvent.setup() lazily attaches @testing-library/user-event's own
-    // clipboard stub (a getter on navigator.clipboard) the FIRST time it
-    // runs in a file — which replaces whatever object a spy was attached
-    // to. Call setup() (and thus let it attach its stub) BEFORE spying, or
-    // the spy ends up watching an object user-event immediately discards.
-    const user = userEvent.setup();
-    const writeText = vi.spyOn(navigator.clipboard, "writeText").mockResolvedValue(undefined);
+    studioApi.publishProject.mockResolvedValue(undefined as never);
 
+    const user = userEvent.setup();
     renderStudio(<StudioPage />);
-    await findActionBarButton("Generate Questions");
 
     // Two different toast-producing actions back-to-back — Save's button
     // self-disables (isDraftSaved) right after a successful save, so it
     // can't be re-clicked to prove stacking on its own.
     await user.click(await findActionBarButton("Save"));
-    await user.click(screen.getByRole("button", { name: "Share" }));
+    await user.click(await findActionBarButton("Publish"));
+    const dialog = await screen.findByRole("dialog", {}, { timeout: 10000 });
+    await user.click(within(dialog).getByRole("button", { name: /^Publish \d+ questions?$/ }));
 
     const toastContainer = document.querySelector<HTMLElement>("div.fixed.bottom-6.right-6")!;
     expect(await within(toastContainer).findByText("Question set saved.", {}, { timeout: 10000 })).toBeInTheDocument();
-    expect(await within(toastContainer).findByText("Share link created and copied to clipboard.", {}, { timeout: 10000 })).toBeInTheDocument();
+    expect(await within(toastContainer).findByText("Question set published.", {}, { timeout: 10000 })).toBeInTheDocument();
     expect(toastContainer.querySelectorAll(":scope > div")).toHaveLength(2);
     expect(studioApi.saveDraft).toHaveBeenCalledTimes(1);
-    expect(studioApi.createShareLink).toHaveBeenCalledTimes(1);
-    expect(writeText).toHaveBeenCalled();
-  });
+    expect(studioApi.publishProject).toHaveBeenCalledTimes(1);
+  }, 20000);
 
   test("UI004-2: dismissing a toast via its close (X) button removes it immediately, before the auto-dismiss timer", async () => {
-    await bootstrap();
+    await bootstrap({ questions: [readyQuestion("q-0", 0, "Question 1.")] });
     studioApi.saveDraft.mockResolvedValue({ questionSetId: "qs-1" } as never);
 
     const user = userEvent.setup();
     renderStudio(<StudioPage />);
-    await findActionBarButton("Generate Questions");
     await user.click(await findActionBarButton("Save"));
 
     // The container only mounts once the first toast exists, which is a tick after the click.
