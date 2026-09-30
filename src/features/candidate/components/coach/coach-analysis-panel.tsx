@@ -10,6 +10,7 @@ import {
   COACH_SKILL_MAX_LEN,
   isInSkillCatalog,
   resolveCatalogSkill,
+  sanitizeCoachSkill,
   suggestCoachSkills,
   validateCoachSkillFormat,
   type CoachSkillFormatError,
@@ -87,13 +88,16 @@ export function CoachAnalysisPanel({
 
   function commitSkill(raw: string) {
     const catalogHit = resolveCatalogSkill(raw);
-    const trimmed = (catalogHit ?? raw.trim()).slice(0, COACH_SKILL_MAX_LEN);
-    const err = validateCoachSkillFormat(trimmed);
+    const err = validateCoachSkillFormat(catalogHit ?? raw);
     if (err) {
       setFormatError(err);
       setSoftWarn(false);
       return;
     }
+    const trimmed =
+      catalogHit ??
+      sanitizeCoachSkill(raw) ??
+      raw.trim().slice(0, COACH_SKILL_MAX_LEN);
     if (skills.length >= MAX_SKILLS) return;
     if (skills.some((s) => s.toLowerCase() === trimmed.toLowerCase())) {
       setDraft("");

@@ -2943,7 +2943,7 @@ Yêu cầu:
     skillsFormatTooShort: "Tên công nghệ cần ít nhất 2 ký tự.",
     skillsFormatTooLong: "Tên công nghệ tối đa 40 ký tự.",
     skillsFormatInvalidChars:
-      "Chỉ dùng chữ, số và các ký tự . # + / - (không emoji / ký tự đặc biệt).",
+      "Chỉ dùng chữ, số và các ký tự . # + / - ( ) (không emoji / ký tự đặc biệt).",
     skillsFormatNoLetter: "Tên công nghệ cần có ít nhất một chữ cái.",
     skillsFormatNonIt:
       "Chỉ thêm công nghệ / kỹ năng IT. Marketing, sales, kế toán… không được hỗ trợ.",
@@ -3125,7 +3125,8 @@ Yêu cầu:
     cvUploaded: "Đã tải CV — chuyển sang bước phân tích.",
     cvAnalysisFailed: "Đã lưu file nhưng phân tích AI chưa xong — bạn vẫn có thể tiếp tục.",
     analysisEmpty: "Chưa có tóm tắt CV. Hãy tải CV lên.",
-    roleCatalogHint: "Gợi ý từ catalog framework đang hỗ trợ — vẫn có thể nhập tự do.",
+    roleCatalogHint: "Chọn từ catalog vai trò IT được hỗ trợ — không nhập tự do.",
+    roleCatalogEmpty: "Chưa có catalog vai trò — liên hệ Admin seed Role Family.",
     roleNotSupported: "Vai trò này chưa có framework. Diagnostic sẽ không gán nhầm stack khác.",
     advancedRoadmapsTitle: "Luyện nâng cao",
     priorityScoreLabel: "Ưu tiên",

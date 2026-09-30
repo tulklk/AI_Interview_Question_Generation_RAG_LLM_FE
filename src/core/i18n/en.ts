@@ -2942,7 +2942,7 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
     skillsFormatTooShort: "Technology name needs at least 2 characters.",
     skillsFormatTooLong: "Technology name is limited to 40 characters.",
     skillsFormatInvalidChars:
-      "Use letters, digits, and . # + / - only (no emoji / special symbols).",
+      "Use letters, digits, and . # + / - ( ) only (no emoji / special symbols).",
     skillsFormatNoLetter: "Technology name must include at least one letter.",
     skillsFormatNonIt:
       "Only IT technologies/skills are allowed. Marketing, sales, accounting, etc. are not supported.",
@@ -3124,7 +3124,8 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
     cvUploaded: "CV uploaded — continue to analysis.",
     cvAnalysisFailed: "File saved but AI analysis did not finish — you can still continue.",
     analysisEmpty: "No CV summary yet. Upload a CV.",
-    roleCatalogHint: "Suggestions from supported frameworks — free text is still allowed.",
+    roleCatalogHint: "Choose from the supported IT role catalog — free typing is disabled.",
+    roleCatalogEmpty: "Role catalog is empty — ask Admin to seed Role Families.",
     roleNotSupported: "This role has no framework yet. Diagnostic will not assign a different stack.",
     advancedRoadmapsTitle: "Advanced practice",
     priorityScoreLabel: "Priority",

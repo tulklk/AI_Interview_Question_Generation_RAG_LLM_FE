@@ -6,8 +6,8 @@
 export const COACH_SKILL_MIN_LEN = 2;
 export const COACH_SKILL_MAX_LEN = 40;
 
-/** Charset: chữ/số + khoảng trắng + . # + / - */
-const SKILL_CHAR_RE = /^[A-Za-z0-9 .#+/\-]+$/;
+/** Charset: chữ/số + khoảng trắng + . # + / - ( ) — SCRUM-493 */
+const SKILL_CHAR_RE = /^[A-Za-z0-9 .#+/\-()]+$/;
 
 /**
  * SCRUM-492: deny-list non-IT (mirror JobDescriptionValidator.NonItKeywords + soft phổ biến).
@@ -192,6 +192,32 @@ export function isNonItCoachSkill(raw: string): boolean {
   return false;
 }
 
+/**
+ * SCRUM-493: chuẩn hóa skill (CV / free-text) trước khi add hoặc hiển thị.
+ * null = bỏ (rỗng / non-IT / không còn chữ).
+ */
+export function sanitizeCoachSkill(raw: string): string | null {
+  let s = raw.trim();
+  if (!s) return null;
+  s = s
+    .replace(/[\u2013\u2014\u2212\u00AD]/g, "-")
+    .replace(/\s+/g, " ")
+    .split("")
+    .filter((c) => /[A-Za-z0-9 .#+/\-()]/.test(c))
+    .join("")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/\(\s*\)/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (s.length > COACH_SKILL_MAX_LEN) s = s.slice(0, COACH_SKILL_MAX_LEN).trimEnd();
+  if (s.length < COACH_SKILL_MIN_LEN) return null;
+  if (!/[A-Za-z]/.test(s)) return null;
+  if (isNonItCoachSkill(s)) return null;
+  if (!SKILL_CHAR_RE.test(s)) return null;
+  return s;
+}
+
 /** Exact / fuzzy catalog match → trả casing chuẩn nếu có. */
 export function resolveCatalogSkill(raw: string): string | null {
   const trimmed = raw.trim();
@@ -208,17 +234,20 @@ export function isInSkillCatalog(raw: string): boolean {
 }
 
 /**
- * Validate format free-text (hybrid) + chặn non-IT (SCRUM-492).
- * @returns null nếu hợp lệ, hoặc mã lỗi.
+ * Validate format free-text (hybrid) + chặn non-IT (SCRUM-492/493).
+ * Sanitize trước — skill CV có en-dash / () vẫn pass nếu sau chuẩn hóa hợp lệ.
  */
 export function validateCoachSkillFormat(raw: string): CoachSkillFormatError | null {
   const trimmed = raw.trim();
   if (!trimmed) return "empty";
-  if (trimmed.length < COACH_SKILL_MIN_LEN) return "too_short";
-  if (trimmed.length > COACH_SKILL_MAX_LEN) return "too_long";
-  if (!SKILL_CHAR_RE.test(trimmed)) return "invalid_chars";
-  if (!/[A-Za-z]/.test(trimmed)) return "no_letter";
   if (isNonItCoachSkill(trimmed)) return "non_it";
+  const sanitized = sanitizeCoachSkill(trimmed);
+  if (!sanitized) {
+    if (trimmed.length < COACH_SKILL_MIN_LEN) return "too_short";
+    if (trimmed.length > COACH_SKILL_MAX_LEN) return "too_long";
+    if (!/[A-Za-z]/.test(trimmed)) return "no_letter";
+    return "invalid_chars";
+  }
   return null;
 }
 
