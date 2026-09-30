@@ -22,22 +22,6 @@ export interface AdminDashboardStats {
   questionTypeCounts: Record<string, number>;
 }
 
-const DUMMY_QUESTION_STATS = {
-  totalQuestionSets: 48,
-  easySets: 14,
-  mediumSets: 22,
-  hardSets: 12,
-  totalQuestions: 312,
-  totalAttempts: 187,
-  questionTypeCounts: {
-    technical:   142,
-    behavioral:   78,
-    situational:  55,
-    cultural:     24,
-    leadership:   13,
-  },
-};
-
 export async function fetchAdminDashboardStats(): Promise<AdminDashboardStats> {
   // SCRUM-480: user KPI từ /api/admin/users/stats; companies từ /api/admin/companies
   const [userStats, allUsersPage, companiesPage, setsPage] = await Promise.all([
@@ -62,18 +46,12 @@ export async function fetchAdminDashboardStats(): Promise<AdminDashboardStats> {
       questionTypeCounts[type] = (questionTypeCounts[type] ?? 0) + 1;
     });
   });
-  const hasTypeData = Object.values(questionTypeCounts).some((v) => v > 0);
-
-  // Fall back to demo data when the real API returns no question sets yet
-  const hasRealData = setsPage.totalCount > 0;
-  const questionStats = hasRealData
-    ? {
-        totalQuestionSets: setsPage.totalCount,
-        easySets, mediumSets, hardSets,
-        totalQuestions, totalAttempts,
-        questionTypeCounts: hasTypeData ? questionTypeCounts : DUMMY_QUESTION_STATS.questionTypeCounts,
-      }
-    : DUMMY_QUESTION_STATS;
+  const questionStats = {
+    totalQuestionSets: setsPage.totalCount,
+    easySets, mediumSets, hardSets,
+    totalQuestions, totalAttempts,
+    questionTypeCounts,
+  };
 
   return {
     totalUsers: userStats?.totalUsers ?? allUsersPage.totalCount,

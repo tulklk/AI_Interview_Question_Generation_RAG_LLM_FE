@@ -10,7 +10,6 @@ import { AdminRagStatus } from "./admin-rag-status";
 import { AdminKpiGrid } from "./admin-kpi-grid";
 import { AdminRecentUsers } from "./admin-recent-users";
 import { AdminAlerts } from "./admin-alerts";
-import { AdminUserRoleChart } from "./admin-user-role-chart";
 import { AdminPlatformBarChart } from "./admin-platform-bar-chart";
 
 /** Build per-section entrance props with staggered delay */
@@ -89,12 +88,9 @@ export function AdminDashboard() {
         </div>
       </motion.div>
 
-      {/* ── Row 2: User role donut + Platform bar chart ────────────────────── */}
+      {/* ── Row 2: Platform bar chart ────────────────────────────────────── */}
       <motion.div {...sec(4)}>
-        <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-          <AdminUserRoleChart data={data} loading={loading} />
-          <AdminPlatformBarChart data={data} loading={loading} />
-        </div>
+        <AdminPlatformBarChart data={data} loading={loading} />
       </motion.div>
     </div>
   );
