@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -30,7 +31,9 @@ import {
   abandonPracticeSession,
   getPracticeSession,
   reportTabLeave,
+  reportIntegrityTermination,
   ForbiddenError,
+  IntegrityLockedError,
 } from "@/features/candidate/services/practice-session.service";
 import { useAntiCheat } from "@/features/candidate/anti-cheat/useAntiCheat";
 import {
@@ -279,6 +282,7 @@ export function PracticeSession({ set }: PracticeSessionProps) {
   const [starting, setStarting] = useState(true);
   const [startError, setStartError] = useState(false);
   const [startForbidden, setStartForbidden] = useState(false);
+  const [startIntegrityLocked, setStartIntegrityLocked] = useState(false);
   const [finishing, setFinishing] = useState(false);
   const [finishError, setFinishError] = useState(false);
   const [startAttempt, setStartAttempt] = useState(0);
@@ -451,6 +455,12 @@ export function PracticeSession({ set }: PracticeSessionProps) {
 
       const sid = sessionIdRef.current;
       if (sid) {
+        const eventType = _state.strikes.at(-1)?.eventType ?? "CAMERA_DISABLED";
+        try {
+          await reportIntegrityTermination(sid, eventType);
+        } catch {
+          // Best-effort — still abandon so the in-progress session does not resume
+        }
         try {
           await abandonPracticeSession(sid);
         } catch {
@@ -508,6 +518,7 @@ export function PracticeSession({ set }: PracticeSessionProps) {
     setStarting(true);
     setStartError(false);
     setStartForbidden(false);
+    setStartIntegrityLocked(false);
 
     startPracticeSession(set.id)
       .then((session) => {
@@ -562,7 +573,8 @@ export function PracticeSession({ set }: PracticeSessionProps) {
       })
       .catch((err) => {
         if (cancelled) return;
-        if (err instanceof ForbiddenError) setStartForbidden(true);
+        if (err instanceof IntegrityLockedError) setStartIntegrityLocked(true);
+        else if (err instanceof ForbiddenError) setStartForbidden(true);
         else setStartError(true);
       })
       .finally(() => {
@@ -963,6 +975,22 @@ export function PracticeSession({ set }: PracticeSessionProps) {
     );
   }
 
+  if (startIntegrityLocked) {
+    return (
+      <div className="min-h-screen hr-main-bg flex flex-col items-center justify-center gap-3 px-4 text-center">
+        <ShieldAlert size={28} className="text-red-500" />
+        <p className={cn("text-[15px] font-semibold", portalHeadingAlt)}>{p.integrityLockedTitle}</p>
+        <p className={cn("max-w-md text-[14px]", portalSubtextAlt)}>{p.integrityLocked}</p>
+        <Link
+          href="/candidate/dashboard"
+          className="mt-1 text-[13px] font-semibold text-primary hover:underline"
+        >
+          {t.antiCheat.returnDashboard}
+        </Link>
+      </div>
+    );
+  }
+
   if (startForbidden) {
     return (
       <div className="min-h-screen hr-main-bg flex flex-col items-center justify-center gap-3 px-4 text-center">
@@ -1002,35 +1030,13 @@ export function PracticeSession({ set }: PracticeSessionProps) {
     <>
     <ConfirmDialog
       open={exitOpen}
-      title={
-        antiCheatEnabled
-          ? p.antiCheatExitTitle
-          : set.isHiringAssessment
-            ? p.exitConfirmTitleHiring
-            : p.exitConfirmTitle
-      }
-      message={
-        antiCheatEnabled
-          ? p.antiCheatExitMessage
-          : set.isHiringAssessment
-            ? p.exitConfirmMessageHiring
-            : p.exitConfirmMessage
-      }
-      confirmLabel={
-        antiCheatEnabled
-          ? p.exitCancelBtn
-          : set.isHiringAssessment
-            ? p.exitConfirmBtnHiring
-            : p.exitConfirmBtn
-      }
+      title={set.isHiringAssessment ? p.exitConfirmTitleHiring : p.exitConfirmTitle}
+      message={set.isHiringAssessment ? p.exitConfirmMessageHiring : p.exitConfirmMessage}
+      confirmLabel={set.isHiringAssessment ? p.exitConfirmBtnHiring : p.exitConfirmBtn}
       cancelLabel={p.exitCancelBtn}
-      variant={antiCheatEnabled ? "primary" : "danger"}
+      variant="danger"
       loading={abandoning}
       onConfirm={() => {
-        if (antiCheatEnabled) {
-          closeExitDialog();
-          return;
-        }
         // SCRUM-469: thoát = ngắt phiên (abandon), không còn soft Save & Exit
         handleAbandon();
       }}

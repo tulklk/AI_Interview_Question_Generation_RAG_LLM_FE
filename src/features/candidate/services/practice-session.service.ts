@@ -11,8 +11,48 @@ export class ForbiddenError extends Error {
   }
 }
 
+/** Thrown when the BE refuses a new session because anti-cheat already ended an attempt. */
+export class IntegrityLockedError extends Error {
+  constructor(message = "This question set is locked after an integrity violation") {
+    super(message);
+    this.name = "IntegrityLockedError";
+  }
+}
+
+const INTEGRITY_LOCK_RE = /integrity|anti[-_ ]?cheat|disqualif|gian\s*lận|chống\s*gian/i;
+
+function payloadSignalsIntegrityLock(data: unknown): boolean {
+  if (typeof data === "string") return INTEGRITY_LOCK_RE.test(data);
+  if (!data || typeof data !== "object") return false;
+  const o = data as Record<string, unknown>;
+  for (const key of [
+    "integrityBlocked",
+    "IntegrityBlocked",
+    "integrityLocked",
+    "IntegrityLocked",
+    "antiCheatBlocked",
+    "AntiCheatBlocked",
+    "integrityTerminated",
+    "IntegrityTerminated",
+  ]) {
+    if (o[key] === true) return true;
+  }
+  const nested = extractData(data);
+  if (nested && nested !== o && payloadSignalsIntegrityLock(nested)) return true;
+  const parts: string[] = [];
+  for (const key of ["errorCode", "code", "ErrorCode", "Code", "detail", "title", "message", "error", "Message", "Detail"]) {
+    const v = o[key];
+    if (typeof v === "string" && v.trim()) parts.push(v);
+  }
+  return INTEGRITY_LOCK_RE.test(parts.join(" "));
+}
+
 function rethrowForbidden(err: unknown): never {
-  const status = (err as { response?: { status?: number } })?.response?.status;
+  const response = (err as { response?: { status?: number; data?: unknown } })?.response;
+  const status = response?.status;
+  if ((status === 403 || status === 409) && payloadSignalsIntegrityLock(response?.data)) {
+    throw new IntegrityLockedError();
+  }
   if (status === 403) throw new ForbiddenError();
   throw err;
 }
@@ -468,6 +508,21 @@ export interface IntegrityEventResult {
   tabLeaveCount: number;
   autoSubmitted: boolean;
   ignored: boolean;
+}
+
+/**
+ * Strike thứ 3: ghi lên server rằng phiên kết thúc vì gian lận, trước khi abandon.
+ * Cùng endpoint TAB_HIDDEN. `terminated` để BE khóa candidate với bộ câu hỏi này.
+ */
+export async function reportIntegrityTermination(
+  sessionId: string,
+  eventType: string,
+): Promise<void> {
+  await apiClient.post(`${BASE}/${sessionId}/integrity-events`, {
+    eventType,
+    terminated: true,
+    integrityTerminated: true,
+  });
 }
 
 /**
