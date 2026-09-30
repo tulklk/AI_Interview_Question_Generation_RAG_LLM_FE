@@ -69,6 +69,7 @@ interface BackendDoc {
   studioProjectCount?: number;
   adminNote?: string | null;
   folder?: string | null;
+  allowCandidateView?: boolean;
   blobPath?: string;
   storagePath?: string;
 }
@@ -123,6 +124,7 @@ function mapDoc(d: BackendDoc): KnowledgeDocument {
     studioProjectCount: d.studioProjectCount ?? 0,
     adminNote: d.adminNote ?? null,
     folder: d.folder ?? null,
+    allowCandidateView: Boolean(d.allowCandidateView),
     storagePath: d.storagePath ?? d.blobPath,
   };
 }
@@ -331,6 +333,8 @@ export interface AdminKnowledgeDocPatch {
   adminNote?: string | null;
   folder?: string | null;
   clearFolder?: boolean;
+  /** SCRUM-486 */
+  allowCandidateView?: boolean;
 }
 
 export async function updateAdminKnowledgeDoc(
@@ -393,4 +397,21 @@ export async function getAdminKnowledgeChunks(id: string, take = 20): Promise<Kn
     chunkIndex: Number(c.chunkIndex ?? 0),
     content: String(c.content ?? ""),
   }));
+}
+
+/** SCRUM-486: gắn KB doc vào roadmap nodes theo FileName khớp SourceUrl. */
+export async function linkRoadmapNodesByFilename(
+  knowledgeDocumentId: string
+): Promise<{ linkedCount: number; linkedNodeIds: string[] }> {
+  const { data } = await apiClient.post(
+    "/api/admin/roadmap-nodes/link-by-filename",
+    { knowledgeDocumentId }
+  );
+  const raw = (data as { data?: Record<string, unknown> })?.data ?? (data as Record<string, unknown>);
+  return {
+    linkedCount: Number(raw?.linkedCount ?? 0),
+    linkedNodeIds: Array.isArray(raw?.linkedNodeIds)
+      ? (raw.linkedNodeIds as unknown[]).map(String)
+      : [],
+  };
 }

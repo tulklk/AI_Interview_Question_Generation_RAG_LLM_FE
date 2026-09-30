@@ -133,10 +133,14 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
 
   useEffect(() => {
     if (!newBadgeReady) return;
+    // Mark every nav entry that matches the current route as seen. The pathname carries a
+    // trailing slash (trailingSlash: true) so it never equals a nav href verbatim.
+    const current = navItems.map((i) => i.href).filter((href) => isHrNavActive(href, pathname));
+    const toMark = [pathname, pathname.replace(/\/+$/, ""), ...current];
     setSeenTabs((prev) => {
-      if (prev.has(pathname)) return prev;
+      if (toMark.every((h) => prev.has(h))) return prev;
       const next = new Set(prev);
-      next.add(pathname);
+      toMark.forEach((h) => next.add(h));
       localStorage.setItem(SEEN_KEY, JSON.stringify([...next]));
       return next;
     });

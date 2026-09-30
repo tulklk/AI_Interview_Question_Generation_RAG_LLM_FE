@@ -532,7 +532,7 @@ export function SetDetail({ set }: SetDetailProps) {
             <div className={cn("flex flex-wrap items-center gap-x-1 gap-y-1 text-[12px]", portalSubtextAlt)}>
               <span className="flex items-center gap-1">
                 <BarChart2 size={12} className="text-primary/70" />
-                {set.totalQuestions} {p.questions}
+                {set.totalQuestions} {set.totalQuestions === 1 ? p.question : p.questions}
               </span>
               {estimatedTimeDisplay && (
                 <>
@@ -677,7 +677,7 @@ export function SetDetail({ set }: SetDetailProps) {
                               </p>
                             </div>
                             <span className={cn("shrink-0 text-[12px] font-bold tabular-nums whitespace-nowrap", portalHeadingAlt)}>
-                              {group.count} {p.questions}
+                              {group.count} {group.count === 1 ? p.question : p.questions}
                             </span>
                           </div>
                           {/* Animated progress bar + shimmer sweep */}

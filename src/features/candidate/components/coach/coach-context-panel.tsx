@@ -9,14 +9,33 @@ import { useLanguage } from "@/shared/providers/language-context";
 import type {
   CoachContext,
   CoachFrameworkOption,
+  CoachRoleFamilyOption,
   UpdateCoachContextPayload,
 } from "@/features/candidate/services/coach.service";
+import { CoachStepHeader } from "@/features/candidate/components/coach/coach-step-header";
 
 const LEVELS = ["Fresher", "Junior", "Middle", "Senior"] as const;
 
 function levelRank(level: string): number {
   const i = LEVELS.findIndex((l) => l.toLowerCase() === level.trim().toLowerCase());
   return i < 0 ? 0 : i;
+}
+
+function pickRoleFromCatalog(
+  families: CoachRoleFamilyOption[],
+  preferred: string | null | undefined
+): string {
+  if (families.length === 0) return "";
+  const raw = (preferred || "").trim();
+  if (raw) {
+    const hit = families.find(
+      (f) =>
+        f.displayName.toLowerCase() === raw.toLowerCase() ||
+        f.familyKey.toLowerCase() === raw.toLowerCase()
+    );
+    if (hit) return hit.displayName;
+  }
+  return families[0].displayName;
 }
 
 interface CoachContextPanelProps {
@@ -54,7 +73,10 @@ export function CoachContextPanel({
 
   useEffect(() => {
     if (!context) return;
-    setTargetRole(context.targetRole || context.suggestedRole || "");
+    const families = context.availableRoleFamilies ?? [];
+    setTargetRole(
+      pickRoleFromCatalog(families, context.targetRole || context.suggestedRole)
+    );
     const nextSelf = context.selfAssessedLevel || "Junior";
     let nextTarget = context.targetLevel || "Junior";
     if (levelRank(nextTarget) < levelRank(nextSelf)) nextTarget = nextSelf;
@@ -63,21 +85,43 @@ export function CoachContextPanel({
     setYears(context.yearsOfExperience != null ? String(context.yearsOfExperience) : "");
   }, [context]);
 
+  const roleFamilyGroups = useMemo(() => {
+    const families = context?.availableRoleFamilies ?? [];
+    const map = new Map<string, CoachRoleFamilyOption[]>();
+    for (const f of families) {
+      const g = (f.groupName || "").trim() || "Other";
+      const list = map.get(g) ?? [];
+      list.push(f);
+      map.set(g, list);
+    }
+    return Array.from(map.entries());
+  }, [context?.availableRoleFamilies]);
+
   const targetLevelOptions = useMemo(
     () => LEVELS.filter((l) => levelRank(l) >= levelRank(selfLevel)),
     [selfLevel]
   );
 
+  /** Preview framework stack — exact match DisplayRole (hiếm); còn lại Adaptive theo family. */
   const catalogMatch = useMemo(() => {
     const role = targetRole.trim().toLowerCase();
     if (!role) return null;
     return (
       (context?.availableFrameworks ?? []).find(
-        (fw) =>
+        (fw: CoachFrameworkOption) =>
           fw.displayRole.toLowerCase() === role || fw.roleKey.toLowerCase() === role
       ) ?? null
     );
   }, [context?.availableFrameworks, targetRole]);
+
+  const familySelected = useMemo(() => {
+    const role = targetRole.trim().toLowerCase();
+    if (!role) return false;
+    return (context?.availableRoleFamilies ?? []).some(
+      (f) =>
+        f.displayName.toLowerCase() === role || f.familyKey.toLowerCase() === role
+    );
+  }, [context?.availableRoleFamilies, targetRole]);
 
   const levelOrderInvalid = levelRank(targetLevel) < levelRank(selfLevel);
 
@@ -142,23 +186,23 @@ export function CoachContextPanel({
   if (context?.contextConfirmed && !editing) {
     return (
       <div className="hr-glass-card overflow-hidden">
-        <div className="flex items-center gap-2.5 border-b border-gray-100 px-4 py-3 dark:border-gray-800 sm:px-5">
-          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-950/50">
-            <CheckCircle2 size={14} className="text-emerald-600 dark:text-emerald-400" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className={cn("text-[13px] font-semibold", portalHeadingAlt)}>{p.contextTitle}</p>
-            <p className={cn("text-[11px]", portalSubtextAlt)}>{p.contextConfirmedBadge}</p>
-          </div>
-          <button
-            type="button"
-            onClick={onEdit}
-            className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-gray-200 px-3 text-[12px] font-semibold transition-colors hover:border-primary/40 dark:border-gray-700"
-          >
-            <Pencil size={12} />
-            {p.editGoal}
-          </button>
-        </div>
+        <CoachStepHeader
+          icon={CheckCircle2}
+          title={p.contextTitle}
+          subtitle={p.contextConfirmedBadge}
+          iconWrapClassName="bg-emerald-100 dark:bg-emerald-950/50"
+          iconClassName="text-emerald-600 dark:text-emerald-400"
+          trailing={
+            <button
+              type="button"
+              onClick={onEdit}
+              className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-gray-200 px-3 text-[12px] font-semibold transition-colors hover:border-primary/40 dark:border-gray-700"
+            >
+              <Pencil size={12} />
+              {p.editGoal}
+            </button>
+          }
+        />
         <div className="grid gap-3 px-4 py-4 text-[12px] sm:grid-cols-2 sm:px-5">
           <div>
             <p className={cn("text-[10px] font-semibold uppercase tracking-wide", portalSubtextAlt)}>
@@ -218,24 +262,22 @@ export function CoachContextPanel({
 
   return (
     <div className="hr-glass-card overflow-hidden">
-      <div className="flex items-center gap-2.5 border-b border-gray-100 px-4 py-3 dark:border-gray-800 sm:px-5">
-        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-          <Target size={14} className="text-primary" />
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className={cn("text-[15px] font-semibold", portalHeadingAlt)}>{p.contextTitle}</p>
-          <p className={cn("text-[12px] leading-snug", portalSubtextAlt)}>{p.contextSubtitle}</p>
-        </div>
-        {context?.contextConfirmed && (
-          <button
-            type="button"
-            onClick={onCancelEdit}
-            className="text-[12px] font-semibold text-gray-500 hover:text-gray-800 dark:hover:text-gray-200"
-          >
-            {p.cancelEdit}
-          </button>
-        )}
-      </div>
+      <CoachStepHeader
+        icon={Target}
+        title={p.contextTitle}
+        subtitle={p.contextSubtitle}
+        trailing={
+          context?.contextConfirmed ? (
+            <button
+              type="button"
+              onClick={onCancelEdit}
+              className="text-[12px] font-semibold text-gray-500 hover:text-gray-800 dark:hover:text-gray-200"
+            >
+              {p.cancelEdit}
+            </button>
+          ) : undefined
+        }
+      />
 
       <form onSubmit={handleSubmit} className="space-y-4 px-4 py-4 sm:px-5">
         {goalChanged && (
@@ -254,21 +296,27 @@ export function CoachContextPanel({
 
         <label className="block">
           <span className={cn("text-sm font-medium", portalHeadingAlt)}>{p.targetRoleLabel}</span>
-          <input
-            list="coach-framework-roles"
+          <select
             value={targetRole}
             onChange={(e) => setTargetRole(e.target.value)}
             className={fieldCls}
-            placeholder={p.targetRolePlaceholder}
             required
-          />
-          <datalist id="coach-framework-roles">
-            {(context?.availableFrameworks ?? []).map((fw: CoachFrameworkOption) => (
-              <option key={fw.roleKey} value={fw.displayRole}>
-                {[fw.technology, fw.levels.join("/")].filter(Boolean).join(" · ")}
-              </option>
-            ))}
-          </datalist>
+            disabled={(context?.availableRoleFamilies?.length ?? 0) === 0}
+          >
+            {(context?.availableRoleFamilies?.length ?? 0) === 0 ? (
+              <option value="">{p.roleCatalogEmpty}</option>
+            ) : (
+              roleFamilyGroups.map(([group, items]) => (
+                <optgroup key={group} label={group}>
+                  {items.map((f) => (
+                    <option key={f.familyKey || f.displayName} value={f.displayName}>
+                      {f.displayName}
+                    </option>
+                  ))}
+                </optgroup>
+              ))
+            )}
+          </select>
           <p className={cn("mt-1 text-[11px]", portalSubtextAlt)}>{p.roleCatalogHint}</p>
         </label>
 
@@ -340,7 +388,7 @@ export function CoachContextPanel({
               {catalogMatch.levels.length > 0 ? ` · ${catalogMatch.levels.join("/")}` : ""}
             </p>
           </div>
-        ) : targetRole.trim() ? (
+        ) : familySelected ? (
           <div className="flex gap-2 rounded-lg border border-amber-200/80 bg-amber-50/70 px-3 py-2 text-[12px] leading-snug text-amber-800 dark:border-amber-800/50 dark:bg-amber-950/20 dark:text-amber-200">
             <AlertTriangle size={14} className="mt-0.5 shrink-0" />
             <span>{p.frameworkPreviewNone}</span>

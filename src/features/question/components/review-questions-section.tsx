@@ -817,7 +817,8 @@ export function ReviewQuestionsSection({
               {!isLocked && <Pencil size={9} />}
             </button>
           )}
-          {!readOnly && questionSetId && (
+          {/* Auto-recommend chỉ áp dụng bộ Tuyển — ẩn khi Practice */}
+          {!readOnly && questionSetId && isHiringAssessment && (
             <button
               type="button"
               onClick={() => setShowRecSettings((v) => !v)}
@@ -844,6 +845,7 @@ export function ReviewQuestionsSection({
               onChange={async (next) => {
                 if (!next.isHiringAssessment) {
                   setPublicJdNeedsAttention(false);
+                  setShowRecSettings(false);
                 }
                 if (next.isHiringAssessment) {
                   try {
@@ -1033,7 +1035,7 @@ export function ReviewQuestionsSection({
         />
       )}
 
-      {showRecSettings && (
+      {showRecSettings && isHiringAssessment && (
         <div className={cn(portalCard, "p-4 space-y-3")}>
           <p className={cn("text-sm font-semibold", portalHeading)}>{rp.recSettingsTitle}</p>
           <p className={cn("text-xs", portalSubtext)}>{rp.recSettingsHint}</p>

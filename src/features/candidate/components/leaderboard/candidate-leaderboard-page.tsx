@@ -17,6 +17,7 @@ import { CurrentRankCard, AchievementCard } from "./leaderboard-sidebar";
 import { LeagueProgressCard }   from "./league-progress-card";
 import { WeeklyChallengesCard } from "./weekly-challenges-card";
 import { LeaderboardInfoFaq }   from "./leaderboard-info-faq";
+import { useLeaderboardText } from "./leaderboard-text";
 
 // ── Animation variants ──────────────────────────────────────────────────────
 const staggerContainer: Variants = {
@@ -30,14 +31,10 @@ const childFadeUp: Variants = {
 };
 
 // ── Tabs ────────────────────────────────────────────────────────────────────
-const TABS: { id: LeaderboardTab; label: string }[] = [
-  { id: "totalXp",  label: "Tổng XP" },
-  { id: "streak",   label: "Chuỗi ngày" },
-  { id: "weeklyXp", label: "Tuần này" },
-];
 
 // ── Motivation banner ───────────────────────────────────────────────────────
 function MotivationBanner() {
+  const lb = useLeaderboardText();
   return (
     <div className="relative overflow-hidden rounded-xl bg-linear-to-r from-primary/90 to-violet-500/80 dark:from-primary/80 dark:to-violet-600/70 px-5 py-4 flex items-center gap-4">
       <div className="absolute -top-6 -right-6 w-32 h-32 rounded-full bg-white/10 blur-2xl pointer-events-none" />
@@ -46,15 +43,15 @@ function MotivationBanner() {
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-sm font-bold text-white leading-tight">
-          Chinh phục phỏng vấn, vươn lên dẫn đầu!
+          {lb.bannerTitle}
         </p>
         <p className="text-xs text-white/75 mt-0.5">
-          Luyện tập đều đặn mỗi ngày — Tích lũy XP — Thăng hạng liên đoàn
+          {lb.bannerSub}
         </p>
       </div>
       <div className="shrink-0 hidden sm:flex items-center gap-1 bg-white/20 rounded-lg px-2.5 py-1.5">
         <Zap size={13} className="text-amber-300" />
-        <span className="text-xs font-bold text-white">+100 XP / phiên</span>
+        <span className="text-xs font-bold text-white">{lb.bannerXp}</span>
       </div>
     </div>
   );
@@ -62,6 +59,12 @@ function MotivationBanner() {
 
 // ── Page ───────────────────────────────────────────────────────────────────
 export function CandidateLeaderboardPage() {
+  const lb = useLeaderboardText();
+  const TABS: { id: LeaderboardTab; label: string }[] = [
+    { id: "totalXp",  label: lb.tabTotalXp },
+    { id: "streak",   label: lb.tabStreak },
+    { id: "weeklyXp", label: lb.tabWeekly },
+  ];
   const [activeTab, setActiveTab] = useState<LeaderboardTab>("totalXp");
   const { user } = useUser();
 
@@ -93,15 +96,15 @@ export function CandidateLeaderboardPage() {
           </motion.div>
           <div>
             <h1 className="text-xl font-bold text-[#111827] dark:text-gray-100">
-              Bảng xếp hạng
+              {lb.pageTitle}
             </h1>
             <p className="text-sm text-[#6B7280] dark:text-gray-400 mt-0.5">
-              Cùng luyện tập, cải thiện kỹ năng phỏng vấn và chinh phục thứ hạng cao hơn.
+              {lb.pageSub}
             </p>
           </div>
         </div>
         <p className="text-xs text-[#9CA3AF] dark:text-gray-500 shrink-0">
-          Mùa hiện tại · Tuần 34
+          {lb.season}
         </p>
       </motion.header>
 
@@ -114,7 +117,7 @@ export function CandidateLeaderboardPage() {
 
             {/* Tabs – underline style */}
             <div className="border-b border-gray-100 dark:border-gray-800">
-              <nav className="flex" role="tablist" aria-label="Chế độ xếp hạng">
+              <nav className="flex" role="tablist" aria-label={lb.tabsAria}>
                 {TABS.map((tab) => (
                   <button
                     key={tab.id}

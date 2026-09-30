@@ -19,6 +19,7 @@ import {
   ChevronLeft,
   FolderInput,
   Pencil,
+  Link2,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { portalHeading, portalSubtext, portalInput } from "@/shared/utils/portal-ui";
@@ -31,6 +32,7 @@ import { useToast } from "@/shared/providers/toast-context";
 import { extractErrorMessage } from "@/core/interceptors/error.interceptor";
 import { AdminRoadmapNodeImportPanel } from "@/features/knowledge/components/admin-roadmap-node-import-panel";
 import { KnowledgeListSkeleton } from "@/features/knowledge/components/knowledge-list-skeleton";
+import { linkRoadmapNodesByFilename } from "@/features/knowledge/services/knowledge.service";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -59,6 +61,7 @@ interface KnowledgePageContentProps {
       adminNote?: string | null;
       folder?: string | null;
       clearFolder?: boolean;
+      allowCandidateView?: boolean;
     }
   ) => Promise<KnowledgeDocument | null>;
   /** SCRUM-450: danh sách folder + count */
@@ -83,8 +86,8 @@ const ACCEPTED_TYPES = [
 ];
 /** HR: PDF/DOCX/TXT only */
 const HR_ACCEPTED_EXT = [".pdf", ".docx", ".doc", ".txt"];
-/** SCRUM-448: Admin SYSTEM thêm .jsonl (Q/A dataset) */
-const ADMIN_ACCEPTED_EXT = [".pdf", ".docx", ".doc", ".txt", ".jsonl"];
+/** SCRUM-448/486: Admin SYSTEM thêm .jsonl + .md */
+const ADMIN_ACCEPTED_EXT = [".pdf", ".docx", ".doc", ".txt", ".jsonl", ".md"];
 const MAX_FILE_MB = 20;
 
 type AdminFolderFilter = "all" | "tech" | "roadmap" | "other";
@@ -401,6 +404,11 @@ function DocumentCard({
           {doc.folder ? (
             <span className="inline-flex items-center rounded-full bg-amber-50 dark:bg-amber-950/40 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 dark:text-amber-300">
               {doc.folder}
+            </span>
+          ) : null}
+          {doc.allowCandidateView ? (
+            <span className="inline-flex items-center rounded-full bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700 dark:text-emerald-300">
+              {kb.candidateViewBadge ?? "Candidate view"}
             </span>
           ) : null}
           <span className="inline-flex items-center rounded-full bg-violet-50 dark:bg-violet-950/40 px-1.5 py-0.5 text-[10px] font-semibold text-violet-700 dark:text-violet-300">
@@ -854,7 +862,9 @@ export function KnowledgePageContent({
   const [drawerLoading, setDrawerLoading] = useState(false);
   const [drawerAdminNote, setDrawerAdminNote] = useState("");
   const [drawerFolder, setDrawerFolder] = useState("");
+  const [drawerAllowCandidateView, setDrawerAllowCandidateView] = useState(false);
   const [savingMeta, setSavingMeta] = useState(false);
+  const [linkingNodes, setLinkingNodes] = useState(false);
 
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -996,6 +1006,7 @@ export function KnowledgePageContent({
     setDrawerDoc(doc);
     setDrawerAdminNote(doc.adminNote ?? "");
     setDrawerFolder(doc.folder ?? "");
+    setDrawerAllowCandidateView(Boolean(doc.allowCandidateView));
     setDrawerChunks([]);
     // FAILED: chưa embed → không gọi preview; hiện errorMessage trong drawer
     if (!onFetchChunks || doc.status === "FAILED") return;
@@ -1040,6 +1051,7 @@ export function KnowledgePageContent({
       adminNote: drawerAdminNote.trim() || null,
       folder: folderTrim || null,
       clearFolder: !folderTrim,
+      allowCandidateView: drawerAllowCandidateView,
     });
     if (updated) {
       setDocs((prev) => prev.map((d) => (d.id === drawerDoc.id ? { ...d, ...updated } : d)));
@@ -1050,6 +1062,25 @@ export function KnowledgePageContent({
       addToast("error", kb.adminNoteSaveFailed);
     }
     setSavingMeta(false);
+  }
+
+  async function handleLinkByFilename() {
+    if (!drawerDoc) return;
+    setLinkingNodes(true);
+    try {
+      const result = await linkRoadmapNodesByFilename(drawerDoc.id);
+      addToast(
+        "success",
+        (kb.linkRoadmapNodesSuccess ?? "Linked {{n}} roadmap node(s).").replace(
+          "{{n}}",
+          String(result.linkedCount)
+        )
+      );
+    } catch {
+      addToast("error", kb.linkRoadmapNodesFailed ?? "Could not link roadmap nodes.");
+    } finally {
+      setLinkingNodes(false);
+    }
   }
 
   async function handleMoveConfirm(folder: string | null) {
@@ -1836,6 +1867,21 @@ export function KnowledgePageContent({
                     className={cn("w-full px-3 py-2 text-sm rounded-xl border resize-y min-h-[72px]", portalInput)}
                   />
                 </div>
+                <label className="flex items-start gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={drawerAllowCandidateView}
+                    onChange={(e) => setDrawerAllowCandidateView(e.target.checked)}
+                    className="mt-0.5 rounded border-gray-300"
+                  />
+                  <span className={cn("text-xs", portalSubtext)}>
+                    <span className={cn("font-semibold block", portalHeading)}>
+                      {kb.allowCandidateViewLabel ?? "Allow Candidate to view"}
+                    </span>
+                    {kb.allowCandidateViewHint
+                      ?? "When enabled, candidates can open this file from Coach roadmap if the node is linked."}
+                  </span>
+                </label>
                 <button
                   type="button"
                   disabled={savingMeta}
@@ -1844,6 +1890,15 @@ export function KnowledgePageContent({
                 >
                   {savingMeta ? <Loader2 size={12} className="animate-spin" /> : null}
                   {kb.saveAdminNote}
+                </button>
+                <button
+                  type="button"
+                  disabled={linkingNodes}
+                  onClick={() => void handleLinkByFilename()}
+                  className="ml-2 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg border border-violet-200 dark:border-violet-800 text-violet-700 dark:text-violet-300 hover:bg-violet-50 dark:hover:bg-violet-950/40 disabled:opacity-50"
+                >
+                  {linkingNodes ? <Loader2 size={12} className="animate-spin" /> : <Link2 size={12} />}
+                  {kb.linkRoadmapNodesBtn ?? "Link roadmap nodes by filename"}
                 </button>
                 {onMoveDocs ? (
                   <button

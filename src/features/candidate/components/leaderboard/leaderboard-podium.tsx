@@ -4,12 +4,13 @@ import { Crown, Zap } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/cn";
 import type { RankedUser, LeaderboardTab } from "@/features/candidate/data/leaderboard-dummy";
+import { useLeaderboardText } from "./leaderboard-text";
 
 // ── Score by tab ────────────────────────────────────────────────────────────
-function scoreLabel(user: RankedUser, tab: LeaderboardTab): string {
-  if (tab === "streak") return `${user.streak} ngày`;
+function scoreLabel(user: RankedUser, tab: LeaderboardTab, lb: ReturnType<typeof useLeaderboardText>): string {
+  if (tab === "streak") return `${user.streak} ${lb.days}`;
   const xp = tab === "weeklyXp" ? user.weeklyXp : user.totalXp;
-  return xp.toLocaleString("vi-VN");
+  return xp.toLocaleString(lb.numberLocale);
 }
 
 // ── Rank badge config ───────────────────────────────────────────────────────
@@ -51,9 +52,10 @@ function PodiumCard({
   isFirst?: boolean;
   animOrder?: number;
 }) {
+  const lb = useLeaderboardText();
   const rank  = user.rank as 1 | 2 | 3;
   const cfg   = RANK_CFG[rank];
-  const score = scoreLabel(user, tab);
+  const score = scoreLabel(user, tab, lb);
   const unit  = tab === "streak" ? "" : " XP";
 
   return (
@@ -138,13 +140,14 @@ interface LeaderboardPodiumProps {
 }
 
 export function LeaderboardPodium({ top3, tab }: LeaderboardPodiumProps) {
+  const lb = useLeaderboardText();
   const first  = top3.find((u) => u.rank === 1);
   const second = top3.find((u) => u.rank === 2);
   const third  = top3.find((u) => u.rank === 3);
   if (!first) return null;
 
   return (
-    <section aria-label="Top 3 ứng viên">
+    <section aria-label={lb.top3Aria}>
       {/* Desktop: #2 | #1 | #3 — #1 elevated */}
       <div className="hidden md:grid md:grid-cols-3 gap-3 items-end pb-2">
         {second && <PodiumCard user={second} tab={tab} animOrder={1} />}

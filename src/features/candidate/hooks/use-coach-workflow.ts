@@ -66,15 +66,13 @@ export function useCoachWorkflow() {
   const p = t.jobseekerCoachPage;
   const { addToast } = useToast();
   const { planType } = useCandidateSubscription();
-  const { user } = useUser();
+  const { user, refreshUser } = useUser();
   const isPremium = planType === "PREMIUM";
-  const profileSkills = user?.candidateProfile?.techStack ?? [];
+  // SCRUM-483: hasCv chỉ theo file CV — không coi TechStack là đã có CV
   const profileHasCvFile = Boolean(user?.candidateProfile?.cvFileName);
 
   const [cv, setCv] = useState<CvInfo | null>(null);
-  const [hasCv, setHasCv] = useState<boolean | null>(
-    profileHasCvFile || profileSkills.length > 0 ? true : null
-  );
+  const [hasCv, setHasCv] = useState<boolean | null>(profileHasCvFile ? true : null);
   const [context, setContext] = useState<CoachContext | null>(null);
   const [report, setReport] = useState<CoachAssessment | null>(null);
   const [roadmaps, setRoadmaps] = useState<CoachRoadmap[]>([]);
@@ -120,16 +118,11 @@ export function useCoachWorkflow() {
       .then((next) => {
         if (cancelled) return;
         setCv(next);
-        const fromFile = Boolean(next);
-        const fromSkills = Boolean(
-          (next?.skills.length ?? 0) > 0 ||
-            (next?.techStack.length ?? 0) > 0 ||
-            profileSkills.length > 0
-        );
-        setHasCv(fromFile || fromSkills || profileHasCvFile);
+        // SCRUM-483: chỉ file CV (getCv hoặc cvFileName trên profile)
+        setHasCv(Boolean(next) || profileHasCvFile);
       })
       .catch(() => {
-        if (!cancelled) setHasCv(profileHasCvFile || profileSkills.length > 0);
+        if (!cancelled) setHasCv(profileHasCvFile);
       });
 
     Promise.allSettled([
@@ -159,7 +152,7 @@ export function useCoachWorkflow() {
     return () => {
       cancelled = true;
     };
-  }, [profileHasCvFile, profileSkills.length]);
+  }, [profileHasCvFile]);
 
   useEffect(() => {
     if (!job?.id || !jobBusy(job)) return;
@@ -366,21 +359,54 @@ export function useCoachWorkflow() {
     }
   }
 
-  /** SCRUM-462: toggle topic trên draft — optimistic local rồi sync PATCH. */
-  async function handleUpdateDraftItem(itemId: string, isIncluded: boolean) {
-    setRoadmaps((prev) =>
-      prev.map((r) => ({
-        ...r,
-        items: r.items.map((i) => (i.id === itemId ? { ...i, isIncluded } : i)),
-      }))
-    );
+  /** SCRUM-462 / SCRUM-484: patch draft (include / sortOrder / displayOrder). */
+  async function handleUpdateDraft(payload: {
+    items?: Array<{ itemId: string; isIncluded?: boolean; sortOrder?: number }>;
+    roadmaps?: Array<{ roadmapId: string; displayOrder: number }>;
+  }) {
+    // Optimistic local: apply include + sortOrder + displayOrder trước khi sync.
+    setRoadmaps((prev) => {
+      let next = prev.map((r) => {
+        const roadmapPatch = payload.roadmaps?.find((x) => x.roadmapId === r.id);
+        let items = r.items;
+        if (payload.items?.length) {
+          items = r.items.map((i) => {
+            const ip = payload.items!.find((x) => x.itemId === i.id);
+            if (!ip) return i;
+            return {
+              ...i,
+              isIncluded: ip.isIncluded ?? i.isIncluded,
+              sortOrder: ip.sortOrder ?? i.sortOrder,
+            };
+          });
+        }
+        return {
+          ...r,
+          displayOrder: roadmapPatch?.displayOrder ?? r.displayOrder,
+          items: [...items].sort((a, b) => a.sortOrder - b.sortOrder),
+        };
+      });
+      if (payload.roadmaps?.length) {
+        next = [...next].sort(
+          (a, b) =>
+            (a.displayOrder ?? 0) - (b.displayOrder ?? 0) ||
+            b.priorityScore - a.priorityScore
+        );
+      }
+      return next;
+    });
     try {
-      const next = await updateCoachRoadmapDraft([{ itemId, isIncluded }]);
-      setRoadmaps(next);
+      const synced = await updateCoachRoadmapDraft(payload);
+      setRoadmaps(synced);
     } catch (e) {
       addToast("error", apiError(e, p.roadmapDraftFailed, lang));
       await refreshCompetencyData();
     }
+  }
+
+  /** SCRUM-462: toggle topic — wrapper quanh handleUpdateDraft. */
+  async function handleUpdateDraftItem(itemId: string, isIncluded: boolean) {
+    await handleUpdateDraft({ items: [{ itemId, isIncluded }] });
   }
 
   async function handleAcceptRoadmaps() {
@@ -410,7 +436,7 @@ export function useCoachWorkflow() {
     await enqueueJob(() => startRoadmapReassessment(roadmapId), { stayOnStep: 7 });
   }
 
-  /** SCRUM-459: soft-reset BE + clear state FE → Confirm Goal. */
+  /** SCRUM-459 + SCRUM-490: soft-reset BE + clear state FE → luôn về bước CV. */
   async function startNewRun() {
     if (resetting) return;
 
@@ -427,13 +453,20 @@ export function useCoachWorkflow() {
       setOverlayDismissed(true);
       setContext(next);
       setEditingContext(true);
-      setSelectedStep(3);
+      // SCRUM-490: bắt đầu lại luôn ở step CV (dùng lại / upload mới)
+      setSelectedStep(1);
       addToast("success", p.newCoachRunDone);
     } catch (e) {
       setError(apiError(e, p.newCoachRunFailed, lang));
     } finally {
       setResetting(false);
     }
+  }
+
+  /** SCRUM-490: giữ CV đã upload → sang Phân tích (không upload lại). */
+  function handleContinueWithExistingCv() {
+    if (!hasCv && !context?.hasCv && !cv) return;
+    setSelectedStep(2);
   }
 
   async function handleUploadCv(file: File) {
@@ -443,6 +476,8 @@ export function useCoachWorkflow() {
       const result = await uploadCv(file);
       setCv(result.cv);
       setHasCv(true);
+      // SCRUM-483: sync UserContext để Profile / header thấy cùng CV + techStack
+      await refreshUser().catch(() => null);
       const ctx = await getCoachContext().catch(() => null);
       if (ctx) setContext(ctx);
       addToast("success", result.analysisFailed ? p.cvAnalysisFailed : p.cvUploaded);
@@ -513,7 +548,8 @@ export function useCoachWorkflow() {
   const derivedStep: CoachStepIndex = useMemo(() => {
     const cvReady = Boolean(hasCv || context?.hasCv);
     if (!cvReady) return 1;
-    if (!context?.contextConfirmed) return 3;
+    // SCRUM-490: chưa confirm goal → neo CV (dùng lại / upload mới), không skip sang Goal
+    if (!context?.contextConfirmed) return 1;
     // Đã vào lộ trình / re-assessment → neo UI ở đó (không kéo về chẩn đoán
     // chỉ vì job cũ còn COMPLETED trong state).
     if (hasReassessmentPhase) return 7;
@@ -686,12 +722,14 @@ export function useCoachWorkflow() {
     handleSaveContext,
     handleSaveSkills,
     handleUploadCv,
+    handleContinueWithExistingCv,
     runDiagnostic,
     promoteToNextLevel,
     cancelJob,
     startNewRun,
     handleStartRoadmap,
     handleUpdateDraftItem,
+    handleUpdateDraft,
     handleAcceptRoadmaps,
     handleDrillItem,
     handleReassessment,

@@ -60,6 +60,9 @@ export function AdminPlatformBarChart({ data, loading }: Props) {
               axisLine={false}
               tickLine={false}
               interval={0}
+              angle={-25}
+              textAnchor="end"
+              height={56}
             />
             <YAxis
               domain={[0, Math.ceil(maxVal * 1.2)]}

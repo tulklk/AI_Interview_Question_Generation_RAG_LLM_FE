@@ -9,16 +9,17 @@ import {
   getCurrentLeagueIndex,
   LEADERBOARD_USERS,
 } from "@/features/candidate/data/leaderboard-dummy";
+import { useLeaderboardText } from "./leaderboard-text";
 
 const ME          = LEADERBOARD_USERS.find((u) => u.isCurrentUser)!;
 const CURRENT_IDX = getCurrentLeagueIndex(ME.totalXp);
 
 const LEAGUE_CFG = [
-  { letter: "Đ",  bg: "bg-amber-700",  text: "text-white", name: "Đồng" },
-  { letter: "B",  bg: "bg-slate-400",  text: "text-white", name: "Bạc" },
-  { letter: "V",  bg: "bg-amber-400",  text: "text-white", name: "Vàng" },
-  { letter: "Pt", bg: "bg-indigo-400", text: "text-white", name: "Bạch kim" },
-  { letter: "KS", bg: "bg-cyan-400",   text: "text-white", name: "Kim cương" },
+  { letter: "Đ",  bg: "bg-amber-700",  text: "text-white", name: "" },
+  { letter: "B",  bg: "bg-slate-400",  text: "text-white", name: "" },
+  { letter: "V",  bg: "bg-amber-400",  text: "text-white", name: "" },
+  { letter: "Pt", bg: "bg-indigo-400", text: "text-white", name: "" },
+  { letter: "KS", bg: "bg-cyan-400",   text: "text-white", name: "" },
 ] as const;
 
 const SILVER_USERS = LEADERBOARD_USERS
@@ -29,6 +30,7 @@ const SILVER_USERS = LEADERBOARD_USERS
 
 // ── League dot ──────────────────────────────────────────────────────────────
 function LeagueDot({ idx }: { idx: number }) {
+  const lb = useLeaderboardText();
   const cfg       = LEAGUE_CFG[idx];
   const isCurrent = idx === CURRENT_IDX;
   const isDone    = idx < CURRENT_IDX;
@@ -49,7 +51,7 @@ function LeagueDot({ idx }: { idx: number }) {
         )}
         aria-current={isCurrent ? "step" : undefined}
       >
-        {cfg.letter}
+        {lb.leagueLetters[idx]}
       </motion.div>
       <motion.span
         initial={{ opacity: 0 }}
@@ -70,6 +72,7 @@ function LeagueDot({ idx }: { idx: number }) {
 
 // ── Main ────────────────────────────────────────────────────────────────────
 export function LeagueProgressCard() {
+  const lb = useLeaderboardText();
   const current = LEAGUE_LEVELS[CURRENT_IDX];
   const next    = LEAGUE_LEVELS[CURRENT_IDX + 1];
   const nextXp  = next?.minXp ?? Infinity;
@@ -98,14 +101,14 @@ export function LeagueProgressCard() {
             LEAGUE_CFG[CURRENT_IDX].text
           )}
         >
-          {LEAGUE_CFG[CURRENT_IDX].letter}
+          {lb.leagueLetters[CURRENT_IDX]}
         </motion.div>
         <div className="flex-1">
           <p className="text-sm font-bold text-[#111827] dark:text-gray-100 uppercase tracking-wide">
-            Liên đoàn {LEAGUE_CFG[CURRENT_IDX].name}
+            {lb.league} {lb.leagues[CURRENT_IDX]}
           </p>
           <p className="text-xs text-[#6B7280] dark:text-gray-400">
-            hạng #7 / 30 trong liên đoàn của bạn
+            {lb.leagueRank}
           </p>
         </div>
       </div>
@@ -124,8 +127,8 @@ export function LeagueProgressCard() {
           <div>
             <div className="flex justify-between text-xs text-[#6B7280] dark:text-gray-400 mb-1.5">
               <span>
-                Top 5 tuần này sẽ thăng lên{" "}
-                <strong className="text-indigo-400">{next.name}</strong>
+                {lb.promote}{" "}
+                <strong className="text-indigo-400">{lb.leagues[CURRENT_IDX + 1]}</strong>
               </span>
               <span>{pct}%</span>
             </div>
@@ -139,7 +142,7 @@ export function LeagueProgressCard() {
               />
             </div>
             <p className="text-[10px] text-[#9CA3AF] dark:text-gray-600 mt-1 text-right">
-              {ME.totalXp.toLocaleString("vi-VN")} / {nextXp.toLocaleString("vi-VN")} XP
+              {ME.totalXp.toLocaleString(lb.numberLocale)} / {nextXp.toLocaleString(lb.numberLocale)} XP
             </p>
           </div>
         )}
@@ -147,7 +150,7 @@ export function LeagueProgressCard() {
         {/* Mini leaderboard */}
         <div>
           <p className="text-xs font-semibold uppercase tracking-wider text-[#9CA3AF] dark:text-gray-500 mb-2">
-            Top trong liên đoàn của bạn
+            {lb.topInLeague}
           </p>
           <div className="flex flex-col gap-0.5">
             {SILVER_USERS.map((u, i) => {
@@ -189,14 +192,14 @@ export function LeagueProgressCard() {
                     </span>
                     {isMe && (
                       <span className="shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded bg-primary/10 text-primary dark:text-[#a78bff] leading-none">
-                        Bạn
+                        {lb.you}
                       </span>
                     )}
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
                     <Zap size={12} className="text-amber-400" />
                     <span className="text-sm font-semibold text-[#111827] dark:text-gray-100">
-                      {u.totalXp.toLocaleString("vi-VN")}
+                      {u.totalXp.toLocaleString(lb.numberLocale)}
                     </span>
                   </div>
                 </motion.div>

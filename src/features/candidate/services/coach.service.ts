@@ -161,6 +161,8 @@ export interface CoachContext {
   resolutionConfidence?: number;
   resolutionReason?: string | null;
   supportedRoles: string[];
+  /** SCRUM-494: catalog Role Family cho dropdown Vị trí mục tiêu */
+  availableRoleFamilies: CoachRoleFamilyOption[];
   detectedSkills: string[];
 }
 
@@ -170,6 +172,13 @@ export interface CoachFrameworkOption {
   technology?: string | null;
   levels: string[];
   provenance: string;
+}
+
+/** SCRUM-494 */
+export interface CoachRoleFamilyOption {
+  familyKey: string;
+  displayName: string;
+  groupName?: string | null;
 }
 
 export interface UpdateCoachContextPayload {
@@ -232,6 +241,12 @@ export interface CoachSkillGap {
   priorityScore: number;
 }
 
+export interface CoachDrillAttempt {
+  sessionId: string;
+  score?: number | null;
+  completedAt?: string | null;
+}
+
 export interface CoachRoadmapItem {
   id: string;
   topic: string;
@@ -244,8 +259,15 @@ export interface CoachRoadmapItem {
   topicReason?: string | null;
   drillScore?: number | null;
   drillQuestionSetId?: string | null;
+  /** SCRUM-484: session đã nộp — xem lại feedback */
+  drillSessionId?: string | null;
+  /** SCRUM-489: mọi phiên COMPLETED trên cùng set (cũ → mới) */
+  drillAttempts?: CoachDrillAttempt[];
   sourceUrl?: string | null;
   sourceTitle?: string | null;
+  /** SCRUM-486 */
+  knowledgeDocumentId?: string | null;
+  canViewSource?: boolean;
   prerequisites: string[];
   nextTopics: string[];
 }
@@ -268,8 +290,23 @@ export interface CoachRoadmap {
   /** cv | outsideCv */
   skillSource?: "cv" | "outsideCv" | string | null;
   outsideCvReason?: string | null;
+  /** SCRUM-484: thứ tự luyện skill (0 = trước) */
+  displayOrder?: number;
+  /** SCRUM-488: điểm phải > giá trị này mới qua topic */
+  drillPassScoreExclusiveMin?: number;
   items: CoachRoadmapItem[];
 }
+
+export type CoachRoadmapDraftItemPatch = {
+  itemId: string;
+  isIncluded?: boolean;
+  sortOrder?: number;
+};
+
+export type CoachRoadmapDraftRoadmapPatch = {
+  roadmapId: string;
+  displayOrder: number;
+};
 
 function pickBool(obj: Record<string, unknown>, ...keys: string[]): boolean {
   for (const k of keys) {
@@ -305,6 +342,20 @@ function mapFrameworkOptions(raw: unknown): CoachFrameworkOption[] {
     .filter((x) => x.roleKey || x.displayRole);
 }
 
+function mapRoleFamilyOptions(raw: unknown): CoachRoleFamilyOption[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((x) => {
+      const src = asRecord(x) ?? {};
+      return {
+        familyKey: pickString(src, "familyKey", "FamilyKey"),
+        displayName: pickString(src, "displayName", "DisplayName"),
+        groupName: pickString(src, "groupName", "GroupName") || null,
+      };
+    })
+    .filter((x) => x.familyKey || x.displayName);
+}
+
 function mapContext(src: Record<string, unknown> | null): CoachContext {
   if (!src) throw new Error("Invalid context payload");
   return {
@@ -336,6 +387,9 @@ function mapContext(src: Record<string, unknown> | null): CoachContext {
     resolutionConfidence: pickNumber(src, "resolutionConfidence", "ResolutionConfidence") ?? 0,
     resolutionReason: pickString(src, "resolutionReason", "ResolutionReason") || null,
     supportedRoles: pickStringList(src, "supportedRoles", "SupportedRoles"),
+    availableRoleFamilies: mapRoleFamilyOptions(
+      src.availableRoleFamilies ?? src.AvailableRoleFamilies
+    ),
     detectedSkills: pickStringList(src, "detectedSkills", "DetectedSkills"),
   };
 }
@@ -410,7 +464,23 @@ function mapAssessment(src: Record<string, unknown> | null): CoachAssessment | n
   };
 }
 
+function mapDrillAttempt(src: Record<string, unknown>): CoachDrillAttempt | null {
+  const sessionId = pickString(src, "sessionId", "SessionId");
+  if (!sessionId) return null;
+  return {
+    sessionId,
+    score: pickNumber(src, "score", "Score") ?? null,
+    completedAt: pickString(src, "completedAt", "CompletedAt") || null,
+  };
+}
+
 function mapRoadmapItem(src: Record<string, unknown>): CoachRoadmapItem {
+  const attemptsRaw = src.drillAttempts ?? src.DrillAttempts;
+  const drillAttempts = Array.isArray(attemptsRaw)
+    ? attemptsRaw
+        .map((x) => mapDrillAttempt(asRecord(x) ?? {}))
+        .filter((a): a is CoachDrillAttempt => Boolean(a?.sessionId))
+    : [];
   return {
     id: pickString(src, "id", "Id"),
     topic: pickString(src, "topic", "Topic"),
@@ -428,8 +498,12 @@ function mapRoadmapItem(src: Record<string, unknown>): CoachRoadmapItem {
     topicReason: pickString(src, "topicReason", "TopicReason") || null,
     drillScore: pickNumber(src, "drillScore", "DrillScore") ?? null,
     drillQuestionSetId: pickString(src, "drillQuestionSetId", "DrillQuestionSetId") || null,
+    drillSessionId: pickString(src, "drillSessionId", "DrillSessionId") || null,
+    drillAttempts,
     sourceUrl: pickString(src, "sourceUrl", "SourceUrl") || null,
     sourceTitle: pickString(src, "sourceTitle", "SourceTitle") || null,
+    knowledgeDocumentId: pickString(src, "knowledgeDocumentId", "KnowledgeDocumentId") || null,
+    canViewSource: pickBool(src, "canViewSource", "CanViewSource"),
     prerequisites: pickStringList(src, "prerequisites", "Prerequisites"),
     nextTopics: pickStringList(src, "nextTopics", "NextTopics"),
   };
@@ -467,6 +541,9 @@ function mapRoadmap(src: Record<string, unknown>): CoachRoadmap {
       return raw;
     })(),
     outsideCvReason: pickString(src, "outsideCvReason", "OutsideCvReason") || null,
+    displayOrder: pickNumber(src, "displayOrder", "DisplayOrder") ?? 0,
+    drillPassScoreExclusiveMin:
+      pickNumber(src, "drillPassScoreExclusiveMin", "DrillPassScoreExclusiveMin") ?? 70,
     items,
   };
 }
@@ -520,12 +597,22 @@ export async function getCoachAssessment(id: string): Promise<CoachAssessment | 
   return mapAssessment(extractData(res.data));
 }
 
+function sortRoadmaps(list: CoachRoadmap[]): CoachRoadmap[] {
+  return list
+    .filter((r) => r.id && r.skill)
+    .sort(
+      (a, b) =>
+        (a.displayOrder ?? 0) - (b.displayOrder ?? 0) ||
+        b.priorityScore - a.priorityScore
+    );
+}
+
 export async function getCoachRoadmaps(): Promise<CoachRoadmap[]> {
   const res = await apiClient.get("/api/candidate/coach/roadmaps");
   const root = asRecord(res.data);
   const raw = root?.data ?? root?.Data ?? res.data;
   const list = Array.isArray(raw) ? raw : [];
-  return list.map((x) => mapRoadmap(asRecord(x) ?? {})).filter((r) => r.id && r.skill);
+  return sortRoadmaps(list.map((x) => mapRoadmap(asRecord(x) ?? {})));
 }
 
 export async function getCoachRoadmap(id: string): Promise<CoachRoadmap | null> {
@@ -540,15 +627,19 @@ export async function startCoachRoadmap(id: string): Promise<CoachRoadmap> {
   return mapRoadmap(extractData(res.data) ?? {});
 }
 
-/** SCRUM-462: toggle IsIncluded trên draft Suggested. */
-export async function updateCoachRoadmapDraft(
-  items: Array<{ itemId: string; isIncluded: boolean }>
-): Promise<CoachRoadmap[]> {
-  const res = await apiClient.patch("/api/candidate/coach/roadmaps/draft", { items });
+/** SCRUM-462 / SCRUM-484: toggle + reorder topic/skill trên draft Suggested. */
+export async function updateCoachRoadmapDraft(payload: {
+  items?: CoachRoadmapDraftItemPatch[];
+  roadmaps?: CoachRoadmapDraftRoadmapPatch[];
+}): Promise<CoachRoadmap[]> {
+  const res = await apiClient.patch("/api/candidate/coach/roadmaps/draft", {
+    items: payload.items ?? [],
+    roadmaps: payload.roadmaps ?? [],
+  });
   const root = asRecord(res.data);
   const raw = root?.data ?? root?.Data ?? res.data;
   const list = Array.isArray(raw) ? raw : [];
-  return list.map((x) => mapRoadmap(asRecord(x) ?? {})).filter((r) => r.id && r.skill);
+  return sortRoadmaps(list.map((x) => mapRoadmap(asRecord(x) ?? {})));
 }
 
 /** SCRUM-462: Accept toàn bộ draft → Active. */
@@ -557,7 +648,7 @@ export async function acceptCoachRoadmaps(): Promise<CoachRoadmap[]> {
   const root = asRecord(res.data);
   const raw = root?.data ?? root?.Data ?? res.data;
   const list = Array.isArray(raw) ? raw : [];
-  return list.map((x) => mapRoadmap(asRecord(x) ?? {})).filter((r) => r.id && r.skill);
+  return sortRoadmaps(list.map((x) => mapRoadmap(asRecord(x) ?? {})));
 }
 
 export async function startRoadmapItemDrill(roadmapId: string, itemId: string): Promise<CoachJob> {
@@ -576,6 +667,39 @@ export async function startRoadmapReassessment(roadmapId: string): Promise<Coach
     { timeout: 180_000 }
   );
   return mapJob(extractData(res.data));
+}
+
+/** SCRUM-486: xem tài liệu nguồn KB gắn roadmap. */
+export interface CoachKnowledgeView {
+  documentId: string;
+  fileName: string;
+  contentType: "markdown" | "text" | "pdf" | "docx" | string;
+  content?: string | null;
+  url?: string | null;
+  expiresAt?: string | null;
+  sourceTitle?: string | null;
+  previewText?: string | null;
+}
+
+export async function getCoachKnowledgeSourceView(documentId: string): Promise<CoachKnowledgeView> {
+  const res = await apiClient.get(`/api/candidate/coach/knowledge-documents/${documentId}/view`);
+  const root = asRecord(res.data);
+  const raw =
+    asRecord(root?.data) ??
+    asRecord(root?.Data) ??
+    extractData(res.data) ??
+    root ??
+    {};
+  return {
+    documentId: pickString(raw, "documentId", "DocumentId") || documentId,
+    fileName: pickString(raw, "fileName", "FileName"),
+    contentType: pickString(raw, "contentType", "ContentType") || "text",
+    content: pickString(raw, "content", "Content") || null,
+    url: pickString(raw, "url", "Url") || null,
+    expiresAt: pickString(raw, "expiresAt", "ExpiresAt") || null,
+    sourceTitle: pickString(raw, "sourceTitle", "SourceTitle") || null,
+    previewText: pickString(raw, "previewText", "PreviewText") || null,
+  };
 }
 
 export function coachResolutionMode(context: CoachContext | null | undefined): string {

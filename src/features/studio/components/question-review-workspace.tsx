@@ -382,6 +382,15 @@ function QuestionDetail({
               Answer: {answerMethodLabel}
             </span>
           )}
+          {/* SCRUM-495: đánh dấu câu lệch config HR — không chặn */}
+          {question.needsReview ? (
+            <span
+              title={(question.mismatchReasons ?? []).join("; ") || undefined}
+              className="inline-flex rounded-full bg-orange-100 px-2 py-0.5 text-[10px] font-semibold text-orange-800 dark:bg-orange-950/50 dark:text-orange-300"
+            >
+              {lang === "vi" ? "Cần xem lại" : "Needs review"}
+            </span>
+          ) : null}
         </div>
 
         <div className="flex shrink-0 items-center gap-1">

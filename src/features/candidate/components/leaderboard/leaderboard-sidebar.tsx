@@ -9,6 +9,7 @@ import { cn } from "@/lib/cn";
 import { portalCard } from "@/shared/utils/portal-ui";
 import type { RankedUser, LeaderboardTab } from "@/features/candidate/data/leaderboard-dummy";
 import { LEADERBOARD_USERS } from "@/features/candidate/data/leaderboard-dummy";
+import { useLeaderboardText } from "./leaderboard-text";
 
 const ME          = LEADERBOARD_USERS.find((u) => u.isCurrentUser)!;
 const NEXT_RANK_XP = 5800;
@@ -16,6 +17,7 @@ const XP_GAP      = NEXT_RANK_XP - ME.totalXp;
 
 // ── Count-up number ─────────────────────────────────────────────────────────
 function CountUp({ to, suffix = "" }: { to: number; suffix?: string }) {
+  const lb = useLeaderboardText();
   const ref = useRef<HTMLSpanElement>(null);
   useEffect(() => {
     const node = ref.current;
@@ -24,11 +26,11 @@ function CountUp({ to, suffix = "" }: { to: number; suffix?: string }) {
       duration: 1.2,
       ease: "easeOut",
       onUpdate(v) {
-        node.textContent = Math.round(v).toLocaleString("vi-VN") + suffix;
+        node.textContent = Math.round(v).toLocaleString(lb.numberLocale) + suffix;
       },
     });
     return () => ctrl.stop();
-  }, [to, suffix]);
+  }, [to, suffix, lb.numberLocale]);
   return <span ref={ref}>0</span>;
 }
 
@@ -54,6 +56,7 @@ interface CurrentRankCardProps {
 }
 
 export function CurrentRankCard({ ranked, tab }: CurrentRankCardProps) {
+  const lb = useLeaderboardText();
   const me       = ranked.find((u) => u.isCurrentUser);
   const myRank   = me?.rank ?? 12;
   const weeklyXp = ME.weeklyXp;
@@ -68,12 +71,12 @@ export function CurrentRankCard({ ranked, tab }: CurrentRankCardProps) {
       className={cn(portalCard, "p-5 shadow-sm")}
     >
       <p className="text-xs font-semibold uppercase tracking-wider text-[#9CA3AF] dark:text-gray-500 mb-3">
-        Thông tin của bạn
+        {lb.yourInfo}
       </p>
 
       {/* Rank */}
       <div className="mb-1">
-        <p className="text-xs text-[#6B7280] dark:text-gray-400">Hạng của bạn</p>
+        <p className="text-xs text-[#6B7280] dark:text-gray-400">{lb.yourRank}</p>
         <p className="text-3xl font-black text-primary dark:text-[#a78bff] leading-tight">
           #<CountUp to={myRank} />
         </p>
@@ -85,18 +88,18 @@ export function CurrentRankCard({ ranked, tab }: CurrentRankCardProps) {
         <span className="text-sm font-semibold text-[#111827] dark:text-gray-100">
           <CountUp to={weeklyXp} /> XP
         </span>
-        <span className="text-xs text-[#9CA3AF] dark:text-gray-500">tuần này</span>
+        <span className="text-xs text-[#9CA3AF] dark:text-gray-500">{lb.thisWeek}</span>
       </div>
 
       {/* Progress */}
       {tab === "totalXp" && (
         <div className="mb-4">
           <p className="text-xs text-[#6B7280] dark:text-gray-400 mb-1.5">
-            Cần thêm{" "}
+            {lb.needMore}{" "}
             <span className="font-semibold text-primary dark:text-[#a78bff]">
-              {XP_GAP.toLocaleString("vi-VN")} XP
+              {XP_GAP.toLocaleString(lb.numberLocale)} XP
             </span>{" "}
-            để vượt hạng #{myRank - 1}
+            {lb.toPass} #{myRank - 1}
           </p>
           <AnimatedBar pct={progressPct} />
         </div>
@@ -113,20 +116,20 @@ export function CurrentRankCard({ ranked, tab }: CurrentRankCardProps) {
           "transition-colors"
         )}
       >
-        Xem chi tiết tiến độ
+        {lb.viewProgress}
       </Link>
 
       {/* Divider + stats */}
       <div className="border-t border-gray-100 dark:border-gray-800 my-4" />
       <p className="text-xs font-semibold uppercase tracking-wider text-[#9CA3AF] dark:text-gray-500 mb-3">
-        Thành tích của bạn
+        {lb.yourStats}
       </p>
       <div className="flex flex-col gap-2.5">
         {[
-          { label: "Tổng XP",          value: `${totalXp.toLocaleString("vi-VN")} XP` },
-          { label: "Cấp độ hiện tại",  value: `Level ${ME.level}` },
-          { label: "Hạng tuần này",    value: `#${myRank}` },
-          { label: "XP tuần này",      value: `${weeklyXp.toLocaleString("vi-VN")} XP` },
+          { label: lb.statTotalXp,      value: `${totalXp.toLocaleString(lb.numberLocale)} XP` },
+          { label: lb.statLevel,        value: `Level ${ME.level}` },
+          { label: lb.statWeekRank,     value: `#${myRank}` },
+          { label: lb.statWeekXp,       value: `${weeklyXp.toLocaleString(lb.numberLocale)} XP` },
         ].map(({ label, value }) => (
           <div key={label} className="flex items-center justify-between">
             <span className="text-sm text-[#6B7280] dark:text-gray-400">{label}</span>
@@ -139,15 +142,17 @@ export function CurrentRankCard({ ranked, tab }: CurrentRankCardProps) {
 }
 
 // ── Achievement card ────────────────────────────────────────────────────────
-const ACHIEVEMENTS = [
+const achievementList = (lb: ReturnType<typeof useLeaderboardText>) => [
   { icon: Trophy,     color: "text-amber-500",                   label: "Top 20%" },
-  { icon: Zap,        color: "text-primary dark:text-[#a78bff]", label: "5.420 XP tích lũy" },
-  { icon: Flame,      color: "text-orange-400",                  label: "Chuỗi 3 ngày" },
-  { icon: Target,     color: "text-emerald-500",                 label: "53 phiên hoàn thành" },
-  { icon: TrendingUp, color: "text-cyan-500",                    label: "+2 hạng tuần này" },
+  { icon: Zap,        color: "text-primary dark:text-[#a78bff]", label: lb.achXp },
+  { icon: Flame,      color: "text-orange-400",                  label: lb.achStreak },
+  { icon: Target,     color: "text-emerald-500",                 label: lb.achSessions },
+  { icon: TrendingUp, color: "text-cyan-500",                    label: lb.achRank },
 ];
 
 export function AchievementCard() {
+  const lb = useLeaderboardText();
+  const ACHIEVEMENTS = achievementList(lb);
   return (
     <motion.div
       initial={{ opacity: 0, x: 20 }}
@@ -158,7 +163,7 @@ export function AchievementCard() {
       <div className="flex items-center gap-2 mb-3">
         <Star size={14} className="text-amber-400" />
         <p className="text-xs font-semibold uppercase tracking-wider text-[#9CA3AF] dark:text-gray-500">
-          Thành tích nổi bật
+          {lb.featured}
         </p>
       </div>
       <ul className="flex flex-col gap-2">

@@ -166,6 +166,24 @@ export function isCandidateAccepted(
   return inv === "ACCEPTED" || off === "ACCEPTED";
 }
 
+/** SCRUM-482: candidate từ chối in-app (hoặc offer đã sync REJECTED). */
+export function isCandidateRejected(
+  rec: Pick<CandidateRecommendation, "invitationStatus" | "latestOfferStatus">,
+): boolean {
+  const inv = (rec.invitationStatus ?? "").toUpperCase();
+  const off = (rec.latestOfferStatus ?? "").toUpperCase();
+  return inv === "REJECTED" || off === "REJECTED";
+}
+
+/** Đã mời nhưng chưa accept/reject. */
+export function isAwaitingCandidateResponse(
+  rec: Pick<CandidateRecommendation, "status" | "invitationStatus" | "latestOfferStatus">,
+): boolean {
+  if (rec.status !== "INVITED") return false;
+  if (isCandidateAccepted(rec) || isCandidateRejected(rec)) return false;
+  return true;
+}
+
 function normalizeRec(raw: unknown): CandidateRecommendation | null {
   const src = asRecord(raw);
   if (!src) return null;

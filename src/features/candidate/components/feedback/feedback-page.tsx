@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { motion, animate, AnimatePresence } from "framer-motion";
 import {
@@ -20,6 +20,7 @@ import { ConfettiBurst } from "@/shared/components/common/confetti-burst";
 import { FeedbackRadarChart } from "./feedback-radar-chart";
 import { useToast } from "@/shared/providers/toast-context";
 import { UpgradeModal } from "@/features/candidate/components/billing/upgrade-modal";
+import { useCandidateSubscription } from "@/features/candidate/context/candidate-subscription-context";
 import {
   portalHeadingAlt,
   portalSubtextAlt,
@@ -222,6 +223,12 @@ interface FeedbackPageProps {
   aiInsight?: SessionAiInsight | null;
   /** FreeTeaser = khóa panel AI (+ 1 câu mẫu); Full = Premium. SCRUM-478: không blur câu hỏi. */
   accessLevel?: PracticeFeedbackAccessLevel;
+  /** SCRUM-479: Premium còn câu chưa AI Succeeded — hiện nút chấm full. */
+  needsFullEvaluation?: boolean;
+  /** SCRUM-479: callback chấm full on-demand. */
+  onEvaluateFull?: () => Promise<void> | void;
+  /** SCRUM-479: Admin/poll vừa lên Premium — refetch feedback (FreeTeaser → Full). */
+  onPremiumAccessRefresh?: () => Promise<void> | void;
   scoring: boolean;
   /** P4: true when the score poll timed out — shows a retry button instead of "score not available". */
   scoringTimedOut?: boolean;
@@ -245,6 +252,9 @@ export function FeedbackPage({
   feedback,
   aiInsight,
   accessLevel = "Full",
+  needsFullEvaluation = false,
+  onEvaluateFull,
+  onPremiumAccessRefresh,
   scoring,
   scoringTimedOut = false,
   onRetryScore,
@@ -260,11 +270,19 @@ export function FeedbackPage({
   const p = t.jobseekerFeedbackPage;
   const chart = useChartTheme();
   const { addToast } = useToast();
+  const { planType } = useCandidateSubscription();
+  const isPremium = planType === "PREMIUM";
   const isFreeTeaser = accessLevel === "FreeTeaser";
   const [upgradeOpen, setUpgradeOpen] = useState(false);
+  const [evaluatingFull, setEvaluatingFull] = useState(false);
   const [integrityReport, setIntegrityReport] = useState<AntiCheatPersistedPayload | null>(null);
   const hasScore = session.overallScore !== null;
   const score = session.overallScore ?? 0;
+  // Admin grant Premium: accessLevel có thể còn FreeTeaser đến khi refetch xong —
+  // hiện CTA chấm full thay vì upsell thanh toán.
+  const showFreeUpsell = isFreeTeaser && hasScore && !isPremium;
+  const showEvaluateFullCta =
+    (!isFreeTeaser && needsFullEvaluation) || (isFreeTeaser && isPremium && hasScore);
   const { label: scoreLevelLabel, badgeClass: scoreLevelBadgeClass } = getScoreLevel(score, p.scoreLevels);
 
   // Hiển thị đủ mọi câu trong set, kể cả chưa trả lời (empty state).
@@ -285,6 +303,19 @@ export function FeedbackPage({
   useEffect(() => {
     setIntegrityReport(EventTracker.restore(session.id));
   }, [session.id]);
+
+  // SCRUM-479: Admin grant / poll lên Premium — refetch GET feedback (FreeTeaser → Full).
+  // Chạy trong FeedbackPage vì CandidateSubscriptionProvider nằm trong JobseekerAppShell.
+  const didRefreshForPremiumRef = useRef(false);
+  useEffect(() => {
+    if (!isPremium) {
+      didRefreshForPremiumRef.current = false;
+      return;
+    }
+    if (!isFreeTeaser || !onPremiumAccessRefresh || didRefreshForPremiumRef.current) return;
+    didRefreshForPremiumRef.current = true;
+    void onPremiumAccessRefresh();
+  }, [isPremium, isFreeTeaser, onPremiumAccessRefresh]);
 
   async function handleShare() {
     const url = window.location.href;
@@ -441,9 +472,9 @@ export function FeedbackPage({
             </div>
           )}
 
-          {/* AI Insight / Free teaser upsell / pending */}
+          {/* AI Insight / Free teaser upsell / Premium evaluate-full / pending */}
           <div className="hr-quick-generate rounded-lg p-4 flex gap-3">
-            {isFreeTeaser && hasScore ? (
+            {showFreeUpsell ? (
               <>
                 <Crown size={15} className="text-[#7C3AED] dark:text-[#a78bff] shrink-0 mt-0.5" />
                 <div className="flex flex-col gap-2">
@@ -471,6 +502,43 @@ export function FeedbackPage({
                       {p.freemium.practiceOther}
                     </Link>
                   </div>
+                </div>
+              </>
+            ) : showEvaluateFullCta ? (
+              <>
+                <Sparkles size={15} className="text-[#7C3AED] dark:text-[#a78bff] shrink-0 mt-0.5" />
+                <div className="flex flex-col gap-2">
+                  <p className="text-[12px] font-[700] text-primary">{p.freemium.evaluateFullHeadline}</p>
+                  <p className={cn("text-[13px] leading-[20px]", portalHeadingAlt)}>{p.freemium.evaluateFullBody}</p>
+                  <button
+                    type="button"
+                    disabled={evaluatingFull || !onEvaluateFull}
+                    onClick={async () => {
+                      if (!onEvaluateFull || evaluatingFull) return;
+                      setEvaluatingFull(true);
+                      try {
+                        await onEvaluateFull();
+                        addToast("success", p.freemium.evaluateFullDone);
+                      } catch {
+                        addToast("error", p.freemium.evaluateFullError);
+                      } finally {
+                        setEvaluatingFull(false);
+                      }
+                    }}
+                    className="shimmer-button inline-flex items-center gap-1.5 h-8 px-3 text-[12px] font-semibold text-white hr-cta-btn rounded-lg disabled:opacity-60 w-fit"
+                  >
+                    {evaluatingFull ? (
+                      <>
+                        <Loader2 size={12} className="animate-spin" />
+                        {p.freemium.evaluateFullLoading}
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles size={12} />
+                        {p.freemium.evaluateFullCta}
+                      </>
+                    )}
+                  </button>
                 </div>
               </>
             ) : hasScore ? (

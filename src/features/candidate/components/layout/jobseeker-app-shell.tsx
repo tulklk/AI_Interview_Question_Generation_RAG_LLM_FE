@@ -52,7 +52,7 @@ function JobseekerAppShellInner({
   const pathname = usePathname();
   const { addToast } = useToast();
   const { user, loading } = useUser();
-  const { planType, refreshSubscription } = useCandidateSubscription();
+  const { planType, planStartedAt, refreshSubscription } = useCandidateSubscription();
   const { progress: gamificationProgress } = useUserProgress();
   const welcomedRef = useRef(false);
   const prevPlanTypeRef = useRef<string | null>(null);
@@ -88,7 +88,10 @@ function JobseekerAppShellInner({
     if (planType === "PREMIUM") {
       if (!localStorage.getItem(key)) {
         localStorage.setItem(key, "1");
-        setShowCelebration(true);
+        // Only celebrate a fresh upgrade — a long-time subscriber opening a new browser is not news.
+        const startedMs = planStartedAt ? new Date(planStartedAt).getTime() : NaN;
+        const isFresh = !Number.isFinite(startedMs) || Date.now() - startedMs < 24 * 60 * 60 * 1000;
+        if (isFresh) setShowCelebration(true);
       }
     } else if (prev === "PREMIUM") {
       // Genuine downgrade confirmed from API:
@@ -97,7 +100,7 @@ function JobseekerAppShellInner({
       localStorage.removeItem(key);
       setShowRevoked(true);
     }
-  }, [planType, user?.id]);
+  }, [planType, planStartedAt, user?.id]);
 
   // Refresh subscription when user returns to this tab so that admin-granted
   // upgrades or revocations are picked up without a full page reload.

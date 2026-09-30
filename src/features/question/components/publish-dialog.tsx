@@ -158,16 +158,22 @@ export function PublishDialog({
       timeLimitMinutes = n;
     }
 
-    const score = parseFloat(recommendationMinScore);
-    if (!Number.isFinite(score) || score < 50 || score > 95) {
-      setScoreError(true);
-      return;
+    // Practice không có auto-recommend — chỉ validate ngưỡng khi bộ Tuyển.
+    let score = 70;
+    let recommendOn = false;
+    if (isHiringAssessment) {
+      score = parseFloat(recommendationMinScore);
+      if (!Number.isFinite(score) || score < 50 || score > 95) {
+        setScoreError(true);
+        return;
+      }
+      recommendOn = autoRecommendEnabled;
     }
 
     const payload: PublishDialogConfirmPayload = {
       questionIds: Array.from(selected),
       timeLimitMinutes,
-      autoRecommendEnabled,
+      autoRecommendEnabled: recommendOn,
       recommendationMinScore: score,
       isHiringAssessment,
       hrAntiCheatEnabled: isHiringAssessment && hrAntiCheatEnabled,
@@ -464,106 +470,109 @@ export function PublishDialog({
               }}
             />
 
-            <div className="my-4 border-t border-gray-100 dark:border-gray-800" />
-
-            {/* Recommend */}
-            <section className="space-y-2.5">
-              <div className="flex items-start gap-2">
-                <UserCheck size={14} className="mt-0.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className={cn("text-sm font-semibold", portalHeading)}>{d.recommendTitle}</p>
-                      <p className={cn("mt-0.5 text-xs leading-snug", portalSubtext)}>
-                        {d.recommendDescription}
+            {/* Recommend — chỉ bộ Tuyển; Practice không gửi đề xuất HR */}
+            {isHiringAssessment && (
+              <>
+                <div className="my-4 border-t border-gray-100 dark:border-gray-800" />
+                <section className="space-y-2.5">
+                  <div className="flex items-start gap-2">
+                    <UserCheck size={14} className="mt-0.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className={cn("text-sm font-semibold", portalHeading)}>{d.recommendTitle}</p>
+                          <p className={cn("mt-0.5 text-xs leading-snug", portalSubtext)}>
+                            {d.recommendDescription}
+                          </p>
+                        </div>
+                        <label className="relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center">
+                          <input
+                            type="checkbox"
+                            className="peer sr-only"
+                            checked={autoRecommendEnabled}
+                            disabled={saving}
+                            onChange={(e) => {
+                              setAutoRecommendEnabled(e.target.checked);
+                              setScoreError(false);
+                            }}
+                            aria-label={d.recommendEnable}
+                          />
+                          <span className="absolute inset-0 rounded-full bg-gray-300 transition peer-checked:bg-emerald-500 peer-disabled:opacity-50 dark:bg-gray-700" />
+                          <span className="absolute left-0.5 h-5 w-5 rounded-full bg-white shadow transition peer-checked:translate-x-5" />
+                        </label>
+                      </div>
+                      <p className={cn("mt-1.5 text-[11px] font-medium", portalHeading)}>
+                        {d.recommendEnable}
                       </p>
                     </div>
-                    <label className="relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center">
+                  </div>
+
+                  <div
+                    className={cn(
+                      "space-y-2 transition-opacity",
+                      !autoRecommendEnabled && "pointer-events-none opacity-35"
+                    )}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <label className={cn("text-xs font-semibold", portalHeading)}>
+                        {d.recommendMinScore}
+                      </label>
                       <input
-                        type="checkbox"
-                        className="peer sr-only"
-                        checked={autoRecommendEnabled}
-                        disabled={saving}
+                        type="number"
+                        min={50}
+                        max={95}
+                        step={1}
+                        value={recommendationMinScore}
+                        disabled={saving || !autoRecommendEnabled}
                         onChange={(e) => {
-                          setAutoRecommendEnabled(e.target.checked);
+                          setRecommendationMinScore(e.target.value);
                           setScoreError(false);
                         }}
-                        aria-label={d.recommendEnable}
+                        className={cn(
+                          "w-16 rounded-lg px-2 py-1 text-center text-sm font-semibold tabular-nums focus:outline-none focus:ring-2 disabled:opacity-50",
+                          portalInput,
+                          scoreError
+                            ? "border-red-300 dark:border-red-700 focus:ring-red-200"
+                            : "focus:ring-emerald-500/20 focus:border-emerald-500"
+                        )}
                       />
-                      <span className="absolute inset-0 rounded-full bg-gray-300 transition peer-checked:bg-emerald-500 peer-disabled:opacity-50 dark:bg-gray-700" />
-                      <span className="absolute left-0.5 h-5 w-5 rounded-full bg-white shadow transition peer-checked:translate-x-5" />
-                    </label>
-                  </div>
-                  <p className={cn("mt-1.5 text-[11px] font-medium", portalHeading)}>
-                    {d.recommendEnable}
-                  </p>
-                </div>
-              </div>
-
-              <div
-                className={cn(
-                  "space-y-2 transition-opacity",
-                  !autoRecommendEnabled && "pointer-events-none opacity-35"
-                )}
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <label className={cn("text-xs font-semibold", portalHeading)}>
-                    {d.recommendMinScore}
-                  </label>
-                  <input
-                    type="number"
-                    min={50}
-                    max={95}
-                    step={1}
-                    value={recommendationMinScore}
-                    disabled={saving || !autoRecommendEnabled}
-                    onChange={(e) => {
-                      setRecommendationMinScore(e.target.value);
-                      setScoreError(false);
-                    }}
-                    className={cn(
-                      "w-16 rounded-lg px-2 py-1 text-center text-sm font-semibold tabular-nums focus:outline-none focus:ring-2 disabled:opacity-50",
-                      portalInput,
-                      scoreError
-                        ? "border-red-300 dark:border-red-700 focus:ring-red-200"
-                        : "focus:ring-emerald-500/20 focus:border-emerald-500"
+                    </div>
+                    <input
+                      type="range"
+                      min={50}
+                      max={95}
+                      step={1}
+                      value={
+                        Number.isFinite(scoreNum) && scoreNum >= 50 && scoreNum <= 95
+                          ? scoreNum
+                          : 70
+                      }
+                      disabled={saving || !autoRecommendEnabled}
+                      onChange={(e) => {
+                        setRecommendationMinScore(e.target.value);
+                        setScoreError(false);
+                      }}
+                      className="w-full accent-emerald-600"
+                      style={{
+                        background: `linear-gradient(to right, #10b981 ${scorePct}%, #e5e7eb ${scorePct}%)`,
+                      }}
+                    />
+                    <div className="flex justify-between text-[10px] font-medium text-gray-400">
+                      <span>50</span>
+                      <span>95</span>
+                    </div>
+                    {scoreError && (
+                      <p className="text-xs text-red-600 dark:text-red-400">{d.recommendScoreError}</p>
                     )}
-                  />
-                </div>
-                <input
-                  type="range"
-                  min={50}
-                  max={95}
-                  step={1}
-                  value={
-                    Number.isFinite(scoreNum) && scoreNum >= 50 && scoreNum <= 95
-                      ? scoreNum
-                      : 70
-                  }
-                  disabled={saving || !autoRecommendEnabled}
-                  onChange={(e) => {
-                    setRecommendationMinScore(e.target.value);
-                    setScoreError(false);
-                  }}
-                  className="w-full accent-emerald-600"
-                  style={{
-                    background: `linear-gradient(to right, #10b981 ${scorePct}%, #e5e7eb ${scorePct}%)`,
-                  }}
-                />
-                <div className="flex justify-between text-[10px] font-medium text-gray-400">
-                  <span>50</span>
-                  <span>95</span>
-                </div>
-                {scoreError && (
-                  <p className="text-xs text-red-600 dark:text-red-400">{d.recommendScoreError}</p>
-                )}
-              </div>
-              {!autoRecommendEnabled && (
-                <p className={cn("text-[11px] leading-snug", portalSubtext)}>
-                  {d.recommendScoreDisabledHint}
-                </p>
-              )}
-            </section>
+                  </div>
+                  {!autoRecommendEnabled && (
+                    <p className={cn("text-[11px] leading-snug", portalSubtext)}>
+                      {d.recommendScoreDisabledHint}
+                    </p>
+                  )}
+                </section>
+              </>
+            )}
 
             {/* Compact summary */}
             <div className="mt-5 space-y-1 rounded-lg border border-gray-100 bg-gray-50/70 px-3 py-2.5 text-[11px] text-gray-500 dark:border-gray-800 dark:bg-gray-900/40 dark:text-gray-400">
@@ -574,12 +583,14 @@ export function PublishDialog({
                 {selectedReadyCount} {d.questionsLabel.toLowerCase()}
               </p>
               <p>{noLimit ? d.noLimitLabel : `${minutes || "—"} ${d.minutesUnit}`}</p>
-              <p>
-                {d.recommendTitle}:{" "}
-                {autoRecommendEnabled
-                  ? `${d.recommendOn} · ${recommendationMinScore || "—"}`
-                  : d.recommendOff}
-              </p>
+              {isHiringAssessment && (
+                <p>
+                  {d.recommendTitle}:{" "}
+                  {autoRecommendEnabled
+                    ? `${d.recommendOn} · ${recommendationMinScore || "—"}`
+                    : d.recommendOff}
+                </p>
+              )}
             </div>
           </div>
         </div>

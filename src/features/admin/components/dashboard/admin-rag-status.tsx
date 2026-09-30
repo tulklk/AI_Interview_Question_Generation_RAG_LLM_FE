@@ -30,14 +30,21 @@ function checkLabels(
   name: string,
   status: string,
   responseTimeMs: number | undefined,
-  s: RagStatusLabels
+  s: RagStatusLabels,
+  serverMessage?: string
 ): { title: string; message: string | null } {
   const key = CHECK_BY_NAME[name.trim().toLowerCase()];
   if (!key) return { title: name, message: null };
 
   const title = key === "connection" ? s.checkConnection : key === "config" ? s.checkConfig : s.checkVectorDb;
-  // Only the "pass" wording is known; anything else keeps the server's own message.
-  if (status !== "pass") return { title, message: null };
+  if (status !== "pass") {
+    // The server words failures in Vietnamese only — rebuild them from the neutral parts.
+    if (key === "connection") {
+      const code = serverMessage?.match(/HTTP\s*(\d{3})/i)?.[1];
+      return { title, message: code ? s.msgConnectionFail.replace("{{code}}", code) : s.msgConnectionDown };
+    }
+    return { title, message: s.msgNotChecked };
+  }
 
   const message =
     key === "connection"
@@ -157,7 +164,7 @@ export function AdminRagStatus() {
           {ragStatus.checks && ragStatus.checks.length > 0 && (
             <div className="space-y-1.5">
               {ragStatus.checks.map((check, i) => {
-                const label = checkLabels(check.name, check.status, ragStatus.responseTimeMs, s);
+                const label = checkLabels(check.name, check.status, ragStatus.responseTimeMs, s, check.message);
                 return (
                 <div key={i} className="flex items-start gap-2 rounded-lg bg-white/60 dark:bg-gray-900/50 px-3 py-2 border border-gray-100 dark:border-gray-800">
                   {check.status === "pass"

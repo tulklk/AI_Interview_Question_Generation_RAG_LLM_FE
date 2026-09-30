@@ -1,4 +1,4 @@
-import { listUsers } from "@/features/admin/services/admin-users.service";
+import { listUsers, getUserStats } from "@/features/admin/services/admin-users.service";
 import { listCompanies } from "@/features/admin/services/admin-company.service";
 import { listQuestionSets } from "@/features/candidate/services/question-set.service";
 import type { AdminUserListItem } from "@/features/admin/types/admin-user";
@@ -39,11 +39,11 @@ const DUMMY_QUESTION_STATS = {
 };
 
 export async function fetchAdminDashboardStats(): Promise<AdminDashboardStats> {
-  const [allUsersPage, hrPage, candidatePage, companiesPage, setsPage] = await Promise.all([
+  // SCRUM-480: user KPI từ /api/admin/users/stats; companies từ /api/admin/companies
+  const [userStats, allUsersPage, companiesPage, setsPage] = await Promise.all([
+    getUserStats().catch(() => null),
     listUsers({ page: 1, pageSize: 10 }),
-    listUsers({ page: 1, pageSize: 1, role: "HR_MANAGER" }),
-    listUsers({ page: 1, pageSize: 1, role: "JOB_SEEKER" }),
-    listCompanies({ pageSize: 10 }),
+    listCompanies({ page: 1, pageSize: 10 }),
     listQuestionSets({ pageSize: 200 }).catch(() => ({ items: [], totalCount: 0 })),
   ]);
 
@@ -76,9 +76,9 @@ export async function fetchAdminDashboardStats(): Promise<AdminDashboardStats> {
     : DUMMY_QUESTION_STATS;
 
   return {
-    totalUsers: allUsersPage.totalCount,
-    hrManagers: hrPage.totalCount,
-    jobSeekers: candidatePage.totalCount,
+    totalUsers: userStats?.totalUsers ?? allUsersPage.totalCount,
+    hrManagers: userStats?.byRole.hr ?? 0,
+    jobSeekers: userStats?.byRole.candidate ?? 0,
     recentUsers: allUsersPage.items,
     companies: companiesPage.items,
     totalCompanies: companiesPage.totalCount,

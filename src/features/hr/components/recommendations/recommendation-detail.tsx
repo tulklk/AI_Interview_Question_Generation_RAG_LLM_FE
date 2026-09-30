@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, Star, X as XIcon, Mail, Loader2,
-  AlertCircle, RefreshCw, CheckCircle2, Clock, Send,
+  AlertCircle, RefreshCw, CheckCircle2, Clock,
   User, Sparkles, Phone, FileText, Download, Maximize2,
   Target, ChevronDown, RotateCcw, MapPin, Briefcase,
 } from "lucide-react";
@@ -21,24 +21,21 @@ import {
   getRecommendationCv,
   shortlistRecommendation,
   dismissRecommendation,
-  inviteRecommendation,
-  sendRecommendationOffer,
   markRecommendationViewed,
   restoreRecommendation,
   isCandidateAccepted,
-  type CandidateRecommendation,
+  isCandidateRejected,
+  isAwaitingCandidateResponse,
   type CandidateRecommendationDetail,
   type RecommendationCvDownload,
   type RecommendationStatus,
 } from "@/features/hr/services/recommendation.service";
-import { getCurrentUser } from "@/features/auth/services/user.service";
-import { InviteScheduleFields, defaultInviteSchedule, toInvitePayload } from "./invite-schedule-fields";
+import { InviteWithOfferModal } from "./invite-with-offer-modal";
 import { RecommendationDetailSkeleton } from "./recommendations-skeletons";
 import {
   getScoreBandLabel,
   scoreBandTextClass,
 } from "@/features/hr/utils/score-band";
-import type { ScoreLevelLabels } from "@/features/candidate/components/ui/pill";
 import {
   portalHeading,
   portalSubtext,
@@ -112,261 +109,6 @@ function StatusChip({ status, labels }: { status: RecommendationStatus; labels: 
 }
 
 // ---------------------------------------------------------------------------
-// Invite Modal
-// ---------------------------------------------------------------------------
-
-interface InviteModalProps {
-  rec: CandidateRecommendation;
-  onClose: () => void;
-  onSent: () => void;
-  labels: ReturnType<typeof useLanguage>["t"]["hrRecommendationsPage"]["invite"];
-  actionLabels: ReturnType<typeof useLanguage>["t"]["hrRecommendationsPage"];
-}
-
-function buildDefaultInviteMessage(
-  template: string,
-  rec: CandidateRecommendation,
-  scoreLabels: ScoreLevelLabels,
-): string {
-  return template
-    .replace("{{name}}", rec.candidateName || "")
-    .replace("{{title}}", rec.questionSetTitle || "")
-    .replace("{{score}}", getScoreBandLabel(rec.score, scoreLabels));
-}
-
-function InviteModal({ rec, onClose, onSent, labels, actionLabels }: InviteModalProps) {
-  const { addToast } = useToast();
-  const { t } = useLanguage();
-  const scoreLabels = t.jobseekerFeedbackPage.scoreLevels;
-  const [message, setMessage] = useState(() =>
-    buildDefaultInviteMessage(labels.defaultMessage, rec, scoreLabels),
-  );
-  const [schedule, setSchedule] = useState(defaultInviteSchedule);
-  const [sending, setSending] = useState(false);
-  const p = actionLabels;
-
-  useEffect(() => {
-    document.body.style.overflow = "hidden";
-    function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
-    }
-    window.addEventListener("keydown", handleKeyDown);
-    void getCurrentUser().then((u) => {
-      const tpl = u.hrProfile?.inviteMessageTemplate?.trim();
-      if (tpl) setMessage(buildDefaultInviteMessage(tpl, rec, scoreLabels));
-    }).catch(() => undefined);
-    return () => {
-      document.body.style.overflow = "";
-      window.removeEventListener("keydown", handleKeyDown);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  async function handleSend() {
-    setSending(true);
-    try {
-      await inviteRecommendation(rec.id, toInvitePayload(message, schedule));
-      onSent();
-      addToast("success", p.inviteSuccess);
-      onClose();
-    } catch (err: unknown) {
-      const status = (err as { response?: { status?: number } })?.response?.status;
-      addToast("error", status === 409 ? p.alreadyActed : p.inviteFailed);
-    } finally {
-      setSending(false);
-    }
-  }
-
-  return createPortal(
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
-    >
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95, y: 12 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        transition={{ duration: 0.2, ease: [0.25, 0.46, 0.45, 0.94] }}
-        className="relative w-full max-w-lg flex flex-col rounded-2xl shadow-2xl bg-white dark:bg-gray-900 max-h-[85vh]"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div className={cn("flex items-center justify-between px-5 py-4 border-b shrink-0", portalDivider)}>
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="w-9 h-9 rounded-xl bg-violet-50 dark:bg-violet-950/40 flex items-center justify-center shrink-0">
-              <Mail size={16} className="text-violet-600 dark:text-violet-400" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-[15px] font-bold text-gray-900 dark:text-gray-100 truncate">{labels.modalTitle}</p>
-              <p className="text-[12px] text-gray-500 dark:text-gray-400 truncate">
-                {labels.to}: <span className="font-semibold text-gray-700 dark:text-gray-300">{rec.candidateName}</span> ({rec.candidateEmail})
-              </p>
-            </div>
-          </div>
-          <button type="button" onClick={onClose}
-            className="w-9 h-9 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors shrink-0">
-            <XIcon size={18} />
-          </button>
-        </div>
-
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto px-5 py-5">
-          <InviteScheduleFields value={schedule} onChange={setSchedule} labels={labels} />
-          <textarea
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            placeholder={labels.messagePlaceholder}
-            rows={10}
-            className="w-full text-[14px] leading-relaxed bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-3.5 outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 resize-none placeholder:text-gray-400 dark:placeholder:text-gray-500 text-gray-900 dark:text-gray-100 transition-all"
-            autoFocus
-          />
-        </div>
-
-        {/* Footer */}
-        <div className={cn("flex items-center justify-end gap-2 px-5 py-4 border-t shrink-0", portalDivider)}>
-          <button type="button" onClick={onClose} disabled={sending}
-            className="h-10 px-5 text-[13px] font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg transition-colors disabled:opacity-50">
-            {labels.cancelBtn}
-          </button>
-          <button type="button" onClick={() => void handleSend()} disabled={sending}
-            className="shimmer-button flex items-center gap-1.5 h-10 px-5 text-[13px] font-semibold text-white hr-cta-btn rounded-lg disabled:opacity-60">
-            {sending ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
-            {sending ? labels.sending : labels.sendBtn}
-          </button>
-        </div>
-      </motion.div>
-    </motion.div>,
-    document.body
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Offer Modal
-// ---------------------------------------------------------------------------
-
-interface OfferModalProps {
-  rec: CandidateRecommendation;
-  onClose: () => void;
-  onSent: () => void;
-  labels: ReturnType<typeof useLanguage>["t"]["hrRecommendationsPage"]["offer"];
-}
-
-const OFFER_MAX_LEN = 5000;
-
-function buildDefaultOfferMessage(
-  template: string,
-  rec: CandidateRecommendation,
-  scoreLabels: ScoreLevelLabels,
-): string {
-  return template
-    .replace("{{name}}", rec.candidateName || "")
-    .replace("{{title}}", rec.questionSetTitle || "")
-    .replace("{{score}}", getScoreBandLabel(rec.score, scoreLabels));
-}
-
-function OfferModal({ rec, onClose, onSent, labels }: OfferModalProps) {
-  const { addToast } = useToast();
-  const { t } = useLanguage();
-  const scoreLabels = t.jobseekerFeedbackPage.scoreLevels;
-  const [message, setMessage] = useState(() =>
-    buildDefaultOfferMessage(labels.defaultMessage, rec, scoreLabels),
-  );
-  const [sending, setSending] = useState(false);
-
-  useEffect(() => {
-    document.body.style.overflow = "hidden";
-    function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
-    }
-    window.addEventListener("keydown", handleKeyDown);
-    return () => {
-      document.body.style.overflow = "";
-      window.removeEventListener("keydown", handleKeyDown);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  async function handleSend() {
-    setSending(true);
-    try {
-      await sendRecommendationOffer(rec.id, message.trim());
-      onSent();
-      addToast("success", labels.sendSuccess);
-      onClose();
-    } catch (err: unknown) {
-      const status = (err as { response?: { status?: number } })?.response?.status;
-      addToast("error", status === 409 ? labels.alreadyAccepted : labels.sendFailed);
-    } finally {
-      setSending(false);
-    }
-  }
-
-  return createPortal(
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
-    >
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95, y: 12 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        transition={{ duration: 0.2, ease: [0.25, 0.46, 0.45, 0.94] }}
-        className="relative w-full max-w-lg flex flex-col rounded-2xl shadow-2xl bg-white dark:bg-gray-900 max-h-[85vh]"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className={cn("flex items-center justify-between px-5 py-4 border-b shrink-0", portalDivider)}>
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="w-9 h-9 rounded-xl bg-amber-50 dark:bg-amber-950/40 flex items-center justify-center shrink-0">
-              <Mail size={16} className="text-amber-600 dark:text-amber-400" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-[15px] font-bold text-gray-900 dark:text-gray-100 truncate">{labels.modalTitle}</p>
-              <p className="text-[12px] text-gray-500 dark:text-gray-400 truncate">
-                {labels.to}: <span className="font-semibold text-gray-700 dark:text-gray-300">{rec.candidateName}</span> ({rec.candidateEmail})
-              </p>
-            </div>
-          </div>
-          <button type="button" onClick={onClose}
-            className="w-9 h-9 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors shrink-0">
-            <XIcon size={18} />
-          </button>
-        </div>
-
-        <div className="flex-1 overflow-y-auto px-5 py-5">
-          <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-3 leading-relaxed">{labels.explanation}</p>
-          <textarea
-            value={message}
-            onChange={(e) => setMessage(e.target.value.slice(0, OFFER_MAX_LEN))}
-            placeholder={labels.messagePlaceholder}
-            rows={10}
-            className="w-full text-[14px] leading-relaxed bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-3.5 outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 resize-none placeholder:text-gray-400 dark:placeholder:text-gray-500 text-gray-900 dark:text-gray-100 transition-all"
-            autoFocus
-          />
-          <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-2 text-right">{message.length} / {OFFER_MAX_LEN}</p>
-        </div>
-
-        <div className={cn("flex items-center justify-end gap-2 px-5 py-4 border-t shrink-0", portalDivider)}>
-          <button type="button" onClick={onClose} disabled={sending}
-            className="h-10 px-5 text-[13px] font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg transition-colors disabled:opacity-50">
-            {labels.cancelBtn}
-          </button>
-          <button type="button" onClick={() => void handleSend()} disabled={sending || !message.trim()}
-            className="shimmer-button flex items-center gap-1.5 h-10 px-5 text-[13px] font-semibold text-white hr-cta-btn rounded-lg disabled:opacity-60">
-            {sending ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
-            {sending ? labels.sending : labels.sendBtn}
-          </button>
-        </div>
-      </motion.div>
-    </motion.div>,
-    document.body
-  );
-}
-
-// ---------------------------------------------------------------------------
 // Main Detail Component
 // ---------------------------------------------------------------------------
 
@@ -384,7 +126,6 @@ export function RecommendationDetail({ id }: { id: string }) {
   const [cvPreviewLoading, setCvPreviewLoading] = useState(false);
   const [cvLightbox, setCvLightbox] = useState(false);
   const [showInvite, setShowInvite] = useState(false);
-  const [showOffer, setShowOffer] = useState(false);
   // CV section collapse
   const [cvSummaryOpen, setCvSummaryOpen] = useState(true);
   const [cvSkillsOpen, setCvSkillsOpen] = useState(true);
@@ -411,6 +152,17 @@ export function RecommendationDetail({ id }: { id: string }) {
   }, [id]);
 
   useEffect(() => { void fetchData(); }, [fetchData]);
+
+  // SCRUM-482: soft refetch khi quay lại tab để thấy phản hồi mới.
+  useEffect(() => {
+    function onFocus() {
+      void getRecommendation(id)
+        .then((data) => { if (data) setRec(data); })
+        .catch(() => undefined);
+    }
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, [id]);
 
   useEffect(() => {
     if (!rec?.hasCv) {
@@ -505,6 +257,11 @@ export function RecommendationDetail({ id }: { id: string }) {
 
   const canAct = rec.status !== "INVITED" && rec.status !== "DISMISSED";
   const canRestore = rec.status === "DISMISSED";
+  // SCRUM-481: đã mời nhưng chưa gửi/accept offer → vẫn mở form gửi email.
+  const canSendEmailFollowUp =
+    rec.status === "INVITED" &&
+    !["SENT", "ACCEPTED"].includes((rec.latestOfferStatus ?? "").toUpperCase());
+  const canOpenInvite = canAct || canSendEmailFollowUp;
   const initials = getInitials(rec.candidateName || rec.candidateEmail);
   const hasSocial = !!(rec.linkedInUrl || rec.githubUrl);
   const cvFileName = cvPreview?.cvFileName ?? rec.cvFileName;
@@ -557,6 +314,18 @@ export function RecommendationDetail({ id }: { id: string }) {
                   <span title={p.card.acceptedHint}
                     className="inline-flex text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400 whitespace-nowrap">
                     {p.card.accepted}
+                  </span>
+                )}
+                {isCandidateRejected(rec) && (
+                  <span title={p.card.rejectedHint}
+                    className="inline-flex text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300 whitespace-nowrap">
+                    {p.card.rejected}
+                  </span>
+                )}
+                {isAwaitingCandidateResponse(rec) && (
+                  <span title={p.card.awaitingResponseHint}
+                    className="inline-flex text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-400 whitespace-nowrap">
+                    {p.card.awaitingResponse}
                   </span>
                 )}
               </div>
@@ -617,27 +386,29 @@ export function RecommendationDetail({ id }: { id: string }) {
 
             <div className="hidden sm:block w-px h-10 bg-gray-200 dark:bg-gray-700 shrink-0" />
 
-            {/* Actions */}
+            {/* Actions — SCRUM-481: 1 nút mời (invite + optional email) */}
             <div className="flex flex-col gap-1.5 min-w-28">
-              {/* Gửi Offer */}
-              <button
-                type="button"
-                onClick={() => setShowOffer(true)}
-                disabled={busy !== null || ["SENT", "ACCEPTED"].includes((rec.latestOfferStatus ?? "").toUpperCase())}
-                title={
-                  rec.latestOfferStatus?.toUpperCase() === "ACCEPTED" ? p.offer.alreadyAccepted
-                    : rec.latestOfferStatus?.toUpperCase() === "SENT" ? p.offer.alreadySent
-                    : undefined
-                }
-                className="flex items-center justify-center gap-1.5 h-8 px-3 text-[12px] font-bold text-white bg-amber-500 hover:bg-amber-600 active:bg-amber-700 rounded-lg transition-colors disabled:opacity-50 shadow-sm">
-                <Send size={12} /> {p.offer.btnLabel}
-              </button>
+              {canOpenInvite && (
+                <button
+                  type="button"
+                  onClick={() => setShowInvite(true)}
+                  disabled={busy !== null}
+                  className="flex items-center justify-center gap-1.5 h-8 px-3 text-[12px] font-bold text-white bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 rounded-lg transition-colors disabled:opacity-50 shadow-sm">
+                  <Mail size={12} /> {p.card.inviteBtn}
+                </button>
+              )}
 
-              {/* Xem CV */}
+              {/* Xem CV — PDF/ảnh: lightbox; docx và định dạng khác: mở/tải file */}
               {rec.hasCv && (
                 <button
                   type="button"
-                  onClick={() => cvPreview ? setCvLightbox(true) : void handleDownloadCv()}
+                  onClick={() => {
+                    if (cvPreview && (cvIsImage || cvIsPdf)) {
+                      setCvLightbox(true);
+                      return;
+                    }
+                    void handleDownloadCv();
+                  }}
                   disabled={cvBusy || cvPreviewLoading}
                   className="flex items-center justify-center gap-1.5 h-8 px-3 text-[12px] font-semibold text-primary hover:bg-violet-50 dark:hover:bg-violet-950/40 rounded-lg transition-colors border border-violet-200 dark:border-violet-800 disabled:opacity-50">
                   {cvPreviewLoading ? <Loader2 size={12} className="animate-spin" /> : <Maximize2 size={12} />}
@@ -971,6 +742,16 @@ export function RecommendationDetail({ id }: { id: string }) {
                   {p.card.accepted}
                 </span>
               )}
+              {isCandidateRejected(rec) && (
+                <span className="inline-flex text-[10px] font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300">
+                  {p.card.rejected}
+                </span>
+              )}
+              {isAwaitingCandidateResponse(rec) && (
+                <span className="inline-flex text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-400">
+                  {p.card.awaitingResponse}
+                </span>
+              )}
             </div>
           </div>
           {/* Question set */}
@@ -1201,23 +982,15 @@ export function RecommendationDetail({ id }: { id: string }) {
         </motion.div>
       )}
 
-      {/* Modals */}
-      {showInvite && (
-        <InviteModal
+      {/* Modals — SCRUM-481 */}
+      {showInvite && canOpenInvite && (
+        <InviteWithOfferModal
           rec={rec}
-          labels={p.invite}
-          actionLabels={p}
           onClose={() => setShowInvite(false)}
-          onSent={() => setRec((r) => r ? { ...r, status: "INVITED" } : r)}
-        />
-      )}
-
-      {showOffer && (
-        <OfferModal
-          rec={rec}
-          labels={p.offer}
-          onClose={() => setShowOffer(false)}
-          onSent={() => undefined}
+          onInvited={() => setRec((r) => r ? { ...r, status: "INVITED" } : r)}
+          onOfferSent={() =>
+            setRec((r) => r ? { ...r, latestOfferStatus: "SENT" } : r)
+          }
         />
       )}
 

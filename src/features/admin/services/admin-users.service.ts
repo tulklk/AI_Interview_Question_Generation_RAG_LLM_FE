@@ -328,3 +328,41 @@ export async function getUserById(id: string): Promise<AdminUserDetail> {
 export async function updateUserStatus(id: string, isActive: boolean): Promise<void> {
   await apiClient.patch(`/api/users/${id}/status`, { isActive });
 }
+
+/** SCRUM-480: thống kê user toàn hệ thống (role + status). */
+export interface AdminUserStats {
+  totalUsers: number;
+  byRole: { admin: number; hr: number; candidate: number };
+  byStatus: { active: number; pending: number; suspended: number };
+}
+
+export async function getUserStats(): Promise<AdminUserStats> {
+  const res = await apiClient.get("/api/admin/users/stats");
+  const root = asRecord(res.data);
+  const data = asRecord(root?.data) ?? root ?? {};
+  const byRole = asRecord(data.byRole) ?? asRecord(data.ByRole) ?? {};
+  const byStatus = asRecord(data.byStatus) ?? asRecord(data.ByStatus) ?? {};
+
+  const pickNum = (obj: Record<string, unknown>, ...keys: string[]) => {
+    for (const k of keys) {
+      const v = obj[k];
+      if (typeof v === "number" && !Number.isNaN(v)) return v;
+    }
+    return 0;
+  };
+
+  return {
+    totalUsers: pickNum(data, "totalUsers", "TotalUsers"),
+    byRole: {
+      admin: pickNum(byRole, "admin", "Admin"),
+      hr: pickNum(byRole, "hr", "HR"),
+      candidate: pickNum(byRole, "candidate", "Candidate"),
+    },
+    byStatus: {
+      active: pickNum(byStatus, "active", "Active"),
+      pending: pickNum(byStatus, "pending", "Pending"),
+      suspended: pickNum(byStatus, "suspended", "Suspended"),
+    },
+  };
+}
+

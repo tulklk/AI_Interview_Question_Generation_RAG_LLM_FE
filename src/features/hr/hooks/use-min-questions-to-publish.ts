@@ -15,10 +15,14 @@ async function loadMinQuestionsToPublish(): Promise<number> {
   if (!inflight) {
     inflight = getHrPlatformFlags()
       .then((f) => {
+        // Chỉ cache khi API trả về thành công (kể cả khi = default seed).
         cachedMin = f.minQuestionsToPublish;
         return cachedMin;
       })
-      .catch(() => DEFAULT_MIN_QUESTIONS_TO_PUBLISH)
+      .catch(() => {
+        // Không cache lỗi — lần mount sau vẫn retry thay vì kẹt ở 10.
+        return DEFAULT_MIN_QUESTIONS_TO_PUBLISH;
+      })
       .finally(() => {
         inflight = null;
       });

@@ -201,6 +201,14 @@ export function extractErrorMessage(error: unknown, lang: "en" | "vi" = "en"): s
   // useful than the Vietnamese original even to an English-reading user.
   const byStatus = status !== undefined ? STATUS_MESSAGES[status]?.[lang] : undefined;
 
+  // Known specific BE messages keep their detail (numbers) when translated for an English UI.
+  if (raw && lang === "en") {
+    const tooShort = raw.match(/JD quá ngắn \((\d+) (ký tự|từ), tối thiểu (\d+)\)/i);
+    if (tooShort) {
+      const unit = tooShort[2].toLowerCase() === "từ" ? "words" : "characters";
+      return `Job description is too short (${tooShort[1]} ${unit}, minimum ${tooShort[3]}). Please add the role, requirements and interview focus.`;
+    }
+  }
   if (raw && isWrongLanguage(raw, lang) && byStatus) {
     return byStatus;
   }

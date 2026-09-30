@@ -510,7 +510,7 @@ export function HistoryBoard() {
       icon: Activity,  label: p.statLabels[4],
       value: stats?.latestScore != null ? `${stats.latestScore}%` : "—",
       countUp: stats?.latestScore != null
-        ? { value: stats.latestScore, suffix: "%", decimals: 1 }
+        ? { value: stats.latestScore, suffix: "%", decimals: 2 }
         : undefined,
       bg: "bg-blue-100 dark:bg-blue-950/50 shadow-sm ring-1 ring-black/5 dark:ring-white/10",
       color: "text-blue-600 dark:text-blue-400",

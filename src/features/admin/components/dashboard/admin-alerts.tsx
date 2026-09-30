@@ -1,10 +1,12 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { AlertTriangle, CheckCircle2, Bell } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { portalHeadingAlt, portalSubtextAlt } from "@/shared/utils/portal-ui";
 import { useLanguage } from "@/shared/providers/language-context";
 import type { AdminDashboardStats } from "@/features/admin/services/admin-dashboard.service";
+import { getAdminRagStatus } from "@/features/knowledge/services/knowledge.service";
 
 // ---------------------------------------------------------------------------
 // Alert derivation — based purely on real API data, no fake values
@@ -22,10 +24,16 @@ interface AlertLabels {
   noCompaniesDesc: string;
   noHrManagers: string;
   noHrManagersDesc: string;
+  ragDown: string;
+  ragDownDesc: string;
 }
 
-function deriveAlerts(data: AdminDashboardStats, labels: AlertLabels): Alert[] {
+function deriveAlerts(data: AdminDashboardStats, labels: AlertLabels, ragDown: boolean): Alert[] {
   const alerts: Alert[] = [];
+
+  if (ragDown) {
+    alerts.push({ id: "rag-down", severity: "warning", title: labels.ragDown, desc: labels.ragDownDesc });
+  }
 
   if (data.totalCompanies === 0) {
     alerts.push({
@@ -61,7 +69,17 @@ export function AdminAlerts({ data, loading }: AdminAlertsProps) {
   const { t } = useLanguage();
   const d = t.adminPages.dashboard.alertsPanel;
 
-  const alerts = data ? deriveAlerts(data, d) : [];
+  // Only an explicit unhealthy result raises an alert (the status card above already reports an unreachable endpoint)
+  const [ragDown, setRagDown] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    void getAdminRagStatus().then((r) => {
+      if (!cancelled) setRagDown(r ? !r.isHealthy : false);
+    });
+    return () => { cancelled = true; };
+  }, []);
+
+  const alerts = data ? deriveAlerts(data, d, ragDown) : [];
 
   return (
     <div className="hr-glass-card overflow-hidden">
