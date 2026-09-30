@@ -73,6 +73,13 @@ const FALLBACK_EDITOR = {
   hintFreeVisible: "Legacy — Free practices the full set; field unused for hiding questions (BE keeps 100).",
   hintCanExport: "Allow exporting question sets to Excel.",
   hintGenerateUnlimited: "On: unlimited generate. Off: use N runs per H-hour window below.",
+  practicePerMonthLabel: "Practice sessions / period (0 = unlimited)",
+  maxSavedSessionsLabel: "Max saved sessions (0 = unlimited)",
+  fullAiFeedbackPerMonthLabel: "Full AI feedback sessions / period (0 = N/A on Premium)",
+  hintPracticePerMonth: "Candidate Free: new practice starts per billing period.",
+  hintMaxSavedSessions: "Candidate: soft-delete oldest COMPLETED sessions beyond this cap.",
+  hintFullAiFeedback: "Candidate Free: first N completed sessions get full-set AI feedback.",
+  groupCandidate: "Candidate practice limits",
   unitTimes: "times",
   unitHours: "hours",
 };
@@ -99,6 +106,9 @@ type Editable = {
   freeVisiblePercent: number;
   canExport: boolean;
   generateUnlimited: boolean;
+  practicePerMonth: number;
+  maxSavedSessions: number;
+  fullAiFeedbackPerMonth: number;
 };
 
 function toEditable(p: SubscriptionPlan): Editable {
@@ -114,6 +124,9 @@ function toEditable(p: SubscriptionPlan): Editable {
     freeVisiblePercent: p.limits.freeVisiblePercent,
     canExport: p.limits.canExport,
     generateUnlimited: p.limits.generateUnlimited,
+    practicePerMonth: p.limits.practicePerMonth ?? 0,
+    maxSavedSessions: p.limits.maxSavedSessions ?? 0,
+    fullAiFeedbackPerMonth: p.limits.fullAiFeedbackPerMonth ?? 0,
   };
 }
 
@@ -123,7 +136,10 @@ type NumField =
   | "generateCooldownHours"
   | "generatePerWindow"
   | "questionRegenPerPlan"
-  | "planRegeneratePerDraft";
+  | "planRegeneratePerDraft"
+  | "practicePerMonth"
+  | "maxSavedSessions"
+  | "fullAiFeedbackPerMonth";
 
 const NUM_FIELDS: NumField[] = [
   "priceMonthly",
@@ -132,6 +148,9 @@ const NUM_FIELDS: NumField[] = [
   "generatePerWindow",
   "questionRegenPerPlan",
   "planRegeneratePerDraft",
+  "practicePerMonth",
+  "maxSavedSessions",
+  "fullAiFeedbackPerMonth",
 ];
 
 /** Premium dùng tím theme (#6c47ff), Free dải xám — nhìn phát biết ngay gói nào. */
@@ -452,6 +471,9 @@ export function AdminPlansPage() {
         freeVisiblePercent: 100, // SCRUM-478: legacy — luôn 100; Free làm full bộ, không che câu
         canExport: d.canExport,
         generateUnlimited: d.generateUnlimited,
+        practicePerMonth: d.practicePerMonth,
+        maxSavedSessions: d.maxSavedSessions,
+        fullAiFeedbackPerMonth: d.fullAiFeedbackPerMonth,
       };
       await adminUpdatePlan(plan.id, {
         name: d.name,
@@ -501,6 +523,9 @@ export function AdminPlansPage() {
             const tier = planTier(plan.code);
             const TierIcon = tier.icon;
             const dirty = JSON.stringify(d) !== JSON.stringify(toEditable(plan));
+            const audience = String(plan.audience ?? "").toLowerCase();
+            const isHrAudience = audience === "hr";
+            const isCandidateAudience = audience === "candidate";
 
             return (
               <div
@@ -577,7 +602,8 @@ export function AdminPlansPage() {
                   </div>
                 </div>
 
-                {/* Hạn mức AI */}
+                {/* Hạn mức AI — chỉ HR (Studio generate / Ask-AI / regen) */}
+                {isHrAudience && (
                 <div className="px-5 py-4">
                   <GroupTitle icon={Zap}>{ed.groupQuota}</GroupTitle>
                   <div className="grid gap-3 sm:grid-cols-2">
@@ -631,11 +657,50 @@ export function AdminPlansPage() {
                       onChange={(raw) => handleNumChange(plan.id, "planRegeneratePerDraft", raw)}
                       onBlur={() => handleNumBlur(plan.id, "planRegeneratePerDraft")}
                     />
-                    {/* SCRUM-478: freeVisiblePercent ẩn — legacy, save luôn gửi 100 */}
                   </div>
                 </div>
+                )}
 
-                {/* Quyền */}
+                {/* SCRUM-498: hạn mức luyện tập Candidate */}
+                {isCandidateAudience && (
+                  <div className={cn("border-t px-5 py-4", portalDivider)}>
+                    <GroupTitle icon={Sparkles}>{ed.groupCandidate}</GroupTitle>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <NumberField
+                        icon={Wand2}
+                        label={ed.practicePerMonthLabel}
+                        hint={ed.hintPracticePerMonth}
+                        unit={ed.unitTimes}
+                        value={getRaw(plan.id, "practicePerMonth", d.practicePerMonth)}
+                        badge={d.practicePerMonth === 0 ? ed.unlimitedBadge : undefined}
+                        onChange={(raw) => handleNumChange(plan.id, "practicePerMonth", raw)}
+                        onBlur={() => handleNumBlur(plan.id, "practicePerMonth")}
+                      />
+                      <NumberField
+                        icon={RotateCcw}
+                        label={ed.maxSavedSessionsLabel}
+                        hint={ed.hintMaxSavedSessions}
+                        unit={ed.unitTimes}
+                        value={getRaw(plan.id, "maxSavedSessions", d.maxSavedSessions)}
+                        badge={d.maxSavedSessions === 0 ? ed.unlimitedBadge : undefined}
+                        onChange={(raw) => handleNumChange(plan.id, "maxSavedSessions", raw)}
+                        onBlur={() => handleNumBlur(plan.id, "maxSavedSessions")}
+                      />
+                      <NumberField
+                        icon={MessageCircle}
+                        label={ed.fullAiFeedbackPerMonthLabel}
+                        hint={ed.hintFullAiFeedback}
+                        unit={ed.unitTimes}
+                        value={getRaw(plan.id, "fullAiFeedbackPerMonth", d.fullAiFeedbackPerMonth)}
+                        onChange={(raw) => handleNumChange(plan.id, "fullAiFeedbackPerMonth", raw)}
+                        onBlur={() => handleNumBlur(plan.id, "fullAiFeedbackPerMonth")}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Quyền — HR: export + unlimited generate */}
+                {isHrAudience && (
                 <div className={cn("border-t px-5 py-4", portalDivider)}>
                   <GroupTitle icon={Eye}>{ed.groupAccess}</GroupTitle>
                   <div className="grid gap-3 sm:grid-cols-2">
@@ -655,6 +720,7 @@ export function AdminPlansPage() {
                     />
                   </div>
                 </div>
+                )}
 
                 {/* Footer: cảnh báo chưa lưu + hoàn tác + lưu */}
                 <div

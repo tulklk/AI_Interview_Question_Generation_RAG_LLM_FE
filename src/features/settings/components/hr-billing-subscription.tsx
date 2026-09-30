@@ -63,6 +63,72 @@ function planHasFeature(plan: SubscriptionPlan, featureId: HrFeatureId): boolean
   return false;
 }
 
+/** SCRUM-498: build dòng so sánh gói từ limits live (Admin sync) — không hardcode số. */
+function buildHrPlanCardRows(
+  plan: SubscriptionPlan | undefined,
+  planId: HrPlanId,
+  templates: {
+    studio: string;
+    completeWindow: string;
+    questionRegen: string;
+    planRegen: string;
+    publish: string;
+    exportExcel: string;
+    askAi: string;
+    askAiWithQuota: string;
+    askAiPack: string;
+    unlimitedGenerate: string;
+    everythingInFree: string;
+    publishUnlimited: string;
+  }
+): { text: string; included: boolean }[] {
+  const lim = plan?.limits;
+  const genPerWindow = Math.max(1, lim?.generatePerWindow ?? 1);
+  const cooldownH = Math.max(1, lim?.generateCooldownHours ?? 24);
+  const qRegen = lim?.questionRegenPerPlan ?? 2;
+  const planRegen = lim?.planRegeneratePerDraft ?? 5;
+  const askAi = lim?.askAiPerMonth ?? 0;
+  const unlimited = Boolean(lim?.generateUnlimited);
+  const canExport = Boolean(lim?.canExport);
+  const canPublish = lim?.canPublish !== false;
+  const canAskAi = askAi > 0;
+
+  const completeText = templates.completeWindow
+    .replace("{{count}}", String(genPerWindow))
+    .replace("{{hours}}", String(cooldownH));
+  const qRegenText = templates.questionRegen.replace(
+    "{{count}}",
+    qRegen <= 0 ? "∞" : String(qRegen)
+  );
+  const planRegenText = templates.planRegen.replace("{{count}}", String(planRegen));
+  const askAiText = canAskAi
+    ? templates.askAiWithQuota.replace("{{count}}", String(askAi))
+    : templates.askAi;
+
+  if (planId === "HR_FREE") {
+    return [
+      { text: templates.studio, included: true },
+      { text: completeText, included: !unlimited },
+      { text: qRegenText, included: true },
+      { text: planRegenText, included: true },
+      { text: templates.publish, included: canPublish },
+      { text: templates.exportExcel, included: canExport },
+      { text: askAiText, included: canAskAi },
+      { text: templates.unlimitedGenerate, included: unlimited },
+    ];
+  }
+
+  return [
+    { text: templates.everythingInFree, included: true },
+    { text: templates.unlimitedGenerate, included: unlimited },
+    { text: planRegenText, included: true },
+    { text: templates.exportExcel, included: canExport },
+    { text: askAiText, included: canAskAi },
+    { text: templates.askAiPack, included: canAskAi },
+    { text: templates.publishUnlimited, included: canPublish },
+  ];
+}
+
 export function HrBillingSubscription() {
   const { t, lang } = useLanguage();
   const locale = lang === "vi" ? "vi-VN" : "en-US";
@@ -119,8 +185,35 @@ export function HrBillingSubscription() {
   const planNames = sub.planNames as Record<HrPlanId, string>;
   const planSub = sub.planSub as Record<HrPlanId, string>;
   const planCta = sub.planCta as Record<HrPlanId, string>;
-  const planCardRows = sub.planCardRows as Record<HrPlanId, { text: string; included: boolean }[]>;
   const featureLabels = sub.featureLabels as Record<HrFeatureId, string>;
+  const rowTpl = (sub.planCardRowTemplates ?? {}) as {
+    studio?: string;
+    completeWindow?: string;
+    questionRegen?: string;
+    planRegen?: string;
+    publish?: string;
+    exportExcel?: string;
+    askAi?: string;
+    askAiWithQuota?: string;
+    askAiPack?: string;
+    unlimitedGenerate?: string;
+    everythingInFree?: string;
+    publishUnlimited?: string;
+  };
+  const cardTemplates = {
+    studio: rowTpl.studio ?? "Studio: tạo plan & bộ câu hỏi từ JD",
+    completeWindow: rowTpl.completeWindow ?? "Hoàn thành {{count}} bộ / cooldown {{hours}} giờ",
+    questionRegen: rowTpl.questionRegen ?? "Regen câu hỏi ≤ {{count}} lần / bộ",
+    planRegen: rowTpl.planRegen ?? "Regenerate plan tối đa {{count}} lần / draft",
+    publish: rowTpl.publish ?? "Publish bộ câu hỏi lên Marketplace",
+    exportExcel: rowTpl.exportExcel ?? "Xuất Excel",
+    askAi: rowTpl.askAi ?? "Ask-AI trong Studio",
+    askAiWithQuota: rowTpl.askAiWithQuota ?? "Ask-AI trong Studio — {{count}} request / kỳ",
+    askAiPack: rowTpl.askAiPack ?? "Mua thêm pack Ask-AI khi hết hạn mức",
+    unlimitedGenerate: rowTpl.unlimitedGenerate ?? "Generate không giới hạn",
+    everythingInFree: rowTpl.everythingInFree ?? "Mọi thứ trong Free",
+    publishUnlimited: rowTpl.publishUnlimited ?? "Publish Marketplace không giới hạn",
+  };
 
   function scrollToPlans() {
     plansRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -419,7 +512,7 @@ export function HrBillingSubscription() {
               const livePlan = plans.find((p) => p.code === id);
               const active = planId === id;
               const recommended = id === "HR_PREMIUM";
-              const rows = planCardRows[id] ?? [];
+              const rows = buildHrPlanCardRows(livePlan, id, cardTemplates);
 
               return (
                 <div

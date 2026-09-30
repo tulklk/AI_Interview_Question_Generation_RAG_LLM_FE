@@ -213,6 +213,9 @@ export function CandidateBillingPage() {
   const [showCancel, setShowCancel] = useState(false);
   const [livePremiumMonthlyPrice, setLivePremiumMonthlyPrice] = useState<number | null>(null);
   const [livePremiumCurrency, setLivePremiumCurrency] = useState<string>("VND");
+  const [liveFreePracticeLimit, setLiveFreePracticeLimit] = useState<number>(5);
+  const [liveFreeHistoryLimit, setLiveFreeHistoryLimit] = useState<number>(10);
+  const [liveFreeFullAiLimit, setLiveFreeFullAiLimit] = useState<number>(1);
 
   const loadBillingData = useCallback(async (showLoader = true) => {
     if (showLoader) setLoading(true);
@@ -241,9 +244,17 @@ export function CandidateBillingPage() {
     void listSubscriptionPlans("Candidate")
       .then((plans) => {
         const premium = plans.find((p) => isPremiumPlanCode(p.code));
-        if (!premium) return;
-        setLivePremiumMonthlyPrice(Math.max(0, premium.priceMonthly));
-        setLivePremiumCurrency(premium.currency || "VND");
+        if (premium) {
+          setLivePremiumMonthlyPrice(Math.max(0, premium.priceMonthly));
+          setLivePremiumCurrency(premium.currency || "VND");
+        }
+        const free = plans.find((p) => !isPremiumPlanCode(p.code));
+        if (free?.limits) {
+          if (free.limits.practicePerMonth > 0) setLiveFreePracticeLimit(free.limits.practicePerMonth);
+          if (free.limits.maxSavedSessions > 0) setLiveFreeHistoryLimit(free.limits.maxSavedSessions);
+          if (free.limits.fullAiFeedbackPerMonth > 0)
+            setLiveFreeFullAiLimit(free.limits.fullAiFeedbackPerMonth);
+        }
       })
       .catch(() => {
         // giữ fallback nếu API lỗi
@@ -453,10 +464,40 @@ export function CandidateBillingPage() {
               </div>
             </div>
             <ul className="space-y-2 flex-1">
-              {b.freeFeatures.map((f) => (
-                <li key={f} className="flex items-center gap-2">
-                  <X size={12} className="text-gray-300 dark:text-gray-600 shrink-0" />
-                  <span className={cn("text-sm", portalSubtext)}>{f}</span>
+              {(
+                [
+                  { text: b.featureFullSet ?? "Full set", included: true },
+                  {
+                    text: (b.featurePracticePerMonth ?? "{{count}} practice / month").replace(
+                      "{{count}}",
+                      String(usage?.practiceLimit ?? liveFreePracticeLimit)
+                    ),
+                    included: true,
+                  },
+                  {
+                    text: (b.featureFullAiFirst ?? "First session full AI").replace(
+                      "{{count}}",
+                      String(liveFreeFullAiLimit)
+                    ),
+                    included: true,
+                  },
+                  {
+                    text: (b.featureMaxSaved ?? "Save {{count}} sessions").replace(
+                      "{{count}}",
+                      String(usage?.practiceHistoryLimit ?? liveFreeHistoryLimit)
+                    ),
+                    included: true,
+                  },
+                  { text: b.featureRecommend ?? "Candidate recommendation", included: false },
+                ] as { text: string; included: boolean }[]
+              ).map((f) => (
+                <li key={f.text} className="flex items-center gap-2">
+                  {f.included ? (
+                    <Check size={12} className="text-emerald-500 shrink-0" />
+                  ) : (
+                    <X size={12} className="text-gray-300 dark:text-gray-600 shrink-0" />
+                  )}
+                  <span className={cn("text-sm", portalSubtext)}>{f.text}</span>
                 </li>
               ))}
             </ul>
@@ -489,7 +530,17 @@ export function CandidateBillingPage() {
               </div>
             </div>
             <ul className="space-y-2 flex-1">
-              {b.premiumFeatures.map((f) => (
+              {(
+                [
+                  b.featureFullSet,
+                  b.featurePracticeUnlimited,
+                  b.featureFullAiAlways,
+                  b.featureHistoryUnlimited,
+                  b.featureRecommend,
+                ] as string[]
+              )
+                .filter(Boolean)
+                .map((f) => (
                 <li key={f} className="flex items-center gap-2">
                   <Check size={12} className="text-primary shrink-0" />
                   <span className={cn("text-sm", portalHeading)}>{f}</span>
