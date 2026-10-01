@@ -12,6 +12,7 @@ import {
   RefreshCw,
   RotateCcw,
   Save,
+  Send,
   Sparkles,
   Undo2,
   Wand2,
@@ -44,7 +45,6 @@ const FALLBACK_EDITOR = {
   inactive: "Inactive",
   currentPrice: "Currently:",
   priceLabel: "Price / month (VND)",
-  askAiLabel: "Ask-AI / period",
   cooldownLabel: "Generate cooldown (hours)",
   generatePerWindowLabel: "Generate set / JD-fit / window",
   questionRegenPerPlanLabel: "Question regen / plan (0 = unlimited)",
@@ -65,7 +65,6 @@ const FALLBACK_EDITOR = {
   hintPrice: "Free must stay at 0. Premium requires at least 10,000.",
   freePriceMustBeZero: "The Free plan must have a price of 0 VND.",
   premiumMinPrice: "The Premium plan must cost at least 10,000 VND.",
-  hintAskAi: "Ask-AI requests allowed per billing period.",
   hintCooldown: "Length of one generate window. Min 1 hour when Unlimited is off.",
   hintGeneratePerWindow: "Successful question-set / JD-fit runs per window. Ignored while Unlimited is on.",
   hintQuestionRegen: "Per-question regenerations per plan. 0 = unlimited.",
@@ -73,12 +72,14 @@ const FALLBACK_EDITOR = {
   hintFreeVisible: "Legacy — Free practices the full set; field unused for hiding questions (BE keeps 100).",
   hintCanExport: "Allow exporting question sets to Excel.",
   hintGenerateUnlimited: "On: unlimited generate. Off: use N runs per H-hour window below.",
-  practicePerMonthLabel: "Practice sessions / period (0 = unlimited)",
-  maxSavedSessionsLabel: "Max saved sessions (0 = unlimited)",
-  fullAiFeedbackPerMonthLabel: "Full AI feedback sessions / period (0 = N/A on Premium)",
-  hintPracticePerMonth: "Candidate Free: new practice starts per billing period.",
-  hintMaxSavedSessions: "Candidate: soft-delete oldest COMPLETED sessions beyond this cap.",
-  hintFullAiFeedback: "Candidate Free: first N completed sessions get full-set AI feedback.",
+  practicePerMonthLabel: "Practice sessions per month (0 = unlimited)",
+  maxSavedSessionsLabel: "Max saved history sessions (0 = unlimited)",
+  fullAiFeedbackPerMonthLabel: "Detailed AI feedback sessions per month (0 = unlimited, Free plan only)",
+  hintPracticePerMonth: "Applies to the Free plan — how many new practice sessions a candidate can start per billing period (usually one month).",
+  hintMaxSavedSessions: "Limits how many completed practice sessions a candidate can keep in their history. The oldest ones are automatically hidden once this limit is exceeded.",
+  hintFullAiFeedback: "Applies to the Free plan — the first N completed sessions each period get full, detailed AI feedback; sessions after that only get a summary. Set to 0 for always-detailed, unlimited feedback. Premium always gets detailed feedback regardless of this number.",
+  canPersistHrRecommendationLabel: "Allow sending results as a recommendation to HR (Hiring sets only)",
+  hintCanPersistHrRecommendation: "Only applies to completed Hiring-assessment sets (not regular Practice sets). When on: a strong score on a Hiring set can be turned into a recommendation sent to the hiring company's HR team. When off: no recommendations are created.",
   groupCandidate: "Candidate practice limits",
   unitTimes: "times",
   unitHours: "hours",
@@ -109,6 +110,7 @@ type Editable = {
   practicePerMonth: number;
   maxSavedSessions: number;
   fullAiFeedbackPerMonth: number;
+  canPersistHrRecommendation: boolean;
 };
 
 function toEditable(p: SubscriptionPlan): Editable {
@@ -127,6 +129,7 @@ function toEditable(p: SubscriptionPlan): Editable {
     practicePerMonth: p.limits.practicePerMonth ?? 0,
     maxSavedSessions: p.limits.maxSavedSessions ?? 0,
     fullAiFeedbackPerMonth: p.limits.fullAiFeedbackPerMonth ?? 0,
+    canPersistHrRecommendation: p.limits.canPersistHrRecommendation,
   };
 }
 
@@ -474,6 +477,7 @@ export function AdminPlansPage() {
         practicePerMonth: d.practicePerMonth,
         maxSavedSessions: d.maxSavedSessions,
         fullAiFeedbackPerMonth: d.fullAiFeedbackPerMonth,
+        canPersistHrRecommendation: d.canPersistHrRecommendation,
       };
       await adminUpdatePlan(plan.id, {
         name: d.name,
@@ -602,7 +606,9 @@ export function AdminPlansPage() {
                   </div>
                 </div>
 
-                {/* Hạn mức AI — chỉ HR (Studio generate / Ask-AI / regen) */}
+                {/* Hạn mức AI — chỉ HR (Studio generate / regen). askAiPerMonth vẫn giữ trong
+                    Editable/handleSave để save không làm mất field, nhưng đã ẩn khỏi UI vì
+                    tính năng Ask-AI đã bị BE gỡ vĩnh viễn (endpoint 410 Gone). */}
                 {isHrAudience && (
                 <div className="px-5 py-4">
                   <GroupTitle icon={Zap}>{ed.groupQuota}</GroupTitle>
@@ -638,15 +644,6 @@ export function AdminPlansPage() {
                       disabled={d.generateUnlimited}
                       onChange={(raw) => handleNumChange(plan.id, "generateCooldownHours", raw)}
                       onBlur={() => handleNumBlur(plan.id, "generateCooldownHours")}
-                    />
-                    <NumberField
-                      icon={MessageCircle}
-                      label={ed.askAiLabel}
-                      hint={ed.hintAskAi}
-                      unit={ed.unitTimes}
-                      value={getRaw(plan.id, "askAiPerMonth", d.askAiPerMonth)}
-                      onChange={(raw) => handleNumChange(plan.id, "askAiPerMonth", raw)}
-                      onBlur={() => handleNumBlur(plan.id, "askAiPerMonth")}
                     />
                     <NumberField
                       icon={Undo2}
@@ -692,8 +689,16 @@ export function AdminPlansPage() {
                         hint={ed.hintFullAiFeedback}
                         unit={ed.unitTimes}
                         value={getRaw(plan.id, "fullAiFeedbackPerMonth", d.fullAiFeedbackPerMonth)}
+                        badge={d.fullAiFeedbackPerMonth === 0 ? ed.unlimitedBadge : undefined}
                         onChange={(raw) => handleNumChange(plan.id, "fullAiFeedbackPerMonth", raw)}
                         onBlur={() => handleNumBlur(plan.id, "fullAiFeedbackPerMonth")}
+                      />
+                      <ToggleField
+                        icon={Send}
+                        label={ed.canPersistHrRecommendationLabel}
+                        hint={ed.hintCanPersistHrRecommendation}
+                        checked={d.canPersistHrRecommendation}
+                        onChange={(next) => patchDraft(plan.id, { canPersistHrRecommendation: next })}
                       />
                     </div>
                   </div>

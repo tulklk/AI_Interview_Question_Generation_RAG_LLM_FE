@@ -14,6 +14,7 @@ import {
   type UpgradePaymentIntent,
   type MySubscription,
 } from "@/features/subscription/services/subscription.service";
+import { listCompletedSessions } from "@/features/candidate/services/practice-session.service";
 import { getAccessToken } from "@/core/auth/token.service";
 
 function mapSubscription(sub: MySubscription): CandidateSubscription {
@@ -54,6 +55,7 @@ function mapUsage(sub: MySubscription): CandidateBillingUsage {
     // Free còn lượt full AI đầu kỳ → ADVANCED; hết → BASIC
     aiFeedbackLevel: premium || fullAiLeft ? "ADVANCED" : "BASIC",
     practiceHistoryLimit: premium ? null : historyLimit,
+    practiceHistoryUsed: 0,
     canSendScorecardToHR: sub.entitlements.canPersistHrRecommendation,
   };
 }
@@ -67,7 +69,15 @@ export async function getCandidateSubscription(): Promise<CandidateSubscription>
 /** Usage từ subscription DTO (PracticeUsed / limits) — SCRUM-498 */
 export async function getCandidateBillingUsage(): Promise<CandidateBillingUsage> {
   const sub = await getMySubscription();
-  return mapUsage(sub);
+  const usage = mapUsage(sub);
+  try {
+    // Số phiên COMPLETED thật — maxSavedSessions chỉ áp dụng cho phiên đã hoàn thành.
+    const { totalCount } = await listCompletedSessions({ pageSize: 1 });
+    usage.practiceHistoryUsed = totalCount;
+  } catch {
+    // giữ 0 nếu API lỗi — vẫn hiện đúng limit, chỉ thiếu số đã dùng
+  }
+  return usage;
 }
 
 /** GET /api/me/subscription/payments — lịch sử SubscriptionTransaction thật */

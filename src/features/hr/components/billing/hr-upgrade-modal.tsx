@@ -8,7 +8,6 @@ import { cn } from "@/lib/cn";
 import { useLanguage } from "@/shared/providers/language-context";
 import { useToast } from "@/shared/providers/toast-context";
 import { useHrSubscription } from "@/features/hr/context/hr-subscription-context";
-import type { HrPlanId } from "@/features/hr/types/hr-subscription";
 import { portalHeading, portalSubtext } from "@/shared/utils/portal-ui";
 import {
   listSubscriptionPlans,
@@ -17,6 +16,7 @@ import {
   type SubscriptionPlan,
   type UpgradePaymentIntent,
 } from "@/features/subscription/services/subscription.service";
+import { buildHrPlanCardRows } from "@/features/settings/components/hr-billing-subscription";
 
 interface Props {
   onClose: () => void;
@@ -49,8 +49,29 @@ export function HrUpgradeModal({ onClose }: Props) {
   const [secsLeft, setSecsLeft] = useState<number | null>(null);
   const finishingRef = useRef(false);
 
-  const planCardRows = sub.planCardRows as Record<HrPlanId, { text: string; included: boolean }[]>;
-  const rows = (planCardRows.HR_PREMIUM ?? []).filter((r) => r.included);
+  const rowTpl = (sub.planCardRowTemplates ?? {}) as {
+    studio?: string;
+    completeWindow?: string;
+    questionRegen?: string;
+    planRegen?: string;
+    publish?: string;
+    exportExcel?: string;
+    unlimitedGenerate?: string;
+    everythingInFree?: string;
+    publishUnlimited?: string;
+  };
+  const cardTemplates = {
+    studio: rowTpl.studio ?? "Studio: tạo plan & bộ câu hỏi từ JD",
+    completeWindow: rowTpl.completeWindow ?? "Hoàn thành {{count}} bộ / cooldown {{hours}} giờ",
+    questionRegen: rowTpl.questionRegen ?? "Regen câu hỏi ≤ {{count}} lần / bộ",
+    planRegen: rowTpl.planRegen ?? "Regenerate plan tối đa {{count}} lần / draft",
+    publish: rowTpl.publish ?? "Publish bộ câu hỏi lên Marketplace",
+    exportExcel: rowTpl.exportExcel ?? "Xuất Excel",
+    unlimitedGenerate: rowTpl.unlimitedGenerate ?? "Generate không giới hạn",
+    everythingInFree: rowTpl.everythingInFree ?? "Mọi thứ trong Free",
+    publishUnlimited: rowTpl.publishUnlimited ?? "Publish Marketplace không giới hạn",
+  };
+  const rows = buildHrPlanCardRows(plan ?? undefined, "HR_PREMIUM", cardTemplates).filter((r) => r.included);
 
   const qrSrc =
     payment?.qrImageUrl ||

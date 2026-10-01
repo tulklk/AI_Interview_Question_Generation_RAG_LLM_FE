@@ -596,6 +596,7 @@ export function UpgradeModal({ onClose, onDone }: UpgradeModalProps) {
                       b.featureFullAiAlways,
                       b.featureHistoryUnlimited,
                       b.featureRecommend,
+                      b.featureAiCoachUnlocked,
                     ] as string[]
                   )
                     .filter(Boolean)

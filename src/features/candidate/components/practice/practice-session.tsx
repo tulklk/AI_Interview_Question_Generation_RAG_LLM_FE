@@ -996,6 +996,12 @@ export function PracticeSession({ set }: PracticeSessionProps) {
       <div className="min-h-screen hr-main-bg flex flex-col items-center justify-center gap-3 px-4 text-center">
         <Lock size={28} className="text-gray-400 dark:text-gray-500" />
         <p className={cn("text-[14px]", portalSubtextAlt)}>{p.startForbidden}</p>
+        <Link
+          href="/candidate/dashboard"
+          className="mt-1 text-[13px] font-semibold text-primary hover:underline"
+        >
+          {t.antiCheat.returnDashboard}
+        </Link>
       </div>
     );
   }

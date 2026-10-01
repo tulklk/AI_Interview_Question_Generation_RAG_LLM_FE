@@ -341,12 +341,6 @@ export async function cancelSubscriptionSandbox(): Promise<MySubscription> {
   return normalizeMySubscription(res.data);
 }
 
-/** POST /api/me/packs/ask-ai */
-export async function purchaseAskAiPack(extraRequests = 200, amount = 99000): Promise<MySubscription> {
-  const res = await apiClient.post("/api/me/packs/ask-ai", { extraRequests, amount });
-  return normalizeMySubscription(res.data);
-}
-
 /** Admin: GET /api/admin/plans */
 export async function adminListPlans(): Promise<SubscriptionPlan[]> {
   const res = await apiClient.get("/api/admin/plans");

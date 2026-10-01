@@ -7,7 +7,7 @@ import {
   CreditCard, Lock, Unlock, Crown, Star,
   Receipt, Download, ExternalLink, AlertTriangle,
   RefreshCw, Sparkles, X, ChevronRight, Calendar,
-  BarChart2, BookOpen, Send, Check,
+  BarChart2, BookOpen, Send, Check, History,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { useLanguage } from "@/shared/providers/language-context";
@@ -286,6 +286,13 @@ export function CandidateBillingPage() {
       limit: usage.practiceLimit,
     },
     {
+      icon: History,
+      label: b.practiceHistoryLabel,
+      limited: !isPremium,
+      used: usage.practiceHistoryUsed,
+      limit: usage.practiceHistoryLimit,
+    },
+    {
       icon: Sparkles,
       label: b.aiFeedbackLabel,
       level: usage.aiFeedbackLevel === "ADVANCED" ? b.advancedLevel : b.basicLevel,
@@ -300,6 +307,7 @@ export function CandidateBillingPage() {
       icon: Send,
       label: b.scorecardLabel,
       locked: !usage.canSendScorecardToHR,
+      caption: b.scorecardHint,
     },
   ] : [];
 
@@ -383,6 +391,7 @@ export function CandidateBillingPage() {
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mt-1">
                 {[
                   { label: b.practiceAttemptsLabel, value: `${usage.practiceUsed}/${usage.practiceLimit}` },
+                  { label: b.practiceHistoryLabel, value: `${usage.practiceHistoryUsed}/${usage.practiceHistoryLimit}` },
                   { label: b.aiFeedbackLabel, value: b.basicLevel },
                   { label: b.questionAccessLabel, value: b.questionAccessFullValue },
                   { label: b.scorecardLabel, value: b.lockedStatus, locked: true },
@@ -489,6 +498,7 @@ export function CandidateBillingPage() {
                     included: true,
                   },
                   { text: b.featureRecommend ?? "Candidate recommendation", included: false },
+                  { text: b.featureAiCoachLocked ?? "No access to AI Coach", included: false },
                 ] as { text: string; included: boolean }[]
               ).map((f) => (
                 <li key={f.text} className="flex items-center gap-2">
@@ -537,6 +547,7 @@ export function CandidateBillingPage() {
                   b.featureFullAiAlways,
                   b.featureHistoryUnlimited,
                   b.featureRecommend,
+                  b.featureAiCoachUnlocked,
                 ] as string[]
               )
                 .filter(Boolean)
@@ -623,6 +634,9 @@ export function CandidateBillingPage() {
                         isPremium ? "bg-primary w-full" : item.locked ? "bg-gray-200 dark:bg-gray-700 w-0" : "bg-gray-300 dark:bg-gray-600 w-1/3"
                       )} />
                     </div>
+                  )}
+                  {item.caption && (
+                    <p className={cn("mt-1 text-[11px] leading-snug", portalSubtext)}>{item.caption}</p>
                   )}
                 </div>
               </div>

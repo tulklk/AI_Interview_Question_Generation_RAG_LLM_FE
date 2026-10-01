@@ -40,7 +40,7 @@ import {
   portalTableRow,
 } from "@/shared/utils/portal-ui";
 
-const FEATURE_ORDER: HrFeatureId[] = ["unlimitedGenerate", "export", "askAi", "publish"];
+const FEATURE_ORDER: HrFeatureId[] = ["unlimitedGenerate", "export", "publish"];
 
 function formatMoney(amount: number, currency: string) {
   try {
@@ -57,14 +57,13 @@ function formatDate(iso: string | null | undefined, locale: string) {
 
 function planHasFeature(plan: SubscriptionPlan, featureId: HrFeatureId): boolean {
   if (featureId === "export") return plan.limits.canExport;
-  if (featureId === "askAi") return plan.limits.askAiPerMonth > 0;
   if (featureId === "publish") return plan.limits.canPublish;
   if (featureId === "unlimitedGenerate") return plan.limits.generateUnlimited;
   return false;
 }
 
 /** SCRUM-498: build dòng so sánh gói từ limits live (Admin sync) — không hardcode số. */
-function buildHrPlanCardRows(
+export function buildHrPlanCardRows(
   plan: SubscriptionPlan | undefined,
   planId: HrPlanId,
   templates: {
@@ -74,9 +73,6 @@ function buildHrPlanCardRows(
     planRegen: string;
     publish: string;
     exportExcel: string;
-    askAi: string;
-    askAiWithQuota: string;
-    askAiPack: string;
     unlimitedGenerate: string;
     everythingInFree: string;
     publishUnlimited: string;
@@ -87,11 +83,9 @@ function buildHrPlanCardRows(
   const cooldownH = Math.max(1, lim?.generateCooldownHours ?? 24);
   const qRegen = lim?.questionRegenPerPlan ?? 2;
   const planRegen = lim?.planRegeneratePerDraft ?? 5;
-  const askAi = lim?.askAiPerMonth ?? 0;
   const unlimited = Boolean(lim?.generateUnlimited);
   const canExport = Boolean(lim?.canExport);
   const canPublish = lim?.canPublish !== false;
-  const canAskAi = askAi > 0;
 
   const completeText = templates.completeWindow
     .replace("{{count}}", String(genPerWindow))
@@ -101,9 +95,6 @@ function buildHrPlanCardRows(
     qRegen <= 0 ? "∞" : String(qRegen)
   );
   const planRegenText = templates.planRegen.replace("{{count}}", String(planRegen));
-  const askAiText = canAskAi
-    ? templates.askAiWithQuota.replace("{{count}}", String(askAi))
-    : templates.askAi;
 
   if (planId === "HR_FREE") {
     return [
@@ -113,7 +104,6 @@ function buildHrPlanCardRows(
       { text: planRegenText, included: true },
       { text: templates.publish, included: canPublish },
       { text: templates.exportExcel, included: canExport },
-      { text: askAiText, included: canAskAi },
       { text: templates.unlimitedGenerate, included: unlimited },
     ];
   }
@@ -123,8 +113,6 @@ function buildHrPlanCardRows(
     { text: templates.unlimitedGenerate, included: unlimited },
     { text: planRegenText, included: true },
     { text: templates.exportExcel, included: canExport },
-    { text: askAiText, included: canAskAi },
-    { text: templates.askAiPack, included: canAskAi },
     { text: templates.publishUnlimited, included: canPublish },
   ];
 }
@@ -144,7 +132,6 @@ export function HrBillingSubscription() {
     generateWindowUsed,
     generateWindowLimit,
     cancelPremium,
-    purchaseAskAiPack,
     refresh,
   } = useHrSubscription();
   const plansRef = useRef<HTMLDivElement>(null);
@@ -193,9 +180,6 @@ export function HrBillingSubscription() {
     planRegen?: string;
     publish?: string;
     exportExcel?: string;
-    askAi?: string;
-    askAiWithQuota?: string;
-    askAiPack?: string;
     unlimitedGenerate?: string;
     everythingInFree?: string;
     publishUnlimited?: string;
@@ -207,9 +191,6 @@ export function HrBillingSubscription() {
     planRegen: rowTpl.planRegen ?? "Regenerate plan tối đa {{count}} lần / draft",
     publish: rowTpl.publish ?? "Publish bộ câu hỏi lên Marketplace",
     exportExcel: rowTpl.exportExcel ?? "Xuất Excel",
-    askAi: rowTpl.askAi ?? "Ask-AI trong Studio",
-    askAiWithQuota: rowTpl.askAiWithQuota ?? "Ask-AI trong Studio — {{count}} request / kỳ",
-    askAiPack: rowTpl.askAiPack ?? "Mua thêm pack Ask-AI khi hết hạn mức",
     unlimitedGenerate: rowTpl.unlimitedGenerate ?? "Generate không giới hạn",
     everythingInFree: rowTpl.everythingInFree ?? "Mọi thứ trong Free",
     publishUnlimited: rowTpl.publishUnlimited ?? "Publish Marketplace không giới hạn",
@@ -363,18 +344,6 @@ export function HrBillingSubscription() {
     return () => clearInterval(id);
   }, [payment?.expiresAt, payment?.amount]);
 
-  async function handleBuyAskAiPack() {
-    setBusy(true);
-    try {
-      await purchaseAskAiPack(200);
-      addToast("success", sub.askAiPackSuccess);
-    } catch {
-      addToast("error", sub.askAiPackError);
-    } finally {
-      setBusy(false);
-    }
-  }
-
   return (
     <div className="space-y-10">
       <header className="space-y-3 max-w-3xl">
@@ -468,21 +437,6 @@ export function HrBillingSubscription() {
             </div>
           )}
 
-          {subscription && (
-            <p className="text-white/90 text-xs mb-4">
-              Ask-AI: {subscription.askAiUsed}/{subscription.askAiLimit}
-              {isPremium && (
-                <button
-                  type="button"
-                  disabled={busy}
-                  onClick={() => void handleBuyAskAiPack()}
-                  className="ml-3 underline hover:no-underline disabled:opacity-50"
-                >
-                  + Pack Ask-AI
-                </button>
-              )}
-            </p>
-          )}
           <button
             type="button"
             onClick={scrollToPlans}
@@ -699,18 +653,6 @@ export function HrBillingSubscription() {
                     return (
                       <td key={pid} className={cn("text-center px-2 py-2 font-semibold", portalHeading)}>
                         {p?.limits.planRegeneratePerDraft ?? "—"}
-                      </td>
-                    );
-                  })}
-                </tr>
-                <tr className={portalIconWell}>
-                  <td className={cn("px-3 py-2 font-medium", portalSubtext)}>{sub.limitRows.askAiPerMonth}</td>
-                  {HR_PLAN_IDS.map((pid) => {
-                    const p = plans.find((x) => x.code === pid);
-                    const n = p?.limits.askAiPerMonth ?? 0;
-                    return (
-                      <td key={pid} className={cn("text-center px-2 py-2 font-semibold", portalHeading)}>
-                        {n > 0 ? n : "—"}
                       </td>
                     );
                   })}

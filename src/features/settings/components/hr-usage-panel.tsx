@@ -27,8 +27,6 @@ const FALLBACK = {
   generateScopeUnlimited: "Unlimited",
   generateResetAt: "Unlocks at {{time}}",
   generateReady: "Ready to use",
-  askAiTitle: "Ask-AI",
-  askAiScope: "Within the current period",
   regenTitle: "Question regeneration",
   regenScope: "Max per question set",
   regenDetail: "{{sets}} set(s) regenerated · {{total}} run(s) total",
@@ -186,8 +184,6 @@ export function HrUsagePanel() {
   const generateUnlimited = limits?.generateUnlimited ?? false;
   const regenLimit = limits?.questionRegenPerPlan ?? 0;
   const refineLimit = limits?.planRegeneratePerDraft ?? 0;
-  const askAiLimit = subscription?.askAiLimit ?? 0;
-  const askAiUsed = subscription?.askAiUsed ?? 0;
   const generateScope = generateUnlimited
     ? text.generateScopeUnlimited
     : fill(text.generateScope, { h: cooldownHours });
@@ -240,7 +236,7 @@ export function HrUsagePanel() {
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
             <MetricCard
               title={text.generateTitle}
               scope={generateScope}
@@ -261,14 +257,6 @@ export function HrUsagePanel() {
                   ? fill(text.regenDetail, { sets: regen.scopes, total: regen.total })
                   : null
               }
-              text={text}
-            />
-            <MetricCard
-              title={text.askAiTitle}
-              scope={text.askAiScope}
-              used={askAiUsed}
-              limit={askAiLimit}
-              unlimited={false}
               text={text}
             />
             <MetricCard
