@@ -15,6 +15,7 @@ import {
   getCoachJob,
   getCoachReport,
   getCoachRoadmaps,
+  getCoachWrapUp,
   rescoreCoachReport,
   resetCoachRun,
   startCoachRoadmap,
@@ -32,6 +33,7 @@ import {
   type CoachJob,
   type CoachRoadmap,
   type CoachScreeningPreview,
+  type CoachWrapUp,
   type UpdateCoachContextPayload,
 } from "@/features/candidate/services/coach.service";
 import { registerCoachJob, writeCoachJobEntry } from "@/features/candidate/utils/coach-job-storage";
@@ -97,6 +99,7 @@ export function useCoachWorkflow() {
   const [rescoring, setRescoring] = useState(false);
   const [rescoreError, setRescoreError] = useState<string | null>(null);
   const [screeningPreview, setScreeningPreview] = useState<CoachScreeningPreview | null>(null);
+  const [wrapUp, setWrapUp] = useState<CoachWrapUp | null>(null);
 
   // Dashboard deep-link: /candidate/coach?step=1..7
   useEffect(() => {
@@ -107,12 +110,15 @@ export function useCoachWorkflow() {
   }, []);
 
   const refreshCompetencyData = useCallback(async () => {
-    const [reportResult, roadmapsResult] = await Promise.allSettled([
+    const [reportResult, roadmapsResult, wrapUpResult] = await Promise.allSettled([
       getCoachReport(),
       getCoachRoadmaps(),
+      getCoachWrapUp(),
     ]);
     if (reportResult.status === "fulfilled") setReport(reportResult.value);
     if (roadmapsResult.status === "fulfilled") setRoadmaps(roadmapsResult.value);
+    if (wrapUpResult.status === "fulfilled") setWrapUp(wrapUpResult.value);
+    else setWrapUp(null);
   }, []);
 
   useEffect(() => {
@@ -134,10 +140,11 @@ export function useCoachWorkflow() {
       getActiveCoachJob(),
       getCoachReport(),
       getCoachRoadmaps(),
+      getCoachWrapUp(),
     ])
       .then((results) => {
         if (cancelled) return;
-        const [ctxResult, jobResult, reportResult, roadmapsResult] = results;
+        const [ctxResult, jobResult, reportResult, roadmapsResult, wrapUpResult] = results;
         if (ctxResult.status === "fulfilled") {
           setContext(ctxResult.value);
           if (!ctxResult.value.contextConfirmed) setEditingContext(true);
@@ -148,6 +155,7 @@ export function useCoachWorkflow() {
         }
         if (reportResult.status === "fulfilled") setReport(reportResult.value);
         if (roadmapsResult.status === "fulfilled") setRoadmaps(roadmapsResult.value);
+        if (wrapUpResult.status === "fulfilled") setWrapUp(wrapUpResult.value);
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -748,6 +756,7 @@ export function useCoachWorkflow() {
     rescoring,
     rescoreError,
     screeningPreview,
+    wrapUp,
     maxUnlockedStep,
     minSelectableStep,
     activeStep,

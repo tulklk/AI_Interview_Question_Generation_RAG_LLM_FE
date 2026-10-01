@@ -723,6 +723,151 @@ export async function startRoadmapReassessment(roadmapId: string): Promise<Coach
   return mapJob(extractData(res.data));
 }
 
+/** SCRUM-507: tổng kết sau khi luyện xong. */
+export interface CoachWrapUpSkillDelta {
+  skill: string;
+  baselineScore: number;
+  currentScore: number;
+  delta: number;
+}
+
+export interface CoachWrapUpSkill {
+  skill: string;
+  currentScore: number;
+  targetScore: number;
+}
+
+export interface CoachWrapUpWeakTopic {
+  skill: string;
+  topic: string;
+  lowestScore: number;
+  overcame: boolean;
+}
+
+export interface CoachWrapUpNextSkill {
+  skill: string;
+  currentScore?: number | null;
+  targetScore: number;
+  gap: number;
+  reason: "gap" | "screening" | string;
+}
+
+export interface CoachWrapUp {
+  available: boolean;
+  completedRoadmaps: number;
+  totalRoadmaps: number;
+  overallReadiness?: number | null;
+  overallDelta?: number | null;
+  achievedLevel?: string | null;
+  targetReadinessStatus?: string | null;
+  suggestedNextLevel?: string | null;
+  suggestedNextLevelAvailable?: boolean;
+  suggestedNextLevelMessage?: string | null;
+  improved: CoachWrapUpSkillDelta[];
+  strengths: CoachWrapUpSkill[];
+  weakTopics: CoachWrapUpWeakTopic[];
+  nextSkills: CoachWrapUpNextSkill[];
+}
+
+function mapWrapUp(src: Record<string, unknown> | null): CoachWrapUp {
+  if (!src) {
+    return {
+      available: false,
+      completedRoadmaps: 0,
+      totalRoadmaps: 0,
+      improved: [],
+      strengths: [],
+      weakTopics: [],
+      nextSkills: [],
+    };
+  }
+  const improvedRaw = src.improved ?? src.Improved;
+  const strengthsRaw = src.strengths ?? src.Strengths;
+  const weakRaw = src.weakTopics ?? src.WeakTopics;
+  const nextRaw = src.nextSkills ?? src.NextSkills;
+  return {
+    available: pickBool(src, "available", "Available"),
+    completedRoadmaps: pickNumber(src, "completedRoadmaps", "CompletedRoadmaps") ?? 0,
+    totalRoadmaps: pickNumber(src, "totalRoadmaps", "TotalRoadmaps") ?? 0,
+    overallReadiness: pickNumber(src, "overallReadiness", "OverallReadiness") ?? null,
+    overallDelta: pickNumber(src, "overallDelta", "OverallDelta") ?? null,
+    achievedLevel: pickString(src, "achievedLevel", "AchievedLevel") || null,
+    targetReadinessStatus: pickString(src, "targetReadinessStatus", "TargetReadinessStatus") || null,
+    suggestedNextLevel: pickString(src, "suggestedNextLevel", "SuggestedNextLevel") || null,
+    suggestedNextLevelAvailable: pickBool(src, "suggestedNextLevelAvailable", "SuggestedNextLevelAvailable"),
+    suggestedNextLevelMessage:
+      pickString(src, "suggestedNextLevelMessage", "SuggestedNextLevelMessage") || null,
+    improved: Array.isArray(improvedRaw)
+      ? improvedRaw
+          .map((x) => {
+            const r = asRecord(x) ?? {};
+            const skill = pickString(r, "skill", "Skill");
+            if (!skill) return null;
+            return {
+              skill,
+              baselineScore: pickNumber(r, "baselineScore", "BaselineScore") ?? 0,
+              currentScore: pickNumber(r, "currentScore", "CurrentScore") ?? 0,
+              delta: pickNumber(r, "delta", "Delta") ?? 0,
+            };
+          })
+          .filter((x): x is CoachWrapUpSkillDelta => Boolean(x))
+      : [],
+    strengths: Array.isArray(strengthsRaw)
+      ? strengthsRaw
+          .map((x) => {
+            const r = asRecord(x) ?? {};
+            const skill = pickString(r, "skill", "Skill");
+            if (!skill) return null;
+            return {
+              skill,
+              currentScore: pickNumber(r, "currentScore", "CurrentScore") ?? 0,
+              targetScore: pickNumber(r, "targetScore", "TargetScore") ?? 70,
+            };
+          })
+          .filter((x): x is CoachWrapUpSkill => Boolean(x))
+      : [],
+    weakTopics: Array.isArray(weakRaw)
+      ? weakRaw
+          .map((x) => {
+            const r = asRecord(x) ?? {};
+            const skill = pickString(r, "skill", "Skill");
+            const topic = pickString(r, "topic", "Topic");
+            if (!skill || !topic) return null;
+            return {
+              skill,
+              topic,
+              lowestScore: pickNumber(r, "lowestScore", "LowestScore") ?? 0,
+              overcame: pickBool(r, "overcame", "Overcame"),
+            };
+          })
+          .filter((x): x is CoachWrapUpWeakTopic => Boolean(x))
+      : [],
+    nextSkills: Array.isArray(nextRaw)
+      ? nextRaw
+          .map((x): CoachWrapUpNextSkill | null => {
+            const r = asRecord(x) ?? {};
+            const skill = pickString(r, "skill", "Skill");
+            if (!skill) return null;
+            return {
+              skill,
+              currentScore: pickNumber(r, "currentScore", "CurrentScore") ?? null,
+              targetScore: pickNumber(r, "targetScore", "TargetScore") ?? 70,
+              gap: pickNumber(r, "gap", "Gap") ?? 0,
+              reason: pickString(r, "reason", "Reason") || "gap",
+            };
+          })
+          .filter((x): x is CoachWrapUpNextSkill => x != null)
+      : [],
+  };
+}
+
+export async function getCoachWrapUp(): Promise<CoachWrapUp> {
+  const res = await apiClient.get("/api/candidate/coach/wrap-up");
+  const root = asRecord(res.data);
+  const nested = asRecord(root?.data) ?? asRecord(root?.Data);
+  return mapWrapUp(nested ?? extractData(res.data) ?? root);
+}
+
 /** SCRUM-486: xem tài liệu nguồn KB gắn roadmap. */
 export interface CoachKnowledgeView {
   documentId: string;

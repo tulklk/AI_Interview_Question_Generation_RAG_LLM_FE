@@ -24,6 +24,7 @@ import { CoachCvUploadPanel } from "@/features/candidate/components/coach/coach-
 import { CoachAnalysisPanel } from "@/features/candidate/components/coach/coach-analysis-panel";
 import { CoachReportPanel } from "@/features/candidate/components/coach/coach-report-panel";
 import { CoachRoadmapsPanel } from "@/features/candidate/components/coach/coach-roadmaps-panel";
+import { CoachWrapUpPanel } from "@/features/candidate/components/coach/coach-wrap-up-panel";
 import { CoachRoadmapPreviewPanel } from "@/features/candidate/components/coach/coach-roadmap-preview-panel";
 import { CoachMarketplacePanel } from "@/features/candidate/components/coach/coach-marketplace-panel";
 import { CoachInsightCards } from "@/features/candidate/components/coach/coach-insight-cards";
@@ -325,7 +326,13 @@ export function CoachPage() {
           />
         )}
 
-        {w.hasScoredReport && w.report && (
+        {w.wrapUp && (w.wrapUp.available || w.wrapUp.totalRoadmaps > 0) ? (
+          <CoachWrapUpPanel
+            wrapUp={w.wrapUp}
+            promotingNextLevel={w.promotingNextLevel}
+            onPromoteNextLevel={() => void w.promoteToNextLevel()}
+          />
+        ) : w.hasScoredReport && w.report ? (
           <div className="hr-glass-card space-y-2 px-5 py-4">
             <p className={cn("text-[12px] font-semibold", portalHeadingAlt)}>{p.reportTitle}</p>
             <div className="flex flex-wrap items-center gap-3 text-[12px]">
@@ -356,7 +363,7 @@ export function CoachPage() {
               </p>
             )}
           </div>
-        )}
+        ) : null}
 
         {w.hasReadyForReassessment ||
         w.roadmaps.some((r) =>
