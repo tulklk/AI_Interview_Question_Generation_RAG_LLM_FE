@@ -2932,13 +2932,18 @@ Yêu cầu:
     yearsFromCvLabel: "Số năm KN (từ CV)",
     continueToGoal: "Tiếp tục xác nhận mục tiêu",
     skillsEditLabel: "Công nghệ / kỹ năng",
-    skillsEditHint: "Bỏ kỹ năng thừa hoặc thêm kỹ năng CV thiếu — dùng cho đề chẩn đoán.",
-    skillsAddPlaceholder: "Thêm công nghệ…",
+    skillsEditHint:
+      "Bỏ kỹ năng thừa hoặc thêm từ catalog — danh sách dùng cho đề chẩn đoán.",
+    skillsAddPlaceholder: "Thêm công nghệ",
     skillsAddBtn: "Thêm",
     skillsRemoveAria: "Xóa",
     skillsMinOne: "Cần giữ ít nhất 1 công nghệ.",
-    // SCRUM-491: hybrid validate + soft warn
-    skillsFormatEmpty: "Nhập tên công nghệ trước khi thêm.",
+    // SCRUM-501: dropdown catalog (bỏ free-text)
+    skillsCatalogSelectHint: "Chọn công nghệ từ catalog…",
+    skillsCatalogEmpty: "Đã chọn hết công nghệ trong catalog.",
+    skillsCatalogHint: "Chọn từ catalog công nghệ được hỗ trợ — không nhập tự do.",
+    // SCRUM-491: hybrid validate + soft warn (giữ key cho chỗ khác nếu còn dùng)
+    skillsFormatEmpty: "Chọn công nghệ từ danh sách trước khi thêm.",
     skillsFormatTooShort: "Tên công nghệ cần ít nhất 2 ký tự.",
     skillsFormatTooLong: "Tên công nghệ tối đa 40 ký tự.",
     skillsFormatInvalidChars:
@@ -2962,7 +2967,8 @@ Yêu cầu:
     yearsLabel: "Số năm kinh nghiệm",
     yearsUnit: "năm",
     frameworkPreviewLabel: "Framework sẽ dùng",
-    frameworkPreviewNone: "Chưa khớp framework có sẵn — dùng blueprint thích ứng.",
+    frameworkPreviewNone:
+      "Chưa có khung năng lực sẵn trong hệ thống cho lựa chọn này. Hệ thống sẽ suy luận bằng AI (LLM) — kết quả mang tính tham khảo, có thể chưa chính xác hoàn toàn.",
     skillsFromSystemHint:
       "Kỹ năng đánh giá lấy từ CV và framework — không cần nhập thủ công.",
     saveContext: "Xác nhận mục tiêu & tiếp tục",
@@ -2992,13 +2998,13 @@ Yêu cầu:
     roadmapsSubtitle: "Bài luyện có cấu trúc để thu hẹp từng khoảng trống.",
     roadmapKbSystem: "Nguồn hệ thống (Knowledge Base)",
     roadmapKbInferred:
-      "Một số chủ đề dùng khung năng lực chung khi chưa có lộ trình chuyên biệt cho kỹ năng này.",
+      "Một số chủ đề chưa có lộ trình chuyên biệt trong hệ thống — nội dung đang được suy luận bằng AI, mang tính tham khảo và có thể chưa khớp hoàn toàn.",
     roadmapKbSystemBadge: "Catalog",
-    roadmapKbInferredBadge: "Framework chung",
+    roadmapKbInferredBadge: "Suy luận AI",
     diagnosticKbInferred:
-      "Cảnh báo: đề chẩn đoán đang suy luận từ blueprint/CV vì chưa có tài liệu SYSTEM trong folder test-candidate.",
+      "Chưa có tài liệu hệ thống phù hợp để soạn đề. Đề đang được suy luận bằng AI từ CV và khung năng lực tạm — kết quả mang tính tham khảo, có thể chưa khớp hoàn toàn thực tế.",
     diagnosticKbSystemBadge: "Hệ thống",
-    diagnosticKbInferredBadge: "Suy luận",
+    diagnosticKbInferredBadge: "Suy luận AI",
     roadmapScoreLine: "{{current}} / {{target}} · khoảng cách {{gap}}",
     startRoadmap: "Bắt đầu lộ trình",
     roadmapStarted: "Đã bắt đầu lộ trình.",
@@ -3057,7 +3063,7 @@ Yêu cầu:
     frameworkMissing:
       "Chưa có competency framework cho vai trò này. Chọn một vai trò đang hỗ trợ hoặc liên hệ Admin.",
     adaptivePersonalized:
-      "Đánh giá cá nhân hoá cho vai trò software engineering này — chưa có framework định sẵn, hệ thống sẽ dựng blueprint năng lực từ knowledge base.",
+      "Chưa có khung năng lực định sẵn cho vai trò này trong hệ thống. Hệ thống sẽ suy luận bằng AI (LLM) từ CV và knowledge base — kết quả mang tính tham khảo, có thể mắc sai sót.",
     unsupportedRole:
       "Vai trò mục tiêu hiện ngoài domain software engineering mà IQGS hỗ trợ. Hãy chọn một nhóm vai trò bên dưới.",
     supportedRolesLabel: "Nhóm vai trò đang hỗ trợ",
@@ -3085,7 +3091,8 @@ Yêu cầu:
     frameworkSidebarTitle: "Framework",
     coachingProfileTitle: "Hồ sơ coaching",
     frameworkAdaptiveBadge: "Cá nhân hoá",
-    frameworkAdaptiveHint: "Chưa có framework định sẵn — blueprint dựng từ knowledge base.",
+    frameworkAdaptiveHint:
+      "Chưa có data khung năng lực sẵn — hệ thống suy luận bằng AI, kết quả có thể chưa chính xác hoàn toàn.",
     frameworkCatalogBadge: "Catalog",
     frameworkCatalogHint: "Đánh giá theo khung năng lực đã khớp vai trò và level.",
     frameworkUnsupportedBadge: "Chưa hỗ trợ",

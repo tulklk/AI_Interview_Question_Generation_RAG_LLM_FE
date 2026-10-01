@@ -2931,13 +2931,18 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
     yearsFromCvLabel: "Years of experience (from CV)",
     continueToGoal: "Continue to confirm goals",
     skillsEditLabel: "Technologies / skills",
-    skillsEditHint: "Remove extras or add missing skills — used for the diagnostic.",
-    skillsAddPlaceholder: "Add a technology…",
+    skillsEditHint:
+      "Remove extras or add from the catalog — used for the diagnostic.",
+    skillsAddPlaceholder: "Add technology",
     skillsAddBtn: "Add",
     skillsRemoveAria: "Remove",
     skillsMinOne: "Keep at least one technology.",
-    // SCRUM-491: hybrid validate + soft warn
-    skillsFormatEmpty: "Enter a technology name before adding.",
+    // SCRUM-501: catalog dropdown (no free-text)
+    skillsCatalogSelectHint: "Choose a technology from the catalog…",
+    skillsCatalogEmpty: "All catalog technologies are already selected.",
+    skillsCatalogHint: "Choose from the supported technology catalog — free typing is disabled.",
+    // SCRUM-491: hybrid validate + soft warn (kept for other surfaces)
+    skillsFormatEmpty: "Choose a technology from the list before adding.",
     skillsFormatTooShort: "Technology name needs at least 2 characters.",
     skillsFormatTooLong: "Technology name is limited to 40 characters.",
     skillsFormatInvalidChars:
@@ -2961,7 +2966,8 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
     yearsLabel: "Years of experience",
     yearsUnit: "yrs",
     frameworkPreviewLabel: "Framework to use",
-    frameworkPreviewNone: "No catalog match — an adaptive blueprint will be used.",
+    frameworkPreviewNone:
+      "No ready-made competency framework in the system for this choice. The system will infer with AI (LLM) — results are for reference and may not be fully accurate.",
     skillsFromSystemHint:
       "Skills come from your CV and framework — no manual entry needed.",
     saveContext: "Confirm goals & continue",
@@ -2991,13 +2997,13 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
     roadmapsSubtitle: "Structured drills to close each gap.",
     roadmapKbSystem: "System knowledge base",
     roadmapKbInferred:
-      "Some topics use a general competency framework when a dedicated learning path is not available yet.",
+      "Some topics do not have a dedicated path in the system yet — content is inferred by AI for reference and may not fully match reality.",
     roadmapKbSystemBadge: "Catalog",
-    roadmapKbInferredBadge: "General framework",
+    roadmapKbInferredBadge: "AI inferred",
     diagnosticKbInferred:
-      "Warning: this diagnostic set was inferred from the blueprint/CV because the test-candidate SYSTEM folder has no documents.",
+      "No suitable system documents were found to build this set. Questions were inferred by AI from your CV and a temporary blueprint — for reference only; results may not fully match reality.",
     diagnosticKbSystemBadge: "System",
-    diagnosticKbInferredBadge: "Inferred",
+    diagnosticKbInferredBadge: "AI inferred",
     roadmapScoreLine: "{{current}} / {{target}} · gap {{gap}}",
     startRoadmap: "Start roadmap",
     roadmapStarted: "Roadmap started.",
@@ -3056,7 +3062,7 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
     frameworkMissing:
       "No competency framework for this role yet. Pick a supported role or ask Admin to add one.",
     adaptivePersonalized:
-      "Personalized assessment for this software-engineering role — no exact predefined framework, so we'll build a competency blueprint from the knowledge base.",
+      "No predefined competency framework for this role in the system. The system will infer with AI (LLM) from your CV and knowledge base — results are for reference and may contain mistakes.",
     unsupportedRole:
       "This target role is outside IQGS's supported software-engineering domain. Choose a supported family below.",
     supportedRolesLabel: "Supported role families",
@@ -3084,7 +3090,8 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
     frameworkSidebarTitle: "Framework",
     coachingProfileTitle: "Coaching profile",
     frameworkAdaptiveBadge: "Personalized",
-    frameworkAdaptiveHint: "No predefined framework — blueprint is built from the knowledge base.",
+    frameworkAdaptiveHint:
+      "No ready-made competency data — the system infers with AI; results may not be fully accurate.",
     frameworkCatalogBadge: "Catalog",
     frameworkCatalogHint: "Scored against the competency framework matched to this role and level.",
     frameworkUnsupportedBadge: "Unsupported",
