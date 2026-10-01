@@ -1090,9 +1090,9 @@ function AiAssistantTab({
         </div>
       )}
 
-      {!composerLocked && (
+      {!composerLocked && limits != null && (
         <p className="shrink-0 px-4 pb-2 text-[11px] text-gray-500 dark:text-gray-400">
-          Refine plan: tối đa {limits?.planRegeneratePerDraft ?? 5} lần / draft
+          Refine plan: tối đa {limits.planRegeneratePerDraft} lần / draft
         </p>
       )}
 

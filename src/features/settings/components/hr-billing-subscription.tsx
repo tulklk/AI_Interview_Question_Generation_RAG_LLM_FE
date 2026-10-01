@@ -82,7 +82,7 @@ export function buildHrPlanCardRows(
   const genPerWindow = Math.max(1, lim?.generatePerWindow ?? 1);
   const cooldownH = Math.max(1, lim?.generateCooldownHours ?? 24);
   const qRegen = lim?.questionRegenPerPlan ?? 2;
-  const planRegen = lim?.planRegeneratePerDraft ?? 5;
+  const planRegen = lim?.planRegeneratePerDraft;
   const unlimited = Boolean(lim?.generateUnlimited);
   const canExport = Boolean(lim?.canExport);
   const canPublish = lim?.canPublish !== false;
@@ -94,7 +94,8 @@ export function buildHrPlanCardRows(
     "{{count}}",
     qRegen <= 0 ? "∞" : String(qRegen)
   );
-  const planRegenText = templates.planRegen.replace("{{count}}", String(planRegen));
+  const planRegenText =
+    planRegen == null ? "—" : templates.planRegen.replace("{{count}}", String(planRegen));
 
   if (planId === "HR_FREE") {
     return [
@@ -639,9 +640,14 @@ export function HrBillingSubscription() {
                   {HR_PLAN_IDS.map((pid) => {
                     const p = plans.find((x) => x.code === pid);
                     const h = p?.limits.generateCooldownHours ?? 0;
+                    const cooldownLabel = !p
+                      ? "—"
+                      : p.limits.generateUnlimited || h === 0
+                        ? sub.limitRows.noCooldown
+                        : `${h}h`;
                     return (
                       <td key={pid} className={cn("text-center px-2 py-2 font-semibold", portalHeading)}>
-                        {p?.limits.generateUnlimited ? "∞" : `${h}h`}
+                        {cooldownLabel}
                       </td>
                     );
                   })}

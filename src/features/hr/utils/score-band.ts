@@ -111,6 +111,17 @@ export function getScoreBandLabel(score: number, labels: ScoreLevelLabels): stri
   return getScoreLevel(score, labels).label;
 }
 
+/**
+ * Mẫu thư mời đang viết "{{score}}/100". Điền số điểm, không điền nhãn Excellent
+ * (nếu không sẽ thành "Excellent/100"). Không có điểm thì bỏ luôn hậu tố /100.
+ */
+export function applyInviteScoreTemplate(template: string, score: number | null | undefined): string {
+  if (score == null || Number.isNaN(score)) {
+    return template.split("{{score}}/100").join("—").split("{{score}}").join("—");
+  }
+  return template.split("{{score}}").join(String(Math.round(score)));
+}
+
 export function scoreBandTextClass(score: number): string {
   return getScoreBandRingClass(score).text;
 }

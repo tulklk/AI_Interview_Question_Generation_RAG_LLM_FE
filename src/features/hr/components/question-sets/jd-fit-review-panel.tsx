@@ -33,6 +33,8 @@ const FLAG_CLASS: Record<JdFitFlag, string> = {
   duplicate: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300",
 };
 
+type JdFailedOp = "load" | "upload" | "saveText" | "review";
+
 interface JdFitReviewPanelProps {
   questionSetId: string;
   autoRun?: boolean;
@@ -65,6 +67,8 @@ export function JdFitReviewPanel({
   const [showJdForm, setShowJdForm] = useState(false);
   const [jdText, setJdText] = useState("");
   const [savingJd, setSavingJd] = useState(false);
+  const [failedOp, setFailedOp] = useState<JdFailedOp | null>(null);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
 
   const applyEnvelope = useCallback(
     (env: { review: JdFitReview | null; reviewedAt: string | null; isStale: boolean; hasJobDescription: boolean }, expand: boolean) => {
@@ -84,9 +88,11 @@ export function JdFitReviewPanel({
     try {
       const env = await getQuestionSetJdFit(questionSetId);
       applyEnvelope(env, autoRun || !!env.review);
+      setFailedOp(null);
     } catch (e) {
       const msg = e instanceof Error && e.message ? e.message : p.failed;
       setError(msg);
+      setFailedOp("load");
     } finally {
       setLoadingCache(false);
     }
@@ -107,6 +113,7 @@ export function JdFitReviewPanel({
     try {
       const env = await reviewQuestionSetJdFit(questionSetId);
       applyEnvelope(env, true);
+      setFailedOp(null);
       void refreshSubscription();
     } catch (e) {
       const code = getSubscriptionErrorCode(e);
@@ -115,6 +122,7 @@ export function JdFitReviewPanel({
       }
       const msg = e instanceof Error && e.message ? e.message : p.failed;
       setError(msg);
+      setFailedOp("review");
       addToast("error", msg);
     } finally {
       setRunning(false);
@@ -144,11 +152,14 @@ export function JdFitReviewPanel({
       await saveQuestionSetJdText(questionSetId, text);
       setHasJobDescription(true);
       setShowJdForm(false);
+      setFailedOp(null);
+      setIsStale(true);
       addToast("success", p.jdSaved);
       onJobDescriptionSaved?.({ content: text, sourceType: "PastedText", fileName: null });
     } catch (e) {
       const msg = e instanceof Error && e.message ? e.message : p.jdSaveFailed;
       setError(msg);
+      setFailedOp("saveText");
       addToast("error", msg);
     } finally {
       setSavingJd(false);
@@ -157,21 +168,47 @@ export function JdFitReviewPanel({
 
   async function onPickFile(file: File | undefined) {
     if (!file) return;
+    setPendingFile(file);
     setSavingJd(true);
     setError(null);
     try {
       await uploadQuestionSetJdFile(questionSetId, file);
       setHasJobDescription(true);
       setShowJdForm(false);
+      setFailedOp(null);
+      setPendingFile(null);
+      // JD mới làm review cũ lỗi thời ngay, không đợi tải lại trang.
+      setIsStale(true);
       addToast("success", p.jdSaved);
       // Upload: refetch draft để lấy text + meta file từ BE
       onJobDescriptionSaved?.({ content: null, sourceType: "UploadedFile", fileName: file.name });
     } catch (e) {
       const msg = e instanceof Error && e.message ? e.message : p.jdSaveFailed;
       setError(msg);
+      setFailedOp("upload");
       addToast("error", msg);
     } finally {
       setSavingJd(false);
+    }
+  }
+
+  function retryFailed() {
+    // Retry đúng thao tác vừa lỗi. Không gọi review khi upload/save thất bại — bộ vẫn còn JD cũ.
+    if (failedOp === "upload") {
+      if (pendingFile) void onPickFile(pendingFile);
+      else setShowJdForm(true);
+      return;
+    }
+    if (failedOp === "saveText") {
+      void saveJd();
+      return;
+    }
+    if (failedOp === "load") {
+      void loadCache();
+      return;
+    }
+    if (failedOp === "review") {
+      void run();
     }
   }
 
@@ -282,7 +319,7 @@ export function JdFitReviewPanel({
           <AlertCircle size={16} className="shrink-0 mt-0.5" />
           <div>
             <p>{error}</p>
-            <button type="button" onClick={() => void (hasJobDescription ? run() : setShowJdForm(true))} className="mt-1 inline-flex items-center gap-1 font-semibold hover:underline">
+            <button type="button" onClick={retryFailed} className="mt-1 inline-flex items-center gap-1 font-semibold hover:underline">
               <RefreshCw size={12} /> {p.retry}
             </button>
           </div>

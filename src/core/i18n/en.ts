@@ -1772,6 +1772,7 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
       },
       limitRows: {
         generateCooldownHours: "Generation cooldown",
+        noCooldown: "No cooldown",
         planRegeneratePerDraft: "Regenerate plan / draft",
       },
       included: "Included",
@@ -4814,6 +4815,7 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
       reorderFailed: "Couldn't save the question order. Please try again.",
       editSaved: "Question updated.",
       editFailed: "Couldn't save your edit. Please try again.",
+      rubricWeightInvalid: "Rubric weights must be positive whole numbers that add up to 100% (for example [50%] Name). This draft was not saved.",
       deleted: "Question deleted.",
       deleteFailed: "Couldn't delete the question. Please try again.",
       addFailed: "Couldn't add the question. Please try again.",

@@ -10,7 +10,7 @@ import type {
   QuestionSuggestion,
   Citation,
 } from "@/features/interview/types/generation-session";
-import { normalizeFromJson, normalizeFromUnknown, toDisplayText, isPublishReady } from "@/shared/rubric";
+import { normalizeFromJson, normalizeFromUnknown, toDisplayText, isPublishReady, rubricTextIssue } from "@/shared/rubric";
 
 // ---------------------------------------------------------------------------
 // Normalizers (Question Set / History)
@@ -445,9 +445,10 @@ export async function updateQuestionSetQuestion(
     };
     if ("scoringRubric" in payload) {
       const rubric = payload.scoringRubric?.trim();
-      // Reuse the same parser as the create path (addQuestionSetQuestion) instead
-      // of naively splitting lines — that dropped the "[NN%] " weight prefix into
-      // the label text, corrupting the rubric further on every subsequent edit.
+      // Không gửi rubric sai trọng số — API cũng trả 400, nhưng chặn sớm để không ghi đè.
+      if (rubric && rubricTextIssue(rubric)) {
+        throw new Error("RUBRIC_WEIGHT_INVALID");
+      }
       body.evaluationCriteria = rubric ? normalizeFromUnknown(rubric).criteria : [];
     }
     await apiClient.put(`/api/hr/question-sets/${questionSetId}/questions/${questionId}`, body);

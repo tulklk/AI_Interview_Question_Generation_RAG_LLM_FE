@@ -1774,6 +1774,7 @@ Yêu cầu:
       },
       limitRows: {
         generateCooldownHours: "Cooldown tạo câu hỏi",
+        noCooldown: "Không chờ",
         planRegeneratePerDraft: "Tạo lại plan / draft",
       },
       included: "Có",
@@ -4815,6 +4816,7 @@ Yêu cầu:
       reorderFailed: "Không thể lưu thứ tự câu hỏi. Vui lòng thử lại.",
       editSaved: "Chỉnh sửa câu hỏi thành công.",
       editFailed: "Không thể lưu chỉnh sửa. Vui lòng thử lại.",
+      rubricWeightInvalid: "Trọng số rubric phải là số nguyên dương và tổng đúng 100% (ví dụ [50%] Tên tiêu chí). Bản nháp chưa được lưu.",
       deleted: "Đã xóa câu hỏi.",
       deleteFailed: "Không thể xóa câu hỏi. Vui lòng thử lại.",
       addFailed: "Không thể thêm câu hỏi. Vui lòng thử lại.",
