@@ -25,6 +25,7 @@ import { CoachAnalysisPanel } from "@/features/candidate/components/coach/coach-
 import { CoachReportPanel } from "@/features/candidate/components/coach/coach-report-panel";
 import { CoachRoadmapsPanel } from "@/features/candidate/components/coach/coach-roadmaps-panel";
 import { CoachWrapUpPanel } from "@/features/candidate/components/coach/coach-wrap-up-panel";
+import { CoachLevelCriteriaPanel } from "@/features/candidate/components/coach/coach-level-criteria";
 import { CoachRoadmapPreviewPanel } from "@/features/candidate/components/coach/coach-roadmap-preview-panel";
 import { CoachMarketplacePanel } from "@/features/candidate/components/coach/coach-marketplace-panel";
 import { CoachInsightCards } from "@/features/candidate/components/coach/coach-insight-cards";
@@ -307,7 +308,7 @@ export function CoachPage() {
           />
         </div>
 
-        {(w.busy || w.ready || w.failed) && (
+        {(w.busy || w.failed || w.reassessReadyActionable) && (
           <CoachStatusCard
             status={statusKind}
             purposeLabel={w.purposeLabel}
@@ -329,11 +330,12 @@ export function CoachPage() {
         {w.wrapUp && (w.wrapUp.available || w.wrapUp.totalRoadmaps > 0) ? (
           <CoachWrapUpPanel
             wrapUp={w.wrapUp}
+            levelCriteria={w.report?.levelCriteria ?? null}
             promotingNextLevel={w.promotingNextLevel}
             onPromoteNextLevel={() => void w.promoteToNextLevel()}
           />
         ) : w.hasScoredReport && w.report ? (
-          <div className="hr-glass-card space-y-2 px-5 py-4">
+          <div className="hr-glass-card space-y-3 px-5 py-4">
             <p className={cn("text-[12px] font-semibold", portalHeadingAlt)}>{p.reportTitle}</p>
             <div className="flex flex-wrap items-center gap-3 text-[12px]">
               {w.report.overallReadiness != null && (
@@ -357,11 +359,9 @@ export function CoachPage() {
                 </span>
               )}
             </div>
-            {w.report.levelExplanation && (
-              <p className={cn("text-[11px] leading-relaxed", portalSubtextAlt)}>
-                {w.report.levelExplanation}
-              </p>
-            )}
+            {w.report.levelCriteria ? (
+              <CoachLevelCriteriaPanel criteria={w.report.levelCriteria} compact />
+            ) : null}
           </div>
         ) : null}
 
@@ -385,7 +385,9 @@ export function CoachPage() {
             onReassessment={(id) => void w.handleReassessment(id)}
             onUpgrade={() => w.setUpgradeOpen(true)}
           />
-        ) : !(w.busy || w.ready || w.failed) ? (
+        ) : !(w.busy || w.failed || w.reassessReadyActionable) &&
+          !(w.wrapUp && (w.wrapUp.available || w.wrapUp.totalRoadmaps > 0)) &&
+          !(w.hasScoredReport && w.report) ? (
           <div className="hr-glass-card space-y-2 px-5 py-8 text-center">
             <p className={cn("text-[13px] font-semibold", portalHeadingAlt)}>
               {p.reassessEmptyTitle}

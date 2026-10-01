@@ -215,6 +215,18 @@ export interface CoachSkillResult {
   source?: string | null;
 }
 
+/** SCRUM-509: tiêu chí level có cấu trúc — FE hiện Đạt/Chưa đạt. */
+export interface CoachLevelCriteria {
+  overall: number;
+  overallThreshold: number;
+  targetMetRatio: number;
+  targetMetThreshold: number;
+  requiredRatio: number;
+  requiredThreshold: number;
+  hardRatio: number;
+  hardThreshold: number;
+}
+
 export interface CoachAssessment {
   id: string;
   kind: string;
@@ -233,6 +245,8 @@ export interface CoachAssessment {
   overallDelta?: number | null;
   achievedLevel?: string | null;
   levelExplanation?: string | null;
+  /** SCRUM-509: null trên report cũ thiếu field. */
+  levelCriteria?: CoachLevelCriteria | null;
   coverageRatio?: number | null;
   resolutionMode?: string | null;
   targetLevel?: string | null;
@@ -449,6 +463,24 @@ function mapSkillGap(src: Record<string, unknown>): CoachSkillGap {
   };
 }
 
+/** SCRUM-509: report cũ thiếu levelCriteria → null, FE ẩn khối. */
+function mapLevelCriteria(src: Record<string, unknown> | null): CoachLevelCriteria | null {
+  if (!src) return null;
+  const overall = pickNumber(src, "overall", "Overall");
+  const overallThreshold = pickNumber(src, "overallThreshold", "OverallThreshold");
+  if (overall == null && overallThreshold == null) return null;
+  return {
+    overall: overall ?? 0,
+    overallThreshold: overallThreshold ?? 0,
+    targetMetRatio: pickNumber(src, "targetMetRatio", "TargetMetRatio") ?? 0,
+    targetMetThreshold: pickNumber(src, "targetMetThreshold", "TargetMetThreshold") ?? 0,
+    requiredRatio: pickNumber(src, "requiredRatio", "RequiredRatio") ?? 0,
+    requiredThreshold: pickNumber(src, "requiredThreshold", "RequiredThreshold") ?? 0,
+    hardRatio: pickNumber(src, "hardRatio", "HardRatio") ?? 0,
+    hardThreshold: pickNumber(src, "hardThreshold", "HardThreshold") ?? 0,
+  };
+}
+
 function mapAssessment(src: Record<string, unknown> | null): CoachAssessment | null {
   if (!src || !pickString(src, "id", "Id")) return null;
   const skillsRaw = src.skills ?? src.Skills;
@@ -477,6 +509,7 @@ function mapAssessment(src: Record<string, unknown> | null): CoachAssessment | n
     overallDelta: pickNumber(src, "overallDelta", "OverallDelta") ?? null,
     achievedLevel: pickString(src, "achievedLevel", "AchievedLevel") || null,
     levelExplanation: pickString(src, "levelExplanation", "LevelExplanation") || null,
+    levelCriteria: mapLevelCriteria(asRecord(src.levelCriteria ?? src.LevelCriteria)),
     coverageRatio: pickNumber(src, "coverageRatio", "CoverageRatio") ?? null,
     resolutionMode: pickString(src, "resolutionMode", "ResolutionMode") || null,
     targetLevel: pickString(src, "targetLevel", "TargetLevel") || null,

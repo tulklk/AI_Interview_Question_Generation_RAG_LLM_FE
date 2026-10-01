@@ -6,10 +6,13 @@ import { cn } from "@/lib/cn";
 import { portalHeadingAlt, portalSubtextAlt } from "@/shared/utils/portal-ui";
 import { useLanguage } from "@/shared/providers/language-context";
 import { fillTemplate } from "@/features/candidate/utils/dashboard-analytics";
-import type { CoachWrapUp } from "@/features/candidate/services/coach.service";
+import type { CoachLevelCriteria, CoachWrapUp } from "@/features/candidate/services/coach.service";
+import { CoachLevelCriteriaPanel } from "@/features/candidate/components/coach/coach-level-criteria";
 
 interface CoachWrapUpPanelProps {
   wrapUp: CoachWrapUp;
+  /** SCRUM-509: tiêu chí từ report mới nhất (wrap-up DTO không nhúng). */
+  levelCriteria?: CoachLevelCriteria | null;
   promotingNextLevel?: boolean;
   onPromoteNextLevel?: () => void;
 }
@@ -17,6 +20,7 @@ interface CoachWrapUpPanelProps {
 /** SCRUM-507: tổng kết sau khi mọi lộ trình Accepted đã reassessment. */
 export function CoachWrapUpPanel({
   wrapUp,
+  levelCriteria = null,
   promotingNextLevel = false,
   onPromoteNextLevel,
 }: CoachWrapUpPanelProps) {
@@ -26,14 +30,17 @@ export function CoachWrapUpPanel({
   if (!wrapUp.available) {
     if (wrapUp.totalRoadmaps <= 0) return null;
     return (
-      <div className="hr-glass-card space-y-2 px-5 py-4">
-        <p className={cn("text-[13px] font-semibold", portalHeadingAlt)}>{p.wrapUpTitle}</p>
-        <p className={cn("text-[12px]", portalSubtextAlt)}>
-          {fillTemplate(p.wrapUpProgress, {
-            done: String(wrapUp.completedRoadmaps),
-            total: String(wrapUp.totalRoadmaps),
-          })}
-        </p>
+      <div className="hr-glass-card space-y-3 px-5 py-4">
+        <div className="space-y-2">
+          <p className={cn("text-[13px] font-semibold", portalHeadingAlt)}>{p.wrapUpTitle}</p>
+          <p className={cn("text-[12px]", portalSubtextAlt)}>
+            {fillTemplate(p.wrapUpProgress, {
+              done: String(wrapUp.completedRoadmaps),
+              total: String(wrapUp.totalRoadmaps),
+            })}
+          </p>
+        </div>
+        {levelCriteria ? <CoachLevelCriteriaPanel criteria={levelCriteria} compact /> : null}
       </div>
     );
   }
@@ -92,6 +99,8 @@ export function CoachWrapUpPanel({
             </span>
           )}
         </div>
+
+        {levelCriteria ? <CoachLevelCriteriaPanel criteria={levelCriteria} compact /> : null}
 
         <Section
           icon={<TrendingUp size={13} className="text-emerald-600" />}

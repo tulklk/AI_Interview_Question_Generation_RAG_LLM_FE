@@ -66,6 +66,29 @@ export function reportScored(report: CoachAssessment | null): boolean {
   return report.skills.length > 0 || report.overallReadiness != null;
 }
 
+/**
+ * SCRUM-509: job COMPLETED reassessment vẫn «actionable» chỉ khi còn cổng InProgress
+ * gắn đúng questionSetId (chưa nộp), hoặc ReadyForReassessment chưa có set.
+ * Job stale sau khi đã chấm → false → clear UI CTA.
+ */
+export function reassessJobStillActionable(
+  job: CoachJob | null,
+  roadmaps: CoachRoadmap[]
+): boolean {
+  if (!jobDone(job)) return false;
+  const purpose = (job?.purpose ?? "").toLowerCase();
+  if (!purpose.includes("reassess")) return false;
+  const setId = job?.questionSetId ?? null;
+  return roadmaps.some((r) =>
+    r.items.some((i) => {
+      if (!i.isReassessmentGate) return false;
+      if (i.status === "ReadyForReassessment") return true;
+      if (i.status === "InProgress" && setId && i.drillQuestionSetId === setId) return true;
+      return false;
+    })
+  );
+}
+
 export function useCoachWorkflow() {
   const { t, lang } = useLanguage();
   const p = t.jobseekerCoachPage;
@@ -115,10 +138,22 @@ export function useCoachWorkflow() {
       getCoachRoadmaps(),
       getCoachWrapUp(),
     ]);
+    const nextRoadmaps =
+      roadmapsResult.status === "fulfilled" ? roadmapsResult.value : [];
     if (reportResult.status === "fulfilled") setReport(reportResult.value);
-    if (roadmapsResult.status === "fulfilled") setRoadmaps(roadmapsResult.value);
+    if (roadmapsResult.status === "fulfilled") setRoadmaps(nextRoadmaps);
     if (wrapUpResult.status === "fulfilled") setWrapUp(wrapUpResult.value);
     else setWrapUp(null);
+
+    // SCRUM-509: dọn job COMPLETED treo sau khi đã nộp/chấm đánh giá lại.
+    setJob((prev) => {
+      if (!prev || !jobDone(prev)) return prev;
+      const purpose = (prev.purpose ?? "").toLowerCase();
+      if (!purpose.includes("reassess")) return prev;
+      if (reassessJobStillActionable(prev, nextRoadmaps)) return prev;
+      writeCoachJobEntry(null);
+      return null;
+    });
   }, []);
 
   useEffect(() => {
@@ -150,8 +185,21 @@ export function useCoachWorkflow() {
           if (!ctxResult.value.contextConfirmed) setEditingContext(true);
         }
         if (jobResult.status === "fulfilled" && jobResult.value?.id) {
-          setJob(jobResult.value);
-          registerCoachJob(jobResult.value);
+          const loadedJob = jobResult.value;
+          const loadedMaps =
+            roadmapsResult.status === "fulfilled" ? roadmapsResult.value : [];
+          // SCRUM-509: không khôi phục CTA reassessment đã nộp.
+          if (
+            jobDone(loadedJob) &&
+            (loadedJob.purpose ?? "").toLowerCase().includes("reassess") &&
+            !reassessJobStillActionable(loadedJob, loadedMaps)
+          ) {
+            writeCoachJobEntry(null);
+            setJob(null);
+          } else {
+            setJob(loadedJob);
+            registerCoachJob(loadedJob);
+          }
         }
         if (reportResult.status === "fulfilled") setReport(reportResult.value);
         if (roadmapsResult.status === "fulfilled") setRoadmaps(roadmapsResult.value);
@@ -515,6 +563,10 @@ export function useCoachWorkflow() {
   const ready = jobDone(job);
   const failed = jobFailed(job) || Boolean(error && !busy && !ready);
   const hasScoredReport = reportScored(report);
+  const wrapUpAvailable = Boolean(wrapUp?.available);
+  /** SCRUM-509: job reassessment còn cửa làm bài (chưa nộp). */
+  const reassessReadyActionable =
+    !wrapUpAvailable && reassessJobStillActionable(job, roadmaps);
   const hasReadyForReassessment = roadmaps.some((r) =>
     r.items.some((i) => i.status === "ReadyForReassessment")
   );
@@ -749,6 +801,7 @@ export function useCoachWorkflow() {
     busy,
     ready,
     failed,
+    reassessReadyActionable,
     hasScoredReport,
     hasReadyForReassessment,
     hasActiveRoadmap,
@@ -757,6 +810,7 @@ export function useCoachWorkflow() {
     rescoreError,
     screeningPreview,
     wrapUp,
+    wrapUpAvailable,
     maxUnlockedStep,
     minSelectableStep,
     activeStep,

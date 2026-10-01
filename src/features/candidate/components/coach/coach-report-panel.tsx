@@ -9,6 +9,7 @@ import { useLanguage } from "@/shared/providers/language-context";
 import { fillTemplate } from "@/features/candidate/utils/dashboard-analytics";
 import { getSkillIcon } from "@/features/candidate/utils/skill-icons";
 import type { CoachAssessment, CoachScreeningPreview, CoachSkillResult } from "@/features/candidate/services/coach.service";
+import { CoachLevelCriteriaPanel } from "@/features/candidate/components/coach/coach-level-criteria";
 import {
   fadeIn,
   motionSafe,
@@ -62,11 +63,13 @@ export function CoachReportPanel({
   }, [report.skills]);
 
   const shortExplanation = useMemo(() => {
+    // SCRUM-509: khi có levelCriteria thì không dump công thức thô.
+    if (report.levelCriteria) return null;
     const raw = report.levelExplanation?.trim();
     if (!raw || looksLikeJson(raw)) return null;
     const sentences = raw.split(/(?<=[.!?。])\s+/).filter(Boolean);
     return sentences.slice(0, 2).join(" ");
-  }, [report.levelExplanation]);
+  }, [report.levelExplanation, report.levelCriteria]);
 
   async function confirmPromote() {
     if (!onPromoteNextLevel) return;
@@ -155,9 +158,11 @@ export function CoachReportPanel({
               </p>
             )}
 
-            {shortExplanation && (
+            {report.levelCriteria ? (
+              <CoachLevelCriteriaPanel criteria={report.levelCriteria} compact />
+            ) : shortExplanation ? (
               <p className={cn("text-[12px] leading-snug", portalSubtextAlt)}>{shortExplanation}</p>
-            )}
+            ) : null}
 
             {allZero && (
               <div className="flex gap-2 rounded-lg border border-amber-200/80 bg-amber-50/70 px-3 py-2 text-[11px] leading-snug text-amber-900 dark:border-amber-800/50 dark:bg-amber-950/20 dark:text-amber-100">
