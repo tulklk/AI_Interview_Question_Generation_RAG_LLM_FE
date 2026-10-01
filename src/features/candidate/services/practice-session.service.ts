@@ -145,6 +145,9 @@ export interface PracticeSessionDetail {
   antiCheatEnabled: boolean;
   antiCheatMaxTabLeaves: number;
   tabLeaveCount: number;
+  /** Số strike tối đa (camera/tab/focus...) trước khi tự chấm dứt phiên — Admin cấu hình,
+   * BE chưa trả field này thì FE fallback về hằng số mặc định (3) trong anti-cheat/constants.ts. */
+  maxIntegrityStrikes: number;
   questions: PracticeSessionQuestion[];
 }
 
@@ -202,6 +205,7 @@ function normalizeSessionDetail(raw: unknown): PracticeSessionDetail | null {
     antiCheatEnabled: Boolean(src.antiCheatEnabled ?? src.AntiCheatEnabled),
     antiCheatMaxTabLeaves: pickNumber(src, "antiCheatMaxTabLeaves", "AntiCheatMaxTabLeaves") || 3,
     tabLeaveCount: pickNumber(src, "tabLeaveCount", "TabLeaveCount"),
+    maxIntegrityStrikes: pickNumber(src, "maxIntegrityStrikes", "MaxIntegrityStrikes") || 3,
     questions,
   };
 }
@@ -499,17 +503,6 @@ export async function abandonPracticeSession(sessionId: string): Promise<void> {
   await apiClient.post(`${BASE}/${sessionId}/abandon`);
 }
 
-/** SCRUM-446: phản hồi sau khi báo rời tab. */
-export interface IntegrityEventResult {
-  sessionId: string;
-  status: "IN_PROGRESS" | "COMPLETED" | "ABANDONED" | string;
-  antiCheatEnabled: boolean;
-  antiCheatMaxTabLeaves: number;
-  tabLeaveCount: number;
-  autoSubmitted: boolean;
-  ignored: boolean;
-}
-
 /**
  * Strike thứ 3: ghi lên server rằng phiên kết thúc vì gian lận, trước khi abandon.
  * Cùng endpoint TAB_HIDDEN. `terminated` để BE khóa candidate với bộ câu hỏi này.
@@ -523,27 +516,6 @@ export async function reportIntegrityTermination(
     terminated: true,
     integrityTerminated: true,
   });
-}
-
-/**
- * SCRUM-446: báo BE khi candidate rời tab (visibility hidden).
- * BE debounce ~2s; đủ ngưỡng thì tự nộp.
- */
-export async function reportTabLeave(sessionId: string): Promise<IntegrityEventResult> {
-  const res = await apiClient.post(`${BASE}/${sessionId}/integrity-events`, {
-    eventType: "TAB_HIDDEN",
-  });
-  const src = extractData(res.data) ?? {};
-  const statusRaw = pickString(src, "status").toUpperCase();
-  return {
-    sessionId: pickString(src, "sessionId", "id") || sessionId,
-    status: statusRaw || "IN_PROGRESS",
-    antiCheatEnabled: Boolean(src.antiCheatEnabled ?? src.AntiCheatEnabled),
-    antiCheatMaxTabLeaves: pickNumber(src, "antiCheatMaxTabLeaves", "AntiCheatMaxTabLeaves") || 3,
-    tabLeaveCount: pickNumber(src, "tabLeaveCount", "TabLeaveCount"),
-    autoSubmitted: Boolean(src.autoSubmitted ?? src.AutoSubmitted),
-    ignored: Boolean(src.ignored ?? src.Ignored),
-  };
 }
 
 // ---------------------------------------------------------------------------

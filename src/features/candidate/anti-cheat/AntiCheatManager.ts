@@ -78,8 +78,8 @@ export class AntiCheatManager {
    * Restore integrity strikes for a session (e.g. after refresh).
    * Does not start monitors.
    */
-  restoreIntegrity(sessionId: string): IntegrityState {
-    return this.strikes.restore(sessionId);
+  restoreIntegrity(sessionId: string, maxStrikes?: number): IntegrityState {
+    return this.strikes.restore(sessionId, maxStrikes);
   }
 
   start(video: HTMLVideoElement, ctx: AntiCheatSessionContext): void {

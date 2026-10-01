@@ -2750,6 +2750,8 @@ Yêu cầu:
           "Kill-switch toàn hệ thống. Chỉ ảnh hưởng bộ Tuyển khi HR cũng bật anti-cheat. Practice thường không dùng. Phiên đang chạy giữ snapshot cũ.",
         antiCheatMaxTabLeaves: "Số lần rời tab tối đa",
         antiCheatMaxTabLeavesHint: "Đủ số lần này hệ thống tự nộp bài (1–20).",
+        maxIntegrityStrikes: "Số lỗi vi phạm chống gian lận tối đa",
+        maxIntegrityStrikesHint: "Tổng số lỗi cộng dồn mọi loại: không phát hiện khuôn mặt, nhiều người trong khung hình, phát hiện điện thoại, nhìn đi chỗ khác, thoát fullscreen, mất focus cửa sổ, tắt camera, hoặc chuyển tab. Đủ số lỗi này (1–10) thì tự chấm dứt phiên ngay lập tức.",
         dangerZone: "Vùng nguy hiểm",
         resetTitle: "Đặt lại dữ liệu nền tảng",
         resetDesc: "Xóa tất cả phiên và phân tích đã tạo. Không thể hoàn tác.",
@@ -3544,8 +3546,6 @@ Yêu cầu:
     finishing: "AI đang đánh giá toàn bộ bài làm của bạn…",
     finishFailed: "Không thể hoàn thành phiên. Vui lòng thử lại.",
     timeUpToast: "Hết giờ! Đang nộp bài của bạn…",
-    antiCheatTabLeaveToast: "Bạn đã rời trang ({{n}}/{{max}}). Đủ số lần sẽ tự nộp bài.",
-    antiCheatAutoSubmitToast: "Đã đủ số lần rời trang — hệ thống đang nộp bài…",
     antiCheatBanner: "Chế độ chống gian lận đang bật — không Pause / thoát tạm.",
     coachModeBanner:
       "Bài đo năng lực AI Coach — câu trả lời được chấm theo competency framework, không tính XP.",

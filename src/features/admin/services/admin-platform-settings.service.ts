@@ -7,6 +7,9 @@ export interface PlatformSettings {
   /** SCRUM-446 */
   antiCheatEnabled?: boolean;
   antiCheatMaxTabLeaves?: number;
+  /** Số strike tối đa (camera NO_FACE/MULTIPLE_FACE/PHONE/LOOKING_AWAY, tab/focus/fullscreen)
+   * trước khi tự chấm dứt phiên — tách biệt với antiCheatMaxTabLeaves (chỉ riêng rời tab). */
+  maxIntegrityStrikes?: number;
   platformName?: string;
   defaultQuestionCount?: number;
   maxJdsPerDay?: number;
@@ -60,6 +63,11 @@ function normalize(raw: unknown): PlatformSettings {
       "antiCheatMaxTabLeaves",
       "AntiCheatMaxTabLeaves"
     ),
+    maxIntegrityStrikes: pickNumber(
+      data,
+      "maxIntegrityStrikes",
+      "MaxIntegrityStrikes"
+    ),
     platformName:
       typeof data.platformName === "string"
         ? data.platformName
@@ -88,6 +96,7 @@ export async function updatePlatformSettings(settings: PlatformSettings): Promis
     minAttemptsForTrending: settings.minAttemptsForTrending,
     antiCheatEnabled: settings.antiCheatEnabled ?? false,
     antiCheatMaxTabLeaves: settings.antiCheatMaxTabLeaves ?? 3,
+    maxIntegrityStrikes: settings.maxIntegrityStrikes ?? 3,
     // Các field UI-only vẫn gửi nếu BE bỏ qua (backward compatible)
     platformName: settings.platformName,
     defaultQuestionCount: settings.defaultQuestionCount,

@@ -8,7 +8,6 @@ import { useLanguage } from "@/shared/providers/language-context";
 import { useToast } from "@/shared/providers/toast-context";
 import { cn } from "@/lib/cn";
 import {
-  portalDivider,
   portalHeadingAlt,
   portalInput,
   portalSubtextAlt,
@@ -34,6 +33,7 @@ export function GeneralSettings() {
   const [minAttemptsForTrending, setMinAttemptsForTrending] = useState("10");
   const [antiCheatEnabled, setAntiCheatEnabled] = useState(false);
   const [antiCheatMaxTabLeaves, setAntiCheatMaxTabLeaves] = useState("3");
+  const [maxIntegrityStrikes, setMaxIntegrityStrikes] = useState("3");
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -49,6 +49,7 @@ export function GeneralSettings() {
       if (s.minAttemptsForTrending != null) setMinAttemptsForTrending(String(s.minAttemptsForTrending));
       if (typeof s.antiCheatEnabled === "boolean") setAntiCheatEnabled(s.antiCheatEnabled);
       if (s.antiCheatMaxTabLeaves != null) setAntiCheatMaxTabLeaves(String(s.antiCheatMaxTabLeaves));
+      if (s.maxIntegrityStrikes != null) setMaxIntegrityStrikes(String(s.maxIntegrityStrikes));
     } catch {
       setLoadError(true);
     } finally {
@@ -62,14 +63,17 @@ export function GeneralSettings() {
     setSaving(true);
     try {
       const maxLeaves = Math.min(20, Math.max(1, Number(antiCheatMaxTabLeaves) || 3));
+      const maxStrikes = Math.min(10, Math.max(1, Number(maxIntegrityStrikes) || 3));
       await updatePlatformSettings({
         minQuestionsToPublish: Number(minQuestionsToPublish) || undefined,
         maxPinnedSets: Number(maxPinnedSets) || 0,
         minAttemptsForTrending: Number(minAttemptsForTrending) || undefined,
         antiCheatEnabled,
         antiCheatMaxTabLeaves: maxLeaves,
+        maxIntegrityStrikes: maxStrikes,
       });
       setAntiCheatMaxTabLeaves(String(maxLeaves));
+      setMaxIntegrityStrikes(String(maxStrikes));
       addToast("success", g.saveSuccess);
     } catch (err) {
       addToast("error", err instanceof Error && err.message ? err.message : g.saveFailed);
@@ -186,39 +190,24 @@ export function GeneralSettings() {
             <Toggle checked={antiCheatEnabled} onChange={setAntiCheatEnabled} ariaLabel={g.antiCheatEnabled} />
           </div>
 
-          <FormField label={g.antiCheatMaxTabLeaves} htmlFor="anti-cheat-max-leaves">
+          {/* antiCheatMaxTabLeaves không còn ô chỉnh sửa riêng — gộp chung vào
+              "Số lỗi vi phạm chống gian lận tối đa" bên dưới cho admin đỡ rối với
+              2 thông số chồng chéo. Vẫn giữ state/gửi lại y nguyên giá trị đã lưu
+              khi Save để không phá cơ chế rời-tab phía BE đang chạy đúng. */}
+
+          <FormField label={g.maxIntegrityStrikes} htmlFor="max-integrity-strikes">
             <input
-              id="anti-cheat-max-leaves"
+              id="max-integrity-strikes"
               type="number"
               min={1}
-              max={20}
+              max={10}
               disabled={!antiCheatEnabled}
-              value={antiCheatMaxTabLeaves}
-              onChange={(e) => setAntiCheatMaxTabLeaves(e.target.value)}
+              value={maxIntegrityStrikes}
+              onChange={(e) => setMaxIntegrityStrikes(e.target.value)}
               className={cn(inputCls, !antiCheatEnabled && "opacity-50 cursor-not-allowed")}
             />
-            <p className={cn("mt-1 text-[11px]", portalSubtextAlt)}>{g.antiCheatMaxTabLeavesHint}</p>
+            <p className={cn("mt-1 text-[11px]", portalSubtextAlt)}>{g.maxIntegrityStrikesHint}</p>
           </FormField>
-        </div>
-
-        <div className={cn("border-t pt-2", portalDivider)}>
-          <p className={cn("mb-3 text-xs font-semibold uppercase tracking-wide", portalSubtextAlt)}>
-            {g.dangerZone}
-          </p>
-          <div className="flex flex-col gap-3 rounded-lg border border-red-100 dark:border-red-900/50 bg-red-50 dark:bg-red-950/30 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className={cn("text-sm font-semibold", portalHeadingAlt)}>{g.resetTitle}</p>
-              <p className={cn("mt-0.5 text-xs", portalSubtextAlt)}>{g.resetDesc}</p>
-            </div>
-            <button
-              type="button"
-              disabled
-              title={t.common.comingSoon}
-              className="shrink-0 rounded-lg border border-red-200 dark:border-red-900 bg-white dark:bg-gray-900 px-3 py-1.5 text-xs font-semibold text-red-600 dark:text-red-400 transition-colors opacity-50 cursor-not-allowed"
-            >
-              {g.resetBtn}
-            </button>
-          </div>
         </div>
       </div>
 

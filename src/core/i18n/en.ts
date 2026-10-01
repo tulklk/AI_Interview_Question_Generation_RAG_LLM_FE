@@ -2750,6 +2750,8 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
           "Platform kill-switch. Only affects Hiring sets when HR also enables anti-cheat. Regular Practice sets never use it. In-progress sessions keep their snapshot.",
         antiCheatMaxTabLeaves: "Max tab leaves",
         antiCheatMaxTabLeavesHint: "Auto-submit when this count is reached (1–20).",
+        maxIntegrityStrikes: "Max anti-cheat violations",
+        maxIntegrityStrikesHint: "Combined count across all violation types: no face detected, multiple people in frame, phone detected, looking away, exiting fullscreen, losing window focus, camera disabled, or switching tabs. Reaching this count (1–10) ends the session immediately.",
         dangerZone: "Danger Zone",
         resetTitle: "Reset Platform Data",
         resetDesc: "Clear all generated sessions and analytics. This cannot be undone.",
@@ -3542,8 +3544,6 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
     finishing: "AI is evaluating your full session…",
     finishFailed: "Failed to finish the session. Please try again.",
     timeUpToast: "Time's up! Submitting your answers…",
-    antiCheatTabLeaveToast: "You left the page ({{n}}/{{max}}). Reaching the limit auto-submits.",
-    antiCheatAutoSubmitToast: "Tab-leave limit reached — submitting your answers…",
     antiCheatBanner: "Anti-cheat is on — Pause / temporary exit are disabled.",
     coachModeBanner:
       "AI Coach competency assessment — answers are scored against your competency framework, not for XP.",
