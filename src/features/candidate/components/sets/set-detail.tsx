@@ -157,13 +157,15 @@ function MatchScoreArc({ percent, label }: { percent: number; label: string }) {
   }, []);
 
   const arcCls =
-    percent >= 80 ? "stroke-emerald-500 dark:stroke-emerald-400" :
-    percent >= 55 ? "stroke-violet-500 dark:stroke-violet-400" :
-                   "stroke-amber-500 dark:stroke-amber-400";
+    percent >= 90 ? "stroke-emerald-500 dark:stroke-emerald-400" :
+    percent >= 80 ? "stroke-violet-500 dark:stroke-violet-400" :
+    percent >= 70 ? "stroke-amber-500 dark:stroke-amber-400" :
+                   "stroke-red-500 dark:stroke-red-400";
   const valCls =
-    percent >= 80 ? "text-emerald-600 dark:text-emerald-400" :
-    percent >= 55 ? "text-violet-600 dark:text-violet-400" :
-                   "text-amber-600 dark:text-amber-400";
+    percent >= 90 ? "text-emerald-600 dark:text-emerald-400" :
+    percent >= 80 ? "text-violet-600 dark:text-violet-400" :
+    percent >= 70 ? "text-amber-600 dark:text-amber-400" :
+                   "text-red-600 dark:text-red-400";
 
   return (
     <div className="flex flex-col items-center gap-1 select-none">

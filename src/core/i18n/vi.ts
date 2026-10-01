@@ -3711,6 +3711,7 @@ Yêu cầu:
     table: {
       session: "Phiên",
       company: "Công ty",
+      type: "Phân loại",
       date: "Ngày",
       score: "Điểm",
       duration: "Thời gian",

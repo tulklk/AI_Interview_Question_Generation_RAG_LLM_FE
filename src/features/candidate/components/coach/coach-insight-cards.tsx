@@ -14,7 +14,8 @@ interface CoachInsightCardsProps {
 }
 
 function readinessTone(score: number) {
-  if (score >= 80) {
+  // Đồng bộ band điểm hệ thống: ≥90 / ≥80 / ≥70
+  if (score >= 90) {
     return {
       stroke: "#10B981",
       badge:
@@ -22,7 +23,7 @@ function readinessTone(score: number) {
       track: "bg-emerald-500",
     };
   }
-  if (score >= 60) {
+  if (score >= 80) {
     return {
       stroke: "#8B5CF6",
       badge:
@@ -30,7 +31,7 @@ function readinessTone(score: number) {
       track: "bg-violet-500",
     };
   }
-  if (score >= 40) {
+  if (score >= 70) {
     return {
       stroke: "#F59E0B",
       badge:

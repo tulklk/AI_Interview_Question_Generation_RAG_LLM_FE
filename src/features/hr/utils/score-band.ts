@@ -1,17 +1,75 @@
 /**
- * Band chất lượng điểm AI (FE only) — ngưỡng thống nhất HR:
- * 90–100 Xuất sắc | 80–90 Tốt | 70–80 Khá | &lt;70 Cần cải thiện
+ * Band chất lượng điểm AI — nguồn chuẩn toàn hệ thống (HR + Candidate):
+ * ≥90 Xuất sắc | ≥80 Tốt | ≥70 Khá | &lt;70 Cần cải thiện
+ *
+ * Ngưỡng badge label cũng nằm ở getScoreLevel trong pill.tsx — phải khớp SCORE_BAND.
  */
 import { getScoreLevel, type ScoreLevelLabels } from "@/features/candidate/components/ui/pill";
 import { cn } from "@/lib/cn";
 
 export type ScoreBandId = "excellent" | "good" | "fair" | "needsWork";
 
+/** Ngưỡng band — dùng chung mọi chỗ so sánh điểm. */
+export const SCORE_BAND = {
+  excellent: 90,
+  good: 80,
+  fair: 70,
+} as const;
+
 export function resolveScoreBandId(score: number): ScoreBandId {
-  if (score >= 90) return "excellent";
-  if (score >= 80) return "good";
-  if (score >= 70) return "fair";
+  if (score >= SCORE_BAND.excellent) return "excellent";
+  if (score >= SCORE_BAND.good) return "good";
+  if (score >= SCORE_BAND.fair) return "fair";
   return "needsWork";
+}
+
+/** Hex cho chart / SVG ring — khớp màu getScoreLevel. */
+export function getScoreBandHex(score: number): string {
+  const id = resolveScoreBandId(score);
+  if (id === "excellent") return "#10B981";
+  if (id === "good") return "#8B5CF6";
+  if (id === "fair") return "#F59E0B";
+  return "#EF4444";
+}
+
+/** Style thanh skill / pill — khớp màu getScoreLevel. */
+export function getScoreBandBarClass(score: number): {
+  bar: string;
+  text: string;
+  bg: string;
+  ring: string;
+} {
+  const id = resolveScoreBandId(score);
+  if (id === "excellent") {
+    return {
+      bar: "bg-emerald-500",
+      text: "text-emerald-700 dark:text-emerald-400",
+      bg: "bg-emerald-50 dark:bg-emerald-950/40",
+      ring: "#10B981",
+    };
+  }
+  if (id === "good") {
+    return {
+      bar: "bg-violet-500",
+      text: "text-violet-700 dark:text-violet-400",
+      bg: "bg-violet-50 dark:bg-violet-950/40",
+      ring: "#8B5CF6",
+    };
+  }
+  if (id === "fair") {
+    return {
+      bar: "bg-amber-500",
+      text: "text-amber-700 dark:text-amber-400",
+      bg: "bg-amber-50 dark:bg-amber-950/40",
+      ring: "#F59E0B",
+    };
+  }
+  return {
+    bar: "bg-red-500",
+    text: "text-red-700 dark:text-red-400",
+    bg: "bg-red-50 dark:bg-red-950/40",
+    ring: "#EF4444",
+  };
 }
 
 /** Style vòng/pill list — khớp màu getScoreLevel. */
@@ -66,4 +124,16 @@ export function scoreBandBadgeClassName(score: number, extra?: string): string {
     text,
     extra,
   );
+}
+
+/**
+ * Fallback insight khi BE không trả AI insight.
+ * Chỉ có 3 câu copy: Xuất sắc / Tốt (gồm cả Khá) / Cần cải thiện.
+ */
+export function resolveScoreInsightKey(
+  score: number,
+): "excellent" | "good" | "needsWork" {
+  if (score >= SCORE_BAND.excellent) return "excellent";
+  if (score >= SCORE_BAND.fair) return "good";
+  return "needsWork";
 }

@@ -14,12 +14,12 @@ import { useChartTheme } from "@/shared/hooks/use-chart-theme";
 import { useLanguage } from "@/shared/providers/language-context";
 import type { CompletedSessionSummary } from "@/features/candidate/services/practice-session.service";
 
+// Bucket khớp band hệ thống: <70 / Khá / Tốt / Xuất sắc
 const RANGES = [
-  { label: "0–20", min: 0, max: 20, fill: "#EF4444" },
-  { label: "21–40", min: 21, max: 40, fill: "#F59E0B" },
-  { label: "41–60", min: 41, max: 60, fill: "#A78BFA" },
-  { label: "61–80", min: 61, max: 80, fill: "#6C47FF" },
-  { label: "81–100", min: 81, max: 100, fill: "#10B981" },
+  { label: "0–69", min: 0, max: 69, fill: "#EF4444" },
+  { label: "70–79", min: 70, max: 79, fill: "#F59E0B" },
+  { label: "80–89", min: 80, max: 89, fill: "#8B5CF6" },
+  { label: "90–100", min: 90, max: 100, fill: "#10B981" },
 ];
 
 interface Props {

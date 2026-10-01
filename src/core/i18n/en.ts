@@ -3711,6 +3711,7 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
     table: {
       session: "Session",
       company: "Company",
+      type: "Type",
       date: "Date",
       score: "Score",
       duration: "Duration",

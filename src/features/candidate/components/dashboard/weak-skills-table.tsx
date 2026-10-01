@@ -11,6 +11,7 @@ import type { SkillDatum } from "@/features/candidate/utils/dashboard-analytics"
 type Priority = "high" | "medium" | "low";
 
 function priorityOf(score: number): Priority {
+  // <70 = dưới Khá → ưu tiên cao/trung bình; ≥70 ổn
   if (score < 50) return "high";
   if (score < 70) return "medium";
   return "low";
@@ -34,7 +35,8 @@ export function WeakSkillsTable({ skills }: WeakSkillsTableProps) {
   const [sortKey, setSortKey] = useState<SortKey>("priority");
   const [sortAsc, setSortAsc] = useState(true);
 
-  const focusSkills = useMemo(() => skills.filter((s) => s.score < 80), [skills]);
+  // Skill dưới ngưỡng Khá (70) — cần tập trung cải thiện
+  const focusSkills = useMemo(() => skills.filter((s) => s.score < 70), [skills]);
 
   const rows = useMemo(() => {
     const priorityRank: Record<Priority, number> = { high: 0, medium: 1, low: 2 };
