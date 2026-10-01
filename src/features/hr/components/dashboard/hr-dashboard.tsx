@@ -671,7 +671,7 @@ export function HrDashboard() {
                 { key: "newUnviewed", href: "/hr/candidate-recommendations?unviewed=true", value: data.hiringFunnel.newUnviewed },
                 { key: "shortlisted", href: "/hr/candidate-recommendations?status=SHORTLISTED", value: data.hiringFunnel.shortlisted },
                 { key: "invitedPending", href: "/hr/candidate-recommendations?status=INVITED", value: data.hiringFunnel.invitedPending },
-                { key: "invitedAccepted", href: "/hr/candidate-recommendations?status=INVITED", value: data.hiringFunnel.invitedAccepted },
+                { key: "invitedAccepted", href: "/hr/candidate-recommendations?status=ACCEPTED", value: data.hiringFunnel.invitedAccepted },
               ] as const
             ).map((col) => (
               <Link

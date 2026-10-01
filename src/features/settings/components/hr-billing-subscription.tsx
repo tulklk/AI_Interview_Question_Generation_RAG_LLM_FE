@@ -645,9 +645,14 @@ export function HrBillingSubscription() {
                   {HR_PLAN_IDS.map((pid) => {
                     const p = plans.find((x) => x.code === pid);
                     const h = p?.limits.generateCooldownHours ?? 0;
+                    const cooldownLabel = !p
+                      ? "—"
+                      : p.limits.generateUnlimited || h === 0
+                        ? sub.limitRows.noCooldown
+                        : `${h}h`;
                     return (
                       <td key={pid} className={cn("text-center px-2 py-2 font-semibold", portalHeading)}>
-                        {p?.limits.generateUnlimited ? "∞" : `${h}h`}
+                        {cooldownLabel}
                       </td>
                     );
                   })}

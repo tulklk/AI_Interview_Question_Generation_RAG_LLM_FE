@@ -9,8 +9,7 @@ import { useLanguage } from "@/shared/providers/language-context";
 import { useToast } from "@/shared/providers/toast-context";
 import { portalDivider, portalHeading } from "@/shared/utils/portal-ui";
 
-import { getScoreBandLabel } from "@/features/hr/utils/score-band";
-import type { ScoreLevelLabels } from "@/features/candidate/components/ui/pill";
+import { applyInviteScoreTemplate } from "@/features/hr/utils/score-band";
 
 export interface InviteCandidateTarget {
   candidateName: string;
@@ -19,17 +18,10 @@ export interface InviteCandidateTarget {
   score: number | null;
 }
 
-function buildDefaultInviteMessage(
-  template: string,
-  target: InviteCandidateTarget,
-  scoreLabels: ScoreLevelLabels,
-): string {
-  const scoreText =
-    target.score != null ? getScoreBandLabel(target.score, scoreLabels) : "—";
-  return template
+function buildDefaultInviteMessage(template: string, target: InviteCandidateTarget): string {
+  return applyInviteScoreTemplate(template, target.score)
     .replace("{{name}}", target.candidateName || "")
-    .replace("{{title}}", target.questionSetTitle || "")
-    .replace("{{score}}", scoreText);
+    .replace("{{title}}", target.questionSetTitle || "");
 }
 
 interface InviteCandidateModalProps {
@@ -42,10 +34,9 @@ export function InviteCandidateModal({ target, onClose, onSend }: InviteCandidat
   const { t } = useLanguage();
   const labels = t.hrRecommendationsPage.invite;
   const p = t.hrRecommendationsPage;
-  const scoreLabels = t.jobseekerFeedbackPage.scoreLevels;
   const { addToast } = useToast();
   const [message, setMessage] = useState(() =>
-    buildDefaultInviteMessage(labels.defaultMessage, target, scoreLabels),
+    buildDefaultInviteMessage(labels.defaultMessage, target),
   );
   const [sending, setSending] = useState(false);
 

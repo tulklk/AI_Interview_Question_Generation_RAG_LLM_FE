@@ -54,6 +54,13 @@ function applyLivePrice(plan: PricingPlan, live: SubscriptionPlan | undefined): 
   return { ...plan, price: formatVnd(live.priceMonthly) };
 }
 
+/** Thay số 5 cứng trên bullet "Regenerate plan" bằng hạn mức đang cấu hình. */
+function withLivePlanRegen(text: string | undefined, count: number | undefined): string {
+  if (!text) return "";
+  if (count == null || !/regenerate plan/i.test(text)) return text;
+  return text.replace(/\b5\b/, String(count));
+}
+
 function PricingPlanCard({
   plan,
   planT,
@@ -68,6 +75,7 @@ function PricingPlanCard({
   currentPlanLabel,
   managePlanLabel,
   upgradePlanLabel,
+  planRegenPerDraft,
 }: {
   plan: PricingPlan;
   planT: PlanI18n;
@@ -83,6 +91,7 @@ function PricingPlanCard({
   currentPlanLabel: string;
   managePlanLabel: string;
   upgradePlanLabel: string;
+  planRegenPerDraft?: number;
 }) {
   const { t } = useLanguage();
   const footnote =
@@ -274,7 +283,7 @@ function PricingPlanCard({
                     : "text-gray-400 dark:text-gray-500"
               )}
             >
-              {planT.features[fi]}
+              {withLivePlanRegen(planT.features[fi], planRegenPerDraft)}
             </span>
           </li>
         ))}
@@ -569,6 +578,9 @@ export function PricingSection() {
                 {recruiterPlans.map((plan, i) => {
                   const planT = p.recruiter.plans[i];
                   if (!planT) return null;
+                  const live = liveHrPlans.find((x) =>
+                    plan.id === "hr-premium" ? isPremiumPlanCode(x.code) : !isPremiumPlanCode(x.code),
+                  );
                   const animation = plan.highlighted ? "scale-in" : "fade-up";
                   const orderClass = plan.highlighted ? "order-1 md:order-2" : "order-2 md:order-1";
                   // Only a logged-in HR user has a "current plan" on this tab
@@ -592,6 +604,7 @@ export function PricingSection() {
                         currentPlanLabel={p.currentPlanBadge}
                         managePlanLabel={p.managePlan}
                         upgradePlanLabel={p.upgradePlan}
+                        planRegenPerDraft={live?.limits.planRegeneratePerDraft}
                       />
                     </div>
                   );
@@ -615,7 +628,12 @@ export function PricingSection() {
                             </div>
                             <div>
                               <p className="text-[13px] font-semibold text-gray-900 dark:text-gray-100 leading-tight">{pt.title}</p>
-                              <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1 leading-relaxed">{pt.body}</p>
+                              <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1 leading-relaxed">
+                                {withLivePlanRegen(
+                                  pt.body,
+                                  liveHrPlans.find((x) => isPremiumPlanCode(x.code))?.limits.planRegeneratePerDraft,
+                                )}
+                              </p>
                             </div>
                           </div>
                         );
