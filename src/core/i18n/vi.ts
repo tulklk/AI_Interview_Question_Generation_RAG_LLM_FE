@@ -2943,11 +2943,11 @@ Yêu cầu:
     skillsCatalogEmpty: "Không còn công nghệ nào trong catalog để thêm (đã có trên danh sách / CV).",
     skillsCatalogHint: "Chọn từ catalog công nghệ được hỗ trợ — không nhập tự do.",
     skillsCatalogRemaining: "Còn {{count}} lựa chọn",
-    skillsCountLabel: "{{count}} / {{max}} công nghệ",
+    skillsCountLabel: "{{count}} công nghệ",
     skillsDuplicate: "Công nghệ này đã có trong danh sách (kể cả từ CV) — không thêm trùng.",
-    skillsMaxReached: "Đã đủ 40 công nghệ — không thể thêm nữa. Hãy xóa bớt nếu muốn thêm công nghệ khác.",
-    skillsMaxBanner:
-      "Đã đạt giới hạn 40 công nghệ/kỹ năng. Dropdown bị khóa — xóa bớt chip bên trên rồi mới thêm được.",
+    // SCRUM-504: bỏ giới hạn 40 — chỉ nói rõ không phải mọi kỹ năng đều lên đề
+    skillsFocusNote:
+      "Thêm bao nhiêu kỹ năng cũng được. Bài chẩn đoán chỉ chọn một số kỹ năng trọng tâm nhất (thường 3–8) dựa trên vị trí mục tiêu, nên danh sách dài không làm đề dài hơn.",
     // SCRUM-491: hybrid validate + soft warn (giữ key cho chỗ khác nếu còn dùng)
     skillsFormatEmpty: "Chọn công nghệ từ danh sách trước khi thêm.",
     skillsFormatTooShort: "Tên công nghệ cần ít nhất 2 ký tự.",

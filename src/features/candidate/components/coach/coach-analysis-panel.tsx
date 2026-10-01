@@ -21,8 +21,6 @@ interface CoachAnalysisPanelProps {
   onContinue: (skills: string[]) => void | Promise<void>;
 }
 
-const MAX_SKILLS = 40;
-
 const fieldCls = cn(
   "w-full h-9 px-3 rounded-lg border border-gray-200 dark:border-gray-700",
   "bg-white dark:bg-gray-900 text-[13px]",
@@ -62,10 +60,10 @@ function resolveSourceSkills(context: CoachContext | null, cv: CvInfo | null): s
 }
 
 /**
- * SCRUM-501/502: chip + dropdown catalog.
+ * SCRUM-501/502/504: chip + dropdown catalog.
  * - Chặn trùng (normalize) + báo rõ
  * - Không reset chip local khi context chỉ đổi reference mảng
- * - Hiển thị số lượng / tối đa 40; chọn dropdown là thêm ngay
+ * - Không giới hạn số kỹ năng: đề chẩn đoán tự chọn 3–8 skill trọng tâm (SCRUM-504)
  */
 export function CoachAnalysisPanel({
   context,
@@ -86,7 +84,7 @@ export function CoachAnalysisPanel({
 
   const [skills, setSkills] = useState<string[]>(sourceSkills);
   const [selected, setSelected] = useState("");
-  const [feedback, setFeedback] = useState<"duplicate" | "max" | null>(null);
+  const [feedback, setFeedback] = useState<"duplicate" | null>(null);
   const summary = context?.summary || cv?.summary;
   const years = context?.yearsOfExperience;
 
@@ -104,23 +102,13 @@ export function CoachAnalysisPanel({
     const name = (rawName ?? selected).trim();
     if (!name) return;
 
-    if (skills.length >= MAX_SKILLS) {
-      setFeedback("max");
-      setSelected("");
-      return;
-    }
-
     if (hasSkill(skills, name)) {
       setFeedback("duplicate");
       setSelected("");
       return;
     }
 
-    setSkills((prev) => {
-      if (hasSkill(prev, name)) return prev;
-      if (prev.length >= MAX_SKILLS) return prev;
-      return [...prev, name];
-    });
+    setSkills((prev) => (hasSkill(prev, name) ? prev : [...prev, name]));
     setSelected("");
     setFeedback(null);
   }
@@ -132,9 +120,8 @@ export function CoachAnalysisPanel({
   }
 
   const canContinue = skills.length >= 1 && !savingSkills;
-  const atMax = skills.length >= MAX_SKILLS;
   const catalogExhausted = catalogOptions.length === 0;
-  const canAdd = Boolean(selected) && !savingSkills && !atMax && !catalogExhausted;
+  const canAdd = Boolean(selected) && !savingSkills && !catalogExhausted;
 
   return (
     <div className="hr-glass-card overflow-hidden">
@@ -178,32 +165,14 @@ export function CoachAnalysisPanel({
         <div className="space-y-2">
           <div className="flex items-baseline justify-between gap-2">
             <p className={cn("text-[11px] font-semibold", portalHeadingAlt)}>{p.skillsEditLabel}</p>
-            <p
-              className={cn(
-                "text-[11px] tabular-nums font-semibold",
-                atMax ? "text-amber-700 dark:text-amber-300" : portalSubtextAlt
-              )}
-            >
-              {p.skillsCountLabel
-                .replace("{{count}}", String(skills.length))
-                .replace("{{max}}", String(MAX_SKILLS))}
+            <p className={cn("text-[11px] tabular-nums font-semibold", portalSubtextAlt)}>
+              {p.skillsCountLabel.replace("{{count}}", String(skills.length))}
             </p>
           </div>
           <p className={cn("text-[11px]", portalSubtextAlt)}>{p.skillsEditHint}</p>
 
-          {atMax && (
-            <div
-              role="status"
-              className={cn(
-                "flex gap-2 rounded-lg border border-amber-300/90 bg-amber-50 px-3 py-2",
-                "text-[12px] font-medium text-amber-900",
-                "dark:border-amber-700/60 dark:bg-amber-950/40 dark:text-amber-100"
-              )}
-            >
-              <AlertTriangle size={14} className="mt-0.5 shrink-0" aria-hidden />
-              <span>{p.skillsMaxBanner}</span>
-            </div>
-          )}
+          {/* SCRUM-504: không chặn số lượng, chỉ giải thích vì sao danh sách dài vẫn an toàn */}
+          <p className={cn("text-[11px] leading-relaxed", portalSubtextAlt)}>{p.skillsFocusNote}</p>
 
           <div className="flex flex-wrap gap-1.5 min-h-[28px]">
             {skills.map((s) => {
@@ -247,16 +216,12 @@ export function CoachAnalysisPanel({
                     setSelected("");
                   }
                 }}
-                disabled={savingSkills || atMax || catalogExhausted}
-                className={cn(fieldCls, "flex-1", atMax && "border-amber-300 dark:border-amber-700")}
+                disabled={savingSkills || catalogExhausted}
+                className={cn(fieldCls, "flex-1")}
                 aria-label={p.skillsAddPlaceholder}
               >
                 <option value="">
-                  {atMax
-                    ? p.skillsMaxReached
-                    : catalogExhausted
-                      ? p.skillsCatalogEmpty
-                      : p.skillsCatalogSelectHint}
+                  {catalogExhausted ? p.skillsCatalogEmpty : p.skillsCatalogSelectHint}
                 </option>
                 {catalogOptions.map((name) => (
                   <option key={name} value={name}>
@@ -268,7 +233,6 @@ export function CoachAnalysisPanel({
                 type="button"
                 disabled={!canAdd}
                 onClick={() => addFromCatalog()}
-                title={atMax ? p.skillsMaxReached : undefined}
                 className="inline-flex items-center gap-1 h-9 px-3 rounded-lg text-[12px] font-semibold border border-primary/30 text-primary hover:bg-primary/5 disabled:opacity-50"
               >
                 <Plus size={14} />
@@ -276,21 +240,19 @@ export function CoachAnalysisPanel({
               </button>
             </div>
             <p className={cn("text-[11px]", portalSubtextAlt)}>
-              {atMax
-                ? p.skillsMaxReached
-                : `${p.skillsCatalogHint}${
-                    !catalogExhausted
-                      ? ` · ${p.skillsCatalogRemaining.replace("{{count}}", String(catalogOptions.length))}`
-                      : ""
-                  }`}
+              {`${p.skillsCatalogHint}${
+                !catalogExhausted
+                  ? ` · ${p.skillsCatalogRemaining.replace("{{count}}", String(catalogOptions.length))}`
+                  : ""
+              }`}
             </p>
           </label>
 
           {feedback === "duplicate" && (
-            <p className="text-[11px] text-amber-700 dark:text-amber-300">{p.skillsDuplicate}</p>
-          )}
-          {feedback === "max" && !atMax && (
-            <p className="text-[11px] text-amber-700 dark:text-amber-300">{p.skillsMaxReached}</p>
+            <p className="inline-flex items-start gap-1.5 text-[11px] text-amber-700 dark:text-amber-300">
+              <AlertTriangle size={12} className="mt-0.5 shrink-0" aria-hidden />
+              {p.skillsDuplicate}
+            </p>
           )}
           {skills.length === 0 && (
             <p className="text-[11px] text-amber-700 dark:text-amber-300">{p.skillsMinOne}</p>

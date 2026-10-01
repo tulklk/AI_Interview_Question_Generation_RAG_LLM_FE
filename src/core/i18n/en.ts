@@ -2942,11 +2942,11 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
     skillsCatalogEmpty: "No more catalog technologies to add (already on your list / CV).",
     skillsCatalogHint: "Choose from the supported technology catalog — free typing is disabled.",
     skillsCatalogRemaining: "{{count}} left",
-    skillsCountLabel: "{{count}} / {{max}} technologies",
+    skillsCountLabel: "{{count}} technologies",
     skillsDuplicate: "This technology is already on your list (including from the CV) — duplicates are not added.",
-    skillsMaxReached: "You already have 40 technologies — remove some if you want to add others.",
-    skillsMaxBanner:
-      "Limit of 40 technologies/skills reached. The dropdown is locked — remove chips above before adding more.",
+    // SCRUM-504: no more 40-item limit — just explain that not every skill reaches the test
+    skillsFocusNote:
+      "Add as many skills as you like. The diagnostic only picks the most relevant ones (usually 3–8) based on your target role, so a long list does not make the test longer.",
     // SCRUM-491: hybrid validate + soft warn (kept for other surfaces)
     skillsFormatEmpty: "Choose a technology from the list before adding.",
     skillsFormatTooShort: "Technology name needs at least 2 characters.",
