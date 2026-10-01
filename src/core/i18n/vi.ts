@@ -2713,6 +2713,10 @@ Yêu cầu:
         diagnosticMaxSkills: "Số skill tối đa (framework)",
         diagnosticMaxAdaptive: "Số skill tối đa (adaptive)",
         diagnosticMinTotal: "Tổng câu tối thiểu (0 = tắt)",
+        sectionReassessment: "Bài đánh giá lại",
+        reassessmentQPerSkill: "Số câu bài đánh giá lại (mỗi skill)",
+        reassessmentQPerSkillHint:
+          "Độc lập với bài chẩn đoán. Mặc định 3. Đề đo lại 1 skill sau khi luyện lộ trình (2–10).",
         sectionScreening: "Bài sàng lọc CV",
         screeningEnabled: "Bật bài sàng lọc sau báo cáo",
         screeningEnabledHint:

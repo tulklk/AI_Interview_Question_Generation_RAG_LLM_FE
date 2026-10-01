@@ -30,6 +30,7 @@ export interface CompetencyScoringPolicy {
   screeningEnabled: boolean;
   screeningQuestionsPerSkill: number;
   screeningMaxSkills: number;
+  reassessmentQuestionsPerSkill: number;
 }
 
 function asRecord(val: unknown): Record<string, unknown> | null {
@@ -101,6 +102,8 @@ function normalize(raw: unknown): CompetencyScoringPolicy {
     screeningQuestionsPerSkill:
       pickNumber(d, "screeningQuestionsPerSkill", "ScreeningQuestionsPerSkill") || 1,
     screeningMaxSkills: pickNumber(d, "screeningMaxSkills", "ScreeningMaxSkills") || 12,
+    reassessmentQuestionsPerSkill:
+      pickNumber(d, "reassessmentQuestionsPerSkill", "ReassessmentQuestionsPerSkill") || 3,
   };
 }
 
@@ -141,6 +144,7 @@ export async function updateCompetencyScoringPolicy(
     ScreeningEnabled: payload.screeningEnabled,
     ScreeningQuestionsPerSkill: payload.screeningQuestionsPerSkill,
     ScreeningMaxSkills: payload.screeningMaxSkills,
+    ReassessmentQuestionsPerSkill: payload.reassessmentQuestionsPerSkill,
   });
   return normalize(res.data);
 }

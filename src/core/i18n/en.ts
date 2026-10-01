@@ -2713,6 +2713,10 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
         diagnosticMaxSkills: "Maximum skills (framework)",
         diagnosticMaxAdaptive: "Maximum skills (adaptive)",
         diagnosticMinTotal: "Minimum total questions (0 = off)",
+        sectionReassessment: "Re-assessment exam",
+        reassessmentQPerSkill: "Questions per re-assessment skill",
+        reassessmentQPerSkillHint:
+          "Independent from the diagnostic. Default 3. One-skill exam after a roadmap (2–10).",
         sectionScreening: "CV screening exam",
         screeningEnabled: "Enable screening after the diagnostic report",
         screeningEnabledHint:

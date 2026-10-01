@@ -54,6 +54,7 @@ const DEFAULTS: CompetencyScoringPolicy = {
   screeningEnabled: true,
   screeningQuestionsPerSkill: 1,
   screeningMaxSkills: 12,
+  reassessmentQuestionsPerSkill: 3,
 };
 
 /** SCRUM-488: Admin cấu hình drill AI Coach (số câu / remix / pass). */
@@ -327,6 +328,26 @@ export function CoachDrillSettings() {
             />
           </FormField>
         </div>
+      </section>
+
+      <div className={cn("h-px", portalDivider)} />
+
+      <section className="space-y-3">
+        <p className={cn("text-[12px] font-semibold uppercase tracking-wide", portalSubtextAlt)}>
+          {c.sectionReassessment}
+        </p>
+        <FormField label={c.reassessmentQPerSkill} htmlFor="reassess-q-per-skill">
+          <input
+            id="reassess-q-per-skill"
+            type="number"
+            min={2}
+            max={10}
+            value={policy.reassessmentQuestionsPerSkill}
+            onChange={(e) => setNum("reassessmentQuestionsPerSkill", e.target.value)}
+            className={inputCls}
+          />
+          <p className={cn("mt-1 text-[11px]", portalSubtextAlt)}>{c.reassessmentQPerSkillHint}</p>
+        </FormField>
       </section>
 
       <div className={cn("h-px", portalDivider)} />
