@@ -251,7 +251,8 @@ export function HrUsagePanel() {
               scope={text.regenScope}
               used={regen.max}
               limit={regenLimit}
-              unlimited={generateUnlimited || regenLimit <= 0}
+              // SCRUM-510: regen câu độc lập Generate Unlimited — chỉ 0 = unlimited
+              unlimited={regenLimit <= 0}
               caption={
                 regen.scopes > 0
                   ? fill(text.regenDetail, { sets: regen.scopes, total: regen.total })

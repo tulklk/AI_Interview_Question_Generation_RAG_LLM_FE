@@ -39,23 +39,26 @@ const FALLBACK_EDITOR = {
   loading: "Loading subscription plans…",
   loadError: "Could not load the plan list.",
   subtitle:
-    "Edit price / limits. Generate: Unlimited, or N runs per H-hour window. New limits apply immediately to Active subscribers.",
+    "Edit price and AI limits. Three separate caps: (1) create set/JD window, (2) per-question regen in a set, (3) plan refine per draft. New limits apply immediately to Active subscribers; usage counters are not reset.",
   refresh: "Refresh",
   active: "Active",
   inactive: "Inactive",
   currentPrice: "Currently:",
   priceLabel: "Price / month (VND)",
-  cooldownLabel: "Generate cooldown (hours)",
-  generatePerWindowLabel: "Generate set / JD-fit / window",
-  questionRegenPerPlanLabel: "Question regen / plan (0 = unlimited)",
-  regenerateLabel: "Regenerate / draft",
+  cooldownLabel: "Generate window length",
+  generatePerWindowLabel: "Create set / JD-fit per window",
+  questionRegenPerPlanLabel: "Regen individual questions per set",
+  regenerateLabel: "Refine interview outline per draft",
   freeVisibleLabel: "Free visible % (legacy)",
   canExportLabel: "Can export Excel",
-  generateUnlimitedLabel: "Generate unlimited",
+  generateUnlimitedLabel: "Unlimited create set / JD",
   saveBtn: "Save plan",
   saveSuccess: "Saved. New limits apply immediately to Active subscribers on this plan; usage counts are unchanged.",
   saveError: "Failed to save the plan.",
-  groupQuota: "AI quotas",
+  groupQuota: "AI quotas (Studio)",
+  groupQuotaCreate: "A · Create set & JD review",
+  groupQuotaQuestionRegen: "B · Regen individual questions",
+  groupQuotaPlanRefine: "C · Refine interview outline",
   groupAccess: "Visibility & permissions",
   unlimitedBadge: "Unlimited",
   unsaved: "Unsaved changes",
@@ -65,13 +68,17 @@ const FALLBACK_EDITOR = {
   hintPrice: "Free must stay at 0. Premium requires at least 10,000.",
   freePriceMustBeZero: "The Free plan must have a price of 0 VND.",
   premiumMinPrice: "The Premium plan must cost at least 10,000 VND.",
-  hintCooldown: "Length of one generate window. Min 1 hour when Unlimited is off.",
-  hintGeneratePerWindow: "Successful question-set / JD-fit runs per window. Ignored while Unlimited is on.",
-  hintQuestionRegen: "Per-question regenerations per plan. 0 = unlimited.",
-  hintRegenerate: "Plan refine runs allowed per draft.",
+  hintCooldown: "Hours in one create-set window. Min 1 when Unlimited create is off. Ignored while Unlimited create is on.",
+  hintGeneratePerWindow:
+    "Successful create-set or JD-fit runs allowed in each window. Ignored while Unlimited create is on.",
+  hintQuestionRegen:
+    "Studio only regenerates one question at a time (not the whole set). This is the total regen count across all questions in one interview plan/set. New set → counter resets. Set 0 = unlimited. Independent of Unlimited create.",
+  hintRegenerate:
+    "How many times HR can refine the interview outline (chat / draft) in one Studio session — not question regen.",
   hintFreeVisible: "Legacy — Free practices the full set; field unused for hiding questions (BE keeps 100).",
   hintCanExport: "Allow exporting question sets to Excel.",
-  hintGenerateUnlimited: "On: unlimited generate. Off: use N runs per H-hour window below.",
+  hintGenerateUnlimited:
+    "On: unlimited create set / JD-fit. Off: use N runs per H-hour window. Does NOT affect question regen or outline refine.",
   practicePerMonthLabel: "Practice sessions per month (0 = unlimited)",
   maxSavedSessionsLabel: "Max saved history sessions (0 = unlimited)",
   fullAiFeedbackPerMonthLabel: "Detailed AI feedback sessions per month (0 = unlimited, Free plan only)",
@@ -228,6 +235,13 @@ function GroupTitle({
       <Icon size={13} />
       {children}
     </p>
+  );
+}
+
+/** SCRUM-510: tiêu đề nhóm con trong Hạn mức AI (A/B/C) — tránh nhầm Unlimited với regen câu. */
+function QuotaSubHeading({ children }: { children: React.ReactNode }) {
+  return (
+    <p className={cn("mb-2 text-[11px] font-semibold tracking-wide", portalHeading)}>{children}</p>
   );
 }
 
@@ -606,54 +620,77 @@ export function AdminPlansPage() {
                   </div>
                 </div>
 
-                {/* Hạn mức AI — chỉ HR (Studio generate / regen). askAiPerMonth vẫn giữ trong
-                    Editable/handleSave để save không làm mất field, nhưng đã ẩn khỏi UI vì
-                    tính năng Ask-AI đã bị BE gỡ vĩnh viễn (endpoint 410 Gone). */}
+                {/* SCRUM-510: 3 nhóm hạn mức riêng — tạo bộ | regen từng câu | refine outline */}
                 {isHrAudience && (
                 <div className="px-5 py-4">
                   <GroupTitle icon={Zap}>{ed.groupQuota}</GroupTitle>
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <NumberField
-                      icon={Wand2}
-                      label={ed.generatePerWindowLabel}
-                      hint={ed.hintGeneratePerWindow}
-                      unit={ed.unitTimes}
-                      value={getRaw(plan.id, "generatePerWindow", d.generatePerWindow)}
-                      badge={d.generateUnlimited ? ed.unlimitedBadge : undefined}
-                      disabled={d.generateUnlimited}
-                      onChange={(raw) => handleNumChange(plan.id, "generatePerWindow", raw)}
-                      onBlur={() => handleNumBlur(plan.id, "generatePerWindow")}
-                    />
-                    <NumberField
-                      icon={RotateCcw}
-                      label={ed.questionRegenPerPlanLabel}
-                      hint={ed.hintQuestionRegen}
-                      unit={ed.unitTimes}
-                      value={getRaw(plan.id, "questionRegenPerPlan", d.questionRegenPerPlan)}
-                      badge={d.questionRegenPerPlan === 0 ? ed.unlimitedBadge : undefined}
-                      onChange={(raw) => handleNumChange(plan.id, "questionRegenPerPlan", raw)}
-                      onBlur={() => handleNumBlur(plan.id, "questionRegenPerPlan")}
-                    />
-                    <NumberField
-                      icon={Clock3}
-                      label={ed.cooldownLabel}
-                      hint={ed.hintCooldown}
-                      unit={ed.unitHours}
-                      value={getRaw(plan.id, "generateCooldownHours", d.generateCooldownHours)}
-                      badge={d.generateUnlimited ? ed.unlimitedBadge : undefined}
-                      disabled={d.generateUnlimited}
-                      onChange={(raw) => handleNumChange(plan.id, "generateCooldownHours", raw)}
-                      onBlur={() => handleNumBlur(plan.id, "generateCooldownHours")}
-                    />
-                    <NumberField
-                      icon={Undo2}
-                      label={ed.regenerateLabel}
-                      hint={ed.hintRegenerate}
-                      unit={ed.unitTimes}
-                      value={getRaw(plan.id, "planRegeneratePerDraft", d.planRegeneratePerDraft)}
-                      onChange={(raw) => handleNumChange(plan.id, "planRegeneratePerDraft", raw)}
-                      onBlur={() => handleNumBlur(plan.id, "planRegeneratePerDraft")}
-                    />
+
+                  <div className="space-y-4">
+                    <div>
+                      <QuotaSubHeading>{ed.groupQuotaCreate}</QuotaSubHeading>
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <ToggleField
+                          icon={InfinityIcon}
+                          label={ed.generateUnlimitedLabel}
+                          hint={ed.hintGenerateUnlimited}
+                          checked={d.generateUnlimited}
+                          onChange={(next) => handleGenerateUnlimitedChange(plan.id, next)}
+                        />
+                        <NumberField
+                          icon={Wand2}
+                          label={ed.generatePerWindowLabel}
+                          hint={ed.hintGeneratePerWindow}
+                          unit={ed.unitTimes}
+                          value={getRaw(plan.id, "generatePerWindow", d.generatePerWindow)}
+                          badge={d.generateUnlimited ? ed.unlimitedBadge : undefined}
+                          disabled={d.generateUnlimited}
+                          onChange={(raw) => handleNumChange(plan.id, "generatePerWindow", raw)}
+                          onBlur={() => handleNumBlur(plan.id, "generatePerWindow")}
+                        />
+                        <NumberField
+                          icon={Clock3}
+                          label={ed.cooldownLabel}
+                          hint={ed.hintCooldown}
+                          unit={ed.unitHours}
+                          value={getRaw(plan.id, "generateCooldownHours", d.generateCooldownHours)}
+                          badge={d.generateUnlimited ? ed.unlimitedBadge : undefined}
+                          disabled={d.generateUnlimited}
+                          onChange={(raw) => handleNumChange(plan.id, "generateCooldownHours", raw)}
+                          onBlur={() => handleNumBlur(plan.id, "generateCooldownHours")}
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <QuotaSubHeading>{ed.groupQuotaQuestionRegen}</QuotaSubHeading>
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <NumberField
+                          icon={RotateCcw}
+                          label={ed.questionRegenPerPlanLabel}
+                          hint={ed.hintQuestionRegen}
+                          unit={ed.unitTimes}
+                          value={getRaw(plan.id, "questionRegenPerPlan", d.questionRegenPerPlan)}
+                          badge={d.questionRegenPerPlan === 0 ? ed.unlimitedBadge : undefined}
+                          onChange={(raw) => handleNumChange(plan.id, "questionRegenPerPlan", raw)}
+                          onBlur={() => handleNumBlur(plan.id, "questionRegenPerPlan")}
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <QuotaSubHeading>{ed.groupQuotaPlanRefine}</QuotaSubHeading>
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <NumberField
+                          icon={Undo2}
+                          label={ed.regenerateLabel}
+                          hint={ed.hintRegenerate}
+                          unit={ed.unitTimes}
+                          value={getRaw(plan.id, "planRegeneratePerDraft", d.planRegeneratePerDraft)}
+                          onChange={(raw) => handleNumChange(plan.id, "planRegeneratePerDraft", raw)}
+                          onBlur={() => handleNumBlur(plan.id, "planRegeneratePerDraft")}
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
                 )}
@@ -704,7 +741,7 @@ export function AdminPlansPage() {
                   </div>
                 )}
 
-                {/* Quyền — HR: export + unlimited generate */}
+                {/* Quyền — HR: export (Unlimited create đã nằm nhóm A) */}
                 {isHrAudience && (
                 <div className={cn("border-t px-5 py-4", portalDivider)}>
                   <GroupTitle icon={Eye}>{ed.groupAccess}</GroupTitle>
@@ -715,13 +752,6 @@ export function AdminPlansPage() {
                       hint={ed.hintCanExport}
                       checked={d.canExport}
                       onChange={(next) => patchDraft(plan.id, { canExport: next })}
-                    />
-                    <ToggleField
-                      icon={InfinityIcon}
-                      label={ed.generateUnlimitedLabel}
-                      hint={ed.hintGenerateUnlimited}
-                      checked={d.generateUnlimited}
-                      onChange={(next) => handleGenerateUnlimitedChange(plan.id, next)}
                     />
                   </div>
                 </div>
