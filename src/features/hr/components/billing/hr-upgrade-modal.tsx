@@ -53,7 +53,7 @@ export function HrUpgradeModal({ onClose }: Props) {
     studio?: string;
     completeWindow?: string;
     questionRegen?: string;
-    planRegen?: string;
+    questionRegenUnlimited?: string;
     publish?: string;
     exportExcel?: string;
     unlimitedGenerate?: string;
@@ -64,7 +64,7 @@ export function HrUpgradeModal({ onClose }: Props) {
     studio: rowTpl.studio ?? "Studio: tạo plan & bộ câu hỏi từ JD",
     completeWindow: rowTpl.completeWindow ?? "Hoàn thành {{count}} bộ / cooldown {{hours}} giờ",
     questionRegen: rowTpl.questionRegen ?? "Regen câu hỏi ≤ {{count}} lần / bộ",
-    planRegen: rowTpl.planRegen ?? "Regenerate plan tối đa {{count}} lần / draft",
+    questionRegenUnlimited: rowTpl.questionRegenUnlimited ?? "Regen câu hỏi không giới hạn",
     publish: rowTpl.publish ?? "Publish bộ câu hỏi lên Marketplace",
     exportExcel: rowTpl.exportExcel ?? "Xuất Excel",
     unlimitedGenerate: rowTpl.unlimitedGenerate ?? "Generate không giới hạn",

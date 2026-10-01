@@ -96,7 +96,15 @@ export function JdFitReviewPanel({
     // SCRUM-445: đánh giá JD = 1 lượt HrGenerateSet (cùng túi tạo plan / regen).
     if (!canGenerateNow) {
       const timeStr = cooldownEndsAt
-        ? cooldownEndsAt.toLocaleString(lang === "vi" ? "vi-VN" : "en-US")
+        ? cooldownEndsAt.toLocaleString(lang === "vi" ? "vi-VN" : "en-US", {
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit",
+            hour12: false,
+          })
         : "";
       const body = hs.quotaExceededBody.replace("{{time}}", timeStr).replace(/<\/?strong>/g, "");
       addToast("error", `${hs.quotaExceededTitle}. ${body}`);

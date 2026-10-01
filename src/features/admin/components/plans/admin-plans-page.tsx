@@ -72,14 +72,20 @@ const FALLBACK_EDITOR = {
   hintFreeVisible: "Legacy — Free practices the full set; field unused for hiding questions (BE keeps 100).",
   hintCanExport: "Allow exporting question sets to Excel.",
   hintGenerateUnlimited: "On: unlimited generate. Off: use N runs per H-hour window below.",
-  practicePerMonthLabel: "Practice sessions per month (0 = unlimited)",
-  maxSavedSessionsLabel: "Max saved history sessions (0 = unlimited)",
-  fullAiFeedbackPerMonthLabel: "Detailed AI feedback sessions per month (0 = unlimited, Free plan only)",
-  hintPracticePerMonth: "Applies to the Free plan — how many new practice sessions a candidate can start per billing period (usually one month).",
-  hintMaxSavedSessions: "Limits how many completed practice sessions a candidate can keep in their history. The oldest ones are automatically hidden once this limit is exceeded.",
-  hintFullAiFeedback: "Applies to the Free plan — the first N completed sessions each period get full, detailed AI feedback; sessions after that only get a summary. Set to 0 for always-detailed, unlimited feedback. Premium always gets detailed feedback regardless of this number.",
+  practicePerMonthLabel: "Practice sessions per month",
+  maxSavedSessionsLabel: "Max saved history sessions",
+  fullAiFeedbackPerMonthLabel: "Detailed AI feedback sessions per month (Free plan only)",
+  hintPracticePerMonth: "Free plan only — new practice sessions allowed per month.",
+  hintMaxSavedSessions: "Oldest sessions are hidden once this limit is exceeded.",
+  hintFullAiFeedback: "Free plan only — first N sessions each period get detailed feedback, the rest get a summary. Premium always gets detailed feedback.",
+  practicePerMonthUnlimitedLabel: "Unlimited practice",
+  hintPracticePerMonthUnlimited: "On: unlimited practice. Off: use the count above.",
+  maxSavedSessionsUnlimitedLabel: "Unlimited history",
+  hintMaxSavedSessionsUnlimited: "On: keep all history. Off: use the count above.",
+  fullAiFeedbackUnlimitedLabel: "Always detailed feedback",
+  hintFullAiFeedbackUnlimited: "On: always detailed. Off: use the count above.",
   canPersistHrRecommendationLabel: "Allow sending results as a recommendation to HR (Hiring sets only)",
-  hintCanPersistHrRecommendation: "Only applies to completed Hiring-assessment sets (not regular Practice sets). When on: a strong score on a Hiring set can be turned into a recommendation sent to the hiring company's HR team. When off: no recommendations are created.",
+  hintCanPersistHrRecommendation: "Hiring sets only (not Practice). On: strong scores can be sent as a recommendation to HR.",
   groupCandidate: "Candidate practice limits",
   unitTimes: "times",
   unitHours: "hours",
@@ -438,6 +444,20 @@ export function AdminPlansPage() {
     }));
   }
 
+  /** Các field Candidate dùng quy ước "0 = không giới hạn" (không có boolean riêng như
+   * generateUnlimited) — toggle này chỉ là lớp UI set/clear giá trị 0 giúp admin khỏi
+   * phải tự gõ số 0. Bật → set 0; tắt → trả về defaultValue để không kẹt ở 0. */
+  function handleCandidateUnlimitedToggle(
+    planId: string,
+    field: "practicePerMonth" | "maxSavedSessions" | "fullAiFeedbackPerMonth",
+    next: boolean,
+    defaultValue: number
+  ) {
+    const value = next ? 0 : defaultValue;
+    patchDraft(planId, { [field]: value } as Partial<Editable>);
+    setRawValues((prev) => ({ ...prev, [numKey(planId, field)]: String(value) }));
+  }
+
   /** Trả draft về đúng giá trị đang lưu trên server. */
   function handleReset(plan: SubscriptionPlan) {
     const e = toEditable(plan);
@@ -645,15 +665,14 @@ export function AdminPlansPage() {
                       onChange={(raw) => handleNumChange(plan.id, "generateCooldownHours", raw)}
                       onBlur={() => handleNumBlur(plan.id, "generateCooldownHours")}
                     />
-                    <NumberField
-                      icon={Undo2}
-                      label={ed.regenerateLabel}
-                      hint={ed.hintRegenerate}
-                      unit={ed.unitTimes}
-                      value={getRaw(plan.id, "planRegeneratePerDraft", d.planRegeneratePerDraft)}
-                      onChange={(raw) => handleNumChange(plan.id, "planRegeneratePerDraft", raw)}
-                      onBlur={() => handleNumBlur(plan.id, "planRegeneratePerDraft")}
-                    />
+                    {/* planRegeneratePerDraft ẩn khỏi UI — field này chỉ enforce trên API
+                        /refine (tab "AI Assistant" trong Studio), mà tab đó đang bị ẩn
+                        (hidden: true trong chat-panel.tsx). Đường mà HR thực sự dùng để
+                        sửa plan (tab "Plan" → apply-settings) không hề đọc field này, nên
+                        set bao nhiêu ở đây cũng không có tác dụng trên sản phẩm thật.
+                        Giữ nguyên trong Editable/handleSave để save không làm mất field,
+                        chỉ ẩn khỏi UI cho tới khi AI Assistant được bật lại hoặc apply-settings
+                        được enforce. */}
                   </div>
                 </div>
                 )}
@@ -670,8 +689,16 @@ export function AdminPlansPage() {
                         unit={ed.unitTimes}
                         value={getRaw(plan.id, "practicePerMonth", d.practicePerMonth)}
                         badge={d.practicePerMonth === 0 ? ed.unlimitedBadge : undefined}
+                        disabled={d.practicePerMonth === 0}
                         onChange={(raw) => handleNumChange(plan.id, "practicePerMonth", raw)}
                         onBlur={() => handleNumBlur(plan.id, "practicePerMonth")}
+                      />
+                      <ToggleField
+                        icon={InfinityIcon}
+                        label={ed.practicePerMonthUnlimitedLabel}
+                        hint={ed.hintPracticePerMonthUnlimited}
+                        checked={d.practicePerMonth === 0}
+                        onChange={(next) => handleCandidateUnlimitedToggle(plan.id, "practicePerMonth", next, 5)}
                       />
                       <NumberField
                         icon={RotateCcw}
@@ -680,8 +707,16 @@ export function AdminPlansPage() {
                         unit={ed.unitTimes}
                         value={getRaw(plan.id, "maxSavedSessions", d.maxSavedSessions)}
                         badge={d.maxSavedSessions === 0 ? ed.unlimitedBadge : undefined}
+                        disabled={d.maxSavedSessions === 0}
                         onChange={(raw) => handleNumChange(plan.id, "maxSavedSessions", raw)}
                         onBlur={() => handleNumBlur(plan.id, "maxSavedSessions")}
+                      />
+                      <ToggleField
+                        icon={InfinityIcon}
+                        label={ed.maxSavedSessionsUnlimitedLabel}
+                        hint={ed.hintMaxSavedSessionsUnlimited}
+                        checked={d.maxSavedSessions === 0}
+                        onChange={(next) => handleCandidateUnlimitedToggle(plan.id, "maxSavedSessions", next, 10)}
                       />
                       <NumberField
                         icon={MessageCircle}
@@ -690,8 +725,16 @@ export function AdminPlansPage() {
                         unit={ed.unitTimes}
                         value={getRaw(plan.id, "fullAiFeedbackPerMonth", d.fullAiFeedbackPerMonth)}
                         badge={d.fullAiFeedbackPerMonth === 0 ? ed.unlimitedBadge : undefined}
+                        disabled={d.fullAiFeedbackPerMonth === 0}
                         onChange={(raw) => handleNumChange(plan.id, "fullAiFeedbackPerMonth", raw)}
                         onBlur={() => handleNumBlur(plan.id, "fullAiFeedbackPerMonth")}
+                      />
+                      <ToggleField
+                        icon={InfinityIcon}
+                        label={ed.fullAiFeedbackUnlimitedLabel}
+                        hint={ed.hintFullAiFeedbackUnlimited}
+                        checked={d.fullAiFeedbackPerMonth === 0}
+                        onChange={(next) => handleCandidateUnlimitedToggle(plan.id, "fullAiFeedbackPerMonth", next, 3)}
                       />
                       <ToggleField
                         icon={Send}

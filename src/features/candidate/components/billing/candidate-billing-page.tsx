@@ -277,6 +277,9 @@ export function CandidateBillingPage() {
   const isPremium = subscription?.planType === "PREMIUM";
 
   // ── Quota items ──
+  // `active` = trạng thái "đầy/xanh" thật của field đó (không giới hạn / đã mở / nâng cao),
+  // dùng để tô thanh progress — tránh suy theo isPremium vì giờ Free cũng có thể được
+  // Admin mở từng field riêng lẻ (unlimited, canPersistHrRecommendation, aiFeedback…).
   const quotaItems = usage ? [
     {
       icon: BookOpen,
@@ -284,6 +287,7 @@ export function CandidateBillingPage() {
       limited: !isPremium,
       used: usage.practiceUsed,
       limit: usage.practiceLimit,
+      active: usage.practiceLimit === null,
     },
     {
       icon: History,
@@ -291,23 +295,27 @@ export function CandidateBillingPage() {
       limited: !isPremium,
       used: usage.practiceHistoryUsed,
       limit: usage.practiceHistoryLimit,
+      active: usage.practiceHistoryLimit === null,
     },
     {
       icon: Sparkles,
       label: b.aiFeedbackLabel,
       level: usage.aiFeedbackLevel === "ADVANCED" ? b.advancedLevel : b.basicLevel,
       isPremiumFeature: !isPremium,
+      active: usage.aiFeedbackLevel === "ADVANCED",
     },
     {
       icon: BarChart2,
       label: b.questionAccessLabel,
       locked: false,
+      active: true,
     },
     {
       icon: Send,
       label: b.scorecardLabel,
       locked: !usage.canSendScorecardToHR,
       caption: b.scorecardHint,
+      active: usage.canSendScorecardToHR,
     },
   ] : [];
 
@@ -390,11 +398,28 @@ export function CandidateBillingPage() {
             {!isPremium && usage && (
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mt-1">
                 {[
-                  { label: b.practiceAttemptsLabel, value: `${usage.practiceUsed}/${usage.practiceLimit}` },
-                  { label: b.practiceHistoryLabel, value: `${usage.practiceHistoryUsed}/${usage.practiceHistoryLimit}` },
-                  { label: b.aiFeedbackLabel, value: b.basicLevel },
+                  {
+                    label: b.practiceAttemptsLabel,
+                    value: usage.practiceLimit === null
+                      ? `${usage.practiceUsed} · ${b.unlimitedLabel}`
+                      : `${usage.practiceUsed}/${usage.practiceLimit}`,
+                  },
+                  {
+                    label: b.practiceHistoryLabel,
+                    value: usage.practiceHistoryLimit === null
+                      ? `${usage.practiceHistoryUsed} · ${b.unlimitedLabel}`
+                      : `${usage.practiceHistoryUsed}/${usage.practiceHistoryLimit}`,
+                  },
+                  {
+                    label: b.aiFeedbackLabel,
+                    value: usage.aiFeedbackLevel === "ADVANCED" ? b.advancedLevel : b.basicLevel,
+                  },
                   { label: b.questionAccessLabel, value: b.questionAccessFullValue },
-                  { label: b.scorecardLabel, value: b.lockedStatus, locked: true },
+                  {
+                    label: b.scorecardLabel,
+                    value: usage.canSendScorecardToHR ? b.unlockedStatus : b.lockedStatus,
+                    locked: !usage.canSendScorecardToHR,
+                  },
                 ].map((item) => (
                   <div key={item.label} className="rounded-lg bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700 p-3">
                     <p className={cn("text-[10px] font-medium mb-1 leading-tight", portalSubtext)}>{item.label}</p>
@@ -619,7 +644,11 @@ export function CandidateBillingPage() {
                         {item.locked ? b.lockedStatus : b.unlockedStatus}
                       </span>
                     ) : null}
-                    {isPremium && item.limited !== undefined && (
+                    {/* limit === null nghĩa là "không giới hạn" — có thể do Premium, hoặc
+                        do Admin đã set field này = 0 (quy ước không giới hạn) ngay cả trên
+                        gói Free. Check thẳng theo limit thật, không suy ra từ isPremium,
+                        tránh bug hiện "null" khi Free được admin mở không giới hạn. */}
+                    {item.limited && item.limit === null && (
                       <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 px-2 py-0.5 rounded-md">
                         {b.unlimitedLabel}
                       </span>
@@ -631,7 +660,12 @@ export function CandidateBillingPage() {
                     <div className="h-1.5 rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden">
                       <div className={cn(
                         "h-full rounded-full",
-                        isPremium ? "bg-primary w-full" : item.locked ? "bg-gray-200 dark:bg-gray-700 w-0" : "bg-gray-300 dark:bg-gray-600 w-1/3"
+                        // active = trạng thái thật (không giới hạn / đã mở / nâng cao) —
+                        // tô xanh đầy bất kể Free hay Premium, thay vì chỉ dựa isPremium.
+                        item.active ? "bg-emerald-500 w-full"
+                        : isPremium ? "bg-primary w-full"
+                        : item.locked ? "bg-gray-200 dark:bg-gray-700 w-0"
+                        : "bg-gray-300 dark:bg-gray-600 w-1/3"
                       )} />
                     </div>
                   )}

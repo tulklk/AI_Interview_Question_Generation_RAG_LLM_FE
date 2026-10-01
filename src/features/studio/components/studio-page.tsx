@@ -532,8 +532,18 @@ export function StudioPage() {
   }, [studio.isSavingJd, studio.jdContent, studio.jdSummary, switchMobileTab]);
 
   const locale = lang === "vi" ? "vi-VN" : "en-US";
+  // Format tường minh dd/MM/yyyy + 24h — không dựa vào default locale của trình duyệt
+  // (có môi trường fallback sai thành M/d/yyyy + AM/PM dù locale là vi-VN).
   const cooldownTimeStr = cooldownEndsAt
-    ? cooldownEndsAt.toLocaleString(locale)
+    ? cooldownEndsAt.toLocaleString(locale, {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: false,
+      })
     : "";
   // SCRUM-445: sinh câu hỏi Free trừ 1/24h — cần còn lượt.
   const canGenerate = useMemo(
