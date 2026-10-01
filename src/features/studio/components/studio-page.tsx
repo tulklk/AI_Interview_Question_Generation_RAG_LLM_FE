@@ -1234,12 +1234,19 @@ export function StudioPage() {
                   "@/features/subscription/services/subscription.service"
                 );
                 const code = getSubscriptionErrorCode(err);
-                if (code === "COOLDOWN_ACTIVE" || code === "QUOTA_EXCEEDED") {
+                // Giới hạn gói Free / Premium — mở dialog nâng cấp; luôn ném message rõ (không để Axios "403").
+                if (
+                  code === "COOLDOWN_ACTIVE" ||
+                  code === "QUOTA_EXCEEDED" ||
+                  code === "QUESTION_REGEN_LIMIT" ||
+                  code === "PLAN_REGENERATE_LIMIT" ||
+                  code === "FEATURE_REQUIRES_PREMIUM"
+                ) {
                   quotaDialogTriggeredRef.current = true;
                   setQuotaDialogOpen(true);
                   void refreshSubscription();
                 }
-                throw err instanceof Error ? err : new Error(extractErrorMessage(err, lang));
+                throw new Error(extractErrorMessage(err, lang) || s.chat.regenFailedShort);
               }
 
               setRegeneratingQuestionIds((prev) =>
