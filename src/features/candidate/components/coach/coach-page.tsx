@@ -142,7 +142,11 @@ export function CoachPage() {
           errorMessage={w.error || w.job?.errorMessage}
           kbSource={w.job?.kbSource}
           onTake={goTakeTest}
-          onRetry={() => void w.runDiagnostic()}
+          onRetry={() =>
+            (w.job?.purpose ?? "").toLowerCase().includes("screen")
+              ? void w.startScreening()
+              : void w.runDiagnostic()
+          }
           onCancel={() => void w.cancelJob()}
           onStart={() => void w.runDiagnostic()}
           cancelling={w.cancelling}
@@ -179,7 +183,27 @@ export function CoachPage() {
               report={w.report}
               promotingNextLevel={w.promotingNextLevel}
               onPromoteNextLevel={() => w.promoteToNextLevel()}
+              screeningPreview={w.screeningPreview}
+              startingScreening={
+                w.submitting ||
+                ((w.busy || w.ready) && (w.job?.purpose ?? "").toLowerCase().includes("screen"))
+              }
+              onStartScreening={() => void w.startScreening()}
             />
+            {((w.busy || w.ready || w.failed) &&
+              (w.job?.purpose ?? "").toLowerCase().includes("screen")) && (
+              <CoachStatusCard
+                status={statusKind}
+                purposeLabel={w.purposeLabel}
+                errorMessage={w.error || w.job?.errorMessage}
+                kbSource={w.job?.kbSource}
+                onTake={goTakeTest}
+                onRetry={() => void w.startScreening()}
+                onCancel={() => void w.cancelJob()}
+                cancelling={w.cancelling}
+                startDisabled={w.busy}
+              />
+            )}
             <div className="flex flex-wrap gap-2">
               <button
                 type="button"

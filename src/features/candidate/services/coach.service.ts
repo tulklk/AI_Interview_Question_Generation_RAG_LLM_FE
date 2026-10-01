@@ -100,6 +100,20 @@ export async function startCvDiagnostic(): Promise<CoachJob> {
   return mapJob(extractData(res.data));
 }
 
+/** SCRUM-506: preview skill CV chưa đo sau bài chẩn đoán. */
+export async function getScreeningPreview(): Promise<CoachScreeningPreview> {
+  const res = await apiClient.get("/api/candidate/coach/screening/preview");
+  const root = asRecord(res.data);
+  const nested = asRecord(root?.data) ?? asRecord(root?.Data);
+  return mapScreeningPreview(nested ?? extractData(res.data) ?? root);
+}
+
+/** SCRUM-506: sinh bài sàng lọc ngắn — không đụng level. */
+export async function startCoachScreening(): Promise<CoachJob> {
+  const res = await apiClient.post("/api/candidate/coach/screening", null, { timeout: 180_000 });
+  return mapJob(extractData(res.data));
+}
+
 export async function getCoachJob(id: string): Promise<CoachJob> {
   const res = await apiClient.get(`/api/candidate/coach/jobs/${id}`);
   return mapJob(extractData(res.data));
@@ -294,7 +308,21 @@ export interface CoachRoadmap {
   displayOrder?: number;
   /** SCRUM-488: điểm phải > giá trị này mới qua topic */
   drillPassScoreExclusiveMin?: number;
+  /** SCRUM-506: screening = tín hiệu 1 câu, cần kiểm tra thêm */
+  confidence?: string | null;
   items: CoachRoadmapItem[];
+}
+
+/** SCRUM-506: preview bài sàng lọc skill CV chưa đo. */
+export interface CoachScreeningPreview {
+  enabled: boolean;
+  available: boolean;
+  questionCount: number;
+  questionsPerSkill: number;
+  skills: string[];
+  measuredSkills: string[];
+  remainingUnmeasured: number;
+  message?: string | null;
 }
 
 export type CoachRoadmapDraftItemPatch = {
@@ -544,7 +572,33 @@ function mapRoadmap(src: Record<string, unknown>): CoachRoadmap {
     displayOrder: pickNumber(src, "displayOrder", "DisplayOrder") ?? 0,
     drillPassScoreExclusiveMin:
       pickNumber(src, "drillPassScoreExclusiveMin", "DrillPassScoreExclusiveMin") ?? 70,
+    confidence: pickString(src, "confidence", "Confidence") || null,
     items,
+  };
+}
+
+function mapScreeningPreview(src: Record<string, unknown> | null): CoachScreeningPreview {
+  if (!src) {
+    return {
+      enabled: false,
+      available: false,
+      questionCount: 0,
+      questionsPerSkill: 1,
+      skills: [],
+      measuredSkills: [],
+      remainingUnmeasured: 0,
+      message: null,
+    };
+  }
+  return {
+    enabled: pickBool(src, "enabled", "Enabled"),
+    available: pickBool(src, "available", "Available"),
+    questionCount: pickNumber(src, "questionCount", "QuestionCount") ?? 0,
+    questionsPerSkill: pickNumber(src, "questionsPerSkill", "QuestionsPerSkill") ?? 1,
+    skills: pickStringList(src, "skills", "Skills"),
+    measuredSkills: pickStringList(src, "measuredSkills", "MeasuredSkills"),
+    remainingUnmeasured: pickNumber(src, "remainingUnmeasured", "RemainingUnmeasured") ?? 0,
+    message: pickString(src, "message", "Message") || null,
   };
 }
 

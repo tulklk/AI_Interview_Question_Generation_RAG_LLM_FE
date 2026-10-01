@@ -172,6 +172,11 @@ export function CoachRoadmapsPanel({
                         {p.roadmapKbInferredBadge}
                       </span>
                     )}
+                    {(roadmap.confidence ?? "").toLowerCase() === "screening" && (
+                      <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
+                        {p.roadmapScreeningBadge}
+                      </span>
+                    )}
                     {roadmap.kind === "advanced" && (
                       <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
                         {p.advancedRoadmapsTitle}

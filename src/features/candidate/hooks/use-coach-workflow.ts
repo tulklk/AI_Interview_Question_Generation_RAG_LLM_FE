@@ -21,6 +21,8 @@ import {
   startCvDiagnostic,
   startRoadmapItemDrill,
   startRoadmapReassessment,
+  startCoachScreening,
+  getScreeningPreview,
   updateCoachContext,
   updateCoachRoadmapDraft,
   updateCoachSkills,
@@ -29,6 +31,7 @@ import {
   type CoachContext,
   type CoachJob,
   type CoachRoadmap,
+  type CoachScreeningPreview,
   type UpdateCoachContextPayload,
 } from "@/features/candidate/services/coach.service";
 import { registerCoachJob, writeCoachJobEntry } from "@/features/candidate/utils/coach-job-storage";
@@ -93,6 +96,7 @@ export function useCoachWorkflow() {
   const [selectedStep, setSelectedStep] = useState<CoachStepIndex | null>(null);
   const [rescoring, setRescoring] = useState(false);
   const [rescoreError, setRescoreError] = useState<string | null>(null);
+  const [screeningPreview, setScreeningPreview] = useState<CoachScreeningPreview | null>(null);
 
   // Dashboard deep-link: /candidate/coach?step=1..7
   useEffect(() => {
@@ -285,6 +289,15 @@ export function useCoachWorkflow() {
       return;
     }
     await enqueueJob(() => startCvDiagnostic());
+  }
+
+  /** SCRUM-506: bài sàng lọc từ báo cáo — giữ step 5, không đụng wizard. */
+  async function startScreening() {
+    if (!isPremium) {
+      setUpgradeOpen(true);
+      return;
+    }
+    await enqueueJob(() => startCoachScreening(), { stayOnStep: 5 });
   }
 
   /** SCRUM-461: READY → xác nhận lên level kế → PUT context + diagnostic mới. */
@@ -667,12 +680,33 @@ export function useCoachWorkflow() {
     }
   }, [hasScoredReport]);
 
+  // SCRUM-506: preview sàng lọc sau khi có báo cáo chẩn đoán.
+  useEffect(() => {
+    if (!hasScoredReport) {
+      setScreeningPreview(null);
+      return;
+    }
+    let cancelled = false;
+    getScreeningPreview()
+      .then((next) => {
+        if (!cancelled) setScreeningPreview(next);
+      })
+      .catch(() => {
+        if (!cancelled) setScreeningPreview(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [hasScoredReport, roadmaps.length]);
+
   const purposeLabel =
     (job?.purpose ?? "").toLowerCase().includes("reassess")
       ? p.purposeReassessment
-      : (job?.purpose ?? "").toLowerCase().includes("drill")
-        ? p.purposeDrill
-        : p.purposeDiagnostic;
+      : (job?.purpose ?? "").toLowerCase().includes("screen")
+        ? p.purposeScreening
+        : (job?.purpose ?? "").toLowerCase().includes("drill")
+          ? p.purposeDrill
+          : p.purposeDiagnostic;
 
   const diagnosticDisabled =
     (hasCv === false && !context?.hasCv) || !context?.contextConfirmed || !canStartCoachDiagnostic(context);
@@ -713,6 +747,7 @@ export function useCoachWorkflow() {
     hasDraftRoadmap,
     rescoring,
     rescoreError,
+    screeningPreview,
     maxUnlockedStep,
     minSelectableStep,
     activeStep,
@@ -724,6 +759,7 @@ export function useCoachWorkflow() {
     handleUploadCv,
     handleContinueWithExistingCv,
     runDiagnostic,
+    startScreening,
     promoteToNextLevel,
     cancelJob,
     startNewRun,

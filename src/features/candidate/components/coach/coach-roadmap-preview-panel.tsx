@@ -366,6 +366,11 @@ export function CoachRoadmapPreviewPanel({
                     >
                       {outside ? p.roadmapSkillOutsideCv : p.roadmapSkillFromCv}
                     </span>
+                    {(roadmap.confidence ?? "").toLowerCase() === "screening" && (
+                      <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
+                        {p.roadmapScreeningBadge}
+                      </span>
+                    )}
                   </div>
                   <p className={cn("mt-0.5 text-[11px]", portalSubtextAlt)}>
                     {fillTemplate(p.roadmapPreviewTopicCount, { count: String(topicCount) })}
