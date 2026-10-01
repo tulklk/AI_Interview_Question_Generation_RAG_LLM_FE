@@ -2944,7 +2944,9 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
     skillsCatalogRemaining: "{{count}} left",
     skillsCountLabel: "{{count}} / {{max}} technologies",
     skillsDuplicate: "This technology is already on your list (including from the CV) — duplicates are not added.",
-    skillsMaxReached: "Maximum of 40 technologies reached.",
+    skillsMaxReached: "You already have 40 technologies — remove some if you want to add others.",
+    skillsMaxBanner:
+      "Limit of 40 technologies/skills reached. The dropdown is locked — remove chips above before adding more.",
     // SCRUM-491: hybrid validate + soft warn (kept for other surfaces)
     skillsFormatEmpty: "Choose a technology from the list before adding.",
     skillsFormatTooShort: "Technology name needs at least 2 characters.",

@@ -2945,7 +2945,9 @@ Yêu cầu:
     skillsCatalogRemaining: "Còn {{count}} lựa chọn",
     skillsCountLabel: "{{count}} / {{max}} công nghệ",
     skillsDuplicate: "Công nghệ này đã có trong danh sách (kể cả từ CV) — không thêm trùng.",
-    skillsMaxReached: "Đã đạt tối đa 40 công nghệ.",
+    skillsMaxReached: "Đã đủ 40 công nghệ — không thể thêm nữa. Hãy xóa bớt nếu muốn thêm công nghệ khác.",
+    skillsMaxBanner:
+      "Đã đạt giới hạn 40 công nghệ/kỹ năng. Dropdown bị khóa — xóa bớt chip bên trên rồi mới thêm được.",
     // SCRUM-491: hybrid validate + soft warn (giữ key cho chỗ khác nếu còn dùng)
     skillsFormatEmpty: "Chọn công nghệ từ danh sách trước khi thêm.",
     skillsFormatTooShort: "Tên công nghệ cần ít nhất 2 ký tự.",

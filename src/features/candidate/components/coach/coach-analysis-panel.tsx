@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Loader2, Plus, ScanSearch, X } from "lucide-react";
+import { AlertTriangle, Loader2, Plus, ScanSearch, X } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { portalHeadingAlt, portalSubtextAlt } from "@/shared/utils/portal-ui";
 import { useLanguage } from "@/shared/providers/language-context";
@@ -178,13 +178,33 @@ export function CoachAnalysisPanel({
         <div className="space-y-2">
           <div className="flex items-baseline justify-between gap-2">
             <p className={cn("text-[11px] font-semibold", portalHeadingAlt)}>{p.skillsEditLabel}</p>
-            <p className={cn("text-[11px] tabular-nums", portalSubtextAlt)}>
+            <p
+              className={cn(
+                "text-[11px] tabular-nums font-semibold",
+                atMax ? "text-amber-700 dark:text-amber-300" : portalSubtextAlt
+              )}
+            >
               {p.skillsCountLabel
                 .replace("{{count}}", String(skills.length))
                 .replace("{{max}}", String(MAX_SKILLS))}
             </p>
           </div>
           <p className={cn("text-[11px]", portalSubtextAlt)}>{p.skillsEditHint}</p>
+
+          {atMax && (
+            <div
+              role="status"
+              className={cn(
+                "flex gap-2 rounded-lg border border-amber-300/90 bg-amber-50 px-3 py-2",
+                "text-[12px] font-medium text-amber-900",
+                "dark:border-amber-700/60 dark:bg-amber-950/40 dark:text-amber-100"
+              )}
+            >
+              <AlertTriangle size={14} className="mt-0.5 shrink-0" aria-hidden />
+              <span>{p.skillsMaxBanner}</span>
+            </div>
+          )}
+
           <div className="flex flex-wrap gap-1.5 min-h-[28px]">
             {skills.map((s) => {
               const si = getSkillIcon(s);
@@ -228,7 +248,7 @@ export function CoachAnalysisPanel({
                   }
                 }}
                 disabled={savingSkills || atMax || catalogExhausted}
-                className={cn(fieldCls, "flex-1")}
+                className={cn(fieldCls, "flex-1", atMax && "border-amber-300 dark:border-amber-700")}
                 aria-label={p.skillsAddPlaceholder}
               >
                 <option value="">
@@ -248,6 +268,7 @@ export function CoachAnalysisPanel({
                 type="button"
                 disabled={!canAdd}
                 onClick={() => addFromCatalog()}
+                title={atMax ? p.skillsMaxReached : undefined}
                 className="inline-flex items-center gap-1 h-9 px-3 rounded-lg text-[12px] font-semibold border border-primary/30 text-primary hover:bg-primary/5 disabled:opacity-50"
               >
                 <Plus size={14} />
@@ -255,17 +276,20 @@ export function CoachAnalysisPanel({
               </button>
             </div>
             <p className={cn("text-[11px]", portalSubtextAlt)}>
-              {p.skillsCatalogHint}
-              {!catalogExhausted && !atMax
-                ? ` · ${p.skillsCatalogRemaining.replace("{{count}}", String(catalogOptions.length))}`
-                : null}
+              {atMax
+                ? p.skillsMaxReached
+                : `${p.skillsCatalogHint}${
+                    !catalogExhausted
+                      ? ` · ${p.skillsCatalogRemaining.replace("{{count}}", String(catalogOptions.length))}`
+                      : ""
+                  }`}
             </p>
           </label>
 
           {feedback === "duplicate" && (
             <p className="text-[11px] text-amber-700 dark:text-amber-300">{p.skillsDuplicate}</p>
           )}
-          {feedback === "max" && (
+          {feedback === "max" && !atMax && (
             <p className="text-[11px] text-amber-700 dark:text-amber-300">{p.skillsMaxReached}</p>
           )}
           {skills.length === 0 && (
