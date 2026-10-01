@@ -6,7 +6,10 @@ import { cn } from "@/lib/cn";
 import { portalHeadingAlt, portalSubtextAlt } from "@/shared/utils/portal-ui";
 import { useLanguage } from "@/shared/providers/language-context";
 import { getSkillIcon } from "@/features/candidate/utils/skill-icons";
-import { COACH_SKILL_CATALOG } from "@/features/candidate/utils/coach-skill-catalog";
+import {
+  COACH_SKILL_CATALOG,
+  normalizeSkillKey,
+} from "@/features/candidate/utils/coach-skill-catalog";
 import type { CoachContext } from "@/features/candidate/services/coach.service";
 import type { CvInfo } from "@/features/candidate/services/candidate-cv.service";
 import { CoachStepHeader } from "@/features/candidate/components/coach/coach-step-header";
@@ -26,7 +29,44 @@ const fieldCls = cn(
   "disabled:opacity-50"
 );
 
-/** SCRUM-501: chip công nghệ + dropdown catalog (giống Vị trí mục tiêu), bỏ free-text. */
+/** Signature ổn định để sync props → state, tránh reset khi chỉ đổi reference mảng. */
+function skillsSignature(list: string[]): string {
+  return list
+    .map((s) => normalizeSkillKey(s))
+    .filter(Boolean)
+    .sort()
+    .join("|");
+}
+
+/** Dedup theo normalizeSkillKey, giữ casing phần tử đầu. */
+function dedupeSkills(list: string[]): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const raw of list) {
+    const key = normalizeSkillKey(raw);
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    out.push(raw.trim());
+  }
+  return out;
+}
+
+function hasSkill(list: string[], name: string): boolean {
+  const key = normalizeSkillKey(name);
+  if (!key) return false;
+  return list.some((s) => normalizeSkillKey(s) === key);
+}
+
+function resolveSourceSkills(context: CoachContext | null, cv: CvInfo | null): string[] {
+  return dedupeSkills(context?.skills?.length ? context.skills : cv?.skills ?? []);
+}
+
+/**
+ * SCRUM-501/502: chip + dropdown catalog.
+ * - Chặn trùng (normalize) + báo rõ
+ * - Không reset chip local khi context chỉ đổi reference mảng
+ * - Hiển thị số lượng / tối đa 40; chọn dropdown là thêm ngay
+ */
 export function CoachAnalysisPanel({
   context,
   cv,
@@ -35,40 +75,66 @@ export function CoachAnalysisPanel({
 }: CoachAnalysisPanelProps) {
   const { t } = useLanguage();
   const p = t.jobseekerCoachPage;
-  const initialSkills = context?.skills?.length ? context.skills : cv?.skills ?? [];
-  const [skills, setSkills] = useState<string[]>(initialSkills);
+
+  const sourceSkills = useMemo(
+    () => resolveSourceSkills(context, cv),
+    // Chỉ đổi khi nội dung skill thay đổi
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [skillsSignature(context?.skills ?? []), skillsSignature(cv?.skills ?? [])]
+  );
+  const sourceSig = skillsSignature(sourceSkills);
+
+  const [skills, setSkills] = useState<string[]>(sourceSkills);
   const [selected, setSelected] = useState("");
+  const [feedback, setFeedback] = useState<"duplicate" | "max" | null>(null);
   const summary = context?.summary || cv?.summary;
   const years = context?.yearsOfExperience;
 
+  // Sync từ CV/context chỉ khi nội dung skill phía server đổi — giữ chip vừa thêm local.
   useEffect(() => {
-    const next = context?.skills?.length ? context.skills : cv?.skills ?? [];
-    setSkills(next);
-  }, [context?.skills, cv?.skills]);
+    setSkills(sourceSkills);
+  }, [sourceSig, sourceSkills]);
 
   const catalogOptions = useMemo(() => {
-    const taken = new Set(skills.map((s) => s.toLowerCase()));
-    return COACH_SKILL_CATALOG.filter((name) => !taken.has(name.toLowerCase()));
+    const taken = new Set(skills.map((s) => normalizeSkillKey(s)).filter(Boolean));
+    return COACH_SKILL_CATALOG.filter((name) => !taken.has(normalizeSkillKey(name)));
   }, [skills]);
 
-  function addFromCatalog() {
-    const name = selected.trim();
-    if (!name || skills.length >= MAX_SKILLS) return;
-    if (skills.some((s) => s.toLowerCase() === name.toLowerCase())) {
+  function addFromCatalog(rawName?: string) {
+    const name = (rawName ?? selected).trim();
+    if (!name) return;
+
+    if (skills.length >= MAX_SKILLS) {
+      setFeedback("max");
       setSelected("");
       return;
     }
-    setSkills((prev) => [...prev, name]);
+
+    if (hasSkill(skills, name)) {
+      setFeedback("duplicate");
+      setSelected("");
+      return;
+    }
+
+    setSkills((prev) => {
+      if (hasSkill(prev, name)) return prev;
+      if (prev.length >= MAX_SKILLS) return prev;
+      return [...prev, name];
+    });
     setSelected("");
+    setFeedback(null);
   }
 
   function removeSkill(name: string) {
-    setSkills((prev) => prev.filter((s) => s !== name));
+    const key = normalizeSkillKey(name);
+    setSkills((prev) => prev.filter((s) => normalizeSkillKey(s) !== key));
+    setFeedback(null);
   }
 
   const canContinue = skills.length >= 1 && !savingSkills;
-  const canAdd =
-    Boolean(selected) && !savingSkills && skills.length < MAX_SKILLS && catalogOptions.length > 0;
+  const atMax = skills.length >= MAX_SKILLS;
+  const catalogExhausted = catalogOptions.length === 0;
+  const canAdd = Boolean(selected) && !savingSkills && !atMax && !catalogExhausted;
 
   return (
     <div className="hr-glass-card overflow-hidden">
@@ -110,15 +176,22 @@ export function CoachAnalysisPanel({
         )}
 
         <div className="space-y-2">
-          <p className={cn("text-[11px] font-semibold", portalHeadingAlt)}>{p.skillsEditLabel}</p>
+          <div className="flex items-baseline justify-between gap-2">
+            <p className={cn("text-[11px] font-semibold", portalHeadingAlt)}>{p.skillsEditLabel}</p>
+            <p className={cn("text-[11px] tabular-nums", portalSubtextAlt)}>
+              {p.skillsCountLabel
+                .replace("{{count}}", String(skills.length))
+                .replace("{{max}}", String(MAX_SKILLS))}
+            </p>
+          </div>
           <p className={cn("text-[11px]", portalSubtextAlt)}>{p.skillsEditHint}</p>
-          <div className="flex flex-wrap gap-1.5">
+          <div className="flex flex-wrap gap-1.5 min-h-[28px]">
             {skills.map((s) => {
               const si = getSkillIcon(s);
               const SIcon = si?.icon;
               return (
                 <span
-                  key={s}
+                  key={normalizeSkillKey(s) || s}
                   className="inline-flex items-center gap-1 text-[11px] font-semibold pl-2 pr-1 py-1 rounded-full bg-primary/10 text-primary"
                 >
                   {SIcon ? <SIcon size={11} className={cn("shrink-0", si.className)} /> : null}
@@ -144,13 +217,26 @@ export function CoachAnalysisPanel({
             <div className="flex gap-2">
               <select
                 value={selected}
-                onChange={(e) => setSelected(e.target.value)}
-                disabled={savingSkills || skills.length >= MAX_SKILLS || catalogOptions.length === 0}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setFeedback(null);
+                  if (value) {
+                    // Chọn xong thêm ngay — tránh kẹt vì quên bấm Thêm / selected lệch option
+                    addFromCatalog(value);
+                  } else {
+                    setSelected("");
+                  }
+                }}
+                disabled={savingSkills || atMax || catalogExhausted}
                 className={cn(fieldCls, "flex-1")}
                 aria-label={p.skillsAddPlaceholder}
               >
                 <option value="">
-                  {catalogOptions.length === 0 ? p.skillsCatalogEmpty : p.skillsCatalogSelectHint}
+                  {atMax
+                    ? p.skillsMaxReached
+                    : catalogExhausted
+                      ? p.skillsCatalogEmpty
+                      : p.skillsCatalogSelectHint}
                 </option>
                 {catalogOptions.map((name) => (
                   <option key={name} value={name}>
@@ -161,16 +247,27 @@ export function CoachAnalysisPanel({
               <button
                 type="button"
                 disabled={!canAdd}
-                onClick={addFromCatalog}
+                onClick={() => addFromCatalog()}
                 className="inline-flex items-center gap-1 h-9 px-3 rounded-lg text-[12px] font-semibold border border-primary/30 text-primary hover:bg-primary/5 disabled:opacity-50"
               >
                 <Plus size={14} />
                 {p.skillsAddBtn}
               </button>
             </div>
-            <p className={cn("text-[11px]", portalSubtextAlt)}>{p.skillsCatalogHint}</p>
+            <p className={cn("text-[11px]", portalSubtextAlt)}>
+              {p.skillsCatalogHint}
+              {!catalogExhausted && !atMax
+                ? ` · ${p.skillsCatalogRemaining.replace("{{count}}", String(catalogOptions.length))}`
+                : null}
+            </p>
           </label>
 
+          {feedback === "duplicate" && (
+            <p className="text-[11px] text-amber-700 dark:text-amber-300">{p.skillsDuplicate}</p>
+          )}
+          {feedback === "max" && (
+            <p className="text-[11px] text-amber-700 dark:text-amber-300">{p.skillsMaxReached}</p>
+          )}
           {skills.length === 0 && (
             <p className="text-[11px] text-amber-700 dark:text-amber-300">{p.skillsMinOne}</p>
           )}

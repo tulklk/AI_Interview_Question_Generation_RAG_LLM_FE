@@ -2939,8 +2939,12 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
     skillsMinOne: "Keep at least one technology.",
     // SCRUM-501: catalog dropdown (no free-text)
     skillsCatalogSelectHint: "Choose a technology from the catalog…",
-    skillsCatalogEmpty: "All catalog technologies are already selected.",
+    skillsCatalogEmpty: "No more catalog technologies to add (already on your list / CV).",
     skillsCatalogHint: "Choose from the supported technology catalog — free typing is disabled.",
+    skillsCatalogRemaining: "{{count}} left",
+    skillsCountLabel: "{{count}} / {{max}} technologies",
+    skillsDuplicate: "This technology is already on your list (including from the CV) — duplicates are not added.",
+    skillsMaxReached: "Maximum of 40 technologies reached.",
     // SCRUM-491: hybrid validate + soft warn (kept for other surfaces)
     skillsFormatEmpty: "Choose a technology from the list before adding.",
     skillsFormatTooShort: "Technology name needs at least 2 characters.",

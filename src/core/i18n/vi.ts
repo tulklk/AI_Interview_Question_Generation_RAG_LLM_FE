@@ -2940,8 +2940,12 @@ Yêu cầu:
     skillsMinOne: "Cần giữ ít nhất 1 công nghệ.",
     // SCRUM-501: dropdown catalog (bỏ free-text)
     skillsCatalogSelectHint: "Chọn công nghệ từ catalog…",
-    skillsCatalogEmpty: "Đã chọn hết công nghệ trong catalog.",
+    skillsCatalogEmpty: "Không còn công nghệ nào trong catalog để thêm (đã có trên danh sách / CV).",
     skillsCatalogHint: "Chọn từ catalog công nghệ được hỗ trợ — không nhập tự do.",
+    skillsCatalogRemaining: "Còn {{count}} lựa chọn",
+    skillsCountLabel: "{{count}} / {{max}} công nghệ",
+    skillsDuplicate: "Công nghệ này đã có trong danh sách (kể cả từ CV) — không thêm trùng.",
+    skillsMaxReached: "Đã đạt tối đa 40 công nghệ.",
     // SCRUM-491: hybrid validate + soft warn (giữ key cho chỗ khác nếu còn dùng)
     skillsFormatEmpty: "Chọn công nghệ từ danh sách trước khi thêm.",
     skillsFormatTooShort: "Tên công nghệ cần ít nhất 2 ký tự.",
