@@ -11,7 +11,7 @@ import {
   hasDuplicateFocusNames,
   prepareFocusAreasForApply,
 } from "@/features/studio/utils/focus-area-jd";
-import { normalizeStudioSettings } from "@/features/studio/utils/normalize-studio-settings";
+import { normalizeStudioSettings, normalizeStudioDifficulty } from "@/features/studio/utils/normalize-studio-settings";
 import { deriveLegacyQuestionTypes } from "@/features/studio/utils/ai-config-helpers";
 import { normalizeOutlineItems, mergeOutlinePreferLocal } from "@/features/studio/components/plan-question-preview-list";
 
@@ -114,25 +114,32 @@ export function mergeConfigDraft(
   return next;
 }
 
-/** Fingerprint bước 1: bỏ outline + numberOfQuestions + questionTypes (derive/sync từ Preview). */
+/** Fingerprint bước 1 — chỉ field HR chỉnh tay; bỏ noise (count, casing, order). */
 function step1SettingsFingerprint(d: StudioConfigDraft): string {
   const dist = (d.questionDistribution ?? [])
     .map((x) => ({
-      category: x.category,
-      // Chỉ so % — count scale theo số slot Preview, không phải chỉnh bước 1
-      percentage: x.percentage,
+      category: String(x.category ?? "").toLowerCase(),
+      percentage: Math.round(Number(x.percentage) * 10) / 10,
     }))
-    .sort((a, b) => String(a.category).localeCompare(String(b.category)));
+    .sort((a, b) => a.category.localeCompare(b.category));
+  const focus = (d.focusAreas ?? [])
+    .map((f) => ({
+      name: String(f.name ?? "").trim().toLowerCase(),
+      weight: Math.round(Number(f.weight) * 10) / 10,
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+  const styles = [...(d.questionStyles ?? [])].map(String).sort();
+  const templates = [...(d.enabledCodeTemplates ?? [])].map(String).sort();
   return JSON.stringify({
-    difficulty: d.difficulty,
-    interviewLengthMinutes: d.interviewLengthMinutes,
-    outputLanguage: d.outputLanguage,
-    focusAreas: d.focusAreas,
-    questionStyles: d.questionStyles,
-    enabledCodeTemplates: d.enabledCodeTemplates,
-    contentMode: d.contentMode,
-    includeSampleAnswers: d.includeSampleAnswers,
-    includeScoringRubric: d.includeScoringRubric,
+    difficulty: normalizeStudioDifficulty(d.difficulty),
+    interviewLengthMinutes: Number(d.interviewLengthMinutes) || 60,
+    outputLanguage: String(d.outputLanguage ?? "Vietnamese"),
+    focusAreas: focus,
+    questionStyles: styles,
+    enabledCodeTemplates: templates,
+    contentMode: String(d.contentMode ?? "Mixed"),
+    includeSampleAnswers: Boolean(d.includeSampleAnswers),
+    includeScoringRubric: Boolean(d.includeScoringRubric),
     questionDistribution: dist,
   });
 }
@@ -153,10 +160,10 @@ export function useStudioConfig({ settings, currentPlan }: UseStudioConfigOption
 
   const [draft, setDraft] = useState<StudioConfigDraft | null>(appliedDraft);
   const userEditedRef = useRef(false);
-  /** HR đã đụng Focus/phân bổ/style… — sửa slot Preview không bật cờ này. */
-  const settingsTouchedRef = useRef(false);
   /** Outline HR đang giữ — refresh server không được ghi đè slot vừa sửa. */
   const outlineHoldRef = useRef<PlanOutlineItem[] | null>(null);
+  /** Fingerprint bước 1 vừa Apply — chặn dirty oan khi settings prop chưa kịp. */
+  const lastAcceptedStep1Ref = useRef<string | null>(null);
   /** Sau Apply: chờ appliedDraft mới từ props rồi sync — tránh setTimeout + ref stale. */
   const pendingAcceptRef = useRef(false);
   const appliedDraftRef = useRef(appliedDraft);
@@ -176,8 +183,8 @@ export function useStudioConfig({ settings, currentPlan }: UseStudioConfigOption
       setDraft(null);
       userEditedRef.current = false;
       pendingAcceptRef.current = false;
-      settingsTouchedRef.current = false;
       outlineHoldRef.current = null;
+      lastAcceptedStep1Ref.current = null;
       return;
     }
     setDraft((prev) => {
@@ -189,10 +196,15 @@ export function useStudioConfig({ settings, currentPlan }: UseStudioConfigOption
           ? mergeOutlinePreferLocal(local, appliedDraft.outlineItems)
           : normalizeOutlineItems(appliedDraft.outlineItems);
         if (merged.length > 0) outlineHoldRef.current = merged;
+        lastAcceptedStep1Ref.current = step1SettingsFingerprint(appliedDraft);
         return merged.length > 0 ? { ...appliedDraft, outlineItems: merged } : appliedDraft;
       }
-      // Đang sửa bước 1: không lấy server đè draft
-      if (settingsTouchedRef.current && userEditedRef.current && prev) {
+      // HR đang chỉnh bước 1 (fingerprint lệch) — giữ draft local, chỉ overlay outline hold
+      if (
+        prev &&
+        userEditedRef.current &&
+        step1SettingsFingerprint(prev) !== step1SettingsFingerprint(appliedDraft)
+      ) {
         return overlayHeldOutline(prev);
       }
       userEditedRef.current = false;
@@ -201,12 +213,6 @@ export function useStudioConfig({ settings, currentPlan }: UseStudioConfigOption
   }, [appliedDraft]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const updateDraft = useCallback((patch: Partial<StudioConfigDraft>) => {
-    const keys = Object.keys(patch);
-    const outlineOnly =
-      keys.length > 0 && keys.every((k) => k === "outlineItems" || k === "numberOfQuestions");
-    // Sync count phân bổ (effect) chỉ gửi questionDistribution — không phải HR bấm bước 1
-    const distributionSyncOnly = keys.length === 1 && keys[0] === "questionDistribution";
-    if (!outlineOnly && !distributionSyncOnly) settingsTouchedRef.current = true;
     if (patch.outlineItems) {
       outlineHoldRef.current = normalizeOutlineItems(patch.outlineItems);
     }
@@ -221,7 +227,6 @@ export function useStudioConfig({ settings, currentPlan }: UseStudioConfigOption
 
   const resetDraftFromApplied = useCallback(() => {
     userEditedRef.current = false;
-    settingsTouchedRef.current = false;
     pendingAcceptRef.current = true;
     outlineHoldRef.current = null;
     if (appliedDraftRef.current) setDraft(appliedDraftRef.current);
@@ -236,17 +241,18 @@ export function useStudioConfig({ settings, currentPlan }: UseStudioConfigOption
    */
   const acceptServerSettings = useCallback((snapshot?: StudioConfigDraft | null) => {
     userEditedRef.current = false;
-    settingsTouchedRef.current = false;
     pendingAcceptRef.current = true;
     if (snapshot) {
       const outline = normalizeOutlineItems(snapshot.outlineItems);
       // Bước 1 rebuild outline mới — thay hold. Auto-save truyền outline HR vừa giữ.
       outlineHoldRef.current = outline.length > 0 ? outline : null;
+      lastAcceptedStep1Ref.current = step1SettingsFingerprint(snapshot);
       setDraft(snapshot);
       return;
     }
     // Plan mới (generate): bỏ hold cũ để không đè outline plan vừa tạo
     outlineHoldRef.current = null;
+    lastAcceptedStep1Ref.current = null;
   }, []);
 
   // Khi server vừa seed distribution/focus (sau tạo plan) mà draft local còn trống — sync ngay.
@@ -279,12 +285,20 @@ export function useStudioConfig({ settings, currentPlan }: UseStudioConfigOption
     [draft, appliedDraft]
   );
 
-  /** Dirty chỉ khi HR sửa bước 1 (focus/phân bổ/style…). Sửa Preview không tính. */
+  /** Dirty bước 1 theo fingerprint chuẩn hóa — sửa Preview/outline không làm dirty. */
   const isSettingsDirty = useMemo(() => {
     if (!draft || !appliedDraft) return false;
-    const changed = step1SettingsFingerprint(draft) !== step1SettingsFingerprint(appliedDraft);
-    if (!changed) settingsTouchedRef.current = false;
-    return settingsTouchedRef.current && changed;
+    const draftFp = step1SettingsFingerprint(draft);
+    const appliedFp = step1SettingsFingerprint(appliedDraft);
+    if (draftFp === appliedFp) {
+      lastAcceptedStep1Ref.current = appliedFp;
+      return false;
+    }
+    // Vừa Apply: draft = snapshot nhưng settings prop chưa refresh → đừng hiện nút Apply
+    if (lastAcceptedStep1Ref.current && draftFp === lastAcceptedStep1Ref.current) {
+      return false;
+    }
+    return true;
   }, [draft, appliedDraft]);
 
   const distributionValidation = useMemo(

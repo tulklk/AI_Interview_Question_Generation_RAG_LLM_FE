@@ -172,7 +172,9 @@ export function PlanReviewItBlock({
       : mapPlanFocus(plan.focusAreas ?? [], techCatalog);
 
   useEffect(() => {
+    // Đã có focus từ settings/draft — không seed từ plan (tránh dirty oan + nút Apply hiện lại)
     if ((draft?.focusAreas?.length ?? 0) > 0) return;
+    if ((settings?.focusAreas?.length ?? 0) > 0) return;
     if (techCatalog.length === 0) return;
     const fromPlan = mapPlanFocus(plan.focusAreas ?? [], techCatalog);
     if (fromPlan.length === 0) return;
@@ -188,9 +190,12 @@ export function PlanReviewItBlock({
     if (!same) onDraftChange({ questionDistribution: synced });
   }, [numberOfQuestions, plan.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Preview đã mở: chỉ hiện nút khi HR thực sự đổi cấu hình bước 1.
-  // Đừng giữ CTA chỉ vì planStale / chưa apply lần đầu nếu outline đã hiện.
-  const showApply = editable && isConfigValidForPlan && canApplyConfig;
+  // Chưa mở Preview: luôn hiện CTA để vào bước 2.
+  // Đã mở Preview: chỉ hiện khi HR thực sự đổi cấu hình bước 1.
+  const showApply =
+    editable &&
+    isConfigValidForPlan &&
+    (canApplyConfig || !previewOpen);
 
   const difficultyOptions = [
     { id: "Easy" as const, label: s.easyDesc },

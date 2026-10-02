@@ -38,7 +38,7 @@ export function PlanOutlinePreviewBlock({
   locked = false,
   isSaving = false,
   outlineDirty = false,
-  settingsDirty = false,
+  settingsDirty: _settingsDirty = false,
   onDraftChange,
 }: Props) {
   const { t } = useLanguage();
@@ -62,15 +62,13 @@ export function PlanOutlinePreviewBlock({
     onDraftChange({ outlineItems: fromPlan, numberOfQuestions: fromPlan.length });
   }, [plan.id, plan.revision]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const saveHint = settingsDirty
-    ? cfg.outlineWaitingStep1
-    : outlineItems.length < 5
-      ? cfg.outlineMinSlots
-      : isSaving
-        ? cfg.outlineSaving
-        : outlineDirty
-          ? cfg.outlinePendingSave
-          : cfg.outlineSaved;
+  const saveHint = outlineItems.length < 5
+    ? cfg.outlineMinSlots
+    : isSaving
+      ? cfg.outlineSaving
+      : outlineDirty
+        ? cfg.outlinePendingSave
+        : cfg.outlineSaved;
 
   return (
     <div className="space-y-3 rounded-xl border border-primary/25 bg-primary/[0.03] p-3 dark:border-primary/30">
