@@ -53,7 +53,7 @@ const DEFAULTS: CompetencyScoringPolicy = {
   diagnosticMinTotalQuestions: 0,
   screeningEnabled: true,
   screeningQuestionsPerSkill: 1,
-  screeningMaxSkills: 12,
+  screeningMaxSkills: 20,
   reassessmentQuestionsPerSkill: 3,
 };
 
@@ -384,7 +384,7 @@ export function CoachDrillSettings() {
               id="screen-max-skills"
               type="number"
               min={1}
-              max={20}
+              max={30}
               value={policy.screeningMaxSkills}
               onChange={(e) => setNum("screeningMaxSkills", e.target.value)}
               className={inputCls}

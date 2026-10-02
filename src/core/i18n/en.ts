@@ -2730,12 +2730,12 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
         reassessmentQPerSkill: "Questions per re-assessment skill",
         reassessmentQPerSkillHint:
           "Independent from the diagnostic. Default 3. One-skill exam after a roadmap (2–10).",
-        sectionScreening: "CV screening exam",
-        screeningEnabled: "Enable screening after the diagnostic report",
+        sectionScreening: "CV skill coverage",
+        screeningEnabled: "Quick-check every CV skill outside the core set",
         screeningEnabledHint:
-          "A short 1-question-per-skill exam for unmeasured CV skills. It does not change level — it only suggests roadmaps.",
-        screeningQPerSkill: "Questions per screening skill",
-        screeningMaxSkills: "Maximum screening skills",
+          "The diagnostic adds short questions for each CV skill outside the core set so the roadmap covers the whole CV. It does not change level. Skills over the limit are offered a screening after the report.",
+        screeningQPerSkill: "Quick-check questions per skill",
+        screeningMaxSkills: "Maximum quick-check skills (up to 30)",
       },
       general: {
         title: "General Settings",
@@ -2980,7 +2980,7 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
     skillsDuplicate: "This technology is already on your list (including from the CV) — duplicates are not added.",
     // SCRUM-504: no more 40-item limit — just explain that not every skill reaches the test
     skillsFocusNote:
-      "Add as many skills as you like. The diagnostic only picks the most relevant ones (usually 3–8) based on your target role, so a long list does not make the test longer.",
+      "Add as many skills as you like. Core skills for your target role are tested in depth; every other skill gets one quick question so your roadmap covers your whole CV — a longer list means a longer test.",
     // SCRUM-491: hybrid validate + soft warn (kept for other surfaces)
     skillsFormatEmpty: "Choose a technology from the list before adding.",
     skillsFormatTooShort: "Technology name needs at least 2 characters.",
@@ -3018,7 +3018,7 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
     reportSubtitle: "Readiness and skill gaps from your latest diagnostic.",
     screeningTitle: "Widen coverage",
     screeningBody:
-      "The diagnostic measured your core skills. {{count}} skills from your CV are still unmeasured — a short screening ({{questions}} questions, one per skill) will suggest roadmaps for them. This test does not change your level.",
+      "{{count}} skills from your CV were not measured because the diagnostic hit its skill limit. A short screening ({{questions}} questions) will add them to your roadmap. This test does not change your level.",
     screeningCta: "Take screening",
     screeningSkillsLabel: "Skills to screen",
     screeningDisabled: "Screening is turned off.",
@@ -3049,6 +3049,11 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
     roadmapKbSystemBadge: "Catalog",
     roadmapKbInferredBadge: "AI inferred",
     roadmapScreeningBadge: "Needs extra check",
+    roadmapUnmeasuredTitle:
+      "{{count}} skills from your CV were not measured (over the diagnostic limit), so they are not in the roadmap yet:",
+    reportQuickCheckBadge: "Quick check",
+    reportQuickCheckHint:
+      "A CV skill outside the core set — asked briefly to build your roadmap; it does not count toward your level.",
     diagnosticKbInferred:
       "No suitable system documents were found to build this set. Questions were inferred by AI from your CV and a temporary blueprint — for reference only; results may not fully match reality.",
     diagnosticKbSystemBadge: "System",
@@ -3179,7 +3184,7 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
     wrapUpNextTitle: "Do next",
     wrapUpNextEmpty: "No large remaining gaps — try the next level if you are ready.",
     wrapUpNextGap: "Still below target",
-    wrapUpNextScreening: "From screening — worth another check",
+    wrapUpNextScreening: "Quick-check signal — worth another check",
     levelCriteriaTitle: "Level criteria",
     levelCriteriaOverall: "Overall score",
     levelCriteriaOverallHint: "Overall readiness versus the level threshold.",

@@ -264,6 +264,12 @@ export function CoachPage() {
             onToggleItem={(itemId, isIncluded) => void w.handleUpdateDraftItem(itemId, isIncluded)}
             onUpdateDraft={(payload) => void w.handleUpdateDraft(payload)}
             onAccept={() => void w.handleAcceptRoadmaps()}
+            unmeasuredSkills={w.screeningPreview?.available ? w.screeningPreview.skills : []}
+            startingScreening={
+              w.submitting ||
+              ((w.busy || w.ready) && (w.job?.purpose ?? "").toLowerCase().includes("screen"))
+            }
+            onStartScreening={() => void w.startScreening()}
           />
         ) : w.roadmaps.some((r) => Boolean(r.acceptedAt) || r.status === "Active") ? (
           <CoachRoadmapsPanel

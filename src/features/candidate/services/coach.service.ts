@@ -215,6 +215,8 @@ export interface CoachSkillResult {
   demonstratedDifficulty?: string | null;
   band: CoachSkillBand;
   source?: string | null;
+  /** Kỹ năng CV ngoài nhóm trọng tâm — chỉ hỏi nhanh, không tính vào level. */
+  isQuickCheck?: boolean;
 }
 
 /** SCRUM-509: tiêu chí level có cấu trúc — FE hiện Đạt/Chưa đạt. */
@@ -457,6 +459,7 @@ function mapSkillResult(src: Record<string, unknown>): CoachSkillResult {
     demonstratedDifficulty: pickString(src, "demonstratedDifficulty", "DemonstratedDifficulty") || null,
     band,
     source: pickString(src, "source", "Source") || null,
+    isQuickCheck: pickBool(src, "isQuickCheck", "IsQuickCheck"),
   };
 }
 

@@ -2730,12 +2730,12 @@ Yêu cầu:
         reassessmentQPerSkill: "Số câu bài đánh giá lại (mỗi skill)",
         reassessmentQPerSkillHint:
           "Độc lập với bài chẩn đoán. Mặc định 3. Đề đo lại 1 skill sau khi luyện lộ trình (2–10).",
-        sectionScreening: "Bài sàng lọc CV",
-        screeningEnabled: "Bật bài sàng lọc sau báo cáo",
+        sectionScreening: "Phủ rộng kỹ năng CV",
+        screeningEnabled: "Hỏi nhanh mọi kỹ năng CV ngoài nhóm trọng tâm",
         screeningEnabledHint:
-          "Bài ngắn 1 câu/skill cho kỹ năng CV chưa đo. Không làm thay đổi level — chỉ gợi ý lộ trình.",
-        screeningQPerSkill: "Số câu mỗi skill sàng lọc",
-        screeningMaxSkills: "Số skill sàng lọc tối đa",
+          "Bài chẩn đoán thêm câu ngắn cho từng kỹ năng CV ngoài nhóm trọng tâm để lộ trình phủ đủ CV. Không làm thay đổi level. Kỹ năng vượt giới hạn được mời làm bài sàng lọc sau báo cáo.",
+        screeningQPerSkill: "Số câu hỏi nhanh mỗi kỹ năng",
+        screeningMaxSkills: "Số kỹ năng hỏi nhanh tối đa (tối đa 30)",
       },
       general: {
         title: "Cài đặt chung",
@@ -2980,7 +2980,7 @@ Yêu cầu:
     skillsDuplicate: "Công nghệ này đã có trong danh sách (kể cả từ CV) — không thêm trùng.",
     // SCRUM-504: bỏ giới hạn 40 — chỉ nói rõ không phải mọi kỹ năng đều lên đề
     skillsFocusNote:
-      "Thêm bao nhiêu kỹ năng cũng được. Bài chẩn đoán chỉ chọn một số kỹ năng trọng tâm nhất (thường 3–8) dựa trên vị trí mục tiêu, nên danh sách dài không làm đề dài hơn.",
+      "Thêm bao nhiêu kỹ năng cũng được. Kỹ năng trọng tâm của vị trí mục tiêu được hỏi sâu; mỗi kỹ năng còn lại được hỏi nhanh 1 câu để lộ trình phủ đủ kỹ năng trên CV — danh sách càng dài thì đề càng dài.",
     // SCRUM-491: hybrid validate + soft warn (giữ key cho chỗ khác nếu còn dùng)
     skillsFormatEmpty: "Chọn công nghệ từ danh sách trước khi thêm.",
     skillsFormatTooShort: "Tên công nghệ cần ít nhất 2 ký tự.",
@@ -3018,7 +3018,7 @@ Yêu cầu:
     reportSubtitle: "Mức sẵn sàng và khoảng cách kỹ năng từ đánh giá gần nhất.",
     screeningTitle: "Mở rộng độ phủ",
     screeningBody:
-      "Bài chẩn đoán đã đo một số kỹ năng trọng tâm. Còn {{count}} kỹ năng trên CV chưa đo — bài sàng lọc ngắn ({{questions}} câu, 1 câu/kỹ năng) sẽ gợi ý lộ trình cho chúng. Bài này không làm thay đổi level.",
+      "Còn {{count}} kỹ năng trên CV chưa được đo vì vượt giới hạn số kỹ năng của bài chẩn đoán. Bài sàng lọc ngắn ({{questions}} câu) sẽ đưa chúng vào lộ trình. Bài này không làm thay đổi level.",
     screeningCta: "Làm bài sàng lọc",
     screeningSkillsLabel: "Kỹ năng sẽ sàng lọc",
     screeningDisabled: "Bài sàng lọc đang tắt.",
@@ -3049,6 +3049,11 @@ Yêu cầu:
     roadmapKbSystemBadge: "Catalog",
     roadmapKbInferredBadge: "Suy luận AI",
     roadmapScreeningBadge: "Cần kiểm tra thêm",
+    roadmapUnmeasuredTitle:
+      "Còn {{count}} kỹ năng trên CV chưa được đo (vượt giới hạn của bài chẩn đoán) nên chưa có trong lộ trình:",
+    reportQuickCheckBadge: "Đo nhanh",
+    reportQuickCheckHint:
+      "Kỹ năng CV ngoài nhóm trọng tâm — chỉ hỏi nhanh để lập lộ trình, không tính vào level.",
     diagnosticKbInferred:
       "Chưa có tài liệu hệ thống phù hợp để soạn đề. Đề đang được suy luận bằng AI từ CV và khung năng lực tạm — kết quả mang tính tham khảo, có thể chưa khớp hoàn toàn thực tế.",
     diagnosticKbSystemBadge: "Hệ thống",
@@ -3179,7 +3184,7 @@ Yêu cầu:
     wrapUpNextTitle: "Cần làm tiếp",
     wrapUpNextEmpty: "Không còn khoảng trống lớn — có thể thử level kế tiếp nếu sẵn sàng.",
     wrapUpNextGap: "Còn dưới mục tiêu",
-    wrapUpNextScreening: "Từ bài sàng lọc — nên kiểm tra thêm",
+    wrapUpNextScreening: "Tín hiệu đo nhanh — nên kiểm tra thêm",
     levelCriteriaTitle: "Tiêu chí mức năng lực",
     levelCriteriaOverall: "Điểm tổng",
     levelCriteriaOverallHint: "Điểm readiness tổng so với ngưỡng level.",
