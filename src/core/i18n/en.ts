@@ -5708,21 +5708,21 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
   questionBuilder: {
     // Page header
     pageTitle: "Create question set manually",
-    pageSubtext: "All fields like Studio: sample answer, rubric, skill, focus area — ready for Marketplace",
+    pageSubtext: "Write the selected question in the middle. The list on the left is this session.",
     backToGenerateBtn: "Generate with AI",
     refreshBtn: "Refresh",
     quickCreateBtn: "Quick create",
     bulkBar: {
       title: "Quick create",
-      hint: "Create multiple minimal questions in the selected set — enrich rubric later in History or compose below.",
+      hint: "Add several questions to the list. Each one opens in the editor when you click its number.",
       typeLabel: "Type",
       difficultyLabel: "Difficulty",
       countLabel: "Count",
-      createBtn: "Quick create",
+      createBtn: "Add to list",
       creatingBtn: "Creating…",
       pasteLabel: "Content (optional — one question per line)",
       pastePlaceholder: "Paste multiple question lines here…\nQuestion 1\nQuestion 2",
-      pasteEmptyHint: "If empty, creates {{count}} placeholder question(s) to edit later in History.",
+      pasteEmptyHint: "If empty, adds {{count}} draft question(s). Click a number in the list to edit.",
       placeholderPrefix: "[Draft] Question",
       toastNeedSet: "Select or create a question set first.",
       toastSuccess: "Created {{ok}}/{{total}} questions in the set.",
@@ -5744,7 +5744,8 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
     toastQuestionRequired: "Please enter the question content.",
     toastSaveFailed: "Save failed. Check that the set is still in DRAFT status.",
     toastImageUploadFailed: "Question saved, but image upload failed. You can re-attach the image in History.",
-    toastSaveSuccess: "Question saved (all Marketplace fields) to the selected set.",
+    toastSaveSuccess: "Question saved to the selected set.",
+    toastUpdateSuccess: "Question updated.",
     // Image hints per template
     imageHints: {
       THEORY: "Find an image or diagram illustrating the main concept in the question.",
@@ -5823,6 +5824,12 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
     imagePickerLabel: "Choose JPEG/PNG/WebP (uploaded after save)",
     // Actions
     saveBtn: "Save & add next",
+    saveThisBtn: "Save this question",
+    updateBtn: "Update this question",
+    startNewBtn: "New question",
+    editingTitle: "Question {{n}}",
+    newQuestionTitle: "New question",
+    detailsToggle: "More details",
     savingBtn: "Saving...",
     viewSetBtn: "View question set",
     // Set panel
@@ -5838,7 +5845,10 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
     progressReady: "✓ Enough questions to publish to Marketplace — open History to publish.",
     progressNeeds: "Need {{n}} more to publish.",
     openSetLink: "Open question set",
-    sessionAddedTitle: "Added this session",
+    sessionAddedTitle: "Questions this session",
+    sessionEmpty: "No questions yet. Write one in the middle and save, or add several.",
+    bulkToggle: "Add several questions",
+    bulkUsesCurrentMeta: "New questions use the type and difficulty selected in the editor.",
     // Preview panel
     previewTitle: "Preview",
     previewSubtitle: "(as Marketplace)",

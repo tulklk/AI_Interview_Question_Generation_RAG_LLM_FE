@@ -3,6 +3,7 @@
 /**
  * SCRUM-397 v3: cột trái — chọn/tạo bộ DRAFT + progress publish + câu vừa thêm.
  */
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { Check, ExternalLink, Layers, Loader2, Plus, Sparkles } from "lucide-react";
 import { cn } from "@/lib/cn";
@@ -22,6 +23,8 @@ export const MIN_QUESTIONS_TO_PUBLISH = DEFAULT_MIN_QUESTIONS_TO_PUBLISH;
 
 export type SessionAddedQuestion = {
   id: string;
+  /** Số thứ tự ổn định trong phiên, câu tạo trước là 1. */
+  order: number;
   question: string;
   difficulty: string;
   questionType?: string;
@@ -41,6 +44,11 @@ type Props = {
   creatingSet: boolean;
   onCreateSet: () => void;
   sessionAdded: SessionAddedQuestion[];
+  editingId: string | null;
+  onSelectQuestion: (id: string) => void;
+  questionsLocked?: boolean;
+  /** Panel thêm nhiều câu, gắn trên danh sách. */
+  bulkSlot?: ReactNode;
   /** Override từ parent; mặc định đọc Admin qua hook. */
   minQuestions?: number;
 };
@@ -59,6 +67,10 @@ export function QuestionBuilderSetPanel({
   creatingSet,
   onCreateSet,
   sessionAdded,
+  editingId,
+  onSelectQuestion,
+  questionsLocked = false,
+  bulkSlot,
   minQuestions: minQuestionsProp,
 }: Props) {
   const { t } = useLanguage();
@@ -213,6 +225,63 @@ export function QuestionBuilderSetPanel({
         </ul>
       )}
 
+      {/* Danh sách câu trong phiên — bấm số là mở câu đó ở giữa */}
+      <div className="mt-4 space-y-2 border-t border-gray-100 pt-3 dark:border-gray-800">
+        <div className="flex items-center justify-between gap-2">
+          <p className={cn(portalHeading, "text-[11px] font-semibold")}>{qb.sessionAddedTitle}</p>
+          <span className="rounded-full bg-gray-100 px-1.5 py-0.5 text-[10px] font-bold tabular-nums text-gray-600 dark:bg-gray-800 dark:text-gray-300">
+            {sessionAdded.length}
+          </span>
+        </div>
+        {bulkSlot}
+        {sessionAdded.length === 0 ? (
+          <p className={cn(portalSubtext, "px-0.5 text-[11px] leading-snug")}>{qb.sessionEmpty}</p>
+        ) : (
+          <ul className="max-h-80 space-y-1 overflow-y-auto pr-0.5">
+            {[...sessionAdded]
+              .sort((a, b) => a.order - b.order)
+              .map((q) => {
+                const active = q.id === editingId;
+                const diffLabel =
+                  qb.difficultyOptions[q.difficulty as "Easy" | "Medium" | "Hard"] ?? q.difficulty;
+                return (
+                  <li key={q.id}>
+                    <button
+                      type="button"
+                      onClick={() => onSelectQuestion(q.id)}
+                      disabled={questionsLocked}
+                      aria-current={active ? "true" : undefined}
+                      className={cn(
+                        "flex w-full items-start gap-2 rounded-lg border px-2 py-1.5 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-60",
+                        active
+                          ? "border-primary/50 bg-primary/5 ring-1 ring-primary/20"
+                          : "border-transparent hover:border-gray-200 hover:bg-gray-50 dark:hover:border-gray-700 dark:hover:bg-gray-800/50"
+                      )}
+                    >
+                      <span
+                        className={cn(
+                          "flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold tabular-nums",
+                          active
+                            ? "bg-primary text-white"
+                            : "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300"
+                        )}
+                      >
+                        {q.order}
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="line-clamp-2 text-[11px] leading-snug text-gray-800 dark:text-gray-100">
+                          {q.question}
+                        </span>
+                        <span className={cn(portalSubtext, "mt-0.5 block text-[10px]")}>{diffLabel}</span>
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
+          </ul>
+        )}
+      </div>
+
       {/* Progress section */}
       {selected ? (
         <div
@@ -258,48 +327,6 @@ export function QuestionBuilderSetPanel({
             {qb.openSetLink}
             <ExternalLink size={11} />
           </Link>
-        </div>
-      ) : null}
-
-      {/* Session added */}
-      {sessionAdded.length > 0 ? (
-        <div
-          className="mt-4 border-t border-gray-100 pt-3 dark:border-gray-800"
-          style={
-            sessionAdded.length === 1
-              ? { animation: "slideUpFade 0.3s cubic-bezier(0.25,0.46,0.45,0.94) both" }
-              : undefined
-          }
-        >
-          <div className="mb-2 flex items-center justify-between gap-2">
-            <p className={cn(portalHeading, "text-[11px] font-semibold")}>{qb.sessionAddedTitle}</p>
-            <span className="rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700 tabular-nums dark:bg-emerald-950/50 dark:text-emerald-300">
-              {sessionAdded.length}
-            </span>
-          </div>
-          <ul className="max-h-44 space-y-1.5 overflow-y-auto">
-            {sessionAdded.map((q) => (
-              <li
-                key={q.id}
-                className="rounded-lg border border-emerald-100/80 bg-emerald-50/70 px-2.5 py-2 dark:border-emerald-900/20 dark:bg-emerald-950/20"
-                style={{ animation: "scaleInFade 0.35s cubic-bezier(0.34,1.56,0.64,1) both" }}
-              >
-                <div className="mb-0.5 flex items-center gap-1.5">
-                  <span className="rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300">
-                    {q.difficulty}
-                  </span>
-                  {q.questionType ? (
-                    <span className="text-[10px] text-emerald-700 dark:text-emerald-400">
-                      {q.questionType}
-                    </span>
-                  ) : null}
-                </div>
-                <p className="line-clamp-2 text-[11px] leading-snug text-emerald-900 dark:text-emerald-200">
-                  {q.question}
-                </p>
-              </li>
-            ))}
-          </ul>
         </div>
       ) : null}
     </aside>
