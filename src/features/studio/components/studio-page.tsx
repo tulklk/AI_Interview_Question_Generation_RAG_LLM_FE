@@ -715,7 +715,6 @@ export function StudioPage() {
   useEffect(() => {
     if (!previewOpen) return;
     if (!outlineDirty) return;
-    if (studioConfig.isSettingsDirty) return;
     if (studio.currentPlan?.status === "Approved" || studio.currentPlan?.status === "Superseded") return;
     const items = normalizeOutlineItems(studioConfig.draft?.outlineItems);
     if (items.length < 5) return;
@@ -732,7 +731,6 @@ export function StudioPage() {
   }, [
     previewOpen,
     outlineDirty,
-    studioConfig.isSettingsDirty,
     studioConfig.draft?.outlineItems,
     studio.currentPlan?.status,
     studio.isApplyingSettings,

@@ -102,43 +102,13 @@ export function mergeConfigDraft(
     next.questionTypes = deriveLegacyQuestionTypes(dist, next.questionStyles ?? []);
   }
 
-  // Preview outline: chỉ sync số câu/distribution khi ĐỘ DÀI slot đổi.
-  // Sửa difficulty/skill/goal của slot không được đụng settings bước 1
-  // (tránh isSettingsDirty → hiện «Áp dụng bước 1 trước» oan).
+  // Preview chỉ đổi slot. Không scale distribution / số câu bước 1
+  // (nếu không, isSettingsDirty bật và nút Áp dụng hiện lại).
   if (patch.outlineItems != null) {
-    const incoming = normalizeOutlineItems(patch.outlineItems);
-    const prevItems = normalizeOutlineItems(base.outlineItems);
-    const prevLen = prevItems.length;
-    const nextLen = incoming.length;
-    // Khóa độ khó theo slot trước — server/rebind hay trả "easy" (enum 0) khi HR vừa chọn hard.
-    next.outlineItems = incoming.map((item, i) => {
-      const prev = prevItems[i];
-      if (!prev) return item;
-      const incomingDiff = (item.difficulty || "").toLowerCase();
-      const prevDiff = (prev.difficulty || "").toLowerCase();
-      if (incomingDiff === "easy" && (prevDiff === "hard" || prevDiff === "medium")) {
-        return { ...item, difficulty: prevDiff };
-      }
-      return item;
-    });
-    if (nextLen !== prevLen) {
-      next.numberOfQuestions = Math.max(1, nextLen);
-      if ((next.questionDistribution ?? []).length > 0) {
-        next.questionDistribution = syncDistributionCounts(
-          next.questionDistribution ?? [],
-          next.numberOfQuestions
-        );
-        next.questionTypes = deriveLegacyQuestionTypes(
-          next.questionDistribution,
-          next.questionStyles ?? []
-        );
-      }
-    } else {
-      // Giữ nguyên settings bước 1 — chỉ đổi nội dung slot
-      next.numberOfQuestions = base.numberOfQuestions;
-      next.questionDistribution = base.questionDistribution;
-      next.questionTypes = base.questionTypes;
-    }
+    next.outlineItems = normalizeOutlineItems(patch.outlineItems);
+    next.numberOfQuestions = base.numberOfQuestions;
+    next.questionDistribution = base.questionDistribution;
+    next.questionTypes = base.questionTypes;
   }
 
   return next;
@@ -183,40 +153,63 @@ export function useStudioConfig({ settings, currentPlan }: UseStudioConfigOption
 
   const [draft, setDraft] = useState<StudioConfigDraft | null>(appliedDraft);
   const userEditedRef = useRef(false);
+  /** HR đã đụng Focus/phân bổ/style… — sửa slot Preview không bật cờ này. */
+  const settingsTouchedRef = useRef(false);
+  /** Outline HR đang giữ — refresh server không được ghi đè slot vừa sửa. */
+  const outlineHoldRef = useRef<PlanOutlineItem[] | null>(null);
   /** Sau Apply: chờ appliedDraft mới từ props rồi sync — tránh setTimeout + ref stale. */
   const pendingAcceptRef = useRef(false);
   const appliedDraftRef = useRef(appliedDraft);
   appliedDraftRef.current = appliedDraft;
+
+  const overlayHeldOutline = (base: StudioConfigDraft): StudioConfigDraft => {
+    const held = outlineHoldRef.current;
+    if (!held?.length) return base;
+    return {
+      ...base,
+      outlineItems: mergeOutlinePreferLocal(held, base.outlineItems),
+    };
+  };
 
   useEffect(() => {
     if (!appliedDraft) {
       setDraft(null);
       userEditedRef.current = false;
       pendingAcceptRef.current = false;
+      settingsTouchedRef.current = false;
+      outlineHoldRef.current = null;
       return;
     }
-    // Apply xong: nhận bản server mới, nhưng giữ field outline HR vừa gửi nếu server lệch
-    if (pendingAcceptRef.current) {
-      setDraft((prev) => {
-        if (!prev?.outlineItems?.length) return appliedDraft;
-        const merged = mergeOutlinePreferLocal(prev.outlineItems, appliedDraft.outlineItems);
-        return {
-          ...appliedDraft,
-          outlineItems: merged,
-          numberOfQuestions: Math.max(1, merged.length),
-        };
-      });
+    setDraft((prev) => {
+      if (pendingAcceptRef.current) {
+        pendingAcceptRef.current = false;
+        userEditedRef.current = false;
+        const local = outlineHoldRef.current ?? prev?.outlineItems;
+        const merged = local?.length
+          ? mergeOutlinePreferLocal(local, appliedDraft.outlineItems)
+          : normalizeOutlineItems(appliedDraft.outlineItems);
+        if (merged.length > 0) outlineHoldRef.current = merged;
+        return merged.length > 0 ? { ...appliedDraft, outlineItems: merged } : appliedDraft;
+      }
+      // Đang sửa bước 1: không lấy server đè draft
+      if (settingsTouchedRef.current && userEditedRef.current && prev) {
+        return overlayHeldOutline(prev);
+      }
       userEditedRef.current = false;
-      pendingAcceptRef.current = false;
-      return;
-    }
-    if (!userEditedRef.current || draftEquals(draft, appliedDraft)) {
-      setDraft(appliedDraft);
-      userEditedRef.current = false;
-    }
+      return overlayHeldOutline(appliedDraft);
+    });
   }, [appliedDraft]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const updateDraft = useCallback((patch: Partial<StudioConfigDraft>) => {
+    const keys = Object.keys(patch);
+    const outlineOnly =
+      keys.length > 0 && keys.every((k) => k === "outlineItems" || k === "numberOfQuestions");
+    // Sync count phân bổ (effect) chỉ gửi questionDistribution — không phải HR bấm bước 1
+    const distributionSyncOnly = keys.length === 1 && keys[0] === "questionDistribution";
+    if (!outlineOnly && !distributionSyncOnly) settingsTouchedRef.current = true;
+    if (patch.outlineItems) {
+      outlineHoldRef.current = normalizeOutlineItems(patch.outlineItems);
+    }
     userEditedRef.current = true;
     pendingAcceptRef.current = false;
     setDraft((prev) => {
@@ -228,8 +221,9 @@ export function useStudioConfig({ settings, currentPlan }: UseStudioConfigOption
 
   const resetDraftFromApplied = useCallback(() => {
     userEditedRef.current = false;
+    settingsTouchedRef.current = false;
     pendingAcceptRef.current = true;
-    // Nếu props đã fresh (không await đang pending) — sync ngay
+    outlineHoldRef.current = null;
     if (appliedDraftRef.current) setDraft(appliedDraftRef.current);
   }, []);
 
@@ -242,12 +236,17 @@ export function useStudioConfig({ settings, currentPlan }: UseStudioConfigOption
    */
   const acceptServerSettings = useCallback((snapshot?: StudioConfigDraft | null) => {
     userEditedRef.current = false;
+    settingsTouchedRef.current = false;
     pendingAcceptRef.current = true;
     if (snapshot) {
+      const outline = normalizeOutlineItems(snapshot.outlineItems);
+      // Bước 1 rebuild outline mới — thay hold. Auto-save truyền outline HR vừa giữ.
+      outlineHoldRef.current = outline.length > 0 ? outline : null;
       setDraft(snapshot);
       return;
     }
-    // Không có snapshot: chỉ chờ useEffect khi appliedDraft đổi — không set từ ref stale.
+    // Plan mới (generate): bỏ hold cũ để không đè outline plan vừa tạo
+    outlineHoldRef.current = null;
   }, []);
 
   // Khi server vừa seed distribution/focus (sau tạo plan) mà draft local còn trống — sync ngay.
@@ -280,10 +279,12 @@ export function useStudioConfig({ settings, currentPlan }: UseStudioConfigOption
     [draft, appliedDraft]
   );
 
-  /** Dirty chỉ Focus/distribution/styles… — không tính outline / số slot Preview. */
+  /** Dirty chỉ khi HR sửa bước 1 (focus/phân bổ/style…). Sửa Preview không tính. */
   const isSettingsDirty = useMemo(() => {
     if (!draft || !appliedDraft) return false;
-    return step1SettingsFingerprint(draft) !== step1SettingsFingerprint(appliedDraft);
+    const changed = step1SettingsFingerprint(draft) !== step1SettingsFingerprint(appliedDraft);
+    if (!changed) settingsTouchedRef.current = false;
+    return settingsTouchedRef.current && changed;
   }, [draft, appliedDraft]);
 
   const distributionValidation = useMemo(
