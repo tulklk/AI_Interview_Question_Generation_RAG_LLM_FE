@@ -1477,6 +1477,7 @@ export function ChatPanel({
             hiringMode={hiringMode}
             onHiringModeChange={onHiringModeChange}
             questionSetId={questionSetId}
+            planId={plan?.id}
             publicJd={publicJd}
           />
         )}

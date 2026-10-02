@@ -62,16 +62,18 @@ export function GeneralSettings() {
   async function handleSave() {
     setSaving(true);
     try {
+      const minQuestions = Math.min(50, Math.max(5, Number(minQuestionsToPublish) || 5));
       const maxLeaves = Math.min(20, Math.max(1, Number(antiCheatMaxTabLeaves) || 3));
       const maxStrikes = Math.min(10, Math.max(1, Number(maxIntegrityStrikes) || 3));
       await updatePlatformSettings({
-        minQuestionsToPublish: Number(minQuestionsToPublish) || undefined,
+        minQuestionsToPublish: minQuestions,
         maxPinnedSets: Number(maxPinnedSets) || 0,
         minAttemptsForTrending: Number(minAttemptsForTrending) || undefined,
         antiCheatEnabled,
         antiCheatMaxTabLeaves: maxLeaves,
         maxIntegrityStrikes: maxStrikes,
       });
+      setMinQuestionsToPublish(String(minQuestions));
       setAntiCheatMaxTabLeaves(String(maxLeaves));
       setMaxIntegrityStrikes(String(maxStrikes));
       addToast("success", g.saveSuccess);
@@ -126,7 +128,7 @@ export function GeneralSettings() {
             <input
               id="min-questions-publish"
               type="number"
-              min={1}
+              min={5}
               max={50}
               value={minQuestionsToPublish}
               onChange={(e) => setMinQuestionsToPublish(e.target.value)}
