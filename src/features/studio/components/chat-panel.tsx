@@ -1174,7 +1174,7 @@ interface Props {
   onHiringModeChange?: (next: {
     isHiringAssessment: boolean;
     hrAntiCheatEnabled: boolean;
-  }) => void | Promise<void>;
+  }) => void | false | Promise<void | false>;
   /** SCRUM-470: JD công khai + posting khi Tuyển */
   questionSetId?: string | null;
   publicJd?: {

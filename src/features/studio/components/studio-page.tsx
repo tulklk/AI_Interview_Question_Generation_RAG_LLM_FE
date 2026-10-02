@@ -1373,11 +1373,11 @@ export function StudioPage() {
               if (next.isHiringAssessment) {
                 if (!questionSetId) {
                   addToast("error", t.reviewPage.saveDraftFirstHint);
-                  return;
+                  return false;
                 }
                 try {
                   const ok = await ensureHiringPostingReady();
-                  if (!ok) return;
+                  if (!ok) return false;
                 } catch (err) {
                   addToast(
                     "error",
@@ -1386,7 +1386,7 @@ export function StudioPage() {
                       : t.hiringMode.postingIncomplete
                   );
                   setPublicJdNeedsAttention(true);
-                  return;
+                  return false;
                 }
               }
               await studio.updateSettingField({

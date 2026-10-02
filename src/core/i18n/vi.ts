@@ -3454,10 +3454,10 @@ Yêu cầu:
     warningTitle: "Cảnh báo trung thực buổi phỏng vấn",
     warningTitleFinal: "Cảnh báo trung thực cuối cùng",
     warningIntro: "Chúng tôi phát hiện hành vi vi phạm quy tắc trung thực buổi phỏng vấn.",
-    warningIntroFinal: "Đây là lần vi phạm trung thực thứ hai của bạn.",
+    warningIntroFinal: "Đây là cảnh báo cuối trước khi buổi phỏng vấn kết thúc.",
     warningOf: "Cảnh báo {{n}} / {{max}}",
     warningContinueHint:
-      "Bạn có thể tiếp tục buổi phỏng vấn. Vi phạm tiếp theo sẽ dẫn đến cảnh báo cuối cùng.",
+      "Bạn có thể tiếp tục buổi phỏng vấn. Đủ số lỗi tối đa sẽ kết thúc buổi phỏng vấn này.",
     warningFinalHint: "Thêm một vi phạm nữa sẽ kết thúc ngay buổi phỏng vấn này.",
     ackUnderstand: "Tôi đã hiểu",
     ackContinue: "Tôi đã hiểu và tiếp tục",

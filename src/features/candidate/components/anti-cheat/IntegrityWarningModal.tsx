@@ -34,8 +34,8 @@ export function IntegrityWarningModal({ open, strike, onAcknowledge, maxStrikes 
   if (!mounted || !latched) return null;
 
   const isFinal = latched.strikeNumber >= maxStrikes - 1;
-  const warningOf = Math.min(latched.strikeNumber, maxStrikes - 1);
-  const maxWarnings = maxStrikes - 1;
+  const warningOf = Math.min(latched.strikeNumber, maxStrikes);
+  const maxWarnings = maxStrikes;
   const title = isFinal ? a.warningTitleFinal : a.warningTitle;
   const description = integrityEventDescription(latched.eventType, a.events);
   const ackLabel = isFinal ? a.ackContinue : a.ackUnderstand;

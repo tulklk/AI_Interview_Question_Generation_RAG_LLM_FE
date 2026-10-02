@@ -3453,10 +3453,10 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
     warningTitle: "Interview integrity warning",
     warningTitleFinal: "Final integrity warning",
     warningIntro: "We detected an action that violates the interview integrity rules.",
-    warningIntroFinal: "This is your second interview integrity violation.",
+    warningIntroFinal: "This is the final warning before the interview ends.",
     warningOf: "Warning {{n}} of {{max}}",
     warningContinueHint:
-      "You may continue the interview. Another violation will result in a final warning.",
+      "You may continue the interview. Reaching the maximum number of violations will end this interview.",
     warningFinalHint: "One more violation will immediately terminate this interview.",
     ackUnderstand: "I understand",
     ackContinue: "I understand and continue",
