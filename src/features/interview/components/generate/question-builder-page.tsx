@@ -35,7 +35,10 @@ import {
 } from "@/features/interview/components/generate/question-builder-bulk-bar";
 import { QuestionBuilderPreview } from "@/features/interview/components/generate/question-builder-preview";
 import {
+  buildPresetCriteria,
   emptyRubric,
+  getPresetKey,
+  isPublishReady,
   prepareRubricForSave,
   rubricToApiPayload,
   type RubricV1,
@@ -95,6 +98,14 @@ function nextOrder(items: SessionAddedQuestion[]) {
   return items.reduce((max, item) => Math.max(max, item.order), 0) + 1;
 }
 
+/** Rubric mẫu đủ trọng số 100% và mốc chấm — đúng điều kiện publish của server. */
+function presetRubric(questionType: string, contentMode: ContentMode): RubricV1 {
+  return rubricToApiPayload({
+    ...emptyRubric(),
+    criteria: buildPresetCriteria(getPresetKey(questionType, contentMode)),
+  });
+}
+
 export function QuestionBuilderPage() {
   const { addToast } = useToast();
   const { t } = useLanguage();
@@ -132,7 +143,9 @@ export function QuestionBuilderPage() {
   const [skill, setSkill] = useState("");
   const [focusArea, setFocusArea] = useState("");
   const [sampleAnswer, setSampleAnswer] = useState("");
-  const [rubricDoc, setRubricDoc] = useState<RubricV1>(() => emptyRubric());
+  const [rubricDoc, setRubricDoc] = useState<RubricV1>(() => presetRubric("Problem-solving", "code"));
+  const rubricTouchedRef = useRef(false);
+  const seededSampleRef = useRef(false);
   const [rationale, setRationale] = useState("");
   const [imageHint, setImageHint] = useState("");
   const [imageFile, setImageFile] = useState<File | null>(null);
@@ -211,6 +224,13 @@ export function QuestionBuilderPage() {
     void loadDrafts();
   }, [loadDrafts]);
 
+  useEffect(() => {
+    if (seededSampleRef.current) return;
+    if (!qb.defaultSampleAnswer) return;
+    seededSampleRef.current = true;
+    setSampleAnswer((prev) => (prev.trim() ? prev : qb.defaultSampleAnswer));
+  }, [qb.defaultSampleAnswer]);
+
   // Danh sách và ô soạn cùng một câu: gõ là dòng đang chọn đổi theo.
   useEffect(() => {
     if (!editingId) return;
@@ -225,14 +245,25 @@ export function QuestionBuilderPage() {
   }, [editingId, question, difficulty, questionType]);
 
   const onContentModeChange = (mode: ContentMode) => {
+    const nextType = defaultQuestionType(mode);
     setContentMode(mode);
     setSelectedTemplate(defaultTemplate(mode));
-    setQuestionType(defaultQuestionType(mode));
+    setQuestionType(nextType);
+    if (!editingId && !rubricTouchedRef.current) {
+      setRubricDoc(presetRubric(nextType, mode));
+    }
     if (mode !== "code") {
       setCodeSnippet("");
       setSnippetLanguage("auto");
     }
     if (mode !== "system_design") setDiagramDescription("");
+  };
+
+  const onQuestionTypeChange = (nextType: QuestionType) => {
+    setQuestionType(nextType);
+    if (!editingId && !rubricTouchedRef.current) {
+      setRubricDoc(presetRubric(nextType, contentMode));
+    }
   };
 
   const onPickImage = (file: File | undefined) => {
@@ -288,8 +319,15 @@ export function QuestionBuilderPage() {
     setDiagramDescription(draft?.diagramDescription ?? "");
     setSkill(draft?.skill ?? "");
     setFocusArea(draft?.focusArea ?? "");
-    setSampleAnswer(draft?.sampleAnswer ?? "");
-    setRubricDoc(draft?.rubricDoc ?? emptyRubric());
+    const nextType = (item.questionType as QuestionType) || "Technical";
+    const nextMode = draft?.contentMode ?? "theory";
+    setSampleAnswer(draft?.sampleAnswer?.trim() ? draft.sampleAnswer : qb.defaultSampleAnswer);
+    setRubricDoc(
+      draft?.rubricDoc && isPublishReady(draft.rubricDoc)
+        ? draft.rubricDoc
+        : presetRubric(nextType, nextMode)
+    );
+    rubricTouchedRef.current = Boolean(draft?.rubricDoc && isPublishReady(draft.rubricDoc));
     setRationale(draft?.rationale ?? "");
     setImageHint(draft?.imageHint ?? "");
     setImageFile(draft?.imageFile ?? null);
@@ -311,8 +349,9 @@ export function QuestionBuilderPage() {
     setCodeSnippet("");
     setSnippetLanguage("auto");
     setDiagramDescription("");
-    setSampleAnswer("");
-    setRubricDoc(emptyRubric());
+    rubricTouchedRef.current = false;
+    setSampleAnswer(qb.defaultSampleAnswer);
+    setRubricDoc(presetRubric(questionType, contentMode));
     setRationale("");
     setImageHint("");
     setSkill("");
@@ -340,8 +379,9 @@ export function QuestionBuilderPage() {
     setCodeSnippet("");
     setSnippetLanguage("auto");
     setDiagramDescription("");
-    setSampleAnswer("");
-    setRubricDoc(emptyRubric());
+    rubricTouchedRef.current = false;
+    setSampleAnswer(qb.defaultSampleAnswer);
+    setRubricDoc(presetRubric(questionType, contentMode));
     setRationale("");
     setImageHint("");
     setSkill("");
@@ -404,8 +444,10 @@ export function QuestionBuilderPage() {
     return parts.length > 0 ? parts.join(";") : undefined;
   };
 
-  /** Không tự gắn rubric mẫu — để trống thì câu vẫn sẵn sàng, HR bổ sung sau. */
-  const resolvedRubric = (): RubricV1 => rubricToApiPayload(rubricDoc);
+  /** Đáp án mẫu và rubric luôn đủ điều kiện publish. HR sửa được, không được để trống khi lưu. */
+  const resolvedSample = () => sampleAnswer.trim() || qb.defaultSampleAnswer;
+  const resolvedRubric = (): RubricV1 =>
+    isPublishReady(rubricDoc) ? rubricToApiPayload(rubricDoc) : presetRubric(questionType, contentMode);
 
   const bumpCount = () => {
     setDrafts((prev) =>
@@ -448,7 +490,7 @@ export function QuestionBuilderPage() {
             difficulty,
             skill: skill.trim() || null,
             focusArea: focusArea.trim() || null,
-            sampleAnswer: sampleAnswer.trim() || null,
+            sampleAnswer: resolvedSample(),
             rationale: rationaleMeta ?? null,
             scoringRubric: prepareRubricForSave(parsed).displayText || null,
             answerMethod,
@@ -479,7 +521,7 @@ export function QuestionBuilderPage() {
         difficulty,
         skill: skill.trim() || undefined,
         focusArea: focusArea.trim() || undefined,
-        sampleAnswer: sampleAnswer.trim() || undefined,
+        sampleAnswer: resolvedSample(),
         evaluationCriteria: parsed.criteria as unknown[],
         rationale: rationaleMeta,
         answerMethod,
@@ -539,7 +581,7 @@ export function QuestionBuilderPage() {
           difficulty,
           skill: skill.trim() || undefined,
           focusArea: focusArea.trim() || undefined,
-          sampleAnswer: sampleAnswer.trim() || undefined,
+          sampleAnswer: resolvedSample(),
           evaluationCriteria: parsed.criteria as unknown[],
           rationale: buildRationaleMeta(),
           answerMethod,
@@ -574,14 +616,17 @@ export function QuestionBuilderPage() {
         pasted.length > 0
           ? pasted.slice(0, BULK_MAX)
           : Array.from({ length: total }, (_, i) => `${qb.bulkBar.placeholderPrefix} ${start + i}`);
+      const bulkSample = qb.defaultSampleAnswer;
+      const bulkRubric = presetRubric(questionType, "theory");
       const added: SessionAddedQuestion[] = [];
       for (let i = 0; i < texts.length; i++) {
         const created = await addQuestionSetQuestion(selectedSetId, {
           question: texts[i],
           questionType,
           difficulty,
+          sampleAnswer: bulkSample,
           answerMethod: "Text",
-          evaluationCriteria: [],
+          evaluationCriteria: bulkRubric.criteria as unknown[],
           citations: [],
         });
         if (!created) {
@@ -594,7 +639,7 @@ export function QuestionBuilderPage() {
             );
           }
           if (added[0]) {
-            applyQuestion(added[0], undefined);
+            applyQuestion(added[0], draftsRef.current.get(added[0].id));
             setEditingId(added[0].id);
           }
           return;
@@ -608,6 +653,22 @@ export function QuestionBuilderPage() {
           questionType: created.questionType,
         };
         added.push(item);
+        draftsRef.current.set(created.id, {
+          contentMode: "theory",
+          selectedTemplate: "BUG_DETECTION",
+          codeSnippet: "",
+          snippetLanguage: "auto",
+          diagramDescription: "",
+          skill: "",
+          focusArea: "",
+          sampleAnswer: bulkSample,
+          rubricDoc: bulkRubric,
+          rationale: "",
+          imageHint: "",
+          imageFile: null,
+          imagePreviewUrl: null,
+          imageDirty: false,
+        });
         working = [...working, item];
         setSessionAdded(working);
         bumpCount();
@@ -619,7 +680,7 @@ export function QuestionBuilderPage() {
       setBulkPaste("");
       setBulkOpen(false);
       if (added[0]) {
-        applyQuestion(added[0], undefined);
+        applyQuestion(added[0], draftsRef.current.get(added[0].id));
         setEditingId(added[0].id);
       }
     } finally {
@@ -723,7 +784,7 @@ export function QuestionBuilderPage() {
             selectedTemplate={selectedTemplate}
             onTemplateChange={setSelectedTemplate}
             questionType={questionType}
-            onQuestionTypeChange={setQuestionType}
+            onQuestionTypeChange={onQuestionTypeChange}
             question={question}
             onQuestionChange={setQuestion}
             codeSnippet={codeSnippet}
@@ -741,7 +802,10 @@ export function QuestionBuilderPage() {
             sampleAnswer={sampleAnswer}
             onSampleAnswerChange={setSampleAnswer}
             rubricDoc={rubricDoc}
-            onRubricDocChange={setRubricDoc}
+            onRubricDocChange={(doc) => {
+              rubricTouchedRef.current = true;
+              setRubricDoc(doc);
+            }}
             rationale={rationale}
             onRationaleChange={setRationale}
             imageHint={imageHint}

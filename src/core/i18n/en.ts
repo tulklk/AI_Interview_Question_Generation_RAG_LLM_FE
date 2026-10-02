@@ -1269,7 +1269,7 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
     title: "Publish question set",
     description:
       "Choose which ready questions to publish, set a practice time limit, and configure candidate recommendations. Unselected questions stay in the draft.",
-    descriptionShort: "A question with content can be published. Sample answer and rubric can be added later.",
+    descriptionShort: "Choose ready questions, practice time, and recommendation threshold.",
     questionsLabel: "Questions",
     selectAll: "Select all",
     deselectAll: "Deselect all",
@@ -1277,7 +1277,7 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
     selectedOnlyBadge: "{{selected}} selected",
     minLabel: "Min {{min}}",
     readyBadge: "Ready",
-    notReadyBadge: "Rubric incomplete",
+    notReadyBadge: "Not ready",
     minHint: "Select at least {{min}} ready questions ({{count}}/{{min}}).",
     settingsTitle: "Publish settings",
     timeLimitTitle: "Practice time limit",
@@ -5829,7 +5829,9 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
     startNewBtn: "New question",
     editingTitle: "Question {{n}}",
     newQuestionTitle: "New question",
-    detailsToggle: "More details",
+    detailsToggle: "Add later",
+    publishRequiredHint: "Required to publish. Edit now or keep this starter.",
+    defaultSampleAnswer: "The candidate should answer directly, state the main point, and give a short example.",
     savingBtn: "Saving...",
     viewSetBtn: "View question set",
     // Set panel

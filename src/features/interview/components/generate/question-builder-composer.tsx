@@ -202,8 +202,6 @@ export function QuestionBuilderComposer(props: Props) {
 
   const hasQuestion = question.trim().length > 0;
   const hasDetails =
-    sampleAnswer.trim().length > 0 ||
-    rubricDoc.criteria.length > 0 ||
     skill.trim().length > 0 ||
     focusArea.trim().length > 0 ||
     rationale.trim().length > 0 ||
@@ -447,6 +445,32 @@ export function QuestionBuilderComposer(props: Props) {
           </div>
         )}
 
+        <div className="space-y-3 rounded-xl border border-primary/20 bg-primary/5 px-3 py-3">
+          <p className={cn("text-[11px] leading-snug", portalSubtext)}>{qb.publishRequiredHint}</p>
+          <div>
+            <FieldLabel required className="mb-1.5">{qb.sampleAnswerLabel}</FieldLabel>
+            <textarea
+              value={sampleAnswer}
+              onChange={(e) => onSampleAnswerChange(e.target.value)}
+              rows={3}
+              disabled={saving}
+              className={cn(
+                portalInput,
+                "w-full rounded-xl px-3 py-2.5 text-sm leading-relaxed outline-none focus:border-primary disabled:opacity-60"
+              )}
+              placeholder={qb.sampleAnswerPlaceholder}
+            />
+          </div>
+          <RubricEditor
+            value={rubricDoc}
+            onChange={onRubricDocChange}
+            questionType={questionType}
+            contentMode={contentMode}
+            disabled={saving}
+            labels={rubricLabels}
+          />
+        </div>
+
         <div className="overflow-hidden rounded-xl border border-gray-100 dark:border-gray-800">
           <button
             type="button"
@@ -490,30 +514,6 @@ export function QuestionBuilderComposer(props: Props) {
                   />
                 </div>
               </div>
-
-              <div>
-                <FieldLabel className="mb-1.5">{qb.sampleAnswerLabel}</FieldLabel>
-                <textarea
-                  value={sampleAnswer}
-                  onChange={(e) => onSampleAnswerChange(e.target.value)}
-                  rows={4}
-                  disabled={saving}
-                  className={cn(
-                    portalInput,
-                    "w-full rounded-xl px-3 py-2.5 text-sm leading-relaxed outline-none focus:border-primary disabled:opacity-60"
-                  )}
-                  placeholder={qb.sampleAnswerPlaceholder}
-                />
-              </div>
-
-              <RubricEditor
-                value={rubricDoc}
-                onChange={onRubricDocChange}
-                questionType={questionType}
-                contentMode={contentMode}
-                disabled={saving}
-                labels={rubricLabels}
-              />
 
               <div>
                 <FieldLabel className="mb-1.5">{qb.rationaleLabel}</FieldLabel>
