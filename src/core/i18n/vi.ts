@@ -1271,7 +1271,7 @@ Yêu cầu:
     title: "Xuất bản bộ câu hỏi",
     description:
       "Chọn câu đã sẵn sàng để publish, đặt giới hạn thời gian luyện tập và ngưỡng gợi ý ứng viên. Câu không chọn vẫn nằm trong bản nháp.",
-    descriptionShort: "Chọn câu sẵn sàng, thời gian luyện và ngưỡng gợi ý ứng viên.",
+    descriptionShort: "Câu có nội dung là xuất bản được. Đáp án mẫu và tiêu chí chấm có thể bổ sung sau.",
     questionsLabel: "Câu hỏi",
     selectAll: "Chọn tất cả",
     deselectAll: "Bỏ chọn tất cả",
@@ -1279,7 +1279,7 @@ Yêu cầu:
     selectedOnlyBadge: "{{selected}} đã chọn",
     minLabel: "Tối thiểu {{min}}",
     readyBadge: "Sẵn sàng",
-    notReadyBadge: "Chưa sẵn sàng",
+    notReadyBadge: "Rubric chưa xong",
     minHint: "Cần chọn tối thiểu {{min}} câu sẵn sàng ({{count}}/{{min}}).",
     settingsTitle: "Thiết lập xuất bản",
     timeLimitTitle: "Giới hạn thời gian luyện tập",

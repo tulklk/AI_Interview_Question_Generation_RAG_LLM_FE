@@ -35,9 +35,7 @@ import {
 } from "@/features/interview/components/generate/question-builder-bulk-bar";
 import { QuestionBuilderPreview } from "@/features/interview/components/generate/question-builder-preview";
 import {
-  buildPresetCriteria,
   emptyRubric,
-  getPresetKey,
   prepareRubricForSave,
   rubricToApiPayload,
   type RubricV1,
@@ -406,13 +404,8 @@ export function QuestionBuilderPage() {
     return parts.length > 0 ? parts.join(";") : undefined;
   };
 
-  const resolvedRubric = (): RubricV1 => {
-    if (rubricDoc.criteria.length > 0) return rubricToApiPayload(rubricDoc);
-    return rubricToApiPayload({
-      ...emptyRubric(),
-      criteria: buildPresetCriteria(getPresetKey(questionType, contentMode)),
-    });
-  };
+  /** Không tự gắn rubric mẫu — để trống thì câu vẫn sẵn sàng, HR bổ sung sau. */
+  const resolvedRubric = (): RubricV1 => rubricToApiPayload(rubricDoc);
 
   const bumpCount = () => {
     setDrafts((prev) =>

@@ -200,7 +200,10 @@ function normalizeDraftQuestion(raw: unknown, index: number): GeneratedQuestion 
             ? src.orderIndex
             : index,
     isActive: typeof isActiveRaw === "boolean" ? isActiveRaw : true,
-    isReady: Boolean(sampleAnswer?.trim() && isPublishReady(rubricDoc)),
+    // Sẵn sàng khi có nội dung. Rubric trống = bổ sung sau. Rubric đã nhập thì phải hợp lệ.
+    isReady: Boolean(
+      question.trim() && (rubricDoc.criteria.length === 0 || isPublishReady(rubricDoc))
+    ),
   };
 }
 
