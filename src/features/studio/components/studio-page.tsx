@@ -26,7 +26,8 @@ import {
 } from "@/features/hr/hooks/use-hr-sidebar-collapsed";
 import { isPublishReady, normalizeFromJson, normalizeFromUnknown } from "@/shared/rubric";
 import type { PlanOutlineItem, StudioQuestion, StudioSettings } from "@/features/studio/types/studio.types";
-import { normalizeOutlineItems } from "@/features/studio/components/plan-question-preview-list";
+import { normalizeOutlineItems, mergeOutlinePreferLocal } from "@/features/studio/components/plan-question-preview-list";
+import { shouldShowOutlinePreview } from "@/features/studio/components/plan-outline-preview-block";
 import { PublishDialog } from "@/features/question/components/publish-dialog";
 import type { PublishDialogConfirmPayload } from "@/features/question/components/publish-dialog";
 import { pollGenerationRun } from "@/features/studio/utils/poll-generation-run";
@@ -677,17 +678,18 @@ export function StudioPage() {
     );
   }, [studio, studioConfig]);
 
-  /** Bước 2: Áp dụng Live Preview outline vào plan. */
-  const handleApplyOutline = useCallback(async () => {
+  /** Bước 2: lưu Live Preview outline vào plan (dùng cho auto-save). */
+  const handleApplyOutline = useCallback(async (opts?: { silent?: boolean }) => {
     const payload = studioConfig.buildApplyPayload() as
       | (Partial<StudioSettings> & { outlineItems?: PlanOutlineItem[] })
       | null;
     const outlineItems = normalizeOutlineItems(payload?.outlineItems ?? studio.currentPlan?.outlineItems);
     if (outlineItems.length < 5) {
-      addToast("error", s.outlineMinItemsToast);
+      if (!opts?.silent) addToast("error", s.outlineMinItemsToast);
       return;
     }
-    if (payload && studioConfig.isDirty) {
+    // Auto-save chỉ đẩy outline — không PUT settings bước 1 lẫn vào (tránh lệch)
+    if (!opts?.silent && payload && studioConfig.isDirty) {
       const { outlineItems: _omit, ...settingsOnly } = payload;
       const ok = await studio.applyConfiguration({
         ...settingsOnly,
@@ -695,17 +697,48 @@ export function StudioPage() {
       });
       if (!ok) return;
     }
-    const refreshed = await studio.applySettingsToPlan(outlineItems);
+    const refreshed = await studio.applySettingsToPlan(outlineItems, { silent: opts?.silent });
     if (!refreshed) return;
-    // Ưu tiên outline từ server; fallback outline vừa gửi để không mất Hard trên UI
+    // Luôn ưu tiên outline HR vừa gửi — server có thể lệch difficulty sau rebind
+    const mergedOutline = mergeOutlinePreferLocal(outlineItems, refreshed.plan?.outlineItems);
     studioConfig.acceptServerSettings(
-      buildConfigDraft(
-        refreshed.settings,
-        refreshed.plan,
-        refreshed.plan?.outlineItems?.length ? undefined : outlineItems
-      )
+      buildConfigDraft(refreshed.settings, refreshed.plan, mergedOutline)
     );
   }, [studio, studioConfig, addToast, s.outlineMinItemsToast]);
+
+  // Auto-save mọi chỉnh Preview — debounce, không cần bấm Áp dụng outline
+  const outlineSaveGenRef = useRef(0);
+  const previewOpen = shouldShowOutlinePreview(studio.currentPlan, {
+    hasQuestions: studio.questions.length > 0,
+    planConfigAppliedOnce,
+  });
+  useEffect(() => {
+    if (!previewOpen) return;
+    if (!outlineDirty) return;
+    if (studioConfig.isSettingsDirty) return;
+    if (studio.currentPlan?.status === "Approved" || studio.currentPlan?.status === "Superseded") return;
+    const items = normalizeOutlineItems(studioConfig.draft?.outlineItems);
+    if (items.length < 5) return;
+    if (studio.isApplyingSettings || studio.isApplyingConfig) return;
+
+    const gen = ++outlineSaveGenRef.current;
+    const timer = window.setTimeout(() => {
+      void (async () => {
+        if (gen !== outlineSaveGenRef.current) return;
+        await handleApplyOutline({ silent: true });
+      })();
+    }, 700);
+    return () => window.clearTimeout(timer);
+  }, [
+    previewOpen,
+    outlineDirty,
+    studioConfig.isSettingsDirty,
+    studioConfig.draft?.outlineItems,
+    studio.currentPlan?.status,
+    studio.isApplyingSettings,
+    studio.isApplyingConfig,
+    handleApplyOutline,
+  ]);
 
   const hasJd = Boolean(studio.jdSummary) || Boolean(studio.settings?.readiness?.hasJobDescription);
   const skillCount = studio.jdSummary?.skills?.length ?? 0;
@@ -1176,7 +1209,7 @@ export function StudioPage() {
             isApplyingPlanConfig={studio.isApplyingSettings || studio.isApplyingConfig}
             onConfigDraftChange={studioConfig.updateDraft}
             onApplyPlanConfig={handleApplyPlanConfig}
-            onApplyOutline={handleApplyOutline}
+            onApplyOutline={() => void handleApplyOutline({ silent: false })}
             planConfigAppliedOnce={planConfigAppliedOnce}
             outlineDirty={outlineDirty}
             onRefreshGenerationStatus={() => void studio.refreshGenerationStatus()}

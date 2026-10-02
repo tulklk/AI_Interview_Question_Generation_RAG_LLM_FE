@@ -748,11 +748,10 @@ function PlanWorkspace({
                 settings={settings}
                 allowedSkillNames={hrSkills}
                 locked={isGeneratingQuestions}
-                isApplying={isApplyingPlanConfig}
+                isSaving={isApplyingPlanConfig}
                 outlineDirty={outlineDirty}
                 settingsDirty={configDirty}
                 onDraftChange={onConfigDraftChange}
-                onApplyOutline={onApplyOutline ?? onApplyPlanConfig}
               />
             )}
 

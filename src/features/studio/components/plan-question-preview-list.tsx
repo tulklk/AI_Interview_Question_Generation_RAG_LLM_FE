@@ -132,6 +132,31 @@ export function normalizeOutlineItems(items: PlanOutlineItem[] | null | undefine
     .map((it, i) => ({ ...it, order: i + 1 }));
 }
 
+/**
+ * Sau Apply/auto-save: ưu tiên field HR vừa gửi (difficulty/skill/goal…).
+ * Server có thể trả lệch sau rebind citations — vẫn giữ citations từ server nếu có.
+ */
+export function mergeOutlinePreferLocal(
+  local: PlanOutlineItem[] | null | undefined,
+  server: PlanOutlineItem[] | null | undefined
+): PlanOutlineItem[] {
+  const left = normalizeOutlineItems(local);
+  const right = normalizeOutlineItems(server);
+  if (left.length === 0) return right;
+  if (right.length === 0) return left;
+
+  const byOrder = new Map(right.map((item) => [item.order, item]));
+  return left.map((item) => {
+    const fromServer = byOrder.get(item.order);
+    if (!fromServer) return item;
+    return {
+      ...item,
+      // Citations chỉ có nghĩa từ server/rebind
+      citations: fromServer.citations?.length ? fromServer.citations : item.citations,
+    };
+  });
+}
+
 interface Props {
   items: PlanOutlineItem[];
   allowedSkills: string[];

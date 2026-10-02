@@ -13,7 +13,7 @@ import {
 } from "@/features/studio/utils/focus-area-jd";
 import { normalizeStudioSettings } from "@/features/studio/utils/normalize-studio-settings";
 import { deriveLegacyQuestionTypes } from "@/features/studio/utils/ai-config-helpers";
-import { normalizeOutlineItems } from "@/features/studio/components/plan-question-preview-list";
+import { normalizeOutlineItems, mergeOutlinePreferLocal } from "@/features/studio/components/plan-question-preview-list";
 
 export type StudioConfigDraft = Pick<
   StudioSettings,
@@ -149,9 +149,19 @@ export function useStudioConfig({ settings, currentPlan }: UseStudioConfigOption
       pendingAcceptRef.current = false;
       return;
     }
-    // Apply xong: luôn nhận bản server mới khi props đã cập nhật
+    // Apply xong: nhận bản server mới, nhưng giữ field outline HR vừa gửi nếu server lệch
     if (pendingAcceptRef.current) {
-      setDraft(appliedDraft);
+      setDraft((prev) => {
+        if (!prev?.outlineItems?.length) return appliedDraft;
+        return {
+          ...appliedDraft,
+          outlineItems: mergeOutlinePreferLocal(prev.outlineItems, appliedDraft.outlineItems),
+          numberOfQuestions: Math.max(
+            1,
+            mergeOutlinePreferLocal(prev.outlineItems, appliedDraft.outlineItems).length
+          ),
+        };
+      });
       userEditedRef.current = false;
       pendingAcceptRef.current = false;
       return;
