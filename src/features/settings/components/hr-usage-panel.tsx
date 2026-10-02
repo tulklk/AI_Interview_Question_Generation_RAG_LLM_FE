@@ -30,6 +30,8 @@ const FALLBACK = {
   regenTitle: "Question regeneration",
   regenScope: "Max per question set",
   regenDetail: "{{sets}} set(s) regenerated · {{total}} run(s) total",
+  regenPerSetUnit: "per set",
+  regenPerScopeNote: "The limit applies separately to each question set — a new set always starts with a fresh allowance, regardless of past usage.",
   totalGenerate: "Question sets created this period",
   unlimitedGenerateHint: "Question-set generation is unlimited on your plan configuration.",
   noneYet: "You have not used any AI run in this period yet.",
@@ -241,23 +243,42 @@ export function HrUsagePanel() {
               caption={generateCaption}
               text={text}
             />
-            <MetricCard
-              title={text.regenTitle}
-              scope={text.regenScope}
-              used={regen.max}
-              limit={regenLimit}
-              // Bug cũ: ăn theo generateUnlimited (cờ của tính năng generate-per-window
-              // khác, không liên quan) khiến gói Premium luôn hiện "∞" thay vì bộ đếm
-              // thật X/questionRegenPerPlan (ví dụ 0/5). Chỉ unlimited khi chính
-              // questionRegenPerPlan = 0 (quy ước "0 = không giới hạn").
-              unlimited={regenLimit <= 0}
-              caption={
-                regen.scopes > 0
-                  ? fill(text.regenDetail, { sets: regen.scopes, total: regen.total })
-                  : null
-              }
-              text={text}
-            />
+            {/* Không dùng MetricCard (kiểu "X/Y + progress bar") cho field này: hạn mức
+                này tính riêng theo TỪNG bộ câu hỏi (scope = planId), không phải 1 bộ đếm
+                chung toàn tài khoản. API /api/me/usage không cho biết bộ nào đang active/
+                mới nhất, nên con số "đã dùng" không thể biết chắc có phải của bộ hiện tại
+                hay không — hiện kiểu "X/Y Đã dùng hết" sẽ gây hiểu lầm (ví dụ hiện đỏ dù
+                bộ mới tạo chưa hề đụng tới giới hạn). Hiển thị trung thực: hạn mức tĩnh
+                mỗi bộ + thống kê lịch sử, không suy diễn trạng thái "còn/hết". */}
+            <div className={cn(portalCard, "flex flex-col gap-3 p-4")}>
+              <div className="min-w-0">
+                <p className={cn("text-sm font-semibold leading-snug", portalHeading)}>{text.regenTitle}</p>
+                <p className={cn("mt-0.5 text-[11px] leading-snug", portalSubtext)}>{text.regenScope}</p>
+              </div>
+              {regenLimit <= 0 ? (
+                <div className="flex items-center gap-2">
+                  <span className={cn("text-3xl font-extrabold leading-none", portalHeading)}>∞</span>
+                  <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+                    {text.unlimited}
+                  </span>
+                </div>
+              ) : (
+                <div className="flex items-end gap-1.5">
+                  <span className={cn("text-2xl font-extrabold leading-none tabular-nums", portalHeading)}>
+                    {regenLimit}
+                  </span>
+                  <span className={cn("text-xs font-semibold", portalSubtext)}>{text.regenPerSetUnit}</span>
+                </div>
+              )}
+              {regen.scopes > 0 && (
+                <p className={cn("text-[11px] leading-snug", portalSubtext)}>
+                  {fill(text.regenDetail, { sets: regen.scopes, total: regen.total })}
+                </p>
+              )}
+              {regenLimit > 0 && (
+                <p className={cn("text-[11px] italic leading-snug", portalSubtext)}>{text.regenPerScopeNote}</p>
+              )}
+            </div>
             {/* "Plan regeneration" (planRegeneratePerDraft) MetricCard ẩn khỏi UI — lý do
                 giống field admin: giới hạn này chỉ enforce trên API /refine (tab "AI
                 Assistant" đang bị ẩn trong Studio), còn đường HR thực sự dùng để sửa plan

@@ -1244,14 +1244,13 @@ export function StudioPage() {
                   "@/features/subscription/services/subscription.service"
                 );
                 const code = getSubscriptionErrorCode(err);
-                // Giới hạn gói Free / Premium — mở dialog nâng cấp; luôn ném message rõ (không để Axios "403").
-                if (
-                  code === "COOLDOWN_ACTIVE" ||
-                  code === "QUOTA_EXCEEDED" ||
-                  code === "QUESTION_REGEN_LIMIT" ||
-                  code === "PLAN_REGENERATE_LIMIT" ||
-                  code === "FEATURE_REQUIRES_PREMIUM"
-                ) {
+                // Chỉ mở dialog "nâng Premium" cho đúng lỗi thuộc về hạn mức sinh bộ/JD theo
+                // cửa sổ giờ (nội dung dialog nói về "Gói Free... 1 lần/24h", nâng Premium).
+                // QUESTION_REGEN_LIMIT / PLAN_REGENERATE_LIMIT là giới hạn riêng theo từng
+                // plan/draft, không liên quan — kể cả tài khoản Premium cũng có thể dính 2 lỗi
+                // này, nên không được tái dùng dialog đó (sai nội dung). Message thật đã hiện
+                // đúng ngay trong popover regen qua throw bên dưới, không cần thêm dialog.
+                if (code === "COOLDOWN_ACTIVE" || code === "QUOTA_EXCEEDED" || code === "FEATURE_REQUIRES_PREMIUM") {
                   quotaDialogTriggeredRef.current = true;
                   setQuotaDialogOpen(true);
                   void refreshSubscription();

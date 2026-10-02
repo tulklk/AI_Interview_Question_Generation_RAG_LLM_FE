@@ -228,9 +228,9 @@ export function StudioSettingsPanel({ settings, plan, locked = false, configDirt
               label={s.settings.questionCount}
               value={totalQ}
               unit={s.settings.unitQuestions}
-              min={1}
+              min={5}
               max={50}
-              presets={[1, 3, 5, 10, 15, 20, 25, 30]}
+              presets={[5, 10, 15, 20, 25, 30]}
               disabled={prefsDisabled}
               onChange={(v) => onChangeSetting({ numberOfQuestions: v })}
             />
