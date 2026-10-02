@@ -19,22 +19,16 @@ import {
   sendRecommendationOffer,
   type CandidateRecommendation,
 } from "@/features/hr/services/recommendation.service";
-import { getScoreBandLabel } from "@/features/hr/utils/score-band";
-import type { ScoreLevelLabels } from "@/features/candidate/components/ui/pill";
+import { applyInviteScoreTemplate } from "@/features/hr/utils/score-band";
 import { InviteScheduleFields, defaultInviteSchedule, toInvitePayload } from "./invite-schedule-fields";
 
 const INVITE_MSG_MAX = 2000;
 const OFFER_MSG_MAX = 5000;
 
-function buildDefaultMessage(
-  template: string,
-  rec: CandidateRecommendation,
-  scoreLabels: ScoreLevelLabels,
-): string {
-  return template
+function buildDefaultMessage(template: string, rec: CandidateRecommendation): string {
+  return applyInviteScoreTemplate(template, rec.score)
     .replace("{{name}}", rec.candidateName || "")
-    .replace("{{title}}", rec.questionSetTitle || "")
-    .replace("{{score}}", getScoreBandLabel(rec.score, scoreLabels));
+    .replace("{{title}}", rec.questionSetTitle || "");
 }
 
 function isOfferBlocked(status: string | null | undefined): boolean {
@@ -61,14 +55,13 @@ export function InviteWithOfferModal({
   const labels = t.hrRecommendationsPage.invite;
   const offerLabels = t.hrRecommendationsPage.offer;
   const p = t.hrRecommendationsPage;
-  const scoreLabels = t.jobseekerFeedbackPage.scoreLevels;
   const { addToast } = useToast();
 
   const alreadyInvited = rec.status === "INVITED";
   const offerBlocked = isOfferBlocked(rec.latestOfferStatus);
 
   const [message, setMessage] = useState(() =>
-    buildDefaultMessage(labels.defaultMessage, rec, scoreLabels),
+    buildDefaultMessage(labels.defaultMessage, rec),
   );
   const [schedule, setSchedule] = useState(defaultInviteSchedule);
   // SCRUM-481: mặc định bật; nếu đã INVITED thì buộc bật (chỉ còn gửi email).
@@ -86,7 +79,7 @@ export function InviteWithOfferModal({
     void getCurrentUser()
       .then((u) => {
         const tpl = u.hrProfile?.inviteMessageTemplate?.trim();
-        if (tpl) setMessage(buildDefaultMessage(tpl, rec, scoreLabels));
+        if (tpl) setMessage(buildDefaultMessage(tpl, rec));
       })
       .catch(() => undefined);
     return () => {

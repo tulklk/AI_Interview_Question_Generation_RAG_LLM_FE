@@ -15,7 +15,6 @@ import {
   getMySubscription,
   getSubscriptionErrorCode,
   isPremiumPlanCode,
-  purchaseAskAiPack,
   type MySubscription,
   type SubscriptionLimits,
 } from "@/features/subscription/services/subscription.service";
@@ -37,7 +36,6 @@ interface HrSubscriptionContextValue {
   hasFeature: (featureId: HrFeatureId) => boolean;
   /** Hạ Free — hành động thật, đồng bộ (khác upgrade, không cần thanh toán) */
   cancelPremium: () => Promise<void>;
-  purchaseAskAiPack: (extra?: number) => Promise<void>;
   refresh: () => Promise<void>;
   lastErrorCode: string | null;
 }
@@ -84,11 +82,6 @@ export function HrSubscriptionProvider({ children }: { children: ReactNode }) {
     setPlanId(mapPlanCodeToHrPlanId(sub.planCode));
   }, []);
 
-  const buyAskAiPack = useCallback(async (extra = 200) => {
-    const sub = await purchaseAskAiPack(extra);
-    setSubscription(sub);
-  }, []);
-
   const value = useMemo<HrSubscriptionContextValue>(() => {
     const limits = subscription?.limits ?? null;
     const isPremium = subscription ? isPremiumPlanCode(subscription.planCode) : false;
@@ -96,7 +89,6 @@ export function HrSubscriptionProvider({ children }: { children: ReactNode }) {
     const hasFeature = (featureId: HrFeatureId) => {
       if (!limits) return false;
       if (featureId === "export") return limits.canExport;
-      if (featureId === "askAi") return limits.askAiPerMonth > 0;
       if (featureId === "publish") return limits.canPublish;
       if (featureId === "unlimitedGenerate") return limits.generateUnlimited;
       return false;
@@ -141,11 +133,10 @@ export function HrSubscriptionProvider({ children }: { children: ReactNode }) {
       generateWindowLimit,
       hasFeature,
       cancelPremium,
-      purchaseAskAiPack: buyAskAiPack,
       refresh,
       lastErrorCode,
     };
-  }, [planId, loading, subscription, cancelPremium, buyAskAiPack, refresh, lastErrorCode]);
+  }, [planId, loading, subscription, cancelPremium, refresh, lastErrorCode]);
 
   return (
     <HrSubscriptionContext.Provider value={value}>{children}</HrSubscriptionContext.Provider>

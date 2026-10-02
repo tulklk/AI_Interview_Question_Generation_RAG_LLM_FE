@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowDown,
   ArrowUp,
@@ -69,6 +69,42 @@ function learnTopics(items: CoachRoadmapItem[]): CoachRoadmapItem[] {
   return items
     .filter((i) => !i.isReassessmentGate)
     .sort((a, b) => a.sortOrder - b.sortOrder);
+}
+
+/** Checkbox skill-level: tick ngoài để bật/tắt nhanh mọi topic trong skill. */
+function SkillIncludeCheckbox({
+  checked,
+  indeterminate,
+  disabled,
+  ariaLabel,
+  onToggle,
+}: {
+  checked: boolean;
+  indeterminate: boolean;
+  disabled: boolean;
+  ariaLabel: string;
+  onToggle: (next: boolean) => void;
+}) {
+  const ref = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (ref.current) ref.current.indeterminate = indeterminate;
+  }, [indeterminate]);
+
+  return (
+    <input
+      ref={ref}
+      type="checkbox"
+      className="h-4 w-4 shrink-0 rounded border-gray-300 text-primary focus:ring-primary/40 disabled:opacity-40"
+      checked={checked}
+      disabled={disabled}
+      aria-label={ariaLabel}
+      onClick={(e) => e.stopPropagation()}
+      onChange={(e) => {
+        e.stopPropagation();
+        onToggle(e.target.checked);
+      }}
+    />
+  );
 }
 
 function SortableTopicRow({
@@ -147,9 +183,10 @@ export function CoachRoadmapPreviewPanel({
   const p = t.jobseekerCoachPage;
   const reduced = useReducedMotion();
   const [pendingItemId, setPendingItemId] = useState<string | null>(null);
+  const [pendingSkillId, setPendingSkillId] = useState<string | null>(null);
   const [reordering, setReordering] = useState(false);
   const [descExpanded, setDescExpanded] = useState<Record<string, boolean>>({});
-  const locked = busy || accepting || reordering;
+  const locked = busy || accepting || reordering || pendingSkillId !== null;
 
   const draftRoadmaps = useMemo(
     () =>
@@ -200,6 +237,23 @@ export function CoachRoadmapPreviewPanel({
       await onToggleItem(itemId, next);
     } finally {
       setPendingItemId(null);
+    }
+  }
+
+  /** Tick ngoài skill: batch bật/tắt toàn bộ topic học của skill đó. */
+  async function handleToggleSkill(roadmap: CoachRoadmap, next: boolean) {
+    const topics = learnTopics(roadmap.items);
+    if (topics.length === 0) return;
+    setPendingSkillId(roadmap.id);
+    try {
+      await onUpdateDraft({
+        items: topics.map((item) => ({
+          itemId: item.id,
+          isIncluded: next,
+        })),
+      });
+    } finally {
+      setPendingSkillId(null);
     }
   }
 
@@ -339,49 +393,76 @@ export function CoachRoadmapPreviewPanel({
           const outside = roadmap.skillSource === "outsideCv";
           const topics = learnTopics(roadmap.items);
           const topicCount = topics.filter((i) => i.isIncluded !== false).length;
+          const allTopicsIncluded = topics.length > 0 && topicCount === topics.length;
+          const someTopicsIncluded = topicCount > 0 && topicCount < topics.length;
+          const skillToggling = pendingSkillId === roadmap.id;
           const desc = roadmap.explanation?.trim() || (outside ? roadmap.outsideCvReason : null);
           const showFullDesc = descExpanded[roadmap.id];
           const longDesc = Boolean(desc && desc.length > 120);
 
           return (
             <div key={roadmap.id}>
-              <button
-                type="button"
-                onClick={() => setExpandedId(expanded ? null : roadmap.id)}
-                className="flex w-full items-center gap-3 px-5 py-3.5 text-left hover:bg-gray-50/80 dark:hover:bg-gray-900/40"
-              >
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800">
-                  {SIcon ? <SIcon size={16} className={si.className} /> : <Map size={14} />}
-                </span>
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <p className={cn("text-[14px] font-bold", portalHeadingAlt)}>{roadmap.skill}</p>
-                    <span
-                      className={cn(
-                        "rounded-full px-2 py-0.5 text-[10px] font-medium",
-                        outside
-                          ? "bg-amber-50 text-amber-700/80 dark:bg-amber-950/30 dark:text-amber-200/70"
-                          : "bg-emerald-50 text-emerald-700/80 dark:bg-emerald-950/30 dark:text-emerald-200/70"
-                      )}
-                    >
-                      {outside ? p.roadmapSkillOutsideCv : p.roadmapSkillFromCv}
-                    </span>
-                  </div>
-                  <p className={cn("mt-0.5 text-[11px]", portalSubtextAlt)}>
-                    {fillTemplate(p.roadmapPreviewTopicCount, { count: String(topicCount) })}
-                    {" · "}
-                    {fillTemplate(p.roadmapPreviewPriorityLine, {
-                      priority: priorityLabel(roadmap.priority, priorityLabels),
-                      score: roadmap.priorityScore.toFixed(1),
-                    })}
-                  </p>
-                </div>
-                {expanded ? (
-                  <ChevronDown size={16} className="shrink-0 text-gray-400" />
-                ) : (
-                  <ChevronRight size={16} className="shrink-0 text-gray-400" />
+              <div className="flex w-full items-center gap-2.5 px-5 py-3.5 hover:bg-gray-50/80 dark:hover:bg-gray-900/40">
+                <SkillIncludeCheckbox
+                  checked={allTopicsIncluded}
+                  indeterminate={someTopicsIncluded}
+                  disabled={locked || topics.length === 0}
+                  ariaLabel={fillTemplate(p.roadmapToggleSkill, { skill: roadmap.skill })}
+                  onToggle={(next) => void handleToggleSkill(roadmap, next)}
+                />
+                {skillToggling && (
+                  <Loader2 size={12} className="shrink-0 animate-spin text-primary" />
                 )}
-              </button>
+                <button
+                  type="button"
+                  onClick={() => setExpandedId(expanded ? null : roadmap.id)}
+                  className="flex min-w-0 flex-1 items-center gap-3 text-left"
+                >
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800">
+                    {SIcon ? <SIcon size={16} className={si.className} /> : <Map size={14} />}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p
+                        className={cn(
+                          "text-[14px] font-bold",
+                          topicCount > 0 ? portalHeadingAlt : "text-gray-400 line-through"
+                        )}
+                      >
+                        {roadmap.skill}
+                      </p>
+                      <span
+                        className={cn(
+                          "rounded-full px-2 py-0.5 text-[10px] font-medium",
+                          outside
+                            ? "bg-amber-50 text-amber-700/80 dark:bg-amber-950/30 dark:text-amber-200/70"
+                            : "bg-emerald-50 text-emerald-700/80 dark:bg-emerald-950/30 dark:text-emerald-200/70"
+                        )}
+                      >
+                        {outside ? p.roadmapSkillOutsideCv : p.roadmapSkillFromCv}
+                      </span>
+                      {(roadmap.confidence ?? "").toLowerCase() === "screening" && (
+                        <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
+                          {p.roadmapScreeningBadge}
+                        </span>
+                      )}
+                    </div>
+                    <p className={cn("mt-0.5 text-[11px]", portalSubtextAlt)}>
+                      {fillTemplate(p.roadmapPreviewTopicCount, { count: String(topicCount) })}
+                      {" · "}
+                      {fillTemplate(p.roadmapPreviewPriorityLine, {
+                        priority: priorityLabel(roadmap.priority, priorityLabels),
+                        score: roadmap.priorityScore.toFixed(1),
+                      })}
+                    </p>
+                  </div>
+                  {expanded ? (
+                    <ChevronDown size={16} className="shrink-0 text-gray-400" />
+                  ) : (
+                    <ChevronRight size={16} className="shrink-0 text-gray-400" />
+                  )}
+                </button>
+              </div>
 
               <AnimatePresence initial={false}>
                 {expanded && (

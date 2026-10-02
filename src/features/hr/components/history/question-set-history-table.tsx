@@ -588,14 +588,15 @@ export function QuestionSetHistoryTable({ filter = "all", mode = null }: Questio
           style={{ animation: "fadeIn 0.2s ease-out both" }}
           className="overflow-x-auto rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-950/40"
         >
-          <table className="w-full min-w-[880px] table-fixed text-[13px]">
+          <table className="w-full min-w-[960px] table-fixed text-[13px]">
             <colgroup>
-              <col style={{ width: "33%" }} />
-              <col style={{ width: "13%" }} />
-              <col style={{ width: "9%" }} />
+              <col style={{ width: "28%" }} />
               <col style={{ width: "11%" }} />
+              <col style={{ width: "10%" }} />
+              <col style={{ width: "8%" }} />
+              <col style={{ width: "10%" }} />
               <col style={{ width: "9%" }} />
-              <col style={{ width: "25%" }} />
+              <col style={{ width: "24%" }} />
             </colgroup>
             <thead>
               <tr className="border-b border-gray-100 bg-gray-50/90 dark:border-gray-800 dark:bg-gray-900/60">
@@ -604,6 +605,9 @@ export function QuestionSetHistoryTable({ filter = "all", mode = null }: Questio
                 </th>
                 <th scope="col" className={cn(thCls, "text-left")}>
                   {ht.status}
+                </th>
+                <th scope="col" className={cn(thCls, "text-left")}>
+                  {ht.type}
                 </th>
                 <th scope="col" className={cn(thCls, "text-center")}>
                   {ht.questions}
@@ -637,27 +641,29 @@ export function QuestionSetHistoryTable({ filter = "all", mode = null }: Questio
                       </div>
                     </td>
                     <td className={cn(tdCls, "overflow-hidden")}>
-                      <div className="flex min-w-0 flex-wrap items-center gap-1">
-                        <PublishBadge
-                          status={item.status}
-                          labels={{
-                            published: t.historyPage.badgePublished,
-                            draft: t.historyPage.badgeDraft,
-                          }}
-                        />
-                        {item.status === "PUBLISHED" && item.isHiringAssessment != null && (
-                          <span
-                            className={cn(
-                              "inline-flex truncate rounded-md px-1.5 py-0.5 text-[11px] font-semibold whitespace-nowrap",
-                              item.isHiringAssessment
-                                ? "bg-violet-50 text-violet-700 dark:bg-violet-950/40 dark:text-violet-300"
-                                : "bg-sky-50 text-sky-700 dark:bg-sky-950/40 dark:text-sky-300"
-                            )}
-                          >
-                            {item.isHiringAssessment ? filters.modeHiring : filters.modePractice}
-                          </span>
-                        )}
-                      </div>
+                      <PublishBadge
+                        status={item.status}
+                        labels={{
+                          published: t.historyPage.badgePublished,
+                          draft: t.historyPage.badgeDraft,
+                        }}
+                      />
+                    </td>
+                    <td className={cn(tdCls, "overflow-hidden")}>
+                      {item.isHiringAssessment == null ? (
+                        <span className={portalSubtext}>—</span>
+                      ) : (
+                        <span
+                          className={cn(
+                            "inline-flex truncate rounded-md px-1.5 py-0.5 text-[11px] font-semibold whitespace-nowrap",
+                            item.isHiringAssessment
+                              ? "bg-violet-50 text-violet-700 dark:bg-violet-950/40 dark:text-violet-300"
+                              : "bg-sky-50 text-sky-700 dark:bg-sky-950/40 dark:text-sky-300"
+                          )}
+                        >
+                          {item.isHiringAssessment ? filters.modeHiring : filters.modePractice}
+                        </span>
+                      )}
                     </td>
                     <td className={cn(tdCls, "text-center tabular-nums", portalSubtext)}>
                       {item.questionCount}

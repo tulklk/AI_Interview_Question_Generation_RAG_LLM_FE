@@ -19,6 +19,7 @@ export interface CandidateBillingUsage {
   practiceLimit: number | null;
   aiFeedbackLevel: "BASIC" | "ADVANCED";
   practiceHistoryLimit: number | null;
+  practiceHistoryUsed: number;
   canSendScorecardToHR: boolean;
 }
 

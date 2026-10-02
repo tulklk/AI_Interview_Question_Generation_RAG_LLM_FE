@@ -7,9 +7,10 @@ const SUBSCRIPTION_ERROR_MESSAGES: Record<string, Record<"en" | "vi", string>> =
     en: "You've used up your quota for this period. Upgrade to Premium or buy an extra Ask-AI pack.",
     vi: "Bạn đã hết hạn mức trong kỳ hiện tại. Nâng Premium hoặc mua thêm pack Ask-AI.",
   },
+  // SCRUM-510: fallback chung — ưu tiên detail BE (có số max động) khi UI tiếng Việt
   COOLDOWN_ACTIVE: {
-    en: "Free plan allows 1 completed question set or JD review per 24 hours. Please wait or upgrade to Premium.",
-    vi: "Gói Free chỉ hoàn thành tạo bộ / đánh giá JD 1 lần / 24 giờ. Vui lòng đợi hoặc nâng Premium.",
+    en: "You've reached the generate limit for this window. Please wait or upgrade to Premium.",
+    vi: "Đã hết lượt tạo bộ / đánh giá JD trong cửa sổ hiện tại. Vui lòng đợi hoặc nâng Premium.",
   },
   FEATURE_REQUIRES_PREMIUM: {
     en: "This feature requires the Premium plan.",
@@ -17,11 +18,11 @@ const SUBSCRIPTION_ERROR_MESSAGES: Record<string, Record<"en" | "vi", string>> =
   },
   PLAN_REGENERATE_LIMIT: {
     en: "You've used all plan regenerations for this draft (max 5).",
-    vi: "Đã hết lượt regenerate plan cho bản nháp này (tối đa 5 lần).",
+    vi: "Đã hết lượt refine plan cho bản nháp này. Hãy mở phiên Studio mới.",
   },
   QUESTION_REGEN_LIMIT: {
-    en: "Free plan allows regenerating questions up to 2 times per set. Upgrade to Premium for unlimited regen.",
-    vi: "Gói Free chỉ regen câu hỏi tối đa 2 lần trên mỗi bộ. Nâng Premium để regen không giới hạn.",
+    en: "You've reached the per-set question regen limit. Start a new set or raise the plan limit (0 = unlimited).",
+    vi: "Đã hết lượt regen câu trên bộ này. Tạo bộ mới hoặc tăng hạn mức trên gói (0 = không giới hạn).",
   },
 };
 
@@ -168,6 +169,16 @@ export function extractErrorMessage(error: unknown, lang: "en" | "vi" = "en"): s
   const status = axiosErr?.response?.status;
   const data = normalizeErrorData(axiosErr?.response?.data);
   const code = pickErrorCode(data);
+
+  // SCRUM-510: với COOLDOWN / QUESTION_REGEN — ưu tiên detail BE (có số max) trên UI tiếng Việt
+  const rawEarly = pickRawMessage(data);
+  if (
+    lang === "vi" &&
+    rawEarly &&
+    (code === "COOLDOWN_ACTIVE" || code === "QUESTION_REGEN_LIMIT" || code === "PLAN_REGENERATE_LIMIT")
+  ) {
+    return rawEarly;
+  }
 
   // Check the known-errorCode localized message BEFORE the generic detail/error
   // fields — ASP.NET ProblemDetails (problem+json) responses from SubscriptionGate

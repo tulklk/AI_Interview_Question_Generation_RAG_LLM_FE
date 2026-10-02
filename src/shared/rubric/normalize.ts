@@ -24,16 +24,51 @@ function defaultAnchors(label: string): Partial<Record<RubricAnchorKey, string>>
   };
 }
 
+/**
+ * Chỉ chia đều khi chưa có trọng số (legacy, weight = 0).
+ * Số đã ghi (50+40, số âm, …) giữ nguyên để màn lưu/publish từ chối, không tự làm tròn thành 100.
+ */
 function distributeWeights(criteria: RubricCriterion[]): RubricCriterion[] {
   if (criteria.length === 0) return criteria;
-  const sum = criteria.reduce((a, c) => a + c.weight, 0);
-  if (sum === 100 && criteria.every((c) => c.weight > 0)) return criteria;
+  if (criteria.some((c) => c.weight !== 0)) return criteria;
   const base = Math.floor(100 / criteria.length);
   let remainder = 100 - base * criteria.length;
   return criteria.map((c, i) => ({
     ...c,
     weight: base + (i < remainder ? 1 : 0),
   }));
+}
+
+/** [50%] Nhãn. Số thập phân hoặc thiếu nhãn coi là không đọc được. */
+const DISPLAY_WEIGHT_RE = /^\[(-?\d+(?:\.\d+)?)%\]\s*(.*)$/;
+
+export type RubricTextIssue = "invalid-weight" | "unreadable";
+
+/** null = được lưu (trống, legacy không số, hoặc tổng đúng 100). */
+export function rubricTextIssue(raw: string): RubricTextIssue | null {
+  const lines = raw.split(/\n+/).map((s) => s.trim()).filter(Boolean);
+  if (lines.length === 0) return null;
+
+  let explicit = false;
+  const weights: number[] = [];
+  for (const line of lines) {
+    if (line.startsWith("[") && !DISPLAY_WEIGHT_RE.test(line)) return "unreadable";
+    const match = line.match(DISPLAY_WEIGHT_RE);
+    if (!match) {
+      weights.push(0);
+      continue;
+    }
+    explicit = true;
+    const num = match[1];
+    const label = match[2].trim();
+    if (!label || !/^-?\d+$/.test(num)) return "unreadable";
+    weights.push(Number(num));
+  }
+
+  if (!explicit) return null;
+  if (weights.some((w) => w <= 0)) return "invalid-weight";
+  if (weights.reduce((sum, w) => sum + w, 0) !== 100) return "invalid-weight";
+  return null;
 }
 
 function parseCriterionObject(raw: Record<string, unknown>, index: number): RubricCriterion | null {
@@ -124,11 +159,17 @@ export function normalizeFromUnknown(raw: unknown, level?: string | null): Rubri
     // Reverse of toDisplayText()'s "[NN%] Label" format — parse weight back out
     // instead of treating the bracketed prefix as part of the label (which would
     // silently corrupt the rubric on every save/reload round-trip).
-    const BRACKET_WEIGHT_RE = /^\[(\d+(?:\.\d+)?)%\]\s*(.+)$/;
     const lines = raw.split(/\n+/).map((s) => s.trim()).filter(Boolean);
     const items = lines.map((line) => {
-      const m = line.match(BRACKET_WEIGHT_RE);
-      return m ? { label: m[2].trim(), weight: Number(m[1]) } : line;
+      if (line.startsWith("[") && !DISPLAY_WEIGHT_RE.test(line)) {
+        return { label: line, weight: -1 };
+      }
+      const match = line.match(DISPLAY_WEIGHT_RE);
+      if (!match) return line;
+      const num = match[1];
+      const label = match[2].trim();
+      if (!label || !/^-?\d+$/.test(num)) return { label: line, weight: -1 };
+      return { label, weight: Number(num) };
     });
     return normalizeFromUnknown(items, level);
   }

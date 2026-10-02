@@ -27,14 +27,9 @@ const FALLBACK = {
   generateScopeUnlimited: "Unlimited",
   generateResetAt: "Unlocks at {{time}}",
   generateReady: "Ready to use",
-  askAiTitle: "Ask-AI",
-  askAiScope: "Within the current period",
   regenTitle: "Question regeneration",
   regenScope: "Max per question set",
   regenDetail: "{{sets}} set(s) regenerated · {{total}} run(s) total",
-  refineTitle: "Plan regeneration",
-  refineScope: "Max per Studio session",
-  refineDetail: "{{drafts}} session(s) · {{total}} run(s) total",
   totalGenerate: "Question sets created this period",
   unlimitedGenerateHint: "Question-set generation is unlimited on your plan configuration.",
   noneYet: "You have not used any AI run in this period yet.",
@@ -179,15 +174,11 @@ export function HrUsagePanel() {
   }
 
   const regen = summarize("HrQuestionRegen");
-  const refine = summarize("HrPlanRegenerate");
 
   // Khớp BE: cooldown hiệu lực tối thiểu 1 giờ khi có hạn mức
   const cooldownHours = Math.max(1, limits?.generateCooldownHours ?? 24);
   const generateUnlimited = limits?.generateUnlimited ?? false;
   const regenLimit = limits?.questionRegenPerPlan ?? 0;
-  const refineLimit = limits?.planRegeneratePerDraft ?? 0;
-  const askAiLimit = subscription?.askAiLimit ?? 0;
-  const askAiUsed = subscription?.askAiUsed ?? 0;
   const generateScope = generateUnlimited
     ? text.generateScopeUnlimited
     : fill(text.generateScope, { h: cooldownHours });
@@ -240,7 +231,7 @@ export function HrUsagePanel() {
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-2">
             <MetricCard
               title={text.generateTitle}
               scope={generateScope}
@@ -255,7 +246,11 @@ export function HrUsagePanel() {
               scope={text.regenScope}
               used={regen.max}
               limit={regenLimit}
-              unlimited={generateUnlimited || regenLimit <= 0}
+              // Bug cũ: ăn theo generateUnlimited (cờ của tính năng generate-per-window
+              // khác, không liên quan) khiến gói Premium luôn hiện "∞" thay vì bộ đếm
+              // thật X/questionRegenPerPlan (ví dụ 0/5). Chỉ unlimited khi chính
+              // questionRegenPerPlan = 0 (quy ước "0 = không giới hạn").
+              unlimited={regenLimit <= 0}
               caption={
                 regen.scopes > 0
                   ? fill(text.regenDetail, { sets: regen.scopes, total: regen.total })
@@ -263,27 +258,11 @@ export function HrUsagePanel() {
               }
               text={text}
             />
-            <MetricCard
-              title={text.askAiTitle}
-              scope={text.askAiScope}
-              used={askAiUsed}
-              limit={askAiLimit}
-              unlimited={false}
-              text={text}
-            />
-            <MetricCard
-              title={text.refineTitle}
-              scope={text.refineScope}
-              used={refine.max}
-              limit={refineLimit}
-              unlimited={refineLimit <= 0}
-              caption={
-                refine.scopes > 0
-                  ? fill(text.refineDetail, { drafts: refine.scopes, total: refine.total })
-                  : null
-              }
-              text={text}
-            />
+            {/* "Plan regeneration" (planRegeneratePerDraft) MetricCard ẩn khỏi UI — lý do
+                giống field admin: giới hạn này chỉ enforce trên API /refine (tab "AI
+                Assistant" đang bị ẩn trong Studio), còn đường HR thực sự dùng để sửa plan
+                (tab "Plan" → apply-settings) không hề đọc field này. Hiện số "x/10 còn y
+                lượt" cho HR xem sẽ gây hiểu lầm vì không phản ánh hành vi thật của sản phẩm. */}
           </div>
 
           <div
@@ -309,7 +288,19 @@ export function HrUsagePanel() {
               cooldownEndsAt && (
                 <p className="inline-flex items-center gap-1.5 text-xs font-medium text-amber-600 dark:text-amber-400">
                   <Clock size={13} />
-                  {fill(text.generateResetAt, { time: cooldownEndsAt.toLocaleString(locale) })}
+                  {fill(text.generateResetAt, {
+                    // Format tường minh dd/MM/yyyy + 24h, không phụ thuộc default locale
+                    // của trình duyệt (có môi trường fallback sai thành AM/PM).
+                    time: cooldownEndsAt.toLocaleString(locale, {
+                      day: "2-digit",
+                      month: "2-digit",
+                      year: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                      second: "2-digit",
+                      hour12: false,
+                    }),
+                  })}
                 </p>
               )
             )}

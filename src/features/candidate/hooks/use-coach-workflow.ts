@@ -15,12 +15,15 @@ import {
   getCoachJob,
   getCoachReport,
   getCoachRoadmaps,
+  getCoachWrapUp,
   rescoreCoachReport,
   resetCoachRun,
   startCoachRoadmap,
   startCvDiagnostic,
   startRoadmapItemDrill,
   startRoadmapReassessment,
+  startCoachScreening,
+  getScreeningPreview,
   updateCoachContext,
   updateCoachRoadmapDraft,
   updateCoachSkills,
@@ -29,6 +32,8 @@ import {
   type CoachContext,
   type CoachJob,
   type CoachRoadmap,
+  type CoachScreeningPreview,
+  type CoachWrapUp,
   type UpdateCoachContextPayload,
 } from "@/features/candidate/services/coach.service";
 import { registerCoachJob, writeCoachJobEntry } from "@/features/candidate/utils/coach-job-storage";
@@ -59,6 +64,29 @@ export function reportScored(report: CoachAssessment | null): boolean {
   const status = (report.status ?? "").toLowerCase();
   if (status !== "scored") return false;
   return report.skills.length > 0 || report.overallReadiness != null;
+}
+
+/**
+ * SCRUM-509: job COMPLETED reassessment vẫn «actionable» chỉ khi còn cổng InProgress
+ * gắn đúng questionSetId (chưa nộp), hoặc ReadyForReassessment chưa có set.
+ * Job stale sau khi đã chấm → false → clear UI CTA.
+ */
+export function reassessJobStillActionable(
+  job: CoachJob | null,
+  roadmaps: CoachRoadmap[]
+): boolean {
+  if (!jobDone(job)) return false;
+  const purpose = (job?.purpose ?? "").toLowerCase();
+  if (!purpose.includes("reassess")) return false;
+  const setId = job?.questionSetId ?? null;
+  return roadmaps.some((r) =>
+    r.items.some((i) => {
+      if (!i.isReassessmentGate) return false;
+      if (i.status === "ReadyForReassessment") return true;
+      if (i.status === "InProgress" && setId && i.drillQuestionSetId === setId) return true;
+      return false;
+    })
+  );
 }
 
 export function useCoachWorkflow() {
@@ -93,6 +121,8 @@ export function useCoachWorkflow() {
   const [selectedStep, setSelectedStep] = useState<CoachStepIndex | null>(null);
   const [rescoring, setRescoring] = useState(false);
   const [rescoreError, setRescoreError] = useState<string | null>(null);
+  const [screeningPreview, setScreeningPreview] = useState<CoachScreeningPreview | null>(null);
+  const [wrapUp, setWrapUp] = useState<CoachWrapUp | null>(null);
 
   // Dashboard deep-link: /candidate/coach?step=1..7
   useEffect(() => {
@@ -103,12 +133,27 @@ export function useCoachWorkflow() {
   }, []);
 
   const refreshCompetencyData = useCallback(async () => {
-    const [reportResult, roadmapsResult] = await Promise.allSettled([
+    const [reportResult, roadmapsResult, wrapUpResult] = await Promise.allSettled([
       getCoachReport(),
       getCoachRoadmaps(),
+      getCoachWrapUp(),
     ]);
+    const nextRoadmaps =
+      roadmapsResult.status === "fulfilled" ? roadmapsResult.value : [];
     if (reportResult.status === "fulfilled") setReport(reportResult.value);
-    if (roadmapsResult.status === "fulfilled") setRoadmaps(roadmapsResult.value);
+    if (roadmapsResult.status === "fulfilled") setRoadmaps(nextRoadmaps);
+    if (wrapUpResult.status === "fulfilled") setWrapUp(wrapUpResult.value);
+    else setWrapUp(null);
+
+    // SCRUM-509: dọn job COMPLETED treo sau khi đã nộp/chấm đánh giá lại.
+    setJob((prev) => {
+      if (!prev || !jobDone(prev)) return prev;
+      const purpose = (prev.purpose ?? "").toLowerCase();
+      if (!purpose.includes("reassess")) return prev;
+      if (reassessJobStillActionable(prev, nextRoadmaps)) return prev;
+      writeCoachJobEntry(null);
+      return null;
+    });
   }, []);
 
   useEffect(() => {
@@ -130,20 +175,35 @@ export function useCoachWorkflow() {
       getActiveCoachJob(),
       getCoachReport(),
       getCoachRoadmaps(),
+      getCoachWrapUp(),
     ])
       .then((results) => {
         if (cancelled) return;
-        const [ctxResult, jobResult, reportResult, roadmapsResult] = results;
+        const [ctxResult, jobResult, reportResult, roadmapsResult, wrapUpResult] = results;
         if (ctxResult.status === "fulfilled") {
           setContext(ctxResult.value);
           if (!ctxResult.value.contextConfirmed) setEditingContext(true);
         }
         if (jobResult.status === "fulfilled" && jobResult.value?.id) {
-          setJob(jobResult.value);
-          registerCoachJob(jobResult.value);
+          const loadedJob = jobResult.value;
+          const loadedMaps =
+            roadmapsResult.status === "fulfilled" ? roadmapsResult.value : [];
+          // SCRUM-509: không khôi phục CTA reassessment đã nộp.
+          if (
+            jobDone(loadedJob) &&
+            (loadedJob.purpose ?? "").toLowerCase().includes("reassess") &&
+            !reassessJobStillActionable(loadedJob, loadedMaps)
+          ) {
+            writeCoachJobEntry(null);
+            setJob(null);
+          } else {
+            setJob(loadedJob);
+            registerCoachJob(loadedJob);
+          }
         }
         if (reportResult.status === "fulfilled") setReport(reportResult.value);
         if (roadmapsResult.status === "fulfilled") setRoadmaps(roadmapsResult.value);
+        if (wrapUpResult.status === "fulfilled") setWrapUp(wrapUpResult.value);
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -285,6 +345,15 @@ export function useCoachWorkflow() {
       return;
     }
     await enqueueJob(() => startCvDiagnostic());
+  }
+
+  /** SCRUM-506: bài sàng lọc từ báo cáo — giữ step 5, không đụng wizard. */
+  async function startScreening() {
+    if (!isPremium) {
+      setUpgradeOpen(true);
+      return;
+    }
+    await enqueueJob(() => startCoachScreening(), { stayOnStep: 5 });
   }
 
   /** SCRUM-461: READY → xác nhận lên level kế → PUT context + diagnostic mới. */
@@ -494,6 +563,10 @@ export function useCoachWorkflow() {
   const ready = jobDone(job);
   const failed = jobFailed(job) || Boolean(error && !busy && !ready);
   const hasScoredReport = reportScored(report);
+  const wrapUpAvailable = Boolean(wrapUp?.available);
+  /** SCRUM-509: job reassessment còn cửa làm bài (chưa nộp). */
+  const reassessReadyActionable =
+    !wrapUpAvailable && reassessJobStillActionable(job, roadmaps);
   const hasReadyForReassessment = roadmaps.some((r) =>
     r.items.some((i) => i.status === "ReadyForReassessment")
   );
@@ -667,12 +740,33 @@ export function useCoachWorkflow() {
     }
   }, [hasScoredReport]);
 
+  // SCRUM-506: preview sàng lọc sau khi có báo cáo chẩn đoán.
+  useEffect(() => {
+    if (!hasScoredReport) {
+      setScreeningPreview(null);
+      return;
+    }
+    let cancelled = false;
+    getScreeningPreview()
+      .then((next) => {
+        if (!cancelled) setScreeningPreview(next);
+      })
+      .catch(() => {
+        if (!cancelled) setScreeningPreview(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [hasScoredReport, roadmaps.length]);
+
   const purposeLabel =
     (job?.purpose ?? "").toLowerCase().includes("reassess")
       ? p.purposeReassessment
-      : (job?.purpose ?? "").toLowerCase().includes("drill")
-        ? p.purposeDrill
-        : p.purposeDiagnostic;
+      : (job?.purpose ?? "").toLowerCase().includes("screen")
+        ? p.purposeScreening
+        : (job?.purpose ?? "").toLowerCase().includes("drill")
+          ? p.purposeDrill
+          : p.purposeDiagnostic;
 
   const diagnosticDisabled =
     (hasCv === false && !context?.hasCv) || !context?.contextConfirmed || !canStartCoachDiagnostic(context);
@@ -707,12 +801,16 @@ export function useCoachWorkflow() {
     busy,
     ready,
     failed,
+    reassessReadyActionable,
     hasScoredReport,
     hasReadyForReassessment,
     hasActiveRoadmap,
     hasDraftRoadmap,
     rescoring,
     rescoreError,
+    screeningPreview,
+    wrapUp,
+    wrapUpAvailable,
     maxUnlockedStep,
     minSelectableStep,
     activeStep,
@@ -724,6 +822,7 @@ export function useCoachWorkflow() {
     handleUploadCv,
     handleContinueWithExistingCv,
     runDiagnostic,
+    startScreening,
     promoteToNextLevel,
     cancelJob,
     startNewRun,

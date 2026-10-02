@@ -589,7 +589,18 @@ export function UpgradeModal({ onClose, onDone }: UpgradeModalProps) {
 
               {!payment && (
                 <div className="space-y-2">
-                  {b.premiumFeatures.map((f) => (
+                  {(
+                    [
+                      b.featureFullSet,
+                      b.featurePracticeUnlimited,
+                      b.featureFullAiAlways,
+                      b.featureHistoryUnlimited,
+                      b.featureRecommend,
+                      b.featureAiCoachUnlocked,
+                    ] as string[]
+                  )
+                    .filter(Boolean)
+                    .map((f) => (
                     <div key={f} className="flex items-center gap-2">
                       <Check size={13} className="text-primary shrink-0" />
                       <span className={cn("text-sm", portalHeading)}>{f}</span>

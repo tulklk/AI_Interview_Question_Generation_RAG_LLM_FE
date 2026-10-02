@@ -40,7 +40,7 @@ import {
   portalTableRow,
 } from "@/shared/utils/portal-ui";
 
-const FEATURE_ORDER: HrFeatureId[] = ["unlimitedGenerate", "export", "askAi", "publish"];
+const FEATURE_ORDER: HrFeatureId[] = ["unlimitedGenerate", "export", "publish"];
 
 function formatMoney(amount: number, currency: string) {
   try {
@@ -57,10 +57,62 @@ function formatDate(iso: string | null | undefined, locale: string) {
 
 function planHasFeature(plan: SubscriptionPlan, featureId: HrFeatureId): boolean {
   if (featureId === "export") return plan.limits.canExport;
-  if (featureId === "askAi") return plan.limits.askAiPerMonth > 0;
   if (featureId === "publish") return plan.limits.canPublish;
   if (featureId === "unlimitedGenerate") return plan.limits.generateUnlimited;
   return false;
+}
+
+/** SCRUM-498: build dòng so sánh gói từ limits live (Admin sync) — không hardcode số. */
+export function buildHrPlanCardRows(
+  plan: SubscriptionPlan | undefined,
+  planId: HrPlanId,
+  templates: {
+    studio: string;
+    completeWindow: string;
+    questionRegen: string;
+    questionRegenUnlimited: string;
+    publish: string;
+    exportExcel: string;
+    unlimitedGenerate: string;
+    everythingInFree: string;
+    publishUnlimited: string;
+  }
+): { text: string; included: boolean }[] {
+  const lim = plan?.limits;
+  const genPerWindow = Math.max(1, lim?.generatePerWindow ?? 1);
+  const cooldownH = Math.max(1, lim?.generateCooldownHours ?? 24);
+  const qRegen = lim?.questionRegenPerPlan ?? 2;
+  const unlimited = Boolean(lim?.generateUnlimited);
+  const canExport = Boolean(lim?.canExport);
+  const canPublish = lim?.canPublish !== false;
+
+  const completeText = templates.completeWindow
+    .replace("{{count}}", String(genPerWindow))
+    .replace("{{hours}}", String(cooldownH));
+  const qRegenText =
+    qRegen <= 0 ? templates.questionRegenUnlimited : templates.questionRegen.replace("{{count}}", String(qRegen));
+  // planRegeneratePerDraft bullet đã gỡ: giới hạn đó chỉ enforce trên API /refine
+  // (tab "AI Assistant" đang ẩn trong Studio), đường HR thực dùng để sửa plan
+  // (apply-settings) không đọc field này nên quảng cáo con số này là sai sự thật.
+
+  if (planId === "HR_FREE") {
+    return [
+      { text: templates.studio, included: true },
+      { text: completeText, included: !unlimited },
+      { text: qRegenText, included: true },
+      { text: templates.publish, included: canPublish },
+      { text: templates.exportExcel, included: canExport },
+      { text: templates.unlimitedGenerate, included: unlimited },
+    ];
+  }
+
+  return [
+    { text: templates.everythingInFree, included: true },
+    { text: templates.unlimitedGenerate, included: unlimited },
+    { text: qRegenText, included: true },
+    { text: templates.exportExcel, included: canExport },
+    { text: templates.publishUnlimited, included: canPublish },
+  ];
 }
 
 export function HrBillingSubscription() {
@@ -78,7 +130,6 @@ export function HrBillingSubscription() {
     generateWindowUsed,
     generateWindowLimit,
     cancelPremium,
-    purchaseAskAiPack,
     refresh,
   } = useHrSubscription();
   const plansRef = useRef<HTMLDivElement>(null);
@@ -119,8 +170,29 @@ export function HrBillingSubscription() {
   const planNames = sub.planNames as Record<HrPlanId, string>;
   const planSub = sub.planSub as Record<HrPlanId, string>;
   const planCta = sub.planCta as Record<HrPlanId, string>;
-  const planCardRows = sub.planCardRows as Record<HrPlanId, { text: string; included: boolean }[]>;
   const featureLabels = sub.featureLabels as Record<HrFeatureId, string>;
+  const rowTpl = (sub.planCardRowTemplates ?? {}) as {
+    studio?: string;
+    completeWindow?: string;
+    questionRegen?: string;
+    questionRegenUnlimited?: string;
+    publish?: string;
+    exportExcel?: string;
+    unlimitedGenerate?: string;
+    everythingInFree?: string;
+    publishUnlimited?: string;
+  };
+  const cardTemplates = {
+    studio: rowTpl.studio ?? "Studio: tạo plan & bộ câu hỏi từ JD",
+    completeWindow: rowTpl.completeWindow ?? "Hoàn thành {{count}} bộ / cooldown {{hours}} giờ",
+    questionRegen: rowTpl.questionRegen ?? "Regen câu hỏi ≤ {{count}} lần / bộ",
+    questionRegenUnlimited: rowTpl.questionRegenUnlimited ?? "Regen câu hỏi không giới hạn",
+    publish: rowTpl.publish ?? "Publish bộ câu hỏi lên Marketplace",
+    exportExcel: rowTpl.exportExcel ?? "Xuất Excel",
+    unlimitedGenerate: rowTpl.unlimitedGenerate ?? "Generate không giới hạn",
+    everythingInFree: rowTpl.everythingInFree ?? "Mọi thứ trong Free",
+    publishUnlimited: rowTpl.publishUnlimited ?? "Publish Marketplace không giới hạn",
+  };
 
   function scrollToPlans() {
     plansRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -270,18 +342,6 @@ export function HrBillingSubscription() {
     return () => clearInterval(id);
   }, [payment?.expiresAt, payment?.amount]);
 
-  async function handleBuyAskAiPack() {
-    setBusy(true);
-    try {
-      await purchaseAskAiPack(200);
-      addToast("success", sub.askAiPackSuccess);
-    } catch {
-      addToast("error", sub.askAiPackError);
-    } finally {
-      setBusy(false);
-    }
-  }
-
   return (
     <div className="space-y-10">
       <header className="space-y-3 max-w-3xl">
@@ -375,21 +435,6 @@ export function HrBillingSubscription() {
             </div>
           )}
 
-          {subscription && (
-            <p className="text-white/90 text-xs mb-4">
-              Ask-AI: {subscription.askAiUsed}/{subscription.askAiLimit}
-              {isPremium && (
-                <button
-                  type="button"
-                  disabled={busy}
-                  onClick={() => void handleBuyAskAiPack()}
-                  className="ml-3 underline hover:no-underline disabled:opacity-50"
-                >
-                  + Pack Ask-AI
-                </button>
-              )}
-            </p>
-          )}
           <button
             type="button"
             onClick={scrollToPlans}
@@ -405,7 +450,15 @@ export function HrBillingSubscription() {
       {!canGenerateNow && cooldownEndsAt && (
         <div className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40 px-4 py-3 text-sm text-amber-950 dark:text-amber-200">
           <p className="font-semibold mb-1">{t.hrSubscription.quotaExceededTitle}</p>
-          <p>{renderBold(t.hrSubscription.quotaExceededBody.replace("{{time}}", cooldownEndsAt.toLocaleString()), "font-bold text-amber-900 dark:text-amber-100")}</p>
+          <p>{renderBold(t.hrSubscription.quotaExceededBody.replace("{{time}}", cooldownEndsAt.toLocaleString(locale, {
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit",
+            hour12: false,
+          })), "font-bold text-amber-900 dark:text-amber-100")}</p>
         </div>
       )}
 
@@ -419,7 +472,7 @@ export function HrBillingSubscription() {
               const livePlan = plans.find((p) => p.code === id);
               const active = planId === id;
               const recommended = id === "HR_PREMIUM";
-              const rows = planCardRows[id] ?? [];
+              const rows = buildHrPlanCardRows(livePlan, id, cardTemplates);
 
               return (
                 <div
@@ -592,36 +645,34 @@ export function HrBillingSubscription() {
                   {HR_PLAN_IDS.map((pid) => {
                     const p = plans.find((x) => x.code === pid);
                     const h = p?.limits.generateCooldownHours ?? 0;
+                    const cooldownLabel = !p
+                      ? "—"
+                      : p.limits.generateUnlimited || h === 0
+                        ? sub.limitRows.noCooldown
+                        : `${h}h`;
                     return (
                       <td key={pid} className={cn("text-center px-2 py-2 font-semibold", portalHeading)}>
-                        {p?.limits.generateUnlimited ? "∞" : `${h}h`}
+                        {cooldownLabel}
                       </td>
                     );
                   })}
                 </tr>
                 <tr className={portalIconWell}>
-                  <td className={cn("px-3 py-2 font-medium", portalSubtext)}>{sub.limitRows.planRegeneratePerDraft}</td>
+                  <td className={cn("px-3 py-2 font-medium", portalSubtext)}>{sub.limitRows.questionRegenPerPlan}</td>
                   {HR_PLAN_IDS.map((pid) => {
                     const p = plans.find((x) => x.code === pid);
+                    const q = p?.limits.questionRegenPerPlan ?? 0;
                     return (
                       <td key={pid} className={cn("text-center px-2 py-2 font-semibold", portalHeading)}>
-                        {p?.limits.planRegeneratePerDraft ?? "—"}
+                        {q <= 0 ? "∞" : q}
                       </td>
                     );
                   })}
                 </tr>
-                <tr className={portalIconWell}>
-                  <td className={cn("px-3 py-2 font-medium", portalSubtext)}>{sub.limitRows.askAiPerMonth}</td>
-                  {HR_PLAN_IDS.map((pid) => {
-                    const p = plans.find((x) => x.code === pid);
-                    const n = p?.limits.askAiPerMonth ?? 0;
-                    return (
-                      <td key={pid} className={cn("text-center px-2 py-2 font-semibold", portalHeading)}>
-                        {n > 0 ? n : "—"}
-                      </td>
-                    );
-                  })}
-                </tr>
+                {/* planRegeneratePerDraft row ẩn khỏi bảng so sánh — giới hạn này chỉ
+                    enforce trên API /refine (tab "AI Assistant" đang ẩn trong Studio);
+                    đường HR thực sự dùng để sửa plan (apply-settings) không đọc field
+                    này nên hiện số ra đây sẽ gây hiểu lầm. */}
               </tbody>
             </table>
           </div>

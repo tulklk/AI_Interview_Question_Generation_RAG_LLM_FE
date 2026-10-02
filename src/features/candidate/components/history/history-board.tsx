@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useState, useEffect, useRef, useId } from "react";
+import { useState, useEffect, useRef, useId, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -73,6 +73,32 @@ function ScorePill({ score, pendingTooltip }: { score: number | null; pendingToo
     <Pill className={cn("text-[13px] font-bold px-2.5 py-1 w-fit", getScoreBadgeClass(score))}>
       {score}%
     </Pill>
+  );
+}
+
+/** SCRUM-502: badge Phân loại Tuyển dụng / Luyện tập theo isHiringAssessment. */
+function ModeBadge({
+  isHiringAssessment,
+  hiringLabel,
+  practiceLabel,
+  emptyFallback = null,
+}: {
+  isHiringAssessment: boolean | null;
+  hiringLabel: string;
+  practiceLabel: string;
+  /** Desktop column: show "—" when API không trả mode. Mobile: để null. */
+  emptyFallback?: ReactNode;
+}) {
+  if (isHiringAssessment == null) return <>{emptyFallback}</>;
+  return (
+    <span className={cn(
+      "inline-flex w-fit shrink-0 rounded-md px-2 py-0.5 text-[11px] font-semibold",
+      isHiringAssessment
+        ? "bg-violet-50 text-violet-700 dark:bg-violet-950/40 dark:text-violet-300"
+        : "bg-sky-50 text-sky-700 dark:bg-sky-950/40 dark:text-sky-300"
+    )}>
+      {isHiringAssessment ? hiringLabel : practiceLabel}
+    </span>
   );
 }
 
@@ -682,9 +708,9 @@ export function HistoryBoard() {
         transition={{ delay: 0.25 }}
         className="hr-glass-card overflow-hidden hidden md:block"
       >
-        {/* Header */}
-        <div className="grid grid-cols-[2.5fr_1fr_1fr_1fr_200px] gap-4 px-6 py-3 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/60">
-          {[p.table.session, p.table.date, p.table.score, p.table.duration, p.table.actions].map((col) => (
+        {/* Header — SCRUM-502: thêm cột Phân loại (Tuyển / Luyện tập) */}
+        <div className="grid grid-cols-[2.2fr_0.9fr_1fr_1fr_1fr_200px] gap-4 px-6 py-3 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/60">
+          {[p.table.session, p.table.type, p.table.date, p.table.score, p.table.duration, p.table.actions].map((col) => (
             <span key={col} className={cn("text-[11px] font-bold uppercase tracking-wide", portalSubtextAlt)}>{col}</span>
           ))}
         </div>
@@ -702,7 +728,7 @@ export function HistoryBoard() {
                 {Array.from({ length: 6 }).map((_, i) => (
                   <div
                     key={i}
-                    className="grid grid-cols-[2.5fr_1fr_1fr_1fr_200px] items-center gap-4 px-6 py-4"
+                    className="grid grid-cols-[2.2fr_0.9fr_1fr_1fr_1fr_200px] items-center gap-4 px-6 py-4"
                   >
                     <div className="flex items-center gap-3">
                       <Skeleton className="h-8 w-8 shrink-0 rounded-lg" />
@@ -711,6 +737,7 @@ export function HistoryBoard() {
                         <Skeleton className="h-2.5 w-24" />
                       </div>
                     </div>
+                    <Skeleton className="h-5 w-16 rounded-md" />
                     <Skeleton className="h-3 w-16" />
                     <Skeleton className="h-5 w-12 rounded-full" />
                     <Skeleton className="h-3 w-14" />
@@ -726,7 +753,7 @@ export function HistoryBoard() {
                   <motion.li
                     key={session.id}
                     whileHover={{ scale: 1.003 }}
-                    className="hr-table-row grid grid-cols-[2.5fr_1fr_1fr_1fr_200px] gap-4 px-6 py-4 items-center"
+                    className="hr-table-row grid grid-cols-[2.2fr_0.9fr_1fr_1fr_1fr_200px] gap-4 px-6 py-4 items-center"
                   >
                     <div className="flex items-center gap-3 min-w-0">
                       {session.companyLogoUrl ? (
@@ -739,22 +766,17 @@ export function HistoryBoard() {
                         </div>
                       )}
                       <div className="min-w-0">
-                        <div className="flex min-w-0 items-center gap-1.5">
-                          <p className={cn("min-w-0 truncate text-[13px] font-semibold", portalHeadingAlt)}>{cleanTitle(session.setTitle ?? "")}</p>
-                          {session.isHiringAssessment != null && (
-                            <span className={cn(
-                              "shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-semibold",
-                              session.isHiringAssessment
-                                ? "bg-violet-50 text-violet-700 dark:bg-violet-950/40 dark:text-violet-300"
-                                : "bg-sky-50 text-sky-700 dark:bg-sky-950/40 dark:text-sky-300"
-                            )}>
-                              {session.isHiringAssessment ? p.modeHiring : p.modePractice}
-                            </span>
-                          )}
-                        </div>
+                        <p className={cn("min-w-0 truncate text-[13px] font-semibold", portalHeadingAlt)}>{cleanTitle(session.setTitle ?? "")}</p>
                         <p className={cn("text-[11px]", portalSubtextAlt)}>{session.company}</p>
                       </div>
                     </div>
+
+                    <ModeBadge
+                      isHiringAssessment={session.isHiringAssessment}
+                      hiringLabel={p.modeHiring}
+                      practiceLabel={p.modePractice}
+                      emptyFallback={<span className={cn("text-[12px]", portalSubtextAlt)}>—</span>}
+                    />
 
                     <p className={cn("text-[12px]", portalSubtextAlt)}>{formatSessionDate(session.completedAt, lang)}</p>
                     <ScorePill score={session.score} pendingTooltip={p.pendingScoreTooltip} />
@@ -841,16 +863,11 @@ export function HistoryBoard() {
                     <div className="flex-1 min-w-0">
                       <div className="flex min-w-0 items-center gap-1.5">
                         <p className={cn("min-w-0 truncate text-[13px] font-semibold", portalHeadingAlt)}>{cleanTitle(session.setTitle ?? "")}</p>
-                        {session.isHiringAssessment != null && (
-                          <span className={cn(
-                            "shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-semibold",
-                            session.isHiringAssessment
-                              ? "bg-violet-50 text-violet-700 dark:bg-violet-950/40 dark:text-violet-300"
-                              : "bg-sky-50 text-sky-700 dark:bg-sky-950/40 dark:text-sky-300"
-                          )}>
-                            {session.isHiringAssessment ? p.modeHiring : p.modePractice}
-                          </span>
-                        )}
+                        <ModeBadge
+                          isHiringAssessment={session.isHiringAssessment}
+                          hiringLabel={p.modeHiring}
+                          practiceLabel={p.modePractice}
+                        />
                       </div>
                       <p className={cn("text-[11px] mt-0.5", portalSubtextAlt)}>{session.company}</p>
                     </div>

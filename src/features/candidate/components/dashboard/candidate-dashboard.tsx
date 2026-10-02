@@ -202,7 +202,7 @@ export function CandidateDashboard() {
       {/* ══════════════════════════════════════════════════
           ZONE D  —  Weak skills  (conditional)
       ══════════════════════════════════════════════════ */}
-      {dashboard.skillAnalytics && dashboard.skillAnalytics.skills.some((s) => s.score < 80) && (
+      {dashboard.skillAnalytics && dashboard.skillAnalytics.skills.some((s) => s.score < 70) && (
         <div className="hr-glass-card p-5 sm:p-6 mb-6">
           <h2 className={cn("text-[15px] font-bold leading-tight mb-4", portalHeadingAlt)}>{p.weakSkillsTable.title}</h2>
           <WeakSkillsTable skills={dashboard.skillAnalytics.skills} />

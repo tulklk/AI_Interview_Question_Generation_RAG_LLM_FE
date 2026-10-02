@@ -46,6 +46,15 @@ const DEFAULTS: CompetencyScoringPolicy = {
   drillRemixEnabled: true,
   drillRemixRatio: 0.35,
   drillWeakAnswerScoreMaxExclusive: 50,
+  diagnosticQuestionsPerSkill: 3,
+  diagnosticMinSkills: 3,
+  diagnosticMaxSkills: 5,
+  diagnosticMaxAdaptiveSkills: 8,
+  diagnosticMinTotalQuestions: 0,
+  screeningEnabled: true,
+  screeningQuestionsPerSkill: 1,
+  screeningMaxSkills: 12,
+  reassessmentQuestionsPerSkill: 3,
 };
 
 /** SCRUM-488: Admin cấu hình drill AI Coach (số câu / remix / pass). */
@@ -251,6 +260,136 @@ export function CoachDrillSettings() {
               disabled={!policy.drillRemixEnabled}
             />
             <p className={cn("mt-1 text-[11px]", portalSubtextAlt)}>{c.weakAnswerMaxHint}</p>
+          </FormField>
+        </div>
+      </section>
+
+      <div className={cn("h-px", portalDivider)} />
+
+      <section className="space-y-3">
+        <p className={cn("text-[12px] font-semibold uppercase tracking-wide", portalSubtextAlt)}>
+          {c.sectionDiagnostic}
+        </p>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <FormField label={c.diagnosticQPerSkill} htmlFor="diag-q-per-skill">
+            <input
+              id="diag-q-per-skill"
+              type="number"
+              min={2}
+              max={6}
+              value={policy.diagnosticQuestionsPerSkill}
+              onChange={(e) => setNum("diagnosticQuestionsPerSkill", e.target.value)}
+              className={inputCls}
+            />
+            <p className={cn("mt-1 text-[11px]", portalSubtextAlt)}>{c.diagnosticQPerSkillHint}</p>
+          </FormField>
+          <FormField label={c.diagnosticMinTotal} htmlFor="diag-min-total">
+            <input
+              id="diag-min-total"
+              type="number"
+              min={0}
+              max={60}
+              value={policy.diagnosticMinTotalQuestions}
+              onChange={(e) => setNum("diagnosticMinTotalQuestions", e.target.value)}
+              className={inputCls}
+            />
+          </FormField>
+          <FormField label={c.diagnosticMinSkills} htmlFor="diag-min-skills">
+            <input
+              id="diag-min-skills"
+              type="number"
+              min={1}
+              max={12}
+              value={policy.diagnosticMinSkills}
+              onChange={(e) => setNum("diagnosticMinSkills", e.target.value)}
+              className={inputCls}
+            />
+          </FormField>
+          <FormField label={c.diagnosticMaxSkills} htmlFor="diag-max-skills">
+            <input
+              id="diag-max-skills"
+              type="number"
+              min={1}
+              max={12}
+              value={policy.diagnosticMaxSkills}
+              onChange={(e) => setNum("diagnosticMaxSkills", e.target.value)}
+              className={inputCls}
+            />
+          </FormField>
+          <FormField label={c.diagnosticMaxAdaptive} htmlFor="diag-max-adaptive">
+            <input
+              id="diag-max-adaptive"
+              type="number"
+              min={1}
+              max={20}
+              value={policy.diagnosticMaxAdaptiveSkills}
+              onChange={(e) => setNum("diagnosticMaxAdaptiveSkills", e.target.value)}
+              className={inputCls}
+            />
+          </FormField>
+        </div>
+      </section>
+
+      <div className={cn("h-px", portalDivider)} />
+
+      <section className="space-y-3">
+        <p className={cn("text-[12px] font-semibold uppercase tracking-wide", portalSubtextAlt)}>
+          {c.sectionReassessment}
+        </p>
+        <FormField label={c.reassessmentQPerSkill} htmlFor="reassess-q-per-skill">
+          <input
+            id="reassess-q-per-skill"
+            type="number"
+            min={2}
+            max={10}
+            value={policy.reassessmentQuestionsPerSkill}
+            onChange={(e) => setNum("reassessmentQuestionsPerSkill", e.target.value)}
+            className={inputCls}
+          />
+          <p className={cn("mt-1 text-[11px]", portalSubtextAlt)}>{c.reassessmentQPerSkillHint}</p>
+        </FormField>
+      </section>
+
+      <div className={cn("h-px", portalDivider)} />
+
+      <section className="space-y-3">
+        <p className={cn("text-[12px] font-semibold uppercase tracking-wide", portalSubtextAlt)}>
+          {c.sectionScreening}
+        </p>
+        <div className="flex items-center justify-between gap-3 rounded-lg border border-gray-100 px-3 py-2.5 dark:border-gray-800">
+          <div>
+            <p className={cn("text-[13px] font-medium", portalHeadingAlt)}>{c.screeningEnabled}</p>
+            <p className={cn("text-[11px]", portalSubtextAlt)}>{c.screeningEnabledHint}</p>
+          </div>
+          <Toggle
+            checked={policy.screeningEnabled}
+            onChange={(v) => setPolicy((p) => ({ ...p, screeningEnabled: v }))}
+          />
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <FormField label={c.screeningQPerSkill} htmlFor="screen-q-per-skill">
+            <input
+              id="screen-q-per-skill"
+              type="number"
+              min={1}
+              max={3}
+              value={policy.screeningQuestionsPerSkill}
+              onChange={(e) => setNum("screeningQuestionsPerSkill", e.target.value)}
+              className={inputCls}
+              disabled={!policy.screeningEnabled}
+            />
+          </FormField>
+          <FormField label={c.screeningMaxSkills} htmlFor="screen-max-skills">
+            <input
+              id="screen-max-skills"
+              type="number"
+              min={1}
+              max={20}
+              value={policy.screeningMaxSkills}
+              onChange={(e) => setNum("screeningMaxSkills", e.target.value)}
+              className={inputCls}
+              disabled={!policy.screeningEnabled}
+            />
           </FormField>
         </div>
       </section>

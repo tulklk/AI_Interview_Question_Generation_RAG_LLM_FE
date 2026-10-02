@@ -10,9 +10,11 @@ type Props = {
   cameraDisabled?: boolean;
   /** Current strike count (1–2 shown as Warnings n/2). */
   warningCount?: number;
+  /** Strike cap for this session (Admin-configured); falls back to the default constant. */
+  maxStrikes?: number;
 };
 
-export function AntiCheatStatus({ active, cameraDisabled, warningCount = 0 }: Props) {
+export function AntiCheatStatus({ active, cameraDisabled, warningCount = 0, maxStrikes = MAX_INTEGRITY_STRIKES }: Props) {
   const { t } = useLanguage();
   const a = t.antiCheat;
 
@@ -27,8 +29,8 @@ export function AntiCheatStatus({ active, cameraDisabled, warningCount = 0 }: Pr
 
   if (!active) return null;
 
-  const shownWarnings = Math.min(Math.max(0, warningCount), MAX_INTEGRITY_STRIKES - 1);
-  const maxWarnings = MAX_INTEGRITY_STRIKES - 1;
+  const shownWarnings = Math.min(Math.max(0, warningCount), maxStrikes - 1);
+  const maxWarnings = maxStrikes - 1;
 
   return (
     <div className="inline-flex flex-wrap items-center gap-1.5">

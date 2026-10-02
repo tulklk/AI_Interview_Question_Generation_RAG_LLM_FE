@@ -161,7 +161,7 @@ export interface ScoreLevelLabels {
 /**
  * Single source of truth for the overall-score "level" badge: label and badge
  * color are derived from the same thresholds so they can never disagree.
- * Ngưỡng: ≥90 Xuất sắc | ≥80 Tốt | ≥70 Khá | &lt;70 Cần cải thiện
+ * Ngưỡng (khớp SCORE_BAND / score-band.ts): ≥90 Xuất sắc | ≥80 Tốt | ≥70 Khá | &lt;70 Cần cải thiện
  */
 export function getScoreLevel(
   score: number,

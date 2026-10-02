@@ -45,6 +45,7 @@ import { formatStudioDifficultyLabel, formatStudioQuestionTypeLabel } from "@/fe
 import { QuestionContent } from "@/shared/components/ui/question-content";
 import { CodeSnippetBlock } from "@/shared/components/ui/code-snippet-block";
 import { ConfirmDialog } from "@/shared/components/ui/confirm-dialog";
+import { extractErrorMessage } from "@/core/interceptors/error.interceptor";
 import type {
   StudioQuestion,
   StudioQuestionDifficulty,
@@ -874,10 +875,12 @@ function QuestionDetail({
                             await onRegenerate(question.id, regenNote.trim() || undefined);
                             setRegenOpen(false);
                           } catch (err) {
+                            // Map 403 / errorCode (QUESTION_REGEN_LIMIT, …) sang thông báo rõ cho HR — tránh "status code 403".
+                            const uiLang = lang === "vi" ? "vi" : "en";
                             const msg =
-                              err instanceof Error && err.message
-                                ? err.message
-                                : c.regenFailedShort;
+                              extractErrorMessage(err, uiLang) ||
+                              (err instanceof Error && err.message ? err.message : null) ||
+                              c.regenFailedShort;
                             setRegenError(msg);
                           } finally {
                             setBusy(false);

@@ -22,6 +22,15 @@ export interface CompetencyScoringPolicy {
   drillRemixEnabled: boolean;
   drillRemixRatio: number;
   drillWeakAnswerScoreMaxExclusive: number;
+  diagnosticQuestionsPerSkill: number;
+  diagnosticMinSkills: number;
+  diagnosticMaxSkills: number;
+  diagnosticMaxAdaptiveSkills: number;
+  diagnosticMinTotalQuestions: number;
+  screeningEnabled: boolean;
+  screeningQuestionsPerSkill: number;
+  screeningMaxSkills: number;
+  reassessmentQuestionsPerSkill: number;
 }
 
 function asRecord(val: unknown): Record<string, unknown> | null {
@@ -82,6 +91,19 @@ function normalize(raw: unknown): CompetencyScoringPolicy {
     drillRemixRatio: pickNumber(d, "drillRemixRatio", "DrillRemixRatio") || 0.35,
     drillWeakAnswerScoreMaxExclusive:
       pickNumber(d, "drillWeakAnswerScoreMaxExclusive", "DrillWeakAnswerScoreMaxExclusive") || 50,
+    diagnosticQuestionsPerSkill: pickNumber(d, "diagnosticQuestionsPerSkill", "DiagnosticQuestionsPerSkill") || 3,
+    diagnosticMinSkills: pickNumber(d, "diagnosticMinSkills", "DiagnosticMinSkills") || 3,
+    diagnosticMaxSkills: pickNumber(d, "diagnosticMaxSkills", "DiagnosticMaxSkills") || 5,
+    diagnosticMaxAdaptiveSkills:
+      pickNumber(d, "diagnosticMaxAdaptiveSkills", "DiagnosticMaxAdaptiveSkills") || 8,
+    diagnosticMinTotalQuestions:
+      pickNumber(d, "diagnosticMinTotalQuestions", "DiagnosticMinTotalQuestions") || 0,
+    screeningEnabled: pickBool(d, true, "screeningEnabled", "ScreeningEnabled"),
+    screeningQuestionsPerSkill:
+      pickNumber(d, "screeningQuestionsPerSkill", "ScreeningQuestionsPerSkill") || 1,
+    screeningMaxSkills: pickNumber(d, "screeningMaxSkills", "ScreeningMaxSkills") || 12,
+    reassessmentQuestionsPerSkill:
+      pickNumber(d, "reassessmentQuestionsPerSkill", "ReassessmentQuestionsPerSkill") || 3,
   };
 }
 
@@ -114,6 +136,15 @@ export async function updateCompetencyScoringPolicy(
     DrillRemixEnabled: payload.drillRemixEnabled,
     DrillRemixRatio: payload.drillRemixRatio,
     DrillWeakAnswerScoreMaxExclusive: payload.drillWeakAnswerScoreMaxExclusive,
+    DiagnosticQuestionsPerSkill: payload.diagnosticQuestionsPerSkill,
+    DiagnosticMinSkills: payload.diagnosticMinSkills,
+    DiagnosticMaxSkills: payload.diagnosticMaxSkills,
+    DiagnosticMaxAdaptiveSkills: payload.diagnosticMaxAdaptiveSkills,
+    DiagnosticMinTotalQuestions: payload.diagnosticMinTotalQuestions,
+    ScreeningEnabled: payload.screeningEnabled,
+    ScreeningQuestionsPerSkill: payload.screeningQuestionsPerSkill,
+    ScreeningMaxSkills: payload.screeningMaxSkills,
+    ReassessmentQuestionsPerSkill: payload.reassessmentQuestionsPerSkill,
   });
   return normalize(res.data);
 }
