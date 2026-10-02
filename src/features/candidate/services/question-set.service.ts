@@ -187,6 +187,15 @@ function normalizeQuestionSet(raw: unknown): QuestionSet | null {
     myLastCompletedAt: pickOptionalString(src, "myLastCompletedAt"),
     avgCompletionMinutes: pickNumber(src, "avgCompletionMinutes"),
     isHiringAssessment: pickBool(src, "isHiringAssessment", "IsHiringAssessment"),
+    integrityLocked: pickBool(
+      src,
+      "integrityLocked",
+      "IntegrityLocked",
+      "integrityTerminated",
+      "IntegrityTerminated",
+      "antiCheatBlocked",
+      "AntiCheatBlocked"
+    ),
     jobDescription: pickNullableString(src, "jobDescription", "JobDescription") ?? null,
     publicJobDescriptionPreview:
       pickNullableString(src, "publicJobDescriptionPreview", "PublicJobDescriptionPreview") ?? null,

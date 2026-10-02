@@ -1374,6 +1374,7 @@ Yêu cầu:
     questionsMeta: "{{count}} câu",
     timeMeta: "{{min}} phút",
     applyCta: "Làm bài đánh giá",
+    integrityLockedCta: "Đã gian lận — không thể làm lại",
     continueCta: "Tiếp tục bài",
     startOver: "Làm lại từ đầu",
     interviewPlanTitle: "Cấu trúc phỏng vấn",
@@ -3774,6 +3775,7 @@ Yêu cầu:
       allTime: "Tất cả",
       thisWeek: "Tuần này",
       thisMonth: "Tháng này",
+      allModes: "Tất cả",
     },
     table: {
       session: "Phiên",

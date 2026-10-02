@@ -26,8 +26,10 @@ import { CompanyInfoCard } from "@/features/candidate/components/sets/company-in
 import { getSkillIcon } from "@/features/candidate/utils/skill-icons";
 import {
   findInProgressSession,
+  startPracticeSession,
   abandonPracticeSession,
   getPracticeSession,
+  IntegrityLockedError,
 } from "@/features/candidate/services/practice-session.service";
 import {
   toggleBookmark,
@@ -65,10 +67,12 @@ export function HiringJobDetail({ set, variant = "page" }: Props) {
   const { t, lang } = useLanguage();
   const h = t.hiringJobsPage;
   const p = t.jobseekerSetDetailPage;
+  const practiceCopy = t.jobseekerPracticePage;
   const { addToast } = useToast();
   const router = useRouter();
 
   const [inProgressSessionId, setInProgressSessionId] = useState<string | null>(null);
+  const [lockNoticeOpen, setLockNoticeOpen] = useState(false);
   const [bookmarked, setBookmarked] = useState(false);
   const [bookmarking, setBookmarking] = useState(false);
   const [startNewConfirmOpen, setStartNewConfirmOpen] = useState(false);
@@ -127,16 +131,27 @@ export function HiringJobDetail({ set, variant = "page" }: Props) {
     mins != null && mins > 0 ? h.timeMeta.replace("{{min}}", String(mins)) : null,
   ].filter(Boolean) as string[];
 
+  function showIntegrityLock() {
+    setLockNoticeOpen(true);
+    setNavigating(false);
+    setStartingNew(false);
+    setStartNewConfirmOpen(false);
+  }
+
   async function checkAndNavigate(destination: string) {
     if (navigating) return;
     setNavigating(true);
     try {
       await getQuestionSetById(set.id);
+      await startPracticeSession(set.id);
       router.push(destination);
     } catch (err) {
       setNavigating(false);
-      if (err instanceof NotFoundError) addToast("error", p.loadFailed);
-      else addToast("error", p.loadFailed);
+      if (err instanceof IntegrityLockedError) {
+        showIntegrityLock();
+        return;
+      }
+      addToast("error", p.loadFailed);
     }
   }
 
@@ -145,10 +160,16 @@ export function HiringJobDetail({ set, variant = "page" }: Props) {
     setStartingNew(true);
     try {
       await getQuestionSetById(set.id);
-    } catch {
+      await startPracticeSession(set.id);
+    } catch (err) {
       setStartingNew(false);
       setStartNewConfirmOpen(false);
-      addToast("error", p.loadFailed);
+      if (err instanceof IntegrityLockedError) {
+        showIntegrityLock();
+        return;
+      }
+      if (err instanceof NotFoundError) addToast("error", p.loadFailed);
+      else addToast("error", p.loadFailed);
       return;
     }
     abandonPracticeSession(inProgressSessionId)
@@ -480,6 +501,17 @@ export function HiringJobDetail({ set, variant = "page" }: Props) {
         loading={startingNew}
         onConfirm={() => void handleStartNew()}
         onCancel={() => setStartNewConfirmOpen(false)}
+      />
+      <ConfirmDialog
+        open={lockNoticeOpen}
+        title={practiceCopy.integrityLockedTitle}
+        message={practiceCopy.integrityLocked}
+        confirmLabel={t.antiCheat.ackUnderstand}
+        cancelLabel={t.antiCheat.ackUnderstand}
+        hideCancel
+        variant="danger"
+        onConfirm={() => setLockNoticeOpen(false)}
+        onCancel={() => setLockNoticeOpen(false)}
       />
     </div>
   );

@@ -32,7 +32,6 @@ export function GeneralSettings() {
   const [maxPinnedSets, setMaxPinnedSets] = useState("5");
   const [minAttemptsForTrending, setMinAttemptsForTrending] = useState("10");
   const [antiCheatEnabled, setAntiCheatEnabled] = useState(false);
-  const [antiCheatMaxTabLeaves, setAntiCheatMaxTabLeaves] = useState("3");
   const [maxIntegrityStrikes, setMaxIntegrityStrikes] = useState("3");
 
   const [loading, setLoading] = useState(true);
@@ -48,8 +47,10 @@ export function GeneralSettings() {
       if (s.maxPinnedSets != null) setMaxPinnedSets(String(s.maxPinnedSets));
       if (s.minAttemptsForTrending != null) setMinAttemptsForTrending(String(s.minAttemptsForTrending));
       if (typeof s.antiCheatEnabled === "boolean") setAntiCheatEnabled(s.antiCheatEnabled);
-      if (s.antiCheatMaxTabLeaves != null) setAntiCheatMaxTabLeaves(String(s.antiCheatMaxTabLeaves));
-      if (s.maxIntegrityStrikes != null) setMaxIntegrityStrikes(String(s.maxIntegrityStrikes));
+      // BE hiện chỉ trả antiCheatMaxTabLeaves. Ô "số lỗi vi phạm" dùng strikes nếu có,
+      // không thì lấy tab leaves để refresh không rơi về mặc định 3.
+      const strikes = s.maxIntegrityStrikes ?? s.antiCheatMaxTabLeaves;
+      if (strikes != null) setMaxIntegrityStrikes(String(strikes));
     } catch {
       setLoadError(true);
     } finally {
@@ -63,18 +64,16 @@ export function GeneralSettings() {
     setSaving(true);
     try {
       const minQuestions = Math.min(50, Math.max(5, Number(minQuestionsToPublish) || 5));
-      const maxLeaves = Math.min(20, Math.max(1, Number(antiCheatMaxTabLeaves) || 3));
       const maxStrikes = Math.min(10, Math.max(1, Number(maxIntegrityStrikes) || 3));
       await updatePlatformSettings({
         minQuestionsToPublish: minQuestions,
         maxPinnedSets: Number(maxPinnedSets) || 0,
         minAttemptsForTrending: Number(minAttemptsForTrending) || undefined,
         antiCheatEnabled,
-        antiCheatMaxTabLeaves: maxLeaves,
+        antiCheatMaxTabLeaves: maxStrikes,
         maxIntegrityStrikes: maxStrikes,
       });
       setMinQuestionsToPublish(String(minQuestions));
-      setAntiCheatMaxTabLeaves(String(maxLeaves));
       setMaxIntegrityStrikes(String(maxStrikes));
       addToast("success", g.saveSuccess);
     } catch (err) {
@@ -191,11 +190,6 @@ export function GeneralSettings() {
             </div>
             <Toggle checked={antiCheatEnabled} onChange={setAntiCheatEnabled} ariaLabel={g.antiCheatEnabled} />
           </div>
-
-          {/* antiCheatMaxTabLeaves không còn ô chỉnh sửa riêng — gộp chung vào
-              "Số lỗi vi phạm chống gian lận tối đa" bên dưới cho admin đỡ rối với
-              2 thông số chồng chéo. Vẫn giữ state/gửi lại y nguyên giá trị đã lưu
-              khi Save để không phá cơ chế rời-tab phía BE đang chạy đúng. */}
 
           <FormField label={g.maxIntegrityStrikes} htmlFor="max-integrity-strikes">
             <input

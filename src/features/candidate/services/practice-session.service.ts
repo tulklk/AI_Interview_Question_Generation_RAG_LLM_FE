@@ -145,8 +145,8 @@ export interface PracticeSessionDetail {
   antiCheatEnabled: boolean;
   antiCheatMaxTabLeaves: number;
   tabLeaveCount: number;
-  /** Số strike tối đa (camera/tab/focus...) trước khi tự chấm dứt phiên — Admin cấu hình,
-   * BE chưa trả field này thì FE fallback về hằng số mặc định (3) trong anti-cheat/constants.ts. */
+  /** Số strike tối đa trước khi tự chấm dứt phiên. Lấy maxIntegrityStrikes nếu BE trả,
+   * không thì antiCheatMaxTabLeaves (admin đang lưu hạn mức ở field này), cuối cùng mới là 3. */
   maxIntegrityStrikes: number;
   questions: PracticeSessionQuestion[];
 }
@@ -205,7 +205,11 @@ function normalizeSessionDetail(raw: unknown): PracticeSessionDetail | null {
     antiCheatEnabled: Boolean(src.antiCheatEnabled ?? src.AntiCheatEnabled),
     antiCheatMaxTabLeaves: pickNumber(src, "antiCheatMaxTabLeaves", "AntiCheatMaxTabLeaves") || 3,
     tabLeaveCount: pickNumber(src, "tabLeaveCount", "TabLeaveCount"),
-    maxIntegrityStrikes: pickNumber(src, "maxIntegrityStrikes", "MaxIntegrityStrikes") || 3,
+    // BE chưa trả maxIntegrityStrikes. Admin ghi hạn mức vào antiCheatMaxTabLeaves.
+    maxIntegrityStrikes:
+      pickNumber(src, "maxIntegrityStrikes", "MaxIntegrityStrikes")
+      || pickNumber(src, "antiCheatMaxTabLeaves", "AntiCheatMaxTabLeaves")
+      || 3,
     questions,
   };
 }
@@ -401,6 +405,31 @@ function extractList(raw: unknown): unknown[] {
   if (Array.isArray(root.data)) return root.data;
   if (Array.isArray(root.items)) return root.items;
   return [];
+}
+
+function itemSignalsIntegrityLock(raw: unknown): boolean {
+  const src = asRecord(raw);
+  if (!src) return false;
+  if (payloadSignalsIntegrityLock(src)) return true;
+  const status = pickString(src, "status", "Status").toUpperCase();
+  return /INTEGRITY|DISQUALIF/.test(status);
+}
+
+/**
+ * Bộ đã bị khóa vì gian lận hay không. Chỉ đọc phiên ABANDONED của đúng bộ,
+ * không gọi start nên không tạo phiên mới.
+ */
+export async function findIntegrityLock(questionSetId: string): Promise<boolean> {
+  try {
+    const res = await apiClient.get(BASE, {
+      params: { QuestionSetId: questionSetId, Status: "ABANDONED", Page: 1, PageSize: 20 },
+    });
+    return extractList(res.data).some(itemSignalsIntegrityLock);
+  } catch (err) {
+    const status = (err as { response?: { status?: number } })?.response?.status;
+    if (status === 404) return false;
+    return false;
+  }
 }
 
 /** Read-only check for an in-progress session on this set, without starting/resuming one as a side effect. */
@@ -623,6 +652,8 @@ export async function listCompletedSessions(
     toDate?: string;
     keyword?: string;
     status?: PracticeSessionStatus;
+    /** true = hiring, false = practice. Omit to return both. */
+    isHiringAssessment?: boolean;
   } = {}
 ): Promise<PaginatedCompletedSessions> {
   try {
@@ -634,11 +665,18 @@ export async function listCompletedSessions(
         FromDate: params.fromDate,
         ToDate: params.toDate,
         Keyword: params.keyword || undefined,
+        ...(typeof params.isHiringAssessment === "boolean"
+          ? { IsHiringAssessment: params.isHiringAssessment ? "true" : "false" }
+          : {}),
       },
     });
-    const items = extractList(res.data)
+    let items = extractList(res.data)
       .map(normalizeCompletedSession)
       .filter((s): s is CompletedSessionSummary => s !== null);
+    // Sessions with a missing flag stay uncategorized — only an explicit match counts.
+    if (typeof params.isHiringAssessment === "boolean") {
+      items = items.filter((s) => s.isHiringAssessment === params.isHiringAssessment);
+    }
     return { items, totalCount: extractTotal(res.data, items.length) };
   } catch (err) {
     const status = (err as { response?: { status?: number } })?.response?.status;

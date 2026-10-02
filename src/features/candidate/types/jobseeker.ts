@@ -65,6 +65,8 @@ export interface QuestionSet {
   questions: PracticeQuestion[];
   /** SCRUM-464: bộ Tuyển — hiện JD + badge */
   isHiringAssessment?: boolean;
+  /** Bộ đã bị khóa vì chống gian lận, khi API bộ câu hỏi trả cờ này. */
+  integrityLocked?: boolean;
   /** SCRUM-465: bản JD ngắn (PublicJobDescription) */
   jobDescription?: string | null;
   /** SCRUM-467: snippet list card */
