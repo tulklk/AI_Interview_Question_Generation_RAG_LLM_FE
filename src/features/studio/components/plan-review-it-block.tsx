@@ -188,10 +188,9 @@ export function PlanReviewItBlock({
     if (!same) onDraftChange({ questionDistribution: synced });
   }, [numberOfQuestions, plan.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const showApply =
-    editable &&
-    isConfigValidForPlan &&
-    (canApplyConfig || !previewOpen);
+  // Preview đã mở: chỉ hiện nút khi HR thực sự đổi cấu hình bước 1.
+  // Đừng giữ CTA chỉ vì planStale / chưa apply lần đầu nếu outline đã hiện.
+  const showApply = editable && isConfigValidForPlan && canApplyConfig;
 
   const difficultyOptions = [
     { id: "Easy" as const, label: s.easyDesc },

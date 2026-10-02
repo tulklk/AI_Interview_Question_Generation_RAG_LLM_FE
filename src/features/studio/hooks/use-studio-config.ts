@@ -106,9 +106,21 @@ export function mergeConfigDraft(
   // Sửa difficulty/skill/goal của slot không được đụng settings bước 1
   // (tránh isSettingsDirty → hiện «Áp dụng bước 1 trước» oan).
   if (patch.outlineItems != null) {
-    next.outlineItems = normalizeOutlineItems(patch.outlineItems);
-    const prevLen = normalizeOutlineItems(base.outlineItems).length;
-    const nextLen = next.outlineItems.length;
+    const incoming = normalizeOutlineItems(patch.outlineItems);
+    const prevItems = normalizeOutlineItems(base.outlineItems);
+    const prevLen = prevItems.length;
+    const nextLen = incoming.length;
+    // Khóa độ khó theo slot trước — server/rebind hay trả "easy" (enum 0) khi HR vừa chọn hard.
+    next.outlineItems = incoming.map((item, i) => {
+      const prev = prevItems[i];
+      if (!prev) return item;
+      const incomingDiff = (item.difficulty || "").toLowerCase();
+      const prevDiff = (prev.difficulty || "").toLowerCase();
+      if (incomingDiff === "easy" && (prevDiff === "hard" || prevDiff === "medium")) {
+        return { ...item, difficulty: prevDiff };
+      }
+      return item;
+    });
     if (nextLen !== prevLen) {
       next.numberOfQuestions = Math.max(1, nextLen);
       if ((next.questionDistribution ?? []).length > 0) {
@@ -187,13 +199,11 @@ export function useStudioConfig({ settings, currentPlan }: UseStudioConfigOption
     if (pendingAcceptRef.current) {
       setDraft((prev) => {
         if (!prev?.outlineItems?.length) return appliedDraft;
+        const merged = mergeOutlinePreferLocal(prev.outlineItems, appliedDraft.outlineItems);
         return {
           ...appliedDraft,
-          outlineItems: mergeOutlinePreferLocal(prev.outlineItems, appliedDraft.outlineItems),
-          numberOfQuestions: Math.max(
-            1,
-            mergeOutlinePreferLocal(prev.outlineItems, appliedDraft.outlineItems).length
-          ),
+          outlineItems: merged,
+          numberOfQuestions: Math.max(1, merged.length),
         };
       });
       userEditedRef.current = false;

@@ -146,11 +146,19 @@ export function mergeOutlinePreferLocal(
   if (right.length === 0) return left;
 
   const byOrder = new Map(right.map((item) => [item.order, item]));
-  return left.map((item) => {
-    const fromServer = byOrder.get(item.order);
+  return left.map((item, i) => {
+    const fromServer = byOrder.get(item.order) ?? right[i];
     if (!fromServer) return item;
+    const localDiff = (item.difficulty || "").toLowerCase();
+    const serverDiff = (fromServer.difficulty || "").toLowerCase();
+    // Server hay trả "easy" khi enum deserialize lệch — giữ độ khó HR vừa chọn
+    const difficulty =
+      serverDiff === "easy" && (localDiff === "hard" || localDiff === "medium")
+        ? localDiff
+        : localDiff || serverDiff;
     return {
       ...item,
+      difficulty,
       // Citations chỉ có nghĩa từ server/rebind
       citations: fromServer.citations?.length ? fromServer.citations : item.citations,
     };
