@@ -102,23 +102,57 @@ export function mergeConfigDraft(
     next.questionTypes = deriveLegacyQuestionTypes(dist, next.questionStyles ?? []);
   }
 
-  // Preview outline: số câu = số slot còn lại
+  // Preview outline: chỉ sync số câu/distribution khi ĐỘ DÀI slot đổi.
+  // Sửa difficulty/skill/goal của slot không được đụng settings bước 1
+  // (tránh isSettingsDirty → hiện «Áp dụng bước 1 trước» oan).
   if (patch.outlineItems != null) {
     next.outlineItems = normalizeOutlineItems(patch.outlineItems);
-    next.numberOfQuestions = Math.max(1, next.outlineItems.length);
-    if ((next.questionDistribution ?? []).length > 0) {
-      next.questionDistribution = syncDistributionCounts(
-        next.questionDistribution ?? [],
-        next.numberOfQuestions
-      );
-      next.questionTypes = deriveLegacyQuestionTypes(
-        next.questionDistribution,
-        next.questionStyles ?? []
-      );
+    const prevLen = normalizeOutlineItems(base.outlineItems).length;
+    const nextLen = next.outlineItems.length;
+    if (nextLen !== prevLen) {
+      next.numberOfQuestions = Math.max(1, nextLen);
+      if ((next.questionDistribution ?? []).length > 0) {
+        next.questionDistribution = syncDistributionCounts(
+          next.questionDistribution ?? [],
+          next.numberOfQuestions
+        );
+        next.questionTypes = deriveLegacyQuestionTypes(
+          next.questionDistribution,
+          next.questionStyles ?? []
+        );
+      }
+    } else {
+      // Giữ nguyên settings bước 1 — chỉ đổi nội dung slot
+      next.numberOfQuestions = base.numberOfQuestions;
+      next.questionDistribution = base.questionDistribution;
+      next.questionTypes = base.questionTypes;
     }
   }
 
   return next;
+}
+
+/** Fingerprint bước 1: bỏ outline + numberOfQuestions + questionTypes (derive/sync từ Preview). */
+function step1SettingsFingerprint(d: StudioConfigDraft): string {
+  const dist = (d.questionDistribution ?? [])
+    .map((x) => ({
+      type: x.type,
+      // Chỉ so % — count scale theo số slot Preview, không phải chỉnh bước 1
+      percentage: x.percentage,
+    }))
+    .sort((a, b) => String(a.type).localeCompare(String(b.type)));
+  return JSON.stringify({
+    difficulty: d.difficulty,
+    interviewLengthMinutes: d.interviewLengthMinutes,
+    outputLanguage: d.outputLanguage,
+    focusAreas: d.focusAreas,
+    questionStyles: d.questionStyles,
+    enabledCodeTemplates: d.enabledCodeTemplates,
+    contentMode: d.contentMode,
+    includeSampleAnswers: d.includeSampleAnswers,
+    includeScoringRubric: d.includeScoringRubric,
+    questionDistribution: dist,
+  });
 }
 
 export interface UseStudioConfigOptions {
@@ -236,12 +270,10 @@ export function useStudioConfig({ settings, currentPlan }: UseStudioConfigOption
     [draft, appliedDraft]
   );
 
-  /** Dirty chỉ Focus/distribution/styles… — không tính outline (bước 2). */
+  /** Dirty chỉ Focus/distribution/styles… — không tính outline / số slot Preview. */
   const isSettingsDirty = useMemo(() => {
     if (!draft || !appliedDraft) return false;
-    const { outlineItems: _d, ...dRest } = draft;
-    const { outlineItems: _a, ...aRest } = appliedDraft;
-    return JSON.stringify(dRest) !== JSON.stringify(aRest);
+    return step1SettingsFingerprint(draft) !== step1SettingsFingerprint(appliedDraft);
   }, [draft, appliedDraft]);
 
   const distributionValidation = useMemo(
