@@ -70,7 +70,8 @@ export function StudioProgressBar({
   const isBusy = isStreaming || isApplying || isGenerating;
 
   type ChipVariant = "busy" | "done" | "action" | "ready" | "idle";
-  const chipInfo: { text: string; variant: ChipVariant } = (() => {
+  // Khi đã có plan chờ duyệt: không hiện chip «Xem xét… bấm Duyệt» (thừa)
+  const chipInfo: { text: string; variant: ChipVariant } | null = (() => {
     if (isApplying)  return { text: s.chip.updatingPlan, variant: "busy" };
     if (isStreaming) return { text: s.chip.creatingPlan, variant: "busy" };
     if (isGenerating) {
@@ -83,7 +84,7 @@ export function StudioProgressBar({
     }
     if (questionCount > 0)           return { text: s.chip.done.replace("{{count}}", String(questionCount)), variant: "done" };
     if (plan?.status === "Approved") return { text: s.chip.planApprovedReady, variant: "done" };
-    if (plan)                        return { text: s.chip.reviewAndApprove, variant: "action" };
+    if (plan)                        return null;
     if (hasJd)                       return { text: s.chip.jdReadyCreate, variant: "ready" };
     return                                  { text: s.chip.enterJdToStart, variant: "idle" };
   })();
@@ -180,26 +181,28 @@ export function StudioProgressBar({
         </ol>
 
         {/* Status chip */}
-        <div
-          key={chipInfo.variant + chipInfo.text}
-          style={{ animation: "scaleInFade 0.3s cubic-bezier(0.34,1.56,0.64,1) both" }}
-          className={cn(
-            "hidden xs:flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-semibold whitespace-nowrap border",
-            chipInfo.variant === "busy"   && "bg-violet-50  text-violet-700  border-violet-100  dark:bg-violet-950/30  dark:text-violet-300  dark:border-violet-900/40",
-            chipInfo.variant === "done"   && "bg-emerald-50 text-emerald-700 border-emerald-100 dark:bg-emerald-950/30 dark:text-emerald-300 dark:border-emerald-900/40",
-            chipInfo.variant === "action" && "bg-amber-50   text-amber-700   border-amber-100   dark:bg-amber-950/30   dark:text-amber-300   dark:border-amber-900/40",
-            chipInfo.variant === "ready"  && "bg-primary/8  text-primary     border-primary/15  dark:bg-primary/15    dark:text-primary     dark:border-primary/30",
-            chipInfo.variant === "idle"   && "bg-gray-50    text-gray-500    border-gray-100    dark:bg-gray-900/60   dark:text-gray-400   dark:border-gray-800",
-          )}
-          aria-live="polite"
-        >
-          {chipInfo.variant === "busy"
-            ? <Loader2 className="h-2.5 w-2.5 shrink-0 animate-spin" />
-            : chipInfo.variant === "done"
-              ? <Check className="h-2.5 w-2.5 shrink-0" strokeWidth={3} />
-              : <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-current opacity-70" />}
-          <span>{chipInfo.text}</span>
-        </div>
+        {chipInfo ? (
+          <div
+            key={chipInfo.variant + chipInfo.text}
+            style={{ animation: "scaleInFade 0.3s cubic-bezier(0.34,1.56,0.64,1) both" }}
+            className={cn(
+              "hidden xs:flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-semibold whitespace-nowrap border",
+              chipInfo.variant === "busy"   && "bg-violet-50  text-violet-700  border-violet-100  dark:bg-violet-950/30  dark:text-violet-300  dark:border-violet-900/40",
+              chipInfo.variant === "done"   && "bg-emerald-50 text-emerald-700 border-emerald-100 dark:bg-emerald-950/30 dark:text-emerald-300 dark:border-emerald-900/40",
+              chipInfo.variant === "action" && "bg-amber-50   text-amber-700   border-amber-100   dark:bg-amber-950/30   dark:text-amber-300   dark:border-amber-900/40",
+              chipInfo.variant === "ready"  && "bg-primary/8  text-primary     border-primary/15  dark:bg-primary/15    dark:text-primary     dark:border-primary/30",
+              chipInfo.variant === "idle"   && "bg-gray-50    text-gray-500    border-gray-100    dark:bg-gray-900/60   dark:text-gray-400   dark:border-gray-800",
+            )}
+            aria-live="polite"
+          >
+            {chipInfo.variant === "busy"
+              ? <Loader2 className="h-2.5 w-2.5 shrink-0 animate-spin" />
+              : chipInfo.variant === "done"
+                ? <Check className="h-2.5 w-2.5 shrink-0" strokeWidth={3} />
+                : <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-current opacity-70" />}
+            <span>{chipInfo.text}</span>
+          </div>
+        ) : null}
       </div>
     </section>
   );
