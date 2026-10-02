@@ -54,6 +54,22 @@ function pickDraft(settings: StudioSettings | null): StudioConfigDraft | null {
   };
 }
 
+/**
+ * Snapshot draft từ settings + plan (hoặc outline vừa Apply).
+ * Dùng sau Apply để tránh race đọc appliedDraftRef còn stale.
+ */
+export function buildConfigDraft(
+  settings: StudioSettings | null,
+  plan: PlanDetail | null,
+  outlineOverride?: PlanOutlineItem[] | null
+): StudioConfigDraft | null {
+  const normalized = normalizeStudioSettings(settings);
+  const d = pickDraft(normalized);
+  if (!d) return null;
+  const outline = normalizeOutlineItems(outlineOverride ?? plan?.outlineItems);
+  return outline.length > 0 ? { ...d, outlineItems: outline } : d;
+}
+
 function draftEquals(a: StudioConfigDraft | null, b: StudioConfigDraft | null): boolean {
   if (!a || !b) return a === b;
   return JSON.stringify(a) === JSON.stringify(b);
@@ -121,6 +137,8 @@ export function useStudioConfig({ settings, currentPlan }: UseStudioConfigOption
 
   const [draft, setDraft] = useState<StudioConfigDraft | null>(appliedDraft);
   const userEditedRef = useRef(false);
+  /** Sau Apply: chờ appliedDraft mới từ props rồi sync — tránh setTimeout + ref stale. */
+  const pendingAcceptRef = useRef(false);
   const appliedDraftRef = useRef(appliedDraft);
   appliedDraftRef.current = appliedDraft;
 
@@ -128,6 +146,14 @@ export function useStudioConfig({ settings, currentPlan }: UseStudioConfigOption
     if (!appliedDraft) {
       setDraft(null);
       userEditedRef.current = false;
+      pendingAcceptRef.current = false;
+      return;
+    }
+    // Apply xong: luôn nhận bản server mới khi props đã cập nhật
+    if (pendingAcceptRef.current) {
+      setDraft(appliedDraft);
+      userEditedRef.current = false;
+      pendingAcceptRef.current = false;
       return;
     }
     if (!userEditedRef.current || draftEquals(draft, appliedDraft)) {
@@ -138,6 +164,7 @@ export function useStudioConfig({ settings, currentPlan }: UseStudioConfigOption
 
   const updateDraft = useCallback((patch: Partial<StudioConfigDraft>) => {
     userEditedRef.current = true;
+    pendingAcceptRef.current = false;
     setDraft((prev) => {
       const base = prev ?? appliedDraftRef.current;
       if (!base) return prev;
@@ -146,26 +173,27 @@ export function useStudioConfig({ settings, currentPlan }: UseStudioConfigOption
   }, []);
 
   const resetDraftFromApplied = useCallback(() => {
-    // Same stale-ref risk as acceptServerSettings() above — currently unused,
-    // but defend it too so a future caller doesn't reintroduce the bug.
     userEditedRef.current = false;
-    setTimeout(() => setDraft(appliedDraftRef.current), 0);
+    pendingAcceptRef.current = true;
+    // Nếu props đã fresh (không await đang pending) — sync ngay
+    if (appliedDraftRef.current) setDraft(appliedDraftRef.current);
   }, []);
 
   /**
-   * SCRUM-422: Sau generate/apply — ép draft = settings server (dùng ref tránh stale closure).
+   * SCRUM-422: Sau generate/apply — ép draft = bản đã Apply.
    *
-   * BUG FIX: callers await an apply function (which calls setSettings() upstream)
-   * then invoke this synchronously right after. setSettings() only *schedules* a
-   * re-render — appliedDraftRef only gets refreshed during that render (see the
-   * plain assignment above) — so reading it in the very next synchronous tick can
-   * still see the PRE-apply value, silently reverting whatever field was just
-   * changed (e.g. difficulty "Hard" bouncing back to "Medium" right after Apply).
-   * Deferring one macrotask lets React finish the pending re-render first.
+   * Truyền `snapshot` (build từ settings/plan vừa Apply) để UI giữ Hard/outline ngay,
+   * không đọc appliedDraftRef lúc còn PRE-apply (bug: Hard → Easy/Medium).
+   * Đồng thời bật pendingAccept để khi props refresh xong vẫn sync đúng server.
    */
-  const acceptServerSettings = useCallback(() => {
+  const acceptServerSettings = useCallback((snapshot?: StudioConfigDraft | null) => {
     userEditedRef.current = false;
-    setTimeout(() => setDraft(appliedDraftRef.current), 0);
+    pendingAcceptRef.current = true;
+    if (snapshot) {
+      setDraft(snapshot);
+      return;
+    }
+    // Không có snapshot: chỉ chờ useEffect khi appliedDraft đổi — không set từ ref stale.
   }, []);
 
   // Khi server vừa seed distribution/focus (sau tạo plan) mà draft local còn trống — sync ngay.

@@ -45,6 +45,9 @@ import { formatStudioDifficultyLabel, formatStudioQuestionTypeLabel } from "@/fe
 import { QuestionContent } from "@/shared/components/ui/question-content";
 import { CodeSnippetBlock } from "@/shared/components/ui/code-snippet-block";
 import { ConfirmDialog } from "@/shared/components/ui/confirm-dialog";
+import { extractErrorMessage } from "@/core/interceptors/error.interceptor";
+import { useHrSubscription } from "@/features/hr/context/hr-subscription-context";
+import { getMyUsage } from "@/features/subscription/services/subscription.service";
 import type {
   StudioQuestion,
   StudioQuestionDifficulty,
@@ -132,6 +135,9 @@ export type QuestionReviewWorkspaceProps = {
   }) => void | Promise<void>;
   /** SCRUM-470: soạn JD công khai + posting khi chế độ Tuyển */
   questionSetId?: string | null;
+  /** Plan đang mở — để đếm đúng số lần regen câu hỏi CỦA RIÊNG plan này (không cộng dồn
+   * lịch sử toàn tài khoản như ở trang Usage panel). */
+  planId?: string | null;
   publicJd?: {
     initialPublicJobDescription?: string | null;
     initialPosting?: HiringPostingInitial | null;
@@ -874,10 +880,12 @@ function QuestionDetail({
                             await onRegenerate(question.id, regenNote.trim() || undefined);
                             setRegenOpen(false);
                           } catch (err) {
+                            // Map 403 / errorCode (QUESTION_REGEN_LIMIT, …) sang thông báo rõ cho HR — tránh "status code 403".
+                            const uiLang = lang === "vi" ? "vi" : "en";
                             const msg =
-                              err instanceof Error && err.message
-                                ? err.message
-                                : c.regenFailedShort;
+                              extractErrorMessage(err, uiLang) ||
+                              (err instanceof Error && err.message ? err.message : null) ||
+                              c.regenFailedShort;
                             setRegenError(msg);
                           } finally {
                             setBusy(false);
@@ -924,15 +932,47 @@ export function QuestionReviewWorkspace({
   onHiringModeChange,
   questionSetId = null,
   publicJd = null,
+  planId = null,
 }: QuestionReviewWorkspaceProps) {
   const { t, lang } = useLanguage();
   const c = t.studioPage.chat;
   const typeLang = lang === "vi" ? "vi" : "en";
+  const { limits } = useHrSubscription();
 
   const [filter, setFilter] = useState<ReviewFilter>("all");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [navOpen, setNavOpen] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
+
+  // Đếm đúng số lần regen câu hỏi CỦA RIÊNG plan đang mở — scopeKey của BE là
+  // planId bỏ dấu gạch ngang (GUID 32 hex). Khác với hr-usage-panel.tsx (cộng dồn
+  // lịch sử toàn tài khoản), ở đây biết chính xác plan nào đang active nên hiển thị
+  // được đúng số thật, không cần suy diễn.
+  const regenLimit = limits?.questionRegenPerPlan ?? 0;
+  const [regenUsed, setRegenUsed] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!planId || regenLimit <= 0) {
+      setRegenUsed(null);
+      return;
+    }
+    let cancelled = false;
+    const scopeKey = planId.replace(/-/g, "");
+    void getMyUsage()
+      .then((rows) => {
+        if (cancelled) return;
+        const row = rows.find((r) => r.usageType === "HrQuestionRegen" && r.scopeKey === scopeKey);
+        setRegenUsed(row?.usedCount ?? 0);
+      })
+      .catch(() => {
+        if (!cancelled) setRegenUsed(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+    // Refetch khi 1 lượt regen vừa hoàn tất (regeneratingQuestionIds rỗng trở lại).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [planId, regenLimit, regeneratingQuestionIds.length === 0]);
 
   const total = questions.length;
 
@@ -1142,6 +1182,22 @@ export function QuestionReviewWorkspace({
         >
           {c.reviewReady.replace("{{ready}}", String(total)).replace("{{total}}", String(total))}
         </span>
+
+        {regenLimit > 0 && regenUsed !== null && (
+          <span
+            className={cn(
+              "inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold",
+              regenUsed >= regenLimit
+                ? "bg-red-100 text-red-800 dark:bg-red-950/50 dark:text-red-300"
+                : regenUsed >= regenLimit - 1
+                  ? "bg-amber-100 text-amber-900 dark:bg-amber-950/50 dark:text-amber-200"
+                  : "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300"
+            )}
+            title={c.reviewRegenUsageHint}
+          >
+            {c.reviewRegenUsage.replace("{{used}}", String(regenUsed)).replace("{{limit}}", String(regenLimit))}
+          </span>
+        )}
 
         <div className="ml-auto flex items-center gap-1.5">
           {hiringMode && onHiringModeChange && (

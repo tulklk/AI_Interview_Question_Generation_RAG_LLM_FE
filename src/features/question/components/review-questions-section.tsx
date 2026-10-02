@@ -458,7 +458,13 @@ export function ReviewQuestionsSection({
     try {
       ok = await updateQuestionSetQuestion(questionSetId, id, payload);
     } catch (err) {
-      addToast("error", publishLockMessage(err, rp.questionCard.editFailed));
+      const message = err instanceof Error ? err.message : "";
+      addToast(
+        "error",
+        message === "RUBRIC_WEIGHT_INVALID"
+          ? rp.questionCard.rubricWeightInvalid
+          : publishLockMessage(err, rp.questionCard.editFailed),
+      );
       return false;
     }
 

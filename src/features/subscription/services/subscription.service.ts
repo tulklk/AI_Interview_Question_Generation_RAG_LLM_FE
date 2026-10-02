@@ -14,6 +14,12 @@ export interface SubscriptionLimits {
   freeVisiblePercent: number;
   canPersistHrRecommendation: boolean;
   feedbackOnlyOnVisible: boolean;
+  /** SCRUM-498: 0 = unlimited */
+  practicePerMonth: number;
+  /** SCRUM-498: 0 = unlimited */
+  maxSavedSessions: number;
+  /** SCRUM-498: Free lượt đầu full AI; 0 trên Free = không có; Premium dùng canDetailed */
+  fullAiFeedbackPerMonth: number;
 }
 
 export interface SubscriptionEntitlements {
@@ -41,6 +47,11 @@ export interface MySubscription {
   generateSetUsed: number;
   generateWindowUsed: number;
   generateWindowLimit: number;
+  /** SCRUM-498 */
+  practiceUsed: number;
+  practiceLimit: number;
+  fullAiFeedbackUsed: number;
+  fullAiFeedbackLimit: number;
   entitlements: SubscriptionEntitlements;
 }
 
@@ -137,6 +148,9 @@ function normalizeLimits(raw: unknown): SubscriptionLimits {
     freeVisiblePercent: pickNumber(o, "freeVisiblePercent", "FreeVisiblePercent") || 20,
     canPersistHrRecommendation: pickBool(o, "canPersistHrRecommendation", "CanPersistHrRecommendation"),
     feedbackOnlyOnVisible: pickBool(o, "feedbackOnlyOnVisible", "FeedbackOnlyOnVisible"),
+    practicePerMonth: pickNumber(o, "practicePerMonth", "PracticePerMonth"),
+    maxSavedSessions: pickNumber(o, "maxSavedSessions", "MaxSavedSessions"),
+    fullAiFeedbackPerMonth: pickNumber(o, "fullAiFeedbackPerMonth", "FullAiFeedbackPerMonth"),
   };
 }
 
@@ -175,6 +189,10 @@ export function normalizeMySubscription(raw: unknown): MySubscription {
     generateWindowUsed: pickNumber(src, "generateWindowUsed", "GenerateWindowUsed"),
     generateWindowLimit:
       pickNumber(src, "generateWindowLimit", "GenerateWindowLimit") || limits.generatePerWindow,
+    practiceUsed: pickNumber(src, "practiceUsed", "PracticeUsed"),
+    practiceLimit: pickNumber(src, "practiceLimit", "PracticeLimit"),
+    fullAiFeedbackUsed: pickNumber(src, "fullAiFeedbackUsed", "FullAiFeedbackUsed"),
+    fullAiFeedbackLimit: pickNumber(src, "fullAiFeedbackLimit", "FullAiFeedbackLimit"),
     entitlements: normalizeEntitlements(src.entitlements ?? src.Entitlements, limits),
   };
 }
@@ -320,12 +338,6 @@ export async function getUpgradePaymentStatus(orderCode: string): Promise<Upgrad
 /** POST /api/me/subscription/cancel */
 export async function cancelSubscriptionSandbox(): Promise<MySubscription> {
   const res = await apiClient.post("/api/me/subscription/cancel");
-  return normalizeMySubscription(res.data);
-}
-
-/** POST /api/me/packs/ask-ai */
-export async function purchaseAskAiPack(extraRequests = 200, amount = 99000): Promise<MySubscription> {
-  const res = await apiClient.post("/api/me/packs/ask-ai", { extraRequests, amount });
   return normalizeMySubscription(res.data);
 }
 

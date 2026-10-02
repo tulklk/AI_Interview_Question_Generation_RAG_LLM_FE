@@ -11,8 +11,48 @@ export class ForbiddenError extends Error {
   }
 }
 
+/** Thrown when the BE refuses a new session because anti-cheat already ended an attempt. */
+export class IntegrityLockedError extends Error {
+  constructor(message = "This question set is locked after an integrity violation") {
+    super(message);
+    this.name = "IntegrityLockedError";
+  }
+}
+
+const INTEGRITY_LOCK_RE = /integrity|anti[-_ ]?cheat|disqualif|gian\s*lận|chống\s*gian/i;
+
+function payloadSignalsIntegrityLock(data: unknown): boolean {
+  if (typeof data === "string") return INTEGRITY_LOCK_RE.test(data);
+  if (!data || typeof data !== "object") return false;
+  const o = data as Record<string, unknown>;
+  for (const key of [
+    "integrityBlocked",
+    "IntegrityBlocked",
+    "integrityLocked",
+    "IntegrityLocked",
+    "antiCheatBlocked",
+    "AntiCheatBlocked",
+    "integrityTerminated",
+    "IntegrityTerminated",
+  ]) {
+    if (o[key] === true) return true;
+  }
+  const nested = extractData(data);
+  if (nested && nested !== o && payloadSignalsIntegrityLock(nested)) return true;
+  const parts: string[] = [];
+  for (const key of ["errorCode", "code", "ErrorCode", "Code", "detail", "title", "message", "error", "Message", "Detail"]) {
+    const v = o[key];
+    if (typeof v === "string" && v.trim()) parts.push(v);
+  }
+  return INTEGRITY_LOCK_RE.test(parts.join(" "));
+}
+
 function rethrowForbidden(err: unknown): never {
-  const status = (err as { response?: { status?: number } })?.response?.status;
+  const response = (err as { response?: { status?: number; data?: unknown } })?.response;
+  const status = response?.status;
+  if ((status === 403 || status === 409) && payloadSignalsIntegrityLock(response?.data)) {
+    throw new IntegrityLockedError();
+  }
   if (status === 403) throw new ForbiddenError();
   throw err;
 }
@@ -105,6 +145,9 @@ export interface PracticeSessionDetail {
   antiCheatEnabled: boolean;
   antiCheatMaxTabLeaves: number;
   tabLeaveCount: number;
+  /** Số strike tối đa (camera/tab/focus...) trước khi tự chấm dứt phiên — Admin cấu hình,
+   * BE chưa trả field này thì FE fallback về hằng số mặc định (3) trong anti-cheat/constants.ts. */
+  maxIntegrityStrikes: number;
   questions: PracticeSessionQuestion[];
 }
 
@@ -162,6 +205,7 @@ function normalizeSessionDetail(raw: unknown): PracticeSessionDetail | null {
     antiCheatEnabled: Boolean(src.antiCheatEnabled ?? src.AntiCheatEnabled),
     antiCheatMaxTabLeaves: pickNumber(src, "antiCheatMaxTabLeaves", "AntiCheatMaxTabLeaves") || 3,
     tabLeaveCount: pickNumber(src, "tabLeaveCount", "TabLeaveCount"),
+    maxIntegrityStrikes: pickNumber(src, "maxIntegrityStrikes", "MaxIntegrityStrikes") || 3,
     questions,
   };
 }
@@ -459,36 +503,19 @@ export async function abandonPracticeSession(sessionId: string): Promise<void> {
   await apiClient.post(`${BASE}/${sessionId}/abandon`);
 }
 
-/** SCRUM-446: phản hồi sau khi báo rời tab. */
-export interface IntegrityEventResult {
-  sessionId: string;
-  status: "IN_PROGRESS" | "COMPLETED" | "ABANDONED" | string;
-  antiCheatEnabled: boolean;
-  antiCheatMaxTabLeaves: number;
-  tabLeaveCount: number;
-  autoSubmitted: boolean;
-  ignored: boolean;
-}
-
 /**
- * SCRUM-446: báo BE khi candidate rời tab (visibility hidden).
- * BE debounce ~2s; đủ ngưỡng thì tự nộp.
+ * Strike thứ 3: ghi lên server rằng phiên kết thúc vì gian lận, trước khi abandon.
+ * Cùng endpoint TAB_HIDDEN. `terminated` để BE khóa candidate với bộ câu hỏi này.
  */
-export async function reportTabLeave(sessionId: string): Promise<IntegrityEventResult> {
-  const res = await apiClient.post(`${BASE}/${sessionId}/integrity-events`, {
-    eventType: "TAB_HIDDEN",
+export async function reportIntegrityTermination(
+  sessionId: string,
+  eventType: string,
+): Promise<void> {
+  await apiClient.post(`${BASE}/${sessionId}/integrity-events`, {
+    eventType,
+    terminated: true,
+    integrityTerminated: true,
   });
-  const src = extractData(res.data) ?? {};
-  const statusRaw = pickString(src, "status").toUpperCase();
-  return {
-    sessionId: pickString(src, "sessionId", "id") || sessionId,
-    status: statusRaw || "IN_PROGRESS",
-    antiCheatEnabled: Boolean(src.antiCheatEnabled ?? src.AntiCheatEnabled),
-    antiCheatMaxTabLeaves: pickNumber(src, "antiCheatMaxTabLeaves", "AntiCheatMaxTabLeaves") || 3,
-    tabLeaveCount: pickNumber(src, "tabLeaveCount", "TabLeaveCount"),
-    autoSubmitted: Boolean(src.autoSubmitted ?? src.AutoSubmitted),
-    ignored: Boolean(src.ignored ?? src.Ignored),
-  };
 }
 
 // ---------------------------------------------------------------------------

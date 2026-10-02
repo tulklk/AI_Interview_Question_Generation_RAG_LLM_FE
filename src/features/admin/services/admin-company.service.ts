@@ -92,32 +92,45 @@ function extractItems(raw: unknown): unknown[] {
   return [];
 }
 
-function extractTotal(raw: unknown, fallback: number): number {
-  const root = asRecord(raw);
-  if (!root) return fallback;
-
-  const sources = [root, asRecord(root.data)].filter(Boolean) as Record<string, unknown>[];
-  for (const src of sources) {
-    for (const k of ["totalCount", "TotalCount", "total", "Total", "count", "Count"]) {
-      const v = src[k];
-      if (typeof v === "number" && v >= 0) return v;
-    }
-  }
-  return fallback;
-}
-
 export async function listCompanies(params: ListCompaniesParams = {}): Promise<PaginatedCompanies> {
-  const query: Record<string, string | number> = {};
-  if (params.keyword?.trim()) query.keyword = params.keyword.trim();
-  if (params.page) query.page = params.page;
-  if (params.pageSize) query.pageSize = params.pageSize;
+  const keyword = params.keyword?.trim() || undefined;
+  const page = Math.max(1, params.page ?? 1);
+  const pageSize = Math.max(1, params.pageSize ?? 10);
 
-  // SCRUM-480: Admin dùng endpoint phân trang; /api/companies public vẫn cho HR register
-  const res = await apiClient.get("/api/admin/companies", { params: query });
-  const rawItems = extractItems(res.data);
-  const items = rawItems.map(normalizeCompany).filter((c): c is Company => c !== null);
+  // Ưu tiên admin endpoint (SCRUM-480). Azure hiện chưa deploy → 404 thì fallback public /api/companies.
+  try {
+    const query: Record<string, string | number> = { page, pageSize };
+    if (keyword) query.keyword = keyword;
+    const res = await apiClient.get("/api/admin/companies", { params: query });
+    const rawItems = extractItems(res.data);
+    const items = rawItems.map(normalizeCompany).filter((c): c is Company => c !== null);
+    const root = asRecord(res.data);
+    const nested = asRecord(root?.data);
+    const sources = [root, nested].filter(Boolean) as Record<string, unknown>[];
+    let totalCount = items.length;
+    for (const src of sources) {
+      for (const k of ["totalCount", "TotalCount", "total", "Total"]) {
+        const v = src[k];
+        if (typeof v === "number" && v >= 0) {
+          totalCount = v;
+          break;
+        }
+      }
+    }
+    return { items, totalCount };
+  } catch (err) {
+    const status = (err as { response?: { status?: number } })?.response?.status;
+    if (status !== 404) throw err;
+  }
 
-  return { items, totalCount: extractTotal(res.data, items.length) };
+  const res = await apiClient.get("/api/companies", {
+    params: keyword ? { keyword } : undefined,
+  });
+  const all = extractItems(res.data)
+    .map(normalizeCompany)
+    .filter((c): c is Company => c !== null);
+  const start = (page - 1) * pageSize;
+  return { items: all.slice(start, start + pageSize), totalCount: all.length };
 }
 
 export interface CreateCompanyPayload {

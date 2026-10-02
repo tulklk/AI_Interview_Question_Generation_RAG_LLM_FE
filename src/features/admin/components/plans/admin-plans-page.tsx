@@ -12,6 +12,7 @@ import {
   RefreshCw,
   RotateCcw,
   Save,
+  Send,
   Sparkles,
   Undo2,
   Wand2,
@@ -44,7 +45,6 @@ const FALLBACK_EDITOR = {
   inactive: "Inactive",
   currentPrice: "Currently:",
   priceLabel: "Price / month (VND)",
-  askAiLabel: "Ask-AI / period",
   cooldownLabel: "Generate cooldown (hours)",
   generatePerWindowLabel: "Generate set / JD-fit / window",
   questionRegenPerPlanLabel: "Question regen / plan (0 = unlimited)",
@@ -65,7 +65,6 @@ const FALLBACK_EDITOR = {
   hintPrice: "Free must stay at 0. Premium requires at least 10,000.",
   freePriceMustBeZero: "The Free plan must have a price of 0 VND.",
   premiumMinPrice: "The Premium plan must cost at least 10,000 VND.",
-  hintAskAi: "Ask-AI requests allowed per billing period.",
   hintCooldown: "Length of one generate window. Min 1 hour when Unlimited is off.",
   hintGeneratePerWindow: "Successful question-set / JD-fit runs per window. Ignored while Unlimited is on.",
   hintQuestionRegen: "Per-question regenerations per plan. 0 = unlimited.",
@@ -73,6 +72,21 @@ const FALLBACK_EDITOR = {
   hintFreeVisible: "Legacy — Free practices the full set; field unused for hiding questions (BE keeps 100).",
   hintCanExport: "Allow exporting question sets to Excel.",
   hintGenerateUnlimited: "On: unlimited generate. Off: use N runs per H-hour window below.",
+  practicePerMonthLabel: "Practice sessions per month",
+  maxSavedSessionsLabel: "Max saved history sessions",
+  fullAiFeedbackPerMonthLabel: "Detailed AI feedback sessions per month (Free plan only)",
+  hintPracticePerMonth: "Free plan only — new practice sessions allowed per month.",
+  hintMaxSavedSessions: "Oldest sessions are hidden once this limit is exceeded.",
+  hintFullAiFeedback: "Free plan only — first N sessions each period get detailed feedback, the rest get a summary. Premium always gets detailed feedback.",
+  practicePerMonthUnlimitedLabel: "Unlimited practice",
+  hintPracticePerMonthUnlimited: "On: unlimited practice. Off: use the count above.",
+  maxSavedSessionsUnlimitedLabel: "Unlimited history",
+  hintMaxSavedSessionsUnlimited: "On: keep all history. Off: use the count above.",
+  fullAiFeedbackUnlimitedLabel: "Always detailed feedback",
+  hintFullAiFeedbackUnlimited: "On: always detailed. Off: use the count above.",
+  canPersistHrRecommendationLabel: "Allow sending results as a recommendation to HR (Hiring sets only)",
+  hintCanPersistHrRecommendation: "Hiring sets only (not Practice). On: strong scores can be sent as a recommendation to HR.",
+  groupCandidate: "Candidate practice limits",
   unitTimes: "times",
   unitHours: "hours",
 };
@@ -99,6 +113,10 @@ type Editable = {
   freeVisiblePercent: number;
   canExport: boolean;
   generateUnlimited: boolean;
+  practicePerMonth: number;
+  maxSavedSessions: number;
+  fullAiFeedbackPerMonth: number;
+  canPersistHrRecommendation: boolean;
 };
 
 function toEditable(p: SubscriptionPlan): Editable {
@@ -114,6 +132,10 @@ function toEditable(p: SubscriptionPlan): Editable {
     freeVisiblePercent: p.limits.freeVisiblePercent,
     canExport: p.limits.canExport,
     generateUnlimited: p.limits.generateUnlimited,
+    practicePerMonth: p.limits.practicePerMonth ?? 0,
+    maxSavedSessions: p.limits.maxSavedSessions ?? 0,
+    fullAiFeedbackPerMonth: p.limits.fullAiFeedbackPerMonth ?? 0,
+    canPersistHrRecommendation: p.limits.canPersistHrRecommendation,
   };
 }
 
@@ -123,7 +145,10 @@ type NumField =
   | "generateCooldownHours"
   | "generatePerWindow"
   | "questionRegenPerPlan"
-  | "planRegeneratePerDraft";
+  | "planRegeneratePerDraft"
+  | "practicePerMonth"
+  | "maxSavedSessions"
+  | "fullAiFeedbackPerMonth";
 
 const NUM_FIELDS: NumField[] = [
   "priceMonthly",
@@ -132,6 +157,9 @@ const NUM_FIELDS: NumField[] = [
   "generatePerWindow",
   "questionRegenPerPlan",
   "planRegeneratePerDraft",
+  "practicePerMonth",
+  "maxSavedSessions",
+  "fullAiFeedbackPerMonth",
 ];
 
 /** Premium dùng tím theme (#6c47ff), Free dải xám — nhìn phát biết ngay gói nào. */
@@ -416,6 +444,20 @@ export function AdminPlansPage() {
     }));
   }
 
+  /** Các field Candidate dùng quy ước "0 = không giới hạn" (không có boolean riêng như
+   * generateUnlimited) — toggle này chỉ là lớp UI set/clear giá trị 0 giúp admin khỏi
+   * phải tự gõ số 0. Bật → set 0; tắt → trả về defaultValue để không kẹt ở 0. */
+  function handleCandidateUnlimitedToggle(
+    planId: string,
+    field: "practicePerMonth" | "maxSavedSessions" | "fullAiFeedbackPerMonth",
+    next: boolean,
+    defaultValue: number
+  ) {
+    const value = next ? 0 : defaultValue;
+    patchDraft(planId, { [field]: value } as Partial<Editable>);
+    setRawValues((prev) => ({ ...prev, [numKey(planId, field)]: String(value) }));
+  }
+
   /** Trả draft về đúng giá trị đang lưu trên server. */
   function handleReset(plan: SubscriptionPlan) {
     const e = toEditable(plan);
@@ -452,6 +494,10 @@ export function AdminPlansPage() {
         freeVisiblePercent: 100, // SCRUM-478: legacy — luôn 100; Free làm full bộ, không che câu
         canExport: d.canExport,
         generateUnlimited: d.generateUnlimited,
+        practicePerMonth: d.practicePerMonth,
+        maxSavedSessions: d.maxSavedSessions,
+        fullAiFeedbackPerMonth: d.fullAiFeedbackPerMonth,
+        canPersistHrRecommendation: d.canPersistHrRecommendation,
       };
       await adminUpdatePlan(plan.id, {
         name: d.name,
@@ -501,6 +547,9 @@ export function AdminPlansPage() {
             const tier = planTier(plan.code);
             const TierIcon = tier.icon;
             const dirty = JSON.stringify(d) !== JSON.stringify(toEditable(plan));
+            const audience = String(plan.audience ?? "").toLowerCase();
+            const isHrAudience = audience === "hr";
+            const isCandidateAudience = audience === "candidate";
 
             return (
               <div
@@ -577,7 +626,10 @@ export function AdminPlansPage() {
                   </div>
                 </div>
 
-                {/* Hạn mức AI */}
+                {/* Hạn mức AI — chỉ HR (Studio generate / regen). askAiPerMonth vẫn giữ trong
+                    Editable/handleSave để save không làm mất field, nhưng đã ẩn khỏi UI vì
+                    tính năng Ask-AI đã bị BE gỡ vĩnh viễn (endpoint 410 Gone). */}
+                {isHrAudience && (
                 <div className="px-5 py-4">
                   <GroupTitle icon={Zap}>{ed.groupQuota}</GroupTitle>
                   <div className="grid gap-3 sm:grid-cols-2">
@@ -613,29 +665,90 @@ export function AdminPlansPage() {
                       onChange={(raw) => handleNumChange(plan.id, "generateCooldownHours", raw)}
                       onBlur={() => handleNumBlur(plan.id, "generateCooldownHours")}
                     />
-                    <NumberField
-                      icon={MessageCircle}
-                      label={ed.askAiLabel}
-                      hint={ed.hintAskAi}
-                      unit={ed.unitTimes}
-                      value={getRaw(plan.id, "askAiPerMonth", d.askAiPerMonth)}
-                      onChange={(raw) => handleNumChange(plan.id, "askAiPerMonth", raw)}
-                      onBlur={() => handleNumBlur(plan.id, "askAiPerMonth")}
-                    />
-                    <NumberField
-                      icon={Undo2}
-                      label={ed.regenerateLabel}
-                      hint={ed.hintRegenerate}
-                      unit={ed.unitTimes}
-                      value={getRaw(plan.id, "planRegeneratePerDraft", d.planRegeneratePerDraft)}
-                      onChange={(raw) => handleNumChange(plan.id, "planRegeneratePerDraft", raw)}
-                      onBlur={() => handleNumBlur(plan.id, "planRegeneratePerDraft")}
-                    />
-                    {/* SCRUM-478: freeVisiblePercent ẩn — legacy, save luôn gửi 100 */}
+                    {/* planRegeneratePerDraft ẩn khỏi UI — field này chỉ enforce trên API
+                        /refine (tab "AI Assistant" trong Studio), mà tab đó đang bị ẩn
+                        (hidden: true trong chat-panel.tsx). Đường mà HR thực sự dùng để
+                        sửa plan (tab "Plan" → apply-settings) không hề đọc field này, nên
+                        set bao nhiêu ở đây cũng không có tác dụng trên sản phẩm thật.
+                        Giữ nguyên trong Editable/handleSave để save không làm mất field,
+                        chỉ ẩn khỏi UI cho tới khi AI Assistant được bật lại hoặc apply-settings
+                        được enforce. */}
                   </div>
                 </div>
+                )}
 
-                {/* Quyền */}
+                {/* SCRUM-498: hạn mức luyện tập Candidate */}
+                {isCandidateAudience && (
+                  <div className={cn("border-t px-5 py-4", portalDivider)}>
+                    <GroupTitle icon={Sparkles}>{ed.groupCandidate}</GroupTitle>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <NumberField
+                        icon={Wand2}
+                        label={ed.practicePerMonthLabel}
+                        hint={ed.hintPracticePerMonth}
+                        unit={ed.unitTimes}
+                        value={getRaw(plan.id, "practicePerMonth", d.practicePerMonth)}
+                        badge={d.practicePerMonth === 0 ? ed.unlimitedBadge : undefined}
+                        disabled={d.practicePerMonth === 0}
+                        onChange={(raw) => handleNumChange(plan.id, "practicePerMonth", raw)}
+                        onBlur={() => handleNumBlur(plan.id, "practicePerMonth")}
+                      />
+                      <ToggleField
+                        icon={InfinityIcon}
+                        label={ed.practicePerMonthUnlimitedLabel}
+                        hint={ed.hintPracticePerMonthUnlimited}
+                        checked={d.practicePerMonth === 0}
+                        onChange={(next) => handleCandidateUnlimitedToggle(plan.id, "practicePerMonth", next, 5)}
+                      />
+                      <NumberField
+                        icon={RotateCcw}
+                        label={ed.maxSavedSessionsLabel}
+                        hint={ed.hintMaxSavedSessions}
+                        unit={ed.unitTimes}
+                        value={getRaw(plan.id, "maxSavedSessions", d.maxSavedSessions)}
+                        badge={d.maxSavedSessions === 0 ? ed.unlimitedBadge : undefined}
+                        disabled={d.maxSavedSessions === 0}
+                        onChange={(raw) => handleNumChange(plan.id, "maxSavedSessions", raw)}
+                        onBlur={() => handleNumBlur(plan.id, "maxSavedSessions")}
+                      />
+                      <ToggleField
+                        icon={InfinityIcon}
+                        label={ed.maxSavedSessionsUnlimitedLabel}
+                        hint={ed.hintMaxSavedSessionsUnlimited}
+                        checked={d.maxSavedSessions === 0}
+                        onChange={(next) => handleCandidateUnlimitedToggle(plan.id, "maxSavedSessions", next, 10)}
+                      />
+                      <NumberField
+                        icon={MessageCircle}
+                        label={ed.fullAiFeedbackPerMonthLabel}
+                        hint={ed.hintFullAiFeedback}
+                        unit={ed.unitTimes}
+                        value={getRaw(plan.id, "fullAiFeedbackPerMonth", d.fullAiFeedbackPerMonth)}
+                        badge={d.fullAiFeedbackPerMonth === 0 ? ed.unlimitedBadge : undefined}
+                        disabled={d.fullAiFeedbackPerMonth === 0}
+                        onChange={(raw) => handleNumChange(plan.id, "fullAiFeedbackPerMonth", raw)}
+                        onBlur={() => handleNumBlur(plan.id, "fullAiFeedbackPerMonth")}
+                      />
+                      <ToggleField
+                        icon={InfinityIcon}
+                        label={ed.fullAiFeedbackUnlimitedLabel}
+                        hint={ed.hintFullAiFeedbackUnlimited}
+                        checked={d.fullAiFeedbackPerMonth === 0}
+                        onChange={(next) => handleCandidateUnlimitedToggle(plan.id, "fullAiFeedbackPerMonth", next, 3)}
+                      />
+                      <ToggleField
+                        icon={Send}
+                        label={ed.canPersistHrRecommendationLabel}
+                        hint={ed.hintCanPersistHrRecommendation}
+                        checked={d.canPersistHrRecommendation}
+                        onChange={(next) => patchDraft(plan.id, { canPersistHrRecommendation: next })}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Quyền — HR: export + unlimited generate */}
+                {isHrAudience && (
                 <div className={cn("border-t px-5 py-4", portalDivider)}>
                   <GroupTitle icon={Eye}>{ed.groupAccess}</GroupTitle>
                   <div className="grid gap-3 sm:grid-cols-2">
@@ -655,6 +768,7 @@ export function AdminPlansPage() {
                     />
                   </div>
                 </div>
+                )}
 
                 {/* Footer: cảnh báo chưa lưu + hoàn tác + lưu */}
                 <div

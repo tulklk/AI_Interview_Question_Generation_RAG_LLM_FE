@@ -14,12 +14,14 @@ type Props = {
   open: boolean;
   strike: IntegrityStrike | null;
   onAcknowledge: () => void;
+  /** Strike cap for this session (Admin-configured); falls back to the default constant. */
+  maxStrikes?: number;
 };
 
 /**
  * Single-ack integrity warning (strike 1 or 2). Blocks interaction until acknowledged.
  */
-export function IntegrityWarningModal({ open, strike, onAcknowledge }: Props) {
+export function IntegrityWarningModal({ open, strike, onAcknowledge, maxStrikes = MAX_INTEGRITY_STRIKES }: Props) {
   const { t } = useLanguage();
   const a = t.antiCheat;
   const { mounted, exiting } = useOverlayTransition(open && Boolean(strike), 250);
@@ -31,9 +33,9 @@ export function IntegrityWarningModal({ open, strike, onAcknowledge }: Props) {
 
   if (!mounted || !latched) return null;
 
-  const isFinal = latched.strikeNumber >= MAX_INTEGRITY_STRIKES - 1;
-  const warningOf = Math.min(latched.strikeNumber, MAX_INTEGRITY_STRIKES - 1);
-  const maxWarnings = MAX_INTEGRITY_STRIKES - 1;
+  const isFinal = latched.strikeNumber >= maxStrikes - 1;
+  const warningOf = Math.min(latched.strikeNumber, maxStrikes - 1);
+  const maxWarnings = maxStrikes - 1;
   const title = isFinal ? a.warningTitleFinal : a.warningTitle;
   const description = integrityEventDescription(latched.eventType, a.events);
   const ackLabel = isFinal ? a.ackContinue : a.ackUnderstand;

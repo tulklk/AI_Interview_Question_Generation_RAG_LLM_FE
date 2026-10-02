@@ -100,6 +100,20 @@ export async function startCvDiagnostic(): Promise<CoachJob> {
   return mapJob(extractData(res.data));
 }
 
+/** SCRUM-506: preview skill CV chưa đo sau bài chẩn đoán. */
+export async function getScreeningPreview(): Promise<CoachScreeningPreview> {
+  const res = await apiClient.get("/api/candidate/coach/screening/preview");
+  const root = asRecord(res.data);
+  const nested = asRecord(root?.data) ?? asRecord(root?.Data);
+  return mapScreeningPreview(nested ?? extractData(res.data) ?? root);
+}
+
+/** SCRUM-506: sinh bài sàng lọc ngắn — không đụng level. */
+export async function startCoachScreening(): Promise<CoachJob> {
+  const res = await apiClient.post("/api/candidate/coach/screening", null, { timeout: 180_000 });
+  return mapJob(extractData(res.data));
+}
+
 export async function getCoachJob(id: string): Promise<CoachJob> {
   const res = await apiClient.get(`/api/candidate/coach/jobs/${id}`);
   return mapJob(extractData(res.data));
@@ -201,6 +215,18 @@ export interface CoachSkillResult {
   source?: string | null;
 }
 
+/** SCRUM-509: tiêu chí level có cấu trúc — FE hiện Đạt/Chưa đạt. */
+export interface CoachLevelCriteria {
+  overall: number;
+  overallThreshold: number;
+  targetMetRatio: number;
+  targetMetThreshold: number;
+  requiredRatio: number;
+  requiredThreshold: number;
+  hardRatio: number;
+  hardThreshold: number;
+}
+
 export interface CoachAssessment {
   id: string;
   kind: string;
@@ -219,6 +245,8 @@ export interface CoachAssessment {
   overallDelta?: number | null;
   achievedLevel?: string | null;
   levelExplanation?: string | null;
+  /** SCRUM-509: null trên report cũ thiếu field. */
+  levelCriteria?: CoachLevelCriteria | null;
   coverageRatio?: number | null;
   resolutionMode?: string | null;
   targetLevel?: string | null;
@@ -294,7 +322,21 @@ export interface CoachRoadmap {
   displayOrder?: number;
   /** SCRUM-488: điểm phải > giá trị này mới qua topic */
   drillPassScoreExclusiveMin?: number;
+  /** SCRUM-506: screening = tín hiệu 1 câu, cần kiểm tra thêm */
+  confidence?: string | null;
   items: CoachRoadmapItem[];
+}
+
+/** SCRUM-506: preview bài sàng lọc skill CV chưa đo. */
+export interface CoachScreeningPreview {
+  enabled: boolean;
+  available: boolean;
+  questionCount: number;
+  questionsPerSkill: number;
+  skills: string[];
+  measuredSkills: string[];
+  remainingUnmeasured: number;
+  message?: string | null;
 }
 
 export type CoachRoadmapDraftItemPatch = {
@@ -421,6 +463,24 @@ function mapSkillGap(src: Record<string, unknown>): CoachSkillGap {
   };
 }
 
+/** SCRUM-509: report cũ thiếu levelCriteria → null, FE ẩn khối. */
+function mapLevelCriteria(src: Record<string, unknown> | null): CoachLevelCriteria | null {
+  if (!src) return null;
+  const overall = pickNumber(src, "overall", "Overall");
+  const overallThreshold = pickNumber(src, "overallThreshold", "OverallThreshold");
+  if (overall == null && overallThreshold == null) return null;
+  return {
+    overall: overall ?? 0,
+    overallThreshold: overallThreshold ?? 0,
+    targetMetRatio: pickNumber(src, "targetMetRatio", "TargetMetRatio") ?? 0,
+    targetMetThreshold: pickNumber(src, "targetMetThreshold", "TargetMetThreshold") ?? 0,
+    requiredRatio: pickNumber(src, "requiredRatio", "RequiredRatio") ?? 0,
+    requiredThreshold: pickNumber(src, "requiredThreshold", "RequiredThreshold") ?? 0,
+    hardRatio: pickNumber(src, "hardRatio", "HardRatio") ?? 0,
+    hardThreshold: pickNumber(src, "hardThreshold", "HardThreshold") ?? 0,
+  };
+}
+
 function mapAssessment(src: Record<string, unknown> | null): CoachAssessment | null {
   if (!src || !pickString(src, "id", "Id")) return null;
   const skillsRaw = src.skills ?? src.Skills;
@@ -449,6 +509,7 @@ function mapAssessment(src: Record<string, unknown> | null): CoachAssessment | n
     overallDelta: pickNumber(src, "overallDelta", "OverallDelta") ?? null,
     achievedLevel: pickString(src, "achievedLevel", "AchievedLevel") || null,
     levelExplanation: pickString(src, "levelExplanation", "LevelExplanation") || null,
+    levelCriteria: mapLevelCriteria(asRecord(src.levelCriteria ?? src.LevelCriteria)),
     coverageRatio: pickNumber(src, "coverageRatio", "CoverageRatio") ?? null,
     resolutionMode: pickString(src, "resolutionMode", "ResolutionMode") || null,
     targetLevel: pickString(src, "targetLevel", "TargetLevel") || null,
@@ -544,7 +605,33 @@ function mapRoadmap(src: Record<string, unknown>): CoachRoadmap {
     displayOrder: pickNumber(src, "displayOrder", "DisplayOrder") ?? 0,
     drillPassScoreExclusiveMin:
       pickNumber(src, "drillPassScoreExclusiveMin", "DrillPassScoreExclusiveMin") ?? 70,
+    confidence: pickString(src, "confidence", "Confidence") || null,
     items,
+  };
+}
+
+function mapScreeningPreview(src: Record<string, unknown> | null): CoachScreeningPreview {
+  if (!src) {
+    return {
+      enabled: false,
+      available: false,
+      questionCount: 0,
+      questionsPerSkill: 1,
+      skills: [],
+      measuredSkills: [],
+      remainingUnmeasured: 0,
+      message: null,
+    };
+  }
+  return {
+    enabled: pickBool(src, "enabled", "Enabled"),
+    available: pickBool(src, "available", "Available"),
+    questionCount: pickNumber(src, "questionCount", "QuestionCount") ?? 0,
+    questionsPerSkill: pickNumber(src, "questionsPerSkill", "QuestionsPerSkill") ?? 1,
+    skills: pickStringList(src, "skills", "Skills"),
+    measuredSkills: pickStringList(src, "measuredSkills", "MeasuredSkills"),
+    remainingUnmeasured: pickNumber(src, "remainingUnmeasured", "RemainingUnmeasured") ?? 0,
+    message: pickString(src, "message", "Message") || null,
   };
 }
 
@@ -667,6 +754,151 @@ export async function startRoadmapReassessment(roadmapId: string): Promise<Coach
     { timeout: 180_000 }
   );
   return mapJob(extractData(res.data));
+}
+
+/** SCRUM-507: tổng kết sau khi luyện xong. */
+export interface CoachWrapUpSkillDelta {
+  skill: string;
+  baselineScore: number;
+  currentScore: number;
+  delta: number;
+}
+
+export interface CoachWrapUpSkill {
+  skill: string;
+  currentScore: number;
+  targetScore: number;
+}
+
+export interface CoachWrapUpWeakTopic {
+  skill: string;
+  topic: string;
+  lowestScore: number;
+  overcame: boolean;
+}
+
+export interface CoachWrapUpNextSkill {
+  skill: string;
+  currentScore?: number | null;
+  targetScore: number;
+  gap: number;
+  reason: "gap" | "screening" | string;
+}
+
+export interface CoachWrapUp {
+  available: boolean;
+  completedRoadmaps: number;
+  totalRoadmaps: number;
+  overallReadiness?: number | null;
+  overallDelta?: number | null;
+  achievedLevel?: string | null;
+  targetReadinessStatus?: string | null;
+  suggestedNextLevel?: string | null;
+  suggestedNextLevelAvailable?: boolean;
+  suggestedNextLevelMessage?: string | null;
+  improved: CoachWrapUpSkillDelta[];
+  strengths: CoachWrapUpSkill[];
+  weakTopics: CoachWrapUpWeakTopic[];
+  nextSkills: CoachWrapUpNextSkill[];
+}
+
+function mapWrapUp(src: Record<string, unknown> | null): CoachWrapUp {
+  if (!src) {
+    return {
+      available: false,
+      completedRoadmaps: 0,
+      totalRoadmaps: 0,
+      improved: [],
+      strengths: [],
+      weakTopics: [],
+      nextSkills: [],
+    };
+  }
+  const improvedRaw = src.improved ?? src.Improved;
+  const strengthsRaw = src.strengths ?? src.Strengths;
+  const weakRaw = src.weakTopics ?? src.WeakTopics;
+  const nextRaw = src.nextSkills ?? src.NextSkills;
+  return {
+    available: pickBool(src, "available", "Available"),
+    completedRoadmaps: pickNumber(src, "completedRoadmaps", "CompletedRoadmaps") ?? 0,
+    totalRoadmaps: pickNumber(src, "totalRoadmaps", "TotalRoadmaps") ?? 0,
+    overallReadiness: pickNumber(src, "overallReadiness", "OverallReadiness") ?? null,
+    overallDelta: pickNumber(src, "overallDelta", "OverallDelta") ?? null,
+    achievedLevel: pickString(src, "achievedLevel", "AchievedLevel") || null,
+    targetReadinessStatus: pickString(src, "targetReadinessStatus", "TargetReadinessStatus") || null,
+    suggestedNextLevel: pickString(src, "suggestedNextLevel", "SuggestedNextLevel") || null,
+    suggestedNextLevelAvailable: pickBool(src, "suggestedNextLevelAvailable", "SuggestedNextLevelAvailable"),
+    suggestedNextLevelMessage:
+      pickString(src, "suggestedNextLevelMessage", "SuggestedNextLevelMessage") || null,
+    improved: Array.isArray(improvedRaw)
+      ? improvedRaw
+          .map((x) => {
+            const r = asRecord(x) ?? {};
+            const skill = pickString(r, "skill", "Skill");
+            if (!skill) return null;
+            return {
+              skill,
+              baselineScore: pickNumber(r, "baselineScore", "BaselineScore") ?? 0,
+              currentScore: pickNumber(r, "currentScore", "CurrentScore") ?? 0,
+              delta: pickNumber(r, "delta", "Delta") ?? 0,
+            };
+          })
+          .filter((x): x is CoachWrapUpSkillDelta => Boolean(x))
+      : [],
+    strengths: Array.isArray(strengthsRaw)
+      ? strengthsRaw
+          .map((x) => {
+            const r = asRecord(x) ?? {};
+            const skill = pickString(r, "skill", "Skill");
+            if (!skill) return null;
+            return {
+              skill,
+              currentScore: pickNumber(r, "currentScore", "CurrentScore") ?? 0,
+              targetScore: pickNumber(r, "targetScore", "TargetScore") ?? 70,
+            };
+          })
+          .filter((x): x is CoachWrapUpSkill => Boolean(x))
+      : [],
+    weakTopics: Array.isArray(weakRaw)
+      ? weakRaw
+          .map((x) => {
+            const r = asRecord(x) ?? {};
+            const skill = pickString(r, "skill", "Skill");
+            const topic = pickString(r, "topic", "Topic");
+            if (!skill || !topic) return null;
+            return {
+              skill,
+              topic,
+              lowestScore: pickNumber(r, "lowestScore", "LowestScore") ?? 0,
+              overcame: pickBool(r, "overcame", "Overcame"),
+            };
+          })
+          .filter((x): x is CoachWrapUpWeakTopic => Boolean(x))
+      : [],
+    nextSkills: Array.isArray(nextRaw)
+      ? nextRaw
+          .map((x): CoachWrapUpNextSkill | null => {
+            const r = asRecord(x) ?? {};
+            const skill = pickString(r, "skill", "Skill");
+            if (!skill) return null;
+            return {
+              skill,
+              currentScore: pickNumber(r, "currentScore", "CurrentScore") ?? null,
+              targetScore: pickNumber(r, "targetScore", "TargetScore") ?? 70,
+              gap: pickNumber(r, "gap", "Gap") ?? 0,
+              reason: pickString(r, "reason", "Reason") || "gap",
+            };
+          })
+          .filter((x): x is CoachWrapUpNextSkill => x != null)
+      : [],
+  };
+}
+
+export async function getCoachWrapUp(): Promise<CoachWrapUp> {
+  const res = await apiClient.get("/api/candidate/coach/wrap-up");
+  const root = asRecord(res.data);
+  const nested = asRecord(root?.data) ?? asRecord(root?.Data);
+  return mapWrapUp(nested ?? extractData(res.data) ?? root);
 }
 
 /** SCRUM-486: xem tài liệu nguồn KB gắn roadmap. */

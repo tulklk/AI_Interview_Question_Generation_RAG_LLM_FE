@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -29,8 +30,9 @@ import {
   completePracticeSession,
   abandonPracticeSession,
   getPracticeSession,
-  reportTabLeave,
+  reportIntegrityTermination,
   ForbiddenError,
+  IntegrityLockedError,
 } from "@/features/candidate/services/practice-session.service";
 import { useAntiCheat } from "@/features/candidate/anti-cheat/useAntiCheat";
 import {
@@ -279,6 +281,7 @@ export function PracticeSession({ set }: PracticeSessionProps) {
   const [starting, setStarting] = useState(true);
   const [startError, setStartError] = useState(false);
   const [startForbidden, setStartForbidden] = useState(false);
+  const [startIntegrityLocked, setStartIntegrityLocked] = useState(false);
   const [finishing, setFinishing] = useState(false);
   const [finishError, setFinishError] = useState(false);
   const [startAttempt, setStartAttempt] = useState(0);
@@ -306,11 +309,10 @@ export function PracticeSession({ set }: PracticeSessionProps) {
 
   /** SCRUM-446: snapshot anti-cheat từ BE lúc start. */
   const [antiCheatEnabled, setAntiCheatEnabled] = useState(false);
-  const [antiCheatMaxTabLeaves, setAntiCheatMaxTabLeaves] = useState(3);
-  const [tabLeaveCount, setTabLeaveCount] = useState(0);
-  const [tabLeaveFlash, setTabLeaveFlash] = useState(false);
   const antiCheatEnabledRef = useRef(false);
-  const reportingTabLeaveRef = useRef(false);
+  /** Số strike tối đa (camera NO_FACE/PHONE/tab/fullscreen...) — Admin cấu hình,
+   * dùng ref vì cần đọc giá trị mới nhất trong callback startMonitoring/restoreIntegrityState. */
+  const maxIntegrityStrikesRef = useRef(3);
 
   const [draftSaveStatus, setDraftSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
   const draftSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -375,7 +377,7 @@ export function PracticeSession({ set }: PracticeSessionProps) {
     if (!video) return;
     setIntegrityStarting(true);
     try {
-      const started = await startMonitoring(video, sessionId);
+      const started = await startMonitoring(video, sessionId, maxIntegrityStrikesRef.current);
       if (!started) {
         integrityTerminatedRef.current = true;
         setIntegrityTerminated(true);
@@ -451,6 +453,12 @@ export function PracticeSession({ set }: PracticeSessionProps) {
 
       const sid = sessionIdRef.current;
       if (sid) {
+        const eventType = _state.strikes.at(-1)?.eventType ?? "CAMERA_DISABLED";
+        try {
+          await reportIntegrityTermination(sid, eventType);
+        } catch {
+          // Best-effort — still abandon so the in-progress session does not resume
+        }
         try {
           await abandonPracticeSession(sid);
         } catch {
@@ -471,7 +479,7 @@ export function PracticeSession({ set }: PracticeSessionProps) {
   // Restore terminated state after refresh
   useEffect(() => {
     if (!sessionId) return;
-    const state = restoreIntegrityState(sessionId);
+    const state = restoreIntegrityState(sessionId, maxIntegrityStrikesRef.current);
     if (state.terminated) {
       integrityTerminatedRef.current = true;
       setIntegrityTerminated(true);
@@ -508,6 +516,7 @@ export function PracticeSession({ set }: PracticeSessionProps) {
     setStarting(true);
     setStartError(false);
     setStartForbidden(false);
+    setStartIntegrityLocked(false);
 
     startPracticeSession(set.id)
       .then((session) => {
@@ -544,8 +553,7 @@ export function PracticeSession({ set }: PracticeSessionProps) {
         setStartedAt(session.startedAt ?? new Date().toISOString());
         setExpiresAt(session.expiresAt);
         setAntiCheatEnabled(session.antiCheatEnabled);
-        setAntiCheatMaxTabLeaves(session.antiCheatMaxTabLeaves || 3);
-        setTabLeaveCount(session.tabLeaveCount || 0);
+        maxIntegrityStrikesRef.current = session.maxIntegrityStrikes || 3;
         antiCheatEnabledRef.current = session.antiCheatEnabled;
         // Anti-cheat off ⇒ no proctoring gate at all. Without this the candidate was
         // still held behind the camera/face/phone checks and could not start the
@@ -562,7 +570,8 @@ export function PracticeSession({ set }: PracticeSessionProps) {
       })
       .catch((err) => {
         if (cancelled) return;
-        if (err instanceof ForbiddenError) setStartForbidden(true);
+        if (err instanceof IntegrityLockedError) setStartIntegrityLocked(true);
+        else if (err instanceof ForbiddenError) setStartForbidden(true);
         else setStartError(true);
       })
       .finally(() => {
@@ -657,56 +666,10 @@ export function PracticeSession({ set }: PracticeSessionProps) {
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, []);
 
-  // SCRUM-446: khi anti-cheat ON, rời tab → báo BE (debounce phía server).
-  useEffect(() => {
-    if (!antiCheatEnabled || !sessionId) return;
-
-    async function onVisibilityChange() {
-      if (document.visibilityState !== "hidden") return;
-      if (finishingRef.current || timeUpRef.current) return;
-      if (reportingTabLeaveRef.current) return;
-      const sid = sessionIdRef.current;
-      if (!sid) return;
-
-      reportingTabLeaveRef.current = true;
-      try {
-        const result = await reportTabLeave(sid);
-        if (result.ignored) return;
-        setTabLeaveCount(result.tabLeaveCount);
-        setTabLeaveFlash(true);
-        window.setTimeout(() => setTabLeaveFlash(false), 4000);
-
-        if (result.autoSubmitted || result.status === "COMPLETED") {
-          addToast(
-            "error",
-            p.antiCheatAutoSubmitToast
-          );
-          if (!finishingRef.current) {
-            void handleFinish();
-          }
-          return;
-        }
-
-        const toastTpl =
-          p.antiCheatTabLeaveToast;
-        addToast(
-          "error",
-          toastTpl
-            .replace("{{n}}", String(result.tabLeaveCount))
-            .replace("{{max}}", String(result.antiCheatMaxTabLeaves || antiCheatMaxTabLeaves))
-        );
-      } catch {
-        // best-effort — không chặn làm bài nếu báo cáo fail
-      } finally {
-        reportingTabLeaveRef.current = false;
-      }
-    }
-
-    document.addEventListener("visibilitychange", onVisibilityChange);
-    return () => document.removeEventListener("visibilitychange", onVisibilityChange);
-    // handleFinish ổn định đủ qua refs; deps chính là antiCheat + session
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [antiCheatEnabled, sessionId, antiCheatMaxTabLeaves]);
+  // SCRUM-446 (gỡ): rời tab trước đây báo riêng lên BE qua reportTabLeave() với hạn mức
+  // antiCheatMaxTabLeaves riêng. Giờ TAB_SWITCH đã nằm trong bộ "vi phạm chống gian lận"
+  // hợp nhất (BrowserMonitor tự bắt visibilitychange → IntegrityStrikeManager), nên không
+  // cần báo riêng nữa — tránh đếm trùng 2 hệ thống cho cùng 1 hành động rời tab.
 
   // Clear draft save status when the active question changes.
   useEffect(() => {
@@ -963,11 +926,33 @@ export function PracticeSession({ set }: PracticeSessionProps) {
     );
   }
 
+  if (startIntegrityLocked) {
+    return (
+      <div className="min-h-screen hr-main-bg flex flex-col items-center justify-center gap-3 px-4 text-center">
+        <ShieldAlert size={28} className="text-red-500" />
+        <p className={cn("text-[15px] font-semibold", portalHeadingAlt)}>{p.integrityLockedTitle}</p>
+        <p className={cn("max-w-md text-[14px]", portalSubtextAlt)}>{p.integrityLocked}</p>
+        <Link
+          href="/candidate/dashboard"
+          className="mt-1 text-[13px] font-semibold text-primary hover:underline"
+        >
+          {t.antiCheat.returnDashboard}
+        </Link>
+      </div>
+    );
+  }
+
   if (startForbidden) {
     return (
       <div className="min-h-screen hr-main-bg flex flex-col items-center justify-center gap-3 px-4 text-center">
         <Lock size={28} className="text-gray-400 dark:text-gray-500" />
         <p className={cn("text-[14px]", portalSubtextAlt)}>{p.startForbidden}</p>
+        <Link
+          href="/candidate/dashboard"
+          className="mt-1 text-[13px] font-semibold text-primary hover:underline"
+        >
+          {t.antiCheat.returnDashboard}
+        </Link>
       </div>
     );
   }
@@ -1002,35 +987,13 @@ export function PracticeSession({ set }: PracticeSessionProps) {
     <>
     <ConfirmDialog
       open={exitOpen}
-      title={
-        antiCheatEnabled
-          ? p.antiCheatExitTitle
-          : set.isHiringAssessment
-            ? p.exitConfirmTitleHiring
-            : p.exitConfirmTitle
-      }
-      message={
-        antiCheatEnabled
-          ? p.antiCheatExitMessage
-          : set.isHiringAssessment
-            ? p.exitConfirmMessageHiring
-            : p.exitConfirmMessage
-      }
-      confirmLabel={
-        antiCheatEnabled
-          ? p.exitCancelBtn
-          : set.isHiringAssessment
-            ? p.exitConfirmBtnHiring
-            : p.exitConfirmBtn
-      }
+      title={set.isHiringAssessment ? p.exitConfirmTitleHiring : p.exitConfirmTitle}
+      message={set.isHiringAssessment ? p.exitConfirmMessageHiring : p.exitConfirmMessage}
+      confirmLabel={set.isHiringAssessment ? p.exitConfirmBtnHiring : p.exitConfirmBtn}
       cancelLabel={p.exitCancelBtn}
-      variant={antiCheatEnabled ? "primary" : "danger"}
+      variant="danger"
       loading={abandoning}
       onConfirm={() => {
-        if (antiCheatEnabled) {
-          closeExitDialog();
-          return;
-        }
         // SCRUM-469: thoát = ngắt phiên (abandon), không còn soft Save & Exit
         handleAbandon();
       }}
@@ -1055,6 +1018,7 @@ export function PracticeSession({ set }: PracticeSessionProps) {
       open={Boolean(activeWarning) && !integrityTerminated}
       strike={activeWarning}
       onAcknowledge={handleAcknowledgeWarning}
+      maxStrikes={integrity.maxStrikes}
     />
 
     {/* Single camera instance — must stay mounted across setup → monitoring.
@@ -1151,18 +1115,11 @@ export function PracticeSession({ set }: PracticeSessionProps) {
         <div
           className={cn(
             "px-4 md:px-8 py-2 flex items-center gap-2 text-[12px] font-medium border-b transition-colors",
-            tabLeaveFlash
-              ? "bg-amber-100 dark:bg-amber-950/50 text-amber-800 dark:text-amber-200 border-amber-200 dark:border-amber-900"
-              : "bg-violet-50 dark:bg-violet-950/40 text-violet-800 dark:text-violet-200 border-violet-100 dark:border-violet-900/50"
+            "bg-violet-50 dark:bg-violet-950/40 text-violet-800 dark:text-violet-200 border-violet-100 dark:border-violet-900/50"
           )}
         >
           <ShieldAlert size={14} className="shrink-0" />
-          <span className="flex-1 min-w-0">
-            {p.antiCheatBanner}
-            {tabLeaveCount > 0
-              ? ` (${tabLeaveCount}/${antiCheatMaxTabLeaves})`
-              : ""}
-          </span>
+          <span className="flex-1 min-w-0">{p.antiCheatBanner}</span>
         </div>
       )}
       {isCoachMode && (
@@ -1214,6 +1171,7 @@ export function PracticeSession({ set }: PracticeSessionProps) {
             active={monitoring}
             cameraDisabled={cameraDisabled}
             warningCount={integrity.strikeCount}
+            maxStrikes={integrity.maxStrikes}
           />
           <button
             type="button"

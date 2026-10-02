@@ -27,14 +27,11 @@ const FALLBACK = {
   generateScopeUnlimited: "Unlimited",
   generateResetAt: "Unlocks at {{time}}",
   generateReady: "Ready to use",
-  askAiTitle: "Ask-AI",
-  askAiScope: "Within the current period",
   regenTitle: "Question regeneration",
   regenScope: "Max per question set",
   regenDetail: "{{sets}} set(s) regenerated · {{total}} run(s) total",
-  refineTitle: "Plan regeneration",
-  refineScope: "Max per Studio session",
-  refineDetail: "{{drafts}} session(s) · {{total}} run(s) total",
+  regenPerSetUnit: "per set",
+  regenPerScopeNote: "The limit applies separately to each question set — a new set always starts with a fresh allowance, regardless of past usage.",
   totalGenerate: "Question sets created this period",
   unlimitedGenerateHint: "Question-set generation is unlimited on your plan configuration.",
   noneYet: "You have not used any AI run in this period yet.",
@@ -179,15 +176,11 @@ export function HrUsagePanel() {
   }
 
   const regen = summarize("HrQuestionRegen");
-  const refine = summarize("HrPlanRegenerate");
 
   // Khớp BE: cooldown hiệu lực tối thiểu 1 giờ khi có hạn mức
   const cooldownHours = Math.max(1, limits?.generateCooldownHours ?? 24);
   const generateUnlimited = limits?.generateUnlimited ?? false;
   const regenLimit = limits?.questionRegenPerPlan ?? 0;
-  const refineLimit = limits?.planRegeneratePerDraft ?? 0;
-  const askAiLimit = subscription?.askAiLimit ?? 0;
-  const askAiUsed = subscription?.askAiUsed ?? 0;
   const generateScope = generateUnlimited
     ? text.generateScopeUnlimited
     : fill(text.generateScope, { h: cooldownHours });
@@ -240,7 +233,7 @@ export function HrUsagePanel() {
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-2">
             <MetricCard
               title={text.generateTitle}
               scope={generateScope}
@@ -250,40 +243,47 @@ export function HrUsagePanel() {
               caption={generateCaption}
               text={text}
             />
-            <MetricCard
-              title={text.regenTitle}
-              scope={text.regenScope}
-              used={regen.max}
-              limit={regenLimit}
-              unlimited={generateUnlimited || regenLimit <= 0}
-              caption={
-                regen.scopes > 0
-                  ? fill(text.regenDetail, { sets: regen.scopes, total: regen.total })
-                  : null
-              }
-              text={text}
-            />
-            <MetricCard
-              title={text.askAiTitle}
-              scope={text.askAiScope}
-              used={askAiUsed}
-              limit={askAiLimit}
-              unlimited={false}
-              text={text}
-            />
-            <MetricCard
-              title={text.refineTitle}
-              scope={text.refineScope}
-              used={refine.max}
-              limit={refineLimit}
-              unlimited={refineLimit <= 0}
-              caption={
-                refine.scopes > 0
-                  ? fill(text.refineDetail, { drafts: refine.scopes, total: refine.total })
-                  : null
-              }
-              text={text}
-            />
+            {/* Không dùng MetricCard (kiểu "X/Y + progress bar") cho field này: hạn mức
+                này tính riêng theo TỪNG bộ câu hỏi (scope = planId), không phải 1 bộ đếm
+                chung toàn tài khoản. API /api/me/usage không cho biết bộ nào đang active/
+                mới nhất, nên con số "đã dùng" không thể biết chắc có phải của bộ hiện tại
+                hay không — hiện kiểu "X/Y Đã dùng hết" sẽ gây hiểu lầm (ví dụ hiện đỏ dù
+                bộ mới tạo chưa hề đụng tới giới hạn). Hiển thị trung thực: hạn mức tĩnh
+                mỗi bộ + thống kê lịch sử, không suy diễn trạng thái "còn/hết". */}
+            <div className={cn(portalCard, "flex flex-col gap-3 p-4")}>
+              <div className="min-w-0">
+                <p className={cn("text-sm font-semibold leading-snug", portalHeading)}>{text.regenTitle}</p>
+                <p className={cn("mt-0.5 text-[11px] leading-snug", portalSubtext)}>{text.regenScope}</p>
+              </div>
+              {regenLimit <= 0 ? (
+                <div className="flex items-center gap-2">
+                  <span className={cn("text-3xl font-extrabold leading-none", portalHeading)}>∞</span>
+                  <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+                    {text.unlimited}
+                  </span>
+                </div>
+              ) : (
+                <div className="flex items-end gap-1.5">
+                  <span className={cn("text-2xl font-extrabold leading-none tabular-nums", portalHeading)}>
+                    {regenLimit}
+                  </span>
+                  <span className={cn("text-xs font-semibold", portalSubtext)}>{text.regenPerSetUnit}</span>
+                </div>
+              )}
+              {regen.scopes > 0 && (
+                <p className={cn("text-[11px] leading-snug", portalSubtext)}>
+                  {fill(text.regenDetail, { sets: regen.scopes, total: regen.total })}
+                </p>
+              )}
+              {regenLimit > 0 && (
+                <p className={cn("text-[11px] italic leading-snug", portalSubtext)}>{text.regenPerScopeNote}</p>
+              )}
+            </div>
+            {/* "Plan regeneration" (planRegeneratePerDraft) MetricCard ẩn khỏi UI — lý do
+                giống field admin: giới hạn này chỉ enforce trên API /refine (tab "AI
+                Assistant" đang bị ẩn trong Studio), còn đường HR thực sự dùng để sửa plan
+                (tab "Plan" → apply-settings) không hề đọc field này. Hiện số "x/10 còn y
+                lượt" cho HR xem sẽ gây hiểu lầm vì không phản ánh hành vi thật của sản phẩm. */}
           </div>
 
           <div
@@ -309,7 +309,19 @@ export function HrUsagePanel() {
               cooldownEndsAt && (
                 <p className="inline-flex items-center gap-1.5 text-xs font-medium text-amber-600 dark:text-amber-400">
                   <Clock size={13} />
-                  {fill(text.generateResetAt, { time: cooldownEndsAt.toLocaleString(locale) })}
+                  {fill(text.generateResetAt, {
+                    // Format tường minh dd/MM/yyyy + 24h, không phụ thuộc default locale
+                    // của trình duyệt (có môi trường fallback sai thành AM/PM).
+                    time: cooldownEndsAt.toLocaleString(locale, {
+                      day: "2-digit",
+                      month: "2-digit",
+                      year: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                      second: "2-digit",
+                      hour12: false,
+                    }),
+                  })}
                 </p>
               )
             )}

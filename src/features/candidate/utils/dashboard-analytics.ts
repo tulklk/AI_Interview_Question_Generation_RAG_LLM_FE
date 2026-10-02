@@ -107,7 +107,9 @@ export function calculateReadinessScore(
   ];
 
   const score = Math.round(factors.reduce((sum, f) => sum + (f.value * f.weightPct) / 100, 0));
-  const level: ReadinessLevel = score >= 80 ? "veryReady" : score >= 60 ? "ready" : score >= 40 ? "developing" : "needsWork";
+  // Đồng bộ band điểm: ≥90 Xuất sắc | ≥80 Tốt | ≥70 Khá | <70 Cần cải thiện
+  const level: ReadinessLevel =
+    score >= 90 ? "veryReady" : score >= 80 ? "ready" : score >= 70 ? "developing" : "needsWork";
 
   return { score, level, factors };
 }
@@ -519,7 +521,7 @@ export function buildAiRecommendations(ctx: CoachContext): CoachRecommendation[]
     });
   }
 
-  if (ctx.readiness.score !== null && ctx.readiness.score >= 80) {
+  if (ctx.readiness.score !== null && ctx.readiness.score >= 90) {
     recs.push({
       id: "raise-bar",
       evidenceKey: "raiseBar",

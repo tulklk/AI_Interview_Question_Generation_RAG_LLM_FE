@@ -493,8 +493,11 @@ export function useStudio() {
     tx.planCreated,
   ]);
 
-  const refreshPlanAndSettings = useCallback(async () => {
-    if (!project) return;
+  const refreshPlanAndSettings = useCallback(async (): Promise<{
+    plan: PlanDetail | null;
+    settings: StudioSettings | null;
+  } | null> => {
+    if (!project) return null;
     const [plan, studioSettings, planList] = await Promise.all([
       studioApi.getCurrentPlan(project.id).catch(() => null),
       studioApi.getSettings(project.id).catch(() => null),
@@ -502,8 +505,13 @@ export function useStudio() {
     ]);
     setCurrentPlan(plan);
     // SCRUM-388: BE settings là source of truth (kể cả output prefs sau chat refine)
-    if (studioSettings) setSettings(normalizeSettings(studioSettings));
+    const normalized = studioSettings ? normalizeSettings(studioSettings) : null;
+    if (normalized) {
+      settingsRef.current = normalized;
+      setSettings(normalized);
+    }
     setPlans(planList);
+    return { plan, settings: normalized };
   }, [normalizeSettings, project]);
 
   /** SCRUM-376: hydrate transcript từ DB sau generate/refine/apply/approve */
@@ -513,9 +521,13 @@ export function useStudio() {
     if (chatMessages) setMessages(chatMessages);
   }, [project]);
 
-  const refreshStudioState = useCallback(async () => {
-    await refreshPlanAndSettings();
+  const refreshStudioState = useCallback(async (): Promise<{
+    plan: PlanDetail | null;
+    settings: StudioSettings | null;
+  } | null> => {
+    const refreshed = await refreshPlanAndSettings();
     await refreshMessages();
+    return refreshed;
   }, [refreshMessages, refreshPlanAndSettings]);
 
   const saveJobDescription = useCallback(async () => {
@@ -1026,7 +1038,7 @@ export function useStudio() {
     const rawQuestions = Number(patch.numberOfQuestions ?? base.numberOfQuestions ?? 15);
     const next = {
       interviewLengthMinutes: Number.isFinite(rawMinutes) ? Math.min(180, Math.max(15, rawMinutes)) : 60,
-      numberOfQuestions: Number.isFinite(rawQuestions) ? Math.min(50, Math.max(1, rawQuestions)) : 15,
+      numberOfQuestions: Number.isFinite(rawQuestions) ? Math.min(50, Math.max(5, rawQuestions)) : 15,
       difficulty: patch.difficulty ?? base.difficulty ?? "Medium",
       // Tone/format đã bỏ khỏi UI — luôn gửi default cố định
       questionTone: "Professional",
@@ -1197,12 +1209,15 @@ export function useStudio() {
     tx.recommendConfigMissing,
   ]);
 
-  const applySettingsToPlan = useCallback(async (outlineItems?: ApplyPlanSettingsPayload["outlineItems"]) => {
+  const applySettingsToPlan = useCallback(async (outlineItems?: ApplyPlanSettingsPayload["outlineItems"]): Promise<{
+    plan: PlanDetail | null;
+    settings: StudioSettings | null;
+  } | null> => {
     const live = settingsRef.current ?? settings;
-    if (!project || !currentPlan || !live) return;
+    if (!project || !currentPlan || !live) return null;
     if (currentPlan.status === "Approved") {
       addToast("error", tx.planApprovedNoSettings);
-      return;
+      return null;
     }
     setIsApplyingSettings(true);
     setIsStreaming(true);
@@ -1225,10 +1240,12 @@ export function useStudio() {
       };
       addToast("success", tx.applyingSettings);
       await studioApi.applyPlanSettings(project.id, currentPlan.id, payload);
-      await refreshStudioState();
+      const refreshed = await refreshStudioState();
       addToast("success", tx.settingsApplied);
+      return refreshed;
     } catch (error) {
       addToast("error", extractErrorMessage(error, lang));
+      return null;
     } finally {
       setIsApplyingSettings(false);
       setIsStreaming(false);

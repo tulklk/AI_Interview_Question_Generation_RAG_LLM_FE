@@ -18,7 +18,7 @@ import { ChatPanel } from "@/features/studio/components/chat-panel";
 import { PlanCreatingLoading } from "@/features/studio/components/plan-creating-loading";
 import { portalCard } from "@/shared/utils/portal-ui";
 import { StudioSettingsPanel } from "@/features/studio/components/studio-settings-panel";
-import { useStudioConfig } from "@/features/studio/hooks/use-studio-config";
+import { buildConfigDraft, useStudioConfig } from "@/features/studio/hooks/use-studio-config";
 import { StudioActionBar } from "@/features/studio/components/studio-action-bar";
 import {
   hrSidebarSpacerClass,
@@ -532,8 +532,18 @@ export function StudioPage() {
   }, [studio.isSavingJd, studio.jdContent, studio.jdSummary, switchMobileTab]);
 
   const locale = lang === "vi" ? "vi-VN" : "en-US";
+  // Format tường minh dd/MM/yyyy + 24h — không dựa vào default locale của trình duyệt
+  // (có môi trường fallback sai thành M/d/yyyy + AM/PM dù locale là vi-VN).
   const cooldownTimeStr = cooldownEndsAt
-    ? cooldownEndsAt.toLocaleString(locale)
+    ? cooldownEndsAt.toLocaleString(locale, {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: false,
+      })
     : "";
   // SCRUM-445: sinh câu hỏi Free trừ 1/24h — cần còn lượt.
   const canGenerate = useMemo(
@@ -580,13 +590,27 @@ export function StudioPage() {
   /** Lưu draft settings (ngôn ngữ / advanced / …) lên BE — silent. Tránh lệch UI sau duyệt. */
   const flushConfigDraftSilent = useCallback(async (): Promise<boolean> => {
     if (!studioConfig.isDirty) {
-      studioConfig.acceptServerSettings();
+      studioConfig.acceptServerSettings(
+        buildConfigDraft(studio.settings, studio.currentPlan, studioConfig.draft?.outlineItems)
+      );
       return true;
     }
     const payload = studioConfig.buildApplyPayload();
     if (!payload) return true;
     const ok = await studio.applyConfiguration(payload, false);
-    if (ok) studioConfig.acceptServerSettings();
+    if (ok) {
+      // settings state có thể chưa re-render — dùng payload vừa apply + plan hiện tại
+      const mergedSettings = studio.settings
+        ? ({ ...studio.settings, ...payload } as StudioSettings)
+        : (payload as StudioSettings);
+      studioConfig.acceptServerSettings(
+        buildConfigDraft(
+          mergedSettings,
+          studio.currentPlan,
+          (payload as { outlineItems?: PlanOutlineItem[] }).outlineItems
+        )
+      );
+    }
     return ok;
   }, [studio, studioConfig]);
 
@@ -644,10 +668,13 @@ export function StudioPage() {
       const ok = await studio.applyConfiguration(settingsOnly);
       if (!ok) return;
     }
-    await studio.applySettingsToPlan(undefined);
+    const refreshed = await studio.applySettingsToPlan(undefined);
+    if (!refreshed) return;
     setPlanConfigAppliedOnce(true);
-    // Draft lấy outline mới từ plan đã patch
-    studioConfig.acceptServerSettings();
+    // Snapshot từ plan/settings vừa refresh — giữ đúng difficulty (không đọc ref stale)
+    studioConfig.acceptServerSettings(
+      buildConfigDraft(refreshed.settings, refreshed.plan)
+    );
   }, [studio, studioConfig]);
 
   /** Bước 2: Áp dụng Live Preview outline vào plan. */
@@ -668,8 +695,16 @@ export function StudioPage() {
       });
       if (!ok) return;
     }
-    await studio.applySettingsToPlan(outlineItems);
-    studioConfig.acceptServerSettings();
+    const refreshed = await studio.applySettingsToPlan(outlineItems);
+    if (!refreshed) return;
+    // Ưu tiên outline từ server; fallback outline vừa gửi để không mất Hard trên UI
+    studioConfig.acceptServerSettings(
+      buildConfigDraft(
+        refreshed.settings,
+        refreshed.plan,
+        refreshed.plan?.outlineItems?.length ? undefined : outlineItems
+      )
+    );
   }, [studio, studioConfig, addToast, s.outlineMinItemsToast]);
 
   const hasJd = Boolean(studio.jdSummary) || Boolean(studio.settings?.readiness?.hasJobDescription);
@@ -1209,12 +1244,18 @@ export function StudioPage() {
                   "@/features/subscription/services/subscription.service"
                 );
                 const code = getSubscriptionErrorCode(err);
-                if (code === "COOLDOWN_ACTIVE" || code === "QUOTA_EXCEEDED") {
+                // Chỉ mở dialog "nâng Premium" cho đúng lỗi thuộc về hạn mức sinh bộ/JD theo
+                // cửa sổ giờ (nội dung dialog nói về "Gói Free... 1 lần/24h", nâng Premium).
+                // QUESTION_REGEN_LIMIT / PLAN_REGENERATE_LIMIT là giới hạn riêng theo từng
+                // plan/draft, không liên quan — kể cả tài khoản Premium cũng có thể dính 2 lỗi
+                // này, nên không được tái dùng dialog đó (sai nội dung). Message thật đã hiện
+                // đúng ngay trong popover regen qua throw bên dưới, không cần thêm dialog.
+                if (code === "COOLDOWN_ACTIVE" || code === "QUOTA_EXCEEDED" || code === "FEATURE_REQUIRES_PREMIUM") {
                   quotaDialogTriggeredRef.current = true;
                   setQuotaDialogOpen(true);
                   void refreshSubscription();
                 }
-                throw err instanceof Error ? err : new Error(extractErrorMessage(err, lang));
+                throw new Error(extractErrorMessage(err, lang) || s.chat.regenFailedShort);
               }
 
               setRegeneratingQuestionIds((prev) =>

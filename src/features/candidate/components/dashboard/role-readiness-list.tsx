@@ -10,13 +10,11 @@ import { useLanguage } from "@/shared/providers/language-context";
 import { getCompanyColor, getCompanyInitials } from "@/features/candidate/utils/company-visual";
 import { fillTemplate, type RoleReadiness } from "@/features/candidate/utils/dashboard-analytics";
 import { cleanTitle } from "@/features/candidate/utils/clean-title";
+import { getScoreBandBarClass } from "@/features/hr/utils/score-band";
 
 function barColor(score: number | null): string {
   if (score === null) return "bg-gray-300 dark:bg-gray-700";
-  if (score >= 80) return "bg-emerald-500";
-  if (score >= 65) return "bg-violet-500";
-  if (score >= 50) return "bg-amber-500";
-  return "bg-red-500";
+  return getScoreBandBarClass(score).bar;
 }
 
 /** Company avatar: logo image if available, else colored initials fallback */

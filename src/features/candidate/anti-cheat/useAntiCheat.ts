@@ -89,9 +89,9 @@ export function useAntiCheat() {
   );
 
   const restoreIntegrityState = useCallback(
-    (sessionId: string): IntegrityState => {
+    (sessionId: string, maxStrikes?: number): IntegrityState => {
       const mgr = ensureManager();
-      const state = mgr.restoreIntegrity(sessionId);
+      const state = mgr.restoreIntegrity(sessionId, maxStrikes);
       setIntegrity(state);
       if (state.terminated) {
         terminatedHandledRef.current = true;
@@ -180,11 +180,11 @@ export function useAntiCheat() {
   );
 
   const startMonitoring = useCallback(
-    async (video: HTMLVideoElement, sessionId: string): Promise<boolean> => {
+    async (video: HTMLVideoElement, sessionId: string, maxStrikes?: number): Promise<boolean> => {
       const mgr = ensureManager();
       await mgr.initialize();
 
-      const prior = mgr.restoreIntegrity(sessionId);
+      const prior = mgr.restoreIntegrity(sessionId, maxStrikes);
       if (prior.terminated) {
         setIntegrity(prior);
         terminatedHandledRef.current = true;
@@ -192,7 +192,7 @@ export function useAntiCheat() {
       }
 
       // Fresh monitoring session — reset strike counter for this attempt
-      mgr.getStrikeManager().reset(sessionId);
+      mgr.getStrikeManager().reset(sessionId, maxStrikes);
       terminatedHandledRef.current = false;
       setIntegrity(mgr.getStrikeManager().getState());
 

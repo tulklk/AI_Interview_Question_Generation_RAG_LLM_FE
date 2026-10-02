@@ -1,14 +1,15 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { ArrowUpRight, BarChart3, Info, Loader2, TrendingDown, TrendingUp } from "lucide-react";
+import { ArrowUpRight, BarChart3, ClipboardList, Info, Loader2, TrendingDown, TrendingUp } from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
 import { cn } from "@/lib/cn";
 import { portalHeadingAlt, portalSubtextAlt } from "@/shared/utils/portal-ui";
 import { useLanguage } from "@/shared/providers/language-context";
 import { fillTemplate } from "@/features/candidate/utils/dashboard-analytics";
 import { getSkillIcon } from "@/features/candidate/utils/skill-icons";
-import type { CoachAssessment, CoachSkillResult } from "@/features/candidate/services/coach.service";
+import type { CoachAssessment, CoachScreeningPreview, CoachSkillResult } from "@/features/candidate/services/coach.service";
+import { CoachLevelCriteriaPanel } from "@/features/candidate/components/coach/coach-level-criteria";
 import {
   fadeIn,
   motionSafe,
@@ -26,12 +27,18 @@ interface CoachReportPanelProps {
   report: CoachAssessment;
   promotingNextLevel?: boolean;
   onPromoteNextLevel?: () => Promise<void> | void;
+  screeningPreview?: CoachScreeningPreview | null;
+  startingScreening?: boolean;
+  onStartScreening?: () => void;
 }
 
 export function CoachReportPanel({
   report,
   promotingNextLevel = false,
   onPromoteNextLevel,
+  screeningPreview = null,
+  startingScreening = false,
+  onStartScreening,
 }: CoachReportPanelProps) {
   const { t } = useLanguage();
   const p = t.jobseekerCoachPage;
@@ -56,11 +63,13 @@ export function CoachReportPanel({
   }, [report.skills]);
 
   const shortExplanation = useMemo(() => {
+    // SCRUM-509: khi có levelCriteria thì không dump công thức thô.
+    if (report.levelCriteria) return null;
     const raw = report.levelExplanation?.trim();
     if (!raw || looksLikeJson(raw)) return null;
     const sentences = raw.split(/(?<=[.!?。])\s+/).filter(Boolean);
     return sentences.slice(0, 2).join(" ");
-  }, [report.levelExplanation]);
+  }, [report.levelExplanation, report.levelCriteria]);
 
   async function confirmPromote() {
     if (!onPromoteNextLevel) return;
@@ -149,9 +158,11 @@ export function CoachReportPanel({
               </p>
             )}
 
-            {shortExplanation && (
+            {report.levelCriteria ? (
+              <CoachLevelCriteriaPanel criteria={report.levelCriteria} compact />
+            ) : shortExplanation ? (
               <p className={cn("text-[12px] leading-snug", portalSubtextAlt)}>{shortExplanation}</p>
-            )}
+            ) : null}
 
             {allZero && (
               <div className="flex gap-2 rounded-lg border border-amber-200/80 bg-amber-50/70 px-3 py-2 text-[11px] leading-snug text-amber-900 dark:border-amber-800/50 dark:bg-amber-950/20 dark:text-amber-100">
@@ -228,6 +239,42 @@ export function CoachReportPanel({
               >
                 <ArrowUpRight size={13} />
                 {fillTemplate(p.nextLevelCta, { next: nextLevel })}
+              </button>
+            )}
+          </div>
+        )}
+
+        {screeningPreview?.available && screeningPreview.skills.length > 0 && (
+          <div className="space-y-2 rounded-lg border border-violet-200 bg-violet-50/70 px-3.5 py-3 dark:border-violet-800/50 dark:bg-violet-950/20">
+            <p className={cn("text-[12px] font-semibold", portalHeadingAlt)}>{p.screeningTitle}</p>
+            <p className={cn("text-[11px] leading-snug", portalSubtextAlt)}>
+              {fillTemplate(p.screeningBody, {
+                count: String(screeningPreview.remainingUnmeasured || screeningPreview.skills.length),
+                questions: String(screeningPreview.questionCount),
+              })}
+            </p>
+            <p className={cn("text-[10px] font-semibold uppercase tracking-wide", portalSubtextAlt)}>
+              {p.screeningSkillsLabel}
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+              {screeningPreview.skills.map((skill) => (
+                <span
+                  key={skill}
+                  className="rounded-full bg-white px-2 py-0.5 text-[11px] font-medium text-violet-800 dark:bg-violet-900/40 dark:text-violet-100"
+                >
+                  {skill}
+                </span>
+              ))}
+            </div>
+            {typeof onStartScreening === "function" && (
+              <button
+                type="button"
+                disabled={startingScreening}
+                onClick={() => onStartScreening()}
+                className="hr-cta-btn inline-flex h-8 items-center gap-1.5 rounded-lg px-3 text-[12px] font-semibold text-white disabled:opacity-50"
+              >
+                {startingScreening ? <Loader2 size={13} className="animate-spin" /> : <ClipboardList size={13} />}
+                {p.screeningCta}
               </button>
             )}
           </div>

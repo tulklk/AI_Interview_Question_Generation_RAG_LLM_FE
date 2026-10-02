@@ -1,7 +1,20 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Briefcase, Building2, CheckCircle2, Link2, Pencil, Save, SlidersHorizontal, User, X } from "lucide-react";
+import {
+  Briefcase,
+  Building2,
+  Check,
+  CheckCircle2,
+  ChevronDown,
+  Link2,
+  Pencil,
+  Save,
+  Search,
+  SlidersHorizontal,
+  User,
+  X,
+} from "lucide-react";
 import { FaGithub, FaLinkedinIn } from "react-icons/fa";
 import { ProfileSectionSkeleton } from "./settings-skeletons";
 import { cn } from "@/lib/cn";
@@ -74,7 +87,6 @@ const COMPLETENESS_FIELDS: (keyof HrProfileForm)[] = [
 export function ProfileSection() {
   const { t } = useLanguage();
   const sp = t.settingsPage.profile;
-  const rp = t.registerPage;
   const { refreshUser } = useUser();
   const { isPremium } = useHrSubscription();
   const { addToast } = useToast();
@@ -89,12 +101,14 @@ export function ProfileSection() {
   const [githubTouched, setGithubTouched] = useState(false);
   const [googleLinked, setGoogleLinked] = useState(false);
 
-  const [companyResults, setCompanyResults] = useState<CompanyOption[]>([]);
+  // SCRUM-499: dropdown chọn từ công ty có sẵn (không gõ tự do)
+  const [companies, setCompanies] = useState<CompanyOption[]>([]);
   const [companyOpen, setCompanyOpen] = useState(false);
   const [companyLoading, setCompanyLoading] = useState(false);
-  const [companySearched, setCompanySearched] = useState(false);
+  const [companyFilter, setCompanyFilter] = useState("");
   const companyRef = useRef<HTMLDivElement>(null);
-  const companyDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const companySearchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const companyFetchGenRef = useRef(0);
 
   const loadProfile = useCallback(async () => {
     setLoading(true);
@@ -139,62 +153,57 @@ export function ProfileSection() {
     function handleClickOutside(e: MouseEvent) {
       if (companyRef.current && !companyRef.current.contains(e.target as Node)) {
         setCompanyOpen(false);
+        setCompanyFilter("");
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const fetchCompanies = useCallback(async (keyword: string) => {
-    if (!keyword.trim()) {
-      setCompanyResults([]);
-      setCompanySearched(false);
-      return;
-    }
+  const fetchCompanies = useCallback(async (keyword?: string) => {
+    const gen = ++companyFetchGenRef.current;
     setCompanyLoading(true);
     try {
       const results = await searchCompanies(keyword);
-      setCompanyResults(results);
+      // Bỏ kết quả cũ nếu đã có request mới hơn (tránh race khi gõ nhanh)
+      if (gen !== companyFetchGenRef.current) return;
+      setCompanies(results);
     } catch {
-      setCompanyResults([]);
+      if (gen !== companyFetchGenRef.current) return;
+      setCompanies([]);
     } finally {
-      setCompanyLoading(false);
-      setCompanySearched(true);
+      if (gen === companyFetchGenRef.current) setCompanyLoading(false);
     }
   }, []);
 
-  function handleCompanyChange(value: string) {
-    setForm((prev) => ({ ...prev, companyName: value, companyId: "" }));
-    setCompanySearched(false);
-    if (companyDebounceRef.current) clearTimeout(companyDebounceRef.current);
-    if (value.trim()) {
-      companyDebounceRef.current = setTimeout(() => fetchCompanies(value), 350);
-    } else {
-      setCompanyResults([]);
-    }
-    setCompanyOpen(true);
-  }
+  // Vào chế độ edit thì preload list công ty
+  useEffect(() => {
+    if (editing) void fetchCompanies();
+  }, [editing, fetchCompanies]);
+
+  // Gõ trong ô search → gọi API (debounce); mở dropdown / filter rỗng → fetch ngay
+  useEffect(() => {
+    if (!companyOpen) return;
+    if (companySearchDebounceRef.current) clearTimeout(companySearchDebounceRef.current);
+    const delay = companyFilter.trim() ? 300 : 0;
+    companySearchDebounceRef.current = setTimeout(() => {
+      void fetchCompanies(companyFilter);
+    }, delay);
+    return () => {
+      if (companySearchDebounceRef.current) clearTimeout(companySearchDebounceRef.current);
+    };
+  }, [companyFilter, companyOpen, fetchCompanies]);
 
   function selectCompany(company: CompanyOption) {
     setForm((prev) => ({ ...prev, companyName: company.name, companyId: company.id }));
     setCompanyOpen(false);
-    setCompanyResults([]);
-    setCompanySearched(false);
+    setCompanyFilter("");
   }
 
-  function useTypedCompanyName() {
-    setForm((prev) => ({ ...prev, companyId: "" }));
+  function resetCompanyUi() {
     setCompanyOpen(false);
-    setCompanyResults([]);
-    setCompanySearched(false);
-  }
-
-  function resetCompanySearch() {
-    setCompanyOpen(false);
-    setCompanyResults([]);
-    setCompanySearched(false);
-    setCompanyLoading(false);
-    if (companyDebounceRef.current) clearTimeout(companyDebounceRef.current);
+    setCompanyFilter("");
+    if (companySearchDebounceRef.current) clearTimeout(companySearchDebounceRef.current);
   }
 
   function handleCancel() {
@@ -203,7 +212,7 @@ export function ProfileSection() {
     setUploadingAvatar(false);
     setLinkedInTouched(false);
     setGithubTouched(false);
-    resetCompanySearch();
+    resetCompanyUi();
   }
 
   function handleAvatarUploadError(code: string) {
@@ -245,7 +254,7 @@ export function ProfileSection() {
       await refreshUser();
       await loadProfile();
       setEditing(false);
-      resetCompanySearch();
+      resetCompanyUi();
       addToast("success", sp.saveSuccess);
     } catch {
       addToast("error", sp.saveFailed);
@@ -507,75 +516,110 @@ export function ProfileSection() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <FormField label={sp.company} htmlFor="company">
                   <div className="relative" ref={companyRef}>
-                    <div className="relative">
+                    <button
+                      id="company"
+                      type="button"
+                      onClick={() => {
+                        if (saving || uploadingAvatar) return;
+                        setCompanyOpen((open) => {
+                          const next = !open;
+                          if (!next) setCompanyFilter("");
+                          return next;
+                        });
+                      }}
+                      disabled={saving || uploadingAvatar}
+                      className={cn(
+                        inputCls,
+                        "relative flex items-center gap-2 pl-9 pr-9 text-left",
+                        form.companyId && "border-emerald-300 focus:border-emerald-400 focus:ring-emerald-100",
+                        companyOpen && "border-primary ring-2 ring-[#6c47ff]/20"
+                      )}
+                      aria-haspopup="listbox"
+                      aria-expanded={companyOpen}
+                    >
                       <Building2
                         size={15}
                         className="pointer-events-none absolute left-3 top-1/2 z-10 -translate-y-1/2 text-gray-400"
                       />
-                      <input
-                        id="company"
-                        type="text"
-                        value={form.companyName}
-                        onChange={(e) => handleCompanyChange(e.target.value)}
-                        onFocus={() => {
-                          if (form.companyName.trim()) setCompanyOpen(true);
-                        }}
-                        disabled={saving || uploadingAvatar}
-                        autoComplete="off"
+                      <span
                         className={cn(
-                          inputCls,
-                          "pl-9 pr-9",
-                          form.companyId && "border-emerald-300 focus:border-emerald-400 focus:ring-emerald-100"
+                          "flex-1 truncate",
+                          form.companyName ? portalHeading : "text-gray-400 dark:text-gray-500"
                         )}
-                      />
+                      >
+                        {form.companyName || sp.companySelectPlaceholder}
+                      </span>
                       {companyLoading ? (
-                        <span className="absolute right-3.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 rounded-full border-2 border-primary/30 border-t-primary animate-spin" />
+                        <span className="absolute right-8 top-1/2 h-3.5 w-3.5 -translate-y-1/2 rounded-full border-2 border-primary/30 border-t-primary animate-spin" />
                       ) : form.companyId ? (
                         <CheckCircle2
                           size={14}
-                          className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-emerald-500"
+                          className="pointer-events-none absolute right-8 top-1/2 -translate-y-1/2 text-emerald-500"
                         />
                       ) : null}
-                    </div>
-                    {companyOpen && form.companyName.trim() && (
+                      <ChevronDown
+                        size={14}
+                        className={cn(
+                          "pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 transition-transform",
+                          companyOpen && "rotate-180"
+                        )}
+                      />
+                    </button>
+
+                    {companyOpen && (
                       <div className="absolute z-20 mt-1 w-full overflow-hidden rounded-xl border border-gray-200 bg-white shadow-lg dark:border-gray-700 dark:bg-gray-900">
-                        {companyLoading && (
-                          <div className="flex items-center gap-2.5 px-4 py-3 text-sm text-gray-400 dark:text-gray-500">
-                            <span className="h-3.5 w-3.5 shrink-0 rounded-full border-2 border-primary/30 border-t-primary animate-spin" />
-                            {rp.companySearchHint}
+                        <div className="border-b border-gray-100 p-2 dark:border-gray-800">
+                          <div className={cn("flex h-8 items-center gap-2 rounded-lg px-2.5", portalInput)}>
+                            <Search size={12} className="shrink-0 text-gray-400" />
+                            <input
+                              type="text"
+                              value={companyFilter}
+                              onChange={(e) => setCompanyFilter(e.target.value)}
+                              placeholder={sp.companySearchPlaceholder}
+                              className="flex-1 bg-transparent text-xs outline-none"
+                              autoFocus
+                            />
                           </div>
-                        )}
-                        {!companyLoading && companyResults.length > 0 && (
-                          <div className="max-h-44 overflow-y-auto py-1">
-                            {companyResults.map((c) => (
-                              <button
-                                key={c.id}
-                                type="button"
-                                onMouseDown={() => selectCompany(c)}
-                                className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm text-gray-700 transition-colors hover:bg-primary/5 hover:text-primary dark:text-gray-200"
-                              >
-                                <Building2 size={13} className="shrink-0 text-gray-400" />
-                                <span className="truncate">{c.name}</span>
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                        {!companyLoading && companyResults.length === 0 && companySearched && (
-                          <div>
-                            <p className="px-4 pb-1 pt-3 text-xs text-gray-400 dark:text-gray-500">
-                              {rp.companyNotSelected}
+                        </div>
+
+                        <div className="max-h-44 overflow-y-auto py-1" role="listbox">
+                          {companyLoading && (
+                            <div className="flex items-center gap-2.5 px-4 py-3 text-sm text-gray-400 dark:text-gray-500">
+                              <span className="h-3.5 w-3.5 shrink-0 rounded-full border-2 border-primary/30 border-t-primary animate-spin" />
+                              {sp.companyLoading}
+                            </div>
+                          )}
+
+                          {!companyLoading &&
+                            companies.map((c) => {
+                              const active = form.companyId === c.id;
+                              return (
+                                <button
+                                  key={c.id}
+                                  type="button"
+                                  role="option"
+                                  aria-selected={active}
+                                  onMouseDown={() => selectCompany(c)}
+                                  className={cn(
+                                    "flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm transition-colors",
+                                    active
+                                      ? "bg-primary/5 font-semibold text-primary dark:bg-primary/10"
+                                      : "text-gray-700 hover:bg-primary/5 hover:text-primary dark:text-gray-200"
+                                  )}
+                                >
+                                  <Building2 size={13} className="shrink-0 text-gray-400" />
+                                  <span className="flex-1 truncate">{c.name}</span>
+                                  {active && <Check size={13} className="shrink-0 text-primary" />}
+                                </button>
+                              );
+                            })}
+
+                          {!companyLoading && companies.length === 0 && (
+                            <p className="px-4 py-3 text-sm text-gray-400 dark:text-gray-500">
+                              {sp.companyNoResults}
                             </p>
-                            <button
-                              type="button"
-                              onMouseDown={useTypedCompanyName}
-                              className="mt-1 flex w-full items-center gap-2.5 border-t border-gray-100 px-4 py-2.5 text-left text-sm text-gray-700 transition-colors hover:bg-primary/5 hover:text-primary dark:border-gray-700 dark:text-gray-200"
-                            >
-                              <Building2 size={13} className="shrink-0 text-gray-400" />
-                              <span className="truncate">{form.companyName}</span>
-                              <span className="ml-auto shrink-0 text-xs text-primary">{t.common.useThisName}</span>
-                            </button>
-                          </div>
-                        )}
+                          )}
+                        </div>
                       </div>
                     )}
                   </div>

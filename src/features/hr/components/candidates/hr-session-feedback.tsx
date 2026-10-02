@@ -17,6 +17,7 @@ import { cn } from "@/lib/cn";
 import { useLanguage, type Lang } from "@/shared/providers/language-context";
 import { portalHeadingAlt, portalSubtext, portalSubtextAlt } from "@/shared/utils/portal-ui";
 import { CategoryPill, Pill, getScoreBadgeClass, getScoreLevel } from "@/features/candidate/components/ui/pill";
+import { getScoreBandBarClass } from "@/features/hr/utils/score-band";
 import { translateDimensionKey, translateQuestionCategory } from "@/features/candidate/utils/skill-labels";
 import { QuestionContent } from "@/shared/components/ui/question-content";
 import { FeedbackRadarChart } from "@/features/candidate/components/feedback/feedback-radar-chart";
@@ -28,11 +29,9 @@ import {
 } from "@/features/hr/services/hr-candidate.service";
 import { HrSessionFeedbackSkeleton } from "./hr-session-feedback-skeleton";
 
+/** Màu skill — đồng bộ band HR ≥90/≥80/≥70. */
 function getSkillColor(score: number) {
-  if (score >= 80) return { bar: "bg-emerald-500", text: "text-emerald-700 dark:text-emerald-400", bg: "bg-emerald-50 dark:bg-emerald-950/40" };
-  if (score >= 65) return { bar: "bg-violet-500", text: "text-violet-700 dark:text-violet-400", bg: "bg-violet-50 dark:bg-violet-950/40" };
-  if (score >= 50) return { bar: "bg-amber-500", text: "text-amber-700 dark:text-amber-400", bg: "bg-amber-50 dark:bg-amber-950/40" };
-  return { bar: "bg-red-500", text: "text-red-700 dark:text-red-400", bg: "bg-red-50 dark:bg-red-950/40" };
+  return getScoreBandBarClass(score);
 }
 
 function aggregateDimensionScores(items: HrSessionFeedbackItem[], lang: Lang): { skill: string; score: number }[] | null {

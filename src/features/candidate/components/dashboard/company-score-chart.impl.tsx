@@ -14,14 +14,11 @@ import {
 import { useChartTheme } from "@/shared/hooks/use-chart-theme";
 import { useLanguage } from "@/shared/providers/language-context";
 import type { CompletedSessionSummary } from "@/features/candidate/services/practice-session.service";
+import { getScoreBandHex } from "@/features/hr/utils/score-band";
 
 function scoreColor(avg: number): string {
-  if (avg >= 80) return "#10B981";
-  if (avg >= 65) return "#6C47FF";
-  if (avg >= 50) return "#F59E0B";
-  return "#EF4444";
+  return getScoreBandHex(avg);
 }
-
 interface Props {
   sessions: CompletedSessionSummary[];
 }

@@ -12,6 +12,7 @@ import { cn } from "@/lib/cn";
 import { useLanguage, type Lang } from "@/shared/providers/language-context";
 import type { PracticeSessionDetail, AnswerEvaluation, SessionAiInsight, PracticeFeedbackAccessLevel } from "@/features/candidate/services/practice-session.service";
 import { CategoryPill, Pill, getScoreLevel, getScoreBadgeClass } from "@/features/candidate/components/ui/pill";
+import { getScoreBandBarClass, getScoreBandHex, resolveScoreInsightKey } from "@/features/hr/utils/score-band";
 import { translateDimensionKey, translateQuestionCategory } from "@/features/candidate/utils/skill-labels";
 import { getCompanyColor, getCompanyInitials } from "@/features/candidate/utils/company-visual";
 import { useChartTheme } from "@/shared/hooks/use-chart-theme";
@@ -47,11 +48,9 @@ function getQPageNums(current: number, total: number): (number | "…")[] {
   return nums;
 }
 
+/** Màu skill/radar — đồng bộ band HR ≥90/≥80/≥70. */
 function getSkillColor(score: number) {
-  if (score >= 80) return { bar: "bg-emerald-500", text: "text-emerald-700 dark:text-emerald-400", bg: "bg-emerald-50 dark:bg-emerald-950/40", ring: "#10B981" };
-  if (score >= 65) return { bar: "bg-violet-500", text: "text-violet-700 dark:text-violet-400", bg: "bg-violet-50 dark:bg-violet-950/40", ring: "#6C47FF" };
-  if (score >= 50) return { bar: "bg-amber-500", text: "text-amber-700 dark:text-amber-400", bg: "bg-amber-50 dark:bg-amber-950/40", ring: "#F59E0B" };
-  return { bar: "bg-red-500", text: "text-red-700 dark:text-red-400", bg: "bg-red-50 dark:bg-red-950/40", ring: "#EF4444" };
+  return getScoreBandBarClass(score);
 }
 
 /** Câu skip-gate (trống/quá ngắn, không gọi AI) — không tính là đã làm bài. */
@@ -167,7 +166,7 @@ function ScoreRing({ score, trackStroke }: { score: number; trackStroke: string 
   const radius = 52;
   const circ = 2 * Math.PI * radius;
   const offset = circ - (score / 100) * circ;
-  const color = score >= 80 ? "#10B981" : score >= 65 ? "#6C47FF" : "#F59E0B";
+  const color = getScoreBandHex(score);
   const [displayScore, setDisplayScore] = useState(0);
 
   useEffect(() => {
@@ -341,8 +340,15 @@ export function FeedbackPage({
   }
 
   const beInsightText = aiInsight ? (lang === "vi" ? aiInsight.vi : aiInsight.en) || null : null;
+  const insightKey = hasScore ? resolveScoreInsightKey(score) : null;
   const insightText = beInsightText
-    ?? (hasScore ? (score >= 80 ? p.insightExcellent : score >= 65 ? p.insightGood : p.insightNeedsWork) : null);
+    ?? (insightKey === "excellent"
+      ? p.insightExcellent
+      : insightKey === "good"
+        ? p.insightGood
+        : insightKey === "needsWork"
+          ? p.insightNeedsWork
+          : null);
   const skillsToImprove = aiInsight ? (lang === "vi" ? aiInsight.skillsToImproveVi : aiInsight.skillsToImproveEn) : [];
 
   const companyInitials = companyName ? getCompanyInitials(companyName) : "";

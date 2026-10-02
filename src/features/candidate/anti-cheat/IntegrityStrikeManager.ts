@@ -30,11 +30,11 @@ function newStrikeId(): string {
   return `strike_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
 }
 
-function emptyState(sessionId: string): IntegrityState {
+function emptyState(sessionId: string, maxStrikes: number = MAX_INTEGRITY_STRIKES): IntegrityState {
   return {
     sessionId,
     strikeCount: 0,
-    maxStrikes: MAX_INTEGRITY_STRIKES,
+    maxStrikes,
     terminated: false,
     strikes: [],
   };
@@ -52,8 +52,8 @@ export class IntegrityStrikeManager {
   private activeWarning: IntegrityStrike | null = null;
   private terminateListeners = new Set<(state: IntegrityState) => void>();
 
-  reset(sessionId: string): void {
-    this.state = emptyState(sessionId);
+  reset(sessionId: string, maxStrikes?: number): void {
+    this.state = emptyState(sessionId, maxStrikes);
     this.processedEventIds.clear();
     this.warningQueue = [];
     this.activeWarning = null;
@@ -62,12 +62,12 @@ export class IntegrityStrikeManager {
   }
 
   /** Restore from sessionStorage; returns true if a prior terminated state was found. */
-  restore(sessionId: string): IntegrityState {
+  restore(sessionId: string, maxStrikes?: number): IntegrityState {
     const saved = IntegrityStrikeManager.load(sessionId);
     if (saved) {
       this.state = {
         ...saved,
-        maxStrikes: MAX_INTEGRITY_STRIKES,
+        maxStrikes: maxStrikes ?? MAX_INTEGRITY_STRIKES,
         sessionId,
       };
       this.processedEventIds = new Set(
@@ -78,7 +78,7 @@ export class IntegrityStrikeManager {
       this.emit();
       return this.getState();
     }
-    this.reset(sessionId);
+    this.reset(sessionId, maxStrikes);
     return this.getState();
   }
 
@@ -95,7 +95,7 @@ export class IntegrityStrikeManager {
 
   getRemainingWarnings(): number {
     if (this.state.terminated) return 0;
-    return Math.max(0, MAX_INTEGRITY_STRIKES - 1 - this.state.strikeCount);
+    return Math.max(0, this.state.maxStrikes - 1 - this.state.strikeCount);
   }
 
   isTerminated(): boolean {
@@ -147,13 +147,13 @@ export class IntegrityStrikeManager {
       ...this.state,
       strikeCount: strikeNumber,
       strikes: [...this.state.strikes, strike],
-      terminated: strikeNumber >= MAX_INTEGRITY_STRIKES,
+      terminated: strikeNumber >= this.state.maxStrikes,
     };
 
     this.persist();
 
     if (DEBUG_ANTI_CHEAT) {
-      console.log(`[Integrity] strike ${strikeNumber}/${MAX_INTEGRITY_STRIKES}`, event.type);
+      console.log(`[Integrity] strike ${strikeNumber}/${this.state.maxStrikes}`, event.type);
     }
 
     if (this.state.terminated) {

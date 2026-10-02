@@ -651,11 +651,17 @@ export function RecommendationDetail({ id }: { id: string }) {
                   const si = getSkillIcon(s.skill);
                   const SIcon = si?.icon;
                   const pct = Math.min(100, Math.round(s.avgScore));
-                  const barColor = pct >= 85 ? "bg-emerald-500" : pct >= 70 ? "bg-amber-500" : "bg-cyan-500";
-                  const sc = pct >= 85
-                    ? "text-emerald-600 dark:text-emerald-400"
-                    : pct >= 70 ? "text-amber-600 dark:text-amber-400"
-                    : "text-cyan-600 dark:text-cyan-400";
+                  // Đồng bộ band điểm: ≥90 / ≥80 / ≥70
+                  const barColor =
+                    pct >= 90 ? "bg-emerald-500" : pct >= 80 ? "bg-violet-500" : pct >= 70 ? "bg-amber-500" : "bg-red-500";
+                  const sc =
+                    pct >= 90
+                      ? "text-emerald-600 dark:text-emerald-400"
+                      : pct >= 80
+                        ? "text-violet-600 dark:text-violet-400"
+                        : pct >= 70
+                          ? "text-amber-600 dark:text-amber-400"
+                          : "text-red-600 dark:text-red-400";
                   return (
                     <div key={s.skill} className="flex items-center gap-2.5">
                       <div className="flex items-center gap-1.5 w-28 shrink-0">
