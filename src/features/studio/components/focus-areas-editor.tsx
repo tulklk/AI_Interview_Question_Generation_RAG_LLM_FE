@@ -46,6 +46,35 @@ function resolveSelectValue(
   return unused?.label ?? catalog[0]?.label ?? currentName;
 }
 
+/** Nhóm gợi ý JD lên đầu dropdown; skill đó không lặp lại trong Languages/Backend… */
+function buildSelectGroups(
+  catalog: TechSkillCatalogItem[],
+  suggestedLabels: string[],
+  suggestGroupLabel: string
+): Array<[string, TechSkillCatalogItem[]]> {
+  const suggestedSet = new Set(suggestedLabels.map((label) => label.toLowerCase()));
+  const suggestedItems = suggestedLabels
+    .map((label) => catalog.find((item) => item.label.toLowerCase() === label.toLowerCase()))
+    .filter((item): item is TechSkillCatalogItem => Boolean(item));
+
+  const rest = new Map<string, TechSkillCatalogItem[]>();
+  for (const item of catalog) {
+    if (suggestedSet.has(item.label.toLowerCase())) continue;
+    const list = rest.get(item.group) ?? [];
+    list.push(item);
+    rest.set(item.group, list);
+  }
+
+  const groups: Array<[string, TechSkillCatalogItem[]]> = [];
+  if (suggestedItems.length > 0) groups.push([suggestGroupLabel, suggestedItems]);
+  for (const entry of rest.entries()) groups.push(entry);
+  return groups;
+}
+
+function optionLabel(item: TechSkillCatalogItem, isSuggested: boolean, suggestSuffix: string): string {
+  return isSuggested ? `${item.label} · ${suggestSuffix}` : item.label;
+}
+
 export function FocusAreasEditor({
   focusAreas,
   disabled,
@@ -71,15 +100,12 @@ export function FocusAreasEditor({
   const usedNames = new Set(focusAreas.map((area) => area.name.trim().toLowerCase()));
   const unusedSkills = catalog.filter((item) => !usedNames.has(item.label.toLowerCase()));
   const allSkillsUsed = useCatalog && unusedSkills.length === 0;
-  const grouped = useMemo(() => {
-    const map = new Map<string, TechSkillCatalogItem[]>();
-    for (const item of catalog) {
-      const list = map.get(item.group) ?? [];
-      list.push(item);
-      map.set(item.group, list);
-    }
-    return [...map.entries()];
-  }, [catalog]);
+  /** Skill JD còn trống — đưa lên đầu dropdown Thêm focus. */
+  const unusedSuggestions = suggestions.filter((label) => !usedNames.has(label.toLowerCase()));
+  const addSelectGroups = useMemo(
+    () => buildSelectGroups(unusedSkills, unusedSuggestions, cfg.focusSuggest),
+    [unusedSkills, unusedSuggestions, cfg.focusSuggest]
+  );
 
   const totalPages = Math.max(1, Math.ceil(focusAreas.length / PAGE_SIZE));
   const [page, setPage] = useState(0);
@@ -181,26 +207,6 @@ export function FocusAreasEditor({
         />
       </div>
 
-      {suggestions.length > 0 && (
-        <div className="space-y-1">
-          <p className={cn("text-[10px] font-medium", portalSubtext)}>{cfg.focusSuggest}</p>
-          <div className="flex flex-wrap gap-1">
-            {suggestions.map((label) => (
-              <button
-                key={label}
-                type="button"
-                disabled={disabled}
-                onClick={() => addNamed(label)}
-                className="inline-flex items-center gap-0.5 rounded-full border border-primary/30 bg-primary/5 px-2 py-0.5 text-[10px] font-medium text-primary hover:bg-primary/10 disabled:opacity-40"
-              >
-                <Plus className="h-2.5 w-2.5" />
-                {label}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
       <ul className="space-y-1">
         {pageItems.map(({ fa, idx }) => {
           const usedElsewhere = new Set(
@@ -211,6 +217,13 @@ export function FocusAreasEditor({
           const selectValue = useCatalog
             ? resolveSelectValue(fa.name, catalog, usedElsewhere)
             : fa.name;
+          // Gợi ý JD vẫn hiện ở đầu kể cả skill đang chọn của dòng này.
+          const rowSuggestions = suggestJdTechSkills(
+            suggestionSource,
+            catalog,
+            [...usedElsewhere]
+          );
+          const rowGroups = buildSelectGroups(catalog, rowSuggestions, cfg.focusSuggest);
           const skillIcon = getSkillIcon(selectValue);
           const SIcon = skillIcon?.icon;
 
@@ -234,26 +247,29 @@ export function FocusAreasEditor({
                     onChange={(e) => updateItem(idx, { name: e.target.value })}
                     className="w-full min-w-0 truncate rounded border-0 bg-transparent py-0.5 text-[11px] font-semibold text-gray-900 outline-none dark:text-gray-100 dark:[color-scheme:dark]"
                   >
-                    {grouped.map(([group, items]) => (
-                      <optgroup key={group} label={group}>
-                        {items.map((item) => {
-                          const taken = usedElsewhere.has(item.label.toLowerCase());
-                          return (
-                            <option
-                              key={item.name}
-                              value={item.label}
-                              disabled={taken}
-                              className={cn(
-                                "bg-white text-gray-900 dark:bg-gray-900 dark:text-gray-100",
-                                taken && "text-gray-400 dark:text-gray-500"
-                              )}
-                            >
-                              {item.label}
-                            </option>
-                          );
-                        })}
-                      </optgroup>
-                    ))}
+                    {rowGroups.map(([group, items]) => {
+                      const isSuggestGroup = group === cfg.focusSuggest;
+                      return (
+                        <optgroup key={group} label={group}>
+                          {items.map((item) => {
+                            const taken = usedElsewhere.has(item.label.toLowerCase());
+                            return (
+                              <option
+                                key={item.name}
+                                value={item.label}
+                                disabled={taken}
+                                className={cn(
+                                  "bg-white text-gray-900 dark:bg-gray-900 dark:text-gray-100",
+                                  taken && "text-gray-400 dark:text-gray-500"
+                                )}
+                              >
+                                {optionLabel(item, isSuggestGroup, cfg.focusSuggestShort)}
+                              </option>
+                            );
+                          })}
+                        </optgroup>
+                      );
+                    })}
                   </select>
                 ) : (
                   <input
@@ -347,7 +363,10 @@ export function FocusAreasEditor({
       <div className="flex items-center gap-1">
         {useCatalog && (
           <AddSkillSelect
-            unused={unusedSkills}
+            groups={addSelectGroups}
+            suggestedLabels={unusedSuggestions}
+            suggestSuffix={cfg.focusSuggestShort}
+            suggestGroupLabel={cfg.focusSuggest}
             disabled={disabled || allSkillsUsed}
             onAdd={addNamed}
             addLabel={cfg.addFocus}
@@ -370,47 +389,51 @@ export function FocusAreasEditor({
 }
 
 function AddSkillSelect({
-  unused,
+  groups,
+  suggestedLabels,
+  suggestSuffix,
+  suggestGroupLabel,
   disabled,
   onAdd,
   addLabel,
 }: {
-  unused: TechSkillCatalogItem[];
+  groups: Array<[string, TechSkillCatalogItem[]]>;
+  suggestedLabels: string[];
+  suggestSuffix: string;
+  suggestGroupLabel: string;
   disabled?: boolean;
   onAdd: (label: string) => void;
   addLabel: string;
 }) {
-  const [value, setValue] = useState(unused[0]?.label ?? "");
+  const flat = groups.flatMap(([, items]) => items);
+  const preferred = suggestedLabels[0] ?? flat[0]?.label ?? "";
+  const [value, setValue] = useState(preferred);
 
   useEffect(() => {
-    if (unused.some((item) => item.label === value)) return;
-    setValue(unused[0]?.label ?? "");
-  }, [unused, value]);
-
-  const groups = new Map<string, TechSkillCatalogItem[]>();
-  for (const item of unused) {
-    const list = groups.get(item.group) ?? [];
-    list.push(item);
-    groups.set(item.group, list);
-  }
+    if (flat.some((item) => item.label === value)) return;
+    setValue(preferred);
+  }, [preferred, flat, value]);
 
   return (
     <>
       <select
-        disabled={disabled || unused.length === 0}
+        disabled={disabled || flat.length === 0}
         value={value}
         onChange={(e) => setValue(e.target.value)}
         className="min-w-0 flex-1 rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-[11px] text-gray-800 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
       >
-        {[...groups.entries()].map(([group, items]) => (
-          <optgroup key={group} label={group}>
-            {items.map((item) => (
-              <option key={item.name} value={item.label}>
-                {item.label}
-              </option>
-            ))}
-          </optgroup>
-        ))}
+        {groups.map(([group, items]) => {
+          const isSuggestGroup = group === suggestGroupLabel;
+          return (
+            <optgroup key={group} label={group}>
+              {items.map((item) => (
+                <option key={item.name} value={item.label}>
+                  {optionLabel(item, isSuggestGroup, suggestSuffix)}
+                </option>
+              ))}
+            </optgroup>
+          );
+        })}
       </select>
       <button
         type="button"

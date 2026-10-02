@@ -5266,6 +5266,7 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
         addFocus: "Add focus area",
         newFocusName: "New focus",
         focusSuggest: "Suggested from JD",
+        focusSuggestShort: "JD match",
         focusAllSkillsUsed: "Every catalog skill is already selected.",
         stylesHint: "Pick question styles (at least one).",
         stylesMinOne: "Select at least 1 style.",

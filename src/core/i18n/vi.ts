@@ -5264,6 +5264,7 @@ Yêu cầu:
         addFocus: "Thêm focus area",
         newFocusName: "Focus mới",
         focusSuggest: "Gợi ý từ JD",
+        focusSuggestShort: "gợi ý JD",
         focusAllSkillsUsed: "Đã chọn hết skill trong danh mục.",
         stylesHint: "Chọn phong cách câu hỏi (ít nhất 1).",
         stylesMinOne: "Chọn ít nhất 1 phong cách.",
