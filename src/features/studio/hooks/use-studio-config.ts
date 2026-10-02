@@ -118,11 +118,11 @@ export function mergeConfigDraft(
 function step1SettingsFingerprint(d: StudioConfigDraft): string {
   const dist = (d.questionDistribution ?? [])
     .map((x) => ({
-      type: x.type,
+      category: x.category,
       // Chỉ so % — count scale theo số slot Preview, không phải chỉnh bước 1
       percentage: x.percentage,
     }))
-    .sort((a, b) => String(a.type).localeCompare(String(b.type)));
+    .sort((a, b) => String(a.category).localeCompare(String(b.category)));
   return JSON.stringify({
     difficulty: d.difficulty,
     interviewLengthMinutes: d.interviewLengthMinutes,
