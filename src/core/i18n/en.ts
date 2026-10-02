@@ -1372,6 +1372,7 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
     questionsMeta: "{{count}} questions",
     timeMeta: "{{min}} min",
     applyCta: "Take assessment",
+    integrityLockedCta: "Cheating detected — cannot retake",
     continueCta: "Continue assessment",
     startOver: "Start over",
     interviewPlanTitle: "Interview structure",
@@ -3773,6 +3774,7 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
       allTime: "All Time",
       thisWeek: "This Week",
       thisMonth: "This Month",
+      allModes: "All",
     },
     table: {
       session: "Session",

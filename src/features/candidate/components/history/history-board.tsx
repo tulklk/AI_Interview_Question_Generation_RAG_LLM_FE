@@ -44,6 +44,7 @@ const PAGE_SIZE = 10;
 const UNFINISHED_WARN_AT = 5;
 
 type TimeFilterKey = "all" | "week" | "month";
+type ModeFilterKey = "all" | "practice" | "hiring";
 
 function dateRangeFor(filter: TimeFilterKey): { fromDate?: string } {
   if (filter === "all") return {};
@@ -206,13 +207,24 @@ function buildPageNumbers(current: number, total: number): (number | "…")[] {
   return nums;
 }
 
-// ── Custom time-filter dropdown (native <select> ignores dark theme) ──────────
-function TimeFilterDropdown({
-  value, onChange, options,
+function FilterCount({ count }: { count?: number }) {
+  if (typeof count !== "number" || count <= 0) return null;
+  return (
+    <span className="rounded-full bg-amber-100 px-1.5 text-[10px] font-bold text-amber-700 dark:bg-amber-950/60 dark:text-amber-300">
+      {count}
+    </span>
+  );
+}
+
+// Native <select> ignores the dark theme, so filters share this menu.
+function FilterDropdown<T extends string>({
+  value, onChange, options, buttonLabel,
 }: {
-  value: TimeFilterKey;
-  onChange: (v: TimeFilterKey) => void;
-  options: { value: TimeFilterKey; label: string }[];
+  value: T;
+  onChange: (v: T) => void;
+  options: { value: T; label: string; count?: number }[];
+  /** Closed-button text. Defaults to the selected option's label. */
+  buttonLabel?: string;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -240,6 +252,7 @@ function TimeFilterDropdown({
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
         className={cn(
           "flex items-center gap-2 h-9.5 px-3 rounded-lg text-[12px] font-semibold transition-all",
           "border border-gray-200 dark:border-gray-700",
@@ -248,7 +261,8 @@ function TimeFilterDropdown({
           open && "border-primary shadow-[0_0_0_3px_rgba(108,71,255,0.1)]"
         )}
       >
-        <span>{current?.label}</span>
+        <span>{buttonLabel ?? current?.label}</span>
+        <FilterCount count={current?.count} />
         <ChevronDown
           size={13}
           className={cn("text-gray-400 transition-transform duration-150", open && "rotate-180")}
@@ -276,7 +290,10 @@ function TimeFilterDropdown({
                     : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 font-medium"
                 )}
               >
-                {opt.label}
+                <span className="inline-flex items-center gap-1.5">
+                  {opt.label}
+                  <FilterCount count={opt.count} />
+                </span>
                 {isActive && <Check size={13} className="shrink-0 text-primary" />}
               </button>
             );
@@ -383,6 +400,7 @@ export function HistoryBoard() {
   // Attempts the candidate never finished were invisible: the BE list defaults to
   // COMPLETED, so abandoned/in-progress sessions never reached this page.
   const [statusFilter, setStatusFilter] = useState<PracticeSessionStatus>("COMPLETED");
+  const [modeFilter, setModeFilter] = useState<ModeFilterKey>("all");
   const [unfinished, setUnfinished] = useState<UnfinishedSessionCounts | null>(null);
   const [page, setPage] = useState(1);
 
@@ -474,6 +492,7 @@ export function HistoryBoard() {
       fromDate,
       keyword: debouncedSearch || undefined,
       status: statusFilter,
+      isHiringAssessment: modeFilter === "all" ? undefined : modeFilter === "hiring",
     })
       .then((res) => {
         if (cancelled) return;
@@ -490,7 +509,7 @@ export function HistoryBoard() {
         if (!cancelled) setLoading(false);
       });
     return () => { cancelled = true; };
-  }, [reloadKey, timeFilter, debouncedSearch, page, statusFilter]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [reloadKey, timeFilter, debouncedSearch, page, statusFilter, modeFilter]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Chart data — uses dedicated chartSessions (50 most recent, chronological order)
   // so charts stay consistent across all pages, not just the current page's items.
@@ -577,8 +596,19 @@ export function HistoryBoard() {
     { value: "ABANDONED",   label: p.unfinished.filterAbandoned,  count: unfinished?.abandoned },
   ];
 
+  const modeOptions: { value: ModeFilterKey; label: string }[] = [
+    { value: "all",      label: p.filters.allModes },
+    { value: "practice", label: p.modePractice },
+    { value: "hiring",   label: p.modeHiring },
+  ];
+
   function handleStatusFilterChange(v: PracticeSessionStatus) {
     setStatusFilter(v);
+    setPage(1);
+  }
+
+  function handleModeFilterChange(v: ModeFilterKey) {
+    setModeFilter(v);
     setPage(1);
   }
 
@@ -669,32 +699,18 @@ export function HistoryBoard() {
           />
         </div>
 
-        {/* Status filter — abandoned / in-progress attempts were unreachable before. */}
-        <div className="flex items-center gap-1.5 flex-wrap">
-          {statusOptions.map((o) => (
-            <button
-              key={o.value}
-              type="button"
-              onClick={() => handleStatusFilterChange(o.value)}
-              aria-pressed={statusFilter === o.value}
-              className={cn(
-                "inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[12px] font-semibold transition-colors",
-                statusFilter === o.value
-                  ? "border-primary/50 bg-primary/5 text-primary dark:border-primary/40"
-                  : "border-gray-200 text-gray-600 hover:border-primary/40 hover:text-primary dark:border-gray-700 dark:text-gray-300"
-              )}
-            >
-              {o.label}
-              {typeof o.count === "number" && o.count > 0 && (
-                <span className="rounded-full bg-amber-100 px-1.5 text-[10px] font-bold text-amber-700 dark:bg-amber-950/60 dark:text-amber-300">
-                  {o.count}
-                </span>
-              )}
-            </button>
-          ))}
-        </div>
-
-        <TimeFilterDropdown
+        <FilterDropdown
+          value={modeFilter}
+          onChange={handleModeFilterChange}
+          options={modeOptions}
+          buttonLabel={modeFilter === "all" ? p.table.type : undefined}
+        />
+        <FilterDropdown
+          value={statusFilter}
+          onChange={handleStatusFilterChange}
+          options={statusOptions}
+        />
+        <FilterDropdown
           value={timeFilter}
           onChange={handleTimeFilterChange}
           options={timeOptions}
