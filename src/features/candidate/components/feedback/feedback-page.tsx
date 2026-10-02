@@ -244,6 +244,8 @@ interface FeedbackPageProps {
   isCoachSession?: boolean;
   /** Drill roadmap item (không phải diagnostic/reassessment). */
   isCoachDrill?: boolean;
+  /** Bài đánh giá lại — CTA sang tổng kết (bước 7). */
+  isCoachReassessment?: boolean;
 }
 
 export function FeedbackPage({
@@ -264,6 +266,7 @@ export function FeedbackPage({
   xpReward = null,
   isCoachSession = false,
   isCoachDrill = false,
+  isCoachReassessment = false,
 }: FeedbackPageProps) {
   const { t, lang } = useLanguage();
   const p = t.jobseekerFeedbackPage;
@@ -275,6 +278,21 @@ export function FeedbackPage({
   const [upgradeOpen, setUpgradeOpen] = useState(false);
   const [evaluatingFull, setEvaluatingFull] = useState(false);
   const [integrityReport, setIntegrityReport] = useState<AntiCheatPersistedPayload | null>(null);
+  const coachNextHref = isCoachDrill
+    ? "/candidate/coach?step=6"
+    : isCoachReassessment
+      ? "/candidate/coach?step=7"
+      : "/candidate/coach?step=5";
+  const coachNextBody = isCoachDrill
+    ? p.coachNextBodyDrill
+    : isCoachReassessment
+      ? p.coachNextBodyReassess
+      : p.coachNextBodyDiagnostic;
+  const coachNextLabel = isCoachDrill
+    ? p.coachNextPrimaryRoadmap
+    : isCoachReassessment
+      ? p.coachNextPrimaryWrapUp
+      : p.coachNextPrimaryReport;
   const hasScore = session.overallScore !== null;
   const score = session.overallScore ?? 0;
   // Admin grant Premium: accessLevel có thể còn FreeTeaser đến khi refetch xong —
@@ -362,7 +380,13 @@ export function FeedbackPage({
     <div className="w-full">
       {/* Back */}
       <Link
-        href={isCoachSession ? "/candidate/coach" : "/candidate/history"}
+        href={
+          isCoachSession
+            ? isCoachReassessment
+              ? "/candidate/coach?step=7"
+              : "/candidate/coach"
+            : "/candidate/history"
+        }
         className={cn(
           "inline-flex items-center gap-1.5 text-[13px] font-[500] hover:text-primary transition-colors mb-6",
           portalSubtextAlt
@@ -390,17 +414,17 @@ export function FeedbackPage({
             <div className="min-w-0 flex-1">
               <p className={cn("text-[14px] font-bold", portalHeadingAlt)}>{p.coachNextTitle}</p>
               <p className={cn("text-[13px] mt-1 leading-5", portalSubtextAlt)}>
-                {isCoachDrill ? p.coachNextBodyDrill : p.coachNextBodyDiagnostic}
+                {coachNextBody}
               </p>
               <div className="flex flex-wrap gap-2 mt-3">
                 <Link
-                  href={isCoachDrill ? "/candidate/coach?step=6" : "/candidate/coach?step=5"}
+                  href={coachNextHref}
                   className="shimmer-button inline-flex items-center gap-2 h-9 px-4 text-[13px] font-semibold text-white hr-cta-btn rounded-lg"
                 >
-                  {isCoachDrill ? p.coachNextPrimaryRoadmap : p.coachNextPrimaryReport}
+                  {coachNextLabel}
                   <ArrowRight size={14} />
                 </Link>
-                {!isCoachDrill && (
+                {!isCoachDrill && !isCoachReassessment && (
                   <Link
                     href="/candidate/coach?step=6"
                     className="inline-flex items-center gap-2 h-9 px-4 text-[13px] font-semibold rounded-lg border border-gray-200 dark:border-gray-700 hover:border-primary/40 transition-colors"
@@ -616,10 +640,10 @@ export function FeedbackPage({
         <div className="flex sm:flex-col gap-2 shrink-0 w-full sm:w-auto">
           {isCoachSession ? (
             <Link
-              href={isCoachDrill ? "/candidate/coach?step=6" : "/candidate/coach?step=5"}
+              href={coachNextHref}
               className="shimmer-button flex items-center gap-2 h-9 px-4 text-[13px] font-semibold text-white hr-cta-btn rounded-lg"
             >
-              {isCoachDrill ? p.coachNextPrimaryRoadmap : p.coachNextPrimaryReport}
+              {coachNextLabel}
               <ArrowRight size={13} />
             </Link>
           ) : (

@@ -3194,6 +3194,9 @@ Yêu cầu:
     deltaLabel: "Thay đổi readiness",
     phaseCvTitle: "CV",
     phaseCvDesc: "Tải CV để hệ thống đọc kỹ năng và chuẩn bị đề — chưa gắn level năng lực.",
+    cvLanguageTitle: "Ngôn ngữ câu hỏi",
+    cvLanguageHint: "Câu hỏi và nhận xét AI sẽ dùng ngôn ngữ này. Questions and feedback will use this language.",
+    cvLanguageRequired: "Hãy chọn Tiếng Việt hoặc English trước khi tiếp tục.",
     phaseAnalysisTitle: "Phân tích CV",
     phaseAnalysisDesc: "Xem tóm tắt, kỹ năng và vai trò gợi ý trước khi xác nhận mục tiêu.",
     phaseGoalTitle: "Xác nhận mục tiêu",
@@ -3627,7 +3630,10 @@ Yêu cầu:
       "Bài chẩn đoán đã được chấm. Mở báo cáo năng lực để xem readiness, khoảng trống kỹ năng và lộ trình luyện tập.",
     coachNextBodyDrill:
       "Bạn vừa hoàn thành một mục drill. Quay lại lộ trình để tiếp tục các mục còn lại hoặc mở cổng đánh giá lại.",
+    coachNextBodyReassess:
+      "Bài đánh giá lại đã được chấm. Mở tổng kết để xem kết quả sau luyện tập.",
     coachNextPrimaryReport: "Xem báo cáo năng lực",
+    coachNextPrimaryWrapUp: "Xem tổng kết",
     coachNextPrimaryRoadmap: "Tiếp tục lộ trình",
     coachNextSecondaryRoadmap: "Xem lộ trình kỹ năng",
     scoringInProgress: "AI vẫn đang chấm điểm câu trả lời của bạn — có thể mất một chút thời gian. Câu trả lời của bạn đã được lưu bên dưới.",

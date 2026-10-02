@@ -66,6 +66,11 @@ export function isCoachDrillTitle(title?: string | null): boolean {
   return /^drill\b/i.test((title ?? "").trim());
 }
 
+/** Bài đánh giá lại — CTA về bước tổng kết, không về báo cáo chẩn đoán. */
+export function isCoachReassessmentTitle(title?: string | null): boolean {
+  return /re-?assess/i.test(title ?? "");
+}
+
 export function writeCoachJobEntry(entry: CoachJobEntry | null) {
   if (typeof window === "undefined") return;
   if (!entry) {

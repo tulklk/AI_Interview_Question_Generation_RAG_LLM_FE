@@ -162,6 +162,8 @@ export interface CoachContext {
   contextConfirmed: boolean;
   contextConfirmedAt?: string | null;
   hasCv: boolean;
+  /** English | Vietnamese — null nếu chưa chọn ở bước CV. */
+  outputLanguage?: "English" | "Vietnamese" | null;
   matchedFrameworkRole?: string | null;
   matchedFrameworkLevel?: string | null;
   matchedFrameworkId?: string | null;
@@ -412,6 +414,11 @@ function mapContext(src: Record<string, unknown> | null): CoachContext {
     contextConfirmed: pickBool(src, "contextConfirmed", "ContextConfirmed"),
     contextConfirmedAt: pickString(src, "contextConfirmedAt", "ContextConfirmedAt") || null,
     hasCv: pickBool(src, "hasCv", "HasCv"),
+    outputLanguage: (() => {
+      const raw = pickString(src, "outputLanguage", "OutputLanguage");
+      if (raw === "English" || raw === "Vietnamese") return raw;
+      return null;
+    })(),
     matchedFrameworkRole: pickString(src, "matchedFrameworkRole", "MatchedFrameworkRole") || null,
     matchedFrameworkLevel: pickString(src, "matchedFrameworkLevel", "MatchedFrameworkLevel") || null,
     matchedFrameworkId: pickString(src, "matchedFrameworkId", "MatchedFrameworkId") || null,
@@ -645,6 +652,13 @@ export async function listCoachFrameworks(): Promise<CoachFrameworkOption[]> {
   const root = asRecord(res.data);
   const raw = root?.data ?? root?.Data ?? res.data;
   return mapFrameworkOptions(raw);
+}
+
+export async function updateCoachOutputLanguage(
+  outputLanguage: "English" | "Vietnamese"
+): Promise<CoachContext> {
+  const res = await apiClient.put("/api/candidate/coach/output-language", { outputLanguage });
+  return mapContext(extractData(res.data));
 }
 
 export async function updateCoachContext(payload: UpdateCoachContextPayload): Promise<CoachContext> {

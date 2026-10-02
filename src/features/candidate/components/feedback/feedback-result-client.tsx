@@ -30,7 +30,7 @@ import { useLanguage } from "@/shared/providers/language-context";
 import { portalSubtextAlt } from "@/shared/utils/portal-ui";
 import { registerScoringSession, markScoringDone, removeScoringEntry } from "@/features/candidate/components/ui/scoring-progress-badge";
 import { cleanTitle } from "@/features/candidate/utils/clean-title";
-import { isCoachGeneratedSetId, isCoachDrillTitle, looksLikeCoachSet } from "@/features/candidate/utils/coach-job-storage";
+import { isCoachGeneratedSetId, isCoachDrillTitle, isCoachReassessmentTitle, looksLikeCoachSet, readCoachJobEntry } from "@/features/candidate/utils/coach-job-storage";
 import type { XpReward } from "@/features/gamification/types/gamification.types";
 
 // AI scoring can still be in progress right after "complete" — the score comes
@@ -379,7 +379,14 @@ export function FeedbackResultClient() {
               coachModeParam ||
               Boolean(session.questionSetId && isCoachGeneratedSetId(session.questionSetId)) ||
               looksLikeCoachSet(set?.title, set?.company);
-            const drill = coach && isCoachDrillTitle(set?.title);
+            const stored = readCoachJobEntry();
+            const reassess =
+              coach &&
+              !isCoachDrillTitle(set?.title) &&
+              (isCoachReassessmentTitle(set?.title) ||
+                (stored?.questionSetId === session.questionSetId &&
+                  /reassess/i.test(stored.purpose ?? "")));
+            const drill = coach && isCoachDrillTitle(set?.title) && !reassess;
             return (
           <FeedbackPage
             session={session}
@@ -399,6 +406,7 @@ export function FeedbackResultClient() {
             xpReward={coach ? null : xpReward}
             isCoachSession={coach}
             isCoachDrill={drill}
+            isCoachReassessment={reassess}
           />
             );
           })()}

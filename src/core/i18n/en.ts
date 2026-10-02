@@ -3194,6 +3194,9 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
     deltaLabel: "Readiness change",
     phaseCvTitle: "CV",
     phaseCvDesc: "Upload your CV so we can read skills and prepare the diagnostic — not assign a competency level yet.",
+    cvLanguageTitle: "Question language",
+    cvLanguageHint: "Câu hỏi và nhận xét AI sẽ dùng ngôn ngữ này. Questions and feedback will use this language.",
+    cvLanguageRequired: "Choose Tiếng Việt or English before continuing.",
     phaseAnalysisTitle: "CV analysis",
     phaseAnalysisDesc: "Review summary, skills, and suggested role before confirming goals.",
     phaseGoalTitle: "Confirm goals",
@@ -3625,7 +3628,10 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
       "Your diagnostic is scored. Open the competency report to see readiness, skill gaps, and your practice roadmaps.",
     coachNextBodyDrill:
       "You finished a drill item. Return to the roadmap to continue remaining items or unlock re-assessment.",
+    coachNextBodyReassess:
+      "Your re-assessment is scored. Open the wrap-up to see the result after practice.",
     coachNextPrimaryReport: "View competency report",
+    coachNextPrimaryWrapUp: "View wrap-up",
     coachNextPrimaryRoadmap: "Continue roadmap",
     coachNextSecondaryRoadmap: "View skill roadmaps",
     scoringInProgress: "AI is still scoring your answers — this can take a bit. Your answers below are already saved.",

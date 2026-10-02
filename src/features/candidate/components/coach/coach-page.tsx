@@ -82,6 +82,7 @@ export function CoachPage() {
         cv={w.cv}
         hasExistingCv={Boolean(w.hasCv || w.context?.hasCv)}
         uploading={w.uploadingCv}
+        outputLanguage={w.context?.outputLanguage ?? null}
         onUpload={w.handleUploadCv}
         onContinueWithExisting={w.handleContinueWithExistingCv}
       />
