@@ -539,6 +539,31 @@ export async function publishProject(
   });
 }
 
+export interface TechSkillCatalogItemDto {
+  name: string;
+  label: string;
+  group: string;
+  aliases: string[];
+}
+
+/** Catalog TechSkill cho dropdown focus — một nguồn với enum backend. */
+export async function listTechSkills(): Promise<TechSkillCatalogItemDto[]> {
+  const { data } = await apiClient.get<unknown>("/api/studio/tech-skills");
+  const rows = Array.isArray(data) ? data : [];
+  return rows
+    .map((item) => {
+      const rec = item && typeof item === "object" ? (item as Record<string, unknown>) : {};
+      const aliasesRaw = rec.aliases ?? rec.Aliases;
+      return {
+        name: String(rec.name ?? rec.Name ?? ""),
+        label: String(rec.label ?? rec.Label ?? ""),
+        group: String(rec.group ?? rec.Group ?? ""),
+        aliases: Array.isArray(aliasesRaw) ? aliasesRaw.map((alias) => String(alias)) : [],
+      };
+    })
+    .filter((item) => item.label.length > 0);
+}
+
 export async function unpublishProject(projectId: string): Promise<number> {
   const { data } = await apiClient.post<unknown>(`/api/studio/projects/${projectId}/unpublish`);
   const rec = data && typeof data === "object" ? (data as Record<string, unknown>) : {};

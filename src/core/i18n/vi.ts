@@ -5263,8 +5263,8 @@ Yêu cầu:
         focusInvalid: "Tổng trọng số focus phải ~100%.",
         addFocus: "Thêm focus area",
         newFocusName: "Focus mới",
-        focusAllSkillsUsed:
-          "Đã dùng hết kỹ năng trên JD — thêm kỹ năng ở cột nguồn nếu cần focus mới.",
+        focusSuggest: "Gợi ý từ JD",
+        focusAllSkillsUsed: "Đã chọn hết skill trong danh mục.",
         stylesHint: "Chọn phong cách câu hỏi (ít nhất 1).",
         stylesMinOne: "Chọn ít nhất 1 phong cách.",
         codingSection: "Loại bài code",
@@ -5305,7 +5305,7 @@ Yêu cầu:
         outlineRelabeledHint: "Đã đổi skill — Lý do hỏi và nguồn đi theo skill mới.",
         outlineWhyAskedAutoPlaceholder: "Để trống để hệ thống tự viết theo skill mới khi Áp dụng, hoặc tự nhập…",
         focusFromSourcesHint:
-          "Chỉ chọn tech đã lưu trên JD. Thiếu skill → thêm ở cột nguồn rồi chọn lại.",
+          "Chọn skill trong danh mục. Tag gợi ý là skill JD khớp danh mục và chưa có trong focus.",
         frameSection: "Khung phỏng vấn",
         fixedTotalLabel: "Tổng {{count}} câu",
       },

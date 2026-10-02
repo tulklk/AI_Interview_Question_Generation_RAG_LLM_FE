@@ -13,7 +13,8 @@ import {
   syncDistributionCounts,
   validateDistributionSum,
 } from "@/features/studio/utils/distribution-math";
-import { normalizeFocusAreasToJdSkills } from "@/features/studio/utils/focus-area-jd";
+import { normalizeFocusAreasToTechSkills, type TechSkillCatalogItem } from "@/features/studio/utils/focus-area-jd";
+import { useTechSkillCatalog } from "@/features/studio/hooks/use-tech-skill-catalog";
 import { normalizeStudioDifficulty } from "@/features/studio/utils/normalize-studio-settings";
 import { QuestionDistributionEditor } from "@/features/studio/components/question-distribution-editor";
 import { FocusAreasEditor } from "@/features/studio/components/focus-areas-editor";
@@ -101,19 +102,19 @@ function PlanReviewPanel({
   );
 }
 
-/** SCRUM-433: Snap focus RAG → skill JD, merge/dedupe, scale 100%. */
+/** Snap focus plan về nhãn TechSkill, gộp trùng, không seed cả JD. */
 function mapPlanFocus(
   areas: PlanFocusAreaItem[],
-  jdSkills: string[]
+  catalog: TechSkillCatalogItem[]
 ): StudioFocusAreaItem[] {
-  return normalizeFocusAreasToJdSkills(
+  return normalizeFocusAreasToTechSkills(
     areas.map((a, i) => ({
       name: a.name,
       weight: a.weight,
       orderIndex: a.orderIndex ?? i,
       sourceReason: a.sourceFiles?.slice(0, 3).join(", ") ?? null,
     })),
-    jdSkills
+    catalog
   );
 }
 
@@ -163,18 +164,20 @@ export function PlanReviewItBlock({
   const enabledTemplates = draft?.enabledCodeTemplates ?? settings?.enabledCodeTemplates ?? [];
   const codingRecommended = settings?.recommendedConfiguration?.codingTasksRecommended;
 
+  const techCatalog = useTechSkillCatalog();
   const settingsFocus = draft?.focusAreas ?? settings?.focusAreas ?? [];
   const focusAreas =
     settingsFocus.length > 0
       ? settingsFocus
-      : mapPlanFocus(plan.focusAreas ?? [], allowedSkillNames);
+      : mapPlanFocus(plan.focusAreas ?? [], techCatalog);
 
   useEffect(() => {
     if ((draft?.focusAreas?.length ?? 0) > 0) return;
-    const fromPlan = mapPlanFocus(plan.focusAreas ?? [], allowedSkillNames);
+    if (techCatalog.length === 0) return;
+    const fromPlan = mapPlanFocus(plan.focusAreas ?? [], techCatalog);
     if (fromPlan.length === 0) return;
     onDraftChange({ focusAreas: fromPlan });
-  }, [plan.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [plan.id, techCatalog.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!editable || distribution.length === 0) return;
@@ -270,7 +273,7 @@ export function PlanReviewItBlock({
           <p className={cn("text-[10px]", portalSubtext)}>{cfg.focusFromSourcesHint}</p>
           <FocusAreasEditor
             focusAreas={focusAreas}
-            allowedSkillNames={allowedSkillNames}
+            jdSkills={allowedSkillNames}
             disabled={!editable}
             onChange={(next) => onDraftChange({ focusAreas: next })}
           />

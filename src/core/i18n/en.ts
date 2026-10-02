@@ -5265,8 +5265,8 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
         focusInvalid: "Focus weights must sum to ~100%.",
         addFocus: "Add focus area",
         newFocusName: "New focus",
-        focusAllSkillsUsed:
-          "All JD skills are already used — add skills in the sources column if you need another focus.",
+        focusSuggest: "Suggested from JD",
+        focusAllSkillsUsed: "Every catalog skill is already selected.",
         stylesHint: "Pick question styles (at least one).",
         stylesMinOne: "Select at least 1 style.",
         codingSection: "Coding task types",
@@ -5307,7 +5307,7 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
         outlineRelabeledHint: "Skill changed — Why ask and sources now follow the new skill.",
         outlineWhyAskedAutoPlaceholder: "Leave empty to auto-write it for the new skill on Apply, or type your own…",
         focusFromSourcesHint:
-          "Pick only tech saved on the JD. Missing a skill? Add it in the sources column first.",
+          "Pick a skill from the catalog. Suggestion tags are JD skills that match the catalog and are not in the list yet.",
         frameSection: "Interview frame",
         fixedTotalLabel: "Total {{count}} questions",
       },
