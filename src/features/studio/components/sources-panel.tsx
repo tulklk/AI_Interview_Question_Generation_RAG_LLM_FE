@@ -17,7 +17,10 @@ import {
 import type { AnalyzeJobDescriptionResponse, StudioDocument, StudioLibraryDocument, StudioKnowledgeSuggestion } from "@/features/studio/types/studio.types";
 import * as studioApi from "@/features/studio/services/studio.service";
 import { SampleJdModal } from "@/features/studio/components/sample-jd-modal";
+import { TechSkillCombobox } from "@/features/studio/components/tech-skill-combobox";
 import { SourceOriginBadge, useSourceOriginLabels } from "@/features/studio/components/source-origin-badge";
+import { useTechSkillCatalog } from "@/features/studio/hooks/use-tech-skill-catalog";
+import { matchTechSkill } from "@/features/studio/utils/focus-area-jd";
 import { formatDetectedLanguage } from "@/features/studio/utils/format-detected-language";
 import { cn } from "@/lib/cn";
 import { getSkillIcon } from "@/features/candidate/utils/skill-icons";
@@ -188,8 +191,8 @@ export function SourcesPanel({
   const [roleDraft, setRoleDraft] = useState("");
   const [levelDraft, setLevelDraft] = useState("");
   const [skillsDraft, setSkillsDraft] = useState<string[]>([]);
-  const [skillInput, setSkillInput] = useState("");
   const [editingSkillIndex, setEditingSkillIndex] = useState<number | null>(null);
+  const techCatalog = useTechSkillCatalog();
   const [respExpanded, setRespExpanded] = useState(false);
   const [savingMetadata, setSavingMetadata] = useState(false);
   const [libraryDocs, setLibraryDocs] = useState<StudioLibraryDocument[]>([]);
@@ -207,9 +210,28 @@ export function SourcesPanel({
     setRoleDraft(summary?.detectedRole?.trim() || "");
     setLevelDraft(summary?.detectedSeniority?.trim() || "");
     setSkillsDraft(Array.isArray(summary?.skills) ? [...summary.skills] : []);
-    setSkillInput("");
     setEditingSkillIndex(null);
   }, [summary?.position, summary?.detectedRole, summary?.detectedSeniority, summary?.skills]);
+
+  // SCRUM-511: snap alias AI (vd. csharp) về label catalog; skill không khớp thì giữ nguyên để HR xóa/đổi.
+  useEffect(() => {
+    if (techCatalog.length === 0 || skillsDraft.length === 0) return;
+    const seen = new Set<string>();
+    let changed = false;
+    const next: string[] = [];
+    for (const skill of skillsDraft) {
+      const matched = matchTechSkill(skill, techCatalog) ?? skill;
+      if (matched !== skill) changed = true;
+      const key = matched.trim().toLowerCase();
+      if (seen.has(key)) {
+        changed = true;
+        continue;
+      }
+      seen.add(key);
+      next.push(matched);
+    }
+    if (changed) setSkillsDraft(next);
+  }, [techCatalog, skillsDraft]);
 
   const skillsEqual = useCallback((a: string[], b: string[]) => {
     if (a.length !== b.length) return false;
@@ -246,40 +268,41 @@ export function SourcesPanel({
       metadataDirty
   );
 
-  const addSkill = useCallback(() => {
-    const next = skillInput.trim();
-    if (!next) return;
-    const exists = skillsDraft.some((s) => s.toLowerCase() === next.toLowerCase());
-    if (exists) {
-      setSkillInput("");
-      return;
-    }
+  const addCatalogSkill = useCallback((label: string) => {
+    const canonical = matchTechSkill(label, techCatalog);
+    if (!canonical) return;
+    if (skillsDraft.some((s) => s.toLowerCase() === canonical.toLowerCase())) return;
     if (skillsDraft.length >= 20) {
       addToast("error", src.skillsMaxHint);
       return;
     }
-    setSkillsDraft((prev) => [...prev, next]);
-    setSkillInput("");
-  }, [addToast, skillInput, skillsDraft, src.skillsMaxHint]);
+    setSkillsDraft((prev) => [...prev, canonical]);
+  }, [addToast, skillsDraft, src.skillsMaxHint, techCatalog]);
 
   const removeSkill = useCallback((index: number) => {
     setSkillsDraft((prev) => prev.filter((_, i) => i !== index));
     if (editingSkillIndex === index) setEditingSkillIndex(null);
   }, [editingSkillIndex]);
 
-  const commitEditSkill = useCallback((index: number, value: string) => {
-    const trimmed = value.trim();
+  const replaceCatalogSkill = useCallback((index: number, label: string) => {
+    const canonical = matchTechSkill(label, techCatalog);
     setEditingSkillIndex(null);
-    if (!trimmed) {
-      removeSkill(index);
-      return;
-    }
+    if (!canonical) return;
     setSkillsDraft((prev) => {
-      const dup = prev.some((s, i) => i !== index && s.toLowerCase() === trimmed.toLowerCase());
+      const dup = prev.some((s, i) => i !== index && s.toLowerCase() === canonical.toLowerCase());
       if (dup) return prev;
-      return prev.map((s, i) => (i === index ? trimmed : s));
+      return prev.map((s, i) => (i === index ? canonical : s));
     });
-  }, [removeSkill]);
+  }, [techCatalog]);
+
+  const usedSkillLabels = useMemo(
+    () => new Set(skillsDraft.map((skill) => skill.trim().toLowerCase())),
+    [skillsDraft]
+  );
+  const addableSkills = useMemo(
+    () => techCatalog.filter((item) => !usedSkillLabels.has(item.label.toLowerCase())),
+    [techCatalog, usedSkillLabels]
+  );
 
   const handleSaveMetadata = useCallback(async () => {
     const position = positionDraft.trim();
@@ -679,49 +702,65 @@ export function SourcesPanel({
                   </span>
                 </div>
                 <p className={cn("text-[10px] leading-snug", portalSubtext)}>{src.skillsEditHint}</p>
+                <p className={cn("text-[10px] leading-snug", portalSubtext)}>{src.skillsCatalogHint}</p>
                 <div className="grid grid-cols-2 gap-1.5">
                   {skillsDraft.map((skill, idx) => {
-                    const skillIcon = editingSkillIndex === idx ? null : getSkillIcon(skill);
+                    const inCatalog = matchTechSkill(skill, techCatalog) === skill;
+                    if (editingSkillIndex === idx) {
+                      const blocked = new Set(
+                        skillsDraft
+                          .filter((_, i) => i !== idx)
+                          .map((name) => name.trim().toLowerCase())
+                      );
+                      const replaceOptions = techCatalog.filter(
+                        (item) => !blocked.has(item.label.toLowerCase())
+                      );
+                      return (
+                        <div key={`${skill}-${idx}`} className="col-span-2">
+                          <TechSkillCombobox
+                            autoFocus
+                            items={replaceOptions}
+                            disabled={jdBlocked || !hasMetadataSaveHandler}
+                            placeholder={src.skillsCatalogReplacePlaceholder}
+                            emptyLabel={src.skillsCatalogEmpty}
+                            onSelect={(label) => replaceCatalogSkill(idx, label)}
+                            onCancel={() => setEditingSkillIndex(null)}
+                          />
+                        </div>
+                      );
+                    }
+                    const skillIcon = getSkillIcon(skill);
                     const SIcon = skillIcon?.icon;
                     return (
                     <span
                       key={`${skill}-${idx}`}
-                      className="inline-flex min-w-0 w-full items-center gap-0.5 rounded-full bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-900 dark:bg-gray-800 dark:text-gray-100"
-                    >
-                      {editingSkillIndex === idx ? (
-                        <input
-                          autoFocus
-                          defaultValue={skill}
-                          maxLength={80}
-                          disabled={jdBlocked}
-                          className="min-w-0 flex-1 rounded bg-white px-1 py-0 text-[10px] text-gray-900 outline-none dark:bg-gray-900 dark:text-gray-100"
-                          onBlur={(e) => commitEditSkill(idx, e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") {
-                              e.preventDefault();
-                              commitEditSkill(idx, (e.target as HTMLInputElement).value);
-                            }
-                            if (e.key === "Escape") setEditingSkillIndex(null);
-                          }}
-                        />
-                      ) : (
-                        <button
-                          type="button"
-                          disabled={jdBlocked}
-                          className="inline-flex min-w-0 flex-1 items-center gap-1 truncate text-left disabled:opacity-50"
-                          onClick={() => setEditingSkillIndex(idx)}
-                          title={src.skillsEditTag}
-                        >
-                          {SIcon ? (
-                            <SIcon
-                              aria-hidden
-                              size={11}
-                              className={cn("shrink-0", skillIcon!.className)}
-                            />
-                          ) : null}
-                          <span className="truncate">{skill}</span>
-                        </button>
+                      className={cn(
+                        "inline-flex min-w-0 w-full items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-medium",
+                        inCatalog || techCatalog.length === 0
+                          ? "bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-gray-100"
+                          : "bg-amber-50 text-amber-900 dark:bg-amber-950/40 dark:text-amber-100"
                       )}
+                    >
+                      <button
+                        type="button"
+                        disabled={jdBlocked}
+                        className="inline-flex min-w-0 flex-1 items-center gap-1 truncate text-left disabled:opacity-50"
+                        onClick={() => setEditingSkillIndex(idx)}
+                        title={
+                          inCatalog || techCatalog.length === 0
+                            ? src.skillsEditTag
+                            : src.skillsCatalogUnmapped
+                        }
+                      >
+                        {SIcon ? (
+                          <SIcon
+                            aria-hidden
+                            size={11}
+                            className={cn("shrink-0", skillIcon!.className)}
+                          />
+                        ) : null}
+                        <span className="truncate">{skill}</span>
+                      </button>
                       <button
                         type="button"
                         disabled={jdBlocked}
@@ -735,31 +774,16 @@ export function SourcesPanel({
                     );
                   })}
                 </div>
-                <div className="flex gap-1.5">
-                  <input
-                    type="text"
-                    value={skillInput}
-                    maxLength={80}
-                    disabled={jdBlocked || !hasMetadataSaveHandler}
-                    onChange={(e) => setSkillInput(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        e.preventDefault();
-                        addSkill();
-                      }
-                    }}
-                    placeholder={src.skillsAddPlaceholder}
-                    className="min-w-0 flex-1 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-[11px] text-gray-900 placeholder:text-gray-400 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/20 disabled:opacity-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
-                  />
-                  <button
-                    type="button"
-                    disabled={jdBlocked || !skillInput.trim() || !hasMetadataSaveHandler}
-                    onClick={addSkill}
-                    className="shrink-0 rounded-lg border border-primary/30 bg-primary/10 px-2.5 py-1.5 text-[11px] font-medium text-primary disabled:opacity-40 hover:bg-primary/15"
-                  >
-                    +
-                  </button>
-                </div>
+                <TechSkillCombobox
+                  items={addableSkills}
+                  disabled={jdBlocked || !hasMetadataSaveHandler || skillsDraft.length >= 20 || techCatalog.length === 0}
+                  placeholder={src.skillsCatalogPlaceholder}
+                  emptyLabel={src.skillsCatalogEmpty}
+                  onSelect={addCatalogSkill}
+                />
+                {skillsDraft.length >= 20 ? (
+                  <p className="text-[10px] font-medium text-amber-700 dark:text-amber-300">{src.skillsMaxHint}</p>
+                ) : null}
               </div>
 
               <div className="flex items-center justify-between gap-2 pt-0.5">

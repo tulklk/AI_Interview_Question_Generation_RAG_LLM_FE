@@ -30,8 +30,8 @@ export function UserFilters({ filters, onFiltersChange, onClearFilters }: UserFi
   const roles: { value: RoleFilterValue; label: string }[] = [
     { value: "all", label: f.allRoles },
     { value: "ADMIN", label: roleLabels.ADMIN },
-    { value: "HR_MANAGER", label: roleLabels.HR_MANAGER },
-    { value: "JOB_SEEKER", label: roleLabels.JOB_SEEKER },
+    { value: "HR_MANAGER", label: f.roleHr },
+    { value: "JOB_SEEKER", label: f.roleCandidate },
   ];
 
   const statuses: { value: StatusFilterValue; label: string }[] = [

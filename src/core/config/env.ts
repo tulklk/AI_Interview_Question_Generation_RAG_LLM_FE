@@ -13,8 +13,10 @@ export function getAuthRefreshPath(): string {
 }
 
 export function getLoginPath(): string {
-  const path = process.env.NEXT_PUBLIC_APP_LOGIN_PATH ?? "/login";
-  return path.startsWith("/") ? path : `/${path}`;
+  const raw = process.env.NEXT_PUBLIC_APP_LOGIN_PATH ?? "/login";
+  const path = raw.startsWith("/") ? raw : `/${raw}`;
+  if (path === "/") return "/";
+  return path.endsWith("/") ? path : `${path}/`;
 }
 
 export function getRagBaseUrl(): string {
