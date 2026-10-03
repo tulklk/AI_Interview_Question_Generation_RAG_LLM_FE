@@ -2813,6 +2813,19 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
           "The diagnostic adds short questions for each CV skill outside the core set so the roadmap covers the whole CV. It does not change level. Skills over the limit are offered a screening after the report.",
         screeningQPerSkill: "Quick-check questions per skill",
         screeningMaxSkills: "Maximum quick-check skills (up to 30)",
+        sectionAdvanced: "Advanced",
+        sectionAdvancedHint: "Weak-answer remix, diagnostic exam, and CV skill coverage.",
+        diagnosticTotalHelpTitle: "How diagnostic total is calculated",
+        diagnosticTotalHelpAria: "Explain how the diagnostic question total is calculated",
+        diagnosticTotalHelpFormula:
+          "Diagnostic total = (core skills × questions per skill) + (quick-check skills × quick-check questions per skill)",
+        diagnosticTotalHelpCore:
+          'Core skills: with a competency framework → framework skills that overlap the CV, from "Minimum skills" to "Maximum skills (framework)". Without a framework → up to "Maximum skills (adaptive)", taken from the CV.',
+        diagnosticTotalHelpPerSkill:
+          'Questions per skill = "Questions per skill". If (skills × questions/skill) < "Minimum total questions", raise to ⌈minimum ÷ skills⌉ (cap 6).',
+        diagnosticTotalHelpQuick:
+          'Quick-check: CV skills outside the core set, capped by "CV skill coverage". Does not affect level.',
+        diagnosticTotalHelpExample: "Example: 15 skills × 3 questions + 12 skills × 1 question = 57 questions.",
       },
       general: {
         title: "General Settings",

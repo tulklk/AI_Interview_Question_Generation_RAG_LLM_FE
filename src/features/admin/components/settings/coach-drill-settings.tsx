@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Loader2, RefreshCw, Save, GraduationCap } from "lucide-react";
+import { ChevronDown, Loader2, RefreshCw, Save, GraduationCap } from "lucide-react";
 import { FormField } from "@/shared/components/ui/form-field";
 import { Toggle } from "@/shared/components/ui/toggle";
 import { useLanguage } from "@/shared/providers/language-context";
@@ -19,6 +19,7 @@ import {
   updateCompetencyScoringPolicy,
   type CompetencyScoringPolicy,
 } from "@/features/admin/services/admin-competency-policy.service";
+import { ScoreHelp } from "@/features/candidate/components/ui/score-help";
 
 const inputCls = cn(
   portalInput,
@@ -67,6 +68,8 @@ export function CoachDrillSettings() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [loadError, setLoadError] = useState(false);
+  // Advanced (remix / diagnostic / screening) đóng mặc định để UI gọn hơn.
+  const [advancedOpen, setAdvancedOpen] = useState(false);
 
   async function load() {
     setLoading(true);
@@ -222,118 +225,6 @@ export function CoachDrillSettings() {
 
       <section className="space-y-3">
         <p className={cn("text-[12px] font-semibold uppercase tracking-wide", portalSubtextAlt)}>
-          {c.sectionRemix}
-        </p>
-        <div className="flex items-center justify-between gap-3 rounded-lg border border-gray-100 px-3 py-2.5 dark:border-gray-800">
-          <div>
-            <p className={cn("text-[13px] font-medium", portalHeadingAlt)}>{c.remixEnabled}</p>
-            <p className={cn("text-[11px]", portalSubtextAlt)}>{c.remixEnabledHint}</p>
-          </div>
-          <Toggle
-            checked={policy.drillRemixEnabled}
-            onChange={(v) => setPolicy((p) => ({ ...p, drillRemixEnabled: v }))}
-          />
-        </div>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <FormField label={c.remixRatio} htmlFor="drill-remix-ratio">
-            <input
-              id="drill-remix-ratio"
-              type="number"
-              min={0}
-              max={1}
-              step={0.05}
-              value={policy.drillRemixRatio}
-              onChange={(e) => setNum("drillRemixRatio", e.target.value)}
-              className={inputCls}
-              disabled={!policy.drillRemixEnabled}
-            />
-          </FormField>
-          <FormField label={c.weakAnswerMax} htmlFor="drill-weak-answer">
-            <input
-              id="drill-weak-answer"
-              type="number"
-              min={1}
-              max={99}
-              value={policy.drillWeakAnswerScoreMaxExclusive}
-              onChange={(e) => setNum("drillWeakAnswerScoreMaxExclusive", e.target.value)}
-              className={inputCls}
-              disabled={!policy.drillRemixEnabled}
-            />
-            <p className={cn("mt-1 text-[11px]", portalSubtextAlt)}>{c.weakAnswerMaxHint}</p>
-          </FormField>
-        </div>
-      </section>
-
-      <div className={cn("h-px", portalDivider)} />
-
-      <section className="space-y-3">
-        <p className={cn("text-[12px] font-semibold uppercase tracking-wide", portalSubtextAlt)}>
-          {c.sectionDiagnostic}
-        </p>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <FormField label={c.diagnosticQPerSkill} htmlFor="diag-q-per-skill">
-            <input
-              id="diag-q-per-skill"
-              type="number"
-              min={2}
-              max={6}
-              value={policy.diagnosticQuestionsPerSkill}
-              onChange={(e) => setNum("diagnosticQuestionsPerSkill", e.target.value)}
-              className={inputCls}
-            />
-            <p className={cn("mt-1 text-[11px]", portalSubtextAlt)}>{c.diagnosticQPerSkillHint}</p>
-          </FormField>
-          <FormField label={c.diagnosticMinTotal} htmlFor="diag-min-total">
-            <input
-              id="diag-min-total"
-              type="number"
-              min={0}
-              max={60}
-              value={policy.diagnosticMinTotalQuestions}
-              onChange={(e) => setNum("diagnosticMinTotalQuestions", e.target.value)}
-              className={inputCls}
-            />
-          </FormField>
-          <FormField label={c.diagnosticMinSkills} htmlFor="diag-min-skills">
-            <input
-              id="diag-min-skills"
-              type="number"
-              min={1}
-              max={12}
-              value={policy.diagnosticMinSkills}
-              onChange={(e) => setNum("diagnosticMinSkills", e.target.value)}
-              className={inputCls}
-            />
-          </FormField>
-          <FormField label={c.diagnosticMaxSkills} htmlFor="diag-max-skills">
-            <input
-              id="diag-max-skills"
-              type="number"
-              min={1}
-              max={12}
-              value={policy.diagnosticMaxSkills}
-              onChange={(e) => setNum("diagnosticMaxSkills", e.target.value)}
-              className={inputCls}
-            />
-          </FormField>
-          <FormField label={c.diagnosticMaxAdaptive} htmlFor="diag-max-adaptive">
-            <input
-              id="diag-max-adaptive"
-              type="number"
-              min={1}
-              max={20}
-              value={policy.diagnosticMaxAdaptiveSkills}
-              onChange={(e) => setNum("diagnosticMaxAdaptiveSkills", e.target.value)}
-              className={inputCls}
-            />
-          </FormField>
-        </div>
-      </section>
-
-      <div className={cn("h-px", portalDivider)} />
-
-      <section className="space-y-3">
-        <p className={cn("text-[12px] font-semibold uppercase tracking-wide", portalSubtextAlt)}>
           {c.sectionReassessment}
         </p>
         <FormField label={c.reassessmentQPerSkill} htmlFor="reassess-q-per-skill">
@@ -352,46 +243,201 @@ export function CoachDrillSettings() {
 
       <div className={cn("h-px", portalDivider)} />
 
+      {/* Advanced: remix / diagnostic / screening — đóng mặc định */}
       <section className="space-y-3">
-        <p className={cn("text-[12px] font-semibold uppercase tracking-wide", portalSubtextAlt)}>
-          {c.sectionScreening}
-        </p>
-        <div className="flex items-center justify-between gap-3 rounded-lg border border-gray-100 px-3 py-2.5 dark:border-gray-800">
+        <button
+          type="button"
+          onClick={() => setAdvancedOpen((v) => !v)}
+          aria-expanded={advancedOpen}
+          className="flex w-full items-center justify-between gap-2 rounded-lg border border-gray-100 px-3 py-2.5 text-left transition-colors hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-gray-900/60"
+        >
           <div>
-            <p className={cn("text-[13px] font-medium", portalHeadingAlt)}>{c.screeningEnabled}</p>
-            <p className={cn("text-[11px]", portalSubtextAlt)}>{c.screeningEnabledHint}</p>
+            <p className={cn("text-[12px] font-semibold uppercase tracking-wide", portalSubtextAlt)}>
+              {c.sectionAdvanced}
+            </p>
+            <p className={cn("mt-0.5 text-[11px]", portalSubtextAlt)}>{c.sectionAdvancedHint}</p>
           </div>
-          <Toggle
-            checked={policy.screeningEnabled}
-            onChange={(v) => setPolicy((p) => ({ ...p, screeningEnabled: v }))}
+          <ChevronDown
+            size={16}
+            className={cn(
+              "shrink-0 text-gray-500 transition-transform dark:text-gray-400",
+              advancedOpen && "rotate-180"
+            )}
           />
-        </div>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <FormField label={c.screeningQPerSkill} htmlFor="screen-q-per-skill">
-            <input
-              id="screen-q-per-skill"
-              type="number"
-              min={1}
-              max={3}
-              value={policy.screeningQuestionsPerSkill}
-              onChange={(e) => setNum("screeningQuestionsPerSkill", e.target.value)}
-              className={inputCls}
-              disabled={!policy.screeningEnabled}
-            />
-          </FormField>
-          <FormField label={c.screeningMaxSkills} htmlFor="screen-max-skills">
-            <input
-              id="screen-max-skills"
-              type="number"
-              min={1}
-              max={30}
-              value={policy.screeningMaxSkills}
-              onChange={(e) => setNum("screeningMaxSkills", e.target.value)}
-              className={inputCls}
-              disabled={!policy.screeningEnabled}
-            />
-          </FormField>
-        </div>
+        </button>
+
+        {advancedOpen ? (
+          <div className="space-y-6 pt-1">
+            <section className="space-y-3">
+              <p className={cn("text-[12px] font-semibold uppercase tracking-wide", portalSubtextAlt)}>
+                {c.sectionRemix}
+              </p>
+              <div className="flex items-center justify-between gap-3 rounded-lg border border-gray-100 px-3 py-2.5 dark:border-gray-800">
+                <div>
+                  <p className={cn("text-[13px] font-medium", portalHeadingAlt)}>{c.remixEnabled}</p>
+                  <p className={cn("text-[11px]", portalSubtextAlt)}>{c.remixEnabledHint}</p>
+                </div>
+                <Toggle
+                  checked={policy.drillRemixEnabled}
+                  onChange={(v) => setPolicy((p) => ({ ...p, drillRemixEnabled: v }))}
+                />
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <FormField label={c.remixRatio} htmlFor="drill-remix-ratio">
+                  <input
+                    id="drill-remix-ratio"
+                    type="number"
+                    min={0}
+                    max={1}
+                    step={0.05}
+                    value={policy.drillRemixRatio}
+                    onChange={(e) => setNum("drillRemixRatio", e.target.value)}
+                    className={inputCls}
+                    disabled={!policy.drillRemixEnabled}
+                  />
+                </FormField>
+                <FormField label={c.weakAnswerMax} htmlFor="drill-weak-answer">
+                  <input
+                    id="drill-weak-answer"
+                    type="number"
+                    min={1}
+                    max={99}
+                    value={policy.drillWeakAnswerScoreMaxExclusive}
+                    onChange={(e) => setNum("drillWeakAnswerScoreMaxExclusive", e.target.value)}
+                    className={inputCls}
+                    disabled={!policy.drillRemixEnabled}
+                  />
+                  <p className={cn("mt-1 text-[11px]", portalSubtextAlt)}>{c.weakAnswerMaxHint}</p>
+                </FormField>
+              </div>
+            </section>
+
+            <div className={cn("h-px", portalDivider)} />
+
+            <section className="space-y-3">
+              <div className="flex items-center gap-2">
+                <p className={cn("text-[12px] font-semibold uppercase tracking-wide", portalSubtextAlt)}>
+                  {c.sectionDiagnostic}
+                </p>
+                <ScoreHelp
+                  title={c.diagnosticTotalHelpTitle}
+                  ariaLabel={c.diagnosticTotalHelpAria}
+                  align="left"
+                >
+                  <p className="font-medium text-gray-800 dark:text-gray-100">{c.diagnosticTotalHelpFormula}</p>
+                  <ul className="mt-2 list-disc space-y-1.5 pl-4">
+                    <li>{c.diagnosticTotalHelpCore}</li>
+                    <li>{c.diagnosticTotalHelpPerSkill}</li>
+                    <li>{c.diagnosticTotalHelpQuick}</li>
+                  </ul>
+                  <p className="mt-2 text-[11px] text-gray-500 dark:text-gray-400">{c.diagnosticTotalHelpExample}</p>
+                </ScoreHelp>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <FormField label={c.diagnosticQPerSkill} htmlFor="diag-q-per-skill">
+                  <input
+                    id="diag-q-per-skill"
+                    type="number"
+                    min={2}
+                    max={6}
+                    value={policy.diagnosticQuestionsPerSkill}
+                    onChange={(e) => setNum("diagnosticQuestionsPerSkill", e.target.value)}
+                    className={inputCls}
+                  />
+                  <p className={cn("mt-1 text-[11px]", portalSubtextAlt)}>{c.diagnosticQPerSkillHint}</p>
+                </FormField>
+                <FormField label={c.diagnosticMinTotal} htmlFor="diag-min-total">
+                  <input
+                    id="diag-min-total"
+                    type="number"
+                    min={0}
+                    max={60}
+                    value={policy.diagnosticMinTotalQuestions}
+                    onChange={(e) => setNum("diagnosticMinTotalQuestions", e.target.value)}
+                    className={inputCls}
+                  />
+                </FormField>
+                <FormField label={c.diagnosticMinSkills} htmlFor="diag-min-skills">
+                  <input
+                    id="diag-min-skills"
+                    type="number"
+                    min={1}
+                    max={12}
+                    value={policy.diagnosticMinSkills}
+                    onChange={(e) => setNum("diagnosticMinSkills", e.target.value)}
+                    className={inputCls}
+                  />
+                </FormField>
+                <FormField label={c.diagnosticMaxSkills} htmlFor="diag-max-skills">
+                  <input
+                    id="diag-max-skills"
+                    type="number"
+                    min={1}
+                    max={12}
+                    value={policy.diagnosticMaxSkills}
+                    onChange={(e) => setNum("diagnosticMaxSkills", e.target.value)}
+                    className={inputCls}
+                  />
+                </FormField>
+                <FormField label={c.diagnosticMaxAdaptive} htmlFor="diag-max-adaptive">
+                  <input
+                    id="diag-max-adaptive"
+                    type="number"
+                    min={1}
+                    max={20}
+                    value={policy.diagnosticMaxAdaptiveSkills}
+                    onChange={(e) => setNum("diagnosticMaxAdaptiveSkills", e.target.value)}
+                    className={inputCls}
+                  />
+                </FormField>
+              </div>
+            </section>
+
+            <div className={cn("h-px", portalDivider)} />
+
+            <section className="space-y-3">
+              <p className={cn("text-[12px] font-semibold uppercase tracking-wide", portalSubtextAlt)}>
+                {c.sectionScreening}
+              </p>
+              <div className="flex items-center justify-between gap-3 rounded-lg border border-gray-100 px-3 py-2.5 dark:border-gray-800">
+                <div>
+                  <p className={cn("text-[13px] font-medium", portalHeadingAlt)}>{c.screeningEnabled}</p>
+                  <p className={cn("text-[11px]", portalSubtextAlt)}>{c.screeningEnabledHint}</p>
+                </div>
+                <Toggle
+                  checked={policy.screeningEnabled}
+                  onChange={(v) => setPolicy((p) => ({ ...p, screeningEnabled: v }))}
+                />
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <FormField label={c.screeningQPerSkill} htmlFor="screen-q-per-skill">
+                  <input
+                    id="screen-q-per-skill"
+                    type="number"
+                    min={1}
+                    max={3}
+                    value={policy.screeningQuestionsPerSkill}
+                    onChange={(e) => setNum("screeningQuestionsPerSkill", e.target.value)}
+                    className={inputCls}
+                    disabled={!policy.screeningEnabled}
+                  />
+                </FormField>
+                <FormField label={c.screeningMaxSkills} htmlFor="screen-max-skills">
+                  <input
+                    id="screen-max-skills"
+                    type="number"
+                    min={1}
+                    max={30}
+                    value={policy.screeningMaxSkills}
+                    onChange={(e) => setNum("screeningMaxSkills", e.target.value)}
+                    className={inputCls}
+                    disabled={!policy.screeningEnabled}
+                  />
+                </FormField>
+              </div>
+            </section>
+          </div>
+        ) : null}
       </section>
 
       <div className="flex justify-end pt-1">

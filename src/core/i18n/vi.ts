@@ -2813,6 +2813,19 @@ Yêu cầu:
           "Bài chẩn đoán thêm câu ngắn cho từng kỹ năng CV ngoài nhóm trọng tâm để lộ trình phủ đủ CV. Không làm thay đổi level. Kỹ năng vượt giới hạn được mời làm bài sàng lọc sau báo cáo.",
         screeningQPerSkill: "Số câu hỏi nhanh mỗi kỹ năng",
         screeningMaxSkills: "Số kỹ năng hỏi nhanh tối đa (tối đa 30)",
+        sectionAdvanced: "Nâng cao",
+        sectionAdvancedHint: "Remix câu yếu, bài chẩn đoán và phủ rộng kỹ năng CV.",
+        diagnosticTotalHelpTitle: "Cách tính tổng câu chẩn đoán",
+        diagnosticTotalHelpAria: "Giải thích cách tính tổng câu chẩn đoán",
+        diagnosticTotalHelpFormula:
+          "Tổng câu chẩn đoán = (số skill cốt lõi × câu mỗi skill) + (số skill đo nhanh × câu đo nhanh mỗi skill)",
+        diagnosticTotalHelpCore:
+          'Skill cốt lõi: có khung năng lực → skill khung trùng CV, từ "Số skill tối thiểu" đến "Số skill tối đa (framework)". Chưa có khung → tối đa "Số skill tối đa (adaptive)", lấy từ CV.',
+        diagnosticTotalHelpPerSkill:
+          'Câu mỗi skill = "Số câu mỗi kỹ năng". Nếu (số skill × câu/skill) < "Tổng câu tối thiểu" thì tăng lên ⌈tối thiểu ÷ số skill⌉ (tối đa 6).',
+        diagnosticTotalHelpQuick:
+          'Đo nhanh: skill CV ngoài nhóm cốt lõi, tối đa theo mục "Phủ rộng kỹ năng CV". Không tính vào cấp độ.',
+        diagnosticTotalHelpExample: "Ví dụ: 15 skill × 3 câu + 12 skill × 1 câu = 57 câu.",
       },
       general: {
         title: "Cài đặt chung",
