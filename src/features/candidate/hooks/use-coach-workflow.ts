@@ -233,6 +233,7 @@ export function useCoachWorkflow() {
           const purpose = (next.purpose ?? "").toLowerCase();
           if (purpose.includes("reassess")) setSelectedStep(7);
           else if (purpose.includes("drill")) setSelectedStep(6);
+          else if (purpose.includes("screen")) setSelectedStep(5);
           else setSelectedStep(4);
           await refreshCompetencyData();
         } else if (jobFailed(next)) {

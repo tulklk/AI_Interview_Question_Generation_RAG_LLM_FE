@@ -102,7 +102,14 @@ function CoachRoadmapDetail() {
 
       {/* SCRUM-460: cùng journey path — read-only CTA drill (chỉ link set nếu có). */}
       <div className="hr-glass-card px-5 py-4">
-        <CoachJourneyPath roadmap={roadmap} interactive={false} />
+        {/* Chỉ hiện topic user đã chọn học (isIncluded) — giống panel Lộ trình chính. */}
+        <CoachJourneyPath
+          roadmap={{
+            ...roadmap,
+            items: roadmap.items.filter((i) => i.isReassessmentGate || i.isIncluded !== false),
+          }}
+          interactive={false}
+        />
       </div>
     </div>
   );

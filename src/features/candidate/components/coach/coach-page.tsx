@@ -190,7 +190,7 @@ export function CoachPage() {
               screeningPreview={w.screeningPreview}
               startingScreening={
                 w.submitting ||
-                ((w.busy || w.ready) && (w.job?.purpose ?? "").toLowerCase().includes("screen"))
+                (w.busy && (w.job?.purpose ?? "").toLowerCase().includes("screen"))
               }
               onStartScreening={() => void w.startScreening()}
             />
@@ -268,7 +268,7 @@ export function CoachPage() {
             unmeasuredSkills={w.screeningPreview?.available ? w.screeningPreview.skills : []}
             startingScreening={
               w.submitting ||
-              ((w.busy || w.ready) && (w.job?.purpose ?? "").toLowerCase().includes("screen"))
+              (w.busy && (w.job?.purpose ?? "").toLowerCase().includes("screen"))
             }
             onStartScreening={() => void w.startScreening()}
           />
