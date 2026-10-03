@@ -1341,50 +1341,86 @@ export function KnowledgePageContent({
               </p>
             )}
             {variant === "admin" && (
-              <div className="mt-2 space-y-2">
+              <div className="mt-2">
                 <div
                   className={cn(
-                    "rounded-xl border px-3 py-2.5 text-xs leading-relaxed space-y-2",
-                    "border-amber-200/80 bg-amber-50/80 text-amber-950",
-                    "dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-100"
+                    "rounded-xl border px-3 py-3 text-xs leading-relaxed space-y-2.5",
+                    "border-violet-200/80 bg-violet-50/70 text-violet-950",
+                    "dark:border-violet-900/50 dark:bg-violet-950/25 dark:text-violet-100"
                   )}
                 >
-                  <p>
-                    {kb.coachKbFolderBanner ??
-                      "Coach diagnostic uses SYSTEM folder test-candidate only."}
+                  <p className="text-[13px] font-semibold">
+                    {kb.coachRagPanelTitle}
                   </p>
-                  <button
-                    type="button"
-                    onClick={applyCoachUploadPreset}
-                    className={cn(
-                      "inline-flex items-center h-8 px-3 rounded-lg text-[11px] font-semibold",
-                      "bg-amber-600 text-white hover:bg-amber-700 dark:bg-amber-500 dark:hover:bg-amber-400"
-                    )}
-                  >
-                    {kb.coachKbFolderBannerCta ?? "Point upload → test-candidate"}
-                  </button>
-                </div>
-                <div
-                  className={cn(
-                    "rounded-xl border px-3 py-2.5 text-xs leading-relaxed space-y-2",
-                    "border-sky-200/80 bg-sky-50/80 text-sky-950",
-                    "dark:border-sky-900/50 dark:bg-sky-950/30 dark:text-sky-100"
-                  )}
-                >
-                  <p>
-                    {kb.coachRoadmapFolderBanner ??
-                      "Coach roadmap uses SYSTEM folder coach-roadmap."}
+                  <p className="opacity-90">
+                    {kb.coachRagPanelExplain}
                   </p>
-                  <button
-                    type="button"
-                    onClick={applyCoachRoadmapUploadPreset}
-                    className={cn(
-                      "inline-flex items-center h-8 px-3 rounded-lg text-[11px] font-semibold",
-                      "bg-sky-600 text-white hover:bg-sky-700 dark:bg-sky-500 dark:hover:bg-sky-400"
-                    )}
-                  >
-                    {kb.coachRoadmapFolderBannerCta ?? "Point upload → coach-roadmap"}
-                  </button>
+                  <div className="space-y-1.5">
+                    <div
+                      className={cn(
+                        "flex items-center gap-2 flex-wrap rounded-lg px-2.5 py-2",
+                        "bg-amber-50/90 border border-amber-200/80 text-amber-950",
+                        "dark:bg-amber-950/35 dark:border-amber-900/50 dark:text-amber-100"
+                      )}
+                    >
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold">
+                          {kb.coachKbCorpusTitle}
+                          <span className="ml-2 text-[10px] font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-300">
+                            {kb.coachRagFilterBadge}
+                          </span>
+                        </p>
+                        <p
+                          className="font-mono text-[10px] text-amber-800/70 dark:text-amber-200/60"
+                          title={coachKbFolder}
+                        >
+                          {coachKbFolder}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={applyCoachUploadPreset}
+                        className={cn(
+                          "inline-flex items-center h-8 px-3 rounded-lg text-[11px] font-semibold shrink-0",
+                          "bg-amber-600 text-white hover:bg-amber-700 dark:bg-amber-500 dark:hover:bg-amber-400"
+                        )}
+                      >
+                        {kb.coachRagUploadCta}
+                      </button>
+                    </div>
+                    <div
+                      className={cn(
+                        "flex items-center gap-2 flex-wrap rounded-lg px-2.5 py-2",
+                        "bg-sky-50/90 border border-sky-200/80 text-sky-950",
+                        "dark:bg-sky-950/35 dark:border-sky-900/50 dark:text-sky-100"
+                      )}
+                    >
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold">
+                          {kb.coachRoadmapCorpusTitle}
+                          <span className="ml-2 text-[10px] font-semibold uppercase tracking-wide text-sky-700 dark:text-sky-300">
+                            {kb.coachRagFilterBadge}
+                          </span>
+                        </p>
+                        <p
+                          className="font-mono text-[10px] text-sky-800/70 dark:text-sky-200/60"
+                          title={coachRoadmapFolder}
+                        >
+                          {coachRoadmapFolder}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={applyCoachRoadmapUploadPreset}
+                        className={cn(
+                          "inline-flex items-center h-8 px-3 rounded-lg text-[11px] font-semibold shrink-0",
+                          "bg-sky-600 text-white hover:bg-sky-700 dark:bg-sky-500 dark:hover:bg-sky-400"
+                        )}
+                      >
+                        {kb.coachRagUploadCta}
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
@@ -1436,12 +1472,12 @@ export function KnowledgePageContent({
                             {f.name}
                             {isCoachKb ? (
                               <span className="ml-2 text-[10px] font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-300">
-                                {kb.coachKbFolderBadge ?? "Coach KB"}
+                                {kb.coachKbFolderBadge}
                               </span>
                             ) : null}
                             {isCoachRoadmap ? (
                               <span className="ml-2 text-[10px] font-semibold uppercase tracking-wide text-sky-700 dark:text-sky-300">
-                                {kb.coachRoadmapFolderBadge ?? "Coach roadmap"}
+                                {kb.coachRoadmapFolderBadge}
                               </span>
                             ) : null}
                           </p>
@@ -1552,7 +1588,7 @@ export function KnowledgePageContent({
                         : "border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:border-amber-400"
                     )}
                   >
-                    {kb.coachKbFolderUsePreset ?? "Coach (test-candidate)"}
+                    {kb.coachKbFolderUsePreset}
                   </button>
                   <button
                     type="button"
@@ -1564,7 +1600,7 @@ export function KnowledgePageContent({
                         : "border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:border-sky-400"
                     )}
                   >
-                    {kb.coachRoadmapFolderUsePreset ?? "Coach roadmap (coach-roadmap)"}
+                    {kb.coachRoadmapFolderUsePreset}
                   </button>
                   {folderQuickOptions
                     .filter(
@@ -1605,9 +1641,9 @@ export function KnowledgePageContent({
                   {folderQuickOptions.map((name) => (
                     <option key={name} value={name}>
                       {name === coachKbFolder
-                        ? `${name} · ${kb.coachKbFolderBadge ?? "Coach KB"}`
+                        ? `${kb.coachKbCorpusTitle} · ${name}`
                         : name === coachRoadmapFolder
-                          ? `${name} · ${kb.coachRoadmapFolderBadge ?? "Coach roadmap"}`
+                          ? `${kb.coachRoadmapCorpusTitle} · ${name}`
                           : name}
                     </option>
                   ))}
@@ -1624,7 +1660,7 @@ export function KnowledgePageContent({
                     list="admin-kb-folders"
                     value={uploadFolder}
                     onChange={(e) => setUploadFolder(e.target.value)}
-                    placeholder={kb.uploadFolderPlaceholder ?? "vd. test-candidate"}
+                    placeholder={kb.uploadFolderPlaceholder}
                     className={cn("w-full px-3 py-2 text-sm rounded-xl border", portalInput)}
                   />
                   <datalist id="admin-kb-folders">
@@ -1643,9 +1679,7 @@ export function KnowledgePageContent({
                   </p>
                 ) : (
                   <p className={cn("text-[11px]", portalSubtext)}>
-                    {kb.uploadFolderHint ??
-                      kb.coachKbFolderSelectHint ??
-                      "Assign folder for Coach / grouping."}
+                    {kb.uploadFolderHint}
                   </p>
                 )}
               </div>

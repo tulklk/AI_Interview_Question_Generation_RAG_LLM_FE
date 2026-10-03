@@ -16,6 +16,7 @@ import { getScoreBandBarClass, getScoreBandHex, resolveScoreInsightKey } from "@
 import { translateQuestionCategory } from "@/features/candidate/utils/skill-labels";
 import { getCompanyColor, getCompanyInitials } from "@/features/candidate/utils/company-visual";
 import { useChartTheme } from "@/shared/hooks/use-chart-theme";
+import { ScoreHelp } from "@/features/candidate/components/ui/score-help";
 import { QuestionContent } from "@/shared/components/ui/question-content";
 import { ConfettiBurst } from "@/shared/components/common/confetti-burst";
 import { useToast } from "@/shared/providers/toast-context";
@@ -277,6 +278,12 @@ export function FeedbackPage({
   const showEvaluateFullCta =
     (!isFreeTeaser && needsFullEvaluation) || (isFreeTeaser && isPremium && hasScore);
   const { label: scoreLevelLabel, badgeClass: scoreLevelBadgeClass } = getScoreLevel(score, p.scoreLevels);
+  // Ví dụ cá nhân cho dấu "?": tổng điểm các câu AI đã chấm ÷ tổng số câu của bộ.
+  const scoredEntries = Object.values(feedback).filter(
+    (fb) => fb.evaluationStatus === "Succeeded" && fb.score !== null
+  );
+  const scoredSum = Math.round(scoredEntries.reduce((s, fb) => s + (fb.score as number), 0));
+  const showScoreExample = hasScore && !isFreeTeaser && session.questions.length > 0 && scoredEntries.length > 0;
 
   // Hiển thị đủ mọi câu trong set, kể cả chưa trả lời (empty state).
   const reviewQuestions = session.questions;
@@ -433,7 +440,31 @@ export function FeedbackPage({
         <div className="flex-1 self-stretch min-w-0">
           {/* Title row — h1 on its own line so it never wraps on mobile */}
           <div className="mb-2">
-            <h1 className={cn("text-[24px] font-[800] mb-1.5", portalHeadingAlt)}>{p.overallScore}</h1>
+            <div className="mb-1.5 flex items-center gap-1.5">
+              <h1 className={cn("text-[24px] font-[800]", portalHeadingAlt)}>{p.overallScore}</h1>
+              <ScoreHelp title={p.scoreHelp.overallTitle} ariaLabel={p.scoreHelp.ariaLabel}>
+                <p>{p.scoreHelp.overallStep1}</p>
+                <p className="font-semibold text-gray-800 dark:text-gray-100">{p.scoreHelp.overallStep2}</p>
+                <p>{p.scoreHelp.overallStep3}</p>
+                {showScoreExample && (
+                  <p className="rounded-lg bg-violet-50 px-2.5 py-1.5 font-semibold text-primary dark:bg-violet-950/40">
+                    {p.scoreHelp.overallExample
+                      .replace("{{sum}}", String(scoredSum))
+                      .replace(/\{\{total\}\}/g, String(session.questions.length))
+                      .replace("{{score}}", String(score))
+                      .replace("{{scored}}", String(scoredEntries.length))}
+                  </p>
+                )}
+                <p className="text-[11px] text-gray-500 dark:text-gray-400">
+                  <span className="font-semibold">{p.scoreHelp.levelsLabel}</span>{" "}
+                  {p.scoreHelp.levelsLine
+                    .replace("{{excellent}}", p.scoreLevels.excellent)
+                    .replace("{{good}}", p.scoreLevels.good)
+                    .replace("{{fair}}", p.scoreLevels.fair)
+                    .replace("{{needsWork}}", p.scoreLevels.needsWork)}
+                </p>
+              </ScoreHelp>
+            </div>
             {/* Badge + comparison on a sub-row */}
             <div className="flex items-center gap-3 flex-wrap">
               {hasScore && (

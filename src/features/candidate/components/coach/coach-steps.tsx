@@ -15,6 +15,7 @@ import { cn } from "@/lib/cn";
 import { portalHeadingAlt, portalSubtextAlt } from "@/shared/utils/portal-ui";
 import { useLanguage } from "@/shared/providers/language-context";
 import { coachTransitionFast } from "@/features/candidate/components/coach/coach-motion";
+import { ScoreHelp } from "@/features/candidate/components/ui/score-help";
 
 /** 7 phase wizard: CV → Analysis → Goal → Diagnostic → Report → Roadmap → Reassess */
 export type CoachStepIndex = 1 | 2 | 3 | 4 | 5 | 6 | 7;
@@ -65,9 +66,25 @@ export function CoachSteps({
 
   return (
     <div className="hr-glass-card px-3 py-3 sm:px-4">
-      <p className={cn("mb-2 text-[10px] font-bold uppercase tracking-widest", portalSubtextAlt)}>
-        {p.howTitle}
-      </p>
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <p className={cn("text-[10px] font-bold uppercase tracking-widest", portalSubtextAlt)}>
+          {p.howTitle}
+        </p>
+        <ScoreHelp
+          title={p.scoreHelp.title}
+          label={p.scoreHelp.label}
+          ariaLabel={p.scoreHelp.label}
+          align="right"
+        >
+          <p className="font-semibold text-gray-800 dark:text-gray-100">{p.scoreHelp.step1}</p>
+          <p>{p.scoreHelp.step2}</p>
+          <p>{p.scoreHelp.step3}</p>
+          <p className="rounded-lg bg-violet-50 px-2.5 py-1.5 font-semibold text-primary dark:bg-violet-950/40">
+            {p.scoreHelp.bands}
+          </p>
+          <p className="text-[11px] text-gray-500 dark:text-gray-400">{p.scoreHelp.blank}</p>
+        </ScoreHelp>
+      </div>
 
       {earlierLocked && (
         <p className={cn("mb-1.5 text-[11px]", portalSubtextAlt)}>{p.stepsLockedAfterRoadmap}</p>
