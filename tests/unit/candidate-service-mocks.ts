@@ -21,6 +21,7 @@ export function practiceSessionServiceMockFactory() {
     listCompletedSessions: vi.fn(),
     getPracticeStats: vi.fn(),
     ForbiddenError: class ForbiddenError extends Error {},
+    IntegrityLockedError: class IntegrityLockedError extends Error {},
   };
 }
 

@@ -78,7 +78,7 @@ describe("Admin Plans — listing", () => {
     renderWithProviders(<AdminPlansRoutePage />);
 
     expect(await screen.findByDisplayValue("HR Premium", {}, { timeout: 10000 })).toBeInTheDocument();
-    expect(screen.getByDisplayValue("999")).toBeInTheDocument(); // Ask-AI / period
+    expect(screen.getByDisplayValue("2")).toBeInTheDocument(); // questionRegenPerPlan
   });
 
   test("APLAN-2: Refresh re-fetches the plan list", async () => {
@@ -95,22 +95,22 @@ describe("Admin Plans — listing", () => {
 });
 
 describe("Admin Plans — editing and saving", () => {
-  test("APLAN-3: editing the Ask-AI limit and saving calls adminUpdatePlan with the new value", async () => {
+  test("APLAN-3: editing the question-regen-per-plan limit and saving calls adminUpdatePlan with the new value", async () => {
     subscriptionApi.adminListPlans.mockResolvedValue([plan()]);
-    subscriptionApi.adminUpdatePlan.mockResolvedValue({ plan: plan({ limits: { ...plan().limits, askAiPerMonth: 500 } }), message: "ok" });
+    subscriptionApi.adminUpdatePlan.mockResolvedValue({ plan: plan({ limits: { ...plan().limits, questionRegenPerPlan: 6 } }), message: "ok" });
     const user = userEvent.setup();
     renderWithProviders(<AdminPlansRoutePage />);
     await screen.findByDisplayValue("HR Premium", {}, { timeout: 10000 });
 
-    const askAiInput = screen.getByDisplayValue("999");
-    await user.clear(askAiInput);
-    await user.type(askAiInput, "500");
+    const questionRegenInput = screen.getByDisplayValue("2");
+    await user.clear(questionRegenInput);
+    await user.type(questionRegenInput, "6");
     await user.click(screen.getByRole("button", { name: "Save plan" }));
 
     await vi.waitFor(() =>
       expect(subscriptionApi.adminUpdatePlan).toHaveBeenCalledWith(
         "plan-hr-premium",
-        expect.objectContaining({ limits: expect.objectContaining({ askAiPerMonth: 500 }) })
+        expect.objectContaining({ limits: expect.objectContaining({ questionRegenPerPlan: 6 }) })
       )
     );
     expect(

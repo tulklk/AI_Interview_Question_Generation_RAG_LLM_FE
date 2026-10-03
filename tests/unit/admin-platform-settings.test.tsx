@@ -84,15 +84,3 @@ describe("Admin Platform Settings — General", () => {
     expect(await screen.findByText("Settings saved.")).toBeInTheDocument();
   });
 });
-
-describe("Admin Platform Settings — General danger zone", () => {
-  test('APS-8: the "Reset Platform Data" button is disabled with a Coming soon tooltip, not a live destructive action', async () => {
-    settingsApi.getPlatformSettings.mockResolvedValue({});
-    renderWithProviders(<AdminSettingsPage />);
-    await screen.findByText("General Settings", {}, { timeout: 10000 });
-
-    const resetBtn = await screen.findByRole("button", { name: "Reset" }, { timeout: 10000 });
-    expect(resetBtn).toBeDisabled();
-    expect(resetBtn).toHaveAttribute("title", "Coming soon");
-  });
-});

@@ -63,6 +63,7 @@ export function studioServiceMockFactory() {
     publishProject: vi.fn(),
     unpublishProject: vi.fn(),
     createShareLink: vi.fn(),
+    listTechSkills: vi.fn().mockResolvedValue([]),
   };
 }
 
@@ -239,6 +240,7 @@ export function bootstrapStudio(
   studioApi.listPlans.mockResolvedValue([]);
   studioApi.listGenerationRuns.mockResolvedValue(generationRuns);
   studioApi.listQuestions.mockResolvedValue({ page: 1, pageSize: 100, total: questions.length, items: questions });
+  studioApi.listTechSkills.mockResolvedValue([]);
 }
 
 vi.mock("@/features/subscription/services/subscription.service", async (importOriginal) => {

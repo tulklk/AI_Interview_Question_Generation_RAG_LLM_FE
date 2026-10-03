@@ -72,7 +72,7 @@ describe("RGA016 — Candidate forbidden error handling", () => {
     renderPractice();
 
     expect(
-      await screen.findByText("You don't have access to practice this question set.")
+      await screen.findByText(/You don't have access to practice this question set\./)
     ).toBeInTheDocument();
     // No raw technical error text (status code, stack, "Request failed…") leaks to the candidate.
     const bodyText = document.body.textContent ?? "";

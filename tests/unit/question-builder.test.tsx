@@ -1,6 +1,6 @@
 import { describe, test, expect, vi, beforeEach } from "vitest";
 import userEvent from "@testing-library/user-event";
-import { screen } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import { renderWithProviders } from "./test-utils";
 import { QuestionBuilderPage } from "@/features/interview/components/generate/question-builder-page";
 
@@ -35,9 +35,11 @@ function mockQuestionSets(drafts: unknown[] = [DRAFT_SET]) {
   vi.mocked(hrHistoryApi.listHistoryQuestionSets).mockResolvedValue(drafts as never);
 }
 
-// SCRUM-477: every composer step is now a collapsible accordion section,
-// closed by default ("mặc định đóng accordion khi tạo câu") - a field inside
-// a given step isn't queryable until that step's header has been clicked open.
+// Post-merge (main -> test_Fe, Oct 2026): question-builder-composer.tsx was
+// flattened — difficulty/question-type/content-mode/question-content/sample
+// answer+rubric are all always visible now. The ONLY remaining collapsible
+// section is "Add later" (skill/focus area/rationale/image), still gated
+// behind an aria-expanded button.
 async function openSection(user: ReturnType<typeof userEvent.setup>, namePattern: RegExp) {
   const header = screen.getByRole("button", { name: namePattern });
   if (header.getAttribute("aria-expanded") === "false") {
@@ -65,9 +67,9 @@ describe("MQ — Question Builder", () => {
     expect(setBtn).toBeInTheDocument();
     await user.click(setBtn);
 
-    await openSection(user, /Question content/i);
+    // Question content is always visible now (no accordion to open).
     expect(await screen.findByPlaceholderText("Enter question content...")).toBeEnabled();
-    expect(screen.getByRole("button", { name: "Save & add next" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Save this question" })).toBeInTheDocument();
   });
 
   test("MQ002: with no DRAFT sets, the create-set form opens automatically and the composer shows its no-set empty state", async () => {
@@ -117,8 +119,8 @@ describe("MQ — Question Builder", () => {
   });
 
   test("MQ005: the Save button stays disabled for an empty question, so no request is ever sent", async () => {
-    // question-builder-composer.tsx now proactively disables "Save & add
-    // next" via `disabled={saving || !hasQuestion}` — onSave's own
+    // question-builder-composer.tsx proactively disables "Save this question"
+    // via `disabled={saving || !hasQuestion}` — onSave's own
     // toastQuestionRequired guard (question-builder-page.tsx) is unreachable
     // through a real click since userEvent no-ops on a disabled button.
     mockQuestionSets();
@@ -126,7 +128,7 @@ describe("MQ — Question Builder", () => {
     renderWithProviders(<QuestionBuilderPage />);
     await user.click(await screen.findByRole("button", { name: /Backend Mid-level/ }, { timeout: 10000 }));
 
-    const saveBtn = await screen.findByRole("button", { name: "Save & add next" }, { timeout: 10000 });
+    const saveBtn = await screen.findByRole("button", { name: "Save this question" }, { timeout: 10000 });
     expect(saveBtn).toBeDisabled();
     await user.click(saveBtn);
 
@@ -148,15 +150,21 @@ describe("MQ — Question Builder", () => {
     renderWithProviders(<QuestionBuilderPage />);
     await user.click(await screen.findByRole("button", { name: /Backend Mid-level/ }, { timeout: 10000 }));
 
-    await openSection(user, /Question content/i);
+    // Content/difficulty/question-type are always visible now — no accordion.
     await user.type(await screen.findByPlaceholderText("Enter question content...", {}, { timeout: 10000 }), "Explain closures in JavaScript.");
-    await openSection(user, /Classification/i);
     await user.click(screen.getByRole("button", { name: "Hard" }));
     await user.click(screen.getByRole("button", { name: "Behavioral" }));
+
+    // Skill/focus area are the only fields still behind an accordion ("Add later").
+    await openSection(user, /Add later/i);
     await user.type(screen.getByPlaceholderText("e.g. React, SQL, Redis"), "JavaScript");
     await user.type(screen.getByPlaceholderText("e.g. Frontend, Database"), "Frontend");
-    await openSection(user, /Answer & Scoring/i);
-    await user.type(screen.getByPlaceholderText(/Sample answer for HR/), "A closure is a function bundled with its lexical scope.");
+
+    // Sample answer is now pre-filled with a default starter value on mount —
+    // clear it first or the typed text would just append after the default.
+    const sampleAnswerInput = screen.getByPlaceholderText(/Sample answer for HR/);
+    await user.clear(sampleAnswerInput);
+    await user.type(sampleAnswerInput, "A closure is a function bundled with its lexical scope.");
     // Rubric editing is now the shared RubricEditor (criteria + weight +
     // anchors, shared/rubric/components/rubric-editor.tsx) rather than a
     // raw "one criterion per line" textarea — left untouched here, since
@@ -164,9 +172,9 @@ describe("MQ — Question Builder", () => {
     // (buildPresetCriteria) whenever rubricDoc.criteria is still empty at
     // save time.
 
-    await user.click(screen.getByRole("button", { name: "Save & add next" }));
+    await user.click(screen.getByRole("button", { name: "Save this question" }));
 
-    expect(await screen.findByText("Question saved (all Marketplace fields) to the selected set.", {}, { timeout: 10000 })).toBeInTheDocument();
+    expect(await screen.findByText("Question saved to the selected set.", {}, { timeout: 10000 })).toBeInTheDocument();
     expect(saveBody).toMatchObject({
       question: "Explain closures in JavaScript.",
       questionType: "Behavioral",
@@ -182,9 +190,16 @@ describe("MQ — Question Builder", () => {
     expect(criteria.length).toBeGreaterThan(0);
     expect(criteria.reduce((sum, c) => sum + c.weight, 0)).toBe(100);
 
-    expect(screen.getByPlaceholderText("Enter question content...")).toHaveValue("");
-    expect(screen.getByText("Added this session", { exact: true })).toBeInTheDocument();
-    expect(screen.getByText("Explain closures in JavaScript.")).toBeInTheDocument();
+    // A successful save now keeps the question open for editing (the new
+    // "numbered flow" — it becomes "Question 1" with an "Update this
+    // question" button) instead of clearing the composer for the next one.
+    expect(screen.getByPlaceholderText("Enter question content...")).toHaveValue("Explain closures in JavaScript.");
+    expect(screen.getByRole("button", { name: "Update this question" })).toBeInTheDocument();
+    expect(screen.getByText("Questions this session", { exact: true })).toBeInTheDocument();
+    // Matches the question-content textarea's own text node plus the
+    // session-list entry (and possibly a preview elsewhere on the page) —
+    // just confirm it shows up somewhere rather than picking one element.
+    expect(screen.getAllByText("Explain closures in JavaScript.").length).toBeGreaterThan(0);
   }, 15000);
 
   test('MQ007: Code content mode saves with answerMethod "Code" and shows the template picker', async () => {
@@ -198,14 +213,14 @@ describe("MQ — Question Builder", () => {
     renderWithProviders(<QuestionBuilderPage />);
     await user.click(await screen.findByRole("button", { name: /Backend Mid-level/ }, { timeout: 10000 }));
 
-    await screen.findByRole("button", { name: "Save & add next" }, { timeout: 10000 });
-    await openSection(user, /Content type/i);
+    // Content mode defaults to "code" with template BUG_DETECTION — the
+    // template picker is always visible now, no accordion to open.
+    await screen.findByRole("button", { name: "Save this question" }, { timeout: 10000 });
     expect(screen.getByText("Find and explain bugs in code")).toBeInTheDocument();
-    await openSection(user, /Question content/i);
     await user.type(screen.getByPlaceholderText("Enter question content..."), "Find the bug in this loop.");
-    await user.click(screen.getByRole("button", { name: "Save & add next" }));
+    await user.click(screen.getByRole("button", { name: "Save this question" }));
 
-    expect(await screen.findByText("Question saved (all Marketplace fields) to the selected set.", {}, { timeout: 10000 })).toBeInTheDocument();
+    expect(await screen.findByText("Question saved to the selected set.", {}, { timeout: 10000 })).toBeInTheDocument();
     expect(saveBody).toMatchObject({ answerMethod: "Code" });
   });
 
@@ -220,15 +235,14 @@ describe("MQ — Question Builder", () => {
     renderWithProviders(<QuestionBuilderPage />);
     await user.click(await screen.findByRole("button", { name: /Backend Mid-level/ }, { timeout: 10000 }));
 
-    await screen.findByRole("button", { name: "Save & add next" }, { timeout: 10000 });
-    await openSection(user, /Content type/i);
+    // Content-mode toggle (Theory/Code/System design) is always visible now.
+    await screen.findByRole("button", { name: "Save this question" }, { timeout: 10000 });
     await user.click(screen.getByRole("button", { name: "Theory" }));
     expect(screen.queryByText("Code template")).not.toBeInTheDocument();
-    await openSection(user, /Question content/i);
     await user.type(screen.getByPlaceholderText("Enter question content..."), "What is the CAP theorem?");
-    await user.click(screen.getByRole("button", { name: "Save & add next" }));
+    await user.click(screen.getByRole("button", { name: "Save this question" }));
 
-    expect(await screen.findByText("Question saved (all Marketplace fields) to the selected set.", {}, { timeout: 10000 })).toBeInTheDocument();
+    expect(await screen.findByText("Question saved to the selected set.", {}, { timeout: 10000 })).toBeInTheDocument();
     expect(saveBody).toMatchObject({ answerMethod: "Text" });
   });
 
@@ -238,18 +252,24 @@ describe("MQ — Question Builder", () => {
     renderWithProviders(<QuestionBuilderPage />);
     await user.click(await screen.findByRole("button", { name: /Backend Mid-level/ }, { timeout: 10000 }));
 
-    await screen.findByRole("button", { name: "Save & add next" }, { timeout: 10000 });
-    // The content-mode toggle (Theory/Code/System design) lives in the
-    // "Content type" accordion step, closed by default; the question-type
-    // classification control is now a <select>, not a same-labelled button,
-    // so there's a single unambiguous "System design" button once open.
-    await openSection(user, /Content type/i);
-    const contentModeBtn = screen.getByRole("button", { name: "System design" });
-    await user.click(contentModeBtn);
+    await screen.findByRole("button", { name: "Save this question" }, { timeout: 10000 });
+    // Both the "Question type" row (option "System-design") and the
+    // content-mode toggle render the exact same accessible name "System
+    // design" — they used to live in separate closed accordions so this
+    // never collided, but both are always visible now. The content-mode
+    // toggle is the one rendered last (it sits right above the question
+    // content field), so it's the last match in document order.
+    const systemDesignButtons = screen.getAllByRole("button", { name: "System design" });
+    expect(systemDesignButtons).toHaveLength(2);
+    // Document order: the "Question type" row (option "System-design") comes
+    // first, the content-mode toggle second — click the content-mode one.
+    await user.click(systemDesignButtons[1]);
 
-    expect(await screen.findByText(/System design template/)).toBeInTheDocument();
-    await openSection(user, /Question content/i);
-    expect(screen.getByPlaceholderText(/architecture overview, sequence diagram/)).toBeInTheDocument();
+    // question-builder-composer.tsx.backup.20260909-redesign shows this mode
+    // used to render a "System design template" banner (qb.systemDesignBanner)
+    // — that string is now dead/unused; the redesigned composer only swaps in
+    // the diagram-hint field, with no banner.
+    expect(await screen.findByPlaceholderText(/architecture overview, sequence diagram/)).toBeInTheDocument();
     expect(screen.queryByText("Code template")).not.toBeInTheDocument();
   });
 
@@ -262,9 +282,8 @@ describe("MQ — Question Builder", () => {
     renderWithProviders(<QuestionBuilderPage />);
     await user.click(await screen.findByRole("button", { name: /Backend Mid-level/ }, { timeout: 10000 }));
 
-    await openSection(user, /Question content/i);
     await user.type(await screen.findByPlaceholderText("Enter question content...", {}, { timeout: 10000 }), "This save will fail.");
-    await user.click(screen.getByRole("button", { name: "Save & add next" }));
+    await user.click(screen.getByRole("button", { name: "Save this question" }));
 
     expect(await screen.findByText("Save failed. Check that the set is still in DRAFT status.", {}, { timeout: 10000 })).toBeInTheDocument();
     expect(screen.getByPlaceholderText("Enter question content...")).toHaveValue("This save will fail.");
@@ -278,12 +297,11 @@ describe("MQ — Question Builder", () => {
     renderWithProviders(<QuestionBuilderPage />);
     await user.click(await screen.findByRole("button", { name: /Backend Mid-level/ }, { timeout: 10000 }));
 
-    await openSection(user, /Question content/i);
     await user.type(await screen.findByPlaceholderText("Enter question content...", {}, { timeout: 10000 }), "A saved question.");
-    await user.click(screen.getByRole("button", { name: "Save & add next" }));
-    expect(await screen.findByText("Added this session", { exact: true }, { timeout: 10000 })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Save this question" }));
+    await waitFor(() => expect(screen.getByText("Questions this session").nextElementSibling).toHaveTextContent("1"));
 
     await user.click(screen.getByRole("button", { name: /DevOps Basics/ }));
-    expect(screen.queryByText("Added this session", { exact: true })).not.toBeInTheDocument();
-  });
+    expect(screen.queryAllByText("A saved question.")).toHaveLength(0);
+  }, 15000);
 });

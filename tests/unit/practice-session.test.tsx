@@ -141,7 +141,7 @@ describe("Practice Session — starting the session", () => {
     renderCandidate(<PracticeSession set={questionSet()} />);
 
     expect(
-      await screen.findByText("You don't have access to practice this question set.", {}, { timeout: 10000 })
+      await screen.findByText(/You don't have access to practice this question set\./, {}, { timeout: 10000 })
     ).toBeInTheDocument();
     expect(screen.queryByText("Failed to start the practice session.")).not.toBeInTheDocument();
   });
