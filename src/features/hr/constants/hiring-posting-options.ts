@@ -32,19 +32,17 @@ export const HIRING_EXPERTISE = [
   "Tech Lead",
 ] as const;
 
+/** Chỉ lĩnh vực IT — không gồm ngành ngoài CNTT (ngân hàng, y tế, sản xuất…). */
 export const HIRING_DOMAINS = [
   "IT Services",
   "Software Product",
-  "Fintech",
-  "E-commerce",
-  "Banking",
-  "Healthcare",
-  "Education",
-  "Telecommunications",
-  "Logistics",
-  "Gaming",
-  "Manufacturing",
-  "Consulting",
+  "SaaS",
+  "IT Outsourcing",
+  "Cloud Computing",
+  "Cybersecurity",
+  "Data / AI",
+  "Web & Mobile",
+  "Enterprise Software",
 ] as const;
 
 export function withCurrentOption(options: readonly string[], current: string): string[] {
