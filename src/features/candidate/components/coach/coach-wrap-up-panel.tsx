@@ -126,12 +126,7 @@ export function CoachWrapUpPanel({
                     key={`${row.skill}-${row.topic}`}
                     className="rounded-lg border border-amber-100 bg-amber-50/40 px-3 py-2 text-[12px] dark:border-amber-900/40 dark:bg-amber-950/20"
                   >
-                    <div className="flex items-center justify-between gap-2">
-                      <span className={cn("font-semibold", portalHeadingAlt)}>{row.topic}</span>
-                      <span className="tabular-nums text-amber-800 dark:text-amber-200">
-                        {Math.round(row.lowestScore)}
-                      </span>
-                    </div>
+                    <span className={cn("font-semibold", portalHeadingAlt)}>{row.topic}</span>
                     <p className={cn("mt-0.5 text-[11px]", portalSubtextAlt)}>
                       {row.skill}
                       {row.overcame ? ` · ${p.wrapUpWeakOvercame}` : ""}
@@ -160,11 +155,6 @@ export function CoachWrapUpPanel({
                         {row.reason === "screening" ? p.wrapUpNextScreening : p.wrapUpNextGap}
                       </p>
                     </div>
-                    {row.gap > 0 && (
-                      <span className={cn("shrink-0 tabular-nums", portalSubtextAlt)}>
-                        −{Math.round(row.gap)}
-                      </span>
-                    )}
                   </li>
                 ))}
               </ul>
@@ -228,9 +218,7 @@ export function CoachWrapUpPanel({
                   className="flex items-center justify-between gap-2 rounded-lg border border-gray-100 px-3 py-2 text-[12px] dark:border-gray-800"
                 >
                   <span className={cn("font-semibold", portalHeadingAlt)}>{row.skill}</span>
-                  <span className={cn("tabular-nums", portalSubtextAlt)}>
-                    {Math.round(row.currentScore)} / {Math.round(row.targetScore)}
-                  </span>
+                  <CheckCircle2 size={14} className="shrink-0 text-emerald-600" />
                 </li>
               ))}
             </ul>
