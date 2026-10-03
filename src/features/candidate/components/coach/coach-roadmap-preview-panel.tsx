@@ -191,9 +191,10 @@ export function CoachRoadmapPreviewPanel({
   const reduced = useReducedMotion();
   const [pendingItemId, setPendingItemId] = useState<string | null>(null);
   const [pendingSkillId, setPendingSkillId] = useState<string | null>(null);
+  const [togglingAll, setTogglingAll] = useState(false);
   const [reordering, setReordering] = useState(false);
   const [descExpanded, setDescExpanded] = useState<Record<string, boolean>>({});
-  const locked = busy || accepting || reordering || pendingSkillId !== null;
+  const locked = busy || accepting || reordering || pendingSkillId !== null || togglingAll;
 
   const draftRoadmaps = useMemo(
     () =>
@@ -237,6 +238,9 @@ export function CoachRoadmapPreviewPanel({
   if (draftRoadmaps.length === 0) return null;
 
   const canAccept = summary.skills >= 1 && !locked;
+  const learnItems = draftRoadmaps.flatMap((roadmap) => learnTopics(roadmap.items));
+  const allSelected = learnItems.length > 0 && learnItems.every((item) => item.isIncluded !== false);
+  const noneSelected = learnItems.every((item) => item.isIncluded === false);
 
   async function handleToggle(itemId: string, next: boolean) {
     setPendingItemId(itemId);
@@ -261,6 +265,22 @@ export function CoachRoadmapPreviewPanel({
       });
     } finally {
       setPendingSkillId(null);
+    }
+  }
+
+  async function handleToggleAllSkills(next: boolean) {
+    const items = draftRoadmaps.flatMap((roadmap) =>
+      learnTopics(roadmap.items).map((item) => ({
+        itemId: item.id,
+        isIncluded: next,
+      }))
+    );
+    if (items.length === 0) return;
+    setTogglingAll(true);
+    try {
+      await onUpdateDraft({ items });
+    } finally {
+      setTogglingAll(false);
     }
   }
 
@@ -334,13 +354,31 @@ export function CoachRoadmapPreviewPanel({
         iconClassName="text-violet-600 dark:text-violet-400"
       />
 
-      <div className="border-b border-gray-100 px-5 py-3 dark:border-gray-800">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 px-5 py-3 dark:border-gray-800">
         <p className={cn("text-[12px] font-semibold", portalHeadingAlt)}>
           {fillTemplate(p.roadmapPreviewSummary, {
             skills: String(summary.skills),
             topics: String(summary.topics),
           })}
         </p>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            disabled={locked || allSelected}
+            onClick={() => void handleToggleAllSkills(true)}
+            className="text-[12px] font-semibold text-primary disabled:opacity-40"
+          >
+            {p.roadmapSelectAllSkills}
+          </button>
+          <button
+            type="button"
+            disabled={locked || noneSelected}
+            onClick={() => void handleToggleAllSkills(false)}
+            className="text-[12px] font-semibold text-primary disabled:opacity-40"
+          >
+            {p.roadmapDeselectAllSkills}
+          </button>
+        </div>
       </div>
 
       {unmeasuredSkills.length > 0 && (

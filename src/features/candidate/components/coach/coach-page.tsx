@@ -31,6 +31,7 @@ import { CoachMarketplacePanel } from "@/features/candidate/components/coach/coa
 import { CoachInsightCards } from "@/features/candidate/components/coach/coach-insight-cards";
 import { CoachNewRunConfirmModal } from "@/features/candidate/components/coach/coach-new-run-confirm-modal";
 import { CoachPageSkeleton } from "@/features/candidate/components/coach/coach-page-skeleton";
+import { localizeCoachLevel } from "@/features/candidate/components/coach/coach-labels";
 import { CoachStepHeader } from "@/features/candidate/components/coach/coach-step-header";
 import {
   fadeUp,
@@ -352,7 +353,7 @@ export function CoachPage() {
               )}
               {w.report.achievedLevel && (
                 <span className="inline-flex rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-bold uppercase text-primary">
-                  {w.report.achievedLevel}
+                  {localizeCoachLevel(w.report.achievedLevel, p.coachLevels)}
                 </span>
               )}
               {w.report.overallDelta != null && (
