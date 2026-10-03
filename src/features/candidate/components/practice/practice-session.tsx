@@ -331,6 +331,7 @@ export function PracticeSession({ set }: PracticeSessionProps) {
   const answersRef = useRef(answers);
   const currentIdxRef = useRef(currentIdx);
   const sessionIdRef = useRef(sessionId);
+  const answerInputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     answersRef.current = answers;
@@ -709,16 +710,28 @@ export function PracticeSession({ set }: PracticeSessionProps) {
     []
   );
 
+  function focusAnswerInput() {
+    requestAnimationFrame(() => {
+      const el = answerInputRef.current;
+      if (!el) return;
+      el.focus();
+      const end = el.value.length;
+      el.setSelectionRange(end, end);
+    });
+  }
+
   function goToQuestion(idx: number) {
     if (integrityTerminatedRef.current) return;
     const clamped = Math.min(Math.max(0, idx), totalQuestions - 1);
-    if (clamped === currentIdx) return;
-    // Persist câu đang xem trước khi chuyển (không chờ / không block)
-    if (currentAnswer.trim()) {
-      persistAnswerBestEffort(question.id, currentAnswer);
+    if (clamped !== currentIdx) {
+      // Persist câu đang xem trước khi chuyển (không chờ / không block)
+      if (currentAnswer.trim()) {
+        persistAnswerBestEffort(question.id, currentAnswer);
+      }
+      setDirection(clamped > currentIdx ? 1 : -1);
+      setCurrentIdx(clamped);
     }
-    setDirection(clamped > currentIdx ? 1 : -1);
-    setCurrentIdx(clamped);
+    focusAnswerInput();
   }
 
   function navigate(delta: number) {
@@ -1257,6 +1270,7 @@ export function PracticeSession({ set }: PracticeSessionProps) {
                       </span>
                     </div>
                     <textarea
+                      ref={answerInputRef}
                       value={currentAnswer}
                       onChange={(e) => handleAnswerChange(e.target.value)}
                       onBlur={() => {
@@ -1273,6 +1287,7 @@ export function PracticeSession({ set }: PracticeSessionProps) {
                   </div>
                 ) : (
                   <textarea
+                    ref={answerInputRef}
                     value={currentAnswer}
                     onChange={(e) => handleAnswerChange(e.target.value)}
                     onBlur={() => {
