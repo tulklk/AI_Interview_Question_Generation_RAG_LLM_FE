@@ -47,9 +47,13 @@ function isOnLoginPage(): boolean {
   return normalizePath(window.location.pathname) === normalizePath(getLoginPath());
 }
 
-function redirectToLogin() {
+let loginRedirectStarted = false;
+
+/** Hard-navigation to login. Only the first call assigns; later 401s are ignored. */
+export function redirectToLogin() {
   if (typeof window === "undefined") return;
-  if (isOnLoginPage()) return;
+  if (loginRedirectStarted || isOnLoginPage()) return;
+  loginRedirectStarted = true;
   window.location.assign(getLoginPath());
 }
 
@@ -102,6 +106,7 @@ function isPublicAuthRequest(config: InternalAxiosRequestConfig): boolean {
   const url = (config.url ?? "").toLowerCase();
   return (
     url.includes("/api/auth/login") ||
+    url.includes("/api/auth/logout") ||
     url.includes("/api/auth/register") ||
     url.includes("/api/auth/oauth") ||
     url.includes("/api/auth/forgot-password") ||

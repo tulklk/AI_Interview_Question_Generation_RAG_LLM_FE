@@ -4,7 +4,7 @@ import { useCallback, useState } from "react";
 import { logout } from "@/features/auth/services/logout.service";
 import { getRefreshToken } from "@/core/auth/token.service";
 import { clearAuth } from "@/core/auth/permissions";
-import { getLoginPath } from "@/core/config/env";
+import { redirectToLogin } from "@/core/interceptors/auth.interceptor";
 import { useUser } from "@/features/auth/context/user-context";
 
 export function useLogout() {
@@ -21,9 +21,7 @@ export function useLogout() {
     if (refreshToken) {
       void logout(refreshToken).catch(() => undefined);
     }
-    if (typeof window !== "undefined") {
-      window.location.assign(getLoginPath());
-    }
+    redirectToLogin();
   }, [clearUser, loggingOut]);
 
   return { logout: logoutFn, loggingOut };

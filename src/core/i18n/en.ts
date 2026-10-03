@@ -2348,6 +2348,8 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
       filters: {
         searchPlaceholder: "Search by name or email...",
         allRoles: "All Roles",
+        roleHr: "HR",
+        roleCandidate: "Candidate",
         allStatus: "All Status",
         allPlans: "All plans",
         planPremium: "Premium",
@@ -3362,6 +3364,7 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
     preview: "Question Preview",
     loading: "Loading question set…",
     loadFailed: "Failed to load this question set.",
+    quotaPanelTitle: "Limit reached",
     notFoundTitle: "Question set not found",
     notFoundSubtext: "This question set may have been removed or the link is incorrect.",
     backToSetsBtn: "Browse Question Sets",

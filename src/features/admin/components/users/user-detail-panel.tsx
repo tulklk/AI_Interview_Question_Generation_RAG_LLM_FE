@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   X,
@@ -251,6 +252,7 @@ export function UserDetailPanel({
   const statusLabels = u.statusLabels;
   const locale = lang === "vi" ? "vi-VN" : "en-US";
 
+  const [mounted, setMounted] = useState(false);
   const [pendingAction, setPendingAction] = useState<PendingStatusAction>(null);
   const [revokeOpen, setRevokeOpen] = useState(false);
 
@@ -446,13 +448,14 @@ export function UserDetailPanel({
     other: subT.historyTypeOther,
   };
 
-  return (
-    <>
+  useEffect(() => { setMounted(true); }, []);
+
+  const overlay = (
       <AnimatePresence>
         {open && (
           <motion.div
             key="udp-backdrop"
-            className="fixed inset-0 z-50 bg-slate-900/45 backdrop-blur-[3px]"
+            className="fixed inset-0 z-50 bg-transparent"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -464,7 +467,7 @@ export function UserDetailPanel({
         {open && (
           <motion.div
             key="udp-drawer"
-            className="fixed inset-y-0 right-0 z-50 flex w-full max-w-120 flex-col overflow-hidden border-l border-slate-200 bg-white shadow-[-8px_0_60px_-8px_rgba(15,23,42,0.2)] dark:border-slate-700 dark:bg-slate-900"
+            className="fixed inset-y-0 right-0 z-60 flex w-full max-w-120 flex-col overflow-hidden border-l border-slate-200 bg-white shadow-[-8px_0_60px_-8px_rgba(15,23,42,0.2)] dark:border-slate-700 dark:bg-slate-900"
             initial={{ x: "100%" }}
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
@@ -881,6 +884,11 @@ export function UserDetailPanel({
           </motion.div>
         )}
       </AnimatePresence>
+  );
+
+  return (
+    <>
+      {mounted ? createPortal(overlay, document.body) : null}
 
       <ConfirmDialog
         open={confirmOpen}

@@ -565,8 +565,11 @@ export function useCoachWorkflow() {
       addToast("success", result.analysisFailed ? p.cvAnalysisFailed : p.cvUploaded);
       setSelectedStep(2);
     } catch (e) {
-      if (e instanceof CvValidationError) setError(e.message);
-      else setError(apiError(e, p.generateFailed, lang));
+      if (e instanceof CvValidationError && e.message) {
+        addToast("error", e.message);
+      } else {
+        setError(apiError(e, p.generateFailed, lang));
+      }
     } finally {
       setUploadingCv(false);
     }

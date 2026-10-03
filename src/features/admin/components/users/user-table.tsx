@@ -77,6 +77,7 @@ export function UserTable({
   const { t, lang } = useLanguage();
   const tbl = t.adminPages.users.table;
   const roleLabels = t.adminPages.users.roles;
+  const roleFilters = t.adminPages.users.filters;
   const statusLabels = t.adminPages.users.statusLabels;
   const viewLabel = t.adminPages.users.actions.view;
   const u = t.adminPages.users;
@@ -201,7 +202,11 @@ export function UserTable({
                           roleStyles[user.roleKey]
                         )}
                       >
-                        {roleLabels[user.roleKey]}
+                        {user.roleKey === "HR_MANAGER"
+                          ? roleFilters.roleHr
+                          : user.roleKey === "JOB_SEEKER"
+                            ? roleFilters.roleCandidate
+                            : roleLabels[user.roleKey]}
                       </span>
                     </td>
 
