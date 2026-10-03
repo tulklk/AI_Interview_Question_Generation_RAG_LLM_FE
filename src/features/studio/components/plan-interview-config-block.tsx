@@ -25,6 +25,7 @@ interface Props {
   isApplying?: boolean;
   onDraftChange: (patch: Partial<StudioConfigDraft>) => void;
   onApplyToPlan: () => Promise<void> | void;
+  jdSkills?: string[];
 }
 
 function CompactNumberField({
@@ -125,6 +126,7 @@ export function PlanInterviewConfigBlock({
   isApplying = false,
   onDraftChange,
   onApplyToPlan,
+  jdSkills = [],
 }: Props) {
   const { t } = useLanguage();
   const s = t.studioPage.settings;
@@ -213,6 +215,7 @@ export function PlanInterviewConfigBlock({
         <FocusAreasEditor
           focusAreas={focusAreas}
           disabled={!editable}
+          jdSkills={jdSkills}
           onChange={(next) => onDraftChange({ focusAreas: next })}
         />
 

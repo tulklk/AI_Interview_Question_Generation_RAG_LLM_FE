@@ -800,41 +800,15 @@ export function CandidateBillingPage() {
                           </button>
                         )}
                         {item.receiptUrl && (
-                          <>
-                            <a
-                              href={item.receiptUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className={cn("flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors", portalSubtext)}
-                            >
-                              <ExternalLink size={11} />
-                              {b.viewBtn}
-                            </a>
-                            <a
-                              href={item.receiptUrl}
-                              download
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className={cn("flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors", portalSubtext)}
-                            >
-                              <Download size={11} />
-                              {b.downloadBtn}
-                            </a>
-                          </>
-                        )}
-                        {!item.receiptUrl && (
-                          <button
-                            type="button"
-                            disabled
-                            title={t.common.comingSoon}
-                            className={cn(
-                              "flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-md opacity-50 cursor-not-allowed",
-                              portalSubtext,
-                            )}
+                          <a
+                            href={item.receiptUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className={cn("flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors", portalSubtext)}
                           >
-                            <Download size={11} />
-                            {b.downloadBtn}
-                          </button>
+                            <ExternalLink size={11} />
+                            {b.viewBtn}
+                          </a>
                         )}
                       </div>
                     </td>

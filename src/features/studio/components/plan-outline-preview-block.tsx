@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { Check, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { useLanguage } from "@/shared/providers/language-context";
 import { portalSubtext } from "@/shared/utils/portal-ui";
@@ -18,28 +18,28 @@ interface Props {
   settings: StudioSettings | null;
   allowedSkillNames?: string[];
   locked?: boolean;
-  isApplying?: boolean;
+  /** Đang auto-save outline — chỉ hiện trạng thái, không khóa input */
+  isSaving?: boolean;
   outlineDirty?: boolean;
-  /** Bước 1 đang dirty → ẩn CTA outline (chỉ 1 nút tại một thời điểm) */
+  /** Bước 1 đang dirty → nhắc Áp dụng bước 1 trước */
   settingsDirty?: boolean;
   onDraftChange: (patch: Partial<StudioConfigDraft>) => void;
-  onApplyOutline: () => Promise<void> | void;
 }
 
 /**
  * Bước 2 — Live Preview slots: chỉ hiện sau khi đã Áp dụng Focus/phân bổ/styles (bước 1).
+ * Chỉnh slot tự lưu (debounce ở studio-page) — không cần nút Áp dụng outline.
  */
 export function PlanOutlinePreviewBlock({
   plan,
   draft,
-  settings,
+  settings: _settings,
   allowedSkillNames = [],
   locked = false,
-  isApplying = false,
+  isSaving = false,
   outlineDirty = false,
-  settingsDirty = false,
+  settingsDirty: _settingsDirty = false,
   onDraftChange,
-  onApplyOutline,
 }: Props) {
   const { t } = useLanguage();
   const s = t.studioPage.settings;
@@ -62,13 +62,36 @@ export function PlanOutlinePreviewBlock({
     onDraftChange({ outlineItems: fromPlan, numberOfQuestions: fromPlan.length });
   }, [plan.id, plan.revision]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const saveHint = outlineItems.length < 5
+    ? cfg.outlineMinSlots
+    : isSaving
+      ? cfg.outlineSaving
+      : outlineDirty
+        ? cfg.outlinePendingSave
+        : cfg.outlineSaved;
+
   return (
     <div className="space-y-3 rounded-xl border border-primary/25 bg-primary/[0.03] p-3 dark:border-primary/30">
-      <div>
-        <p className="text-[10px] font-semibold uppercase tracking-widest text-primary/80">
-          {cfg.outlinePreviewTitle}
-        </p>
-        <p className={cn("mt-0.5 text-[10px]", portalSubtext)}>{cfg.outlinePreviewSubtitle}</p>
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-primary/80">
+            {cfg.outlinePreviewTitle}
+          </p>
+          <p className={cn("mt-0.5 text-[10px]", portalSubtext)}>{cfg.outlinePreviewSubtitle}</p>
+        </div>
+        <span
+          className={cn(
+            "inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium",
+            isSaving
+              ? "bg-amber-50 text-amber-800 dark:bg-amber-950/40 dark:text-amber-200"
+              : outlineDirty
+                ? "bg-sky-50 text-sky-800 dark:bg-sky-950/40 dark:text-sky-200"
+                : "bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200"
+          )}
+        >
+          {isSaving ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
+          {saveHint}
+        </span>
       </div>
 
       <PlanQuestionPreviewList
@@ -76,7 +99,7 @@ export function PlanOutlinePreviewBlock({
         allowedSkills={allowedSkillNames}
         coverage={plan.coverage}
         sourceDetails={plan.sourceDetails}
-        locked={!editable || isApplying}
+        locked={!editable}
         labels={{
           title: cfg.outlinePreviewListTitle,
           subtitle: cfg.outlinePreviewListHint,
@@ -106,20 +129,6 @@ export function PlanOutlinePreviewBlock({
           onDraftChange({ outlineItems: next, numberOfQuestions: next.length })
         }
       />
-
-      {editable &&
-        !settingsDirty &&
-        (outlineDirty || (outlineItems.length > 0 && !plan.outlineItems?.length)) && (
-        <button
-          type="button"
-          disabled={isApplying || outlineItems.length < 5}
-          onClick={() => void onApplyOutline()}
-          className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-[12px] font-semibold text-white hover:bg-primary-hover disabled:opacity-40"
-        >
-          {isApplying ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
-          {isApplying ? s.applying : cfg.outlineApplyCta}
-        </button>
-      )}
     </div>
   );
 }

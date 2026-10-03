@@ -1209,18 +1209,22 @@ export function useStudio() {
     tx.recommendConfigMissing,
   ]);
 
-  const applySettingsToPlan = useCallback(async (outlineItems?: ApplyPlanSettingsPayload["outlineItems"]): Promise<{
+  const applySettingsToPlan = useCallback(async (
+    outlineItems?: ApplyPlanSettingsPayload["outlineItems"],
+    opts?: { silent?: boolean }
+  ): Promise<{
     plan: PlanDetail | null;
     settings: StudioSettings | null;
   } | null> => {
     const live = settingsRef.current ?? settings;
     if (!project || !currentPlan || !live) return null;
     if (currentPlan.status === "Approved") {
-      addToast("error", tx.planApprovedNoSettings);
+      if (!opts?.silent) addToast("error", tx.planApprovedNoSettings);
       return null;
     }
     setIsApplyingSettings(true);
-    setIsStreaming(true);
+    // Auto-save outline: không bật streaming badge toàn trang
+    if (!opts?.silent) setIsStreaming(true);
     try {
       const payload: ApplyPlanSettingsPayload = {
         numberOfQuestions: outlineItems?.length
@@ -1238,17 +1242,17 @@ export function useStudio() {
         codingTaskTypes: (live.enabledCodeTemplates ?? []).filter((t) => t !== "SYSTEM_DESIGN"),
         outlineItems: outlineItems?.length ? outlineItems : undefined,
       };
-      addToast("success", tx.applyingSettings);
+      if (!opts?.silent) addToast("success", tx.applyingSettings);
       await studioApi.applyPlanSettings(project.id, currentPlan.id, payload);
       const refreshed = await refreshStudioState();
-      addToast("success", tx.settingsApplied);
+      if (!opts?.silent) addToast("success", tx.settingsApplied);
       return refreshed;
     } catch (error) {
       addToast("error", extractErrorMessage(error, lang));
       return null;
     } finally {
       setIsApplyingSettings(false);
-      setIsStreaming(false);
+      if (!opts?.silent) setIsStreaming(false);
     }
   }, [addToast, currentPlan, lang, project, refreshStudioState, settings, tx.applyingSettings, tx.planApprovedNoSettings, tx.settingsApplied]);
 

@@ -340,6 +340,14 @@ function SkillProgressRow({
             </span>
           )}
           <span className={cn("truncate text-[13px] font-semibold", portalHeadingAlt)}>{skill.skill}</span>
+          {skill.isQuickCheck && (
+            <span
+              className="shrink-0 rounded-full bg-violet-50 px-1.5 py-0.5 text-[10px] font-semibold text-violet-700 dark:bg-violet-950/40 dark:text-violet-200"
+              title={p.reportQuickCheckHint}
+            >
+              {p.reportQuickCheckBadge}
+            </span>
+          )}
         </div>
         <span className={cn("shrink-0 text-[12px] tabular-nums font-medium", portalHeadingAlt)}>
           {Math.round(skill.skillScore)} / {Math.round(skill.targetScore)}

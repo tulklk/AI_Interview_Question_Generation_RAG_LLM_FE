@@ -16,44 +16,96 @@ import {
 } from "@/features/studio/utils/distribution-math";
 import {
   hasDuplicateFocusNames,
-  matchJdSkill,
-  normalizeFocusAreasToJdSkills,
+  matchTechSkill,
+  normalizeFocusAreasToTechSkills,
+  suggestJdTechSkills,
+  type TechSkillCatalogItem,
 } from "@/features/studio/utils/focus-area-jd";
+import { useTechSkillCatalog } from "@/features/studio/hooks/use-tech-skill-catalog";
 
 const PAGE_SIZE = 5;
 
 interface Props {
   focusAreas: StudioFocusAreaItem[];
   disabled?: boolean;
-  /** Nếu có: chỉ chọn skill JD — không gõ focus tự do. */
+  /** Giữ tương thích: skill JD để gợi ý khi chưa truyền jdSkills. */
   allowedSkillNames?: string[];
+  /** Skill phát hiện trên JD — hiện tag thêm nhanh nếu khớp TechSkill. */
+  jdSkills?: string[];
   onChange: (next: StudioFocusAreaItem[]) => void;
 }
 
 function resolveSelectValue(
   currentName: string,
-  catalog: string[],
+  catalog: TechSkillCatalogItem[],
   usedElsewhere: Set<string>
 ): string {
-  const matched = matchJdSkill(currentName, catalog);
+  const matched = matchTechSkill(currentName, catalog);
   if (matched) return matched;
-  const unused = catalog.find((s) => !usedElsewhere.has(s.toLowerCase()));
-  return unused ?? catalog[0] ?? currentName;
+  const unused = catalog.find((item) => !usedElsewhere.has(item.label.toLowerCase()));
+  return unused?.label ?? catalog[0]?.label ?? currentName;
 }
 
-export function FocusAreasEditor({ focusAreas, disabled, allowedSkillNames, onChange }: Props) {
+/** Nhóm gợi ý JD lên đầu dropdown; skill đó không lặp lại trong Languages/Backend… */
+function buildSelectGroups(
+  catalog: TechSkillCatalogItem[],
+  suggestedLabels: string[],
+  suggestGroupLabel: string
+): Array<[string, TechSkillCatalogItem[]]> {
+  const suggestedSet = new Set(suggestedLabels.map((label) => label.toLowerCase()));
+  const suggestedItems = suggestedLabels
+    .map((label) => catalog.find((item) => item.label.toLowerCase() === label.toLowerCase()))
+    .filter((item): item is TechSkillCatalogItem => Boolean(item));
+
+  const rest = new Map<string, TechSkillCatalogItem[]>();
+  for (const item of catalog) {
+    if (suggestedSet.has(item.label.toLowerCase())) continue;
+    const list = rest.get(item.group) ?? [];
+    list.push(item);
+    rest.set(item.group, list);
+  }
+
+  const groups: Array<[string, TechSkillCatalogItem[]]> = [];
+  if (suggestedItems.length > 0) groups.push([suggestGroupLabel, suggestedItems]);
+  for (const entry of rest.entries()) groups.push(entry);
+  return groups;
+}
+
+function optionLabel(item: TechSkillCatalogItem, isSuggested: boolean, suggestSuffix: string): string {
+  return isSuggested ? `${item.label} · ${suggestSuffix}` : item.label;
+}
+
+export function FocusAreasEditor({
+  focusAreas,
+  disabled,
+  allowedSkillNames,
+  jdSkills,
+  onChange,
+}: Props) {
   const { t } = useLanguage();
   const cfg = t.studioPage.settings.config;
-  const catalog = (allowedSkillNames ?? []).map((s) => s.trim()).filter(Boolean);
+  const techCatalog = useTechSkillCatalog();
+  const catalog = techCatalog;
   const useCatalog = catalog.length > 0;
+  const suggestionSource = jdSkills ?? allowedSkillNames ?? [];
+  const suggestions = suggestJdTechSkills(
+    suggestionSource,
+    catalog,
+    focusAreas.map((area) => area.name)
+  );
   const sum = Math.round(sumFocusWeights(focusAreas) * 10) / 10;
   const valid = focusAreas.length === 0 || Math.abs(sum - 100) <= 0.5;
   const barPct = Math.min(100, Math.max(0, sum));
 
-  const unusedSkills = catalog.filter(
-    (s) => !focusAreas.some((fa) => fa.name.toLowerCase() === s.toLowerCase())
-  );
+  const usedNames = new Set(focusAreas.map((area) => area.name.trim().toLowerCase()));
+  const unusedSkills = catalog.filter((item) => !usedNames.has(item.label.toLowerCase()));
   const allSkillsUsed = useCatalog && unusedSkills.length === 0;
+  /** Skill JD còn trống — đưa lên đầu dropdown Thêm focus. */
+  const unusedSuggestions = suggestions.filter((label) => !usedNames.has(label.toLowerCase()));
+  const addSelectGroups = useMemo(
+    () => buildSelectGroups(unusedSkills, unusedSuggestions, cfg.focusSuggest),
+    [unusedSkills, unusedSuggestions, cfg.focusSuggest]
+  );
 
   const totalPages = Math.max(1, Math.ceil(focusAreas.length / PAGE_SIZE));
   const [page, setPage] = useState(0);
@@ -74,12 +126,12 @@ export function FocusAreasEditor({ focusAreas, disabled, allowedSkillNames, onCh
     if (!useCatalog || focusAreas.length === 0) return;
     const needs =
       hasDuplicateFocusNames(focusAreas) ||
-      focusAreas.some(
-        (fa) => !catalog.some((s) => s.toLowerCase() === fa.name.trim().toLowerCase())
-      );
+      focusAreas.some((fa) => matchTechSkill(fa.name, catalog) !== fa.name.trim());
     if (!needs) return;
-    onChange(normalizeFocusAreasToJdSkills(focusAreas, catalog));
-  }, [useCatalog, catalog.join("|"), focusAreas.map((f) => f.name).join("|")]); // eslint-disable-line react-hooks/exhaustive-deps
+    const next = normalizeFocusAreasToTechSkills(focusAreas, catalog);
+    if (next.length === 0) return;
+    onChange(next);
+  }, [useCatalog, catalog.map((item) => item.label).join("|"), focusAreas.map((f) => f.name).join("|")]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const updateItem = (index: number, patch: Partial<StudioFocusAreaItem>) => {
     if (patch.weight !== undefined) {
@@ -108,28 +160,26 @@ export function FocusAreasEditor({ focusAreas, disabled, allowedSkillNames, onCh
     onChange(next.map((fa, i) => ({ ...fa, orderIndex: i })));
   };
 
-  const addArea = () => {
-    if (useCatalog) {
-      const unused = unusedSkills[0];
-      if (!unused) return;
-      const next = equalSplitFocusWeightsTo100([
-        ...focusAreas,
-        { name: unused, weight: 0, orderIndex: focusAreas.length },
-      ]);
-      onChange(next);
-      setPage(Math.floor((next.length - 1) / PAGE_SIZE));
-      return;
-    }
+  const addNamed = (name: string) => {
+    const label = name.trim();
+    if (!label) return;
+    if (focusAreas.some((area) => area.name.trim().toLowerCase() === label.toLowerCase())) return;
     const next = equalSplitFocusWeightsTo100([
       ...focusAreas,
-      {
-        name: cfg.newFocusName,
-        weight: 0,
-        orderIndex: focusAreas.length,
-      },
+      { name: label, weight: 0, orderIndex: focusAreas.length },
     ]);
     onChange(next);
     setPage(Math.floor((next.length - 1) / PAGE_SIZE));
+  };
+
+  const addArea = () => {
+    const unused = unusedSkills[0]?.label;
+    if (useCatalog) {
+      if (!unused) return;
+      addNamed(unused);
+      return;
+    }
+    addNamed(cfg.newFocusName);
   };
 
   const remove = (index: number) => {
@@ -167,6 +217,13 @@ export function FocusAreasEditor({ focusAreas, disabled, allowedSkillNames, onCh
           const selectValue = useCatalog
             ? resolveSelectValue(fa.name, catalog, usedElsewhere)
             : fa.name;
+          // Gợi ý JD vẫn hiện ở đầu kể cả skill đang chọn của dòng này.
+          const rowSuggestions = suggestJdTechSkills(
+            suggestionSource,
+            catalog,
+            [...usedElsewhere]
+          );
+          const rowGroups = buildSelectGroups(catalog, rowSuggestions, cfg.focusSuggest);
           const skillIcon = getSkillIcon(selectValue);
           const SIcon = skillIcon?.icon;
 
@@ -190,20 +247,27 @@ export function FocusAreasEditor({ focusAreas, disabled, allowedSkillNames, onCh
                     onChange={(e) => updateItem(idx, { name: e.target.value })}
                     className="w-full min-w-0 truncate rounded border-0 bg-transparent py-0.5 text-[11px] font-semibold text-gray-900 outline-none dark:text-gray-100 dark:[color-scheme:dark]"
                   >
-                    {catalog.map((s) => {
-                      const taken = usedElsewhere.has(s.toLowerCase());
+                    {rowGroups.map(([group, items]) => {
+                      const isSuggestGroup = group === cfg.focusSuggest;
                       return (
-                        <option
-                          key={s}
-                          value={s}
-                          disabled={taken}
-                          className={cn(
-                            "bg-white text-gray-900 dark:bg-gray-900 dark:text-gray-100",
-                            taken && "text-gray-400 dark:text-gray-500"
-                          )}
-                        >
-                          {s}
-                        </option>
+                        <optgroup key={group} label={group}>
+                          {items.map((item) => {
+                            const taken = usedElsewhere.has(item.label.toLowerCase());
+                            return (
+                              <option
+                                key={item.name}
+                                value={item.label}
+                                disabled={taken}
+                                className={cn(
+                                  "bg-white text-gray-900 dark:bg-gray-900 dark:text-gray-100",
+                                  taken && "text-gray-400 dark:text-gray-500"
+                                )}
+                              >
+                                {optionLabel(item, isSuggestGroup, cfg.focusSuggestShort)}
+                              </option>
+                            );
+                          })}
+                        </optgroup>
                       );
                     })}
                   </select>
@@ -296,16 +360,90 @@ export function FocusAreasEditor({ focusAreas, disabled, allowedSkillNames, onCh
       {allSkillsUsed && (
         <p className={cn("text-[10px]", portalSubtext)}>{cfg.focusAllSkillsUsed}</p>
       )}
+      <div className="flex items-center gap-1">
+        {useCatalog && (
+          <AddSkillSelect
+            groups={addSelectGroups}
+            suggestedLabels={unusedSuggestions}
+            suggestSuffix={cfg.focusSuggestShort}
+            suggestGroupLabel={cfg.focusSuggest}
+            disabled={disabled || allSkillsUsed}
+            onAdd={addNamed}
+            addLabel={cfg.addFocus}
+          />
+        )}
+        {!useCatalog && (
+          <button
+            type="button"
+            disabled={disabled}
+            onClick={addArea}
+            className="inline-flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-[11px] font-medium text-gray-700 hover:border-primary/40 hover:text-primary disabled:cursor-not-allowed disabled:opacity-40 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"
+          >
+            <Plus className="h-3 w-3" />
+            {cfg.addFocus}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function AddSkillSelect({
+  groups,
+  suggestedLabels,
+  suggestSuffix,
+  suggestGroupLabel,
+  disabled,
+  onAdd,
+  addLabel,
+}: {
+  groups: Array<[string, TechSkillCatalogItem[]]>;
+  suggestedLabels: string[];
+  suggestSuffix: string;
+  suggestGroupLabel: string;
+  disabled?: boolean;
+  onAdd: (label: string) => void;
+  addLabel: string;
+}) {
+  const flat = groups.flatMap(([, items]) => items);
+  const preferred = suggestedLabels[0] ?? flat[0]?.label ?? "";
+  const [value, setValue] = useState(preferred);
+
+  useEffect(() => {
+    if (flat.some((item) => item.label === value)) return;
+    setValue(preferred);
+  }, [preferred, flat, value]);
+
+  return (
+    <>
+      <select
+        disabled={disabled || flat.length === 0}
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        className="min-w-0 flex-1 rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-[11px] text-gray-800 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+      >
+        {groups.map(([group, items]) => {
+          const isSuggestGroup = group === suggestGroupLabel;
+          return (
+            <optgroup key={group} label={group}>
+              {items.map((item) => (
+                <option key={item.name} value={item.label}>
+                  {optionLabel(item, isSuggestGroup, suggestSuffix)}
+                </option>
+              ))}
+            </optgroup>
+          );
+        })}
+      </select>
       <button
         type="button"
-        disabled={disabled || (useCatalog && allSkillsUsed)}
-        title={allSkillsUsed ? cfg.focusAllSkillsUsed : undefined}
-        onClick={addArea}
-        className="inline-flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-[11px] font-medium text-gray-700 hover:border-primary/40 hover:text-primary disabled:cursor-not-allowed disabled:opacity-40 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"
+        disabled={disabled || !value}
+        onClick={() => onAdd(value)}
+        className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-[11px] font-medium text-gray-700 hover:border-primary/40 hover:text-primary disabled:cursor-not-allowed disabled:opacity-40 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"
       >
         <Plus className="h-3 w-3" />
-        {cfg.addFocus}
+        {addLabel}
       </button>
-    </div>
+    </>
   );
 }
