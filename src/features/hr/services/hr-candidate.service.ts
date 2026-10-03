@@ -1,4 +1,5 @@
 import { apiClient } from "@/core/api/http-client";
+import { normalizeCriterionScores, type CriterionScore } from "@/features/candidate/services/practice-session.service";
 
 export type HrCandidateAchievementId =
   | "first-practice"
@@ -203,6 +204,8 @@ export interface HrSessionFeedbackItem {
   improvements: string[];
   suggestion: string | null;
   dimensionScores: Record<string, number> | null;
+  /** Điểm từng tiêu chí rubric HR; null = câu chấm tổng thể. */
+  criterionScores: CriterionScore[] | null;
   evaluationStatus: string;
 }
 
@@ -257,6 +260,7 @@ export async function getHrSessionFeedback(sessionId: string): Promise<HrSession
             improvements: pickStrArr(item, "improvements", "Improvements"),
             suggestion: pickNullableStr(item, "suggestion", "Suggestion"),
             dimensionScores: Object.keys(dimensionScores).length ? dimensionScores : null,
+            criterionScores: normalizeCriterionScores(item.criterionScores ?? item.CriterionScores),
             evaluationStatus: pickStr(item, "evaluationStatus", "EvaluationStatus"),
           };
         }).filter((x): x is HrSessionFeedbackItem => x !== null && Boolean(x.questionId))

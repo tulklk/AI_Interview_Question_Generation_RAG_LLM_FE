@@ -22,6 +22,7 @@ import {
   getHrSessionFeedback,
   type HrSessionFeedback,
 } from "@/features/hr/services/hr-candidate.service";
+import { CriterionBreakdown } from "@/features/candidate/components/feedback/criterion-breakdown";
 import { HrSessionFeedbackSkeleton } from "./hr-session-feedback-skeleton";
 
 export function HrSessionFeedbackPage({ candidateUserId, sessionId }: { candidateUserId: string; sessionId: string }) {
@@ -164,6 +165,7 @@ export function HrSessionFeedbackPage({ candidateUserId, sessionId }: { candidat
                   </div>
                   {hasEval && (
                     <div className="space-y-3">
+                      {item.criterionScores && <CriterionBreakdown criteria={item.criterionScores} total={item.score} />}
                       {item.strengths.length > 0 && (
                         <div>
                           <p className="text-[12px] font-semibold text-emerald-700 dark:text-emerald-400 mb-1 flex items-center gap-1">

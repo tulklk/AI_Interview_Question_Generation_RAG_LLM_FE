@@ -284,6 +284,31 @@ function normalizeDimensionScores(raw: unknown): Record<string, number> | null {
   return Object.keys(out).length > 0 ? out : null;
 }
 
+/** Điểm 1 tiêu chí rubric HR của 1 câu: trọng số (%) + điểm AI chấm riêng tiêu chí (0–100). */
+export interface CriterionScore {
+  code: string;
+  label: string;
+  weight: number;
+  score: number;
+}
+
+/** BE trả [{code,label,weight,score}] — bỏ phần tử sai kiểu, rỗng thì coi như không có. */
+export function normalizeCriterionScores(raw: unknown): CriterionScore[] | null {
+  if (!Array.isArray(raw)) return null;
+  const out: CriterionScore[] = [];
+  for (const item of raw) {
+    const src = asRecord(item);
+    if (!src) continue;
+    const score = typeof src.score === "number" ? src.score : typeof src.Score === "number" ? src.Score : null;
+    const weight = typeof src.weight === "number" ? src.weight : typeof src.Weight === "number" ? src.Weight : null;
+    const label = typeof src.label === "string" ? src.label : typeof src.Label === "string" ? src.Label : "";
+    const code = typeof src.code === "string" ? src.code : typeof src.Code === "string" ? src.Code : "";
+    if (score === null || weight === null || !label || !code) continue;
+    out.push({ code, label, weight, score });
+  }
+  return out.length > 0 ? out : null;
+}
+
 /**
  * Per-question AI evaluation from GET .../feedback (SCRUM-332: không còn score lúc submit).
  */
@@ -293,6 +318,8 @@ export interface AnswerEvaluation {
   improvements: string[];
   suggestion: string | null;
   dimensionScores: Record<string, number> | null;
+  /** Điểm từng tiêu chí rubric HR; null = câu này chấm tổng thể. */
+  criterionScores: CriterionScore[] | null;
   evaluationStatus: string;
   isLocked?: boolean;
   isTeaser?: boolean;
@@ -307,6 +334,7 @@ function normalizeAnswerEvaluation(raw: unknown): AnswerEvaluation | null {
     improvements: Array.isArray(src.improvements) ? src.improvements.filter((s): s is string => typeof s === "string") : [],
     suggestion: pickOptionalString(src, "suggestion") ?? null,
     dimensionScores: normalizeDimensionScores(src.dimensionScores),
+    criterionScores: normalizeCriterionScores(src.criterionScores ?? src.CriterionScores),
     evaluationStatus: pickString(src, "evaluationStatus") || "Unknown",
     isLocked: Boolean(src.isLocked ?? src.IsLocked),
     isTeaser: Boolean(src.isTeaser ?? src.IsTeaser),

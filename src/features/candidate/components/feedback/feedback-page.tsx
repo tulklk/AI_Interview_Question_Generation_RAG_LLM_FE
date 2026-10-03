@@ -18,6 +18,7 @@ import { getCompanyColor, getCompanyInitials } from "@/features/candidate/utils/
 import { useChartTheme } from "@/shared/hooks/use-chart-theme";
 import { ScoreHelp } from "@/features/candidate/components/ui/score-help";
 import { QuestionContent } from "@/shared/components/ui/question-content";
+import { CriterionBreakdown } from "./criterion-breakdown";
 import { ConfettiBurst } from "@/shared/components/common/confetti-burst";
 import { useToast } from "@/shared/providers/toast-context";
 import { UpgradeModal } from "@/features/candidate/components/billing/upgrade-modal";
@@ -905,6 +906,8 @@ export function FeedbackPage({
                         {hasEval && (
                           <div className="flex flex-col gap-3">
                             <p className={cn("text-[11px] font-[700] uppercase tracking-wide", portalSubtextAlt)}>{p.aiEvaluation}</p>
+
+                            {fb.criterionScores && <CriterionBreakdown criteria={fb.criterionScores} total={fb.score} />}
 
                             {fb.strengths.length > 0 && (
                               <div className="flex flex-col gap-1.5">
