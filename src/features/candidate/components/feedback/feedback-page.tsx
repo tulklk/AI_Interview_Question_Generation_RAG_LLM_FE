@@ -439,11 +439,15 @@ export function FeedbackPage({
         </motion.div>
       )}
 
-      {/* ── Score Header ─────────────────────────────────────────── */}
+      {/* ── Score + actions / XP ────────────────────────────────── */}
+      <div className={cn(
+        "mb-6",
+        showXp && "grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_320px]",
+      )}>
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="relative hr-glass-card rounded-2xl p-5 sm:p-8 flex flex-col sm:flex-row items-center sm:items-start gap-5 sm:gap-10 mb-6"
+        className="relative hr-glass-card min-w-0 rounded-2xl p-5 sm:p-8 flex flex-col sm:flex-row items-center sm:items-start gap-5 sm:gap-10"
       >
         {hasScore && score >= CELEBRATION_THRESHOLD && <ConfettiBurst />}
         {hasScore ? (
@@ -636,12 +640,51 @@ export function FeedbackPage({
           </div>
         </div>
 
-        {/* Action buttons */}
-        <div className="flex sm:flex-col gap-2 shrink-0 w-full sm:w-auto">
+        {!showXp && (
+          <div className="flex w-full shrink-0 flex-col gap-2 sm:w-auto">
+            {isCoachSession ? (
+              <Link
+                href={coachNextHref}
+                className="shimmer-button flex items-center gap-2 h-9 px-4 text-[13px] font-semibold text-white hr-cta-btn rounded-lg"
+              >
+                {coachNextLabel}
+                <ArrowRight size={13} />
+              </Link>
+            ) : (
+              session.questionSetId && (
+                <Link
+                  href={`/candidate/practice/${session.questionSetId}`}
+                  className="shimmer-button flex items-center gap-2 h-9 px-4 text-[13px] font-semibold text-white hr-cta-btn rounded-lg"
+                >
+                  <RefreshCw size={13} />
+                  {p.retryBtn}
+                </Link>
+              )
+            )}
+            {!isCoachSession && (
+              <button
+                type="button"
+                onClick={handleShare}
+                className={cn(
+                  "hr-glass-card flex items-center gap-2 h-9 px-4 text-[13px] font-semibold hover:border-[#7C3AED]/30",
+                  portalHeadingAlt
+                )}
+              >
+                <Share2 size={13} />
+                {p.shareBtn}
+              </button>
+            )}
+          </div>
+        )}
+      </motion.div>
+
+      {showXp && (
+      <aside className="flex w-full shrink-0 flex-col gap-3 lg:w-[320px]">
+        <div className="flex flex-col gap-2">
           {isCoachSession ? (
             <Link
               href={coachNextHref}
-              className="shimmer-button flex items-center gap-2 h-9 px-4 text-[13px] font-semibold text-white hr-cta-btn rounded-lg"
+              className="shimmer-button flex w-full items-center justify-center gap-2 h-9 px-4 text-[13px] font-semibold text-white hr-cta-btn rounded-lg"
             >
               {coachNextLabel}
               <ArrowRight size={13} />
@@ -650,7 +693,7 @@ export function FeedbackPage({
             session.questionSetId && (
               <Link
                 href={`/candidate/practice/${session.questionSetId}`}
-                className="shimmer-button flex items-center gap-2 h-9 px-4 text-[13px] font-semibold text-white hr-cta-btn rounded-lg"
+                className="shimmer-button flex w-full items-center justify-center gap-2 h-9 px-4 text-[13px] font-semibold text-white hr-cta-btn rounded-lg"
               >
                 <RefreshCw size={13} />
                 {p.retryBtn}
@@ -662,7 +705,7 @@ export function FeedbackPage({
               type="button"
               onClick={handleShare}
               className={cn(
-                "hr-glass-card flex items-center gap-2 h-9 px-4 text-[13px] font-semibold hover:border-[#7C3AED]/30",
+                "hr-glass-card flex w-full items-center justify-center gap-2 h-9 px-4 text-[13px] font-semibold hover:border-[#7C3AED]/30",
                 portalHeadingAlt
               )}
             >
@@ -671,12 +714,12 @@ export function FeedbackPage({
             </button>
           )}
         </div>
-      </motion.div>
-
-      {/* ── XP earned this session — ẩn với Coach competency ── */}
-      {showXp && xpReward && (
-        <SessionXpSummary xpReward={xpReward} className="mb-6" />
+        {xpReward && (
+          <SessionXpSummary xpReward={xpReward} />
+        )}
+      </aside>
       )}
+      </div>
 
       {integrityReport && (
         <div className="mb-6">

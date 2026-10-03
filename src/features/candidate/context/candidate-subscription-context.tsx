@@ -13,6 +13,7 @@ import type { CandidatePlanType } from "@/features/candidate/types/billing";
 import { getCandidateSubscription } from "@/features/candidate/services/candidate-billing.service";
 import { useUser } from "@/features/auth/context/user-context";
 import { localStorageService } from "@/core/storage/local-storage.service";
+import { useSubscriptionRealtime } from "@/features/subscription/hooks/use-subscription-realtime";
 
 interface CandidateSubscriptionContextValue {
   planType: CandidatePlanType;
@@ -76,16 +77,12 @@ export function CandidateSubscriptionProvider({ children }: { children: ReactNod
     void refreshSubscription();
   }, [userId, refreshSubscription]);
 
-  // ── Background subscription poll ─────────────────────────────────────────
-  // The /hubs/subscription-payments SignalR hub is HR-only on the backend.
-  // Candidates get 404 when trying to connect, so we skip SignalR entirely
-  // and rely on a plain 30-second poll instead.
-  // Only runs when the user is authenticated to avoid 401 spam on public pages.
-  useEffect(() => {
-    if (!userId) return;
-    const id = window.setInterval(() => void refreshSubscription(), 30_000);
-    return () => window.clearInterval(id);
-  }, [userId, refreshSubscription]);
+  // Admin grant / revoke fires SubscriptionChanged on the payments hub.
+  // The hook also polls every 30s if the hub is down, so there is no second interval.
+  useSubscriptionRealtime({
+    onSubscriptionChanged: refreshSubscription,
+    enabled: Boolean(userId),
+  });
 
   const value = useMemo(
     () => ({ planType, planStartedAt, refreshSubscription }),

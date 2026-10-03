@@ -114,8 +114,8 @@ export function ConfirmDialog({
           <div className="flex items-center justify-center gap-2 mb-2">
             <div
               className={cn(
-                "flex h-7 w-7 shrink-0 items-center justify-center rounded-lg",
-                isDanger ? "bg-red-50 dark:bg-red-950/50" : "bg-gray-100 dark:bg-gray-800"
+                "flex h-7 w-7 shrink-0 items-center justify-center",
+                isDanger && "rounded-lg bg-red-50 dark:bg-red-950/50"
               )}
             >
               <Icon

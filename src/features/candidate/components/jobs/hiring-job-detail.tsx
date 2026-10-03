@@ -30,15 +30,16 @@ import {
   abandonPracticeSession,
   getPracticeSession,
   IntegrityLockedError,
+  ForbiddenError,
 } from "@/features/candidate/services/practice-session.service";
 import {
   toggleBookmark,
   getBookmarkedSetIds,
   getQuestionSetById,
-  NotFoundError,
 } from "@/features/candidate/services/question-set.service";
 import { useToast } from "@/shared/providers/toast-context";
 import { ConfirmDialog } from "@/shared/components/ui/confirm-dialog";
+import { UpgradeModal } from "@/features/candidate/components/billing/upgrade-modal";
 import { getCompanyColor, getCompanyInitials } from "@/features/candidate/utils/company-visual";
 import { cleanTitle } from "@/features/candidate/utils/clean-title";
 import { groupQuestionsForInterviewPlan } from "@/features/candidate/utils/group-questions";
@@ -73,6 +74,8 @@ export function HiringJobDetail({ set, variant = "page" }: Props) {
 
   const [inProgressSessionId, setInProgressSessionId] = useState<string | null>(null);
   const [lockNoticeOpen, setLockNoticeOpen] = useState(false);
+  const [quotaNotice, setQuotaNotice] = useState<string | null>(null);
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
   const [bookmarked, setBookmarked] = useState(false);
   const [bookmarking, setBookmarking] = useState(false);
   const [startNewConfirmOpen, setStartNewConfirmOpen] = useState(false);
@@ -131,6 +134,14 @@ export function HiringJobDetail({ set, variant = "page" }: Props) {
     mins != null && mins > 0 ? h.timeMeta.replace("{{min}}", String(mins)) : null,
   ].filter(Boolean) as string[];
 
+  function showStartError(err: unknown) {
+    if (err instanceof ForbiddenError && err.apiDetail) {
+      setQuotaNotice(err.apiDetail);
+      return;
+    }
+    addToast("error", p.loadFailed);
+  }
+
   function showIntegrityLock() {
     setLockNoticeOpen(true);
     setNavigating(false);
@@ -151,7 +162,7 @@ export function HiringJobDetail({ set, variant = "page" }: Props) {
         showIntegrityLock();
         return;
       }
-      addToast("error", p.loadFailed);
+      showStartError(err);
     }
   }
 
@@ -168,8 +179,7 @@ export function HiringJobDetail({ set, variant = "page" }: Props) {
         showIntegrityLock();
         return;
       }
-      if (err instanceof NotFoundError) addToast("error", p.loadFailed);
-      else addToast("error", p.loadFailed);
+      showStartError(err);
       return;
     }
     abandonPracticeSession(inProgressSessionId)
@@ -513,6 +523,22 @@ export function HiringJobDetail({ set, variant = "page" }: Props) {
         onConfirm={() => setLockNoticeOpen(false)}
         onCancel={() => setLockNoticeOpen(false)}
       />
+      <ConfirmDialog
+        open={quotaNotice !== null}
+        title={p.quotaPanelTitle}
+        message={quotaNotice ?? ""}
+        confirmLabel={t.jobseekerSettingsPage.billing.upgradeBtn}
+        cancelLabel={t.common.close}
+        variant="primary"
+        onConfirm={() => {
+          setQuotaNotice(null);
+          setUpgradeOpen(true);
+        }}
+        onCancel={() => setQuotaNotice(null)}
+      />
+      {upgradeOpen && (
+        <UpgradeModal onClose={() => setUpgradeOpen(false)} />
+      )}
     </div>
   );
 }

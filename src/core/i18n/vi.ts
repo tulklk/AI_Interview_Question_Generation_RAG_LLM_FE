@@ -2317,6 +2317,8 @@ Yêu cầu:
       filters: {
         searchPlaceholder: "Tìm theo tên hoặc email...",
         allRoles: "Tất cả vai trò",
+        roleHr: "HR",
+        roleCandidate: "Candidate",
         allStatus: "Tất cả trạng thái",
         allPlans: "Tất cả gói",
         planPremium: "Premium",
@@ -3330,6 +3332,7 @@ Yêu cầu:
     preview: "Xem Trước Câu Hỏi",
     loading: "Đang tải bộ câu hỏi…",
     loadFailed: "Không thể tải bộ câu hỏi này.",
+    quotaPanelTitle: "Đã hết lượt",
     notFoundTitle: "Không tìm thấy bộ câu hỏi",
     notFoundSubtext: "Bộ câu hỏi này có thể đã bị xóa hoặc đường dẫn không chính xác.",
     backToSetsBtn: "Xem bộ câu hỏi khác",

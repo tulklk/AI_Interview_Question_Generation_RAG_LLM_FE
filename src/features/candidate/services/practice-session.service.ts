@@ -3,11 +3,13 @@ import type { Difficulty } from "@/features/candidate/types/jobseeker";
 
 const BASE = "/api/candidate/practice-sessions";
 
-/** Thrown when the BE returns 403 — the session exists but belongs to another candidate. */
+/** Thrown when the BE returns 403 — quota, or the session belongs to another candidate. */
 export class ForbiddenError extends Error {
-  constructor(message = "You don't have access to this session") {
-    super(message);
+  readonly apiDetail: string | null;
+  constructor(apiDetail: string | null = null) {
+    super(apiDetail ?? "You don't have access to this session");
     this.name = "ForbiddenError";
+    this.apiDetail = apiDetail;
   }
 }
 
@@ -47,13 +49,23 @@ function payloadSignalsIntegrityLock(data: unknown): boolean {
   return INTEGRITY_LOCK_RE.test(parts.join(" "));
 }
 
+function readApiDetail(data: unknown): string | null {
+  if (!data || typeof data !== "object") return null;
+  const o = data as Record<string, unknown>;
+  for (const key of ["detail", "Detail"]) {
+    const value = o[key];
+    if (typeof value === "string" && value.trim()) return value.trim();
+  }
+  return null;
+}
+
 function rethrowForbidden(err: unknown): never {
   const response = (err as { response?: { status?: number; data?: unknown } })?.response;
   const status = response?.status;
   if ((status === 403 || status === 409) && payloadSignalsIntegrityLock(response?.data)) {
     throw new IntegrityLockedError();
   }
-  if (status === 403) throw new ForbiddenError();
+  if (status === 403) throw new ForbiddenError(readApiDetail(response?.data));
   throw err;
 }
 

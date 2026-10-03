@@ -2,18 +2,18 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
-import { motion } from "framer-motion";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
-  CreditCard, Lock, Unlock, Crown, Star,
+  CreditCard, Lock, Unlock, Crown, Star, Scale, Gauge,
   Receipt, Download, ExternalLink, AlertTriangle,
-  RefreshCw, Sparkles, X, ChevronRight, Calendar,
+  RefreshCw, Sparkles, X, ChevronLeft, ChevronRight, Calendar,
   BarChart2, BookOpen, Send, Check, History,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { useLanguage } from "@/shared/providers/language-context";
 import { useToast } from "@/shared/providers/toast-context";
 import { useUser } from "@/features/auth/context/user-context";
-import { portalHeading, portalSubtext } from "@/shared/utils/portal-ui";
+import { portalHeading, portalHeadingAlt, portalSubtext, portalSubtextAlt } from "@/shared/utils/portal-ui";
 import type {
   CandidateSubscription,
   CandidateBillingUsage,
@@ -55,8 +55,8 @@ function BillingSkeleton() {
       <div className="rounded-xl border border-gray-200 dark:border-gray-800 p-6 space-y-4">
         <Skeleton className="h-6 w-32" />
         <Skeleton className="h-4 w-64" />
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-20" />)}
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+          {[0, 1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-20" />)}
         </div>
         <Skeleton className="h-10 w-48" />
       </div>
@@ -195,6 +195,86 @@ function QuotaBar({ used, limit, color = "bg-primary" }: { used: number; limit: 
   );
 }
 
+const HISTORY_PAGE_SIZE = 10;
+
+function buildHistoryPageNumbers(current: number, total: number): (number | "…")[] {
+  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+  const nums: (number | "…")[] = [1];
+  const left = Math.max(2, current - 1);
+  const right = Math.min(total - 1, current + 1);
+  if (left > 2) nums.push("…");
+  for (let i = left; i <= right; i++) nums.push(i);
+  if (right < total - 1) nums.push("…");
+  nums.push(total);
+  return nums;
+}
+
+function PaymentHistoryPagination({
+  page,
+  totalPages,
+  onPage,
+}: {
+  page: number;
+  totalPages: number;
+  onPage: (page: number) => void;
+}) {
+  const { t } = useLanguage();
+  const pages = buildHistoryPageNumbers(page, totalPages);
+  const navBtn = cn(
+    "flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 bg-white transition-colors dark:border-gray-700 dark:bg-gray-900",
+    "hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-40",
+    portalHeadingAlt,
+  );
+
+  return (
+    <div className="flex items-center justify-end gap-1 border-t border-gray-200 px-4 py-3 dark:border-gray-800">
+      <button
+        type="button"
+        onClick={() => onPage(page - 1)}
+        aria-label={t.common.prevPageShort}
+        disabled={page === 1}
+        className={navBtn}
+      >
+        <ChevronLeft size={14} />
+      </button>
+      {pages.map((p, i) =>
+        p === "…" ? (
+          <span key={`ellipsis-${i}`} className={cn("flex h-8 w-8 items-center justify-center text-[12px]", portalSubtextAlt)}>
+            …
+          </span>
+        ) : (
+          <button
+            key={p}
+            type="button"
+            onClick={() => onPage(p)}
+            className={cn(
+              "flex h-8 w-8 items-center justify-center rounded-lg text-[13px] font-semibold transition-colors",
+              p === page
+                ? "border border-primary bg-primary text-white"
+                : cn(
+                    "border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900",
+                    "hover:border-primary hover:text-primary",
+                    portalHeadingAlt,
+                  ),
+            )}
+          >
+            {p}
+          </button>
+        ),
+      )}
+      <button
+        type="button"
+        onClick={() => onPage(page + 1)}
+        aria-label={t.common.nextPageShort}
+        disabled={page === totalPages}
+        className={navBtn}
+      >
+        <ChevronRight size={14} />
+      </button>
+    </div>
+  );
+}
+
 // ── Main Component ────────────────────────────────────────────────────────────
 
 export function CandidateBillingPage() {
@@ -208,6 +288,8 @@ export function CandidateBillingPage() {
   const [subscription, setSubscription] = useState<CandidateSubscription | null>(null);
   const [usage, setUsage] = useState<CandidateBillingUsage | null>(null);
   const [history, setHistory] = useState<PaymentHistoryItem[]>([]);
+  const [historyPage, setHistoryPage] = useState(1);
+  const reduceMotion = useReducedMotion();
   const [loading, setLoading] = useState(true);
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [showCancel, setShowCancel] = useState(false);
@@ -270,10 +352,20 @@ export function CandidateBillingPage() {
     prevPlanRef.current = contextPlanType;
   }, [contextPlanType, loadBillingData]);
 
+  const historyTotalPages = Math.max(1, Math.ceil(history.length / HISTORY_PAGE_SIZE));
+  useEffect(() => {
+    if (historyPage > historyTotalPages) setHistoryPage(historyTotalPages);
+  }, [historyPage, historyTotalPages]);
+
   if (loading) {
     return <BillingSkeleton />;
   }
 
+  const visibleHistoryPage = Math.min(historyPage, historyTotalPages);
+  const historyRows = history.slice(
+    (visibleHistoryPage - 1) * HISTORY_PAGE_SIZE,
+    visibleHistoryPage * HISTORY_PAGE_SIZE,
+  );
   const isPremium = subscription?.planType === "PREMIUM";
 
   // ── Quota items ──
@@ -393,44 +485,6 @@ export function CandidateBillingPage() {
                 )}
               </div>
             )}
-
-            {/* Free: quota mini-grid */}
-            {!isPremium && usage && (
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mt-1">
-                {[
-                  {
-                    label: b.practiceAttemptsLabel,
-                    value: usage.practiceLimit === null
-                      ? `${usage.practiceUsed} · ${b.unlimitedLabel}`
-                      : `${usage.practiceUsed}/${usage.practiceLimit}`,
-                  },
-                  {
-                    label: b.practiceHistoryLabel,
-                    value: usage.practiceHistoryLimit === null
-                      ? `${usage.practiceHistoryUsed} · ${b.unlimitedLabel}`
-                      : `${usage.practiceHistoryUsed}/${usage.practiceHistoryLimit}`,
-                  },
-                  {
-                    label: b.aiFeedbackLabel,
-                    value: usage.aiFeedbackLevel === "ADVANCED" ? b.advancedLevel : b.basicLevel,
-                  },
-                  { label: b.questionAccessLabel, value: b.questionAccessFullValue },
-                  {
-                    label: b.scorecardLabel,
-                    value: usage.canSendScorecardToHR ? b.unlockedStatus : b.lockedStatus,
-                    locked: !usage.canSendScorecardToHR,
-                  },
-                ].map((item) => (
-                  <div key={item.label} className="rounded-lg bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700 p-3">
-                    <p className={cn("text-[10px] font-medium mb-1 leading-tight", portalSubtext)}>{item.label}</p>
-                    <p className={cn("text-sm font-bold", item.locked ? "text-gray-400 dark:text-gray-500" : portalHeading)}>
-                      {item.locked && <Lock size={10} className="inline mr-1" />}
-                      {item.value}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            )}
           </div>
 
           {/* Action buttons */}
@@ -475,6 +529,43 @@ export function CandidateBillingPage() {
             )}
           </div>
         </div>
+
+        {!isPremium && usage && (
+          <div className="mt-4 grid w-full grid-cols-2 md:grid-cols-5 gap-2.5">
+            {[
+              {
+                label: b.practiceAttemptsLabel,
+                value: usage.practiceLimit === null
+                  ? `${usage.practiceUsed} · ${b.unlimitedLabel}`
+                  : `${usage.practiceUsed}/${usage.practiceLimit}`,
+              },
+              {
+                label: b.practiceHistoryLabel,
+                value: usage.practiceHistoryLimit === null
+                  ? `${usage.practiceHistoryUsed} · ${b.unlimitedLabel}`
+                  : `${usage.practiceHistoryUsed}/${usage.practiceHistoryLimit}`,
+              },
+              {
+                label: b.aiFeedbackLabel,
+                value: usage.aiFeedbackLevel === "ADVANCED" ? b.advancedLevel : b.basicLevel,
+              },
+              { label: b.questionAccessLabel, value: b.questionAccessFullValue },
+              {
+                label: b.scorecardLabel,
+                value: usage.canSendScorecardToHR ? b.unlockedStatus : b.lockedStatus,
+                locked: !usage.canSendScorecardToHR,
+              },
+            ].map((item) => (
+              <div key={item.label} className="rounded-lg bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700 p-3">
+                <p className={cn("text-[10px] font-medium mb-1 leading-tight", portalSubtext)}>{item.label}</p>
+                <p className={cn("text-sm font-bold", item.locked ? "text-gray-400 dark:text-gray-500" : portalHeading)}>
+                  {item.locked && <Lock size={10} className="inline mr-1" />}
+                  {item.value}
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
       </motion.div>
 
       {/* ── 2. Plan Comparison ──────────────────────────────────────────────── */}
@@ -484,7 +575,10 @@ export function CandidateBillingPage() {
         transition={{ duration: 0.3, delay: 0.06 }}
         className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm p-5 md:p-6"
       >
-        <h3 className={cn("text-base font-bold mb-4", portalHeading)}>{b.pricingTitle}</h3>
+        <div className="flex items-center gap-2 mb-4">
+          <Scale size={15} className="text-gray-400 dark:text-gray-500" />
+          <h3 className={cn("text-[15px] font-bold", portalHeading)}>{b.pricingTitle}</h3>
+        </div>
         <div className="grid sm:grid-cols-2 gap-4">
 
           {/* Free */}
@@ -610,7 +704,10 @@ export function CandidateBillingPage() {
           transition={{ duration: 0.3, delay: 0.12 }}
           className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm p-5 md:p-6"
         >
-          <h3 className={cn("text-base font-bold mb-4", portalHeading)}>{b.quotaTitle}</h3>
+          <div className="flex items-center gap-2 mb-4">
+            <Gauge size={15} className="text-gray-400 dark:text-gray-500" />
+            <h3 className={cn("text-[15px] font-bold", portalHeading)}>{b.quotaTitle}</h3>
+          </div>
           <div className="space-y-3.5">
             {quotaItems.map((item, i) => (
               <div key={i} className="flex items-start gap-3">
@@ -703,7 +800,7 @@ export function CandidateBillingPage() {
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/60">
           <div className="flex items-center gap-2">
             <Receipt size={15} className="text-gray-400 dark:text-gray-500" />
-            <h3 className={cn("text-sm font-bold", portalHeading)}>{b.historyTitle}</h3>
+            <h3 className={cn("text-[15px] font-bold", portalHeading)}>{b.historyTitle}</h3>
           </div>
         </div>
 
@@ -718,7 +815,8 @@ export function CandidateBillingPage() {
             </div>
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <>
+          <div className="overflow-x-hidden">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-200 dark:border-gray-800">
@@ -736,9 +834,32 @@ export function CandidateBillingPage() {
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
-                {history.map((item) => (
-                  <tr key={item.invoiceId} className="hover:bg-gray-50 dark:hover:bg-gray-800/40 transition-colors">
+              <AnimatePresence mode="wait" initial={false}>
+              <motion.tbody
+                key={visibleHistoryPage}
+                className="divide-y divide-gray-200 dark:divide-gray-800"
+                initial="hidden"
+                animate="show"
+                exit="exit"
+                variants={{
+                  show: { transition: { staggerChildren: reduceMotion ? 0 : 0.04 } },
+                  exit: { transition: { duration: reduceMotion ? 0 : 0.12 } },
+                }}
+              >
+                {historyRows.map((item) => (
+                  <motion.tr
+                    key={item.invoiceId}
+                    variants={{
+                      hidden: { opacity: 0, y: reduceMotion ? 0 : -8 },
+                      show: {
+                        opacity: 1,
+                        y: 0,
+                        transition: { duration: reduceMotion ? 0 : 0.22, ease: "easeOut" },
+                      },
+                      exit: { opacity: 0, y: 0, transition: { duration: reduceMotion ? 0 : 0.12 } },
+                    }}
+                    className="hover:bg-gray-50 dark:hover:bg-gray-800/40 transition-colors"
+                  >
                     <td className={cn("px-4 py-3 font-mono text-xs", portalSubtext)}>{item.invoiceId}</td>
                     <td className={cn("px-4 py-3 font-medium", portalHeading)}>{item.planName}</td>
                     <td className={cn("px-4 py-3 font-semibold tabular-nums", portalHeading)}>
@@ -812,11 +933,20 @@ export function CandidateBillingPage() {
                         )}
                       </div>
                     </td>
-                  </tr>
+                  </motion.tr>
                 ))}
-              </tbody>
+              </motion.tbody>
+              </AnimatePresence>
             </table>
           </div>
+          {historyTotalPages > 1 && (
+            <PaymentHistoryPagination
+              page={visibleHistoryPage}
+              totalPages={historyTotalPages}
+              onPage={setHistoryPage}
+            />
+          )}
+          </>
         )}
       </motion.div>
 
@@ -830,7 +960,7 @@ export function CandidateBillingPage() {
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <CreditCard size={15} className="text-gray-400 dark:text-gray-500" />
-            <h3 className={cn("text-sm font-bold", portalHeading)}>{b.billingInfoTitle}</h3>
+            <h3 className={cn("text-[15px] font-bold", portalHeading)}>{b.billingInfoTitle}</h3>
           </div>
         </div>
 
