@@ -11,6 +11,12 @@ import {
   type HiringPostingPayload,
 } from "@/features/interview/services/interview.service";
 import { getHrPlatformFlags } from "@/features/hr/services/hr-platform-flags.service";
+import {
+  HIRING_DOMAINS,
+  HIRING_EXPERTISE,
+  HIRING_LOCATIONS,
+  withCurrentOption,
+} from "@/features/hr/constants/hiring-posting-options";
 import { useToast } from "@/shared/providers/toast-context";
 
 export type HiringPostingDraft = {
@@ -439,12 +445,18 @@ export function PublicJdEditorPanel({
         <div className="grid gap-2 sm:grid-cols-2">
           <label className="block space-y-1">
             <span className={cn("text-[11px] font-medium", portalHeading)}>{h.postingLocation}</span>
-            <input
+            <select
               value={posting.jobLocation}
               onChange={(e) => patchPosting({ jobLocation: e.target.value })}
-              placeholder={h.postingLocationPlaceholder}
               className={fieldCls}
-            />
+            >
+              <option value="">{h.postingWorkplaceOptional}</option>
+              {withCurrentOption(HIRING_LOCATIONS, posting.jobLocation).map((item) => (
+                <option key={item} value={item}>
+                  {item}
+                </option>
+              ))}
+            </select>
           </label>
           <label className="block space-y-1">
             <span className={cn("text-[11px] font-medium", portalHeading)}>{h.postingWorkplace}</span>
@@ -465,21 +477,33 @@ export function PublicJdEditorPanel({
           </label>
           <label className="block space-y-1">
             <span className={cn("text-[11px] font-medium", portalHeading)}>{h.postingExpertise}</span>
-            <input
+            <select
               value={posting.jobExpertise}
               onChange={(e) => patchPosting({ jobExpertise: e.target.value })}
-              placeholder={h.postingExpertisePlaceholder}
               className={fieldCls}
-            />
+            >
+              <option value="">{h.postingWorkplaceOptional}</option>
+              {withCurrentOption(HIRING_EXPERTISE, posting.jobExpertise).map((item) => (
+                <option key={item} value={item}>
+                  {item}
+                </option>
+              ))}
+            </select>
           </label>
           <label className="block space-y-1">
             <span className={cn("text-[11px] font-medium", portalHeading)}>{h.postingDomain}</span>
-            <input
+            <select
               value={posting.jobDomain}
               onChange={(e) => patchPosting({ jobDomain: e.target.value })}
-              placeholder={h.postingDomainPlaceholder}
               className={fieldCls}
-            />
+            >
+              <option value="">{h.postingWorkplaceOptional}</option>
+              {withCurrentOption(HIRING_DOMAINS, posting.jobDomain).map((item) => (
+                <option key={item} value={item}>
+                  {item}
+                </option>
+              ))}
+            </select>
           </label>
         </div>
 
