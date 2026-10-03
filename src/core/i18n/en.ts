@@ -1372,6 +1372,7 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
     questionsMeta: "{{count}} questions",
     timeMeta: "{{min}} min",
     applyCta: "Take assessment",
+    integrityLockedCta: "Cheating detected — cannot retake",
     continueCta: "Continue assessment",
     startOver: "Start over",
     interviewPlanTitle: "Interview structure",
@@ -2729,12 +2730,12 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
         reassessmentQPerSkill: "Questions per re-assessment skill",
         reassessmentQPerSkillHint:
           "Independent from the diagnostic. Default 3. One-skill exam after a roadmap (2–10).",
-        sectionScreening: "CV screening exam",
-        screeningEnabled: "Enable screening after the diagnostic report",
+        sectionScreening: "CV skill coverage",
+        screeningEnabled: "Quick-check every CV skill outside the core set",
         screeningEnabledHint:
-          "A short 1-question-per-skill exam for unmeasured CV skills. It does not change level — it only suggests roadmaps.",
-        screeningQPerSkill: "Questions per screening skill",
-        screeningMaxSkills: "Maximum screening skills",
+          "The diagnostic adds short questions for each CV skill outside the core set so the roadmap covers the whole CV. It does not change level. Skills over the limit are offered a screening after the report.",
+        screeningQPerSkill: "Quick-check questions per skill",
+        screeningMaxSkills: "Maximum quick-check skills (up to 30)",
       },
       general: {
         title: "General Settings",
@@ -2979,7 +2980,7 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
     skillsDuplicate: "This technology is already on your list (including from the CV) — duplicates are not added.",
     // SCRUM-504: no more 40-item limit — just explain that not every skill reaches the test
     skillsFocusNote:
-      "Add as many skills as you like. The diagnostic only picks the most relevant ones (usually 3–8) based on your target role, so a long list does not make the test longer.",
+      "Add as many skills as you like. Core skills for your target role are tested in depth; every other skill gets one quick question so your roadmap covers your whole CV — a longer list means a longer test.",
     // SCRUM-491: hybrid validate + soft warn (kept for other surfaces)
     skillsFormatEmpty: "Choose a technology from the list before adding.",
     skillsFormatTooShort: "Technology name needs at least 2 characters.",
@@ -3017,7 +3018,7 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
     reportSubtitle: "Readiness and skill gaps from your latest diagnostic.",
     screeningTitle: "Widen coverage",
     screeningBody:
-      "The diagnostic measured your core skills. {{count}} skills from your CV are still unmeasured — a short screening ({{questions}} questions, one per skill) will suggest roadmaps for them. This test does not change your level.",
+      "{{count}} skills from your CV were not measured because the diagnostic hit its skill limit. A short screening ({{questions}} questions) will add them to your roadmap. This test does not change your level.",
     screeningCta: "Take screening",
     screeningSkillsLabel: "Skills to screen",
     screeningDisabled: "Screening is turned off.",
@@ -3048,6 +3049,11 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
     roadmapKbSystemBadge: "Catalog",
     roadmapKbInferredBadge: "AI inferred",
     roadmapScreeningBadge: "Needs extra check",
+    roadmapUnmeasuredTitle:
+      "{{count}} skills from your CV were not measured (over the diagnostic limit), so they are not in the roadmap yet:",
+    reportQuickCheckBadge: "Quick check",
+    reportQuickCheckHint:
+      "A CV skill outside the core set — asked briefly to build your roadmap; it does not count toward your level.",
     diagnosticKbInferred:
       "No suitable system documents were found to build this set. Questions were inferred by AI from your CV and a temporary blueprint — for reference only; results may not fully match reality.",
     diagnosticKbSystemBadge: "System",
@@ -3178,7 +3184,7 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
     wrapUpNextTitle: "Do next",
     wrapUpNextEmpty: "No large remaining gaps — try the next level if you are ready.",
     wrapUpNextGap: "Still below target",
-    wrapUpNextScreening: "From screening — worth another check",
+    wrapUpNextScreening: "Quick-check signal — worth another check",
     levelCriteriaTitle: "Level criteria",
     levelCriteriaOverall: "Overall score",
     levelCriteriaOverallHint: "Overall readiness versus the level threshold.",
@@ -3193,6 +3199,9 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
     deltaLabel: "Readiness change",
     phaseCvTitle: "CV",
     phaseCvDesc: "Upload your CV so we can read skills and prepare the diagnostic — not assign a competency level yet.",
+    cvLanguageTitle: "Question language",
+    cvLanguageHint: "Câu hỏi và nhận xét AI sẽ dùng ngôn ngữ này. Questions and feedback will use this language.",
+    cvLanguageRequired: "Choose Tiếng Việt or English before continuing.",
     phaseAnalysisTitle: "CV analysis",
     phaseAnalysisDesc: "Review summary, skills, and suggested role before confirming goals.",
     phaseGoalTitle: "Confirm goals",
@@ -3452,10 +3461,10 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
     warningTitle: "Interview integrity warning",
     warningTitleFinal: "Final integrity warning",
     warningIntro: "We detected an action that violates the interview integrity rules.",
-    warningIntroFinal: "This is your second interview integrity violation.",
+    warningIntroFinal: "This is the final warning before the interview ends.",
     warningOf: "Warning {{n}} of {{max}}",
     warningContinueHint:
-      "You may continue the interview. Another violation will result in a final warning.",
+      "You may continue the interview. Reaching the maximum number of violations will end this interview.",
     warningFinalHint: "One more violation will immediately terminate this interview.",
     ackUnderstand: "I understand",
     ackContinue: "I understand and continue",
@@ -3624,7 +3633,10 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
       "Your diagnostic is scored. Open the competency report to see readiness, skill gaps, and your practice roadmaps.",
     coachNextBodyDrill:
       "You finished a drill item. Return to the roadmap to continue remaining items or unlock re-assessment.",
+    coachNextBodyReassess:
+      "Your re-assessment is scored. Open the wrap-up to see the result after practice.",
     coachNextPrimaryReport: "View competency report",
+    coachNextPrimaryWrapUp: "View wrap-up",
     coachNextPrimaryRoadmap: "Continue roadmap",
     coachNextSecondaryRoadmap: "View skill roadmaps",
     scoringInProgress: "AI is still scoring your answers — this can take a bit. Your answers below are already saved.",
@@ -3775,6 +3787,7 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
       allTime: "All Time",
       thisWeek: "This Week",
       thisMonth: "This Month",
+      allModes: "All",
     },
     table: {
       session: "Session",
@@ -5263,8 +5276,9 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
         focusInvalid: "Focus weights must sum to ~100%.",
         addFocus: "Add focus area",
         newFocusName: "New focus",
-        focusAllSkillsUsed:
-          "All JD skills are already used — add skills in the sources column if you need another focus.",
+        focusSuggest: "Suggested from JD",
+        focusSuggestShort: "JD match",
+        focusAllSkillsUsed: "Every catalog skill is already selected.",
         stylesHint: "Pick question styles (at least one).",
         stylesMinOne: "Select at least 1 style.",
         codingSection: "Coding task types",
@@ -5291,7 +5305,7 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
         continueToPreviewCta: "Continue · View question preview",
         outlinePreviewTitle: "Step 2 · Question preview",
         outlinePreviewSubtitle:
-          "Plan was updated from step-1 settings — edit slots, then Apply outline before approving.",
+          "Plan updated from step-1 settings — slot edits auto-save; no Apply outline needed.",
         outlinePreviewListTitle: "Slot list",
         outlinePreviewListHint: "Theory/Code · skill · difficulty · why-asked · remove (≥5). JD/System badges are view-only.",
         outlineTheory: "Theory",
@@ -5300,12 +5314,16 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
         outlineEmpty: "No outline yet — apply step 1 (Focus/distribution) first.",
         outlineMinSlots: "Minimum 5 questions",
         outlineApplyCta: "Apply outline",
+        outlineSaving: "Saving…",
+        outlinePendingSave: "Pending save…",
+        outlineSaved: "Saved",
+        outlineWaitingStep1: "Apply step 1 first",
         outlineWhyAsked: "Why ask",
         outlineWhyAskedPlaceholder: "Assessment goal for this slot…",
         outlineRelabeledHint: "Skill changed — Why ask and sources now follow the new skill.",
-        outlineWhyAskedAutoPlaceholder: "Leave empty to auto-write it for the new skill on Apply, or type your own…",
+        outlineWhyAskedAutoPlaceholder: "Leave empty to auto-write it for the new skill on save, or type your own…",
         focusFromSourcesHint:
-          "Pick only tech saved on the JD. Missing a skill? Add it in the sources column first.",
+          "Pick a skill from the catalog. Suggestion tags are JD skills that match the catalog and are not in the list yet.",
         frameSection: "Interview frame",
         fixedTotalLabel: "Total {{count}} questions",
       },
@@ -5701,21 +5719,21 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
   questionBuilder: {
     // Page header
     pageTitle: "Create question set manually",
-    pageSubtext: "All fields like Studio: sample answer, rubric, skill, focus area — ready for Marketplace",
+    pageSubtext: "Write the selected question in the middle. The list on the left is this session.",
     backToGenerateBtn: "Generate with AI",
     refreshBtn: "Refresh",
     quickCreateBtn: "Quick create",
     bulkBar: {
       title: "Quick create",
-      hint: "Create multiple minimal questions in the selected set — enrich rubric later in History or compose below.",
+      hint: "Add several questions to the list. Each one opens in the editor when you click its number.",
       typeLabel: "Type",
       difficultyLabel: "Difficulty",
       countLabel: "Count",
-      createBtn: "Quick create",
+      createBtn: "Add to list",
       creatingBtn: "Creating…",
       pasteLabel: "Content (optional — one question per line)",
       pastePlaceholder: "Paste multiple question lines here…\nQuestion 1\nQuestion 2",
-      pasteEmptyHint: "If empty, creates {{count}} placeholder question(s) to edit later in History.",
+      pasteEmptyHint: "If empty, adds {{count}} draft question(s). Click a number in the list to edit.",
       placeholderPrefix: "[Draft] Question",
       toastNeedSet: "Select or create a question set first.",
       toastSuccess: "Created {{ok}}/{{total}} questions in the set.",
@@ -5737,7 +5755,8 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
     toastQuestionRequired: "Please enter the question content.",
     toastSaveFailed: "Save failed. Check that the set is still in DRAFT status.",
     toastImageUploadFailed: "Question saved, but image upload failed. You can re-attach the image in History.",
-    toastSaveSuccess: "Question saved (all Marketplace fields) to the selected set.",
+    toastSaveSuccess: "Question saved to the selected set.",
+    toastUpdateSuccess: "Question updated.",
     // Image hints per template
     imageHints: {
       THEORY: "Find an image or diagram illustrating the main concept in the question.",
@@ -5816,6 +5835,14 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
     imagePickerLabel: "Choose JPEG/PNG/WebP (uploaded after save)",
     // Actions
     saveBtn: "Save & add next",
+    saveThisBtn: "Save this question",
+    updateBtn: "Update this question",
+    startNewBtn: "New question",
+    editingTitle: "Question {{n}}",
+    newQuestionTitle: "New question",
+    detailsToggle: "Add later",
+    publishRequiredHint: "Required to publish. Edit now or keep this starter.",
+    defaultSampleAnswer: "The candidate should answer directly, state the main point, and give a short example.",
     savingBtn: "Saving...",
     viewSetBtn: "View question set",
     // Set panel
@@ -5831,7 +5858,10 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
     progressReady: "✓ Enough questions to publish to Marketplace — open History to publish.",
     progressNeeds: "Need {{n}} more to publish.",
     openSetLink: "Open question set",
-    sessionAddedTitle: "Added this session",
+    sessionAddedTitle: "Questions this session",
+    sessionEmpty: "No questions yet. Write one in the middle and save, or add several.",
+    bulkToggle: "Add several questions",
+    bulkUsesCurrentMeta: "New questions use the type and difficulty selected in the editor.",
     // Preview panel
     previewTitle: "Preview",
     previewSubtitle: "(as Marketplace)",

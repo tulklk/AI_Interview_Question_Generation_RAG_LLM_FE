@@ -53,6 +53,10 @@ interface CoachRoadmapPreviewPanelProps {
     roadmaps?: Array<{ roadmapId: string; displayOrder: number }>;
   }) => void | Promise<void>;
   onAccept: () => void | Promise<void>;
+  /** Kỹ năng CV chưa được đo (vượt giới hạn bài chẩn đoán) — nhắc làm bài sàng lọc để lộ trình đủ skill. */
+  unmeasuredSkills?: string[];
+  startingScreening?: boolean;
+  onStartScreening?: () => void;
 }
 
 function priorityLabel(
@@ -178,6 +182,9 @@ export function CoachRoadmapPreviewPanel({
   onToggleItem,
   onUpdateDraft,
   onAccept,
+  unmeasuredSkills = [],
+  startingScreening = false,
+  onStartScreening,
 }: CoachRoadmapPreviewPanelProps) {
   const { t } = useLanguage();
   const p = t.jobseekerCoachPage;
@@ -335,6 +342,26 @@ export function CoachRoadmapPreviewPanel({
           })}
         </p>
       </div>
+
+      {unmeasuredSkills.length > 0 && (
+        <div className="space-y-2 border-b border-amber-100 bg-amber-50/60 px-5 py-3 dark:border-amber-900/40 dark:bg-amber-950/20">
+          <p className={cn("text-[12px] font-semibold", portalHeadingAlt)}>
+            {fillTemplate(p.roadmapUnmeasuredTitle, { count: String(unmeasuredSkills.length) })}
+          </p>
+          <p className={cn("text-[11px] leading-snug", portalSubtextAlt)}>{unmeasuredSkills.join(", ")}</p>
+          {onStartScreening && (
+            <button
+              type="button"
+              disabled={startingScreening}
+              onClick={() => onStartScreening()}
+              className="hr-cta-btn inline-flex h-8 items-center gap-1.5 rounded-lg px-3 text-[12px] font-semibold text-white disabled:opacity-50"
+            >
+              {startingScreening && <Loader2 size={13} className="animate-spin" />}
+              {p.screeningCta}
+            </button>
+          )}
+        </div>
+      )}
 
       {/* SCRUM-484: phần Thứ tự luyện đặt trước / nổi bật */}
       <div className="border-b border-violet-100 bg-violet-50/40 px-5 py-3 dark:border-violet-900/40 dark:bg-violet-950/20">

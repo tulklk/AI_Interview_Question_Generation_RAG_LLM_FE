@@ -101,7 +101,7 @@ function normalize(raw: unknown): CompetencyScoringPolicy {
     screeningEnabled: pickBool(d, true, "screeningEnabled", "ScreeningEnabled"),
     screeningQuestionsPerSkill:
       pickNumber(d, "screeningQuestionsPerSkill", "ScreeningQuestionsPerSkill") || 1,
-    screeningMaxSkills: pickNumber(d, "screeningMaxSkills", "ScreeningMaxSkills") || 12,
+    screeningMaxSkills: pickNumber(d, "screeningMaxSkills", "ScreeningMaxSkills") || 20,
     reassessmentQuestionsPerSkill:
       pickNumber(d, "reassessmentQuestionsPerSkill", "ReassessmentQuestionsPerSkill") || 3,
   };

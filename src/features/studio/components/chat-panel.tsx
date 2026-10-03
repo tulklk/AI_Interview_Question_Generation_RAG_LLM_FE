@@ -6,11 +6,8 @@ import {
   AlertCircle,
   Bot,
   Check,
-  ChevronDown,
   ChevronLeft,
   ChevronRight,
-  Clock,
-  FileQuestion,
   Layers,
   Loader2,
   RefreshCw,
@@ -65,7 +62,6 @@ import type {
   GenerationRun,
   PlanDetail,
   PlanFocusAreaItem,
-  PlanSectionItem,
   StudioQuestion,
   StudioSettings,
 } from "@/features/studio/types/studio.types";
@@ -74,82 +70,6 @@ import type {
 
 function asArray<T>(v: T[] | null | undefined): T[] {
   return Array.isArray(v) ? v : [];
-}
-
-function difficultyBadge(d: string) {
-  const l = d.toLowerCase();
-  if (l === "easy") return "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300";
-  if (l === "medium") return "bg-amber-100 text-amber-900 dark:bg-amber-950/50 dark:text-amber-200";
-  return "bg-rose-100 text-rose-800 dark:bg-rose-950/50 dark:text-rose-300";
-}
-
-function typeBadge(t: string) {
-  const l = t.toLowerCase();
-  if (l.includes("technical")) return "bg-sky-100 text-sky-800 dark:bg-sky-950/50 dark:text-sky-300";
-  if (l.includes("system") || l.includes("design")) return "bg-violet-100 text-violet-800 dark:bg-violet-950/50 dark:text-violet-300";
-  if (l.includes("problem") || l.includes("solving")) return "bg-cyan-100 text-cyan-800 dark:bg-cyan-950/50 dark:text-cyan-300";
-  if (l.includes("behavioral")) return "bg-pink-100 text-pink-800 dark:bg-pink-950/50 dark:text-pink-300";
-  if (l.includes("situational")) return "bg-orange-100 text-orange-800 dark:bg-orange-950/50 dark:text-orange-300";
-  return "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300";
-}
-
-// ── Plan section card ─────────────────────────────────────────────────────────
-
-function PlanSectionCard({ section, index }: { section: PlanSectionItem; index: number }) {
-  const { t } = useLanguage();
-  const c = t.studioPage.chat;
-  const s = t.studioPage;
-  const [open, setOpen] = useState(false);
-  return (
-    <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900/60">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="flex min-h-14 w-full items-center gap-2.5 px-3 py-2 text-left"
-        aria-expanded={open}
-      >
-        <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-gray-100 text-[10px] font-bold tabular-nums text-gray-700 dark:bg-gray-800 dark:text-gray-200">
-          {String(index + 1).padStart(2, "0")}
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-[13px] font-semibold text-gray-900 dark:text-gray-50">{section.name}</p>
-          <p className="text-[11px] text-gray-500 dark:text-gray-400">
-            {section.numberOfQuestions} {s.settings.unitQuestions} · {section.estimatedMinutes} {s.settings.unitMin}
-          </p>
-        </div>
-        <div className="flex shrink-0 items-center gap-1.5">
-          <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold", difficultyBadge(section.difficulty))}>
-            {section.difficulty}
-          </span>
-          <ChevronDown
-            className={cn("h-3.5 w-3.5 text-gray-400 transition-transform duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]", open && "rotate-180")}
-          />
-        </div>
-      </button>
-      <div className={cn(
-        "grid transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]",
-        open ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
-      )}>
-        <div className="overflow-hidden">
-          <div className="border-t border-gray-100 bg-gray-50/60 px-3 py-2.5 dark:border-gray-800 dark:bg-gray-950/40">
-            {section.description ? (
-              <p className="text-xs leading-relaxed text-gray-600 dark:text-gray-300">{section.description}</p>
-            ) : (
-              <p className="text-xs text-gray-400">{c.sectionDescEmpty}</p>
-            )}
-            <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-gray-500 dark:text-gray-400">
-              <span className="flex items-center gap-1">
-                <Clock className="h-3 w-3" /> {section.estimatedMinutes} {s.settings.unitMin}
-              </span>
-              <span className="flex items-center gap-1">
-                <FileQuestion className="h-3 w-3" /> {section.numberOfQuestions} {s.settings.unitQuestions}
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
 }
 
 // ── Focus area row ────────────────────────────────────────────────────────────
@@ -588,7 +508,6 @@ function PlanWorkspace({
   const originLabels = useSourceOriginLabels();
   const planApproved = plan?.status === "Approved";
   const hasQuestions = questions.length > 0;
-  const planSections = useMemo(() => asArray<PlanSectionItem>(plan?.sections ?? plan?.estimatedSections), [plan]);
   const focusAreas = useMemo(() => asArray<PlanFocusAreaItem>(plan?.focusAreas), [plan]);
   const coverageItems = useMemo(() => asArray(plan?.coverage), [plan?.coverage]);
   const sourceRows = useMemo(
@@ -829,40 +748,11 @@ function PlanWorkspace({
                 settings={settings}
                 allowedSkillNames={hrSkills}
                 locked={isGeneratingQuestions}
-                isApplying={isApplyingPlanConfig}
+                isSaving={isApplyingPlanConfig}
                 outlineDirty={outlineDirty}
                 settingsDirty={configDirty}
                 onDraftChange={onConfigDraftChange}
-                onApplyOutline={onApplyOutline ?? onApplyPlanConfig}
               />
-            )}
-
-            {planSections.length > 0 && (
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">
-                    {c.interviewStructure}
-                  </p>
-                  <span className="rounded-md bg-gray-100 px-1.5 py-0.5 text-[10px] font-semibold text-gray-500 dark:bg-gray-800">
-                    {planSections.length} {c.sectionUnit}
-                  </span>
-                </div>
-                {/* These sections are whatever the plan generated — naming that on
-                    screen stops the structure from reading like a fixed template. */}
-                <p className="flex items-center gap-1 text-[10px] leading-snug text-gray-400 dark:text-gray-500">
-                  <Sparkles size={10} className="shrink-0 text-primary/70" />
-                  {typeof plan?.revision === "number"
-                    ? c.structureProvenance.replace("{{rev}}", String(plan.revision))
-                    : c.structureProvenanceNoRev}
-                </p>
-                <div className="space-y-1.5">
-                  {planSections.map((section, idx) => (
-                    <div key={`${section.id}-${idx}`}>
-                      <PlanSectionCard section={section} index={idx} />
-                    </div>
-                  ))}
-                </div>
-              </div>
             )}
 
             {hasQuestions && focusAreas.length > 0 && (
@@ -1174,7 +1064,7 @@ interface Props {
   onHiringModeChange?: (next: {
     isHiringAssessment: boolean;
     hrAntiCheatEnabled: boolean;
-  }) => void | Promise<void>;
+  }) => void | false | Promise<void | false>;
   /** SCRUM-470: JD công khai + posting khi Tuyển */
   questionSetId?: string | null;
   publicJd?: {

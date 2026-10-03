@@ -25,6 +25,7 @@ import {
   startCoachScreening,
   getScreeningPreview,
   updateCoachContext,
+  updateCoachOutputLanguage,
   updateCoachRoadmapDraft,
   updateCoachSkills,
   canStartCoachDiagnostic,
@@ -532,16 +533,28 @@ export function useCoachWorkflow() {
     }
   }
 
-  /** SCRUM-490: giữ CV đã upload → sang Phân tích (không upload lại). */
-  function handleContinueWithExistingCv() {
-    if (!hasCv && !context?.hasCv && !cv) return;
-    setSelectedStep(2);
+  async function persistOutputLanguage(language: "English" | "Vietnamese") {
+    const next = await updateCoachOutputLanguage(language);
+    setContext(next);
   }
 
-  async function handleUploadCv(file: File) {
+  /** SCRUM-490: giữ CV đã upload → sang Phân tích (không upload lại). */
+  async function handleContinueWithExistingCv(language: "English" | "Vietnamese") {
+    if (!hasCv && !context?.hasCv && !cv) return;
+    setError(null);
+    try {
+      await persistOutputLanguage(language);
+      setSelectedStep(2);
+    } catch (e) {
+      setError(apiError(e, p.cvLanguageRequired, lang));
+    }
+  }
+
+  async function handleUploadCv(file: File, language: "English" | "Vietnamese") {
     setUploadingCv(true);
     setError(null);
     try {
+      await persistOutputLanguage(language);
       const result = await uploadCv(file);
       setCv(result.cv);
       setHasCv(true);
@@ -623,6 +636,8 @@ export function useCoachWorkflow() {
     if (!cvReady) return 1;
     // SCRUM-490: chưa confirm goal → neo CV (dùng lại / upload mới), không skip sang Goal
     if (!context?.contextConfirmed) return 1;
+    // Đã luyện xong mọi lộ trình đã nhận → mở tổng kết, không kéo về báo cáo chẩn đoán.
+    if (wrapUpAvailable) return 7;
     // Đã vào lộ trình / re-assessment → neo UI ở đó (không kéo về chẩn đoán
     // chỉ vì job cũ còn COMPLETED trong state).
     if (hasReassessmentPhase) return 7;
@@ -642,6 +657,7 @@ export function useCoachWorkflow() {
     hasActiveRoadmap,
     hasScoredReport,
     rescoring,
+    wrapUpAvailable,
   ]);
 
   const activeStep: CoachStepIndex = selectedStep

@@ -16,7 +16,8 @@ export type HiringModeValue = {
 
 type Props = {
   value: HiringModeValue;
-  onChange: (next: HiringModeValue) => void | Promise<void>;
+  /** Return false to keep the pill in place (draft not saved, or the switch was cancelled). */
+  onChange: (next: HiringModeValue) => void | false | Promise<void | false>;
   disabled?: boolean;
   className?: string;
   /** compact = toolbar một hàng; full = publish dialog */
@@ -40,7 +41,7 @@ export function HiringModeControls({
   const { addToast } = useToast();
   const [adminAntiCheat, setAdminAntiCheat] = useState<boolean | null>(null);
   const [saving, setSaving] = useState(false);
-  /** Optimistic highlight — slide ngay khi click, không chờ API. */
+  /** Pill position. Only moves after onChange accepts the switch. */
   const [visualHiring, setVisualHiring] = useState(value.isHiringAssessment);
 
   useEffect(() => {
@@ -64,10 +65,11 @@ export function HiringModeControls({
   async function apply(next: HiringModeValue) {
     if (disabled || saving) return;
     const prev = visualHiring;
-    setVisualHiring(next.isHiringAssessment);
     setSaving(true);
     try {
-      await onChange(next);
+      const accepted = await onChange(next);
+      if (accepted === false) return;
+      setVisualHiring(next.isHiringAssessment);
     } catch (err) {
       setVisualHiring(prev);
       // Backend gate (thiếu PublicJobDescription / JD gốc) — toast, không để Next.js overlay.

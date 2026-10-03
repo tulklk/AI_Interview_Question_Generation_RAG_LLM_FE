@@ -139,6 +139,7 @@ export function InterviewConfigurationPanel({
         <FocusAreasEditor
           focusAreas={focusAreas}
           disabled={!canEdit}
+          jdSkills={jdSummary?.skills ?? []}
           onChange={(next) => onDraftChange({ focusAreas: next })}
         />
 

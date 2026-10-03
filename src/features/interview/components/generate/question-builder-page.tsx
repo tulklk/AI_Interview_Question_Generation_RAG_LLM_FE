@@ -1,19 +1,19 @@
 "use client";
 
 /**
- * SCRUM-397 v3: Question Builder — workspace soạn câu hỏi thủ công
- * đủ field như Studio Save (sampleAnswer, rubric, skill, focusArea, questionType).
- * Chọn/tạo bộ → Loại nội dung → Soạn → Preview → Lưu
+ * Question Builder — một danh sách câu bên trái, ô soạn đúng câu đang chọn ở giữa.
+ * Thêm nhiều câu nằm trên danh sách và dùng chung loại/độ khó với form.
  */
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Check, RefreshCw } from "lucide-react";
+import { ArrowLeft, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/cn";
 import type { StudioCodeTemplateId } from "@/features/studio/constants/question-templates";
 import type { DifficultyLevel, QuestionType } from "@/features/interview/types/generation-session";
 import {
   addQuestionSetQuestion,
   createManualDraftQuestionSet,
+  updateQuestionSetQuestion,
   uploadQuestionSetQuestionImage,
 } from "@/features/interview/services/interview.service";
 import { listHistoryQuestionSets } from "@/features/hr/services/hr-history.service";
@@ -30,14 +30,16 @@ import {
 } from "@/features/interview/components/generate/question-builder-composer";
 import {
   BULK_MAX,
-  buildBulkQuestionTexts,
   QuestionBuilderBulkBar,
+  splitBulkLines,
 } from "@/features/interview/components/generate/question-builder-bulk-bar";
 import { QuestionBuilderPreview } from "@/features/interview/components/generate/question-builder-preview";
 import {
   buildPresetCriteria,
   emptyRubric,
   getPresetKey,
+  isPublishReady,
+  prepareRubricForSave,
   rubricToApiPayload,
   type RubricV1,
 } from "@/shared/rubric";
@@ -74,18 +76,40 @@ function defaultTemplate(mode: ContentMode): StudioCodeTemplateId {
   return "BUG_DETECTION";
 }
 
+/** Bản nháp local của một câu trong phiên — không gửi lên server cho đến khi bấm lưu. */
+type QuestionDraft = {
+  contentMode: ContentMode;
+  selectedTemplate: StudioCodeTemplateId;
+  codeSnippet: string;
+  snippetLanguage: string;
+  diagramDescription: string;
+  skill: string;
+  focusArea: string;
+  sampleAnswer: string;
+  rubricDoc: RubricV1;
+  rationale: string;
+  imageHint: string;
+  imageFile: File | null;
+  imagePreviewUrl: string | null;
+  imageDirty: boolean;
+};
+
+function nextOrder(items: SessionAddedQuestion[]) {
+  return items.reduce((max, item) => Math.max(max, item.order), 0) + 1;
+}
+
+/** Rubric mẫu đủ trọng số 100% và mốc chấm — đúng điều kiện publish của server. */
+function presetRubric(questionType: string, contentMode: ContentMode): RubricV1 {
+  return rubricToApiPayload({
+    ...emptyRubric(),
+    criteria: buildPresetCriteria(getPresetKey(questionType, contentMode)),
+  });
+}
+
 export function QuestionBuilderPage() {
   const { addToast } = useToast();
   const { t } = useLanguage();
   const qb = t.questionBuilder;
-
-  /** Translated steps — derived inside component so they react to language changes */
-  const STEPS = [
-    { id: 1, label: qb.steps.selectSet },
-    { id: 2, label: qb.steps.selectType },
-    { id: 3, label: qb.steps.compose },
-    { id: 4, label: qb.steps.save },
-  ] as const;
 
   /** Translated image hints keyed by template id / "THEORY" */
   const DEFAULT_IMAGE_HINTS: Record<StudioCodeTemplateId | "THEORY", string> = {
@@ -119,22 +143,26 @@ export function QuestionBuilderPage() {
   const [skill, setSkill] = useState("");
   const [focusArea, setFocusArea] = useState("");
   const [sampleAnswer, setSampleAnswer] = useState("");
-  const [rubricDoc, setRubricDoc] = useState<RubricV1>(() => emptyRubric());
+  const [rubricDoc, setRubricDoc] = useState<RubricV1>(() => presetRubric("Problem-solving", "code"));
+  const rubricTouchedRef = useRef(false);
+  const seededSampleRef = useRef(false);
   const [rationale, setRationale] = useState("");
   const [imageHint, setImageHint] = useState("");
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [localPreviewUrl, setLocalPreviewUrl] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [sessionAdded, setSessionAdded] = useState<SessionAddedQuestion[]>([]);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  /** true khi user vừa chọn ảnh và chưa upload cho câu đang mở. */
+  const [imageDirty, setImageDirty] = useState(false);
 
-  // SCRUM-477: thanh Tạo nhanh N câu
-  const [bulkType, setBulkType] = useState<QuestionType>("Technical");
-  const [bulkDifficulty, setBulkDifficulty] = useState<DifficultyLevel>("Medium");
   const [bulkCount, setBulkCount] = useState(5);
   const [bulkPaste, setBulkPaste] = useState("");
   const [bulkCreating, setBulkCreating] = useState(false);
-  // Khóa sync — chặn double-click trước khi React kịp re-render disabled
+  const [bulkOpen, setBulkOpen] = useState(false);
   const bulkCreatingLockRef = useRef(false);
+  /** Chi tiết local theo id câu, để bấm sang câu khác không mất rubric/ảnh. */
+  const draftsRef = useRef(new Map<string, QuestionDraft>());
 
   const selectedSet = useMemo(
     () => drafts.find((d) => d.questionSetId === selectedSetId) ?? null,
@@ -168,22 +196,7 @@ export function QuestionBuilderPage() {
         ? "SYSTEM_DESIGN"
         : selectedTemplate;
 
-  const activeStep = useMemo(() => {
-    if (!selectedSetId) return 1;
-    if (question.trim()) return 3;
-    if (sessionAdded.length > 0) return 4;
-    return 2;
-  }, [selectedSetId, question, sessionAdded.length]);
-
-  type ChipVariant = "done" | "action" | "idle";
-  const { chipText, chipVariant } = useMemo((): { chipText: string; chipVariant: ChipVariant } => {
-    if (question.trim())          return { chipText: qb.chipReadyToSave,   chipVariant: "action" };
-    if (sessionAdded.length > 0)  return { chipText: qb.chipQuestionsAdded.replace("{{n}}", String(sessionAdded.length)), chipVariant: "done" };
-    if (selectedSetId)            return { chipText: qb.chipSetSelected,   chipVariant: "action" };
-    return                               { chipText: qb.chipSelectSet,     chipVariant: "idle" };
-  // qb reference is stable across language changes since it re-derives from t
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedSetId, question, sessionAdded.length, qb.chipReadyToSave, qb.chipQuestionsAdded, qb.chipSetSelected, qb.chipSelectSet]);
+  const editingOrder = sessionAdded.find((item) => item.id === editingId)?.order ?? null;
 
   const loadDrafts = useCallback(async (preferId?: string) => {
     setLoadingDrafts(true);
@@ -212,15 +225,33 @@ export function QuestionBuilderPage() {
   }, [loadDrafts]);
 
   useEffect(() => {
-    return () => {
-      if (localPreviewUrl) URL.revokeObjectURL(localPreviewUrl);
-    };
-  }, [localPreviewUrl]);
+    if (seededSampleRef.current) return;
+    if (!qb.defaultSampleAnswer) return;
+    seededSampleRef.current = true;
+    setSampleAnswer((prev) => (prev.trim() ? prev : qb.defaultSampleAnswer));
+  }, [qb.defaultSampleAnswer]);
+
+  // Danh sách và ô soạn cùng một câu: gõ là dòng đang chọn đổi theo.
+  useEffect(() => {
+    if (!editingId) return;
+    setSessionAdded((prev) =>
+      prev.map((item) =>
+        item.id === editingId &&
+        (item.question !== question || item.difficulty !== difficulty || item.questionType !== questionType)
+          ? { ...item, question, difficulty, questionType }
+          : item
+      )
+    );
+  }, [editingId, question, difficulty, questionType]);
 
   const onContentModeChange = (mode: ContentMode) => {
+    const nextType = defaultQuestionType(mode);
     setContentMode(mode);
     setSelectedTemplate(defaultTemplate(mode));
-    setQuestionType(defaultQuestionType(mode));
+    setQuestionType(nextType);
+    if (!editingId && !rubricTouchedRef.current) {
+      setRubricDoc(presetRubric(nextType, mode));
+    }
     if (mode !== "code") {
       setCodeSnippet("");
       setSnippetLanguage("auto");
@@ -228,20 +259,11 @@ export function QuestionBuilderPage() {
     if (mode !== "system_design") setDiagramDescription("");
   };
 
-  const resetComposer = () => {
-    setQuestion("");
-    setCodeSnippet("");
-    setSnippetLanguage("auto");
-    setDiagramDescription("");
-    setSampleAnswer("");
-    setRubricDoc(emptyRubric());
-    setRationale("");
-    setImageHint("");
-    setSkill("");
-    setFocusArea("");
-    setImageFile(null);
-    if (localPreviewUrl) URL.revokeObjectURL(localPreviewUrl);
-    setLocalPreviewUrl(null);
+  const onQuestionTypeChange = (nextType: QuestionType) => {
+    setQuestionType(nextType);
+    if (!editingId && !rubricTouchedRef.current) {
+      setRubricDoc(presetRubric(nextType, contentMode));
+    }
   };
 
   const onPickImage = (file: File | undefined) => {
@@ -249,12 +271,124 @@ export function QuestionBuilderPage() {
     if (localPreviewUrl) URL.revokeObjectURL(localPreviewUrl);
     setLocalPreviewUrl(URL.createObjectURL(file));
     setImageFile(file);
+    setImageDirty(true);
   };
 
   const onRemoveImage = () => {
     if (localPreviewUrl) URL.revokeObjectURL(localPreviewUrl);
     setLocalPreviewUrl(null);
     setImageFile(null);
+    setImageDirty(true);
+  };
+
+  const captureDraft = (): QuestionDraft => ({
+    contentMode,
+    selectedTemplate,
+    codeSnippet,
+    snippetLanguage,
+    diagramDescription,
+    skill,
+    focusArea,
+    sampleAnswer,
+    rubricDoc,
+    rationale,
+    imageHint,
+    imageFile,
+    imagePreviewUrl: localPreviewUrl,
+    imageDirty,
+  });
+
+  const rememberCurrent = () => {
+    if (!editingId) return;
+    draftsRef.current.set(editingId, captureDraft());
+    setSessionAdded((prev) =>
+      prev.map((item) =>
+        item.id === editingId ? { ...item, question, difficulty, questionType } : item
+      )
+    );
+  };
+
+  const applyQuestion = (item: SessionAddedQuestion, draft: QuestionDraft | undefined) => {
+    setQuestion(item.question);
+    setDifficulty((item.difficulty as DifficultyLevel) || "Medium");
+    setQuestionType((item.questionType as QuestionType) || "Technical");
+    setContentMode(draft?.contentMode ?? "theory");
+    setSelectedTemplate(draft?.selectedTemplate ?? "BUG_DETECTION");
+    setCodeSnippet(draft?.codeSnippet ?? "");
+    setSnippetLanguage(draft?.snippetLanguage ?? "auto");
+    setDiagramDescription(draft?.diagramDescription ?? "");
+    setSkill(draft?.skill ?? "");
+    setFocusArea(draft?.focusArea ?? "");
+    const nextType = (item.questionType as QuestionType) || "Technical";
+    const nextMode = draft?.contentMode ?? "theory";
+    setSampleAnswer(draft?.sampleAnswer?.trim() ? draft.sampleAnswer : qb.defaultSampleAnswer);
+    setRubricDoc(
+      draft?.rubricDoc && isPublishReady(draft.rubricDoc)
+        ? draft.rubricDoc
+        : presetRubric(nextType, nextMode)
+    );
+    rubricTouchedRef.current = Boolean(draft?.rubricDoc && isPublishReady(draft.rubricDoc));
+    setRationale(draft?.rationale ?? "");
+    setImageHint(draft?.imageHint ?? "");
+    setImageFile(draft?.imageFile ?? null);
+    setLocalPreviewUrl(draft?.imagePreviewUrl ?? null);
+    setImageDirty(draft?.imageDirty ?? false);
+  };
+
+  const clearSession = () => {
+    const urls = new Set<string>();
+    for (const draft of draftsRef.current.values()) {
+      if (draft.imagePreviewUrl) urls.add(draft.imagePreviewUrl);
+    }
+    if (localPreviewUrl) urls.add(localPreviewUrl);
+    for (const url of urls) URL.revokeObjectURL(url);
+    draftsRef.current.clear();
+    setSessionAdded([]);
+    setEditingId(null);
+    setQuestion("");
+    setCodeSnippet("");
+    setSnippetLanguage("auto");
+    setDiagramDescription("");
+    rubricTouchedRef.current = false;
+    setSampleAnswer(qb.defaultSampleAnswer);
+    setRubricDoc(presetRubric(questionType, contentMode));
+    setRationale("");
+    setImageHint("");
+    setSkill("");
+    setFocusArea("");
+    setImageFile(null);
+    setLocalPreviewUrl(null);
+    setImageDirty(false);
+  };
+
+  const selectQuestion = (id: string) => {
+    if (saving || bulkCreating) return;
+    if (id === editingId) return;
+    rememberCurrent();
+    const target = sessionAdded.find((item) => item.id === id);
+    if (!target) return;
+    applyQuestion(target, draftsRef.current.get(id));
+    setEditingId(id);
+  };
+
+  const startNewQuestion = () => {
+    if (saving || bulkCreating) return;
+    rememberCurrent();
+    setEditingId(null);
+    setQuestion("");
+    setCodeSnippet("");
+    setSnippetLanguage("auto");
+    setDiagramDescription("");
+    rubricTouchedRef.current = false;
+    setSampleAnswer(qb.defaultSampleAnswer);
+    setRubricDoc(presetRubric(questionType, contentMode));
+    setRationale("");
+    setImageHint("");
+    setSkill("");
+    setFocusArea("");
+    setImageFile(null);
+    setLocalPreviewUrl(null);
+    setImageDirty(false);
   };
 
   const onCreateSet = async () => {
@@ -273,7 +407,7 @@ export function QuestionBuilderPage() {
       setNewTitle("");
       setNewDescription("");
       setShowCreateForm(false);
-      setSessionAdded([]);
+      clearSession();
       await loadDrafts(created.questionSetId);
     } catch (err) {
       addToast("error", err instanceof Error ? err.message : qb.toastCreateError);
@@ -310,6 +444,30 @@ export function QuestionBuilderPage() {
     return parts.length > 0 ? parts.join(";") : undefined;
   };
 
+  /** Đáp án mẫu và rubric luôn đủ điều kiện publish. HR sửa được, không được để trống khi lưu. */
+  const resolvedSample = () => sampleAnswer.trim() || qb.defaultSampleAnswer;
+  const resolvedRubric = (): RubricV1 =>
+    isPublishReady(rubricDoc) ? rubricToApiPayload(rubricDoc) : presetRubric(questionType, contentMode);
+
+  const bumpCount = () => {
+    setDrafts((prev) =>
+      prev.map((d) =>
+        d.questionSetId === selectedSetId ? { ...d, questionCount: d.questionCount + 1 } : d
+      )
+    );
+  };
+
+  /** Upload ảnh nếu user vừa chọn file. Trả về true khi không cần upload hoặc upload xong. */
+  const uploadIfDirty = async (questionId: string) => {
+    if (!imageFile || !imageDirty || !selectedSetId) return true;
+    const withImage = await uploadQuestionSetQuestionImage(selectedSetId, questionId, imageFile);
+    if (!withImage) {
+      addToast("error", qb.toastImageUploadFailed);
+      return false;
+    }
+    return true;
+  };
+
   const onSave = async () => {
     if (!selectedSetId) {
       addToast("error", qb.toastSelectSetFirst);
@@ -321,26 +479,51 @@ export function QuestionBuilderPage() {
     }
     setSaving(true);
     try {
-      let doc = rubricDoc;
-      if (doc.criteria.length === 0) {
-        doc = {
-          ...emptyRubric(),
-          criteria: buildPresetCriteria(getPresetKey(questionType, contentMode)),
-        };
+      const parsed = resolvedRubric();
+      const rationaleMeta = buildRationaleMeta();
+      if (editingId) {
+        let ok = false;
+        try {
+          ok = await updateQuestionSetQuestion(selectedSetId, editingId, {
+            question: question.trim(),
+            questionType,
+            difficulty,
+            skill: skill.trim() || null,
+            focusArea: focusArea.trim() || null,
+            sampleAnswer: resolvedSample(),
+            rationale: rationaleMeta ?? null,
+            scoringRubric: prepareRubricForSave(parsed).displayText || null,
+            answerMethod,
+          });
+        } catch (err) {
+          addToast("error", err instanceof Error && err.message !== "RUBRIC_WEIGHT_INVALID" ? err.message : qb.toastSaveFailed);
+          return;
+        }
+        if (!ok) {
+          addToast("error", qb.toastSaveFailed);
+          return;
+        }
+        const imageOk = await uploadIfDirty(editingId);
+        if (imageOk) setImageDirty(false);
+        setRubricDoc(parsed);
+        draftsRef.current.set(editingId, {
+          ...captureDraft(),
+          rubricDoc: parsed,
+          imageDirty: !imageOk,
+        });
+        addToast("success", qb.toastUpdateSuccess);
+        return;
       }
-      // rubricToApiPayload() is the same normalization prepareRubricForSave() uses
-      // internally before JSON.stringify — call it directly instead of stringifying
-      // then immediately re-parsing data that's already in memory.
-      const parsed: RubricV1 = rubricToApiPayload(doc);
+
       const created = await addQuestionSetQuestion(selectedSetId, {
         question: question.trim(),
         questionType,
         difficulty,
         skill: skill.trim() || undefined,
         focusArea: focusArea.trim() || undefined,
-        sampleAnswer: sampleAnswer.trim() || undefined,
+        sampleAnswer: resolvedSample(),
         evaluationCriteria: parsed.criteria as unknown[],
-        rationale: buildRationaleMeta(),
+        rationale: rationaleMeta,
         answerMethod,
         citations: [],
       });
@@ -348,32 +531,25 @@ export function QuestionBuilderPage() {
         addToast("error", qb.toastSaveFailed);
         return;
       }
-
-      if (imageFile) {
-        const withImage = await uploadQuestionSetQuestionImage(selectedSetId, created.id, imageFile);
-        if (!withImage) {
-          addToast("error", qb.toastImageUploadFailed);
-        }
-      }
-
-      setSessionAdded((prev) => [
-        {
-          id: created.id,
-          question: created.question,
-          difficulty: created.difficulty,
-          questionType: created.questionType,
-        },
-        ...prev,
-      ]);
-      setDrafts((prev) =>
-        prev.map((d) =>
-          d.questionSetId === selectedSetId
-            ? { ...d, questionCount: d.questionCount + 1 }
-            : d
-        )
-      );
+      const imageOk = await uploadIfDirty(created.id);
+      if (imageOk) setImageDirty(false);
+      setRubricDoc(parsed);
+      const item: SessionAddedQuestion = {
+        id: created.id,
+        order: nextOrder(sessionAdded),
+        question: created.question,
+        difficulty: created.difficulty,
+        questionType: created.questionType,
+      };
+      setSessionAdded((prev) => [...prev, item]);
+      draftsRef.current.set(created.id, {
+        ...captureDraft(),
+        rubricDoc: parsed,
+        imageDirty: !imageOk,
+      });
+      setEditingId(created.id);
+      bumpCount();
       addToast("success", qb.toastSaveSuccess);
-      resetComposer();
     } finally {
       setSaving(false);
     }
@@ -381,32 +557,76 @@ export function QuestionBuilderPage() {
 
   const composerDisabled = !selectedSetId;
 
-  /** SCRUM-477: tạo N câu tối thiểu vào bộ đang chọn */
+  /** Thêm nhiều câu text, dùng loại và độ khó đang chọn ở form. */
   const onBulkCreate = async () => {
     if (bulkCreatingLockRef.current || bulkCreating) return;
     if (!selectedSetId) {
       addToast("error", qb.bulkBar.toastNeedSet);
       return;
     }
-    const texts = buildBulkQuestionTexts(
-      bulkPaste,
-      bulkCount,
-      qb.bulkBar.placeholderPrefix
-    );
-    if (texts.length === 0) return;
+    const pasted = splitBulkLines(bulkPaste);
+    const total = pasted.length > 0 ? Math.min(pasted.length, BULK_MAX) : Math.min(BULK_MAX, Math.max(1, bulkCount));
 
     bulkCreatingLockRef.current = true;
     setBulkCreating(true);
+    let working = sessionAdded;
     let ok = 0;
-    const total = Math.min(texts.length, BULK_MAX);
     try {
-      for (let i = 0; i < total; i++) {
+      // Câu mới đang gõ chưa có trong danh sách — lưu trước để không mất chữ.
+      if (!editingId && question.trim()) {
+        const parsed = resolvedRubric();
+        const created = await addQuestionSetQuestion(selectedSetId, {
+          question: question.trim(),
+          questionType,
+          difficulty,
+          skill: skill.trim() || undefined,
+          focusArea: focusArea.trim() || undefined,
+          sampleAnswer: resolvedSample(),
+          evaluationCriteria: parsed.criteria as unknown[],
+          rationale: buildRationaleMeta(),
+          answerMethod,
+          citations: [],
+        });
+        if (!created) {
+          addToast("error", qb.toastSaveFailed);
+          return;
+        }
+        const imageOk = await uploadIfDirty(created.id);
+        const pending: SessionAddedQuestion = {
+          id: created.id,
+          order: nextOrder(working),
+          question: created.question,
+          difficulty: created.difficulty,
+          questionType: created.questionType,
+        };
+        draftsRef.current.set(created.id, {
+          ...captureDraft(),
+          rubricDoc: parsed,
+          imageDirty: !imageOk,
+        });
+        working = [...working, pending];
+        setSessionAdded(working);
+        bumpCount();
+      } else if (editingId) {
+        rememberCurrent();
+      }
+
+      const start = nextOrder(working);
+      const texts =
+        pasted.length > 0
+          ? pasted.slice(0, BULK_MAX)
+          : Array.from({ length: total }, (_, i) => `${qb.bulkBar.placeholderPrefix} ${start + i}`);
+      const bulkSample = qb.defaultSampleAnswer;
+      const bulkRubric = presetRubric(questionType, "theory");
+      const added: SessionAddedQuestion[] = [];
+      for (let i = 0; i < texts.length; i++) {
         const created = await addQuestionSetQuestion(selectedSetId, {
           question: texts[i],
-          questionType: bulkType,
-          difficulty: bulkDifficulty,
+          questionType,
+          difficulty,
+          sampleAnswer: bulkSample,
           answerMethod: "Text",
-          evaluationCriteria: [],
+          evaluationCriteria: bulkRubric.criteria as unknown[],
           citations: [],
         });
         if (!created) {
@@ -415,36 +635,54 @@ export function QuestionBuilderPage() {
           } else {
             addToast(
               "error",
-              qb.bulkBar.toastPartial
-                .replace("{{ok}}", String(ok))
-                .replace("{{total}}", String(total))
+              qb.bulkBar.toastPartial.replace("{{ok}}", String(ok)).replace("{{total}}", String(total))
             );
+          }
+          if (added[0]) {
+            applyQuestion(added[0], draftsRef.current.get(added[0].id));
+            setEditingId(added[0].id);
           }
           return;
         }
         ok += 1;
-        setSessionAdded((prev) => [
-          {
-            id: created.id,
-            question: created.question,
-            difficulty: created.difficulty,
-            questionType: created.questionType,
-          },
-          ...prev,
-        ]);
-        setDrafts((prev) =>
-          prev.map((d) =>
-            d.questionSetId === selectedSetId
-              ? { ...d, questionCount: d.questionCount + 1 }
-              : d
-          )
-        );
+        const item: SessionAddedQuestion = {
+          id: created.id,
+          order: start + i,
+          question: created.question,
+          difficulty: created.difficulty,
+          questionType: created.questionType,
+        };
+        added.push(item);
+        draftsRef.current.set(created.id, {
+          contentMode: "theory",
+          selectedTemplate: "BUG_DETECTION",
+          codeSnippet: "",
+          snippetLanguage: "auto",
+          diagramDescription: "",
+          skill: "",
+          focusArea: "",
+          sampleAnswer: bulkSample,
+          rubricDoc: bulkRubric,
+          rationale: "",
+          imageHint: "",
+          imageFile: null,
+          imagePreviewUrl: null,
+          imageDirty: false,
+        });
+        working = [...working, item];
+        setSessionAdded(working);
+        bumpCount();
       }
       addToast(
         "success",
         qb.bulkBar.toastSuccess.replace("{{ok}}", String(ok)).replace("{{total}}", String(total))
       );
       setBulkPaste("");
+      setBulkOpen(false);
+      if (added[0]) {
+        applyQuestion(added[0], draftsRef.current.get(added[0].id));
+        setEditingId(added[0].id);
+      }
     } finally {
       bulkCreatingLockRef.current = false;
       setBulkCreating(false);
@@ -494,105 +732,20 @@ export function QuestionBuilderPage() {
             </button>
           </div>
         </div>
-
-        {/* Progress stepper — mirrors StudioProgressBar */}
-        <section className="px-1 py-1.5">
-          <div className="flex items-center gap-2 sm:gap-4">
-            <ol className="flex flex-1 items-center min-w-0 select-none">
-              {STEPS.map((step, idx) => {
-                const done     = activeStep > step.id || (step.id === 4 && sessionAdded.length > 0);
-                const isActive = activeStep === step.id && !done;
-                const connectorDelay = `-${((STEPS.length - 1 - idx) * 0.9).toFixed(1)}s`;
-
-                return (
-                  <li key={step.id} className={cn("flex min-w-0 items-center", idx < STEPS.length - 1 && "flex-1")}>
-                    {/* Circle + label */}
-                    <div className="flex shrink-0 flex-col items-center gap-1">
-                      <div
-                        className={cn(
-                          "relative flex h-7 w-7 items-center justify-center rounded-full shrink-0 transition-all duration-300",
-                          done
-                            ? "hr-stepper-done text-white shadow-sm"
-                            : isActive
-                              ? "hr-stepper-active text-white"
-                              : "bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500"
-                        )}
-                        aria-current={isActive ? "step" : undefined}
-                      >
-                        {done ? (
-                          <Check
-                            className="h-3.5 w-3.5"
-                            strokeWidth={3}
-                            style={{ animation: "popIn 0.35s cubic-bezier(0.34,1.56,0.64,1) both" }}
-                          />
-                        ) : (
-                          <span className="text-[10px] font-bold">{idx + 1}</span>
-                        )}
-                      </div>
-                      <span
-                        className={cn(
-                          "hidden sm:block text-center whitespace-nowrap leading-tight transition-colors duration-200",
-                          isActive
-                            ? "text-[10px] font-semibold text-[#7C3AED] dark:text-[#a78bff]"
-                            : done
-                              ? "text-[10px] font-medium text-emerald-600 dark:text-emerald-400"
-                              : "text-[10px] font-medium text-gray-400 dark:text-gray-500"
-                        )}
-                      >
-                        {step.label}
-                      </span>
-                    </div>
-
-                    {/* Connector */}
-                    {idx < STEPS.length - 1 && (
-                      <div
-                        className={cn(
-                          "mx-2 flex-1 h-px transition-all duration-500",
-                          done
-                            ? "hr-stepper-connector-done"
-                            : "bg-gray-200 dark:bg-gray-700"
-                        )}
-                        style={done ? ({ "--connector-delay": connectorDelay } as CSSProperties) : undefined}
-                        aria-hidden
-                      />
-                    )}
-                  </li>
-                );
-              })}
-            </ol>
-
-            {/* Status chip */}
-            <div
-              key={chipVariant + chipText}
-              style={{ animation: "scaleInFade 0.3s cubic-bezier(0.34,1.56,0.64,1) both" }}
-              className={cn(
-                "hidden sm:flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-semibold whitespace-nowrap border",
-                chipVariant === "done"   && "bg-emerald-50 text-emerald-700 border-emerald-100 dark:bg-emerald-950/30 dark:text-emerald-300 dark:border-emerald-900/40",
-                chipVariant === "action" && "bg-primary/8 text-primary border-primary/15 dark:bg-primary/15 dark:text-primary dark:border-primary/30",
-                chipVariant === "idle"   && "bg-gray-50 text-gray-500 border-gray-100 dark:bg-gray-900/60 dark:text-gray-400 dark:border-gray-800"
-              )}
-              aria-live="polite"
-            >
-              {chipVariant === "done"
-                ? <Check className="h-2.5 w-2.5 shrink-0" strokeWidth={3} />
-                : <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-current opacity-70" />}
-              <span>{chipText}</span>
-            </div>
-          </div>
-        </section>
       </header>
 
       {/* ── 3-column grid ── */}
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[260px_minmax(0,1fr)_340px]">
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[280px_minmax(0,1fr)_320px]">
         <div style={{ animation: "slideUpFade 0.42s cubic-bezier(0.25,0.46,0.45,0.94) both 0.1s" }}>
           <QuestionBuilderSetPanel
             drafts={drafts}
             loadingDrafts={loadingDrafts}
             selectedSetId={selectedSetId}
             onSelectSet={(id) => {
+              if (id === selectedSetId) return;
               setSelectedSetId(id);
               setShowCreateForm(false);
-              setSessionAdded([]);
+              clearSession();
             }}
             showCreateForm={showCreateForm}
             onToggleCreateForm={() => setShowCreateForm((v) => !v)}
@@ -603,25 +756,26 @@ export function QuestionBuilderPage() {
             creatingSet={creatingSet}
             onCreateSet={() => void onCreateSet()}
             sessionAdded={sessionAdded}
+            editingId={editingId}
+            onSelectQuestion={selectQuestion}
+            questionsLocked={saving || bulkCreating}
+            bulkSlot={
+              <QuestionBuilderBulkBar
+                disabled={composerDisabled}
+                creating={bulkCreating}
+                count={bulkCount}
+                pasteText={bulkPaste}
+                onCountChange={setBulkCount}
+                onPasteTextChange={setBulkPaste}
+                onCreate={() => void onBulkCreate()}
+                open={bulkOpen}
+                onOpenChange={setBulkOpen}
+              />
+            }
           />
         </div>
 
         <div style={{ animation: "slideUpFade 0.42s cubic-bezier(0.25,0.46,0.45,0.94) both 0.18s" }}>
-          <div>
-            <QuestionBuilderBulkBar
-              disabled={composerDisabled}
-              creating={bulkCreating}
-              questionType={bulkType}
-              difficulty={bulkDifficulty}
-              count={bulkCount}
-              pasteText={bulkPaste}
-              onQuestionTypeChange={setBulkType}
-              onDifficultyChange={setBulkDifficulty}
-              onCountChange={setBulkCount}
-              onPasteTextChange={setBulkPaste}
-              onCreate={() => void onBulkCreate()}
-            />
-          </div>
           <QuestionBuilderComposer
             disabled={composerDisabled}
             selectedSetId={selectedSetId || null}
@@ -630,7 +784,7 @@ export function QuestionBuilderPage() {
             selectedTemplate={selectedTemplate}
             onTemplateChange={setSelectedTemplate}
             questionType={questionType}
-            onQuestionTypeChange={setQuestionType}
+            onQuestionTypeChange={onQuestionTypeChange}
             question={question}
             onQuestionChange={setQuestion}
             codeSnippet={codeSnippet}
@@ -648,7 +802,10 @@ export function QuestionBuilderPage() {
             sampleAnswer={sampleAnswer}
             onSampleAnswerChange={setSampleAnswer}
             rubricDoc={rubricDoc}
-            onRubricDocChange={setRubricDoc}
+            onRubricDocChange={(doc) => {
+              rubricTouchedRef.current = true;
+              setRubricDoc(doc);
+            }}
             rationale={rationale}
             onRationaleChange={setRationale}
             imageHint={imageHint}
@@ -660,6 +817,9 @@ export function QuestionBuilderPage() {
             onRemoveImage={onRemoveImage}
             saving={saving}
             onSave={() => void onSave()}
+            selectionKey={editingId ?? "new"}
+            editingOrder={editingOrder}
+            onStartNew={startNewQuestion}
           />
         </div>
 

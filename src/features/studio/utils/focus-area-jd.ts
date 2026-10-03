@@ -8,6 +8,54 @@ function normKey(s: string): string {
   return s.trim().toLowerCase();
 }
 
+/** Bỏ dấu cách/gạch, giữ # + . để "C#" và "ASP.NET Core" không dính nhau. */
+export function compactSkillKey(value: string): string {
+  return value.trim().toLowerCase().replace(/[^a-z0-9#+.]/g, "");
+}
+
+export interface TechSkillCatalogItem {
+  name: string;
+  label: string;
+  group: string;
+  aliases: string[];
+}
+
+/**
+ * Map text JD/RAG về nhãn TechSkill. Khớp compact của label, tên enum hoặc alias.
+ * "C# – OOP" lấy phần trước gạch dài.
+ */
+export function matchTechSkill(name: string, catalog: TechSkillCatalogItem[]): string | null {
+  const raw = name.trim();
+  if (!raw || catalog.length === 0) return null;
+  const head = raw.split(/\s*[—–]\s*|\s+-\s+/)[0]?.trim() || raw;
+  const keys = new Set([compactSkillKey(raw), compactSkillKey(head)].filter(Boolean));
+  for (const item of catalog) {
+    const forms = [item.label, item.name, ...(item.aliases ?? [])];
+    if (forms.some((form) => keys.has(compactSkillKey(form)))) return item.label;
+  }
+  return null;
+}
+
+/** Skill JD map được sang enum và chưa có trong focus — dùng cho tag gợi ý. */
+export function suggestJdTechSkills(
+  jdSkills: string[],
+  catalog: TechSkillCatalogItem[],
+  usedLabels: string[]
+): string[] {
+  const used = new Set(usedLabels.map((name) => compactSkillKey(name)));
+  const seen = new Set<string>();
+  const result: string[] = [];
+  for (const skill of jdSkills) {
+    const label = matchTechSkill(skill, catalog);
+    if (!label) continue;
+    const key = compactSkillKey(label);
+    if (!key || used.has(key) || seen.has(key)) continue;
+    seen.add(key);
+    result.push(label);
+  }
+  return result;
+}
+
 /**
  * SCRUM-433: Map tên focus RAG (vd "C# – OOP") về skill JD catalog.
  * Ưu tiên exact → phần trước —/- → contains (skill dài nhất).
@@ -47,8 +95,55 @@ export function hasDuplicateFocusNames(areas: StudioFocusAreaItem[] | undefined)
 }
 
 /**
- * Snap + merge weight cùng skill + bỏ không match; rỗng → seed từ JD; scale 100%.
- * SCRUM-434: seed dùng toàn bộ catalog (không còn MAX_SEEDED_FOCUS = 8).
+ * Snap tên về catalog, gộp trùng, scale 100%.
+ * Không seed cả catalog khi list đã có hoặc khi không match — tag gợi ý JD làm việc đó.
+ */
+export function normalizeFocusAreasToTechSkills(
+  areas: Array<Pick<StudioFocusAreaItem, "name" | "weight" | "orderIndex"> & Partial<StudioFocusAreaItem>>,
+  catalog: TechSkillCatalogItem[]
+): StudioFocusAreaItem[] {
+  if (catalog.length === 0) {
+    return prepareFocusAreasForApply(
+      areas
+        .filter((a) => a.name?.trim())
+        .map((a, i) => ({
+          name: a.name.trim(),
+          weight: normalizeFocusWeight(a.weight),
+          orderIndex: a.orderIndex ?? i,
+          description: a.description ?? null,
+          sourceReason: a.sourceReason ?? null,
+        }))
+    );
+  }
+
+  const merged = new Map<string, StudioFocusAreaItem>();
+  for (const area of areas) {
+    const matched = matchTechSkill(area.name ?? "", catalog);
+    if (!matched) continue;
+    const key = compactSkillKey(matched);
+    const weight = normalizeFocusWeight(area.weight);
+    const existing = merged.get(key);
+    if (existing) {
+      existing.weight = normalizeFocusWeight(existing.weight + weight);
+      if (!existing.sourceReason && area.sourceReason) existing.sourceReason = area.sourceReason;
+      continue;
+    }
+    merged.set(key, {
+      name: matched,
+      weight,
+      orderIndex: merged.size,
+      description: area.description ?? null,
+      sourceReason: area.sourceReason ?? null,
+    });
+  }
+
+  const result = [...merged.values()];
+  if (result.length === 0) return [];
+  return redistributeFocusWeightsTo100(result);
+}
+
+/**
+ * Snap + merge weight cùng skill + bỏ không match. Không tự seed cả JD.
  */
 export function normalizeFocusAreasToJdSkills(
   areas: Array<Pick<StudioFocusAreaItem, "name" | "weight" | "orderIndex"> & Partial<StudioFocusAreaItem>>,
@@ -92,18 +187,8 @@ export function normalizeFocusAreasToJdSkills(
     }
   }
 
-  let result = [...merged.values()];
-  if (result.length === 0) {
-    // SCRUM-434: seed đủ mọi skill JD
-    result = catalog.map((name, i) => ({
-      name,
-      weight: 0,
-      orderIndex: i,
-      description: null,
-      sourceReason: null,
-    }));
-  }
-
+  const result = [...merged.values()];
+  if (result.length === 0) return [];
   return redistributeFocusWeightsTo100(result);
 }
 

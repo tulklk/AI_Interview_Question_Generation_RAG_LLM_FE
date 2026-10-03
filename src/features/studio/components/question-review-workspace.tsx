@@ -132,7 +132,7 @@ export type QuestionReviewWorkspaceProps = {
   onHiringModeChange?: (next: {
     isHiringAssessment: boolean;
     hrAntiCheatEnabled: boolean;
-  }) => void | Promise<void>;
+  }) => void | false | Promise<void | false>;
   /** SCRUM-470: soạn JD công khai + posting khi chế độ Tuyển */
   questionSetId?: string | null;
   /** Plan đang mở — để đếm đúng số lần regen câu hỏi CỦA RIÊNG plan này (không cộng dồn

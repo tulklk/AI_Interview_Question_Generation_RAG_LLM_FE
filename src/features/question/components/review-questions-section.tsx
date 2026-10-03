@@ -855,7 +855,7 @@ export function ReviewQuestionsSection({
                 if (next.isHiringAssessment) {
                   try {
                     const ok = await ensureHiringPostingReady();
-                    if (!ok) return;
+                    if (!ok) return false;
                   } catch (err) {
                     addToast(
                       "error",
@@ -864,7 +864,7 @@ export function ReviewQuestionsSection({
                         : t.hiringMode.postingIncomplete
                     );
                     setPublicJdNeedsAttention(true);
-                    return;
+                    return false;
                   }
                 }
                 try {
@@ -888,6 +888,7 @@ export function ReviewQuestionsSection({
                       .getElementById("public-jd-editor")
                       ?.scrollIntoView({ behavior: "smooth", block: "center" });
                   }
+                  return false;
                 }
               }}
             />
