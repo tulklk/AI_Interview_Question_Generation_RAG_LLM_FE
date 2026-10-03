@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { CircleHelp, X } from "lucide-react";
 import { cn } from "@/lib/cn";
@@ -22,18 +22,39 @@ interface ScoreHelpProps {
 const PANEL_SURFACE =
   "border-gray-200 bg-white text-gray-700 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200";
 
+const PANEL_WIDTH = 320;
+
 /**
  * Nút "?" giải thích cách tính điểm.
- * - Máy tính: rê chuột / focus / bấm để mở, bảng nổi ngay dưới nút.
- * - Điện thoại: bấm để mở bảng giữa màn hình (render qua portal để không bị card cha cắt/lệch), bấm nền hoặc nút X để đóng.
- * Đóng bằng Esc hoặc bấm ra ngoài ở cả hai.
+ * Cả máy tính và điện thoại đều render bảng qua portal trên document.body.
+ * Card cha có backdrop-filter nên tạo stacking context — panel absolute bên trong bị card phía dưới che.
  */
 export function ScoreHelp({ title, children, ariaLabel, align = "left", label, className }: ScoreHelpProps) {
   const [open, setOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
   const rootRef = useRef<HTMLSpanElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
+  const closeTimer = useRef<number | null>(null);
   const panelId = useId();
+
+  const clearCloseTimer = () => {
+    if (closeTimer.current != null) {
+      window.clearTimeout(closeTimer.current);
+      closeTimer.current = null;
+    }
+  };
+
+  const openNow = () => {
+    clearCloseTimer();
+    setOpen(true);
+  };
+
+  // Khoảng trống giữa nút và panel (panel nằm ngoài DOM cha) — delay để rê chuột sang panel không bị đóng.
+  const scheduleClose = () => {
+    clearCloseTimer();
+    closeTimer.current = window.setTimeout(() => setOpen(false), 140);
+  };
 
   useEffect(() => {
     const mq = window.matchMedia("(max-width: 639px)");
@@ -42,6 +63,8 @@ export function ScoreHelp({ title, children, ariaLabel, align = "left", label, c
     mq.addEventListener("change", update);
     return () => mq.removeEventListener("change", update);
   }, []);
+
+  useEffect(() => () => clearCloseTimer(), []);
 
   useEffect(() => {
     if (!open) return;
@@ -63,6 +86,37 @@ export function ScoreHelp({ title, children, ariaLabel, align = "left", label, c
     };
   }, [open]);
 
+  useLayoutEffect(() => {
+    if (!open || isMobile) {
+      setPos(null);
+      return;
+    }
+
+    const place = () => {
+      const anchor = rootRef.current;
+      if (!anchor) return;
+      const rect = anchor.getBoundingClientRect();
+      const width = panelRef.current?.offsetWidth || PANEL_WIDTH;
+      const height = panelRef.current?.offsetHeight || 0;
+      const gap = 8;
+      let left = align === "right" ? rect.right - width : rect.left;
+      left = Math.max(8, Math.min(left, window.innerWidth - width - 8));
+      let top = rect.bottom + gap;
+      if (height > 0 && top + height > window.innerHeight - 8) {
+        top = Math.max(8, rect.top - gap - height);
+      }
+      setPos({ top, left });
+    };
+
+    place();
+    window.addEventListener("resize", place);
+    window.addEventListener("scroll", place, true);
+    return () => {
+      window.removeEventListener("resize", place);
+      window.removeEventListener("scroll", place, true);
+    };
+  }, [open, isMobile, align, children]);
+
   const body = (
     <>
       <p className="mb-2 text-[13px] font-bold text-gray-900 dark:text-white">{title}</p>
@@ -70,19 +124,47 @@ export function ScoreHelp({ title, children, ariaLabel, align = "left", label, c
     </>
   );
 
+  const desktopPanel =
+    open &&
+    createPortal(
+      <div
+        ref={panelRef}
+        id={panelId}
+        role="dialog"
+        aria-label={title}
+        onMouseEnter={openNow}
+        onMouseLeave={scheduleClose}
+        style={{
+          top: pos?.top ?? -9999,
+          left: pos?.left ?? 0,
+          visibility: pos ? "visible" : "hidden",
+        }}
+        className={cn(
+          "fixed z-[80] w-80 max-h-[min(70vh,24rem)] overflow-y-auto rounded-xl border p-4 text-left shadow-xl",
+          PANEL_SURFACE
+        )}
+      >
+        {body}
+      </div>,
+      document.body
+    );
+
   return (
     <span
       ref={rootRef}
       className={cn("relative inline-flex align-middle", className)}
-      onMouseEnter={isMobile ? undefined : () => setOpen(true)}
-      onMouseLeave={isMobile ? undefined : () => setOpen(false)}
+      onMouseEnter={isMobile ? undefined : openNow}
+      onMouseLeave={isMobile ? undefined : scheduleClose}
     >
       <button
         type="button"
         aria-label={ariaLabel}
         aria-expanded={open}
         aria-controls={panelId}
-        onClick={() => setOpen(true)}
+        onClick={() => {
+          if (isMobile) setOpen((v) => !v);
+          else openNow();
+        }}
         className={cn(
           "flex items-center justify-center gap-1 rounded-full transition-colors outline-none",
           label ? "h-6 px-2 text-[11px] font-semibold" : "h-5 w-5",
@@ -94,47 +176,35 @@ export function ScoreHelp({ title, children, ariaLabel, align = "left", label, c
         {label}
       </button>
 
-      {isMobile ? (
-        open &&
-        createPortal(
-          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4">
-            <div
-              ref={panelRef}
-              id={panelId}
-              role="dialog"
-              aria-modal="true"
-              aria-label={title}
-              className={cn("relative max-h-[80vh] w-full max-w-sm overflow-y-auto rounded-xl border p-4 pr-10 text-left shadow-xl", PANEL_SURFACE)}
-            >
-              <button
-                type="button"
-                aria-label="Close"
-                onClick={() => setOpen(false)}
-                className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+      {isMobile
+        ? open &&
+          createPortal(
+            <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/40 p-4">
+              <div
+                ref={panelRef}
+                id={panelId}
+                role="dialog"
+                aria-modal="true"
+                aria-label={title}
+                className={cn(
+                  "relative max-h-[80vh] w-full max-w-sm overflow-y-auto rounded-xl border p-4 pr-10 text-left shadow-xl",
+                  PANEL_SURFACE
+                )}
               >
-                <X size={16} />
-              </button>
-              {body}
-            </div>
-          </div>,
-          document.body
-        )
-      ) : (
-        <div
-          ref={panelRef}
-          id={panelId}
-          role="dialog"
-          aria-label={title}
-          className={cn(
-            "absolute top-full z-30 mt-2 w-80 rounded-xl border p-4 text-left shadow-xl transition-opacity duration-150",
-            PANEL_SURFACE,
-            align === "right" ? "right-0" : "left-0",
-            open ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none invisible"
-          )}
-        >
-          {body}
-        </div>
-      )}
+                <button
+                  type="button"
+                  aria-label="Close"
+                  onClick={() => setOpen(false)}
+                  className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+                >
+                  <X size={16} />
+                </button>
+                {body}
+              </div>
+            </div>,
+            document.body
+          )
+        : desktopPanel}
     </span>
   );
 }
