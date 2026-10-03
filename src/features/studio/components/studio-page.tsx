@@ -686,6 +686,9 @@ export function StudioPage() {
     );
   }, [studio, studioConfig]);
 
+  /** Các snapshot outline đã gửi/lưu — không auto-save lại cùng nội dung (chống lặp, kể cả khi lưu lỗi). */
+  const autoSavedOutlineRef = useRef<string | null>(null);
+
   /** Bước 2: lưu Live Preview outline vào plan (dùng cho auto-save). */
   const handleApplyOutline = useCallback(async (opts?: { silent?: boolean }) => {
     const payload = studioConfig.buildApplyPayload() as
@@ -709,6 +712,9 @@ export function StudioPage() {
     if (!refreshed) return;
     // Luôn ưu tiên outline HR vừa gửi — server có thể lệch difficulty sau rebind
     const mergedOutline = mergeOutlinePreferLocal(outlineItems, refreshed.plan?.outlineItems);
+    // Ghi nhớ snapshot outline sau khi lưu: server có thể trả citations/plannedSkill/relabeled
+    // hơi khác nên outlineDirty vẫn true → nếu không chặn sẽ tự lưu lặp vô hạn ("Đang lưu..." giật)
+    autoSavedOutlineRef.current = JSON.stringify(normalizeOutlineItems(mergedOutline));
     studioConfig.acceptServerSettings(
       buildConfigDraft(refreshed.settings, refreshed.plan, mergedOutline)
     );
@@ -727,11 +733,16 @@ export function StudioPage() {
     const items = normalizeOutlineItems(studioConfig.draft?.outlineItems);
     if (items.length < 5) return;
     if (studio.isApplyingSettings || studio.isApplyingConfig) return;
+    // Nội dung này đã được gửi/lưu rồi → bỏ qua, tránh vòng lặp lưu vô hạn
+    const snapshot = JSON.stringify(items);
+    if (autoSavedOutlineRef.current === snapshot) return;
 
     const gen = ++outlineSaveGenRef.current;
     const timer = window.setTimeout(() => {
       void (async () => {
         if (gen !== outlineSaveGenRef.current) return;
+        // Đánh dấu ngay khi gửi: nếu lưu lỗi cũng không retry liên tục (HR sửa tiếp sẽ đổi snapshot)
+        autoSavedOutlineRef.current = snapshot;
         await handleApplyOutline({ silent: true });
       })();
     }, 700);
