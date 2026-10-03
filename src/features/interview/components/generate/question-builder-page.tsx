@@ -34,6 +34,7 @@ import {
   splitBulkLines,
 } from "@/features/interview/components/generate/question-builder-bulk-bar";
 import { QuestionBuilderPreview } from "@/features/interview/components/generate/question-builder-preview";
+import { QuestionBuilderEmptyState } from "@/features/interview/components/generate/question-builder-empty-state";
 import {
   buildPresetCriteria,
   emptyRubric,
@@ -129,8 +130,9 @@ export function QuestionBuilderPage() {
   const [newTitle, setNewTitle] = useState("");
   const [newDescription, setNewDescription] = useState("");
   const [creatingSet, setCreatingSet] = useState(false);
-  // Mặc định mở form tạo bộ mới — không auto chọn draft có sẵn
-  const [showCreateForm, setShowCreateForm] = useState(true);
+  // Mặc định đóng form để cột trái gọn (chỉ danh sách bộ); loadDrafts tự mở khi chưa có bộ nào,
+  // hoặc HR bấm "Tạo bộ DRAFT mới" ở trạng thái trống.
+  const [showCreateForm, setShowCreateForm] = useState(false);
 
   const [contentMode, setContentMode] = useState<ContentMode>("code");
   const [selectedTemplate, setSelectedTemplate] = useState<StudioCodeTemplateId>("BUG_DETECTION");
@@ -689,6 +691,14 @@ export function QuestionBuilderPage() {
     }
   };
 
+  /** Chọn bộ DRAFT — dùng chung cho cột trái và trạng thái trống. */
+  const handleSelectSet = (id: string) => {
+    if (id === selectedSetId) return;
+    setSelectedSetId(id);
+    setShowCreateForm(false);
+    clearSession();
+  };
+
   return (
     <div className="space-y-4">
       {/* ── Header — Studio-style ── */}
@@ -734,19 +744,25 @@ export function QuestionBuilderPage() {
         </div>
       </header>
 
-      {/* ── 3-column grid ── */}
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[280px_minmax(0,1fr)_320px]">
-        <div style={{ animation: "slideUpFade 0.42s cubic-bezier(0.25,0.46,0.45,0.94) both 0.1s" }}>
+      {/* ── Lưới: chưa chọn bộ → 2 cột (bộ | trạng thái trống); đã chọn → 3 cột (bộ | soạn | preview) ── */}
+      <div
+        className={cn(
+          "grid grid-cols-1 gap-4",
+          composerDisabled
+            ? "xl:grid-cols-[320px_minmax(0,1fr)]"
+            : "xl:grid-cols-[300px_minmax(0,1fr)_340px]"
+        )}
+      >
+        {/* Cột trái + preview dính theo cuộn để HR luôn thấy danh sách câu / xem trước khi soạn dài */}
+        <div
+          className="xl:sticky xl:top-4 xl:max-h-[calc(100vh-2rem)] xl:self-start xl:overflow-y-auto"
+          style={{ animation: "slideUpFade 0.42s cubic-bezier(0.25,0.46,0.45,0.94) both 0.1s" }}
+        >
           <QuestionBuilderSetPanel
             drafts={drafts}
             loadingDrafts={loadingDrafts}
             selectedSetId={selectedSetId}
-            onSelectSet={(id) => {
-              if (id === selectedSetId) return;
-              setSelectedSetId(id);
-              setShowCreateForm(false);
-              clearSession();
-            }}
+            onSelectSet={handleSelectSet}
             showCreateForm={showCreateForm}
             onToggleCreateForm={() => setShowCreateForm((v) => !v)}
             newTitle={newTitle}
@@ -776,6 +792,14 @@ export function QuestionBuilderPage() {
         </div>
 
         <div style={{ animation: "slideUpFade 0.42s cubic-bezier(0.25,0.46,0.45,0.94) both 0.18s" }}>
+          {composerDisabled ? (
+            <QuestionBuilderEmptyState
+              drafts={drafts}
+              loading={loadingDrafts}
+              onCreateNew={() => setShowCreateForm(true)}
+              onSelectSet={handleSelectSet}
+            />
+          ) : (
           <QuestionBuilderComposer
             disabled={composerDisabled}
             selectedSetId={selectedSetId || null}
@@ -821,9 +845,15 @@ export function QuestionBuilderPage() {
             editingOrder={editingOrder}
             onStartNew={startNewQuestion}
           />
+          )}
         </div>
 
-        <div style={{ animation: "slideUpFade 0.42s cubic-bezier(0.25,0.46,0.45,0.94) both 0.26s" }}>
+        {/* Preview chỉ hiện khi đã chọn bộ — tránh mock-up gây hiểu nhầm lúc chưa có gì để xem */}
+        {!composerDisabled && (
+        <div
+          className="xl:sticky xl:top-4 xl:max-h-[calc(100vh-2rem)] xl:self-start xl:overflow-y-auto"
+          style={{ animation: "slideUpFade 0.42s cubic-bezier(0.25,0.46,0.45,0.94) both 0.26s" }}
+        >
           <QuestionBuilderPreview
             difficulty={difficulty}
             questionType={questionType}
@@ -845,6 +875,7 @@ export function QuestionBuilderPage() {
             selectedSetTitle={selectedSet?.title ?? null}
           />
         </div>
+        )}
       </div>
     </div>
   );

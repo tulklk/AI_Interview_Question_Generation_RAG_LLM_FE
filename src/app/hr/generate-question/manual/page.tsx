@@ -12,6 +12,7 @@ export default function HrGenerateQuestionManualRoute() {
   return (
     <AppShell
       pageTitle={title}
+      fullWidth
       breadcrumb={[
         { label: t.appShell.breadcrumb.hr, href: "/hr/dashboard" },
         {
