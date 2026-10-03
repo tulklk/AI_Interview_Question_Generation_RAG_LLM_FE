@@ -338,7 +338,6 @@ export function CoachPage() {
         {w.wrapUp && (w.wrapUp.available || w.wrapUp.totalRoadmaps > 0) ? (
           <CoachWrapUpPanel
             wrapUp={w.wrapUp}
-            levelCriteria={w.report?.levelCriteria ?? null}
             promotingNextLevel={w.promotingNextLevel}
             onPromoteNextLevel={() => void w.promoteToNextLevel()}
           />

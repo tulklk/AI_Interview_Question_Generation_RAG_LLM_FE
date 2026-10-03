@@ -6,22 +6,18 @@ import { cn } from "@/lib/cn";
 import { portalHeadingAlt, portalSubtextAlt } from "@/shared/utils/portal-ui";
 import { useLanguage } from "@/shared/providers/language-context";
 import { fillTemplate } from "@/features/candidate/utils/dashboard-analytics";
-import type { CoachLevelCriteria, CoachWrapUp } from "@/features/candidate/services/coach.service";
-import { CoachLevelCriteriaPanel } from "@/features/candidate/components/coach/coach-level-criteria";
+import type { CoachWrapUp } from "@/features/candidate/services/coach.service";
 import { localizeCoachLevel } from "@/features/candidate/components/coach/coach-labels";
 
 interface CoachWrapUpPanelProps {
   wrapUp: CoachWrapUp;
-  /** SCRUM-509: tiêu chí từ report mới nhất (wrap-up DTO không nhúng). */
-  levelCriteria?: CoachLevelCriteria | null;
   promotingNextLevel?: boolean;
   onPromoteNextLevel?: () => void;
 }
 
-/** SCRUM-507: tổng kết sau khi mọi lộ trình Accepted đã reassessment. */
+/** SCRUM-507 / SCRUM-514: tổng kết sau reassessment — skill + câu, không dump tiêu chí level. */
 export function CoachWrapUpPanel({
   wrapUp,
-  levelCriteria = null,
   promotingNextLevel = false,
   onPromoteNextLevel,
 }: CoachWrapUpPanelProps) {
@@ -31,17 +27,14 @@ export function CoachWrapUpPanel({
   if (!wrapUp.available) {
     if (wrapUp.totalRoadmaps <= 0) return null;
     return (
-      <div className="hr-glass-card space-y-3 px-5 py-4">
-        <div className="space-y-2">
-          <p className={cn("text-[13px] font-semibold", portalHeadingAlt)}>{p.wrapUpTitle}</p>
-          <p className={cn("text-[12px]", portalSubtextAlt)}>
-            {fillTemplate(p.wrapUpProgress, {
-              done: String(wrapUp.completedRoadmaps),
-              total: String(wrapUp.totalRoadmaps),
-            })}
-          </p>
-        </div>
-        {levelCriteria ? <CoachLevelCriteriaPanel criteria={levelCriteria} compact /> : null}
+      <div className="hr-glass-card space-y-2 px-5 py-4">
+        <p className={cn("text-[13px] font-semibold", portalHeadingAlt)}>{p.wrapUpTitle}</p>
+        <p className={cn("text-[12px]", portalSubtextAlt)}>
+          {fillTemplate(p.wrapUpProgress, {
+            done: String(wrapUp.completedRoadmaps),
+            total: String(wrapUp.totalRoadmaps),
+          })}
+        </p>
       </div>
     );
   }
@@ -52,6 +45,7 @@ export function CoachWrapUpPanel({
     wrapUp.targetReadinessStatus === "READY" &&
     Boolean(wrapUp.suggestedNextLevel?.trim()) &&
     typeof onPromoteNextLevel === "function";
+  const neitherWeakNorNext = wrapUp.weakTopics.length === 0 && wrapUp.nextSkills.length === 0;
 
   return (
     <div className="hr-glass-card overflow-hidden">
@@ -59,49 +53,42 @@ export function CoachWrapUpPanel({
         <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-950/50">
           <Sparkles size={14} className="text-emerald-600 dark:text-emerald-400" />
         </div>
-        <div>
+        <div className="min-w-0">
           <p className={cn("text-[13px] font-semibold", portalHeadingAlt)}>{p.wrapUpTitle}</p>
           <p className={cn("text-[11px]", portalSubtextAlt)}>{p.wrapUpSubtitle}</p>
         </div>
       </div>
 
       <div className="space-y-4 px-5 py-4">
-        <div className="flex flex-wrap items-end gap-3">
-          <div>
-            <p className={cn("text-[10px] font-semibold uppercase tracking-wide", portalSubtextAlt)}>
-              {p.overallReadiness}
-            </p>
-            <p className={cn("mt-0.5 text-[26px] font-extrabold leading-none tabular-nums", portalHeadingAlt)}>
-              {readiness ?? "—"}
-              {readiness != null && <span className="text-[13px] font-medium opacity-50">%</span>}
-            </p>
-          </div>
-          {wrapUp.achievedLevel && (
-            <span className="inline-flex rounded-full bg-primary/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-primary">
-              {localizeCoachLevel(wrapUp.achievedLevel, p.coachLevels)}
-            </span>
-          )}
-          {wrapUp.overallDelta != null && wrapUp.overallDelta !== 0 && (
-            <span
-              className={cn(
-                "inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-semibold",
-                wrapUp.overallDelta > 0
-                  ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"
-                  : "bg-red-50 text-red-600 dark:bg-red-950/30 dark:text-red-400"
-              )}
-            >
-              <TrendingUp size={12} />
-              {fillTemplate(p.overallDelta, {
-                delta:
-                  wrapUp.overallDelta > 0
-                    ? `+${Math.round(wrapUp.overallDelta)}`
-                    : String(Math.round(wrapUp.overallDelta)),
-              })}
-            </span>
-          )}
-        </div>
-
-        {levelCriteria ? <CoachLevelCriteriaPanel criteria={levelCriteria} compact /> : null}
+        {(readiness != null || wrapUp.achievedLevel || (wrapUp.overallDelta != null && wrapUp.overallDelta !== 0)) && (
+          <p className={cn("text-[12px]", portalSubtextAlt)}>
+            {readiness != null && (
+              <span className={cn("font-semibold", portalHeadingAlt)}>
+                {fillTemplate(p.wrapUpReadinessLine, { score: String(readiness) })}
+              </span>
+            )}
+            {wrapUp.overallDelta != null && wrapUp.overallDelta !== 0 && (
+              <span
+                className={
+                  wrapUp.overallDelta > 0 ? " text-emerald-600" : " text-red-600"
+                }
+              >
+                {readiness != null ? " · " : ""}
+                {fillTemplate(p.overallDelta, {
+                  delta:
+                    wrapUp.overallDelta > 0
+                      ? `+${Math.round(wrapUp.overallDelta)}`
+                      : String(Math.round(wrapUp.overallDelta)),
+                })}
+              </span>
+            )}
+            {wrapUp.achievedLevel && (
+              <span className="ml-2 inline-flex rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-primary">
+                {localizeCoachLevel(wrapUp.achievedLevel, p.coachLevels)}
+              </span>
+            )}
+          </p>
+        )}
 
         <Section
           icon={<TrendingUp size={13} className="text-emerald-600" />}
@@ -126,33 +113,11 @@ export function CoachWrapUpPanel({
           ) : null}
         </Section>
 
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Section
-            icon={<CheckCircle2 size={13} className="text-primary" />}
-            title={p.wrapUpStrengthsTitle}
-            empty={p.wrapUpStrengthsEmpty}
-          >
-            {wrapUp.strengths.length > 0 ? (
-              <ul className="space-y-1.5">
-                {wrapUp.strengths.map((row) => (
-                  <li
-                    key={row.skill}
-                    className="flex items-center justify-between gap-2 rounded-lg border border-gray-100 px-3 py-2 text-[12px] dark:border-gray-800"
-                  >
-                    <span className={cn("font-semibold", portalHeadingAlt)}>{row.skill}</span>
-                    <span className={cn("tabular-nums", portalSubtextAlt)}>
-                      {Math.round(row.currentScore)} / {Math.round(row.targetScore)}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            ) : null}
-          </Section>
-
+        <div className="space-y-3">
           <Section
             icon={<Flame size={13} className="text-amber-600" />}
             title={p.wrapUpWeakTitle}
-            empty={p.wrapUpWeakEmpty}
+            empty=""
           >
             {wrapUp.weakTopics.length > 0 ? (
               <ul className="space-y-1.5">
@@ -176,31 +141,96 @@ export function CoachWrapUpPanel({
               </ul>
             ) : null}
           </Section>
+
+          <Section
+            icon={<Target size={13} className="text-violet-600" />}
+            title={p.wrapUpNextTitle}
+            empty={neitherWeakNorNext ? p.wrapUpNextEmpty : ""}
+          >
+            {wrapUp.nextSkills.length > 0 ? (
+              <ul className="space-y-1.5">
+                {wrapUp.nextSkills.map((row) => (
+                  <li
+                    key={row.skill}
+                    className="flex items-center justify-between gap-2 rounded-lg border border-violet-100 bg-violet-50/40 px-3 py-2 text-[12px] dark:border-violet-900/40 dark:bg-violet-950/20"
+                  >
+                    <div className="min-w-0">
+                      <p className={cn("font-semibold", portalHeadingAlt)}>{row.skill}</p>
+                      <p className={cn("text-[11px]", portalSubtextAlt)}>
+                        {row.reason === "screening" ? p.wrapUpNextScreening : p.wrapUpNextGap}
+                      </p>
+                    </div>
+                    {row.gap > 0 && (
+                      <span className={cn("shrink-0 tabular-nums", portalSubtextAlt)}>
+                        −{Math.round(row.gap)}
+                      </span>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+          </Section>
         </div>
 
         <Section
-          icon={<Target size={13} className="text-violet-600" />}
-          title={p.wrapUpNextTitle}
-          empty={p.wrapUpNextEmpty}
+          icon={<CheckCircle2 size={13} className="text-sky-600" />}
+          title={p.wrapUpAnswersTitle}
+          empty={p.wrapUpAnswersEmpty}
+          extra={
+            wrapUp.answerTotalCount > 0
+              ? fillTemplate(p.wrapUpAnswersSummary, {
+                  passed: String(wrapUp.answerPassedCount),
+                  total: String(wrapUp.answerTotalCount),
+                })
+              : undefined
+          }
         >
-          {wrapUp.nextSkills.length > 0 ? (
+          {wrapUp.answers.length > 0 ? (
             <ul className="space-y-1.5">
-              {wrapUp.nextSkills.map((row) => (
+              {wrapUp.answers.map((row, index) => (
                 <li
-                  key={row.skill}
-                  className="flex items-center justify-between gap-2 rounded-lg border border-violet-100 bg-violet-50/40 px-3 py-2 text-[12px] dark:border-violet-900/40 dark:bg-violet-950/20"
+                  key={`${row.skill}-${index}`}
+                  className="flex items-start justify-between gap-2 rounded-lg border border-gray-100 px-3 py-2 text-[12px] dark:border-gray-800"
                 >
                   <div className="min-w-0">
-                    <p className={cn("font-semibold", portalHeadingAlt)}>{row.skill}</p>
-                    <p className={cn("text-[11px]", portalSubtextAlt)}>
-                      {row.reason === "screening" ? p.wrapUpNextScreening : p.wrapUpNextGap}
+                    <p className={cn("leading-snug", portalHeadingAlt)}>{row.questionPreview}</p>
+                    <p className={cn("mt-0.5 text-[11px]", portalSubtextAlt)}>
+                      {row.skill}
+                      {row.score != null ? ` · ${Math.round(row.score)}` : ""}
                     </p>
                   </div>
-                  {row.gap > 0 && (
-                    <span className={cn("shrink-0 tabular-nums", portalSubtextAlt)}>
-                      −{Math.round(row.gap)}
-                    </span>
-                  )}
+                  <span
+                    className={cn(
+                      "shrink-0 rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide",
+                      row.passed
+                        ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"
+                        : "bg-amber-50 text-amber-800 dark:bg-amber-950/30 dark:text-amber-200"
+                    )}
+                  >
+                    {row.passed ? p.wrapUpAnswerPassed : p.wrapUpAnswerNotPassed}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </Section>
+
+        <Section
+          icon={<CheckCircle2 size={13} className="text-primary" />}
+          title={p.wrapUpStrengthsTitle}
+          empty={p.wrapUpStrengthsEmpty}
+        >
+          {wrapUp.strengths.length > 0 ? (
+            <ul className="space-y-1.5">
+              {wrapUp.strengths.map((row) => (
+                <li
+                  key={row.skill}
+                  className="flex items-center justify-between gap-2 rounded-lg border border-gray-100 px-3 py-2 text-[12px] dark:border-gray-800"
+                >
+                  <span className={cn("font-semibold", portalHeadingAlt)}>{row.skill}</span>
+                  <span className={cn("tabular-nums", portalSubtextAlt)}>
+                    {Math.round(row.currentScore)} / {Math.round(row.targetScore)}
+                  </span>
                 </li>
               ))}
             </ul>
@@ -246,19 +276,25 @@ function Section({
   icon,
   title,
   empty,
+  extra,
   children,
 }: {
   icon: ReactNode;
   title: string;
   empty: string;
+  extra?: string;
   children: ReactNode | null;
 }) {
   const hasBody = children != null;
+  if (!hasBody && !empty) return null;
   return (
     <div className="space-y-2">
-      <div className="flex items-center gap-1.5">
-        {icon}
-        <p className={cn("text-[11px] font-bold uppercase tracking-wide", portalSubtextAlt)}>{title}</p>
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-1.5">
+          {icon}
+          <p className={cn("text-[11px] font-bold uppercase tracking-wide", portalSubtextAlt)}>{title}</p>
+        </div>
+        {extra ? <p className={cn("text-[11px] tabular-nums", portalSubtextAlt)}>{extra}</p> : null}
       </div>
       {hasBody ? children : <p className={cn("text-[12px]", portalSubtextAlt)}>{empty}</p>}
     </div>

@@ -802,6 +802,14 @@ export interface CoachWrapUpNextSkill {
   reason: "gap" | "screening" | string;
 }
 
+/** SCRUM-514: một câu đánh giá lại — Đạt khi điểm vượt ngưỡng drill. */
+export interface CoachWrapUpAnswer {
+  skill: string;
+  questionPreview: string;
+  score?: number | null;
+  passed: boolean;
+}
+
 export interface CoachWrapUp {
   available: boolean;
   completedRoadmaps: number;
@@ -817,6 +825,9 @@ export interface CoachWrapUp {
   strengths: CoachWrapUpSkill[];
   weakTopics: CoachWrapUpWeakTopic[];
   nextSkills: CoachWrapUpNextSkill[];
+  answerPassedCount: number;
+  answerTotalCount: number;
+  answers: CoachWrapUpAnswer[];
 }
 
 function mapWrapUp(src: Record<string, unknown> | null): CoachWrapUp {
@@ -829,12 +840,16 @@ function mapWrapUp(src: Record<string, unknown> | null): CoachWrapUp {
       strengths: [],
       weakTopics: [],
       nextSkills: [],
+      answerPassedCount: 0,
+      answerTotalCount: 0,
+      answers: [],
     };
   }
   const improvedRaw = src.improved ?? src.Improved;
   const strengthsRaw = src.strengths ?? src.Strengths;
   const weakRaw = src.weakTopics ?? src.WeakTopics;
   const nextRaw = src.nextSkills ?? src.NextSkills;
+  const answersRaw = src.answers ?? src.Answers;
   return {
     available: pickBool(src, "available", "Available"),
     completedRoadmaps: pickNumber(src, "completedRoadmaps", "CompletedRoadmaps") ?? 0,
@@ -907,6 +922,24 @@ function mapWrapUp(src: Record<string, unknown> | null): CoachWrapUp {
             };
           })
           .filter((x): x is CoachWrapUpNextSkill => x != null)
+      : [],
+    answerPassedCount: pickNumber(src, "answerPassedCount", "AnswerPassedCount") ?? 0,
+    answerTotalCount: pickNumber(src, "answerTotalCount", "AnswerTotalCount") ?? 0,
+    answers: Array.isArray(answersRaw)
+      ? answersRaw
+          .map((x): CoachWrapUpAnswer | null => {
+            const r = asRecord(x) ?? {};
+            const preview = pickString(r, "questionPreview", "QuestionPreview");
+            const skill = pickString(r, "skill", "Skill");
+            if (!preview && !skill) return null;
+            return {
+              skill: skill || "—",
+              questionPreview: preview || skill,
+              score: pickNumber(r, "score", "Score") ?? null,
+              passed: pickBool(r, "passed", "Passed"),
+            };
+          })
+          .filter((x): x is CoachWrapUpAnswer => x != null)
       : [],
   };
 }
