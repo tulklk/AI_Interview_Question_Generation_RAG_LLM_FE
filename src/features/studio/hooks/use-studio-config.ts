@@ -44,7 +44,8 @@ function pickDraft(settings: StudioSettings | null): StudioConfigDraft | null {
       settings.questionDistribution ?? [],
       settings.numberOfQuestions
     ),
-    focusAreas: settings.focusAreas ?? [],
+    // Dedupe ngay khi lấy draft từ settings — tránh nhân đôi sau race tạo plan.
+    focusAreas: prepareFocusAreasForApply(settings.focusAreas),
     questionStyles: settings.questionStyles ?? [],
     enabledCodeTemplates: settings.enabledCodeTemplates,
     contentMode: settings.contentMode,
@@ -273,9 +274,12 @@ export function useStudioConfig({ settings, currentPlan }: UseStudioConfigOption
           ? {
               ...prev,
               questionDistribution: appliedDraft.questionDistribution,
-              focusAreas: appliedDraft.focusAreas,
+              focusAreas: prepareFocusAreasForApply(appliedDraft.focusAreas),
             }
-          : appliedDraft
+          : {
+              ...appliedDraft,
+              focusAreas: prepareFocusAreasForApply(appliedDraft.focusAreas),
+            }
       );
     }
   }, [appliedDraft, draft]);

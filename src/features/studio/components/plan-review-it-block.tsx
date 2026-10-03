@@ -13,7 +13,12 @@ import {
   syncDistributionCounts,
   validateDistributionSum,
 } from "@/features/studio/utils/distribution-math";
-import { normalizeFocusAreasToTechSkills, type TechSkillCatalogItem } from "@/features/studio/utils/focus-area-jd";
+import {
+  hasDuplicateFocusNames,
+  normalizeFocusAreasToTechSkills,
+  prepareFocusAreasForApply,
+  type TechSkillCatalogItem,
+} from "@/features/studio/utils/focus-area-jd";
 import { useTechSkillCatalog } from "@/features/studio/hooks/use-tech-skill-catalog";
 import { normalizeStudioDifficulty } from "@/features/studio/utils/normalize-studio-settings";
 import { QuestionDistributionEditor } from "@/features/studio/components/question-distribution-editor";
@@ -166,20 +171,45 @@ export function PlanReviewItBlock({
 
   const techCatalog = useTechSkillCatalog();
   const settingsFocus = draft?.focusAreas ?? settings?.focusAreas ?? [];
+  // Dedupe trước khi render — tránh list bị nhân đôi sau race tạo plan.
   const focusAreas =
     settingsFocus.length > 0
-      ? settingsFocus
+      ? techCatalog.length > 0
+        ? normalizeFocusAreasToTechSkills(settingsFocus, techCatalog)
+        : prepareFocusAreasForApply(settingsFocus)
       : mapPlanFocus(plan.focusAreas ?? [], techCatalog);
 
   useEffect(() => {
+    const rawDraft = draft?.focusAreas ?? [];
+    const rawSettings = settings?.focusAreas ?? [];
+    // Draft/settings đang trùng tên → ghi bản đã gộp vào draft (không chờ catalog).
+    if (rawDraft.length > 0 && hasDuplicateFocusNames(rawDraft)) {
+      onDraftChange({
+        focusAreas:
+          techCatalog.length > 0
+            ? normalizeFocusAreasToTechSkills(rawDraft, techCatalog)
+            : prepareFocusAreasForApply(rawDraft),
+      });
+      return;
+    }
     // Đã có focus từ settings/draft — không seed từ plan (tránh dirty oan + nút Apply hiện lại)
-    if ((draft?.focusAreas?.length ?? 0) > 0) return;
-    if ((settings?.focusAreas?.length ?? 0) > 0) return;
+    if (rawDraft.length > 0) return;
+    if (rawSettings.length > 0) {
+      if (hasDuplicateFocusNames(rawSettings)) {
+        onDraftChange({
+          focusAreas:
+            techCatalog.length > 0
+              ? normalizeFocusAreasToTechSkills(rawSettings, techCatalog)
+              : prepareFocusAreasForApply(rawSettings),
+        });
+      }
+      return;
+    }
     if (techCatalog.length === 0) return;
     const fromPlan = mapPlanFocus(plan.focusAreas ?? [], techCatalog);
     if (fromPlan.length === 0) return;
     onDraftChange({ focusAreas: fromPlan });
-  }, [plan.id, techCatalog.length]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [plan.id, techCatalog.length, draft?.focusAreas, settings?.focusAreas]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!editable || distribution.length === 0) return;

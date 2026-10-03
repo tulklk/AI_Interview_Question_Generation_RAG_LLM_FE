@@ -6,7 +6,8 @@ import type {
   StudioSettings,
 } from "@/features/studio/types/studio.types";
 import type { StudioCodeTemplateId } from "@/features/studio/constants/question-templates";
-import { normalizeFocusWeight, syncDistributionCounts } from "@/features/studio/utils/distribution-math";
+import { syncDistributionCounts } from "@/features/studio/utils/distribution-math";
+import { prepareFocusAreasForApply } from "@/features/studio/utils/focus-area-jd";
 
 const CATEGORY_LABELS_VI: Record<string, string> = {
   technical: "Kỹ thuật",
@@ -81,11 +82,8 @@ export function mapCodingTaskTypes(raw: string[] | undefined): StudioCodeTemplat
 }
 
 function normalizeFocusAreasForApply(areas: StudioFocusAreaItem[] | undefined): StudioFocusAreaItem[] {
-  return (areas ?? []).map((fa, idx) => ({
-    ...fa,
-    weight: normalizeFocusWeight(fa.weight),
-    orderIndex: fa.orderIndex ?? idx,
-  }));
+  // Gộp trùng tên trước khi apply recommend — tránh nhân list từ RAG.
+  return prepareFocusAreasForApply(areas);
 }
 
 export function buildApplyRecommendationPatch(

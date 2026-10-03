@@ -2,6 +2,10 @@
 import type { StudioCodeTemplateId, StudioContentMode } from "@/features/studio/constants/question-templates";
 import type { StudioFocusAreaItem, StudioSettings } from "@/features/studio/types/studio.types";
 import { normalizeFocusWeight, syncDistributionCounts } from "@/features/studio/utils/distribution-math";
+import {
+  hasDuplicateFocusNames,
+  prepareFocusAreasForApply,
+} from "@/features/studio/utils/focus-area-jd";
 
 /** Chuẩn hóa độ khó settings/plan — tránh so sánh lệch easy vs Easy, hoặc enum số 0/1/2. */
 export function normalizeStudioDifficulty(raw: unknown): "Easy" | "Medium" | "Hard" {
@@ -12,11 +16,14 @@ export function normalizeStudioDifficulty(raw: unknown): "Easy" | "Medium" | "Ha
 }
 
 function normalizeFocusAreas(areas: StudioFocusAreaItem[] | undefined): StudioFocusAreaItem[] {
-  return (areas ?? []).map((fa, idx) => ({
+  const list = (areas ?? []).map((fa, idx) => ({
     ...fa,
     weight: normalizeFocusWeight(fa.weight),
     orderIndex: fa.orderIndex ?? idx,
   }));
+  // API/settings đôi khi trả 2N row cùng tên sau race tạo plan — gộp ngay lúc normalize.
+  if (hasDuplicateFocusNames(list)) return prepareFocusAreasForApply(list);
+  return list;
 }
 
 export function normalizeStudioSettings(s: StudioSettings | null): StudioSettings | null {

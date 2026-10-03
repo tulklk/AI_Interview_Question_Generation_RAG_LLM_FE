@@ -164,6 +164,8 @@ export function StudioPage() {
   /** SCRUM-431: viền vàng hướng dẫn lần đầu — false sau khi dismiss / tạo plan / đã quen. */
   const [showConfigGuide, setShowConfigGuide] = useState(false);
   const planCollapseDoneRef = useRef(false);
+  /** Chặn double-click "Tạo plan" trước khi isStreaming kịp bật. */
+  const createPlanInFlightRef = useRef(false);
   const TAB_ORDER = ["sources", "main", "settings"] as const;
   type MobileTab = typeof TAB_ORDER[number];
   const [mobileTab, setMobileTab] = useState<MobileTab>("main");
@@ -623,19 +625,25 @@ export function StudioPage() {
       setQuotaDialogOpen(true);
       return;
     }
+    if (createPlanInFlightRef.current || studio.isStreaming) return;
     // SCRUM-431: thu gọn 2 cột + đánh dấu đã xem hướng dẫn
     collapseSources(true);
     collapseInspector(true);
     planCollapseDoneRef.current = true;
     markConfigGuideSeen();
     switchMobileTab("main");
+    createPlanInFlightRef.current = true;
     void (async () => {
-      // Persist ngôn ngữ + tùy chọn nâng cao trước generate (tránh chỉ nằm ở draft FE)
-      const flushed = await flushConfigDraftSilent();
-      if (!flushed) return;
-      await studio.generateInitialPlan();
-      studioConfig.acceptServerSettings();
-      void refreshSubscription();
+      try {
+        // Persist ngôn ngữ + tùy chọn nâng cao trước generate (tránh chỉ nằm ở draft FE)
+        const flushed = await flushConfigDraftSilent();
+        if (!flushed) return;
+        await studio.generateInitialPlan();
+        studioConfig.acceptServerSettings();
+        void refreshSubscription();
+      } finally {
+        createPlanInFlightRef.current = false;
+      }
     })();
   }, [collapseInspector, collapseSources, flushConfigDraftSilent, markConfigGuideSeen, quotaBlocked, studio, switchMobileTab, studioConfig, refreshSubscription]);
 

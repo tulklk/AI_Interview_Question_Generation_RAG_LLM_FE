@@ -18,6 +18,7 @@ import {
   hasDuplicateFocusNames,
   matchTechSkill,
   normalizeFocusAreasToTechSkills,
+  prepareFocusAreasForApply,
   suggestJdTechSkills,
   type TechSkillCatalogItem,
 } from "@/features/studio/utils/focus-area-jd";
@@ -123,10 +124,17 @@ export function FocusAreasEditor({
   }, [focusAreas, page]);
 
   useEffect(() => {
-    if (!useCatalog || focusAreas.length === 0) return;
-    const needs =
-      hasDuplicateFocusNames(focusAreas) ||
-      focusAreas.some((fa) => matchTechSkill(fa.name, catalog) !== fa.name.trim());
+    if (focusAreas.length === 0) return;
+    // Trùng tên: gộp ngay cả khi catalog chưa load (tránh list 2N sau tạo plan).
+    if (hasDuplicateFocusNames(focusAreas)) {
+      const next = useCatalog
+        ? normalizeFocusAreasToTechSkills(focusAreas, catalog)
+        : prepareFocusAreasForApply(focusAreas);
+      if (next.length > 0) onChange(next);
+      return;
+    }
+    if (!useCatalog) return;
+    const needs = focusAreas.some((fa) => matchTechSkill(fa.name, catalog) !== fa.name.trim());
     if (!needs) return;
     const next = normalizeFocusAreasToTechSkills(focusAreas, catalog);
     if (next.length === 0) return;

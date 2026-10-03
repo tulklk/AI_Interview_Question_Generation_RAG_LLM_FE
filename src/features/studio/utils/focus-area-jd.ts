@@ -192,18 +192,34 @@ export function normalizeFocusAreasToJdSkills(
   return redistributeFocusWeightsTo100(result);
 }
 
-/** Dedupe theo tên (giữ row đầu) rồi scale 100% — dùng trước apply. */
+/**
+ * Dedupe theo tên (case-insensitive): cộng weight các dòng trùng,
+ * giữ sourceReason/description dòng đầu còn thiếu, rồi scale 100%.
+ * Dùng khi load settings/draft và trước apply — tránh list bị nhân đôi sau tạo plan.
+ */
 export function prepareFocusAreasForApply(
   areas: StudioFocusAreaItem[] | undefined
 ): StudioFocusAreaItem[] {
   const list = areas ?? [];
-  const seen = new Set<string>();
-  const deduped: StudioFocusAreaItem[] = [];
+  const merged = new Map<string, StudioFocusAreaItem>();
   for (const a of list) {
-    const k = normKey(a.name);
-    if (!k || seen.has(k)) continue;
-    seen.add(k);
-    deduped.push({ ...a, name: a.name.trim() });
+    const name = (a.name ?? "").trim();
+    const k = normKey(name);
+    if (!k) continue;
+    const weight = normalizeFocusWeight(a.weight);
+    const existing = merged.get(k);
+    if (existing) {
+      existing.weight = normalizeFocusWeight(existing.weight + weight);
+      if (!existing.sourceReason && a.sourceReason) existing.sourceReason = a.sourceReason;
+      if (!existing.description && a.description) existing.description = a.description;
+      continue;
+    }
+    merged.set(k, {
+      ...a,
+      name,
+      weight,
+      orderIndex: merged.size,
+    });
   }
-  return redistributeFocusWeightsTo100(deduped);
+  return redistributeFocusWeightsTo100([...merged.values()]);
 }

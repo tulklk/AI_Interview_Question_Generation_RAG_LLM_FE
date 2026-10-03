@@ -187,11 +187,14 @@ export function useStudio() {
   const generateCancelledRef = useRef(false);
   /** True while remount is polling for an in-flight create-plan (not a live generateInitialPlan call). */
   const planCreateRestoreRef = useRef(false);
+  /** Chặn double-invoke generateInitialPlan (click/StrictMode) — tránh BE ghi 2N focus. */
+  const planCreateInFlightRef = useRef(false);
   useEffect(() => {
     generateCancelledRef.current = false;
     return () => {
       generateCancelledRef.current = true;
       planCreateRestoreRef.current = false;
+      planCreateInFlightRef.current = false;
     };
   }, []);
 
@@ -709,6 +712,8 @@ export function useStudio() {
 
   const generateInitialPlan = useCallback(async () => {
     if (!project) return;
+    // Đang tạo plan rồi — bỏ qua lần gọi thứ hai (double-click / remount).
+    if (planCreateInFlightRef.current) return;
     // SCRUM-416/417: chặn sớm nếu thiếu Position hoặc Level.
     if (!jdSummary?.position?.trim()) {
       addToast("error", tx.positionRequiredForPlan);
@@ -718,6 +723,7 @@ export function useStudio() {
       addToast("error", tx.seniorityRequiredForPlan);
       return;
     }
+    planCreateInFlightRef.current = true;
     const startedAt = new Date().toISOString();
     planCreateRestoreRef.current = false;
     setPlanStreamStartedAt(startedAt);
@@ -758,6 +764,7 @@ export function useStudio() {
         },
       ]);
     } finally {
+      planCreateInFlightRef.current = false;
       setIsStreaming(false);
       setPlanStreamStartedAt(null);
     }
