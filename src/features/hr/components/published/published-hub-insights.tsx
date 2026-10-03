@@ -98,6 +98,13 @@ function bandLabel(score: number, labels: InsightLabels): string {
   return labels.bandLow;
 }
 
+/** Ưu tiên mở thẳng bài làm (phiên điểm cao nhất) của bộ câu hỏi này; thiếu session thì về hồ sơ ứng viên. */
+function leaderHref(person: LeaderboardItem): string {
+  return person.bestSessionId
+    ? `/hr/candidates/${person.candidateUserId}/sessions/${person.bestSessionId}`
+    : `/hr/candidates/${person.candidateUserId}`;
+}
+
 function attemptMeta(
   person: { attemptCount: number; isOfficialTest: boolean },
   labels: InsightLabels,
@@ -631,7 +638,7 @@ function PodiumSlot({
   const medal = MEDAL[place];
   const first = place === 1;
   const name = person?.candidateName || "—";
-  const href = person ? `/hr/candidates/${person.candidateUserId}` : "";
+  const href = person ? leaderHref(person) : "";
 
   return (
     <li className={cn("flex min-w-0 flex-col items-center", medal.order)} aria-label={fill(labels.rankLabel, { n: place })}>
@@ -746,7 +753,7 @@ function RestList({
               <Avatar name={p.candidateName} />
               <div className="min-w-0 flex-1">
                 <Link
-                  href={`/hr/candidates/${p.candidateUserId}`}
+                  href={leaderHref(p)}
                   className={cn("block truncate text-sm font-medium hover:underline", portalHeading)}
                 >
                   {p.candidateName || "—"}
