@@ -147,7 +147,7 @@ export function SavedQuestionSetsList() {
             className="flex items-center gap-3 px-4 py-3.5 hover:bg-gray-50/60 dark:hover:bg-gray-800/40 transition-colors"
           >
             {item.sessionId ? (
-              <Link href={`/hr/history/${item.sessionId}`} className="flex-1 min-w-0 flex items-center hover:opacity-80 transition-opacity">
+              <Link href={`/hr/published/${item.sessionId}`} className="flex-1 min-w-0 flex items-center hover:opacity-80 transition-opacity">
                 {content}
               </Link>
             ) : (

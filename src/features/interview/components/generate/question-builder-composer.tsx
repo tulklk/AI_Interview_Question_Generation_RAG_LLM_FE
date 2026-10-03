@@ -609,7 +609,7 @@ export function QuestionBuilderComposer(props: Props) {
         </button>
         {selectedSetId ? (
           <Link
-            href={`/hr/history/${selectedSetId}`}
+            href={`/hr/published/${selectedSetId}`}
             className="inline-flex items-center gap-1.5 rounded-xl border border-gray-200 px-3.5 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
           >
             <ListPlus size={14} />

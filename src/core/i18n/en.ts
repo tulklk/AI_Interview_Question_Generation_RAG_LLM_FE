@@ -1477,7 +1477,7 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
   },
 
   publishedHubPage: {
-    heading: "Published set",
+    heading: "Question set",
     backToList: "Back to Practice & ratings",
     statusPublished: "Published",
     statusPublishedMarketplace: "On marketplace",
@@ -1502,6 +1502,7 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
     tabPractitioners: "Practitioners",
     tabApplicants: "Applicants",
     tabFeedback: "Ratings",
+    tabReview: "Review",
     metricAttempts: "Attempts",
     metricAttemptsSub: "{{done}} done · {{progress}} in progress",
     metricApplicants: "Applicants",

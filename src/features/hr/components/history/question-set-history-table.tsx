@@ -687,7 +687,7 @@ export function QuestionSetHistoryTable({ filter = "all", mode = null }: Questio
                     <td className={tdCls}>
                       <div className="relative flex flex-nowrap items-center justify-center gap-0.5">
                         <Link
-                          href={`/hr/history/${item.questionSetId}`}
+                          href={`/hr/published/${item.questionSetId}`}
                           className={iconBtn}
                           title={ht.viewTitle}
                         >
@@ -851,7 +851,7 @@ export function QuestionSetHistoryTable({ filter = "all", mode = null }: Questio
               <span className="truncate">{t.historyPage.practitionersTitle}</span>
             </Link>
             <Link
-              href={`/hr/history/${openMenuItem.questionSetId}?jdFit=1`}
+              href={`/hr/published/${openMenuItem.questionSetId}?tab=review&jdFit=1`}
               role="menuitem"
               className={menuItemCls}
               title={t.historyPage.jdFitTitle}

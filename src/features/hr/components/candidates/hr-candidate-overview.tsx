@@ -440,7 +440,7 @@ export function HrCandidateOverviewPage({ candidateUserId }: { candidateUserId: 
                           >
                             <td className="px-3 py-2.5">
                               <Link
-                                href={`/hr/history/${row.questionSetId}`}
+                                href={`/hr/published/${row.questionSetId}`}
                                 className={cn("font-semibold text-primary hover:underline", portalHeadingAlt)}
                               >
                                 {row.title}

@@ -1479,7 +1479,7 @@ Yêu cầu:
   },
 
   publishedHubPage: {
-    heading: "Chi tiết bộ đã publish",
+    heading: "Chi tiết bộ câu hỏi",
     backToList: "Quay lại Luyện tập & đánh giá",
     statusPublished: "Đã publish",
     statusPublishedMarketplace: "Trên marketplace",
@@ -1504,6 +1504,7 @@ Yêu cầu:
     tabPractitioners: "Người luyện",
     tabApplicants: "Ứng viên",
     tabFeedback: "Đánh giá",
+    tabReview: "Review",
     metricAttempts: "Lượt luyện",
     metricAttemptsSub: "{{done}} xong · {{progress}} đang làm",
     metricApplicants: "Ứng viên",

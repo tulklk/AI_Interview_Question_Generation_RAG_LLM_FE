@@ -321,7 +321,7 @@ export function QuestionBuilderSetPanel({
           </p>
 
           <Link
-            href={`/hr/history/${selected.questionSetId}`}
+            href={`/hr/published/${selected.questionSetId}`}
             className="inline-flex items-center gap-1 text-[11px] font-semibold text-primary hover:underline"
           >
             {qb.openSetLink}

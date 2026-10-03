@@ -38,14 +38,18 @@ import {
 import { PublishedHubPractitioners } from "./published-hub-practitioners";
 import { PublishedHubFeedback } from "./published-hub-feedback";
 import { PublishedHubInsights } from "./published-hub-insights";
+import { PublishedHubReview } from "./published-hub-review";
 import { PublishedSetHubSkeleton } from "./published-skeletons";
 
-export type HubTab = "overview" | "insights" | "questions" | "practitioners" | "feedback";
+export type HubTab = "overview" | "insights" | "questions" | "practitioners" | "feedback" | "review";
 
-const TABS: HubTab[] = ["overview", "insights", "questions", "practitioners", "feedback"];
+/** Bộ đã publish: đủ tab; Review (xem/sửa nội dung bộ) nằm cuối. */
+const PUBLISHED_TABS: HubTab[] = ["overview", "insights", "questions", "practitioners", "feedback", "review"];
 
-function parseTab(raw: string | null): HubTab {
-  if (raw && (TABS as string[]).includes(raw)) return raw as HubTab;
+function parseTab(raw: string | null, isPublished: boolean): HubTab {
+  // Bộ chưa publish chưa có thống kê/người luyện/phản hồi → chỉ có Review.
+  if (!isPublished) return "review";
+  if (raw && (PUBLISHED_TABS as string[]).includes(raw)) return raw as HubTab;
   return "overview";
 }
 
@@ -60,7 +64,7 @@ export function PublishedSetHub({ questionSetId }: { questionSetId: string }) {
   const { addToast } = useToast();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const tab = parseTab(searchParams.get("tab"));
+  const rawTab = searchParams.get("tab");
 
   const [draft, setDraft] = useState<DraftQuestionSet | null>(null);
   const [practitioners, setPractitioners] = useState<Practitioner[]>([]);
@@ -179,6 +183,7 @@ export function PublishedSetHub({ questionSetId }: { questionSetId: string }) {
   }
 
   const isPublished = draft.status === "PUBLISHED";
+  const tab = parseTab(rawTab, isPublished);
   const isHiring = Boolean(draft.isHiringAssessment);
   const questionsForTab = showHiddenQuestions ? draft.questions : liveQuestions;
 
@@ -188,29 +193,26 @@ export function PublishedSetHub({ questionSetId }: { questionSetId: string }) {
     questions: h.tabQuestions,
     practitioners: isHiring ? h.tabApplicants : h.tabPractitioners,
     feedback: h.tabFeedback,
+    review: h.tabReview,
   };
 
   return (
     <div className="space-y-5">
-      <Link
-        href="/hr/published"
-        className={cn(
-          "inline-flex items-center gap-1.5 text-sm hover:text-gray-700 dark:hover:text-gray-300 transition-colors",
-          portalSubtext
-        )}
-      >
-        <ArrowLeft size={14} /> {h.backToList}
-      </Link>
-
-      {!isPublished && (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
-          {h.notPublishedBanner}{" "}
-          <Link href={`/hr/history/${questionSetId}`} className="font-semibold underline">
-            {h.openReview}
-          </Link>
-        </div>
+      {/* Tab Review có sẵn link "Quay lại lịch sử" riêng. */}
+      {tab !== "review" && (
+        <Link
+          href="/hr/published"
+          className={cn(
+            "inline-flex items-center gap-1.5 text-sm hover:text-gray-700 dark:hover:text-gray-300 transition-colors",
+            portalSubtext
+          )}
+        >
+          <ArrowLeft size={14} /> {h.backToList}
+        </Link>
       )}
 
+      {/* Tab Review đã có header riêng (tên, trạng thái, đổi tên) nên ẩn header của hub. */}
+      {tab !== "review" && (
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
@@ -254,15 +256,6 @@ export function PublishedSetHub({ questionSetId }: { questionSetId: string }) {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2 shrink-0">
-          <Link
-            href={`/hr/history/${questionSetId}`}
-            className={cn(
-              "inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-semibold transition-colors hover:bg-gray-50 dark:hover:bg-gray-800",
-              portalHeading
-            )}
-          >
-            <FileText size={14} /> {h.openReview}
-          </Link>
           {isPublished && (
             <button
               type="button"
@@ -276,10 +269,12 @@ export function PublishedSetHub({ questionSetId }: { questionSetId: string }) {
           )}
         </div>
       </div>
+      )}
 
-      {/* Tabs */}
+      {/* Tabs — bộ nháp chỉ có Review nên không cần thanh tab */}
+      {isPublished && (
       <div className="flex gap-1 overflow-x-auto border-b border-gray-200 dark:border-gray-800 pb-px">
-        {TABS.map((key) => (
+        {PUBLISHED_TABS.map((key) => (
           <button
             key={key}
             type="button"
@@ -304,6 +299,7 @@ export function PublishedSetHub({ questionSetId }: { questionSetId: string }) {
           </button>
         ))}
       </div>
+      )}
 
       {tab === "overview" && (
         <div className="space-y-5">
@@ -484,6 +480,18 @@ export function PublishedSetHub({ questionSetId }: { questionSetId: string }) {
       )}
 
       {tab === "feedback" && <PublishedHubFeedback questionSetId={questionSetId} />}
+
+      {tab === "review" && (
+        <PublishedHubReview
+          draft={draft}
+          onDraftChange={setDraft}
+          onPublishStatusChange={(status) => {
+            setDraft((prev) => (prev ? { ...prev, status } : prev));
+            // Giữ người dùng ở tab Review sau khi publish/gỡ publish.
+            setTab("review");
+          }}
+        />
+      )}
     </div>
   );
 }

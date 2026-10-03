@@ -149,7 +149,7 @@ export function StudioActionBar({
     onTogglePublish();
   };
 
-  const historyHref = questionSetId ? `/hr/history/${questionSetId}` : "/hr/history";
+  const historyHref = questionSetId ? `/hr/published/${questionSetId}` : "/hr/history";
 
   const bar = (
     <div

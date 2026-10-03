@@ -19,7 +19,7 @@ export default function HrPublishedSetDetailPage() {
       pageTitle={h.heading}
       breadcrumb={[
         { label: "HR", href: "/hr/dashboard" },
-        { label: t.publishedInsightsPage.heading, href: "/hr/published" },
+        { label: t.historyPage.heading, href: "/hr/history" },
         { label: h.heading },
       ]}
       fullWidth
