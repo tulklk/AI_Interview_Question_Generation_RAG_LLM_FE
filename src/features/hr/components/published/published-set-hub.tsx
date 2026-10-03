@@ -37,11 +37,12 @@ import {
 } from "@/features/hr/services/hr-feedback.service";
 import { PublishedHubPractitioners } from "./published-hub-practitioners";
 import { PublishedHubFeedback } from "./published-hub-feedback";
+import { PublishedHubInsights } from "./published-hub-insights";
 import { PublishedSetHubSkeleton } from "./published-skeletons";
 
-export type HubTab = "overview" | "questions" | "practitioners" | "feedback";
+export type HubTab = "overview" | "insights" | "questions" | "practitioners" | "feedback";
 
-const TABS: HubTab[] = ["overview", "questions", "practitioners", "feedback"];
+const TABS: HubTab[] = ["overview", "insights", "questions", "practitioners", "feedback"];
 
 function parseTab(raw: string | null): HubTab {
   if (raw && (TABS as string[]).includes(raw)) return raw as HubTab;
@@ -183,6 +184,7 @@ export function PublishedSetHub({ questionSetId }: { questionSetId: string }) {
 
   const tabLabel: Record<HubTab, string> = {
     overview: h.tabOverview,
+    insights: h.tabInsights,
     questions: h.tabQuestions,
     practitioners: isHiring ? h.tabApplicants : h.tabPractitioners,
     feedback: h.tabFeedback,
@@ -385,6 +387,15 @@ export function PublishedSetHub({ questionSetId }: { questionSetId: string }) {
             </section>
           </div>
         </div>
+      )}
+
+      {tab === "insights" && (
+        <PublishedHubInsights
+          questionSetId={questionSetId}
+          isHiring={isHiring}
+          includePractice={includePractice}
+          onIncludePracticeChange={setIncludePractice}
+        />
       )}
 
       {tab === "questions" && (

@@ -75,6 +75,26 @@ export function PublishedSetHubSkeleton() {
   );
 }
 
+export function PublishedHubInsightsSkeleton() {
+  return (
+    <div className="space-y-4" aria-busy>
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="space-y-1.5 rounded-xl border border-gray-100 p-4 dark:border-gray-800">
+            <Skeleton className="h-3 w-16" />
+            <Skeleton className="h-7 w-12" />
+          </div>
+        ))}
+      </div>
+      <div className="space-y-2 rounded-xl border border-gray-100 p-4 dark:border-gray-800">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <Skeleton key={i} className="h-8 w-full" />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function PublishedHubFeedbackSkeleton() {
   return (
     <div className="space-y-3 py-4" aria-busy>
