@@ -679,7 +679,9 @@ export function RecommendationDetail({ id }: { id: string }) {
                           transition={{ duration: 0.7, ease: "easeOut" }}
                         />
                       </div>
-                      <span className={cn("text-[12px] font-bold tabular-nums w-7 text-right shrink-0", sc)}>{pct}</span>
+                      <span className={cn("text-[12px] font-bold whitespace-nowrap text-right shrink-0 min-w-[5.75rem]", sc)}>
+                        {getScoreBandLabel(pct, t.jobseekerFeedbackPage.scoreLevels)}
+                      </span>
                     </div>
                   );
                 })}

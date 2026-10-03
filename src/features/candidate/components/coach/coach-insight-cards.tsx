@@ -7,6 +7,7 @@ import { portalHeadingAlt, portalSubtextAlt } from "@/shared/utils/portal-ui";
 import { useLanguage } from "@/shared/providers/language-context";
 import type { CoachAssessment, CoachContext } from "@/features/candidate/services/coach.service";
 import { fadeUp, motionSafe } from "@/features/candidate/components/coach/coach-motion";
+import { localizeCoachLevel, localizeCoachReadiness } from "@/features/candidate/components/coach/coach-labels";
 
 interface CoachInsightCardsProps {
   context: CoachContext | null;
@@ -149,7 +150,7 @@ export function CoachInsightCards({ context, report }: CoachInsightCardsProps) {
             <div className="mt-1.5 flex flex-wrap gap-1.5">
               {levelLabel && (
                 <span className="inline-flex items-center rounded-md border border-violet-100 bg-violet-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-violet-700 dark:border-white/10 dark:bg-white/10 dark:text-violet-200">
-                  {levelLabel}
+                  {localizeCoachLevel(levelLabel, p.coachLevels)}
                 </span>
               )}
               {techLabel && (
@@ -191,7 +192,7 @@ export function CoachInsightCards({ context, report }: CoachInsightCardsProps) {
                     tone.badge
                   )}
                 >
-                  {report?.readinessStatus || "—"}
+                  {localizeCoachReadiness(report?.readinessStatus, p.readinessStatuses) || "—"}
                 </span>
                 <div className="h-1 overflow-hidden rounded-full bg-gray-100 dark:bg-white/10">
                   <div
@@ -202,7 +203,9 @@ export function CoachInsightCards({ context, report }: CoachInsightCardsProps) {
                 {report?.achievedLevel && (
                   <p className={cn("truncate text-[10px]", portalSubtextAlt)}>
                     {p.achievedLevelLabel}:{" "}
-                    <span className={cn("font-semibold", portalHeadingAlt)}>{report.achievedLevel}</span>
+                    <span className={cn("font-semibold", portalHeadingAlt)}>
+                      {localizeCoachLevel(report.achievedLevel, p.coachLevels)}
+                    </span>
                   </p>
                 )}
               </div>

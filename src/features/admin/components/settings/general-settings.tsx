@@ -151,9 +151,6 @@ export function GeneralSettings() {
               onChange={(e) => setMaxPinnedSets(e.target.value)}
               className={inputCls}
             />
-            <p className={cn("mt-1 text-[11px]", portalSubtextAlt)}>
-              {g.maxPinnedHint}
-            </p>
           </FormField>
 
           <FormField

@@ -13,12 +13,11 @@ import { useLanguage, type Lang } from "@/shared/providers/language-context";
 import type { PracticeSessionDetail, AnswerEvaluation, SessionAiInsight, PracticeFeedbackAccessLevel } from "@/features/candidate/services/practice-session.service";
 import { CategoryPill, Pill, getScoreLevel, getScoreBadgeClass } from "@/features/candidate/components/ui/pill";
 import { getScoreBandBarClass, getScoreBandHex, resolveScoreInsightKey } from "@/features/hr/utils/score-band";
-import { translateDimensionKey, translateQuestionCategory } from "@/features/candidate/utils/skill-labels";
+import { translateQuestionCategory } from "@/features/candidate/utils/skill-labels";
 import { getCompanyColor, getCompanyInitials } from "@/features/candidate/utils/company-visual";
 import { useChartTheme } from "@/shared/hooks/use-chart-theme";
 import { QuestionContent } from "@/shared/components/ui/question-content";
 import { ConfettiBurst } from "@/shared/components/common/confetti-burst";
-import { FeedbackRadarChart } from "./feedback-radar-chart";
 import { useToast } from "@/shared/providers/toast-context";
 import { UpgradeModal } from "@/features/candidate/components/billing/upgrade-modal";
 import { useCandidateSubscription } from "@/features/candidate/context/candidate-subscription-context";
@@ -61,29 +60,6 @@ function isSkipGated(fb: AnswerEvaluation): boolean {
 
 function isAiScored(fb: AnswerEvaluation): boolean {
   return fb.evaluationStatus === "Succeeded" && fb.score !== null && !isSkipGated(fb);
-}
-
-/** Trung bình từng chiều trên TOÀN BỘ câu trong bộ — câu chưa làm / skip-gate = 0.
- * Tránh radar 99% khi chỉ 1/10 câu được AI chấm. */
-function aggregateDimensionScores(
-  feedback: Record<string, AnswerEvaluation>,
-  lang: Lang,
-  totalQuestions: number
-): { skill: string; score: number }[] | null {
-  const n = Math.max(totalQuestions, 1);
-  const sums: Record<string, number> = {};
-  Object.values(feedback).forEach((fb) => {
-    if (!fb.dimensionScores || isSkipGated(fb)) return;
-    Object.entries(fb.dimensionScores).forEach(([key, value]) => {
-      sums[key] = (sums[key] ?? 0) + value;
-    });
-  });
-  const keys = Object.keys(sums);
-  if (keys.length === 0) return null;
-  return keys.map((key) => ({
-    skill: translateDimensionKey(key, lang),
-    score: Math.round(sums[key] / n),
-  }));
 }
 
 /**
@@ -305,8 +281,6 @@ export function FeedbackPage({
   // Hiển thị đủ mọi câu trong set, kể cả chưa trả lời (empty state).
   const reviewQuestions = session.questions;
   const feedbackByQuestionId = new Map(Object.entries(feedback));
-  // Free: radar chỉ từ câu teaser (đã mở) — không fabricate
-  const radarData = isFreeTeaser ? null : aggregateDimensionScores(feedback, lang, session.questions.length);
   const executiveSummary = buildExecutiveSummary(session, feedback, p.executiveSummary, lang);
   const actionPlan = isFreeTeaser ? null : buildActionPlan(session, feedback, lang);
 
@@ -725,68 +699,6 @@ export function FeedbackPage({
         <div className="mb-6">
           <AntiCheatReport payload={integrityReport} />
         </div>
-      )}
-
-      {/* ── Skill Breakdown (radar) — only when at least one question has dimension scores ── */}
-      {radarData && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="hr-glass-card p-5 sm:p-6 mb-6"
-        >
-          {/* Header */}
-          <div className="flex items-center justify-between mb-5">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-xl bg-violet-100 dark:bg-violet-950/50 flex items-center justify-center shrink-0">
-                <Target size={15} className="text-primary" />
-              </div>
-              <div>
-                <h2 className={cn("text-[15px] font-bold leading-tight", portalHeadingAlt)}>{p.skillBreakdown}</h2>
-                <p className={cn("text-[11px] mt-0.5", portalSubtextAlt)}>{p.skillBreakdownSubtitle}</p>
-              </div>
-            </div>
-            <div className={cn(
-              "text-[12px] font-bold px-3 py-1 rounded-full border",
-              "bg-violet-50 dark:bg-violet-950/40 text-primary border-violet-200 dark:border-violet-800/40"
-            )}>
-              {p.skillBreakdownAvgPrefix} {Math.round(radarData.reduce((s, d) => s + d.score, 0) / radarData.length)}%
-            </div>
-          </div>
-
-          {/* Body: chart + skill list */}
-          <div className="flex flex-col md:flex-row gap-4 md:gap-8 items-center">
-            {/* Radar chart */}
-            <div className="w-full md:w-[52%] shrink-0">
-              <FeedbackRadarChart data={radarData} />
-            </div>
-
-            {/* Skill score bars */}
-            <div className="w-full md:flex-1 space-y-3.5">
-              {[...radarData].sort((a, b) => b.score - a.score).map((item, i) => {
-                const c = getSkillColor(item.score);
-                return (
-                  <div key={item.skill}>
-                    <div className="flex items-center justify-between mb-1.5">
-                      <span className={cn("text-[12px] font-semibold", portalHeadingAlt)}>{item.skill}</span>
-                      <span className={cn("text-[11px] font-bold px-2 py-0.5 rounded-full", c.bg, c.text)}>
-                        {item.score}%
-                      </span>
-                    </div>
-                    <div className="w-full h-1.5 rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden">
-                      <motion.div
-                        className={cn("h-full rounded-full", c.bar)}
-                        initial={{ width: 0 }}
-                        animate={{ width: `${item.score}%` }}
-                        transition={{ duration: 0.9, delay: 0.35 + i * 0.08, ease: "easeOut" }}
-                      />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </motion.div>
       )}
 
       {/* ── Action Plan ──────────────────────────────────────────── */}
