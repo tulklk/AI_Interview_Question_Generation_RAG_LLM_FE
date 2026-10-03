@@ -1120,6 +1120,7 @@ Yêu cầu:
     coachKbFolderActiveSync: "Đang xem folder «{{name}}» — upload sẽ vào folder này.",
     backToFolders: "Tất cả folder",
     folderBrowserHint: "Chọn folder để xem file · {{n}} file",
+    searchAllFoldersHint: "Đang tìm theo tên file trên tất cả folder.",
     emptyFolders: "Chưa có folder — upload file và gán tên nhóm (vd. test-candidate, swe).",
     folderFileCount: "{{n}} file",
     folderTypeLabel: "Folder",

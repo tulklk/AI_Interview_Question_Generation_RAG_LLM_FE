@@ -845,6 +845,8 @@ export function KnowledgePageContent({
   const [renameFrom, setRenameFrom] = useState<string | null>(null);
   const [folderBusy, setFolderBusy] = useState(false);
   const [search, setSearch] = useState("");
+  /** Admin: có search text thì tìm xuyên suốt mọi folder thay vì chỉ folder đang mở. */
+  const isSearching = variant === "admin" && search.trim().length > 0;
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [adminFolderFilter, setAdminFolderFilter] = useState<AdminFolderFilter>("all");
   /** SCRUM-450: null = list folder; string = đang xem files trong folder */
@@ -879,8 +881,10 @@ export function KnowledgePageContent({
 
   const loadDocs = useCallback(async () => {
     try {
+      // Đang search thì bỏ qua scope folder — lấy toàn bộ tài liệu để tìm
+      // xuyên suốt mọi folder, không chỉ folder đang mở (nếu có).
       const folderParam =
-        variant === "admin" && activeFolder ? activeFolder : undefined;
+        variant === "admin" && activeFolder && !isSearching ? activeFolder : undefined;
       const result = await onFetchDocs(folderParam);
       setDocs(result);
     } catch (error) {
@@ -892,7 +896,7 @@ export function KnowledgePageContent({
     } finally {
       setLoading(false);
     }
-  }, [onFetchDocs, addToast, lang, variant, activeFolder, kb.loadFailed]);
+  }, [onFetchDocs, addToast, lang, variant, activeFolder, isSearching, kb.loadFailed]);
 
   useEffect(() => {
     loadDocs();
@@ -1181,7 +1185,7 @@ export function KnowledgePageContent({
     return matchSearch && matchType;
   });
 
-  const showFolderBrowser = variant === "admin" && activeFolder === null;
+  const showFolderBrowser = variant === "admin" && activeFolder === null && !isSearching;
   const folderTotalFiles = folders.reduce((s, f) => s + f.count, 0);
 
   const readyCount = docs.filter((d) => d.status === "READY").length;
@@ -1263,7 +1267,7 @@ export function KnowledgePageContent({
                 </option>
               </select>
             )}
-            {variant === "admin" && !showFolderBrowser && (
+            {variant === "admin" && activeFolder && !isSearching && (
               <div className="space-y-2">
                 <button
                   type="button"
@@ -1329,6 +1333,11 @@ export function KnowledgePageContent({
                   "{{n}}",
                   String(folderTotalFiles)
                 )}
+              </p>
+            )}
+            {variant === "admin" && isSearching && (
+              <p className={cn("text-xs", portalSubtext)}>
+                {kb.searchAllFoldersHint ?? "Searching across all folders"}
               </p>
             )}
             {variant === "admin" && (
