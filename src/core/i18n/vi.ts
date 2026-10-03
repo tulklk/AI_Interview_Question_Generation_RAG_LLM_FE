@@ -451,6 +451,10 @@ export const vi: Translations = {
       bookmarked: "Đã đánh dấu",
       insights: "Luyện tập & đánh giá",
     },
+    generateSub: {
+      ai: "Tạo bằng AI",
+      manual: "Tạo thủ công",
+    },
     candidatesSub: {
       recommendations: "Ứng viên tiềm năng",
       accepted: "Đã chấp nhận",

@@ -449,6 +449,10 @@
       bookmarked: "Bookmarked",
       insights: "Practice & ratings",
     },
+    generateSub: {
+      ai: "Generate with AI",
+      manual: "Create manually",
+    },
     candidatesSub: {
       recommendations: "Potential candidates",
       accepted: "Accepted",

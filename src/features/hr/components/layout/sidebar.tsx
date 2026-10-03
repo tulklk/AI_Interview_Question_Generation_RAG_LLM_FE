@@ -13,13 +13,15 @@ import {
   Globe,
   Layers,
   BarChart3,
+  PencilLine,
+  Sparkles,
   UserCheck,
   UserSearch,
   Users,
   X,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
-import { isHrNavActive } from "@/shared/utils/nav";
+import { isHrNavActive, normalizePathname } from "@/shared/utils/nav";
 import { navItems } from "@/features/dashboard/data/dashboard";
 import { useLanguage } from "@/shared/providers/language-context";
 import { useHrSubscription } from "@/features/hr/context/hr-subscription-context";
@@ -34,6 +36,8 @@ const COLLAPSE_KEY = "hr-sidebar-collapsed";
 const HISTORY_HREF = "/hr/history";
 const PUBLISHED_INSIGHTS_HREF = "/hr/published";
 const CANDIDATES_HREF = "/hr/candidate-recommendations";
+const GENERATE_HREF = "/hr/generate-question";
+const GENERATE_MANUAL_HREF = "/hr/generate-question/manual";
 const ACCEPTED_SEEN_KEY = "hg_accepted_seen_count";
 
 interface SidebarProps {
@@ -52,6 +56,31 @@ const QUESTION_SET_SUB: {
   { filter: "PUBLISHED", href: "/hr/history?filter=PUBLISHED", icon: Globe, labelKey: "published" },
   { filter: "bookmarked", href: "/hr/history?filter=bookmarked", icon: Bookmark, labelKey: "bookmarked" },
   { filter: "insights", href: PUBLISHED_INSIGHTS_HREF, icon: BarChart3, labelKey: "insights" },
+];
+
+// Menu con "Tạo bộ câu hỏi": tách rõ 2 cách tạo (AI / thủ công).
+// Đặt ở sidebar để HR luôn vào được "Tạo thủ công" kể cả khi AI đang chạy nền ở trang Studio.
+const GENERATE_SUB: {
+  href: string;
+  icon: typeof Sparkles;
+  labelKey: "ai" | "manual";
+  match: (pathname: string) => boolean;
+}[] = [
+  {
+    href: GENERATE_HREF,
+    icon: Sparkles,
+    labelKey: "ai",
+    match: (p) => normalizePathname(p) === GENERATE_HREF,
+  },
+  {
+    href: GENERATE_MANUAL_HREF,
+    icon: PencilLine,
+    labelKey: "manual",
+    match: (p) => {
+      const n = normalizePathname(p);
+      return n === GENERATE_MANUAL_HREF || n.startsWith(`${GENERATE_MANUAL_HREF}/`);
+    },
+  },
 ];
 
 const CANDIDATES_SUB: {
@@ -126,6 +155,8 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
   // Initialize open when already on that route → no collapsed flash on mount
   const [historyOpen, setHistoryOpen] = useState(onHistoryRoute || onPublishedInsightsRoute);
   const [candidatesOpen, setCandidatesOpen] = useState(onCandidatesRoute);
+  const onGenerateRoute = GENERATE_SUB.some((sub) => sub.match(pathname));
+  const [generateOpen, setGenerateOpen] = useState(onGenerateRoute);
 
   useEffect(() => {
     const stored = localStorage.getItem(SEEN_KEY);
@@ -201,6 +232,10 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
   useEffect(() => {
     if (onCandidatesRoute) setCandidatesOpen(true);
   }, [onCandidatesRoute]);
+
+  useEffect(() => {
+    if (onGenerateRoute) setGenerateOpen(true);
+  }, [onGenerateRoute]);
 
   function markSeen(href: string) {
     setSeenTabs((prev) => {
@@ -287,6 +322,7 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
             {navItems.map((item) => {
               const isHistory = item.href === HISTORY_HREF;
               const isCandidates = item.href === CANDIDATES_HREF;
+              const isGenerate = item.href === GENERATE_HREF;
               const isActive = isHistory
                 ? isHrNavActive(item.href, pathname) || onPublishedInsightsRoute
                 : isHrNavActive(item.href, pathname);
@@ -391,6 +427,95 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
                                 <SubIcon size={13} className="shrink-0 opacity-70" />
                                 <span className="min-w-0 flex-1 truncate">
                                   {s.questionSetsSub[sub.labelKey]}
+                                </span>
+                              </Link>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    )}
+                  </li>
+                );
+              }
+
+              // Dropdown Tạo bộ câu hỏi — 2 mục con: AI / thủ công (cùng pattern với Bộ câu hỏi)
+              if (isGenerate && !rail) {
+                return (
+                  <li key={item.href}>
+                    <div
+                      className={cn(
+                        "flex items-center gap-1 rounded-xl transition-all duration-200",
+                        isActive
+                          ? "hr-nav-active text-[#7C3AED] dark:text-[#a78bff] font-semibold"
+                          : "text-[#6b7280] dark:text-gray-400"
+                      )}
+                    >
+                      <Link
+                        href={item.href}
+                        onClick={() => {
+                          setGenerateOpen(true);
+                          handleNavClick(item.href);
+                        }}
+                        className={cn(
+                          "flex flex-1 items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 text-base font-normal min-w-0",
+                          !isActive &&
+                            "hover:bg-[rgba(124,58,237,0.06)] dark:hover:bg-[rgba(124,58,237,0.08)] hover:text-charcoal dark:hover:text-gray-100"
+                        )}
+                      >
+                        <div
+                          className={cn(
+                            "relative w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-all duration-200",
+                            isActive ? "hr-icon-box" : "bg-gray-100 dark:bg-gray-800"
+                          )}
+                        >
+                          <item.icon
+                            size={15}
+                            className={cn(
+                              isActive ? "text-[#7C3AED] dark:text-[#a78bff]" : "text-[#9ca3af] dark:text-gray-500"
+                            )}
+                          />
+                          {isNew && (
+                            <span
+                              className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-red-500 ring-2 ring-white dark:ring-gray-950"
+                              aria-label="New"
+                            />
+                          )}
+                        </div>
+                        <span className="text-sm font-medium flex-1 truncate">{label}</span>
+                      </Link>
+                      <button
+                        type="button"
+                        onClick={() => setGenerateOpen((v) => !v)}
+                        className="mr-1.5 w-7 h-7 flex items-center justify-center rounded-lg hover:bg-[rgba(124,58,237,0.08)] transition-colors shrink-0"
+                        aria-expanded={generateOpen}
+                        aria-label={generateOpen ? s.collapse : s.expand}
+                      >
+                        <ChevronDown
+                          size={14}
+                          className={cn("transition-transform duration-200", generateOpen && "rotate-180")}
+                        />
+                      </button>
+                    </div>
+                    {generateOpen && (
+                      <ul className="mt-0.5 mb-1 ml-4 space-y-0.5 border-l border-[rgba(124,58,237,0.12)] dark:border-[rgba(124,58,237,0.2)] pl-2">
+                        {GENERATE_SUB.map((sub) => {
+                          const subActive = sub.match(pathname);
+                          const SubIcon = sub.icon;
+                          return (
+                            <li key={sub.href}>
+                              <Link
+                                href={sub.href}
+                                onClick={() => handleNavClick(GENERATE_HREF)}
+                                className={cn(
+                                  "flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-[13px] font-medium transition-colors",
+                                  subActive
+                                    ? "bg-[rgba(124,58,237,0.1)] text-[#7C3AED] dark:bg-[rgba(124,58,237,0.18)] dark:text-[#a78bff]"
+                                    : "text-gray-500 hover:bg-gray-50 hover:text-gray-800 dark:text-gray-400 dark:hover:bg-gray-900 dark:hover:text-gray-100"
+                                )}
+                              >
+                                <SubIcon size={13} className="shrink-0 opacity-70" />
+                                <span className="min-w-0 flex-1 truncate">
+                                  {s.generateSub[sub.labelKey]}
                                 </span>
                               </Link>
                             </li>
