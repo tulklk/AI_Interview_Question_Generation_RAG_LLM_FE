@@ -115,7 +115,7 @@ describe("RGA — auth interceptor", () => {
 
     await expect(client.get("/api/users/me")).rejects.toMatchObject({ response: { status: 401 } });
     expect(clearAuth).toHaveBeenCalledTimes(1);
-    expect((window.location as unknown as { assign: ReturnType<typeof vi.fn> }).assign).toHaveBeenCalledWith("/login");
+    expect((window.location as unknown as { assign: ReturnType<typeof vi.fn> }).assign).toHaveBeenCalledWith("/login/");
   });
 
   test("RGA003-1: no refresh token at all skips the network call and redirects immediately", async () => {

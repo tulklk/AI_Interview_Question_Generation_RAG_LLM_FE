@@ -170,7 +170,7 @@ describe("Candidate Billing — payment history", () => {
   );
 
   test(
-    "CBILL-5: an invoice WITH a receiptUrl renders a real Download link instead of a disabled placeholder",
+    "CBILL-5: an invoice WITH a receiptUrl shows a View link only — no Download control (download button removed)",
     async () => {
       candidateBillingApi.getCandidateSubscription.mockResolvedValue(premiumSub());
       candidateBillingApi.getCandidateBillingUsage.mockResolvedValue(premiumUsage());
@@ -188,15 +188,16 @@ describe("Candidate Billing — payment history", () => {
       renderCandidate(<CandidateBillingPage />);
       await screen.findByText("CAND-2026-01-01", {}, { timeout: 10000 });
 
-      const downloadLink = screen.getByRole("link", { name: /Download/ });
-      expect(downloadLink).toHaveAttribute("href", "https://example.com/receipts/cand-2026-01-01.pdf");
-      expect(downloadLink).toHaveAttribute("download");
+      const viewLink = screen.getByRole("link", { name: /View/ });
+      expect(viewLink).toHaveAttribute("href", "https://example.com/receipts/cand-2026-01-01.pdf");
+      expect(screen.queryByRole("link", { name: /Download/ })).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: /Download/ })).not.toBeInTheDocument();
     },
     15000
   );
 
   test(
-    "CBILL-6: an invoice WITHOUT a receiptUrl shows a disabled Download button with a Coming soon tooltip, not a dead link",
+    "CBILL-6: an invoice WITHOUT a receiptUrl shows no Download control at all (download button removed)",
     async () => {
       candidateBillingApi.getCandidateSubscription.mockResolvedValue(premiumSub());
       candidateBillingApi.getCandidateBillingUsage.mockResolvedValue(premiumUsage());
@@ -214,9 +215,7 @@ describe("Candidate Billing — payment history", () => {
       await screen.findByText("CAND-2026-01-01", {}, { timeout: 10000 });
 
       expect(screen.queryByRole("link", { name: /Download/ })).not.toBeInTheDocument();
-      const downloadBtn = screen.getByRole("button", { name: /Download/ });
-      expect(downloadBtn).toBeDisabled();
-      expect(downloadBtn).toHaveAttribute("title", "Coming soon");
+      expect(screen.queryByRole("button", { name: /Download/ })).not.toBeInTheDocument();
     },
     15000
   );
