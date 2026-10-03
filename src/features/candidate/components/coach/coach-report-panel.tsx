@@ -16,6 +16,7 @@ import {
   staggerContainer,
   staggerItem,
 } from "@/features/candidate/components/coach/coach-motion";
+import { localizeCoachLevel, localizeCoachReadiness } from "@/features/candidate/components/coach/coach-labels";
 
 const BAND_BAR: Record<string, string> = {
   strength: "bg-emerald-500",
@@ -104,7 +105,7 @@ export function CoachReportPanel({
               </div>
               {report.readinessStatus && (
                 <span className="inline-flex rounded-full bg-primary/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-primary">
-                  {report.readinessStatus}
+                  {localizeCoachReadiness(report.readinessStatus, p.readinessStatuses)}
                 </span>
               )}
               {delta != null && delta !== 0 && (
@@ -154,7 +155,9 @@ export function CoachReportPanel({
             {report.achievedLevel && (
               <p className={cn("text-[12px]", portalSubtextAlt)}>
                 {p.achievedLevelLabel}:{" "}
-                <span className={cn("font-semibold", portalHeadingAlt)}>{report.achievedLevel}</span>
+                <span className={cn("font-semibold", portalHeadingAlt)}>
+                  {localizeCoachLevel(report.achievedLevel, p.coachLevels)}
+                </span>
               </p>
             )}
 

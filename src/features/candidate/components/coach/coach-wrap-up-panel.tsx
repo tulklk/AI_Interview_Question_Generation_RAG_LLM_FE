@@ -8,6 +8,7 @@ import { useLanguage } from "@/shared/providers/language-context";
 import { fillTemplate } from "@/features/candidate/utils/dashboard-analytics";
 import type { CoachLevelCriteria, CoachWrapUp } from "@/features/candidate/services/coach.service";
 import { CoachLevelCriteriaPanel } from "@/features/candidate/components/coach/coach-level-criteria";
+import { localizeCoachLevel } from "@/features/candidate/components/coach/coach-labels";
 
 interface CoachWrapUpPanelProps {
   wrapUp: CoachWrapUp;
@@ -77,7 +78,7 @@ export function CoachWrapUpPanel({
           </div>
           {wrapUp.achievedLevel && (
             <span className="inline-flex rounded-full bg-primary/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-primary">
-              {wrapUp.achievedLevel}
+              {localizeCoachLevel(wrapUp.achievedLevel, p.coachLevels)}
             </span>
           )}
           {wrapUp.overallDelta != null && wrapUp.overallDelta !== 0 && (

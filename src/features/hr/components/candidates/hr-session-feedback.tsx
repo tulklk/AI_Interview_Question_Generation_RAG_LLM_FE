@@ -1,9 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
 import {
   AlertCircle,
   ArrowLeft,
@@ -11,46 +10,19 @@ import {
   ChevronDown,
   Lightbulb,
   RefreshCw,
-  Target,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
-import { useLanguage, type Lang } from "@/shared/providers/language-context";
+import { useLanguage } from "@/shared/providers/language-context";
 import { portalHeadingAlt, portalSubtext, portalSubtextAlt } from "@/shared/utils/portal-ui";
 import { CategoryPill, Pill, getScoreBadgeClass, getScoreLevel } from "@/features/candidate/components/ui/pill";
-import { getScoreBandBarClass } from "@/features/hr/utils/score-band";
-import { translateDimensionKey, translateQuestionCategory } from "@/features/candidate/utils/skill-labels";
+import { translateQuestionCategory } from "@/features/candidate/utils/skill-labels";
 import { QuestionContent } from "@/shared/components/ui/question-content";
-import { FeedbackRadarChart } from "@/features/candidate/components/feedback/feedback-radar-chart";
 import { AppShell } from "@/features/hr/components/layout/app-shell";
 import {
   getHrSessionFeedback,
   type HrSessionFeedback,
-  type HrSessionFeedbackItem,
 } from "@/features/hr/services/hr-candidate.service";
 import { HrSessionFeedbackSkeleton } from "./hr-session-feedback-skeleton";
-
-/** Màu skill — đồng bộ band HR ≥90/≥80/≥70. */
-function getSkillColor(score: number) {
-  return getScoreBandBarClass(score);
-}
-
-function aggregateDimensionScores(items: HrSessionFeedbackItem[], lang: Lang): { skill: string; score: number }[] | null {
-  const sums: Record<string, { total: number; count: number }> = {};
-  for (const item of items) {
-    if (!item.dimensionScores) continue;
-    for (const [key, value] of Object.entries(item.dimensionScores)) {
-      sums[key] ??= { total: 0, count: 0 };
-      sums[key].total += value;
-      sums[key].count += 1;
-    }
-  }
-  const keys = Object.keys(sums);
-  if (keys.length === 0) return null;
-  return keys.map((key) => ({
-    skill: translateDimensionKey(key, lang),
-    score: Math.round(sums[key].total / sums[key].count),
-  }));
-}
 
 export function HrSessionFeedbackPage({ candidateUserId, sessionId }: { candidateUserId: string; sessionId: string }) {
   const { t, lang } = useLanguage();
@@ -78,11 +50,6 @@ export function HrSessionFeedbackPage({ candidateUserId, sessionId }: { candidat
   }, [sessionId]);
 
   useEffect(() => { void fetchData(); }, [fetchData]);
-
-  const radarData = useMemo(
-    () => (data ? aggregateDimensionScores(data.items, lang) : null),
-    [data, lang]
-  );
 
   const insightText = lang === "vi" ? data?.aiInsight?.vi : data?.aiInsight?.en;
   const skills = lang === "vi" ? data?.aiInsight?.skillsToImproveVi : data?.aiInsight?.skillsToImproveEn;
@@ -144,51 +111,6 @@ export function HrSessionFeedbackPage({ candidateUserId, sessionId }: { candidat
                 ))}
               </div>
             )}
-          </div>
-        )}
-
-        {radarData && (
-          <div className="hr-glass-card p-5 sm:p-6">
-            <div className="flex items-center justify-between mb-5">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-violet-100 dark:bg-violet-950/50 flex items-center justify-center shrink-0">
-                  <Target size={15} className="text-primary" />
-                </div>
-                <div>
-                  <h2 className={cn("text-[15px] font-bold leading-tight", portalHeadingAlt)}>{fb.skillBreakdown}</h2>
-                  <p className={cn("text-[11px] mt-0.5", portalSubtextAlt)}>{fb.skillBreakdownSubtitle}</p>
-                </div>
-              </div>
-              <div className="text-[12px] font-bold px-3 py-1 rounded-full border bg-violet-50 dark:bg-violet-950/40 text-primary border-violet-200 dark:border-violet-800/40">
-                {fb.skillBreakdownAvgPrefix} {Math.round(radarData.reduce((s, d) => s + d.score, 0) / radarData.length)}%
-              </div>
-            </div>
-            <div className="flex flex-col md:flex-row gap-4 md:gap-8 items-center">
-              <div className="w-full md:w-[52%] shrink-0">
-                <FeedbackRadarChart data={radarData} />
-              </div>
-              <div className="w-full md:flex-1 space-y-3.5">
-                {[...radarData].sort((a, b) => b.score - a.score).map((item, i) => {
-                  const c = getSkillColor(item.score);
-                  return (
-                    <div key={item.skill}>
-                      <div className="flex items-center justify-between mb-1.5">
-                        <span className={cn("text-[12px] font-semibold", portalHeadingAlt)}>{item.skill}</span>
-                        <span className={cn("text-[11px] font-bold px-2 py-0.5 rounded-full", c.bg, c.text)}>{item.score}%</span>
-                      </div>
-                      <div className="w-full h-1.5 rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden">
-                        <motion.div
-                          className={cn("h-full rounded-full", c.bar)}
-                          initial={{ width: 0 }}
-                          animate={{ width: `${item.score}%` }}
-                          transition={{ duration: 0.9, delay: 0.2 + i * 0.08, ease: "easeOut" }}
-                        />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
           </div>
         )}
 
