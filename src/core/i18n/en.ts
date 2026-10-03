@@ -1118,6 +1118,7 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
     coachKbFolderActiveSync: "Browsing «{{name}}» — uploads go to this folder.",
     backToFolders: "All folders",
     folderBrowserHint: "Open a folder to browse files · {{n}} files",
+    searchAllFoldersHint: "Searching by file name across all folders.",
     emptyFolders: "No folders yet — upload a file and assign a group name (e.g. test-candidate, swe).",
     folderFileCount: "{{n}} files",
     folderTypeLabel: "Folder",
