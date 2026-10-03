@@ -33,6 +33,8 @@ export interface LeaderboardItem {
   candidateUserId: string;
   candidateName: string;
   bestOverallScore: number;
+  passCount: number;
+  evaluatedCount: number;
   attemptCount: number;
   latestCompletedAt: string | null;
   isOfficialTest: boolean;
@@ -106,6 +108,8 @@ function normalizeLeader(raw: unknown): LeaderboardItem {
     candidateUserId: str(d.candidateUserId ?? d.CandidateUserId),
     candidateName: str(d.candidateName ?? d.CandidateName),
     bestOverallScore: num(d.bestOverallScore ?? d.BestOverallScore),
+    passCount: num(d.passCount ?? d.PassCount),
+    evaluatedCount: num(d.evaluatedCount ?? d.EvaluatedCount),
     attemptCount: num(d.attemptCount ?? d.AttemptCount),
     latestCompletedAt: strOrNull(d.latestCompletedAt ?? d.LatestCompletedAt),
     isOfficialTest: Boolean(d.isOfficialTest ?? d.IsOfficialTest),

@@ -1568,6 +1568,11 @@ Candidates should be able to explain fullstack architecture, frontend-backend fl
       bandFair: "Fair",
       bandGood: "Good",
       bandExcellent: "Excellent",
+      topCandidate: "Most correct answers",
+      mostWrong: "Missed most",
+      mostRight: "Passed most",
+      passOf: "{{pass}}/{{total}} correct",
+      noGraded: "No graded questions yet.",
     },
   },
 

@@ -2,18 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { ArrowDown, ArrowUp, BarChart3, Loader2, Trophy, Users } from "lucide-react";
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
+import { Loader2, Trophy, Users } from "lucide-react";
 import { cn } from "@/lib/cn";
-import { useChartTheme } from "@/shared/hooks/use-chart-theme";
 import { useLanguage } from "@/shared/providers/language-context";
 import { formatRelativeTime } from "@/shared/utils/relative-time";
 import { portalHeading, portalSubtext } from "@/shared/utils/portal-ui";
@@ -26,17 +16,8 @@ import {
 } from "@/features/hr/services/hr-insights.service";
 import { PublishedHubInsightsSkeleton } from "./published-skeletons";
 
-type SortDir = "asc" | "desc";
-
 const PASS = "#10B981";
 const FAIL = "#F43F5E";
-
-const BANDS = [
-  { id: "low", min: 0, max: 69.999, fill: "#EF4444" },
-  { id: "fair", min: 70, max: 79.999, fill: "#F59E0B" },
-  { id: "good", min: 80, max: 89.999, fill: "#8B5CF6" },
-  { id: "excellent", min: 90, max: 100, fill: "#10B981" },
-] as const;
 
 function pct(rate: number): string {
   return `${Math.round(rate * 100)}%`;
@@ -46,9 +27,8 @@ function scoreText(score: number | null): string {
   return score == null ? "—" : score.toFixed(1);
 }
 
-function clip(text: string, max = 90): string {
-  const t = text.replace(/\s+/g, " ").trim();
-  return t.length <= max ? t : `${t.slice(0, max - 1)}…`;
+function passLabel(template: string, pass: number, total: number): string {
+  return template.replace("{{pass}}", String(pass)).replace("{{total}}", String(total));
 }
 
 export function PublishedHubInsights({
@@ -68,7 +48,6 @@ export function PublishedHubInsights({
   const [data, setData] = useState<QuestionSetInsights | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
-  const [sortDir, setSortDir] = useState<SortDir>("asc");
 
   useEffect(() => {
     let cancelled = false;
@@ -89,19 +68,17 @@ export function PublishedHubInsights({
     };
   }, [questionSetId, isHiring, includePractice]);
 
-  const questions = useMemo(() => {
-    const list = [...(data?.questions ?? [])];
-    list.sort((a, b) => {
-      const diff = a.passRate - b.passRate;
-      if (diff !== 0) return sortDir === "asc" ? diff : -diff;
-      return a.order - b.order;
-    });
-    return list;
-  }, [data?.questions, sortDir]);
-
-  const chartQuestions = useMemo(
-    () => [...(data?.questions ?? [])].sort((a, b) => a.order - b.order),
+  const graded = useMemo(
+    () => (data?.questions ?? []).filter((q) => q.evaluatedCount > 0),
     [data?.questions]
+  );
+  const mostWrong = useMemo(
+    () => [...graded].sort((a, b) => b.failRate - a.failRate || b.evaluatedCount - a.evaluatedCount || a.order - b.order),
+    [graded]
+  );
+  const mostRight = useMemo(
+    () => [...graded].sort((a, b) => b.passRate - a.passRate || b.evaluatedCount - a.evaluatedCount || a.order - b.order),
+    [graded]
   );
 
   if (loading && !data) return <PublishedHubInsightsSkeleton />;
@@ -115,12 +92,7 @@ export function PublishedHubInsights({
   }
 
   const summary = data.summary;
-  const bandLabels: Record<(typeof BANDS)[number]["id"], string> = {
-    low: i.bandLow,
-    fair: i.bandFair,
-    good: i.bandGood,
-    excellent: i.bandExcellent,
-  };
+  const [first, ...rest] = data.leaderboard;
 
   return (
     <div className="space-y-5">
@@ -145,107 +117,102 @@ export function PublishedHubInsights({
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Kpi label={isHiring ? h.metricApplicants : h.metricAttempts} value={String(summary.completedCount)} sub={i.metricCompletedSub} />
-        <Kpi label={h.metricAvgScore} value={scoreText(summary.averageScore)} sub={h.metricAvgScoreSub} accent={summary.averageScore} />
-        <div className="flex items-center justify-between gap-3 rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-950/40">
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">{i.metricPass}</p>
-            <p className={cn("mt-2 text-2xl font-bold tabular-nums", portalHeading)}>{pct(summary.passRateOverall)}</p>
-            <p className={cn("mt-0.5 text-[11px]", portalSubtext)}>{i.metricPassSub}</p>
-          </div>
-          <PassRing rate={summary.passRateOverall} />
-        </div>
+        <Kpi label={h.metricAvgScore} value={scoreText(summary.averageScore)} sub={h.metricAvgScoreSub} />
+        <Kpi label={i.metricPass} value={pct(summary.passRateOverall)} sub={i.metricPassSub} />
         <Kpi label={i.metricEvaluated} value={String(summary.evaluatedAnswerCount)} sub={i.metricEvaluatedSub} />
       </div>
 
-      <div className="grid gap-5 xl:grid-cols-5">
-        <section className="space-y-3 rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-950/40 xl:col-span-3">
-          <div>
-            <h3 className={cn("flex items-center gap-1.5 text-sm font-semibold", portalHeading)}>
-              <BarChart3 size={14} /> {i.chartQuestions}
-            </h3>
-            <p className={cn("mt-0.5 text-[11px]", portalSubtext)}>{i.chartQuestionsHint}</p>
-          </div>
-          <QuestionPassChart
-            items={chartQuestions}
-            passLabel={i.colPass}
-            failLabel={i.colFail}
-            empty={i.chartEmpty}
-          />
-        </section>
-
-        <section className="space-y-3 rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-950/40 xl:col-span-2">
-          <div>
-            <h3 className={cn("text-sm font-semibold", portalHeading)}>{i.chartBands}</h3>
-            <p className={cn("mt-0.5 text-[11px]", portalSubtext)}>{i.chartBandsHint}</p>
-          </div>
-          <BandBars people={data.leaderboard} labels={bandLabels} empty={i.chartEmpty} />
-        </section>
-      </div>
-
-      <section className="space-y-2">
-        <div className="flex items-center justify-between gap-2">
-          <h3 className={cn("flex items-center gap-1.5 text-sm font-semibold", portalHeading)}>
-            <BarChart3 size={14} /> {i.questionsTitle}
-          </h3>
-          <button
-            type="button"
-            onClick={() => setSortDir((d) => (d === "asc" ? "desc" : "asc"))}
-            className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
-          >
-            {sortDir === "asc" ? <ArrowUp size={12} /> : <ArrowDown size={12} />}
-            {sortDir === "asc" ? i.sortHardest : i.sortEasiest}
-          </button>
-        </div>
-        <QuestionTable items={questions} labels={i} />
-      </section>
-
-      <div className="grid gap-5 lg:grid-cols-2">
-        <section className="space-y-2">
-          <h3 className={cn("flex items-center gap-1.5 text-sm font-semibold", portalHeading)}>
-            <Trophy size={14} /> {isHiring ? i.leaderboardApplicants : i.leaderboardTitle}
-          </h3>
-          {data.leaderboard.length === 0 ? (
-            <EmptyHint title={i.emptyTitle} body={i.emptyBody} />
-          ) : (
-            <LeaderboardBars
-              items={data.leaderboard}
+      <section className="space-y-3">
+        <h3 className={cn("flex items-center gap-1.5 text-sm font-semibold", portalHeading)}>
+          <Trophy size={14} /> {isHiring ? i.leaderboardApplicants : i.leaderboardTitle}
+        </h3>
+        {!first ? (
+          <EmptyHint title={i.emptyTitle} body={i.emptyBody} />
+        ) : (
+          <div className="space-y-2">
+            <TopCandidate
+              person={first}
+              title={i.topCandidate}
+              passOf={i.passOf}
+              attemptsLabel={i.colAttempts}
               isHiring={isHiring}
               official={i.official}
               practice={h.practiceOnlyBadge}
-              attemptsLabel={i.colAttempts}
             />
-          )}
-        </section>
+            {rest.length > 0 && (
+              <ol className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-950/40">
+                {rest.map((row) => (
+                  <li key={row.candidateUserId} className="border-b border-gray-100 px-3 py-2.5 last:border-0 dark:border-gray-800">
+                    <RankRow
+                      person={row}
+                      passOf={i.passOf}
+                      attemptsLabel={i.colAttempts}
+                      isHiring={isHiring}
+                      official={i.official}
+                      practice={h.practiceOnlyBadge}
+                    />
+                  </li>
+                ))}
+              </ol>
+            )}
+          </div>
+        )}
+      </section>
 
-        <section className="space-y-2">
-          <h3 className={cn("flex items-center gap-1.5 text-sm font-semibold", portalHeading)}>
-            <Users size={14} /> {i.recentTitle}
-          </h3>
-          {data.recentAttempts.length === 0 ? (
-            <EmptyHint title={i.emptyTitle} body={i.emptyBody} />
-          ) : (
-            <ul className="divide-y divide-gray-100 overflow-hidden rounded-xl border border-gray-200 bg-white dark:divide-gray-800 dark:border-gray-800 dark:bg-gray-950/40">
-              {data.recentAttempts.map((row) => (
-                <li key={row.sessionId} className="flex items-center justify-between gap-3 px-3 py-2.5">
-                  <div className="min-w-0">
-                    <Link
-                      href={`/hr/candidates/${row.candidateUserId}/sessions/${row.sessionId}`}
-                      className={cn("block truncate text-sm font-medium hover:underline", portalHeading)}
-                    >
-                      {row.candidateName || "—"}
-                    </Link>
-                    <p className={cn("text-[11px]", portalSubtext)}>
-                      {row.completedAt ? formatRelativeTime(row.completedAt, lang) : "—"}
-                      {isHiring ? ` · ${row.isOfficialTest ? i.official : h.practiceOnlyBadge}` : ""}
-                    </p>
-                  </div>
-                  <ScorePill score={row.overallScore} />
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
+      <div className="grid gap-4 lg:grid-cols-2">
+        <QuestionRankList
+          title={i.mostWrong}
+          tone="fail"
+          items={mostWrong}
+          empty={i.noGraded}
+          rate={(q) => q.failRate}
+          count={(q) => q.evaluatedCount - q.passCount}
+        />
+        <QuestionRankList
+          title={i.mostRight}
+          tone="pass"
+          items={mostRight}
+          empty={i.noGraded}
+          rate={(q) => q.passRate}
+          count={(q) => q.passCount}
+        />
       </div>
+
+      <section className="space-y-2">
+        <h3 className={cn("text-sm font-semibold", portalHeading)}>{i.questionsTitle}</h3>
+        <QuestionTable items={[...(data.questions ?? [])].sort((a, b) => a.order - b.order)} labels={i} />
+      </section>
+
+      <section className="space-y-2">
+        <h3 className={cn("flex items-center gap-1.5 text-sm font-semibold", portalHeading)}>
+          <Users size={14} /> {i.recentTitle}
+        </h3>
+        {data.recentAttempts.length === 0 ? (
+          <EmptyHint title={i.emptyTitle} body={i.emptyBody} />
+        ) : (
+          <ul className="divide-y divide-gray-100 overflow-hidden rounded-xl border border-gray-200 bg-white dark:divide-gray-800 dark:border-gray-800 dark:bg-gray-950/40">
+            {data.recentAttempts.map((row) => (
+              <li key={row.sessionId} className="flex items-center justify-between gap-3 px-3 py-2.5">
+                <div className="min-w-0">
+                  <Link
+                    href={`/hr/candidates/${row.candidateUserId}/sessions/${row.sessionId}`}
+                    className={cn("block truncate text-sm font-medium hover:underline", portalHeading)}
+                  >
+                    {row.candidateName || "—"}
+                  </Link>
+                  <p className={cn("text-[11px]", portalSubtext)}>
+                    {row.completedAt ? formatRelativeTime(row.completedAt, lang) : "—"}
+                    {isHiring ? ` · ${row.isOfficialTest ? i.official : h.practiceOnlyBadge}` : ""}
+                  </p>
+                </div>
+                <span className={cn("shrink-0 tabular-nums text-sm font-semibold", portalHeading)}>
+                  {scoreText(row.overallScore)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
 
       {loading && (
         <p className={cn("flex items-center gap-1.5 text-xs", portalSubtext)}>
@@ -256,214 +223,145 @@ export function PublishedHubInsights({
   );
 }
 
-function Kpi({
-  label,
-  value,
-  sub,
-  accent,
-}: {
-  label: string;
-  value: string;
-  sub: string;
-  accent?: number | null;
-}) {
+function Kpi({ label, value, sub }: { label: string; value: string; sub: string }) {
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-950/40">
       <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">{label}</p>
-      <p
-        className={cn("mt-2 text-2xl font-bold tabular-nums", portalHeading)}
-        style={accent != null ? { color: getScoreBandHex(accent) } : undefined}
-      >
-        {value}
-      </p>
+      <p className={cn("mt-2 text-2xl font-bold tabular-nums", portalHeading)}>{value}</p>
       <p className={cn("mt-0.5 text-[11px]", portalSubtext)}>{sub}</p>
     </div>
   );
 }
 
-function PassRing({ rate }: { rate: number }) {
-  const r = 18;
-  const c = 2 * Math.PI * r;
-  const clamped = Math.max(0, Math.min(1, rate));
-  return (
-    <svg width="52" height="52" viewBox="0 0 48 48" aria-hidden>
-      <circle cx="24" cy="24" r={r} fill="none" className="stroke-gray-200 dark:stroke-gray-800" strokeWidth="5" />
-      <circle
-        cx="24"
-        cy="24"
-        r={r}
-        fill="none"
-        stroke={PASS}
-        strokeWidth="5"
-        strokeLinecap="round"
-        strokeDasharray={`${c * clamped} ${c}`}
-        transform="rotate(-90 24 24)"
-      />
-    </svg>
-  );
-}
-
-function QuestionPassChart({
-  items,
-  passLabel,
-  failLabel,
-  empty,
+function TopCandidate({
+  person,
+  title,
+  passOf,
+  attemptsLabel,
+  isHiring,
+  official,
+  practice,
 }: {
-  items: QuestionInsightItem[];
-  passLabel: string;
-  failLabel: string;
-  empty: string;
+  person: LeaderboardItem;
+  title: string;
+  passOf: string;
+  attemptsLabel: string;
+  isHiring: boolean;
+  official: string;
+  practice: string;
 }) {
-  const chart = useChartTheme();
-  const rows = items
-    .filter((q) => q.evaluatedCount > 0)
-    .map((q) => ({
-      label: `#${q.order}`,
-      pass: q.passCount,
-      fail: Math.max(0, q.evaluatedCount - q.passCount),
-      text: clip(q.questionText),
-      rate: pct(q.passRate),
-    }));
-
-  if (rows.length === 0) {
-    return <p className={cn("py-8 text-center text-xs", portalSubtext)}>{empty}</p>;
-  }
-
+  const ratio = person.evaluatedCount === 0 ? 0 : person.passCount / person.evaluatedCount;
   return (
-    <div>
-      <div className="mb-2 flex items-center gap-3 text-[11px] font-semibold">
-        <span className="inline-flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
-          <span className="h-2 w-2 rounded-sm" style={{ background: PASS }} /> {passLabel}
-        </span>
-        <span className="inline-flex items-center gap-1.5 text-rose-600 dark:text-rose-400">
-          <span className="h-2 w-2 rounded-sm" style={{ background: FAIL }} /> {failLabel}
-        </span>
+    <div className="rounded-xl border border-emerald-200 bg-emerald-50/70 p-4 dark:border-emerald-900 dark:bg-emerald-950/30">
+      <p className="text-[11px] font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">{title}</p>
+      <div className="mt-2 flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400">#{person.rank}</p>
+          <Link href={`/hr/candidates/${person.candidateUserId}`} className={cn("block truncate text-xl font-bold hover:underline", portalHeading)}>
+            {person.candidateName || "—"}
+          </Link>
+          <p className={cn("mt-1 text-sm font-semibold", portalHeading)}>
+            {passLabel(passOf, person.passCount, person.evaluatedCount)}
+          </p>
+          <p className={cn("mt-0.5 text-[11px]", portalSubtext)}>
+            {attemptsLabel} {person.attemptCount}
+            {isHiring ? ` · ${person.isOfficialTest ? official : practice}` : ""}
+          </p>
+        </div>
+        <p className="text-3xl font-bold tabular-nums" style={{ color: getScoreBandHex(person.bestOverallScore) }}>
+          {person.bestOverallScore.toFixed(1)}
+        </p>
       </div>
-      <div style={{ height: Math.max(220, rows.length * 36) }}>
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={rows} layout="vertical" margin={{ top: 4, right: 12, bottom: 0, left: 0 }} barCategoryGap="28%">
-            <CartesianGrid strokeDasharray="3 3" stroke={chart.chartGrid} horizontal={false} />
-            <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11, fill: chart.axisTickFill }} axisLine={false} tickLine={false} />
-            <YAxis type="category" dataKey="label" width={36} tick={{ fontSize: 11, fill: chart.axisTickFill }} axisLine={false} tickLine={false} />
-            <Tooltip
-              content={({ active, payload }) => {
-                if (!active || !payload?.length) return null;
-                const row = payload[0].payload as (typeof rows)[number];
-                return (
-                  <div
-                    className="max-w-xs rounded-lg px-3 py-2 text-xs shadow-md"
-                    style={{ background: chart.tooltipBg, border: `1px solid ${chart.tooltipBorder}` }}
-                  >
-                    <p className="font-semibold">{row.label} · {row.rate}</p>
-                    <p className="mt-1 leading-snug opacity-80">{row.text}</p>
-                    <p className="mt-1 tabular-nums">
-                      {passLabel} {row.pass} · {failLabel} {row.fail}
-                    </p>
-                  </div>
-                );
-              }}
-              cursor={{ fill: chart.isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.03)" }}
-            />
-            <Bar dataKey="pass" stackId="q" fill={PASS} name={passLabel} />
-            <Bar dataKey="fail" stackId="q" fill={FAIL} name={failLabel} radius={[0, 4, 4, 0]} />
-          </BarChart>
-        </ResponsiveContainer>
+      <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/80 dark:bg-gray-900">
+        <div className="h-full rounded-full" style={{ width: `${Math.round(ratio * 100)}%`, background: PASS }} />
       </div>
     </div>
   );
 }
 
-function BandBars({
-  people,
-  labels,
-  empty,
-}: {
-  people: LeaderboardItem[];
-  labels: Record<(typeof BANDS)[number]["id"], string>;
-  empty: string;
-}) {
-  const counts = BANDS.map((band) => ({
-    ...band,
-    label: labels[band.id],
-    count: people.filter((p) => p.bestOverallScore >= band.min && p.bestOverallScore <= band.max).length,
-  }));
-  const max = Math.max(...counts.map((c) => c.count), 1);
-  if (people.length === 0) {
-    return <p className={cn("py-8 text-center text-xs", portalSubtext)}>{empty}</p>;
-  }
-
-  return (
-    <ul className="space-y-3">
-      {counts.map((band) => (
-        <li key={band.id}>
-          <div className="mb-1 flex items-center justify-between text-[11px]">
-            <span className={cn("font-semibold", portalHeading)}>{band.label}</span>
-            <span className={cn("tabular-nums", portalSubtext)}>{band.count}</span>
-          </div>
-          <div className="h-2.5 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800">
-            <div
-              className="h-full rounded-full"
-              style={{ width: `${(band.count / max) * 100}%`, background: band.fill, minWidth: band.count > 0 ? 8 : 0 }}
-            />
-          </div>
-        </li>
-      ))}
-    </ul>
-  );
-}
-
-function LeaderboardBars({
-  items,
+function RankRow({
+  person,
+  passOf,
+  attemptsLabel,
   isHiring,
   official,
   practice,
-  attemptsLabel,
 }: {
-  items: LeaderboardItem[];
+  person: LeaderboardItem;
+  passOf: string;
+  attemptsLabel: string;
   isHiring: boolean;
   official: string;
   practice: string;
-  attemptsLabel: string;
 }) {
+  const ratio = person.evaluatedCount === 0 ? 0 : person.passCount / person.evaluatedCount;
   return (
-    <ol className="space-y-2.5 rounded-xl border border-gray-200 bg-white p-3 dark:border-gray-800 dark:bg-gray-950/40">
-      {items.map((row) => (
-        <li key={row.candidateUserId}>
-          <div className="mb-1 flex items-center justify-between gap-2">
-            <Link href={`/hr/candidates/${row.candidateUserId}`} className={cn("min-w-0 truncate text-sm font-medium hover:underline", portalHeading)}>
-              <span className={cn("mr-1.5 tabular-nums text-[11px]", portalSubtext)}>{row.rank}</span>
-              {row.candidateName || "—"}
-            </Link>
-            <span className="shrink-0 text-[11px] font-semibold tabular-nums" style={{ color: getScoreBandHex(row.bestOverallScore) }}>
-              {row.bestOverallScore.toFixed(1)}
-            </span>
-          </div>
-          <div className="h-2 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800">
-            <div
-              className="h-full rounded-full"
-              style={{ width: `${Math.max(0, Math.min(100, row.bestOverallScore))}%`, background: getScoreBandHex(row.bestOverallScore) }}
-            />
-          </div>
-          <p className={cn("mt-0.5 text-[10px]", portalSubtext)}>
-            {attemptsLabel} {row.attemptCount}
-            {isHiring ? ` · ${row.isOfficialTest ? official : practice}` : ""}
-          </p>
-        </li>
-      ))}
-    </ol>
+    <div>
+      <div className="flex items-center justify-between gap-2">
+        <Link href={`/hr/candidates/${person.candidateUserId}`} className={cn("min-w-0 truncate text-sm font-medium hover:underline", portalHeading)}>
+          <span className={cn("mr-1.5 tabular-nums text-[11px]", portalSubtext)}>#{person.rank}</span>
+          {person.candidateName || "—"}
+        </Link>
+        <span className={cn("shrink-0 text-xs font-semibold tabular-nums", portalHeading)}>
+          {passLabel(passOf, person.passCount, person.evaluatedCount)}
+        </span>
+      </div>
+      <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800">
+        <div className="h-full rounded-full" style={{ width: `${Math.round(ratio * 100)}%`, background: PASS }} />
+      </div>
+      <p className={cn("mt-0.5 text-[10px]", portalSubtext)}>
+        {person.bestOverallScore.toFixed(1)} · {attemptsLabel} {person.attemptCount}
+        {isHiring ? ` · ${person.isOfficialTest ? official : practice}` : ""}
+      </p>
+    </div>
   );
 }
 
-function ScorePill({ score }: { score: number | null }) {
-  if (score == null) return <span className={cn("tabular-nums text-sm", portalSubtext)}>—</span>;
-  const color = getScoreBandHex(score);
+function QuestionRankList({
+  title,
+  tone,
+  items,
+  empty,
+  rate,
+  count,
+}: {
+  title: string;
+  tone: "pass" | "fail";
+  items: QuestionInsightItem[];
+  empty: string;
+  rate: (q: QuestionInsightItem) => number;
+  count: (q: QuestionInsightItem) => number;
+}) {
+  const color = tone === "pass" ? PASS : FAIL;
   return (
-    <span
-      className="shrink-0 rounded-md px-2 py-0.5 text-sm font-semibold tabular-nums"
-      style={{ color, background: `${color}22` }}
-    >
-      {score.toFixed(1)}
-    </span>
+    <section className="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-950/40">
+      <h3 className="text-sm font-semibold" style={{ color }}>{title}</h3>
+      {items.length === 0 ? (
+        <p className={cn("py-6 text-center text-xs", portalSubtext)}>{empty}</p>
+      ) : (
+        <ol className="mt-3 space-y-3">
+          {items.map((q, index) => {
+            const width = Math.round(Math.max(0, Math.min(1, rate(q))) * 100);
+            return (
+              <li key={q.questionId}>
+                <div className="flex items-start justify-between gap-2">
+                  <p className={cn("min-w-0 text-sm", portalHeading)}>
+                    <span className="mr-1.5 tabular-nums text-[11px] text-gray-400">{index + 1}</span>
+                    <span className="text-[11px] text-gray-400">#{q.order}</span> {q.questionText}
+                  </p>
+                  <span className="shrink-0 text-xs font-semibold tabular-nums" style={{ color }}>
+                    {count(q)}/{q.evaluatedCount} · {width}%
+                  </span>
+                </div>
+                <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800">
+                  <div className="h-full rounded-full" style={{ width: `${width}%`, background: color }} />
+                </div>
+              </li>
+            );
+          })}
+        </ol>
+      )}
+    </section>
   );
 }
 
@@ -483,9 +381,7 @@ function QuestionTable({
     noQuestions: string;
   };
 }) {
-  if (items.length === 0) {
-    return <EmptyHint title={labels.noQuestions} body="" />;
-  }
+  if (items.length === 0) return <EmptyHint title={labels.noQuestions} body="" />;
 
   return (
     <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-950/40">
@@ -495,18 +391,19 @@ function QuestionTable({
             <th className="px-3 py-2">{labels.colQuestion}</th>
             <th className="px-3 py-2">{labels.colEvaluated}</th>
             <th className="px-3 py-2">{labels.colAvg}</th>
-            <th className="min-w-36 px-3 py-2">{labels.colPass}</th>
+            <th className="px-3 py-2">{labels.colPass}</th>
+            <th className="px-3 py-2">{labels.colFail}</th>
           </tr>
         </thead>
         <tbody>
           {items.map((q) => (
             <tr key={q.questionId} className="border-b border-gray-50 align-top last:border-0 dark:border-gray-900">
               <td className="max-w-md px-3 py-2.5">
-                <p className={cn("line-clamp-2 text-sm", portalHeading)}>{q.questionText}</p>
+                <p className={cn("line-clamp-2 text-sm", portalHeading)}>#{q.order} {q.questionText}</p>
                 <p className={cn("mt-0.5 text-[11px]", portalSubtext)}>
-                  #{q.order}
-                  {q.skill ? ` · ${q.skill}` : ""}
-                  {q.difficulty ? ` · ${q.difficulty}` : ""}
+                  {q.skill ? q.skill : ""}
+                  {q.skill && q.difficulty ? " · " : ""}
+                  {q.difficulty || ""}
                 </p>
                 {q.qualityFlag && (
                   <span
@@ -523,35 +420,16 @@ function QuestionTable({
               </td>
               <td className={cn("px-3 py-2.5 tabular-nums", portalSubtext)}>{q.evaluatedCount}</td>
               <td className={cn("px-3 py-2.5 tabular-nums", portalHeading)}>{scoreText(q.averageScore)}</td>
-              <td className="px-3 py-2.5">
-                <RatioBar
-                  passRate={q.evaluatedCount === 0 ? null : q.passRate}
-                  passLabel={labels.colPass}
-                  failLabel={labels.colFail}
-                />
+              <td className="px-3 py-2.5 tabular-nums font-semibold text-emerald-600 dark:text-emerald-400">
+                {q.passCount}/{q.evaluatedCount} · {pct(q.passRate)}
+              </td>
+              <td className="px-3 py-2.5 tabular-nums font-semibold text-rose-600 dark:text-rose-400">
+                {Math.max(0, q.evaluatedCount - q.passCount)}/{q.evaluatedCount} · {pct(q.failRate)}
               </td>
             </tr>
           ))}
         </tbody>
       </table>
-    </div>
-  );
-}
-
-function RatioBar({ passRate, passLabel, failLabel }: { passRate: number | null; passLabel: string; failLabel: string }) {
-  if (passRate == null) {
-    return <div className="h-2 rounded-full bg-gray-100 dark:bg-gray-800" />;
-  }
-  const pass = Math.round(Math.max(0, Math.min(1, passRate)) * 100);
-  return (
-    <div>
-      <div className="flex h-2 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800">
-        <div style={{ width: `${pass}%`, background: PASS }} />
-        <div style={{ width: `${100 - pass}%`, background: FAIL }} />
-      </div>
-      <p className={cn("mt-1 text-[10px] tabular-nums", portalSubtext)}>
-        {passLabel} {pass}% · {failLabel} {100 - pass}%
-      </p>
     </div>
   );
 }

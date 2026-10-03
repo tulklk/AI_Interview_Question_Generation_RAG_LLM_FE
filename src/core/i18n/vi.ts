@@ -1570,6 +1570,11 @@ Yêu cầu:
       bandFair: "Khá",
       bandGood: "Tốt",
       bandExcellent: "Xuất sắc",
+      topCandidate: "Đúng nhiều câu nhất",
+      mostWrong: "Sai nhiều nhất",
+      mostRight: "Đúng nhiều nhất",
+      passOf: "{{pass}}/{{total}} câu đạt",
+      noGraded: "Chưa có câu nào được chấm.",
     },
   },
 
